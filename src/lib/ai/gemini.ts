@@ -16,7 +16,7 @@ export class GeminiClient {
     parts: Part[]
   ): Promise<string> {
     const model = this.genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: process.env.MODEL!,
       systemInstruction: systemPrompt,
     });
 
