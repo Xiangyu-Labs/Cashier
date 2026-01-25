@@ -1,0 +1,1338 @@
+# Minimal UI Design System
+
+## 1. 设计目标（Design Goals）
+
+这是一套为工具型产品与 AI 应用设计的极简 UI 设计系统，目标是：
+- **内容优先**：界面为信息服务，而不是装饰
+- **低认知负担**：用户无需学习即可使用
+- **高一致性**：不同页面、不同项目保持相同气质
+- **AI 友好**：规则清晰，便于 AI 按约束生成一致 UI
+- **长期维护**：避免复杂主题系统与视觉债务
+
+### 适用场景
+- AI 工具 / SaaS
+- 管理后台
+- 长时间使用的工作型应用
+
+---
+
+## 2. 核心设计原则（Design Principles）
+
+仅遵循以下 **4 条原则**，其余设计决策都应由它们推导：
+
+### 1. 背景层级 ≤ 2
+- 主背景（`bg`）
+- 内容/卡片背景（`surface` / `surface2`）
+
+### 2. 只使用一个品牌色
+- 品牌色仅用于"主操作"和"焦点反馈"
+- 其他颜色只用于语义（错误/警告/信息）
+
+### 3. 边框优先于阴影
+- 阴影只用于浮层（Dialog / Popover）或强调操作
+- 普通卡片不依赖阴影区分层级
+
+### 4. 克制动效
+- 仅使用淡入、位移 ≤ 2px、缩放 0.99
+- 不使用复杂路径动画或连续动画
+
+---
+
+## 3. 设计 Token（Design Tokens）
+
+### 3.1 基础变量（Light / Dark）
+
+以下 **12 个变量** 覆盖 90% UI 场景，其余样式必须由它们派生。
+
+```css
+:root {
+  --primary: #10a37f;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f7f7f8;
+
+  --text: #343541;
+  --muted: #8e8ea0;
+
+  --border: #e5e5e5;
+  --ring: #10a37f;
+
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --radius: 8px;
+}
+
+.dark {
+  --bg: #343541;
+  --surface: #444654;
+  --surface2: #202123;
+
+  --text: #ececf1;
+  --muted: #8e8ea0;
+
+  --border: #565869;
+}
+```
+
+### 3.2 使用规则
+- ✅ 所有颜色 **必须** 来自变量
+- ❌ 不允许在组件中直接写具体颜色值
+- ✅ 深色模式只通过变量切换，不重写组件样式
+
+### 3.3 圆角系统（Radius Scale）
+
+基于基础 `--radius` 派生多级圆角：
+
+```css
+--radius: 8px;           /* 基准值 */
+--radius-sm: calc(var(--radius) - 4px);  /* 4px */
+--radius-md: calc(var(--radius) - 2px);  /* 6px */
+--radius-lg: var(--radius);               /* 8px */
+--radius-xl: calc(var(--radius) + 4px);  /* 12px */
+```
+
+**使用原则**：
+- 小元素（Tag/Badge）使用 `sm`
+- 输入框/按钮使用 `md`
+- 卡片/弹窗使用 `lg` / `xl`
+
+### 3.4 间距系统（Spacing Scale）
+
+```css
+--space-xs: 4px;
+--space-sm: 8px;
+--space-md: 16px;
+--space-lg: 24px;
+--space-xl: 32px;
+```
+
+**使用原则**：
+- 组件内部间距用 `sm` / `md`
+- 组件之间间距用 `lg` / `xl`
+
+### 3.5 Z-index 层级
+
+```css
+--z-base: 0;
+--z-dropdown: 1000;
+--z-modal: 2000;
+--z-toast: 3000;
+```
+
+### 3.6 Shadcn UI 集成（可选）
+
+如使用 Shadcn UI，需建立 Token 映射关系：
+
+```css
+/* 语义映射 */
+--background: var(--bg);
+--foreground: var(--text);
+--card: var(--surface);
+--card-foreground: var(--text);
+--popover: var(--surface);
+--popover-foreground: var(--text);
+--primary-foreground: #ffffff;
+--secondary: var(--surface2);
+--secondary-foreground: var(--text);
+--muted-foreground: #8e8ea0;
+--accent: var(--surface2);
+--accent-foreground: var(--text);
+--destructive: var(--danger);
+--destructive-foreground: #ffffff;
+--input: var(--surface);
+```
+
+**原则**：
+- Shadcn 变量 **必须** 映射到核心 Token
+- 不允许在映射中引入新的具体颜色值
+
+---
+
+## 4. 排版规范（Typography）
+
+### 4.1 字体
+
+```css
+font-family: Inter, system-ui, sans-serif;
+```
+
+### 4.2 字号层级（最小化层级）
+
+| 用途 | 字号 |
+|------|------|
+| 正文 | 14px |
+| 标题（H2/H3） | 20px |
+| 主标题（H1） | 24px |
+| 辅助文字 | 12px |
+
+**原则**：宁少勿多，层级越少，越接近 ChatGPT 的阅读体验。
+
+### 4.3 移动端约束
+
+```css
+input,
+textarea,
+select {
+  font-size: 16px; /* 防止 iOS 自动缩放 */
+}
+```
+
+---
+
+## 5. 组件规范（Component Rules）
+
+### 5.1 Button
+
+定义 **六种** 按钮变体：
+
+| 变体 | 样式 | 使用场景 |
+|------|------|----------|
+| **default** | `bg-primary text-white` | 主要操作（提交、确认） |
+| **secondary** | `bg-surface2 border` | 次要操作（取消、返回） |
+| **ghost** | 透明背景，hover 显示 `surface2` | 工具栏、紧凑区域 |
+| **outline** | 透明背景 + 边框 | 替代 secondary |
+| **destructive** | `bg-danger text-white` | 危险操作（删除、清空） |
+| **link** | 文字样式 + 下划线 | 内联链接操作 |
+
+#### 尺寸系统
+
+| 尺寸 | 高度 | 使用场景 |
+|------|------|----------|
+| **sm** | 32px (h-8) | 紧凑型表单 |
+| **default** | 36px (h-9) | 标准按钮 |
+| **lg** | 40px (h-10) | 强调操作 |
+| **icon** | 36px × 36px | 图标按钮 |
+| **icon-sm** | 32px × 32px | 小图标按钮 |
+| **icon-lg** | 40px × 40px | 大图标按钮 |
+
+#### 交互规范
+- **hover**：亮度/透明度轻微变化（`hover:bg-primary/90`）
+- **active**：`transform: scale(0.99)`
+- **focus**：`ring: 3px var(--ring)/50`
+- **disabled**：`opacity: 0.5` + `pointer-events: none`
+
+---
+
+### 5.2 Input / Textarea
+
+```css
+background: var(--surface);
+border: 1px solid var(--border);
+border-radius: var(--radius);
+
+&:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+```
+
+❌ 不使用内阴影、不使用背景渐变。
+
+---
+
+### 5.3 Card
+
+#### 基础样式
+```css
+background: var(--surface);
+border: 1px solid var(--border);
+border-radius: var(--radius-xl);
+box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* 可选：极轻阴影 */
+```
+
+#### 组件结构
+
+标准 Card 由以下子组件组成：
+
+| 子组件 | 说明 |
+|--------|------|
+| **CardHeader** | 头部容器，包含标题和操作 |
+| **CardTitle** | 卡片标题 |
+| **CardDescription** | 副标题/描述文字 |
+| **CardAction** | 头部右侧操作区（可选） |
+| **CardContent** | 主内容区 |
+| **CardFooter** | 底部操作区（可选） |
+
+```jsx
+<Card>
+  <CardHeader>
+    <CardTitle>标题</CardTitle>
+    <CardDescription>描述</CardDescription>
+    <CardAction>操作按钮</CardAction>
+  </CardHeader>
+  <CardContent>主内容</CardContent>
+  <CardFooter>底部操作</CardFooter>
+</Card>
+```
+
+#### 可交互卡片（可选）
+```css
+&:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+```
+
+---
+
+### 5.4 Dialog / Popover
+
+```css
+background: var(--surface);
+border: 1px solid var(--border);
+box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); /* 仅此处允许使用阴影 */
+border-radius: var(--radius);
+```
+
+---
+
+### 5.5 Table（表格）
+
+#### 基础样式
+
+```css
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table th {
+  background: var(--surface2);
+  font-weight: 600;
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover {
+  background: var(--surface2);
+}
+```
+
+#### 可选：斑马纹
+
+```css
+.table-striped tr:nth-child(even) {
+  background: var(--surface2);
+}
+```
+
+#### 空状态
+
+```css
+.table-empty {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--muted);
+}
+```
+
+---
+
+### 5.6 Badge / Tag（徽章/标签）
+
+用于状态指示、分类标签等场景。
+
+#### 基础样式
+
+```css
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+```
+
+#### 语义变体
+
+| 变体 | 背景 | 文字颜色 | 使用场景 |
+|------|------|----------|----------|
+| **default** | `var(--surface2)` | `var(--text)` | 中性信息 |
+| **success** | `#10a37f20` | `var(--primary)` | 成功/已完成 |
+| **warning** | `#f59e0b20` | `var(--warning)` | 警告/待处理 |
+| **error** | `#ef444420` | `var(--danger)` | 错误/失败 |
+| **info** | `#3b82f620` | `var(--info)` | 提示/说明 |
+
+**原则**：
+- 背景使用语义色的 `20%` 透明度
+- 文字使用对应的语义色变量
+- 不使用深色背景（避免视觉干扰）
+
+#### 尺寸
+
+| 尺寸 | Padding | 字号 |
+|------|---------|------|
+| **sm** | 1px 6px | 10px |
+| **default** | 2px 8px | 12px |
+| **lg** | 4px 12px | 14px |
+
+---
+
+### 5.7 Toast / Notification（通知）
+
+用于操作反馈、系统消息等临时提示。
+
+#### 基础样式
+
+```css
+.toast {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  padding: var(--space-md);
+  min-width: 280px;
+  max-width: 400px;
+  
+  z-index: var(--z-toast);
+}
+```
+
+#### 语义变体（左侧边框指示）
+
+```css
+.toast-success { border-left: 3px solid var(--primary); }
+.toast-warning { border-left: 3px solid var(--warning); }
+.toast-error { border-left: 3px solid var(--danger); }
+.toast-info { border-left: 3px solid var(--info); }
+```
+
+#### 行为规范
+
+| 属性 | 值 | 说明 |
+|------|------|------|
+| **位置** | 右下角 | 避免遮挡主内容 |
+| **持续时间** | 3~5 秒 | 错误消息可延长 |
+| **动效** | 淡入 + 上移 | 入场动画 |
+| **关闭** | 自动 / 手动 | 提供关闭按钮 |
+| **堆叠** | 垂直向上 | 新消息在下方 |
+
+---
+
+### 5.8 Sidebar List Item（侧边栏列表项）
+
+用于导航列表、请求列表等场景。
+
+#### 基础样式
+
+```css
+.sidebar-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  cursor: pointer;
+  
+  transition: background 0.15s ease;
+}
+
+.sidebar-item:hover {
+  background: var(--surface2);
+}
+```
+
+#### 选中态（三选一）
+
+**方案 A：背景色**
+```css
+.sidebar-item.active {
+  background: var(--surface2);
+}
+```
+
+**方案 B：左侧指示条**
+```css
+.sidebar-item.active {
+  background: var(--surface2);
+  border-left: 3px solid var(--primary);
+  padding-left: calc(var(--space-md) - 3px);
+}
+```
+
+**方案 C：品牌色背景（慎用）**
+```css
+.sidebar-item.active {
+  background: var(--primary);
+  color: white;
+}
+```
+
+**推荐使用方案 B**，视觉清晰且不干扰内容阅读。
+
+#### 内容结构
+
+```jsx
+<div class="sidebar-item">
+  <div class="sidebar-item-title">请求标题</div>
+  <div class="sidebar-item-meta">
+    <span class="sidebar-item-time">2 分钟前</span>
+    <Badge variant="success">已完成</Badge>
+  </div>
+</div>
+```
+
+```css
+.sidebar-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 12px;
+  color: var(--muted);
+}
+```
+
+---
+
+### 5.9 Code Block（代码块）
+
+作为代码展示的核心组件，需要特别定义。
+
+#### 字体
+
+```css
+--font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+```
+
+#### 基础样式
+
+```css
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  
+  padding: var(--space-md);
+  overflow-x: auto;
+}
+```
+
+#### 行号
+
+```css
+.code-line-number {
+  display: inline-block;
+  width: 3em;
+  padding-right: var(--space-md);
+  text-align: right;
+  color: var(--muted);
+  user-select: none;
+}
+```
+
+#### 语法高亮主题
+
+推荐使用与设计系统一致的配色，避免使用过于鲜艳的第三方主题：
+
+```css
+/* 浅色模式 */
+.code-keyword { color: #0550ae; }    /* 关键字 */
+.code-string { color: #0a3069; }     /* 字符串 */
+.code-comment { color: var(--muted); } /* 注释 */
+.code-function { color: #8250df; }   /* 函数名 */
+.code-number { color: #0550ae; }     /* 数字 */
+
+/* 深色模式 */
+.dark .code-keyword { color: #79c0ff; }
+.dark .code-string { color: #a5d6ff; }
+.dark .code-function { color: #d2a8ff; }
+.dark .code-number { color: #79c0ff; }
+```
+
+#### 头部操作栏
+
+```css
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.code-language {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.code-copy-btn {
+  /* 使用 ghost button 样式 */
+}
+```
+
+#### 内联代码
+
+```css
+code:not(.code-block code) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+```
+
+---
+
+### 5.10 Tooltip（工具提示）
+
+用于图标按钮、缩略文字的辅助说明。
+
+#### 基础样式
+
+```css
+.tooltip {
+  position: absolute;
+  
+  background: var(--text);
+  color: var(--bg);
+  
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  
+  white-space: nowrap;
+  z-index: var(--z-dropdown);
+  
+  /* 淡入动效 */
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.tooltip.visible {
+  opacity: 1;
+}
+```
+
+#### 行为规范
+
+| 属性 | 值 |
+|------|------|
+| **触发** | hover + focus |
+| **延迟** | 显示 300ms，隐藏 0ms |
+| **位置** | 上方居中（默认），自动翻转 |
+| **箭头** | 可选，6px 三角形 |
+
+---
+
+### 5.11 Dropdown Menu（下拉菜单）
+
+#### 基础样式
+
+```css
+.dropdown {
+  position: absolute;
+  
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+  min-width: 160px;
+  padding: var(--space-xs) 0;
+  
+  z-index: var(--z-dropdown);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  
+  padding: var(--space-sm) var(--space-md);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: var(--surface2);
+}
+
+.dropdown-item-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-xs) 0;
+}
+```
+
+#### 危险操作项
+
+```css
+.dropdown-item-danger {
+  color: var(--danger);
+}
+
+.dropdown-item-danger:hover {
+  background: #ef444410;
+}
+```
+
+---
+
+### 5.12 Empty State（空状态）
+
+当列表或页面无内容时的展示。
+
+#### 基础样式
+
+```css
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--muted);
+  margin-bottom: var(--space-md);
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: var(--space-xs);
+}
+
+.empty-state-description {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 300px;
+  margin-bottom: var(--space-md);
+}
+```
+
+#### 结构示例
+
+```jsx
+<div class="empty-state">
+  <InboxIcon class="empty-state-icon" />
+  <div class="empty-state-title">暂无请求</div>
+  <div class="empty-state-description">
+    提交代码后，分析请求将显示在这里
+  </div>
+  <Button variant="default">提交代码</Button>
+</div>
+```
+
+**原则**：
+- 使用单色线性图标，不使用彩色插图
+- 文案简洁，说明当前状态和下一步操作
+- 提供 CTA 按钮（如果有明确的下一步）
+
+---
+
+### 5.13 Markdown 渲染规范
+
+用于展示 AI 返回的 Markdown 内容。
+
+#### 容器样式
+
+```css
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+}
+```
+
+#### 标题
+
+```css
+.markdown-content h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: var(--space-lg) 0 var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-content h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: var(--space-lg) 0 var(--space-sm);
+}
+
+.markdown-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: var(--space-md) 0 var(--space-sm);
+}
+```
+
+#### 段落与列表
+
+```css
+.markdown-content p {
+  margin: var(--space-md) 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: var(--space-md) 0;
+  padding-left: var(--space-lg);
+}
+
+.markdown-content li {
+  margin: var(--space-xs) 0;
+}
+```
+
+#### 引用块
+
+```css
+.markdown-content blockquote {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--primary);
+  background: var(--surface2);
+  color: var(--muted);
+}
+```
+
+#### 水平线
+
+```css
+.markdown-content hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-lg) 0;
+}
+```
+
+#### 链接
+
+```css
+.markdown-content a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+```
+
+---
+
+### 5.14 Progress（进度指示）
+
+#### Progress Bar（进度条）
+
+```css
+.progress {
+  width: 100%;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+  transition: width 0.3s ease;
+}
+```
+
+#### 不确定进度（Indeterminate）
+
+```css
+.progress-indeterminate .progress-bar {
+  width: 30%;
+  animation: progress-slide 1.5s infinite ease-in-out;
+}
+
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+```
+
+#### Stepper（步骤指示器）
+
+```css
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.stepper-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepper-dot-pending {
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.stepper-dot-active {
+  background: var(--primary);
+  color: white;
+}
+
+.stepper-dot-completed {
+  background: var(--primary);
+  color: white;
+}
+
+.stepper-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+}
+
+.stepper-line-completed {
+  background: var(--primary);
+}
+
+.stepper-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stepper-label-active {
+  color: var(--text);
+  font-weight: 500;
+}
+```
+
+---
+
+## 6. 状态设计（States）
+
+### 6.1 Loading
+- ✅ 使用 **Skeleton Loader**（骨架屏）
+- ❌ 不使用旋转菊花作为主要加载状态
+
+### 6.2 Error
+- 使用 `var(--danger)`
+- 表现为：文字颜色 / 边框颜色
+- 不引入复杂图标或动画
+
+---
+
+## 7. 布局规范（Layout）
+
+### 7.1 基本结构
+- **Sidebar**：固定 280px
+- **主内容区**：
+  - 推荐 `max-width: 900~1000px`
+  - 内容居中，避免铺满屏幕
+
+### 7.2 响应式断点
+
+```css
+/* 只需一个断点，避免过度复杂化 */
+mobile: < 768px
+desktop: ≥ 768px
+```
+
+### 7.3 移动端
+- **Sidebar** → 抽屉
+  - 宽度：`85vw`
+  - 最大宽度：`320px`
+
+---
+
+## 8. 动效规范（Motion）
+
+### 8.1 允许的动效
+```css
+/* 淡入淡出 */
+opacity: 0 → 1;
+
+/* 轻微位移 */
+transform: translateY(±2px);
+
+/* 微缩放 */
+transform: scale(0.99);
+```
+
+### 8.2 禁止的动效
+- ❌ 无限循环动画
+- ❌ 复杂路径动画
+- ❌ 与业务无关的装饰性动画
+
+### 8.3 缓动函数
+
+```css
+/* 推荐使用 */
+transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+```
+
+---
+
+## 9. 图标规范（Icons）
+
+### 9.1 推荐库
+- **Lucide React**（轻量级、现代化）
+
+### 9.2 尺寸标准
+| 场景 | 尺寸 |
+|------|------|
+| 默认 | 20px |
+| 小图标 | 16px |
+| 大图标 | 24px |
+
+### 9.3 颜色
+- 继承父元素文字颜色
+- 不单独设置图标颜色
+
+---
+
+## 10. 可访问性（Accessibility）
+
+### 10.1 键盘导航
+- ✅ 所有可交互元素支持键盘访问
+- ✅ `:focus-visible` 必须明显
+- ✅ 弹窗支持 `Esc` 关闭
+
+### 10.2 焦点管理
+
+```css
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+```
+
+### 10.3 色彩对比度
+- 文字与背景对比度 **≥ WCAG AA**
+- 关键操作按钮对比度 **≥ WCAG AAA**
+
+---
+
+## 11. 使用约定（Usage Contract）
+
+在任何项目中使用本设计系统时：
+
+### ❌ 禁止
+- 新增私有颜色
+- 新增随意动画
+- 绕过 Token 写样式
+
+### ✅ 必须
+- 所有 UI 决策必须能回溯到本规范中的某一条
+- 使用 Radix UI 作为无障碍基础
+- 使用 Tailwind CSS 快速构建样式
+- 谨慎使用 Framer Motion（避免过度动画）
+
+---
+
+## 12. 决策指南（Decision Guide）
+
+当你犹豫要不要加一个设计元素时：
+
+```
+Q: 这个元素是否帮助用户完成任务？
+   └─ 否 → 不加
+   └─ 是 → 继续
+
+Q: 是否可以用现有 Token 实现？
+   └─ 否 → 重新考虑设计
+   └─ 是 → 继续
+
+Q: 是否符合 4 条核心原则？
+   └─ 否 → 不加
+   └─ 是 → 可以实现
+```
+
+**大概率说明你不该加。**
+
+---
+
+## 13. 总结
+
+这套 UI 的目标不是"好看"，而是：
+- ✅ 长时间使用不疲劳
+- ✅ 多项目保持一致
+- ✅ AI 与人都不容易犯错
+
+### 核心价值
+| 维度 | 价值 |
+|------|------|
+| **开发效率** | 12 个变量覆盖 90% 场景 |
+| **维护成本** | 规则极简，决策可回溯 |
+| **用户体验** | 低认知负担，专注内容 |
+| **AI 协作** | 清晰约束，生成一致 |
+
+---
+
+## 附录：快速开始
+
+### Step 1: 复制变量到 `globals.css`
+
+```css
+@import "tailwindcss";
+
+@theme {
+  /* 复制上述 Token 变量 */
+}
+
+:root { /* 浅色模式变量 */ }
+.dark { /* 深色模式变量 */ }
+```
+
+### Step 2: 安装推荐依赖
+
+```bash
+npm install @radix-ui/react-dialog @radix-ui/react-popover
+npm install lucide-react
+npm install framer-motion
+```
+
+### Step 3: 遵循规范开发
+
+参考本文档的组件规范和使用约定，确保所有 UI 决策可回溯。
+
+---
+
+> **设计哲学**：少即是多，约束即自由。
+
+---
+
+## 14. 图片与媒体规范（Images & Media）
+
+### 强制使用 next/image
+
+所有图片必须使用 `next/image` 组件：
+
+```tsx
+// ✅ 正确
+import Image from 'next/image';
+
+<Image
+  src="/hero.jpg"
+  alt="产品展示图"  // 必须提供有意义的 alt
+  width={800}
+  height={600}
+  priority  // 首屏图片添加 priority
+/>
+
+// ❌ 错误
+<img src="/hero.jpg" />
+```
+
+### 约定
+
+| 规则 | 说明 |
+|------|------|
+| **组件** | 必须使用 `next/image`，禁止直接 `<img>` |
+| **alt 属性** | 必须提供描述性文字，不能为空 |
+| **尺寸** | 必须指定 `width` 和 `height`，或使用 `fill` |
+| **格式** | 优先 WebP/AVIF，fallback PNG/JPG |
+| **占位** | 使用 `placeholder="blur"` + `blurDataURL` |
+
+### 装饰性图片
+
+```tsx
+// 装饰性图片可以使用空 alt，但必须标注
+<Image
+  src="/decoration.svg"
+  alt=""  // 装饰性图片
+  aria-hidden="true"
+/>
+```
+
+---
+
+## 15. 响应式行为规范（Responsive Behavior）
+
+### 断点定义（复述）
+
+```css
+mobile: < 768px
+desktop: ≥ 768px
+```
+
+### 复杂组件的移动端行为
+
+| 组件 | 桌面端 | 移动端 |
+|------|--------|--------|
+| **Table** | 正常表格 | 横向滚动（`overflow-x: auto`） |
+| **Modal** | 居中弹窗 | 底部抽屉（Drawer） |
+| **Sidebar** | 固定侧边栏 | 抽屉式菜单 |
+| **Multi-column** | 多列布局 | 单列堆叠 |
+
+### Table 移动端处理
+
+```css
+/* 移动端表格横向滚动 */
+@media (max-width: 767px) {
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table {
+    min-width: 600px;  /* 保持最小宽度 */
+  }
+}
+```
+
+### Modal → Drawer 转换
+
+推荐使用 Shadcn 的 `Drawer` 组件，移动端自动切换：
+
+```tsx
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+
+export function ResponsiveModal({ children, ...props }) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  
+  if (isDesktop) {
+    return <Dialog {...props}><DialogContent>{children}</DialogContent></Dialog>;
+  }
+  
+  return <Drawer {...props}><DrawerContent>{children}</DrawerContent></Drawer>;
+}
+```
+
+---
+
+## 16. 表单验证 UI（Form Validation UI）
+
+### 错误状态样式
+
+表单验证错误必须遵循以下规范：
+
+```css
+/* 错误状态输入框 */
+.input-error {
+  border-color: var(--danger);
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* 错误消息 */
+.form-error-message {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: var(--space-xs);
+}
+```
+
+### React Hook Form + Zod 集成
+
+```tsx
+// ✅ 标准表单验证 UI 模式
+<FormField
+  control={form.control}
+  name="email"
+  render={({ field, fieldState }) => (
+    <FormItem>
+      <FormLabel>邮箱</FormLabel>
+      <FormControl>
+        <Input
+          {...field}
+          className={fieldState.error ? 'border-danger' : ''}
+        />
+      </FormControl>
+      {fieldState.error && (
+        <FormMessage className="text-sm text-danger">
+          {fieldState.error.message}
+        </FormMessage>
+      )}
+    </FormItem>
+  )}
+/>
+```
+
+### 约定
+
+| 元素 | 位置 | 样式 |
+|------|------|------|
+| **错误消息** | 输入框下方 | `text-sm text-danger` |
+| **输入框边框** | 错误时变红 | `border-danger` |
+| **图标** | 可选，输入框右侧 | 红色警告图标 |
+| **时机** | `onBlur` 或 `onSubmit` | 不要 `onChange` 实时报错 |
+
+### 禁止行为
+
+- ❌ 禁止只用 `alert()` 提示验证错误
+- ❌ 禁止错误消息显示在页面顶部（远离输入框）
+- ❌ 禁止只变边框不显示文字说明
