@@ -50,29 +50,6 @@ describe("InputMessages Database Operations", () => {
       expect(created.contentType).toBe("image");
       expect(JSON.parse(created.content)).toHaveProperty("images");
     });
-
-    it("should create an audio input message", async () => {
-      const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
-
-      const audioContent = JSON.stringify({
-        audio: { data: "base64...", mimeType: "audio/webm" },
-      });
-
-      const [created] = await db
-        .insert(inputMessages)
-        .values({
-          ledgerId: ledger.id,
-          contentType: "audio",
-          content: audioContent,
-        })
-        .returning();
-
-      expect(created.contentType).toBe("audio");
-    });
   });
 
   describe("READ", () => {

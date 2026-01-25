@@ -16,12 +16,6 @@ const messageSchema = z.object({
       })
     )
     .optional(),
-  audio: z
-    .object({
-      data: z.string(),
-      mimeType: z.string(),
-    })
-    .optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -34,9 +28,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const validated = messageSchema.parse(body);
 
     // 验证至少有一种输入
-    if (!validated.text && !validated.images?.length && !validated.audio) {
+    if (!validated.text && !validated.images?.length) {
       return NextResponse.json(
-        { error: "At least one input (text, images, or audio) is required" },
+        { error: "At least one input (text or images) is required" },
         { status: 400 }
       );
     }
@@ -69,9 +63,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // 多张图片：存储 data URL 数组的 JSON
         content = JSON.stringify(validated.images.map((img) => img.data));
       }
-    } else if (sourceType === "audio" && validated.audio) {
-      // 存储音频的 data URL，可直接用于 <audio src>
-      content = validated.audio.data;
     } else if (sourceType === "text" && validated.text) {
       // 存储纯文本
       content = validated.text;

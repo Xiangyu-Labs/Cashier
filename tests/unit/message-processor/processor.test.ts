@@ -183,27 +183,6 @@ describe("GeminiMessageProcessor", () => {
       });
     });
 
-    it("should handle audio input", async () => {
-      const input: MessageInput = {
-        audio: {
-          data: "data:audio/webm;base64,GkXfo59...",
-          mimeType: "audio/webm",
-        },
-      };
-
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
-
-      await processor.process(input, defaultContext);
-
-      const [, parts] = mockGenerateContent.mock.calls[0];
-      expect(parts).toContainEqual({
-        inlineData: {
-          mimeType: "audio/webm",
-          data: "GkXfo59...",
-        },
-      });
-    });
-
     it("should add placeholder text when no input provided", async () => {
       const input: MessageInput = {};
 

@@ -25,11 +25,8 @@ export default function LedgerPage() {
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<{ data: string; mimeType: string }[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioData, setAudioData] = useState<{ data: string; mimeType: string } | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: ledger, isLoading: ledgerLoading } = useQuery({
@@ -64,7 +61,6 @@ export default function LedgerPage() {
       queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
       setText("");
       setImages([]);
-      setAudioData(null);
     },
   });
 
@@ -98,11 +94,10 @@ export default function LedgerPage() {
   });
 
   const handleSend = () => {
-    if (!text && images.length === 0 && !audioData) return;
+    if (!text && images.length === 0) return;
     sendMutation.mutate({
       text: text || undefined,
       images: images.length > 0 ? images : undefined,
-      audio: audioData || undefined,
     });
   };
 
@@ -110,7 +105,27 @@ export default function LedgerPage() {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
+    processFiles(Array.from(files));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    const files: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) files.push(file);
+      }
+    }
+
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+
+  const processFiles = (files: File[]) => {
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result as string;
@@ -121,42 +136,6 @@ export default function LedgerPage() {
       };
       reader.readAsDataURL(file);
     });
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      const chunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
-        const reader = new FileReader();
-        reader.onload = () => {
-          setAudioData({
-            data: reader.result as string,
-            mimeType: "audio/webm",
-          });
-        };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-      alert("无法访问麦克风");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
   };
 
   if (ledgerLoading) {
@@ -202,7 +181,8 @@ export default function LedgerPage() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="输入消费记录，例如：午饭35元..."
+              onPaste={handlePaste}
+              placeholder="输入消费记录，例如：午饭35元... (支持粘贴图片)"
               className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
             />
@@ -230,19 +210,6 @@ export default function LedgerPage() {
               </div>
             )}
 
-            {/* 音频预览 */}
-            {audioData && (
-              <div className="flex items-center gap-2 p-2 bg-gray-100 rounded">
-                <span className="text-sm">🎤 已录制音频</span>
-                <button
-                  onClick={() => setAudioData(null)}
-                  className="text-red-500 text-sm"
-                >
-                  删除
-                </button>
-              </div>
-            )}
-
             <div className="flex items-center gap-2">
               <input
                 type="file"
@@ -258,22 +225,12 @@ export default function LedgerPage() {
               >
                 📷 图片
               </button>
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`px-3 py-2 text-sm border rounded-lg ${
-                  isRecording
-                    ? "bg-red-100 border-red-300 text-red-600"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                {isRecording ? "⏹ 停止" : "🎤 录音"}
-              </button>
               <div className="flex-1" />
               <button
                 onClick={handleSend}
                 disabled={
                   sendMutation.isPending ||
-                  (!text && images.length === 0 && !audioData)
+                  (!text && images.length === 0)
                 }
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >

@@ -171,34 +171,6 @@ describe("POST /api/ledgers/[id]/messages", () => {
     expect(savedMessage?.contentType).toBe("image");
   });
 
-  it("should handle audio input", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          audio: {
-            data: "data:audio/webm;base64,GkXfo59...",
-            mimeType: "audio/webm",
-          },
-        }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-
-    const db = getTestDb();
-    const savedMessage = await db.query.inputMessages.findFirst({
-      where: eq(inputMessages.id, data.messageId),
-    });
-    expect(savedMessage?.contentType).toBe("audio");
-  });
-
   it("should handle mixed input (text + image)", async () => {
     const request = new NextRequest(
       `http://localhost/api/ledgers/${testLedgerId}/messages`,
@@ -295,39 +267,6 @@ describe("POST /api/ledgers/[id]/messages", () => {
     expect(savedMessage?.contentType).toBe("image");
     expect(savedMessage?.content).toBe(imageDataUrl);
     expect(savedMessage?.content.startsWith("data:image/")).toBe(true);
-  });
-
-  it("should store audio content as data URL usable for audio src", async () => {
-    const audioDataUrl = "data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC84EI";
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          audio: {
-            data: audioDataUrl,
-            mimeType: "audio/webm",
-          },
-        }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-
-    const db = getTestDb();
-    const savedMessage = await db.query.inputMessages.findFirst({
-      where: eq(inputMessages.id, data.messageId),
-    });
-
-    // The content should be directly usable as audio src (data URL)
-    expect(savedMessage?.contentType).toBe("audio");
-    expect(savedMessage?.content).toBe(audioDataUrl);
-    expect(savedMessage?.content.startsWith("data:audio/")).toBe(true);
   });
 
   it("should store text content directly (not JSON wrapped)", async () => {

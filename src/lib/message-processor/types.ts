@@ -6,10 +6,6 @@ export interface MessageInput {
     data: string; // Base64 或 URL
     mimeType: string; // image/jpeg, image/png, etc.
   }>;
-  audio?: {
-    data: string;
-    mimeType: string; // audio/webm, audio/mp3, etc.
-  };
 }
 
 export interface ParsedTransaction {
@@ -41,17 +37,15 @@ export interface MessageProcessor {
   process(input: MessageInput, context: ProcessorContext): Promise<ProcessResult>;
 }
 
-export type SourceType = "text" | "image" | "audio" | "mixed";
+export type SourceType = "text" | "image" | "mixed";
 
 export function determineSourceType(input: MessageInput): SourceType {
   const hasText = !!input.text;
   const hasImages = input.images && input.images.length > 0;
-  const hasAudio = !!input.audio;
 
-  const count = [hasText, hasImages, hasAudio].filter(Boolean).length;
+  const count = [hasText, hasImages].filter(Boolean).length;
 
   if (count > 1) return "mixed";
   if (hasImages) return "image";
-  if (hasAudio) return "audio";
   return "text";
 }

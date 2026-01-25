@@ -18,13 +18,11 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
 export const sourceTypeEnum = pgEnum("source_type", [
   "text",
   "image",
-  "audio",
   "mixed",
 ]);
 export const contentTypeEnum = pgEnum("content_type", [
   "text",
   "image",
-  "audio",
 ]);
 
 // Ledger（账本）

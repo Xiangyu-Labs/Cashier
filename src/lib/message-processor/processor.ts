@@ -63,26 +63,6 @@ export class GeminiMessageProcessor implements MessageProcessor {
       }
     }
 
-    // 添加音频
-    if (input.audio) {
-      if (input.audio.data.startsWith("data:")) {
-        const base64Data = input.audio.data.split(",")[1];
-        parts.push({
-          inlineData: {
-            mimeType: input.audio.mimeType,
-            data: base64Data,
-          },
-        });
-      } else {
-        parts.push({
-          inlineData: {
-            mimeType: input.audio.mimeType,
-            data: input.audio.data,
-          },
-        });
-      }
-    }
-
     // 如果没有任何内容，添加一个提示
     if (parts.length === 0) {
       parts.push({ text: "（无输入内容）" });
