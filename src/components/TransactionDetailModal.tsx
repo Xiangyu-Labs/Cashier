@@ -97,14 +97,29 @@ export function TransactionDetailModal({
             {msg.content}
           </p>
         );
-      case "image":
+      case "image": {
+        // Check if content is JSON array (multiple images) or single data URL
+        let images: string[];
+        try {
+          const parsed = JSON.parse(msg.content);
+          images = Array.isArray(parsed) ? parsed : [msg.content];
+        } catch {
+          // Not JSON, treat as single image data URL
+          images = [msg.content];
+        }
         return (
-          <img
-            src={msg.content}
-            alt="原始图片"
-            className="max-w-full max-h-48 rounded object-contain"
-          />
+          <div className="flex flex-wrap gap-2">
+            {images.map((imgSrc, idx) => (
+              <img
+                key={idx}
+                src={imgSrc}
+                alt={`原始图片 ${idx + 1}`}
+                className="max-w-full max-h-48 rounded object-contain"
+              />
+            ))}
+          </div>
         );
+      }
       case "audio":
         return (
           <audio controls className="w-full">

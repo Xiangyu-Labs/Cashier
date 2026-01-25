@@ -356,4 +356,41 @@ describe("POST /api/ledgers/[id]/messages", () => {
     expect(savedMessage?.contentType).toBe("text");
     expect(savedMessage?.content).toBe(textContent);
   });
+
+  it("should store multiple images as JSON array", async () => {
+    const image1 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD";
+    const image2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE";
+    const request = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          images: [
+            { data: image1, mimeType: "image/jpeg" },
+            { data: image2, mimeType: "image/png" },
+          ],
+        }),
+      }
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+
+    const db = getTestDb();
+    const savedMessage = await db.query.inputMessages.findFirst({
+      where: eq(inputMessages.id, data.messageId),
+    });
+
+    // Multiple images should be stored as JSON array of data URLs
+    expect(savedMessage?.contentType).toBe("image");
+    const images = JSON.parse(savedMessage!.content);
+    expect(Array.isArray(images)).toBe(true);
+    expect(images).toHaveLength(2);
+    expect(images[0]).toBe(image1);
+    expect(images[1]).toBe(image2);
+  });
 });

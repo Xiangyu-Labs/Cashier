@@ -62,8 +62,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // 根据内容类型提取可直接使用的内容
     let content: string;
     if (sourceType === "image" && validated.images && validated.images.length > 0) {
-      // 存储第一张图片的 data URL，可直接用于 <img src>
-      content = validated.images[0].data;
+      if (validated.images.length === 1) {
+        // 单张图片：直接存储 data URL
+        content = validated.images[0].data;
+      } else {
+        // 多张图片：存储 data URL 数组的 JSON
+        content = JSON.stringify(validated.images.map((img) => img.data));
+      }
     } else if (sourceType === "audio" && validated.audio) {
       // 存储音频的 data URL，可直接用于 <audio src>
       content = validated.audio.data;
