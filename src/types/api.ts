@@ -20,6 +20,15 @@ export interface Category {
   updatedAt: string;
 }
 
+export interface InputMessage {
+  id: string;
+  ledgerId: string;
+  contentType: "text" | "image" | "audio";
+  content: string;
+  aiResponse: string | null;
+  createdAt: string;
+}
+
 export interface Transaction {
   id: string;
   ledgerId: string;
@@ -34,6 +43,7 @@ export interface Transaction {
   transactionDate: string | null;
   createdAt: string;
   category?: Category | null;
+  inputMessage?: InputMessage | null;
 }
 
 export interface TransactionSummary {

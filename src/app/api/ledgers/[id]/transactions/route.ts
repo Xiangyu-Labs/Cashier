@@ -39,6 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: and(...conditions),
       with: {
         category: true,
+        inputMessage: true,
       },
       orderBy: (transactions, { desc }) => [desc(transactions.createdAt)],
       limit: query.limit,

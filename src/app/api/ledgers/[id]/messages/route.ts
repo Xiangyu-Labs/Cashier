@@ -58,12 +58,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // 保存原始输入
     const sourceType = determineSourceType(validated as MessageInput);
+
+    // 根据内容类型提取可直接使用的内容
+    let content: string;
+    if (sourceType === "image" && validated.images && validated.images.length > 0) {
+      // 存储第一张图片的 data URL，可直接用于 <img src>
+      content = validated.images[0].data;
+    } else if (sourceType === "audio" && validated.audio) {
+      // 存储音频的 data URL，可直接用于 <audio src>
+      content = validated.audio.data;
+    } else if (sourceType === "text" && validated.text) {
+      // 存储纯文本
+      content = validated.text;
+    } else {
+      // mixed 或其他情况，存储完整 JSON 以保留所有数据
+      content = JSON.stringify(validated);
+    }
+
     const [savedMessage] = await db
       .insert(inputMessages)
       .values({
         ledgerId,
         contentType: sourceType === "mixed" ? "text" : sourceType,
-        content: JSON.stringify(validated),
+        content,
       })
       .returning();
 

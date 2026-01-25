@@ -14,6 +14,7 @@ import {
   fetchCategories,
 } from "@/lib/api";
 import { Transaction, Category } from "@/types/api";
+import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import Link from "next/link";
 
 export default function LedgerPage() {
@@ -26,6 +27,8 @@ export default function LedgerPage() {
   const [images, setImages] = useState<{ data: string; mimeType: string }[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [audioData, setAudioData] = useState<{ data: string; mimeType: string } | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -334,7 +337,11 @@ export default function LedgerPage() {
               {confirmedTxs.map((tx) => (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
+                  onClick={() => {
+                    setSelectedTransaction(tx);
+                    setIsDetailModalOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2 border-b last:border-0 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2"
                 >
                   <div className="flex items-center gap-3">
                     <span>{tx.category?.icon || "📝"}</span>
@@ -342,6 +349,11 @@ export default function LedgerPage() {
                       <p className="font-medium">{tx.itemName}</p>
                       <p className="text-xs text-gray-500">
                         {tx.category?.name || "未分类"}
+                        {tx.transactionDate && (
+                          <span className="ml-2">
+                            · {new Date(tx.transactionDate).toLocaleDateString("zh-CN")}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -356,6 +368,30 @@ export default function LedgerPage() {
           )}
         </section>
       </main>
+
+      {/* 交易详情弹窗 */}
+      <TransactionDetailModal
+        transaction={selectedTransaction}
+        categories={categories || []}
+        open={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedTransaction(null);
+        }}
+        onUpdate={(data) => {
+          if (selectedTransaction) {
+            updateMutation.mutate({
+              transactionId: selectedTransaction.id,
+              data,
+            });
+          }
+        }}
+        onDelete={() => {
+          if (selectedTransaction) {
+            deleteMutation.mutate(selectedTransaction.id);
+          }
+        }}
+      />
     </div>
   );
 }
