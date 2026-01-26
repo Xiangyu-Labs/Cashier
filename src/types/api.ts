@@ -25,6 +25,8 @@ export interface InputMessage {
   content: string;
   aiResponse: string | null;
   createdAt: string;
+  status?: "queued" | "processing" | "completed" | "failed";
+  error?: string | null;
 }
 
 export interface Transaction {

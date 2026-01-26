@@ -25,6 +25,12 @@ export const contentTypeEnum = pgEnum("content_type", [
   "text",
   "image",
 ]);
+export const messageStatusEnum = pgEnum("message_status", [
+  "queued",
+  "processing",
+  "completed",
+  "failed",
+]);
 
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
@@ -71,6 +77,8 @@ export const inputMessages = pgTable("input_messages", {
     .references(() => ledgers.id, { onDelete: "cascade" }),
   contentType: contentTypeEnum("content_type").notNull(),
   content: text("content").notNull(),
+  status: messageStatusEnum("status").notNull().default("queued"),
+  error: text("error"),
   aiResponse: text("ai_response"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

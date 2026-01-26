@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { transactions, inputMessages, categories, ledgers } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray, and, asc } from "drizzle-orm";
 import { z } from "zod";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { MessageInput, determineSourceType } from "@/lib/message-processor/types";
+import { processMessageQueue } from "@/lib/queue";
 
 const messageSchema = z.object({
   text: z.string().optional(),
@@ -18,7 +19,30 @@ const messageSchema = z.object({
     .optional(),
 });
 
+
+
 type RouteParams = { params: Promise<{ id: string }> };
+
+// GET /api/ledgers/[id]/messages - 获取消息列表 (主要用于获取队列中的消息)
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  const { id: ledgerId } = await params;
+  const searchParams = request.nextUrl.searchParams;
+  const status = searchParams.get("status"); // e.g. "queued,processing"
+
+  const conditions = [eq(inputMessages.ledgerId, ledgerId)];
+
+  if (status) {
+    const statuses = status.split(",") as any[];
+    conditions.push(inArray(inputMessages.status, statuses));
+  }
+
+  const messages = await db.query.inputMessages.findMany({
+    where: and(...conditions),
+    orderBy: [asc(inputMessages.createdAt)],
+  });
+
+  return NextResponse.json(messages);
+}
 
 // POST /api/ledgers/[id]/messages - 处理多模态输入
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -71,84 +95,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       content = JSON.stringify(validated);
     }
 
+    // 4. Save input message with 'queued' status
     const [savedMessage] = await db
       .insert(inputMessages)
       .values({
         ledgerId,
         contentType: sourceType === "mixed" ? "text" : sourceType,
         content,
+        status: "queued",
       })
       .returning();
 
-    // 调用 AI 处理
-    const processor = getMessageProcessor();
-    const result = await processor.process(validated as MessageInput, {
-      ledgerId,
-      language: ledger.language,
-      categories: ledgerCategories.map((c) => ({
-        id: c.id,
-        name: c.name,
-        description: c.description,
-      })),
+    // 5. Trigger background processing (Fire and Forget)
+    // In a serverless environment like Vercel, this might need waitUntil(promise)
+    // But for standard Node.js/Next.js, this works as long as the process lives.
+    processMessageQueue().catch((err) => {
+      console.error("Background processing failed failed to start:", err);
     });
-
-    // 更新 AI 响应
-    await db
-      .update(inputMessages)
-      .set({ aiResponse: result.rawResponse })
-      .where(eq(inputMessages.id, savedMessage.id));
-
-    // 创建待确认的交易记录
-    const createdTransactions = [];
-
-    // 1. Filter out zero/negative amounts
-    const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
-
-    // 2. Save each transaction individually
-    for (const tx of validTransactions) {
-      let categoryId: string | null = null;
-      let itemName = tx.itemName || "未分类";
-
-      if (tx.category) {
-        const matchedCategory = ledgerCategories.find(
-          (c) => c.name === tx.category
-        );
-        if (matchedCategory) {
-          categoryId = matchedCategory.id;
-        }
-      }
-
-      // Preserve metadata
-      const metadata = tx.metadata || {};
-
-      const [created] = await db
-        .insert(transactions)
-        .values({
-          ledgerId,
-          categoryId,
-          inputMessageId: savedMessage.id,
-          amount: tx.amount.toString(),
-          currency: tx.currency,
-          itemName,
-          status: "pending",
-          sourceType,
-          transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
-          description: metadata.notes || null, // Map metadata notes to description if available
-          metadata,
-        })
-        .returning();
-
-      createdTransactions.push({
-        ...created,
-        category: categoryId
-          ? ledgerCategories.find((c) => c.id === categoryId)
-          : null,
-      });
-    }
 
     return NextResponse.json({
       messageId: savedMessage.id,
-      transactions: createdTransactions,
+      status: "queued",
+      message: "Message queued for processing",
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -157,9 +125,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    console.error("Failed to process message:", error);
+    console.error("Failed to queue message:", error);
     return NextResponse.json(
-      { error: "Failed to process message" },
+      { error: "Failed to queue message" },
       { status: 500 }
     );
   }

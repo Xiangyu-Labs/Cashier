@@ -12,6 +12,7 @@ import {
   deleteTransaction,
   confirmTransactions,
   fetchCategories,
+  fetchInputMessages,
 } from "@/lib/api";
 import { Transaction, InputMessage } from "@/types/api";
 import { TransactionDetailModal } from "@/components/TransactionDetailModal";
@@ -57,6 +58,17 @@ export default function LedgerPage() {
   const { data: summary } = useQuery({
     queryKey: ["summary", ledgerId],
     queryFn: () => fetchTransactionSummary(ledgerId, "confirmed"),
+  });
+
+  // Poll for queued/processing messages
+  const { data: queuedMessages } = useQuery({
+    queryKey: ["messages", ledgerId, "queued"],
+    queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing"]),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // If there are messages, poll every 1s. Otherwise poll every 5s.
+      return data && data.length > 0 ? 1000 : 5000;
+    },
   });
 
   // Group pending transactions
@@ -121,7 +133,8 @@ export default function LedgerPage() {
     mutationFn: (data: Parameters<typeof sendMessage>[1]) =>
       sendMessage(ledgerId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+      queryClient.invalidateQueries({ queryKey: ["messages", ledgerId, "queued"] }); // Refresh queue
+      // No need to invalidate transactions yet, they will appear via polling
       setText("");
       setImages([]);
     },
@@ -315,6 +328,30 @@ export default function LedgerPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* 正在处理队列 */}
+        {queuedMessages && queuedMessages.length > 0 && (
+          <Card className="bg-surface2/30 border-dashed border-primary/50">
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-sm font-medium text-primary flex items-center gap-2">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                正在处理 ({queuedMessages.length})
+              </h3>
+              <div className="space-y-2">
+                {queuedMessages.map((msg) => (
+                  <div key={msg.id} className="flex items-center gap-3 text-sm text-text/80 bg-surface/50 p-2 rounded">
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-surface border border-border">
+                      {msg.status === "queued" ? "排队中" : "处理中"}
+                    </span>
+                    <span className="truncate flex-1">
+                      {msg.contentType === "text" ? msg.content : "[图片]"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 待确认记录 */}
         {(pendingGroups.batches.length > 0 || pendingGroups.others.length > 0) && (

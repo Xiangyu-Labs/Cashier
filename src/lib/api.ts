@@ -4,6 +4,7 @@ import {
   Transaction,
   TransactionSummary,
   MessageResponse,
+  InputMessage,
 } from "@/types/api";
 
 const API_BASE = "/api";
@@ -203,5 +204,19 @@ export async function sendMessage(
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to send message");
+  return res.json();
+}
+
+export async function fetchInputMessages(
+  ledgerId: string,
+  status?: string[]
+): Promise<InputMessage[]> {
+  const searchParams = new URLSearchParams();
+  if (status) searchParams.set("status", status.join(","));
+
+  const res = await fetch(
+    `${API_BASE}/ledgers/${ledgerId}/messages?${searchParams}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch messages");
   return res.json();
 }
