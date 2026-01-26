@@ -8,6 +8,7 @@ import {
   pgEnum,
   date,
   jsonb,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -55,6 +56,7 @@ export const settings = pgTable("settings", {
   currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  autoConfirm: boolean("auto_confirm").default(false),
 });
 
 // Category（全局分类 -> 账本分类）

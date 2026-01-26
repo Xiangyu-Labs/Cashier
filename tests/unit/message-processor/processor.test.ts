@@ -48,7 +48,8 @@ describe("OpenAIMessageProcessor", () => {
         currency: "CNY",
         category: "餐饮",
         transactionDate: "2025-01-25",
-        metadata: null
+        metadata: null,
+        status: "pending"
       });
     });
 
@@ -275,6 +276,17 @@ describe("OpenAIMessageProcessor", () => {
           url: "data:image/png;base64,iVBORw0KGgo...",
         },
       });
+
+    });
+
+    it("should set status to confirmed when autoConfirm is true", async () => {
+      const input: MessageInput = { text: "Lunch 20" };
+
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+
+      const result = await processor.process(input, defaultContext, true);
+
+      expect(result.transactions[0].status).toBe("confirmed");
     });
   });
 

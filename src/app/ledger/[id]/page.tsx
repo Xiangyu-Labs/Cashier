@@ -16,8 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { VerifyTab } from "@/components/ledger/VerifyTab";
-import { HistoryTab } from "@/components/ledger/HistoryTab";
+import { TransactionsTab } from "@/components/ledger/TransactionsTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -205,34 +204,19 @@ export default function LedgerPage() {
       <main className="max-w-md mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="history">明细</TabsTrigger>
-            <TabsTrigger value="verify" className="relative">
-              核对
-              {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-danger" />
-                </span>
-              )}
-            </TabsTrigger>
+            <TabsTrigger value="history">账单</TabsTrigger>
             <TabsTrigger value="stats">统计</TabsTrigger>
             {/* Kept grid-cols-4 for spacing but removed one item, might need adjustment if grid looks off, assuming user wants to keep layout or we should adjust cols */}
           </TabsList>
 
 
 
-          <TabsContent value="verify" className="mt-0">
-            <VerifyTab
+          <TabsContent value="history" className="mt-0">
+            <TransactionsTab
               ledgerId={ledgerId}
               pendingGroups={pendingGroups}
-              categories={categories || []}
-            />
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-0">
-            <HistoryTab
-              ledgerId={ledgerId}
               confirmedGroups={confirmedGroups}
+              queuedMessages={queuedMessages || []}
               categories={categories || []}
             />
           </TabsContent>

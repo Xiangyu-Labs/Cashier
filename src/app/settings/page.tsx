@@ -13,6 +13,9 @@ import {
 } from "@/lib/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Category } from "@/types/api";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 
 
@@ -22,6 +25,7 @@ export default function SettingsPage() {
     const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
     const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
+    const [showAutoConfirmWarning, setShowAutoConfirmWarning] = useState(false);
 
     // Settings Query
     const { data: settings, isLoading: isSettingsLoading } = useQuery({
@@ -108,7 +112,57 @@ export default function SettingsPage() {
 
             {/* Language Settings */}
 
+            {/* AI Settings */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+                <h2 className="text-lg font-medium mb-6">智能助理</h2>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-base font-medium">跳过核对</h3>
+                        <p className="text-sm text-[var(--muted)]">AI 识别的账单直接入账，不再需要手动确认</p>
+                    </div>
+                    <Switch
+                        checked={settings?.autoConfirm || false}
+                        onCheckedChange={(checked: boolean) => {
+                            if (checked) {
+                                setShowAutoConfirmWarning(true);
+                            } else {
+                                updateSettingsMutation.mutate({ autoConfirm: false });
+                            }
+                        }}
+                    />
+                </div>
+            </section>
 
+            <Dialog open={showAutoConfirmWarning} onOpenChange={setShowAutoConfirmWarning}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-danger flex items-center gap-2">
+                            ⚠️ 风险提示
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 text-sm text-[var(--muted)] space-y-3">
+                        <p>开启「跳过核对」后，AI 识别的所有账单将<strong>直接计入账本</strong>。</p>
+                        <p>虽然 AI 准确率很高，但仍可能出现识别错误（如金额、分类错误）。开启此功能意味着您接受可能存在的记账误差。</p>
+                        <p>建议您定期（如每周）查看账单列表，检查是否有异常记录。</p>
+                    </div>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button variant="ghost" onClick={() => setShowAutoConfirmWarning(false)}>
+                            取消
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                updateSettingsMutation.mutate({ autoConfirm: true });
+                                setShowAutoConfirmWarning(false);
+                            }}
+                        >
+                            确认开启
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Data Configuration */}
             {/* Data Configuration */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
                 <h2 className="text-lg font-medium mb-6">数据配置</h2>

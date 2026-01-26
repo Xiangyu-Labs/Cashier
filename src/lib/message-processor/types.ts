@@ -21,6 +21,7 @@ export interface ParsedTransaction {
     originalName?: string | null;
     notes?: string | null;
   } | null;
+  status?: "pending" | "confirmed";
 }
 
 export interface ProcessResult {
@@ -39,7 +40,7 @@ export interface ProcessorContext {
 }
 
 export interface MessageProcessor {
-  process(input: MessageInput, context: ProcessorContext): Promise<ProcessResult>;
+  process(input: MessageInput, context: ProcessorContext, autoConfirm?: boolean): Promise<ProcessResult>;
 }
 
 export type SourceType = "text" | "image" | "mixed";

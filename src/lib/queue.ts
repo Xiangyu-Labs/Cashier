@@ -68,6 +68,10 @@ async function processNextMessage() {
             throw new Error("Failed to parse message content");
         }
 
+        // Fetch global settings
+        const settings = await db.query.settings.findFirst();
+        const autoConfirm = settings?.autoConfirm || false;
+
         const processor = getMessageProcessor();
         const result = await processor.process(messageInput, {
             categories: allCategories.map((c) => ({
@@ -75,7 +79,7 @@ async function processNextMessage() {
                 name: c.name,
                 description: c.description,
             })),
-        });
+        }, autoConfirm);
 
         // 4. Update AI response
         await db
@@ -108,7 +112,7 @@ async function processNextMessage() {
                 amount: tx.amount.toString(),
                 currency: tx.currency,
                 itemName,
-                status: "pending",
+                status: tx.status || "pending",
                 sourceType: nextMessage.contentType as any, // Cast to match enum
                 transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
                 description: metadata.notes || null,

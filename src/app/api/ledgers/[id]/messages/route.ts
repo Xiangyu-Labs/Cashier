@@ -94,6 +94,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       content = JSON.stringify(validated);
     }
 
+    // 获取全局设置
+    const globalSettings = await db.query.settings.findFirst();
+    const autoConfirm = globalSettings?.autoConfirm || false;
+
+    // Process immediately in this request for now since we want to return the result immediately? 
+    // Actually the current logic queues it. But if we want "instant" feedback, we might need to change this.
+    // However, the requirement says "Display transactions immediately upon addition", which implies optimistic UI or valid queue processing.
+    // But for "Auto-confirm", the processor needs the flag.
+    // The processor is called by `processMessageQueue` which runs in background. 
+    // Wait, `processMessageQueue` needs to know about the setting too.
+
+    // We need to pass the setting to the queue processor or fetch it inside the processor.
+    // Let's check `src/lib/queue.ts`
+
     // 4. Save input message with 'queued' status
     const [savedMessage] = await db
       .insert(inputMessages)
@@ -101,6 +115,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ledgerId,
         contentType: sourceType === "mixed" ? "text" : sourceType,
         content,
+        // We don't have a place to store 'autoConfirm' snapshot on the message.
+        // It's better if `processMessageQueue` fetches settings at runtime.
         status: "queued",
       })
       .returning();

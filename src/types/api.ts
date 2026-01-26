@@ -13,6 +13,7 @@ export interface Settings {
   id: string;
   language: string;
   currencies: string[];
+  autoConfirm?: boolean;
 }
 
 export interface Category {

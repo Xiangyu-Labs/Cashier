@@ -3,51 +3,52 @@ import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/lib/db/schema";
 
 export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
-    // Drop tables to ensure clean state with new schema
-    await db.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
+  // Drop tables to ensure clean state with new schema
+  await db.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
 
-    // Create enums
-    await db.execute(sql`
+  // Create enums
+  await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE transaction_status AS ENUM ('pending', 'confirmed');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
-    await db.execute(sql`
+  await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE source_type AS ENUM ('text', 'image', 'audio', 'mixed');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
-    await db.execute(sql`
+  await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE content_type AS ENUM ('text', 'image', 'audio');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
-    await db.execute(sql`
+  await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE message_status AS ENUM ('queued', 'processing', 'completed', 'failed');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
 
-    // Create tables
-    await db.execute(sql`
+  // Create tables
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS settings (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       language TEXT NOT NULL DEFAULT 'zh-CN',
       currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      auto_confirm BOOLEAN DEFAULT FALSE
     );
   `);
 
-    await db.execute(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS ledgers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name TEXT NOT NULL,
@@ -58,7 +59,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     );
   `);
 
-    await db.execute(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
@@ -71,7 +72,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     );
   `);
 
-    await db.execute(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS input_messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
@@ -84,7 +85,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     );
   `);
 
-    await db.execute(sql`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS transactions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,

@@ -31,7 +31,8 @@ const aiResponseSchema = z.object({
 export class OpenAIMessageProcessor implements MessageProcessor {
   async process(
     input: MessageInput,
-    context: ProcessorContext
+    context: ProcessorContext,
+    autoConfirm: boolean = false
   ): Promise<ProcessResult> {
     const client = getOpenAIClient();
     const systemPrompt = buildTransactionPrompt(context.categories);
@@ -79,7 +80,13 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     const rawResponse = await client.generateContent(systemPrompt, messages);
 
     // Parse response
-    const transactions = this.parseResponse(rawResponse);
+    const data = this.parseResponse(rawResponse);
+
+    // Apply auto-confirm if enabled
+    const transactions = data.map(t => ({
+      ...t,
+      status: autoConfirm ? "confirmed" : "pending"
+    })) as ParsedTransaction[];
 
     return {
       transactions,
