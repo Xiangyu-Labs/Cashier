@@ -4,11 +4,11 @@ import { inputMessages } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { processMessageQueue } from "@/lib/queue";
 
-type RouteParams = { params: Promise<{ ledgerId: string; messageId: string }> };
+type RouteParams = { params: Promise<{ id: string; messageId: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
-        const { ledgerId, messageId } = await params;
+        const { id: ledgerId, messageId } = await params;
 
         // Verify message exists and belongs to ledger
         const message = await db.query.inputMessages.findFirst({
