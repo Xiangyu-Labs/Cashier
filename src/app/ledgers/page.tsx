@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { fetchLedgers, createLedger, deleteLedger } from "@/lib/api";
+import { fetchLedgers, createLedger, deleteLedger, updateLedger } from "@/lib/api";
 import { Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Book } from "lucide-react";
+import { Plus, Trash2, Book, Pencil } from "lucide-react";
 
 export default function LedgersPage() {
   const router = useRouter();
@@ -17,6 +17,10 @@ export default function LedgersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newLedgerName, setNewLedgerName] = useState("");
   const [newLedgerLanguage, setNewLedgerLanguage] = useState("zh-CN");
+
+  // Edit state
+  const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
+  const [editLedgerName, setEditLedgerName] = useState("");
 
   const { data: ledgers, isLoading } = useQuery({
     queryKey: ["ledgers"],
@@ -33,6 +37,16 @@ export default function LedgersPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name: string } }) =>
+      updateLedger(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ledgers"] });
+      setEditingLedger(null);
+      setEditLedgerName("");
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteLedger,
     onSuccess: () => {
@@ -45,6 +59,15 @@ export default function LedgersPage() {
       createMutation.mutate({
         name: newLedgerName.trim(),
         language: newLedgerLanguage,
+      });
+    }
+  };
+
+  const handleUpdate = () => {
+    if (editingLedger && editLedgerName.trim()) {
+      updateMutation.mutate({
+        id: editingLedger.id,
+        data: { name: editLedgerName.trim() },
       });
     }
   };
@@ -95,17 +118,31 @@ export default function LedgersPage() {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{ledger.name}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2 text-muted hover:text-danger hover:bg-transparent"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(ledger);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted hover:text-primary hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLedger(ledger);
+                          setEditLedgerName(ledger.name);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted hover:text-danger hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(ledger);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -180,6 +217,46 @@ export default function LedgersPage() {
               disabled={!newLedgerName.trim() || createMutation.isPending}
             >
               {createMutation.isPending ? "创建中..." : "创建"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingLedger} onOpenChange={(open) => !open && setEditingLedger(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑账本</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                账本名称
+              </label>
+              <Input
+                value={editLedgerName}
+                onChange={(e) => setEditLedgerName(e.target.value)}
+                placeholder="例如：日常开销"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && editLedgerName.trim()) {
+                    handleUpdate();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setEditingLedger(null)}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={!editLedgerName.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "保存中..." : "保存"}
             </Button>
           </DialogFooter>
         </DialogContent>
