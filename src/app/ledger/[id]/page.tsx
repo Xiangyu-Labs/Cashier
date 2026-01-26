@@ -13,15 +13,18 @@ import {
   confirmTransactions,
   fetchCategories,
 } from "@/lib/api";
-import { Transaction, Category, InputMessage } from "@/types/api";
+import { Transaction, InputMessage } from "@/types/api";
 import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Camera, Send } from "lucide-react";
 
 export default function LedgerPage() {
   const params = useParams();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const ledgerId = params.id as string;
 
@@ -180,50 +183,51 @@ export default function LedgerPage() {
 
   if (ledgerLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (!ledger) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">账本不存在</p>
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <p className="text-muted">账本不存在</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-bg text-text">
       {/* 顶部导航 */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+      <header className="bg-surface border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Link href="/ledgers" className="text-gray-500 hover:text-gray-700">
-              ←
+            <Link href="/ledgers">
+              <Button variant="ghost" size="icon">
+                 <ArrowLeft className="h-5 w-5" />
+              </Button>
             </Link>
             <h1 className="text-xl font-bold">{ledger.name}</h1>
           </div>
-          <Link
-            href={`/ledger/${ledgerId}/categories`}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            管理分类
+          <Link href={`/ledger/${ledgerId}/categories`}>
+            <Button variant="ghost" className="text-primary hover:text-primary/80">
+              管理分类
+            </Button>
           </Link>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
         {/* 输入区域 */}
-        <section className="bg-white rounded-lg shadow p-4">
-          <div className="space-y-3">
-            <textarea
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               onPaste={handlePaste}
               placeholder="输入消费记录，例如：午饭35元... (支持粘贴图片)"
-              className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="resize-none"
               rows={3}
             />
 
@@ -231,17 +235,17 @@ export default function LedgerPage() {
             {images.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {images.map((img, idx) => (
-                  <div key={idx} className="relative">
+                  <div key={idx} className="relative group">
                     <img
                       src={img.data}
                       alt={`上传图片 ${idx + 1}`}
-                      className="w-20 h-20 object-cover rounded"
+                      className="w-20 h-20 object-cover rounded-md border border-border"
                     />
                     <button
                       onClick={() =>
                         setImages((prev) => prev.filter((_, i) => i !== idx))
                       }
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       ×
                     </button>
@@ -259,26 +263,27 @@ export default function LedgerPage() {
                 multiple
                 className="hidden"
               />
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50"
               >
-                📷 图片
-              </button>
+                <Camera className="h-4 w-4 mr-2" /> 图片
+              </Button>
               <div className="flex-1" />
-              <button
+              <Button
                 onClick={handleSend}
-                disabled={
-                  sendMutation.isPending ||
-                  (!text && images.length === 0)
-                }
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={sendMutation.isPending || (!text && images.length === 0)}
               >
-                {sendMutation.isPending ? "处理中..." : "发送"}
-              </button>
+                {sendMutation.isPending ? "处理中..." : (
+                    <>
+                        <Send className="h-4 w-4 mr-2" /> 发送
+                    </>
+                )}
+              </Button>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
         {/* 待确认记录 */}
         {(pendingGroups.batches.length > 0 || pendingGroups.others.length > 0) && (
@@ -287,13 +292,14 @@ export default function LedgerPage() {
               <h2 className="text-lg font-semibold">
                 待确认
               </h2>
-              <button
+              <Button
+                variant="default"
                 onClick={() => confirmAllMutation.mutate()}
                 disabled={confirmAllMutation.isPending}
-                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+                size="sm"
               >
                 {confirmAllMutation.isPending ? "确认中..." : "全部确认"}
-              </button>
+              </Button>
             </div>
 
             {/* Batched Transactions */}
@@ -307,7 +313,7 @@ export default function LedgerPage() {
                   onConfirm={async (ids) => {
                     await confirmBatchMutation.mutateAsync(ids);
                   }}
-                  onUpdateTransaction={(id, data) => 
+                  onUpdateTransaction={(id, data) =>
                     updateMutation.mutate({ transactionId: id, data })
                   }
                   onDeleteTransaction={(id) => deleteMutation.mutate(id)}
@@ -317,11 +323,11 @@ export default function LedgerPage() {
 
             {/* Other Transactions */}
             {pendingGroups.others.length > 0 && (
-               <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 p-3 border-b border-gray-100">
-                  <h3 className="font-medium text-gray-700">其他记录</h3>
+               <Card>
+                <div className="bg-surface2 p-3 border-b border-border">
+                  <h3 className="font-medium text-text">其他记录</h3>
                 </div>
-                <div className="p-4 space-y-3">
+                <CardContent className="p-4 space-y-3">
                   {pendingGroups.others.map((tx) => (
                     <TransactionCard
                       key={tx.id}
@@ -333,23 +339,25 @@ export default function LedgerPage() {
                       onDelete={() => deleteMutation.mutate(tx.id)}
                     />
                   ))}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
           </section>
         )}
 
         {/* 已确认记录 */}
-        <section className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">已确认记录</h2>
-
+        <Card>
+          <CardHeader>
+             <CardTitle>已确认记录</CardTitle>
+          </CardHeader>
+          <CardContent>
           {/* 汇总 */}
           {summary && summary.totals.length > 0 && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">总支出</p>
+            <div className="mb-4 p-3 bg-surface2 rounded-lg border border-border">
+              <p className="text-sm text-muted">总支出</p>
               <div className="flex flex-wrap gap-4">
                 {summary.totals.map((t, idx) => (
-                  <p key={idx} className="text-xl font-bold">
+                  <p key={idx} className="text-xl font-bold text-text">
                     {t.currency || "未知"} {t.total.toFixed(2)}
                   </p>
                 ))}
@@ -366,13 +374,15 @@ export default function LedgerPage() {
                     setSelectedTransaction(tx);
                     setIsDetailModalOpen(true);
                   }}
-                  className="flex items-center justify-between py-2 border-b last:border-0 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2"
+                  className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-surface2 rounded px-2 -mx-2 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <span>{tx.category?.icon || "📝"}</span>
+                    <div className="text-xl">
+                        {tx.category?.icon || "📝"}
+                    </div>
                     <div>
-                      <p className="font-medium">{tx.itemName}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="font-medium text-text">{tx.itemName}</p>
+                      <p className="text-xs text-muted">
                         {tx.category?.name || "未分类"}
                         {tx.transactionDate && (
                           <span className="ml-2">
@@ -382,16 +392,17 @@ export default function LedgerPage() {
                       </p>
                     </div>
                   </div>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-text">
                     {tx.currency || ""} {parseFloat(tx.amount).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">暂无记录</p>
+            <p className="text-muted text-center py-4">暂无记录</p>
           )}
-        </section>
+          </CardContent>
+        </Card>
       </main>
 
       {/* 交易详情弹窗 */}
