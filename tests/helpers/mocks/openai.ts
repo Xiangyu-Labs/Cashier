@@ -54,7 +54,7 @@ export const MOCK_RESPONSES = {
                 item_name: "牛奶",
                 amount: 15,
                 currency: "CNY",
-                category: "日用品",
+                category: "日用",
                 transaction_date: null,
             },
             {

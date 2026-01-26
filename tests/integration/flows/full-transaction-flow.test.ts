@@ -260,12 +260,12 @@ describe("Full Transaction Flow", () => {
     const allCategories = await categoriesResponse.json();
 
     const foodCategory = allCategories.find((c: any) => c.name === "餐饮");
-    const dailyCategory = allCategories.find((c: any) => c.name === "日用品");
+    const dailyCategory = allCategories.find((c: any) => c.name === "日用");
 
     expect(foodCategory).toBeDefined();
     expect(dailyCategory).toBeDefined();
 
-    // Send message (mock returns 牛奶 -> 日用品, 面包 -> 餐饮)
+    // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/messages`, {
         method: "POST",
@@ -300,9 +300,9 @@ describe("Full Transaction Flow", () => {
     expect(milkTx).toBeDefined();
     expect(breadTx).toBeDefined();
 
-    // 牛奶 should be associated with 日用品
+    // 牛奶 should be associated with 日用
     expect(milkTx.categoryId).toBe(dailyCategory.id);
-    expect(milkTx.category?.name).toBe("日用品");
+    expect(milkTx.category?.name).toBe("日用");
 
     // 面包 should be associated with 餐饮
     expect(breadTx.categoryId).toBe(foodCategory.id);

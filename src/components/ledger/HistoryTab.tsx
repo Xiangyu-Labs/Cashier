@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateTransaction, deleteTransaction } from "@/lib/api";
 import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Card, CardContent } from "@/components/ui/card";
 import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import { useState } from "react";
@@ -82,7 +83,7 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="text-xl w-8 h-8 flex items-center justify-center bg-surface2 rounded-full">
-                                        {tx.category?.icon || "📝"}
+                                        <CategoryIcon iconName={tx.category?.icon} className="w-5 h-5" />
                                     </div>
                                     <div>
                                         <p className="font-medium text-text">{tx.itemName}</p>

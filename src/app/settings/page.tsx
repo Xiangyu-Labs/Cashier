@@ -11,6 +11,7 @@ import {
     updateCategory,
     deleteCategory
 } from "@/lib/api";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Category } from "@/types/api";
 
 const LANGUAGES = [
@@ -207,7 +208,9 @@ export default function SettingsPage() {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="w-8 flex justify-center text-xl">{category.icon}</div>
+                                    <div className="w-8 flex justify-center text-xl">
+                                        <CategoryIcon iconName={category.icon} className="w-6 h-6" />
+                                    </div>
                                     <div className="flex-1">
                                         <div className="font-medium text-sm">{category.name}</div>
                                         {category.description && <div className="text-xs text-[var(--muted)]">{category.description}</div>}

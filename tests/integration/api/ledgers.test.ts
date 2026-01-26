@@ -45,6 +45,14 @@ describe("POST /api/ledgers", () => {
     expect(response.status).toBe(201);
     expect(data.name).toBe("New Ledger");
     expect(data.id).toBeDefined();
+
+    // Verify default categories are seeded
+    const db = getTestDb();
+    const ledgerCategories = await db.query.categories.findMany({
+      where: eq(categories.ledgerId, data.id),
+    });
+    expect(ledgerCategories.length).toBeGreaterThan(0);
+    expect(ledgerCategories.map(c => c.name)).toContain("餐饮"); // Check for one of the defaults
   });
 
   it("should return 400 for missing name", async () => {

@@ -17,7 +17,7 @@ describe("GET /api/ledgers/[id]/categories", () => {
     testLedgerId = ledger.id;
   });
 
-  it("should return default categories when no custom ones exist", async () => {
+  it("should return empty list when no custom ones exist", async () => {
     const response = await GET(
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/categories`),
       { params: Promise.resolve({ id: testLedgerId }) }
@@ -25,16 +25,15 @@ describe("GET /api/ledgers/[id]/categories", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.length).toBeGreaterThan(0);
+    expect(data.length).toBe(0);
   });
 
   it("should return categories ordered by sortOrder", async () => {
     const db = getTestDb();
     // Add some with specific sort orders to test ordering logic relative to defaults
-    // Defaults are 1-7.
     await db.insert(categories).values([
-      { name: "Order 100", sortOrder: 100 },
-      { name: "Order 50", sortOrder: 50 },
+      { ledgerId: testLedgerId, name: "Order 100", sortOrder: 100 },
+      { ledgerId: testLedgerId, name: "Order 50", sortOrder: 50 },
     ]);
 
     const response = await GET(
@@ -45,7 +44,8 @@ describe("GET /api/ledgers/[id]/categories", () => {
 
     // Check relative ordering
     const names = data.map((c: any) => c.name);
-    // Should contain defaults + new ones
+
+    expect(names).toHaveLength(2);
     expect(names).toContain("Order 50");
     expect(names).toContain("Order 100");
     // Verify sort
@@ -111,12 +111,21 @@ describe("POST /api/ledgers/[id]/categories", () => {
   });
 
   it("should auto-increment sortOrder", async () => {
-    // defaults have max sortOrder 7 (typically)
+    // Create first category
+    await POST(
+      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/categories`, {
+        method: "POST",
+        body: JSON.stringify({ name: "First" }),
+      }),
+      { params: Promise.resolve({ id: testLedgerId }) }
+    );
+
+    // Create second category
     const request = new NextRequest(
       `http://localhost/api/ledgers/${testLedgerId}/categories`,
       {
         method: "POST",
-        body: JSON.stringify({ name: "Sort Test" }),
+        body: JSON.stringify({ name: "Second" }),
       }
     );
 
@@ -125,9 +134,8 @@ describe("POST /api/ledgers/[id]/categories", () => {
     });
     const data = await response.json();
 
-    // Default categories are 7 items. Max sortOrder is 7. New one should be 8.
-    // If not, it means defaults changed or logic is Max + 1.
-    expect(data.sortOrder).toBeGreaterThan(5);
+    // First one should be 1, second one should be 2
+    expect(data.sortOrder).toBe(2);
   });
 
   it("should return 400 for missing name", async () => {

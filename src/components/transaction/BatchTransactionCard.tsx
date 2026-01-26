@@ -4,6 +4,7 @@ import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface BatchTransactionCardProps {
   inputMessage: InputMessage;
@@ -172,7 +173,7 @@ export function BatchTransactionCard({
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-lg border border-border/50">
-                    {group.categoryIcon}
+                    <CategoryIcon iconName={group.categoryIcon} className="w-6 h-6" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium text-text">{group.categoryName}</p>

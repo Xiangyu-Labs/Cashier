@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, Check, X } from "lucide-react";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -72,7 +73,7 @@ export function TransactionCard({
                 <option value="">选择分类</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
+                    {cat.name}
                   </option>
                 ))}
               </select>
@@ -125,7 +126,7 @@ export function TransactionCard({
               <div className="flex items-center gap-4">
                 {!hideCategory && (
                   <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl">
-                    {transaction.category?.icon || "📝"}
+                    <CategoryIcon iconName={transaction.category?.icon} className="w-6 h-6" />
                   </div>
                 )}
                 <div>

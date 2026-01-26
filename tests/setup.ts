@@ -35,10 +35,7 @@ beforeEach(async () => {
     await testDb.execute(
       sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
     );
-    // Seed default categories
-    if (schema.DEFAULT_CATEGORIES && schema.DEFAULT_CATEGORIES.length > 0) {
-      await testDb.insert(schema.categories).values(schema.DEFAULT_CATEGORIES);
-    }
+
   }
 });
 
@@ -103,6 +100,7 @@ async function runMigrations() {
   await testDb.execute(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       description TEXT,
       icon TEXT,

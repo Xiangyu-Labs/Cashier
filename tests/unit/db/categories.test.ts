@@ -1,15 +1,27 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { categories } from "@/lib/db/schema";
+import { categories, ledgers } from "@/lib/db/schema";
 
 describe("Categories Database Operations", () => {
+  let testLedgerId: string;
+
+  beforeEach(async () => {
+    const db = getTestDb();
+    const [ledger] = await db
+      .insert(ledgers)
+      .values({ name: "Test Ledger" })
+      .returning();
+    testLedgerId = ledger.id;
+  });
+
   describe("CREATE", () => {
     it("should create a category with required fields", async () => {
       const db = getTestDb();
       const [created] = await db
         .insert(categories)
         .values({
+          ledgerId: testLedgerId,
           name: "餐饮",
           sortOrder: 1,
         })
@@ -18,6 +30,7 @@ describe("Categories Database Operations", () => {
       expect(created.id).toBeDefined();
       expect(created.name).toBe("餐饮");
       expect(created.sortOrder).toBe(1);
+      expect(created.ledgerId).toBe(testLedgerId);
     });
 
     it("should create a category with all fields", async () => {
@@ -25,6 +38,7 @@ describe("Categories Database Operations", () => {
       const [created] = await db
         .insert(categories)
         .values({
+          ledgerId: testLedgerId,
           name: "交通",
           description: "公交、地铁、打车",
           icon: "🚗",
@@ -39,12 +53,14 @@ describe("Categories Database Operations", () => {
     it("should create multiple categories", async () => {
       const db = getTestDb();
       await db.insert(categories).values([
-        { name: "Cat A", sortOrder: 10 }, // naming strictly to avoid clash with defaults like "餐饮" which might already exist and cause duplicate logic/error if unique constraint (no unique on name currently)
-        { name: "Cat B", sortOrder: 11 },
-        { name: "Cat C", sortOrder: 12 },
+        { ledgerId: testLedgerId, name: "Cat A", sortOrder: 10 },
+        { ledgerId: testLedgerId, name: "Cat B", sortOrder: 11 },
+        { ledgerId: testLedgerId, name: "Cat C", sortOrder: 12 },
       ]);
 
-      const allCategories = await db.query.categories.findMany();
+      const allCategories = await db.query.categories.findMany({
+        where: eq(categories.ledgerId, testLedgerId),
+      });
       expect(allCategories.length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -55,6 +71,7 @@ describe("Categories Database Operations", () => {
       const [created] = await db
         .insert(categories)
         .values({
+          ledgerId: testLedgerId,
           name: "Test Category",
           sortOrder: 1,
         })
@@ -76,6 +93,7 @@ describe("Categories Database Operations", () => {
       const [created] = await db
         .insert(categories)
         .values({
+          ledgerId: testLedgerId,
           name: "Original",
           sortOrder: 1,
         })
@@ -98,6 +116,7 @@ describe("Categories Database Operations", () => {
       const [created] = await db
         .insert(categories)
         .values({
+          ledgerId: testLedgerId,
           name: "To Delete",
           sortOrder: 1,
         })

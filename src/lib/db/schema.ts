@@ -55,9 +55,11 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Category（全局分类）
+// Category（全局分类 -> 账本分类）
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
+  ledgerId: uuid("ledger_id")
+    .references(() => ledgers.id, { onDelete: "cascade" }), // Nullable for compatibility/global, specific for ledger
   name: text("name").notNull(),
   description: text("description"),
   icon: text("icon"),
@@ -66,7 +68,11 @@ export const categories = pgTable("categories", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  ledger: one(ledgers, {
+    fields: [categories.ledgerId],
+    references: [ledgers.id],
+  }),
   transactions: many(transactions),
 }));
 
@@ -134,12 +140,3 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 }));
 
 // 预设分类
-export const DEFAULT_CATEGORIES = [
-  { name: "餐饮", description: "外卖、堂食、食材采购", icon: "🍽️", sortOrder: 1 },
-  { name: "交通", description: "公交、地铁、打车、共享单车", icon: "🚗", sortOrder: 2 },
-  { name: "日用品", description: "生活必需品、清洁用品", icon: "🧴", sortOrder: 3 },
-  { name: "饮料", description: "咖啡、奶茶、果汁", icon: "☕", sortOrder: 4 },
-  { name: "水果", description: "水果、干果", icon: "🍎", sortOrder: 5 },
-  { name: "娱乐", description: "电影、游戏、订阅服务", icon: "🎮", sortOrder: 6 },
-  { name: "购物", description: "服饰、电子产品、其他非必需品", icon: "🛍️", sortOrder: 7 },
-];
