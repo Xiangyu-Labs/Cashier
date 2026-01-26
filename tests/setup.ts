@@ -61,6 +61,12 @@ async function runMigrations() {
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
+  await testDb.execute(sql`
+    DO $$ BEGIN
+      CREATE TYPE message_status AS ENUM ('queued', 'processing', 'completed', 'failed');
+    EXCEPTION WHEN duplicate_object THEN null;
+    END $$;
+  `);
 
   // Create tables
   await testDb.execute(sql`
@@ -92,6 +98,8 @@ async function runMigrations() {
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
       content_type content_type NOT NULL,
       content TEXT NOT NULL,
+      status message_status NOT NULL DEFAULT 'queued',
+      error TEXT,
       ai_response TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
