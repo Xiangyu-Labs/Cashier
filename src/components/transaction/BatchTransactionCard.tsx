@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface BatchTransactionCardProps {
   inputMessage: InputMessage;
@@ -34,6 +35,7 @@ export function BatchTransactionCard({
   onDeleteTransaction,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   // Track expanded categories. Default to open for pending? No, user asked for breakdown.
   // "Click beverage, see all items". So default closed.
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -107,7 +109,7 @@ export function BatchTransactionCard({
             if (parsed.text || parsed.images) {
               if (parsed.text) textContent = parsed.text;
               if (parsed.images) {
-                imagesContent = parsed.images.map((img: any) => img.data || img);
+                imagesContent = parsed.images.map((img: { data?: string } | string) => (typeof img === "object" && img.data ? img.data : img as string));
               }
               isParsed = true;
             }
@@ -178,7 +180,11 @@ export function BatchTransactionCard({
         {images.length > 0 && (
           <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
             {images.map((img, idx) => (
-              <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50">
+              <div
+                key={idx}
+                className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setSelectedImage(img)}
+              >
                 <img
                   src={img}
                   alt={`User upload ${idx + 1}`}
@@ -275,6 +281,23 @@ export function BatchTransactionCard({
           </Button>
         </div>
       )}
+
+      {/* Image Zoom Dialog */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center">
+          <DialogTitle className="sr-only">Image Zoom</DialogTitle>
+          <DialogDescription className="sr-only">Zoomed view of the transaction image</DialogDescription>
+          {selectedImage && (
+            <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
+              <img
+                src={selectedImage}
+                alt="Zoomed"
+                className="max-w-full max-h-[90vh] object-contain pointer-events-auto"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

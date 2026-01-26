@@ -20,6 +20,8 @@ export function getTestDb() {
 import { createTestSchema } from "./helpers/schema-setup";
 
 beforeAll(async () => {
+  if (process.env.NO_DB) return;
+
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });
 
@@ -28,7 +30,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await testClient.end();
+  if (testClient) {
+    await testClient.end();
+  }
 });
 
 beforeEach(async () => {
@@ -37,7 +41,6 @@ beforeEach(async () => {
     await testDb.execute(
       sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
     );
-
   }
 });
 

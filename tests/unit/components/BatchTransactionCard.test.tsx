@@ -125,4 +125,29 @@ describe("BatchTransactionCard", () => {
         expect(screen.getByText("Food")).toBeTruthy();
         expect(screen.getByText(/50.00/)).toBeTruthy();
     });
+
+    it("opens image zoom dialog on click", async () => {
+        const inputMessage: InputMessage = {
+            ...baseInputMessage,
+            contentType: "image",
+            content: "data:image/png;base64,fake-image-data",
+        };
+        render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+
+        // Find the thumbnail image
+        const imgs = screen.getAllByRole("img");
+        const thumbnail = imgs.find(img => img.getAttribute("src") === "data:image/png;base64,fake-image-data");
+        expect(thumbnail).toBeTruthy();
+
+        // Click it
+        fireEvent.click(thumbnail!);
+
+        // Expect dialog to be open and show the image
+        const zoomedImg = await screen.findByAltText("Zoomed");
+        expect(zoomedImg).toBeTruthy();
+        expect(zoomedImg.getAttribute("src")).toBe("data:image/png;base64,fake-image-data");
+
+        // Close via Escape
+        fireEvent.keyDown(zoomedImg, { key: "Escape", code: "Escape" });
+    });
 });

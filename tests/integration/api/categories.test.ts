@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/ledgers/[id]/categories/route";
+import { POST as REORDER } from "@/app/api/ledgers/[id]/categories/reorder/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -166,6 +166,85 @@ describe("POST /api/ledgers/[id]/categories", () => {
     );
 
     const response = await POST(request, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe("POST /api/ledgers/[id]/categories/reorder", () => {
+  let testLedgerId: string;
+  let category1Id: string;
+  let category2Id: string;
+  let category3Id: string;
+
+  beforeEach(async () => {
+    const db = getTestDb();
+    const [ledger] = await db
+      .insert(ledgers)
+      .values({ name: "Reorder Test Ledger" })
+      .returning();
+    testLedgerId = ledger.id;
+
+    // Create 3 categories
+    const [c1] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 1", sortOrder: 0 }).returning();
+    const [c2] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 2", sortOrder: 1 }).returning();
+    const [c3] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 3", sortOrder: 2 }).returning();
+
+    category1Id = c1.id;
+    category2Id = c2.id;
+    category3Id = c3.id;
+  });
+
+  it("should reorder categories based on input array", async () => {
+    // Reorder to: 3, 1, 2
+    const newOrder = [category3Id, category1Id, category2Id];
+
+    const request = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/categories/reorder`,
+      {
+        method: "POST",
+        body: JSON.stringify({ categoryIds: newOrder }),
+      }
+    );
+
+    const response = await REORDER(request, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
+
+    expect(response.status).toBe(200);
+
+    // Verify DB
+    const db = getTestDb();
+    const allCategories = await db.query.categories.findMany({
+      where: (cat, { eq }) => eq(cat.ledgerId, testLedgerId),
+    });
+
+    const c1 = allCategories.find((c) => c.id === category1Id);
+    const c2 = allCategories.find((c) => c.id === category2Id);
+    const c3 = allCategories.find((c) => c.id === category3Id);
+
+    expect(c3?.sortOrder).toBe(0);
+    expect(c1?.sortOrder).toBe(1);
+    expect(c2?.sortOrder).toBe(2);
+  });
+
+  it("should return 400 if categories count mismatch", async () => {
+    // Only provide 2 but there are 3 in ledger (wait, no, logic is simple 'in' check?)
+    // Actually the logic in route is: if (existingCategories.length !== categoryIds.length)
+    // So if we pass IDs that don't belong to ledger, or duplicates, it fails.
+
+    // Case: Pass an ID that doesn't exist (but valid UUID)
+    const request = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/categories/reorder`,
+      {
+        method: "POST",
+        body: JSON.stringify({ categoryIds: [category1Id, "00000000-0000-0000-0000-000000000000"] }),
+      }
+    );
+
+    const response = await REORDER(request, {
       params: Promise.resolve({ id: testLedgerId }),
     });
 

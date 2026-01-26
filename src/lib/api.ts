@@ -147,6 +147,21 @@ export function deleteCategory(
   );
 }
 
+export function reorderCategories(
+  ledgerId: string = GLOBAL_ID,
+  categoryIds: string[]
+): Promise<void> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/categories/reorder`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryIds }),
+    },
+    "Failed to reorder categories"
+  );
+}
+
 // Transaction API
 export function fetchTransactions(
   ledgerId: string,
