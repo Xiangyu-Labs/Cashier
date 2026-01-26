@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const updateLedgerSchema = z.object({
   name: z.string().min(1).optional(),
+  language: z.string().optional(),
+  currencies: z.array(z.string()).optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

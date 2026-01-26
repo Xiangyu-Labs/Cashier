@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgers, categories } from "@/lib/db/schema";
-import { promises as fs } from "fs";
-import path from "path";
+import { DEFAULT_CATEGORIES } from "@/config/default-categories";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -37,24 +36,15 @@ export async function POST(request: NextRequest) {
       .insert(ledgers)
       .values({
         name: validated.name,
+        language: "zh-CN",
+        currencies: ["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"],
       })
       .returning();
 
-    // Read default categories
-    const defaultCategoriesPath = path.join(
-      process.cwd(),
-      "src/config/default-categories.json"
-    );
-    const defaultCategoriesData = await fs.readFile(
-      defaultCategoriesPath,
-      "utf-8"
-    );
-    const defaultCategories = JSON.parse(defaultCategoriesData);
-
     // Seed categories for the new ledger
-    if (defaultCategories.length > 0) {
+    if (DEFAULT_CATEGORIES.length > 0) {
       await db.insert(categories).values(
-        defaultCategories.map((cat: any) => ({
+        DEFAULT_CATEGORIES.map((cat) => ({
           ...cat,
           ledgerId: newLedger.id,
         }))

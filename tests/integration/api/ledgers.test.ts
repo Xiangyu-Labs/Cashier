@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/ledgers/route";
+import { PATCH } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -45,6 +46,8 @@ describe("POST /api/ledgers", () => {
     expect(response.status).toBe(201);
     expect(data.name).toBe("New Ledger");
     expect(data.id).toBeDefined();
+    expect(data.language).toBe("zh-CN");
+    expect(data.currencies).toEqual(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]);
 
     // Verify default categories are seeded
     const db = getTestDb();
@@ -77,5 +80,35 @@ describe("POST /api/ledgers", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("PATCH /api/ledgers/[id]", () => {
+  it("should update ledger settings", async () => {
+    const db = getTestDb();
+    const [ledger] = await db.insert(ledgers).values({ name: "Old Name" }).returning();
+
+    const request = new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        language: "en",
+        currencies: ["USD"]
+      }),
+    });
+
+    // Mock params
+    const paramsPromise = Promise.resolve({ id: ledger.id });
+    const response = await PATCH(request, { params: paramsPromise });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.language).toBe("en");
+    expect(data.currencies).toEqual(["USD"]);
+
+    // Verify db persistence
+    const updated = await db.query.ledgers.findFirst({ where: eq(ledgers.id, ledger.id) });
+    expect(updated?.language).toBe("en");
+    expect(updated?.currencies).toEqual(["USD"]);
   });
 });

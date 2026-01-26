@@ -6,6 +6,20 @@ import { categories, ledgers } from "@/lib/db/schema";
 describe("Categories Database Operations", () => {
   let testLedgerId: string;
 
+  async function createCategory(overrides: Partial<typeof categories.$inferInsert> = {}) {
+    const db = getTestDb();
+    const [category] = await db
+      .insert(categories)
+      .values({
+        ledgerId: testLedgerId,
+        name: "Test Category",
+        sortOrder: 1,
+        ...overrides,
+      })
+      .returning();
+    return category;
+  }
+
   beforeEach(async () => {
     const db = getTestDb();
     const [ledger] = await db
@@ -17,15 +31,7 @@ describe("Categories Database Operations", () => {
 
   describe("CREATE", () => {
     it("should create a category with required fields", async () => {
-      const db = getTestDb();
-      const [created] = await db
-        .insert(categories)
-        .values({
-          ledgerId: testLedgerId,
-          name: "餐饮",
-          sortOrder: 1,
-        })
-        .returning();
+      const created = await createCategory({ name: "餐饮" });
 
       expect(created.id).toBeDefined();
       expect(created.name).toBe("餐饮");
@@ -34,17 +40,12 @@ describe("Categories Database Operations", () => {
     });
 
     it("should create a category with all fields", async () => {
-      const db = getTestDb();
-      const [created] = await db
-        .insert(categories)
-        .values({
-          ledgerId: testLedgerId,
-          name: "交通",
-          description: "公交、地铁、打车",
-          icon: "🚗",
-          sortOrder: 2,
-        })
-        .returning();
+      const created = await createCategory({
+        name: "交通",
+        description: "公交、地铁、打车",
+        icon: "🚗",
+        sortOrder: 2,
+      });
 
       expect(created.description).toBe("公交、地铁、打车");
       expect(created.icon).toBe("🚗");
@@ -68,14 +69,7 @@ describe("Categories Database Operations", () => {
   describe("READ", () => {
     it("should find category by id", async () => {
       const db = getTestDb();
-      const [created] = await db
-        .insert(categories)
-        .values({
-          ledgerId: testLedgerId,
-          name: "Test Category",
-          sortOrder: 1,
-        })
-        .returning();
+      const created = await createCategory();
 
       const found = await db.query.categories.findFirst({
         where: eq(categories.id, created.id),
@@ -89,15 +83,7 @@ describe("Categories Database Operations", () => {
   describe("UPDATE", () => {
     it("should update category name and description", async () => {
       const db = getTestDb();
-
-      const [created] = await db
-        .insert(categories)
-        .values({
-          ledgerId: testLedgerId,
-          name: "Original",
-          sortOrder: 1,
-        })
-        .returning();
+      const created = await createCategory({ name: "Original" });
 
       const [updated] = await db
         .update(categories)
@@ -113,14 +99,7 @@ describe("Categories Database Operations", () => {
   describe("DELETE", () => {
     it("should delete category", async () => {
       const db = getTestDb();
-      const [created] = await db
-        .insert(categories)
-        .values({
-          ledgerId: testLedgerId,
-          name: "To Delete",
-          sortOrder: 1,
-        })
-        .returning();
+      const created = await createCategory({ name: "To Delete" });
 
       await db.delete(categories).where(eq(categories.id, created.id));
 

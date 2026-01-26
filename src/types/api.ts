@@ -1,6 +1,10 @@
+
+
 export interface Ledger {
   id: string;
   name: string;
+  language: string;
+  currencies: string[];
   createdAt: string;
   updatedAt: string;
 }

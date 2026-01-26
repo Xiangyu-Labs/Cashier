@@ -37,6 +37,8 @@ export const messageStatusEnum = pgEnum("message_status", [
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  language: text("language").notNull().default("zh-CN"),
+  currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

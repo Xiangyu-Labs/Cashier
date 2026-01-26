@@ -54,7 +54,7 @@ export async function createLedger(data: {
 
 export async function updateLedger(
   id: string,
-  data: { name?: string }
+  data: { name?: string; language?: string; currencies?: string[] }
 ): Promise<Ledger> {
   const res = await fetch(`${API_BASE}/ledgers/${id}`, {
     method: "PATCH",
