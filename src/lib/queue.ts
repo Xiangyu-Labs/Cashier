@@ -105,6 +105,16 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
 
 function parseMessageContent(message: typeof inputMessages.$inferSelect): MessageInput {
     if (message.contentType === "text") {
+        // Try to parse as JSON first in case it's a mixed message stored as text
+        try {
+            const parsed = JSON.parse(message.content);
+            if (typeof parsed === 'object' && parsed !== null && (parsed.text || parsed.images)) {
+                return parsed;
+            }
+        } catch (e) {
+            // Not a JSON object or doesn't look like MessageInput, treat as raw text
+            // console.warn("Failed to parse potential mixed content:", e);
+        }
         return { text: message.content };
     }
 

@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ImageViewer } from "@/components/ui/image-viewer";
 
+function getSafeImageSrc(data: string): string {
+  if (data.startsWith("http") || data.startsWith("data:")) {
+    return data;
+  }
+  // Assume jpeg if not specified, or we could try to guess/default
+  return `data:image/jpeg;base64,${data}`;
+}
+
 
 interface BatchTransactionCardProps {
   inputMessage: InputMessage;
@@ -187,7 +195,7 @@ export function BatchTransactionCard({
                 onClick={() => setSelectedImageIndex(idx)}
               >
                 <img
-                  src={img}
+                  src={getSafeImageSrc(img)}
                   alt={`User upload ${idx + 1}`}
                   className="w-full h-full object-cover"
                 />

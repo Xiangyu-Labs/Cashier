@@ -89,16 +89,28 @@ export async function POST(request: NextRequest) {
 }
 
 function getMessageContent(sourceType: string, validated: z.infer<typeof transactionSchema>): string {
+    const normalizeImage = (data: string) => {
+        if (data.startsWith("data:") || data.startsWith("http")) return data;
+        return `data:image/jpeg;base64,${data}`;
+    };
+
     if (sourceType === "image" && validated.images && validated.images.length > 0) {
         if (validated.images.length === 1) {
-            return validated.images[0].data;
+            return normalizeImage(validated.images[0].data);
         }
-        return JSON.stringify(validated.images.map((img) => img.data));
+        return JSON.stringify(validated.images.map((img) => normalizeImage(img.data)));
     }
 
     if (sourceType === "text" && validated.text) {
         return validated.text;
     }
 
-    return JSON.stringify(validated);
+    // Deep normalization for mixed content json structure
+    const copy = JSON.parse(JSON.stringify(validated));
+    if (copy.images) {
+        copy.images.forEach((img: any) => {
+            if (img.data) img.data = normalizeImage(img.data);
+        });
+    }
+    return JSON.stringify(copy);
 }
