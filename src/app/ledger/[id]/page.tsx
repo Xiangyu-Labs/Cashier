@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchLedger,
@@ -20,7 +20,7 @@ import { TransactionCard } from "@/components/transaction/TransactionCard";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Camera, Send } from "lucide-react";
 
 export default function LedgerPage() {
@@ -51,7 +51,7 @@ export default function LedgerPage() {
 
   const { data: confirmedTxs } = useQuery({
     queryKey: ["transactions", ledgerId, "confirmed"],
-    queryFn: () => fetchTransactions(ledgerId, { status: "confirmed", limit: 20 }),
+    queryFn: () => fetchTransactions(ledgerId, { status: "confirmed", limit: 100 }),
   });
 
   const { data: summary } = useQuery({
@@ -88,6 +88,35 @@ export default function LedgerPage() {
     };
   }, [pendingTxs]);
 
+  // Group confirmed transactions
+  const confirmedGroups = useMemo(() => {
+    if (!confirmedTxs) return { batches: [], others: [] };
+
+    const batches: Record<string, { inputMessage: InputMessage; transactions: Transaction[] }> = {};
+    const others: Transaction[] = [];
+
+    confirmedTxs.forEach((tx) => {
+      if (tx.inputMessage && tx.inputMessageId) {
+        if (!batches[tx.inputMessageId]) {
+          batches[tx.inputMessageId] = {
+            inputMessage: tx.inputMessage,
+            transactions: [],
+          };
+        }
+        batches[tx.inputMessageId].transactions.push(tx);
+      } else {
+        others.push(tx);
+      }
+    });
+
+    return {
+      batches: Object.values(batches).sort((a, b) =>
+        new Date(b.inputMessage.createdAt).getTime() - new Date(a.inputMessage.createdAt).getTime()
+      ),
+      others,
+    };
+  }, [confirmedTxs]);
+
   const sendMutation = useMutation({
     mutationFn: (data: Parameters<typeof sendMessage>[1]) =>
       sendMessage(ledgerId, data),
@@ -108,6 +137,7 @@ export default function LedgerPage() {
     }) => updateTransaction(ledgerId, transactionId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+      queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
     },
   });
 
@@ -116,6 +146,7 @@ export default function LedgerPage() {
       deleteTransaction(ledgerId, transactionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+      queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
     },
   });
 
@@ -205,7 +236,7 @@ export default function LedgerPage() {
           <div className="flex items-center gap-4">
             <Link href="/ledgers">
               <Button variant="ghost" size="icon">
-                 <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <h1 className="text-xl font-bold">{ledger.name}</h1>
@@ -276,9 +307,9 @@ export default function LedgerPage() {
                 disabled={sendMutation.isPending || (!text && images.length === 0)}
               >
                 {sendMutation.isPending ? "处理中..." : (
-                    <>
-                        <Send className="h-4 w-4 mr-2" /> 发送
-                    </>
+                  <>
+                    <Send className="h-4 w-4 mr-2" /> 发送
+                  </>
                 )}
               </Button>
             </div>
@@ -323,7 +354,7 @@ export default function LedgerPage() {
 
             {/* Other Transactions */}
             {pendingGroups.others.length > 0 && (
-               <Card>
+              <Card>
                 <div className="bg-surface2 p-3 border-b border-border">
                   <h3 className="font-medium text-text">其他记录</h3>
                 </div>
@@ -345,64 +376,91 @@ export default function LedgerPage() {
           </section>
         )}
 
-        {/* 已确认记录 */}
-        <Card>
-          <CardHeader>
-             <CardTitle>已确认记录</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* 已确认记录 - 使用 BatchView */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-text">已确认记录</h2>
+
           {/* 汇总 */}
           {summary && summary.totals.length > 0 && (
-            <div className="mb-4 p-3 bg-surface2 rounded-lg border border-border">
-              <p className="text-sm text-muted">总支出</p>
-              <div className="flex flex-wrap gap-4">
-                {summary.totals.map((t, idx) => (
-                  <p key={idx} className="text-xl font-bold text-text">
-                    {t.currency || "未知"} {t.total.toFixed(2)}
-                  </p>
-                ))}
-              </div>
-            </div>
+            <Card className="bg-surface2/50 border-none shadow-none">
+              <CardContent className="p-4 flex items-center gap-4">
+                <span className="text-sm font-medium text-muted">本月支出</span>
+                <div className="flex gap-4">
+                  {summary.totals.map((t, idx) => (
+                    <p key={idx} className="text-xl font-bold text-text">
+                      {t.currency || "未知"} {t.total.toFixed(2)}
+                    </p>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {confirmedTxs && confirmedTxs.length > 0 ? (
-            <div className="space-y-2">
-              {confirmedTxs.map((tx) => (
-                <div
-                  key={tx.id}
-                  onClick={() => {
-                    setSelectedTransaction(tx);
-                    setIsDetailModalOpen(true);
-                  }}
-                  className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-surface2 rounded px-2 -mx-2 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-xl">
-                        {tx.category?.icon || "📝"}
-                    </div>
-                    <div>
-                      <p className="font-medium text-text">{tx.itemName}</p>
-                      <p className="text-xs text-muted">
-                        {tx.category?.name || "未分类"}
-                        {tx.transactionDate && (
-                          <span className="ml-2">
-                            · {new Date(tx.transactionDate).toLocaleDateString("zh-CN")}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-text">
-                    {tx.currency || ""} {parseFloat(tx.amount).toFixed(2)}
-                  </p>
-                </div>
+          {/* Confirmed Batches */}
+          {confirmedGroups.batches.length > 0 ? (
+            <div className="space-y-4">
+              {confirmedGroups.batches.map((batch) => (
+                <BatchTransactionCard
+                  key={batch.inputMessage.id}
+                  inputMessage={batch.inputMessage}
+                  transactions={batch.transactions}
+                  categories={categories || []}
+                  isConfirmed={true}
+                  onUpdateTransaction={(id, data) =>
+                    updateMutation.mutate({ transactionId: id, data })
+                  }
+                  onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                />
               ))}
             </div>
-          ) : (
-            <p className="text-muted text-center py-4">暂无记录</p>
+          ) : null}
+
+          {/* Confirmed Others */}
+          {confirmedGroups.others.length > 0 && (
+            <Card>
+              <div className="bg-surface2 p-3 border-b border-border">
+                <h3 className="font-medium text-text">其他历史记录</h3>
+              </div>
+              <CardContent className="p-4 space-y-2">
+                {confirmedGroups.others.map((tx) => (
+                  <div
+                    key={tx.id}
+                    onClick={() => {
+                      setSelectedTransaction(tx);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-surface2 rounded px-2 -mx-2 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-xl">
+                        {tx.category?.icon || "📝"}
+                      </div>
+                      <div>
+                        <p className="font-medium text-text">{tx.itemName}</p>
+                        <p className="text-xs text-muted">
+                          {tx.category?.name || "未分类"}
+                          {tx.transactionDate && (
+                            <span className="ml-2">
+                              · {new Date(tx.transactionDate).toLocaleDateString("zh-CN")}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-text">
+                      {tx.currency || ""} {parseFloat(tx.amount).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
-          </CardContent>
-        </Card>
+
+          {confirmedGroups.batches.length === 0 && confirmedGroups.others.length === 0 && (
+            <p className="text-muted text-center py-8">暂无已确认记录</p>
+          )}
+
+        </section>
       </main>
 
       {/* 交易详情弹窗 */}
