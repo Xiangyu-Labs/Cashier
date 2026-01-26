@@ -4,8 +4,8 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "node",
-    include: ["tests/**/*.test.ts"],
+    environment: "happy-dom",
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     exclude: ["node_modules", ".next"],
     setupFiles: ["./tests/setup.ts"],
     coverage: {

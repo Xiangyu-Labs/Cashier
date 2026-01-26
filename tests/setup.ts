@@ -1,8 +1,9 @@
-import { beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
+import { cleanup } from "@testing-library/react";
 
 // Test database connection
 const TEST_DATABASE_URL =
@@ -30,9 +31,15 @@ afterAll(async () => {
 
 beforeEach(async () => {
   // Clean all tables before each test
-  await testDb.execute(
-    sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
-  );
+  if (getTestDb()) {
+    await testDb.execute(
+      sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
+    );
+  }
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 async function runMigrations() {
