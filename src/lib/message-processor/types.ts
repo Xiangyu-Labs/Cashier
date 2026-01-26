@@ -35,7 +35,6 @@ export interface CategoryInfo {
 }
 
 export interface ProcessorContext {
-  language: string; // 偏好语言
   categories: CategoryInfo[];
 }
 

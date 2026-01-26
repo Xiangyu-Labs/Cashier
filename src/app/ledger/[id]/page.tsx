@@ -13,7 +13,7 @@ import {
 import { InputMessage, Transaction } from "@/types/api";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { VerifyTab } from "@/components/ledger/VerifyTab";
@@ -187,8 +187,8 @@ export default function LedgerPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/ledger/${ledgerId}/settings`}>
-              <Button variant="ghost" size="sm" className="text-muted hover:text-text text-xl" title="设置">
-                ⚙️
+              <Button variant="ghost" size="icon" className="text-muted hover:text-text" title="设置">
+                <Settings className="h-5 w-5" />
               </Button>
             </Link>
             <Button

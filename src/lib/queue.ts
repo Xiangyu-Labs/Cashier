@@ -36,9 +36,7 @@ async function processNextMessage() {
         .where(eq(inputMessages.id, nextMessage.id));
 
     try {
-        // Fetch global settings
-        const globalSettings = await db.query.settings.findFirst();
-        const settingsLanguage = globalSettings?.language || "zh-CN";
+
 
         // Fetch global categories
         const allCategories = await db.query.categories.findMany({
@@ -72,7 +70,6 @@ async function processNextMessage() {
 
         const processor = getMessageProcessor();
         const result = await processor.process(messageInput, {
-            language: settingsLanguage,
             categories: allCategories.map((c) => ({
                 id: c.id,
                 name: c.name,

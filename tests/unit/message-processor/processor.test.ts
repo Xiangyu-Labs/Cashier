@@ -17,7 +17,6 @@ describe("OpenAIMessageProcessor", () => {
   let mockGenerateContent: ReturnType<typeof vi.fn>;
 
   const defaultContext: ProcessorContext = {
-    language: "zh-CN",
     categories: [
       { id: "cat-1", name: "餐饮", description: "外卖、堂食" },
       { id: "cat-2", name: "交通", description: "公交、地铁" },
@@ -181,7 +180,6 @@ describe("OpenAIMessageProcessor", () => {
 
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
       const [systemPrompt, messages] = mockGenerateContent.mock.calls[0];
-      expect(systemPrompt).toContain("简体中文");
       expect(systemPrompt).toContain("餐饮");
       expect(messages).toHaveLength(1);
       expect(messages[0].role).toBe("user");

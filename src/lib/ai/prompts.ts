@@ -1,26 +1,13 @@
 import { CategoryInfo } from "../message-processor/types";
 
-// 语言代码到语言名称的映射
-const LANGUAGE_NAMES: Record<string, string> = {
-  "zh-CN": "简体中文",
-  "zh-TW": "繁體中文",
-  "en": "English",
-  "ja": "日本語",
-  "ko": "한국어",
-};
-
 export function buildTransactionPrompt(
-  language: string,
   categories: CategoryInfo[]
 ): string {
-  const languageName = LANGUAGE_NAMES[language] || language;
   const categoryList = categories
     .map((c, i) => `${i + 1}. ${c.name}${c.description ? ` - ${c.description}` : ""}`)
     .join("\n");
 
   return `你是一个记账助手。根据用户输入（可能包含文字、图片、语音），识别其中的消费信息，返回 JSON 格式的记录列表。
-
-重要：无论输入是什么语言，所有输出内容（item_name 等）都使用 ${languageName}。
 
 当前账本的分类：
 ${categoryList}
