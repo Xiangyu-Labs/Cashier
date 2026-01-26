@@ -7,7 +7,7 @@ import { MessageInput } from "@/lib/message-processor/types";
 let isProcessing = false;
 
 export async function processMessageQueue() {
-    if (isProcessing) return; // Prevent concurrent processing instances
+    if (isProcessing) return;
     isProcessing = true;
 
     try {
@@ -18,87 +18,21 @@ export async function processMessageQueue() {
 }
 
 async function processNextMessage() {
-    // 1. Fetch the oldest queued message
-    // strictly order by createdAt asc to ensure FIFO
     const nextMessage = await db.query.inputMessages.findFirst({
         where: eq(inputMessages.status, "queued"),
         orderBy: [asc(inputMessages.createdAt)],
     });
 
-    if (!nextMessage) {
-        return; // Queue is empty
-    }
+    if (!nextMessage) return;
 
-    // 2. Mark as processing
     await db
         .update(inputMessages)
         .set({ status: "processing" })
         .where(eq(inputMessages.id, nextMessage.id));
 
     try {
-        // Fetch global categories
-        const allCategories = await db.query.categories.findMany({
-            orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
-        });
+        await handleMessageProcessing(nextMessage);
 
-        // Parse content back to MessageInput
-        const messageInput = parseMessageContent(nextMessage);
-
-        // Fetch ledger settings
-        const ledger = await db.query.ledgers.findFirst({
-            where: eq(ledgers.id, nextMessage.ledgerId)
-        });
-        const autoConfirm = ledger?.autoConfirm || false;
-
-        const processor = getMessageProcessor();
-        const result = await processor.process(messageInput, {
-            categories: allCategories.map((c) => ({
-                id: c.id,
-                name: c.name,
-                description: c.description,
-            })),
-        }, autoConfirm);
-
-        // 4. Update AI response
-        await db
-            .update(inputMessages)
-            .set({ aiResponse: result.rawResponse })
-            .where(eq(inputMessages.id, nextMessage.id));
-
-        // 5. Create transactions
-        const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
-
-        for (const tx of validTransactions) {
-            let categoryId: string | null = null;
-            const itemName = tx.itemName || "未分类";
-
-            if (tx.category) {
-                const matchedCategory = allCategories.find(
-                    (c) => c.name === tx.category
-                );
-                if (matchedCategory) {
-                    categoryId = matchedCategory.id;
-                }
-            }
-
-            const metadata = tx.metadata || {};
-
-            await db.insert(transactions).values({
-                ledgerId: nextMessage.ledgerId,
-                categoryId,
-                inputMessageId: nextMessage.id,
-                amount: tx.amount.toString(),
-                currency: tx.currency,
-                itemName,
-                status: tx.status || "pending",
-                sourceType: nextMessage.contentType as "text" | "image" | "mixed",
-                transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
-                description: metadata.notes || null,
-                metadata,
-            });
-        }
-
-        // 6. Mark as completed
         await db
             .update(inputMessages)
             .set({ status: "completed" })
@@ -114,31 +48,80 @@ async function processNextMessage() {
             })
             .where(eq(inputMessages.id, nextMessage.id));
     } finally {
-        // 7. Process next message (Recursive-like but async safe)
         await processNextMessage();
     }
 }
 
+async function handleMessageProcessing(message: typeof inputMessages.$inferSelect) {
+    const allCategories = await db.query.categories.findMany({
+        orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
+    });
+
+    const messageInput = parseMessageContent(message);
+
+    const ledger = await db.query.ledgers.findFirst({
+        where: eq(ledgers.id, message.ledgerId)
+    });
+    const autoConfirm = ledger?.autoConfirm || false;
+
+    const processor = getMessageProcessor();
+    const result = await processor.process(messageInput, {
+        categories: allCategories.map((c) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+        })),
+    }, autoConfirm);
+
+    await db
+        .update(inputMessages)
+        .set({ aiResponse: result.rawResponse })
+        .where(eq(inputMessages.id, message.id));
+
+    const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
+
+    for (const tx of validTransactions) {
+        const categoryId = tx.category
+            ? allCategories.find(c => c.name === tx.category)?.id ?? null
+            : null;
+
+        const metadata = tx.metadata || {};
+
+        await db.insert(transactions).values({
+            ledgerId: message.ledgerId,
+            categoryId,
+            inputMessageId: message.id,
+            amount: tx.amount.toString(),
+            currency: tx.currency,
+            itemName: tx.itemName || "未分类",
+            status: tx.status || "pending",
+            sourceType: message.contentType as "text" | "image" | "mixed",
+            transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
+            description: metadata.notes || null,
+            metadata,
+        });
+    }
+}
+
 function parseMessageContent(message: typeof inputMessages.$inferSelect): MessageInput {
-    try {
-        if (message.contentType === "text") {
-            return { text: message.content };
-        } else if (message.contentType === "image") {
-            // Check if content is JSON array or single string
-            if (message.content.startsWith("[")) {
-                const images = JSON.parse(message.content);
-                return {
-                    images: images.map((data: string) => ({ data, mimeType: "image/jpeg" })), // Simplification
-                };
-            } else {
-                return {
-                    images: [{ data: message.content, mimeType: "image/jpeg" }],
-                };
-            }
-        } else {
-            // mixed or complex json
-            return JSON.parse(message.content);
+    if (message.contentType === "text") {
+        return { text: message.content };
+    }
+
+    if (message.contentType === "image") {
+        if (message.content.startsWith("[")) {
+            const images = JSON.parse(message.content);
+            return {
+                images: images.map((data: string) => ({ data, mimeType: "image/jpeg" })),
+            };
         }
+        return {
+            images: [{ data: message.content, mimeType: "image/jpeg" }],
+        };
+    }
+
+    try {
+        return JSON.parse(message.content);
     } catch {
         throw new Error("Failed to parse message content");
     }

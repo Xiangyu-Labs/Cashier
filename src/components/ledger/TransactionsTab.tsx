@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { confirmTransactions, updateTransaction, deleteTransaction, sendMessage, retryMessage } from "@/lib/api";
+import {
+    confirmTransactions,
+    updateTransaction,
+    deleteTransaction,
+    retryMessage,
+} from "@/lib/api";
 import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
@@ -23,13 +28,73 @@ interface TransactionsTabProps {
     categories: Category[];
 }
 
-export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queuedMessages, categories }: TransactionsTabProps) {
+// Separate helper for the timeline item types
+type TimelineItem =
+    | { type: "queue"; date: string; data: InputMessage }
+    | {
+        type: "batch";
+        status: "pending" | "confirmed";
+        date: string;
+        data: { inputMessage: InputMessage; transactions: Transaction[] };
+    }
+    | {
+        type: "single";
+        status: "pending" | "confirmed";
+        date: string;
+        data: Transaction;
+    };
+
+function getMessageStatusText(status?: string) {
+    switch (status) {
+        case "processing":
+            return "正在处理...";
+        case "queued":
+            return "排队中...";
+        case "failed":
+            return "处理失败";
+        default:
+            return status || "未知状态";
+    }
+}
+
+function getMessageContentSummary(msg: InputMessage): string {
+    if (msg.contentType === "image") return "[图片]";
+
+    if (msg.contentType === "text") {
+        if (msg.content.startsWith("{")) {
+            try {
+                const parsed = JSON.parse(msg.content);
+                return (
+                    parsed.text || (parsed.images?.length ? "[图片]" : "[内容]")
+                );
+            } catch {
+                return msg.content;
+            }
+        }
+        return msg.content;
+    }
+
+    return "[消息]";
+}
+
+export function TransactionsTab({
+    ledgerId,
+    pendingGroups,
+    confirmedGroups,
+    queuedMessages = [],
+    categories,
+}: TransactionsTabProps) {
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
 
     const updateMutation = useMutation({
-        mutationFn: ({ transactionId, data }: { transactionId: string; data: Parameters<typeof updateTransaction>[2] }) =>
-            updateTransaction(ledgerId, transactionId, data),
+        mutationFn: ({
+            transactionId,
+            data,
+        }: {
+            transactionId: string;
+            data: Parameters<typeof updateTransaction>[2];
+        }) => updateTransaction(ledgerId, transactionId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
@@ -37,7 +102,8 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (transactionId: string) => deleteTransaction(ledgerId, transactionId),
+        mutationFn: (transactionId: string) =>
+            deleteTransaction(ledgerId, transactionId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
@@ -69,57 +135,71 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
-        }
+        },
     });
 
-
-    const pendingCount = pendingGroups.batches.length + pendingGroups.others.length;
-    const failedMessages = queuedMessages?.filter(m => m.status === 'failed') || [];
+    const pendingCount =
+        pendingGroups.batches.length + pendingGroups.others.length;
+    const failedMessages =
+        queuedMessages?.filter((m) => m.status === "failed") || [];
     const hasFailedMessages = failedMessages.length > 0;
 
     // Prepare unified timeline items
-    const queueItems = (queuedMessages || []).map(msg => ({
-        type: 'queue' as const,
-        date: msg.createdAt,
-        data: msg
-    }));
-
-    const pendingBatchItems = pendingGroups.batches.map(batch => ({
-        type: 'batch' as const,
-        status: 'pending' as const,
-        date: batch.inputMessage.createdAt,
-        data: batch
-    }));
-
-    const confirmedBatchItems = confirmedGroups.batches.map(batch => ({
-        type: 'batch' as const,
-        status: 'confirmed' as const,
-        date: batch.inputMessage.createdAt,
-        data: batch
-    }));
-
-    const pendingSingleItems = pendingGroups.others.map(tx => ({
-        type: 'single' as const,
-        status: 'pending' as const,
-        date: tx.createdAt,
-        data: tx
-    }));
-
-    const confirmedSingleItems = confirmedGroups.others.map(tx => ({
-        type: 'single' as const,
-        status: 'confirmed' as const,
-        date: tx.createdAt,
-        data: tx
-    }));
-
-    const allItems = [
-        ...queueItems,
-        ...pendingBatchItems,
-        ...confirmedBatchItems,
-        ...pendingSingleItems,
-        ...confirmedSingleItems
+    const allItems: TimelineItem[] = [
+        ...queuedMessages.map(
+            (msg) => ({ type: "queue", date: msg.createdAt, data: msg } as const)
+        ),
+        ...pendingGroups.batches.map(
+            (batch) =>
+            ({
+                type: "batch",
+                status: "pending",
+                date: batch.inputMessage.createdAt,
+                data: batch,
+            } as const)
+        ),
+        ...confirmedGroups.batches.map(
+            (batch) =>
+            ({
+                type: "batch",
+                status: "confirmed",
+                date: batch.inputMessage.createdAt,
+                data: batch,
+            } as const)
+        ),
+        ...pendingGroups.others.map(
+            (tx) =>
+            ({
+                type: "single",
+                status: "pending",
+                date: tx.createdAt,
+                data: tx,
+            } as const)
+        ),
+        ...confirmedGroups.others.map(
+            (tx) =>
+            ({
+                type: "single",
+                status: "confirmed",
+                date: tx.createdAt,
+                data: tx,
+            } as const)
+        ),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    const handleConfirmAll = async () => {
+        setConfirmingAll(true);
+        confirmAllMutation.mutate();
+    };
+
+    const handleRetryAll = async () => {
+        setConfirmingAll(true);
+        await Promise.all(
+            failedMessages.map((msg) => retryMessage(ledgerId, msg.id))
+        );
+        queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+        setConfirmingAll(false);
+    };
 
     return (
         <div className="space-y-4">
@@ -137,23 +217,19 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                                 variant="destructive"
                                 size="sm"
                                 disabled={confirmingAll}
-                                onClick={async () => {
-                                    setConfirmingAll(true);
-                                    await Promise.all(failedMessages.map(msg => retryMessage(ledgerId, msg.id)));
-                                    queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
-                                    setConfirmingAll(false);
-                                }}
+                                onClick={handleRetryAll}
                             >
                                 重试所有失败
                             </Button>
                         )}
                         <Button
                             variant="default"
-                            onClick={() => {
-                                setConfirmingAll(true);
-                                confirmAllMutation.mutate();
-                            }}
-                            disabled={confirmAllMutation.isPending || confirmingAll || pendingCount === 0}
+                            onClick={handleConfirmAll}
+                            disabled={
+                                confirmAllMutation.isPending ||
+                                confirmingAll ||
+                                pendingCount === 0
+                            }
                             size="sm"
                         >
                             {confirmAllMutation.isPending ? "正在确认..." : "全部确认"}
@@ -164,53 +240,51 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
 
             <div className="space-y-6">
                 {allItems.map((item) => {
-                    const key = item.type === 'queue' ? (item.data as InputMessage).id
-                        : item.type === 'batch' ? (item.data as any).inputMessage.id
-                            : (item.data as Transaction).id;
+                    const key =
+                        item.type === "queue"
+                            ? item.data.id
+                            : item.type === "batch"
+                                ? item.data.inputMessage.id
+                                : item.data.id;
 
-                    if (item.type === 'queue') {
-                        const msg = item.data as InputMessage;
+                    if (item.type === "queue") {
+                        const msg = item.data;
+                        const isProcessing =
+                            msg.status === "processing" || msg.status === "queued";
                         return (
-                            <Card key={key} className="border-dashed border-primary/30 bg-surface2/20">
+                            <Card
+                                key={key}
+                                className="border-dashed border-primary/30 bg-surface2/20"
+                            >
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        {msg.status === 'processing' || msg.status === 'queued' ? (
+                                        {isProcessing ? (
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary shrink-0"></div>
                                         ) : (
-                                            <div className="h-4 w-4 rounded-full bg-danger/20 text-danger flex items-center justify-center shrink-0">!</div>
+                                            <div className="h-4 w-4 rounded-full bg-danger/20 text-danger flex items-center justify-center shrink-0">
+                                                !
+                                            </div>
                                         )}
                                         <div className="flex flex-col min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-medium">
-                                                    {msg.status === 'processing' ? '正在处理...' : msg.status === 'queued' ? '排队中...' : '处理失败'}
+                                                    {getMessageStatusText(msg.status)}
                                                 </span>
                                                 <span className="text-xs text-muted">
                                                     {new Date(msg.createdAt).toLocaleTimeString()}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-muted truncate">
-                                                {(() => {
-                                                    if (msg.contentType === "image") return "[图片]";
-                                                    if (msg.contentType === "text") {
-                                                        if (msg.content.startsWith("{")) {
-                                                            try {
-                                                                const parsed = JSON.parse(msg.content);
-                                                                return parsed.text || (parsed.images?.length ? "[图片]" : "[内容]");
-                                                            } catch {
-                                                                return msg.content;
-                                                            }
-                                                        }
-                                                        return msg.content;
-                                                    }
-                                                    return "[消息]";
-                                                })()}
+                                                {getMessageContentSummary(msg)}
                                             </p>
                                             {msg.error && (
-                                                <p className="text-xs text-danger mt-1">{msg.error}</p>
+                                                <p className="text-xs text-danger mt-1">
+                                                    {msg.error}
+                                                </p>
                                             )}
                                         </div>
                                     </div>
-                                    {msg.status === 'failed' && (
+                                    {msg.status === "failed" && (
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -225,15 +299,14 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                         );
                     }
 
-                    if (item.type === 'batch') {
-                        const batch = item.data as { inputMessage: InputMessage; transactions: Transaction[] };
+                    if (item.type === "batch") {
                         return (
                             <BatchTransactionCard
                                 key={key}
-                                inputMessage={batch.inputMessage}
-                                transactions={batch.transactions}
+                                inputMessage={item.data.inputMessage}
+                                transactions={item.data.transactions}
                                 categories={categories}
-                                isConfirmed={item.status === 'confirmed'}
+                                isConfirmed={item.status === "confirmed"}
                                 onConfirm={async (ids) => {
                                     await confirmBatchMutation.mutateAsync(ids);
                                 }}
@@ -245,17 +318,19 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                         );
                     }
 
-                    if (item.type === 'single') {
-                        const tx = item.data as Transaction;
+                    if (item.type === "single") {
                         return (
                             <TransactionCard
                                 key={key}
-                                transaction={tx}
+                                transaction={item.data}
                                 categories={categories}
                                 onUpdate={(data) =>
-                                    updateMutation.mutate({ transactionId: tx.id, data })
+                                    updateMutation.mutate({
+                                        transactionId: item.data.id,
+                                        data,
+                                    })
                                 }
-                                onDelete={() => deleteMutation.mutate(tx.id)}
+                                onDelete={() => deleteMutation.mutate(item.data.id)}
                             />
                         );
                     }
@@ -264,9 +339,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                 })}
 
                 {allItems.length === 0 && (
-                    <div className="text-center py-10 text-muted">
-                        暂无记录
-                    </div>
+                    <div className="text-center py-10 text-muted">暂无记录</div>
                 )}
             </div>
         </div>
