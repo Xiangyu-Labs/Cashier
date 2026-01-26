@@ -35,7 +35,6 @@ export interface CategoryInfo {
 }
 
 export interface ProcessorContext {
-  ledgerId: string;
   language: string; // 偏好语言
   categories: CategoryInfo[];
 }

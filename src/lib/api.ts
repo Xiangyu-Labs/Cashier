@@ -5,9 +5,27 @@ import {
   TransactionSummary,
   MessageResponse,
   InputMessage,
+  Settings,
 } from "@/types/api";
 
 const API_BASE = "/api";
+
+// Settings API
+export async function fetchSettings(): Promise<Settings> {
+  const res = await fetch(`${API_BASE}/settings`);
+  if (!res.ok) throw new Error("Failed to fetch settings");
+  return res.json();
+}
+
+export async function updateSettings(data: Partial<Settings>): Promise<Settings> {
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update settings");
+  return res.json();
+}
 
 // Ledger API
 export async function fetchLedgers(): Promise<Ledger[]> {
@@ -24,7 +42,6 @@ export async function fetchLedger(id: string): Promise<Ledger> {
 
 export async function createLedger(data: {
   name: string;
-  language?: string;
 }): Promise<Ledger> {
   const res = await fetch(`${API_BASE}/ledgers`, {
     method: "POST",
@@ -37,7 +54,7 @@ export async function createLedger(data: {
 
 export async function updateLedger(
   id: string,
-  data: { name?: string; language?: string }
+  data: { name?: string }
 ): Promise<Ledger> {
   const res = await fetch(`${API_BASE}/ledgers/${id}`, {
     method: "PATCH",
@@ -55,15 +72,18 @@ export async function deleteLedger(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete ledger");
 }
 
-// Category API
-export async function fetchCategories(ledgerId: string): Promise<Category[]> {
+// Category API (Global, but using placeholder ID for route compatibility)
+// We use "global" as the ID since the backend logic ignores it now.
+const GLOBAL_ID = "global";
+
+export async function fetchCategories(ledgerId: string = GLOBAL_ID): Promise<Category[]> {
   const res = await fetch(`${API_BASE}/ledgers/${ledgerId}/categories`);
   if (!res.ok) throw new Error("Failed to fetch categories");
   return res.json();
 }
 
 export async function createCategory(
-  ledgerId: string,
+  ledgerId: string = GLOBAL_ID,
   data: { name: string; description?: string; icon?: string }
 ): Promise<Category> {
   const res = await fetch(`${API_BASE}/ledgers/${ledgerId}/categories`, {
@@ -76,7 +96,7 @@ export async function createCategory(
 }
 
 export async function updateCategory(
-  ledgerId: string,
+  ledgerId: string = GLOBAL_ID,
   categoryId: string,
   data: { name?: string; description?: string; icon?: string; sortOrder?: number }
 ): Promise<Category> {
@@ -93,7 +113,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(
-  ledgerId: string,
+  ledgerId: string = GLOBAL_ID,
   categoryId: string
 ): Promise<void> {
   const res = await fetch(

@@ -1,15 +1,18 @@
 export interface Ledger {
   id: string;
   name: string;
-  language: string;
   createdAt: string;
   updatedAt: string;
-  categories?: Category[];
+}
+
+export interface Settings {
+  id: string;
+  language: string;
+  currencies: string[];
 }
 
 export interface Category {
   id: string;
-  ledgerId: string;
   name: string;
   description: string | null;
   icon: string | null;

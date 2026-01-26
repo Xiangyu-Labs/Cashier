@@ -36,18 +36,12 @@ async function processNextMessage() {
         .where(eq(inputMessages.id, nextMessage.id));
 
     try {
-        // 3. Process the message
-        // Fetch dependencies
-        const ledger = await db.query.ledgers.findFirst({
-            where: eq(ledgers.id, nextMessage.ledgerId),
-        });
+        // Fetch global settings
+        const globalSettings = await db.query.settings.findFirst();
+        const settingsLanguage = globalSettings?.language || "zh-CN";
 
-        if (!ledger) {
-            throw new Error("Ledger not found");
-        }
-
-        const ledgerCategories = await db.query.categories.findMany({
-            where: eq(categories.ledgerId, nextMessage.ledgerId),
+        // Fetch global categories
+        const allCategories = await db.query.categories.findMany({
             orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
         });
 
@@ -78,9 +72,8 @@ async function processNextMessage() {
 
         const processor = getMessageProcessor();
         const result = await processor.process(messageInput, {
-            ledgerId: nextMessage.ledgerId,
-            language: ledger.language,
-            categories: ledgerCategories.map((c) => ({
+            language: settingsLanguage,
+            categories: allCategories.map((c) => ({
                 id: c.id,
                 name: c.name,
                 description: c.description,
@@ -101,7 +94,7 @@ async function processNextMessage() {
             let itemName = tx.itemName || "未分类";
 
             if (tx.category) {
-                const matchedCategory = ledgerCategories.find(
+                const matchedCategory = allCategories.find(
                     (c) => c.name === tx.category
                 );
                 if (matchedCategory) {

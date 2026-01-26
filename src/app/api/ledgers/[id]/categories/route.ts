@@ -13,12 +13,10 @@ const createCategorySchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// GET /api/ledgers/[id]/categories - 获取账本的所有分类
+// GET /api/ledgers/[id]/categories - 获取所有全局分类 (Legacy route kept for compatibility)
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id: ledgerId } = await params;
     const allCategories = await db.query.categories.findMany({
-      where: eq(categories.ledgerId, ledgerId),
       orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
     });
     return NextResponse.json(allCategories);
@@ -31,16 +29,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// POST /api/ledgers/[id]/categories - 创建新分类
+// POST /api/ledgers/[id]/categories - 创建新全局分类 (Legacy route kept for compatibility)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id: ledgerId } = await params;
     const body = await request.json();
     const validated = createCategorySchema.parse(body);
 
     // 获取当前最大 sortOrder
     const existingCategories = await db.query.categories.findMany({
-      where: eq(categories.ledgerId, ledgerId),
       orderBy: (categories, { desc }) => [desc(categories.sortOrder)],
       limit: 1,
     });
@@ -49,7 +45,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const [newCategory] = await db
       .insert(categories)
       .values({
-        ledgerId,
         name: validated.name,
         description: validated.description,
         icon: validated.icon,

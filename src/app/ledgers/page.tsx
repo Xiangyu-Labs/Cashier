@@ -2,21 +2,19 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { fetchLedgers, createLedger, deleteLedger, updateLedger } from "@/lib/api";
 import { Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Book, Pencil } from "lucide-react";
+import { Plus, Book } from "lucide-react";
+import { LedgerItem } from "@/components/ledger/LedgerItem";
 
 export default function LedgersPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newLedgerName, setNewLedgerName] = useState("");
-  const [newLedgerLanguage, setNewLedgerLanguage] = useState("zh-CN");
 
   // Edit state
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
@@ -33,7 +31,6 @@ export default function LedgersPage() {
       queryClient.invalidateQueries({ queryKey: ["ledgers"] });
       setShowCreateModal(false);
       setNewLedgerName("");
-      router.push(`/ledger/${newLedger.id}`);
     },
   });
 
@@ -58,7 +55,6 @@ export default function LedgersPage() {
     if (newLedgerName.trim()) {
       createMutation.mutate({
         name: newLedgerName.trim(),
-        language: newLedgerLanguage,
       });
     }
   };
@@ -80,17 +76,17 @@ export default function LedgersPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg p-8">
+    <div className="min-h-screen bg-[var(--bg)] p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-text">我的账本</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">我的账本</h1>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
             新建账本
@@ -100,8 +96,8 @@ export default function LedgersPage() {
         {ledgers && ledgers.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent className="flex flex-col items-center pt-6">
-              <Book className="h-12 w-12 text-muted mb-4 opacity-50" />
-              <p className="text-muted mb-4">还没有账本，创建一个开始记账吧！</p>
+              <Book className="h-12 w-12 text-[var(--muted)] mb-4 opacity-50" />
+              <p className="text-[var(--muted)] mb-4">还没有账本，创建一个开始记账吧！</p>
               <Button onClick={() => setShowCreateModal(true)}>
                 创建第一个账本
               </Button>
@@ -110,55 +106,15 @@ export default function LedgersPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {ledgers?.map((ledger) => (
-              <Card
+              <LedgerItem
                 key={ledger.id}
-                className="hover:border-primary transition-colors cursor-pointer group relative"
-                onClick={() => router.push(`/ledger/${ledger.id}`)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{ledger.name}</CardTitle>
-                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted hover:text-primary hover:bg-transparent"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingLedger(ledger);
-                          setEditLedgerName(ledger.name);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted hover:text-danger hover:bg-transparent"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(ledger);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-muted">
-                      语言: {ledger.language === 'zh-CN' ? '简体中文' :
-                             ledger.language === 'zh-TW' ? '繁體中文' :
-                             ledger.language === 'en' ? 'English' :
-                             ledger.language === 'ja' ? '日本語' : ledger.language}
-                    </p>
-                    <p className="text-xs text-muted/80">
-                      创建于 {new Date(ledger.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                ledger={ledger}
+                onEdit={(l) => {
+                  setEditingLedger(l);
+                  setEditLedgerName(l.name);
+                }}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -171,7 +127,7 @@ export default function LedgersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-text">
+              <label className="text-sm font-medium text-[var(--text)]">
                 账本名称
               </label>
               <Input
@@ -185,21 +141,6 @@ export default function LedgersPage() {
                   }
                 }}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-text">
-                偏好语言
-              </label>
-              <select
-                value={newLedgerLanguage}
-                onChange={(e) => setNewLedgerLanguage(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-border bg-surface px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <option value="zh-CN">简体中文</option>
-                <option value="zh-TW">繁體中文</option>
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-              </select>
             </div>
           </div>
           <DialogFooter>
@@ -229,7 +170,7 @@ export default function LedgersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-text">
+              <label className="text-sm font-medium text-[var(--text)]">
                 账本名称
               </label>
               <Input

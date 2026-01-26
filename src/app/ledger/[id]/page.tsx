@@ -186,9 +186,9 @@ export default function LedgerPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href={`/ledger/${ledgerId}/categories`}>
-              <Button variant="ghost" size="sm" className="text-muted hover:text-text text-xs">
-                分类
+            <Link href="/settings">
+              <Button variant="ghost" size="sm" className="text-muted hover:text-text text-xl" title="设置">
+                ⚙️
               </Button>
             </Link>
             <Button

@@ -32,27 +32,32 @@ export const messageStatusEnum = pgEnum("message_status", [
   "failed",
 ]);
 
+
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  language: text("language").notNull().default("zh-CN"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({
-  categories: many(categories),
   transactions: many(transactions),
   inputMessages: many(inputMessages),
 }));
 
-// Category（分类）
+// Global Settings (全局设置)
+export const settings = pgTable("settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  language: text("language").notNull().default("zh-CN"),
+  currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Category（全局分类）
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
-  ledgerId: uuid("ledger_id")
-    .notNull()
-    .references(() => ledgers.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   icon: text("icon"),
@@ -61,11 +66,7 @@ export const categories = pgTable("categories", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const categoriesRelations = relations(categories, ({ one, many }) => ({
-  ledger: one(ledgers, {
-    fields: [categories.ledgerId],
-    references: [ledgers.id],
-  }),
+export const categoriesRelations = relations(categories, ({ many }) => ({
   transactions: many(transactions),
 }));
 

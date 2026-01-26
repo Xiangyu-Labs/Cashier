@@ -68,9 +68,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Ledger not found" }, { status: 404 });
     }
 
-    // 获取账本的分类
+    // 获取全局分类
     const ledgerCategories = await db.query.categories.findMany({
-      where: eq(categories.ledgerId, ledgerId),
       orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
     });
 
