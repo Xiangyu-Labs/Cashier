@@ -68,7 +68,7 @@ export default function LedgerPage() {
   // Poll for queued/processing messages
   const { data: queuedMessages } = useQuery({
     queryKey: ["messages", ledgerId, "queued"],
-    queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing"]),
+    queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing", "failed"]),
     refetchInterval: (query) => {
       const data = query.state.data;
       return data && data.length > 0 ? 1000 : 5000;

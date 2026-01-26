@@ -137,7 +137,7 @@ export function BatchTransactionCard({
             <h3 className="font-medium text-gray-900 truncate pr-4">
               {inputMessage.contentType === "text"
                 ? inputMessage.content
-                : "图片识别结果"}
+                : summaryText || "无金额"}
             </h3>
             <span className="text-xs text-muted whitespace-nowrap">
               {new Date(inputMessage.createdAt).toLocaleString("zh-CN")}
@@ -148,9 +148,11 @@ export function BatchTransactionCard({
             {inputMessage.contentType === "text" && (
               <p className="line-clamp-1 mb-1">{inputMessage.content}</p>
             )}
-            <p className="font-medium text-primary">
-              汇总: {summaryText || "无金额"}
-            </p>
+            {inputMessage.contentType === "text" && (
+              <p className="font-medium text-primary">
+                {summaryText || "无金额"}
+              </p>
+            )}
           </div>
         </div>
       </div>

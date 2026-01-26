@@ -132,7 +132,8 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Raw response:", response);
-      return [];
+      // Throw error to let the queue processor handle it and mark message as failed
+      throw new Error(`Failed to parse AI response: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 }

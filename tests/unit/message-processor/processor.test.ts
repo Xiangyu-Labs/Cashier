@@ -128,15 +128,12 @@ describe("OpenAIMessageProcessor", () => {
       expect(result.transactions[0].amount).toBe(30);
     });
 
-    it("should return empty array on invalid JSON response", async () => {
+    it("should throw error on invalid JSON response", async () => {
       const input: MessageInput = { text: "invalid input" };
 
       mockGenerateContent.mockResolvedValue("Sorry, I cannot parse this.");
 
-      const result = await processor.process(input, defaultContext);
-
-      expect(result.transactions).toHaveLength(0);
-      expect(result.rawResponse).toBe("Sorry, I cannot parse this.");
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
 
     it("should return empty array on empty response", async () => {
@@ -323,10 +320,8 @@ describe("OpenAIMessageProcessor", () => {
         })
       );
 
-      const result = await processor.process(input, defaultContext);
-
-      // Should return empty due to validation failure
-      expect(result.transactions).toHaveLength(0);
+      // Should throw due to validation failure
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
 
     it("should reject zero amount via Zod validation", async () => {
@@ -346,9 +341,7 @@ describe("OpenAIMessageProcessor", () => {
         })
       );
 
-      const result = await processor.process(input, defaultContext);
-
-      expect(result.transactions).toHaveLength(0);
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
 
     it("should handle malformed JSON gracefully", async () => {
@@ -356,9 +349,7 @@ describe("OpenAIMessageProcessor", () => {
 
       mockGenerateContent.mockResolvedValue('{"transactions": [');
 
-      const result = await processor.process(input, defaultContext);
-
-      expect(result.transactions).toHaveLength(0);
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
 
     it("should handle response with only ``` markers", async () => {

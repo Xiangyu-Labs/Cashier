@@ -23,20 +23,53 @@ export class OpenAIClient {
         messages: ChatCompletionMessageParam[]
     ): Promise<string> {
         const model = process.env.OPENAI_MODEL;
+        const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
+        const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
 
         if (!model) {
             throw new Error("OPENAI_MODEL is required");
         }
 
-        const response = await this.client.chat.completions.create({
-            model,
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...messages,
-            ],
-        });
+        let lastError: unknown;
 
-        return response.choices[0]?.message?.content || "";
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await this.client.chat.completions.create({
+                    model,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        ...messages,
+                    ],
+                });
+
+                return response.choices[0]?.message?.content || "";
+            } catch (error) {
+                lastError = error;
+                const isRetryable =
+                    error instanceof Error &&
+                    (error.message.includes("429") || // Rate limit
+                        error.message.includes("5") ||   // Server errors (5xx)
+                        error.message.includes("timeout") ||
+                        error.message.includes("ECONNRESET"));
+
+                if (attempt < maxRetries && (isRetryable || true)) { // Retry on most errors for robustness unless it's clearly a 400 Bad Request
+                    // Check if it is a 400 error which is usually not retryable
+                    if (error instanceof OpenAI.APIError && error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
+                        throw error;
+                    }
+
+                    const delay = baseDelay * Math.pow(2, attempt);
+                    console.warn(`OpenAI request failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                // If we're out of retries or it's not retryable, break loop
+                break;
+            }
+        }
+
+        throw lastError;
     }
 }
 
