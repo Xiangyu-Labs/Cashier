@@ -5,8 +5,9 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/cashier
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MODEL=${MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
     depends_on:
       db:
         condition: service_healthy

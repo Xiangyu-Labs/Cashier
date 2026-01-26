@@ -22,7 +22,11 @@ export class OpenAIClient {
         systemPrompt: string,
         messages: ChatCompletionMessageParam[]
     ): Promise<string> {
-        const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
+        const model = process.env.OPENAI_MODEL;
+
+        if (!model) {
+            throw new Error("OPENAI_MODEL is required");
+        }
 
         const response = await this.client.chat.completions.create({
             model,
