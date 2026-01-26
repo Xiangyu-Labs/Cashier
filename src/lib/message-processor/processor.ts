@@ -13,15 +13,15 @@ import {
 // Zod schema for validating AI response
 const transactionSchema = z.object({
   item_name: z.string(),
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   currency: z.string().nullable(),
   category: z.string().nullable(),
   transaction_date: z.string().nullable(),
-  quantity: z.number().optional(),
-  unit_price: z.number().optional(),
-  unit: z.string().optional(),
-  original_name: z.string().optional(),
-  notes: z.string().optional(),
+  quantity: z.number().nullable().optional(),
+  unit_price: z.number().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  original_name: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 const aiResponseSchema = z.object({

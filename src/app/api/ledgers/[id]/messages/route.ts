@@ -100,17 +100,52 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // 创建待确认的交易记录
     const createdTransactions = [];
-    for (const tx of result.transactions) {
-      // 匹配分类 ID
+
+    // 1. Filter out zero/negative amounts
+    const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
+
+    // 2. Group by category
+    const groupedTransactions = new Map<string | null, typeof validTransactions>();
+
+    for (const tx of validTransactions) {
+      const key = tx.category || null;
+      if (!groupedTransactions.has(key)) {
+        groupedTransactions.set(key, []);
+      }
+      groupedTransactions.get(key)!.push(tx);
+    }
+
+    // 3. Process each group
+    for (const [categoryName, items] of groupedTransactions) {
+      // Calculate total amount
+      const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+
+      // Match category ID
       let categoryId: string | null = null;
-      if (tx.category) {
+      let itemName = "未分类";
+
+      if (categoryName) {
+        itemName = categoryName;
         const matchedCategory = ledgerCategories.find(
-          (c) => c.name === tx.category
+          (c) => c.name === categoryName
         );
         if (matchedCategory) {
           categoryId = matchedCategory.id;
         }
       }
+
+      // Use the first item's currency and date
+      const currency = items[0].currency;
+      const transactionDate = items[0].transactionDate;
+
+      // Construct metadata with original items
+      const metadata = {
+        originalItems: items.map((item) => ({
+          itemName: item.itemName,
+          amount: item.amount,
+          ...item.metadata,
+        })),
+      };
 
       const [created] = await db
         .insert(transactions)
@@ -118,15 +153,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           ledgerId,
           categoryId,
           inputMessageId: savedMessage.id,
-          amount: tx.amount.toString(),
-          currency: tx.currency,
-          itemName: tx.itemName,
+          amount: totalAmount.toString(),
+          currency,
+          itemName,
           status: "pending",
           sourceType,
-          transactionDate: tx.transactionDate
-            ? new Date(tx.transactionDate)
-            : null,
-          metadata: tx.metadata || null,
+          transactionDate: transactionDate ? new Date(transactionDate) : null,
+          metadata,
         })
         .returning();
 

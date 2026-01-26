@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const updateTransactionSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
-  amount: z.number().positive().optional(),
+  amount: z.number().nonnegative().optional(),
   currency: z.string().nullable().optional(),
   itemName: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
