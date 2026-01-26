@@ -63,6 +63,7 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
                         updateMutation.mutate({ transactionId: id, data })
                     }
                     onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                    status="completed"
                 />
             ))}
 
