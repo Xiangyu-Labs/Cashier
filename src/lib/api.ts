@@ -278,13 +278,17 @@ export function fetchInputMessages(
   );
 }
 
-return request(
-  `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
-  {
-    method: "POST",
-  },
-  "Failed to retry message"
-);
+export function retryMessage(
+  ledgerId: string,
+  messageId: string
+): Promise<{ success: boolean; message: string }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
+    {
+      method: "POST",
+    },
+    "Failed to retry message"
+  );
 }
 
 // API Keys
