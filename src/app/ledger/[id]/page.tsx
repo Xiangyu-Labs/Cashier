@@ -133,7 +133,14 @@ export default function LedgerPage() {
   }, [confirmedTxs]);
 
   const pendingCount = (pendingGroups.batches.length + pendingGroups.others.length) || 0;
-  const processingCount = queuedMessages?.length || 0;
+
+  const processingMessages = queuedMessages?.filter(m => m.status === 'processing') || [];
+  const queuedOnlyMessages = queuedMessages?.filter(m => m.status === 'queued') || [];
+  const failedMessages = queuedMessages?.filter(m => m.status === 'failed') || [];
+
+  const processingCount = processingMessages.length;
+  const queuedCount = queuedOnlyMessages.length;
+  const failedCount = failedMessages.length;
 
   if (ledgerLoading) {
     return (
@@ -164,17 +171,35 @@ export default function LedgerPage() {
             </Link>
             <div className="flex flex-col">
               <h1 className="text-lg font-bold truncate max-w-[150px]">{ledger.name}</h1>
-              {processingCount > 0 && (
+              {(queuedCount > 0 || processingCount > 0 || failedCount > 0) && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="text-xs text-primary flex items-center gap-1 hover:underline">
-                      <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
-                      {processingCount} 个任务处理中...
+                    <button className="text-xs flex items-center gap-2 hover:opacity-80 transition-opacity">
+                      {processingCount > 0 && (
+                        <span className="flex items-center gap-1 text-primary">
+                          <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
+                          {processingCount} 处理中
+                        </span>
+                      )}
+                      {queuedCount > 0 && (
+                        <span className="text-muted">
+                          {queuedCount} 排队
+                        </span>
+                      )}
+                      {failedCount > 0 && (
+                        <span className="flex items-center gap-1 text-danger font-medium">
+                          <span className="h-2 w-2 rounded-full bg-danger"></span>
+                          {failedCount} 失败
+                        </span>
+                      )}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0" align="start">
-                    <div className="p-3 border-b border-border bg-surface2/50">
-                      <h4 className="font-medium text-sm">正在处理的任务</h4>
+                    <div className="p-3 border-b border-border bg-surface2/50 flex justify-between items-center">
+                      <h4 className="font-medium text-sm">任务队列</h4>
+                      <span className="text-xs text-muted">
+                        共 {queuedMessages?.length} 个任务
+                      </span>
                     </div>
                     <div className="p-2">
                       <TransactionQueueStatus queuedMessages={queuedMessages || []} />
@@ -203,7 +228,7 @@ export default function LedgerPage() {
 
       <main className="max-w-md mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="history">账单</TabsTrigger>
             <TabsTrigger value="stats">统计</TabsTrigger>
             {/* Kept grid-cols-4 for spacing but removed one item, might need adjustment if grid looks off, assuming user wants to keep layout or we should adjust cols */}

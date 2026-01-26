@@ -163,22 +163,67 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
     return (
         <div className="space-y-4">
             {/* Header Action for Pending */}
-            {pendingCount > 0 && (
+            {(pendingCount > 0 || (queuedMessages && queuedMessages.some(m => m.status === 'failed'))) && (
                 <div className="flex justify-between items-center bg-surface2/30 p-3 rounded-lg border border-border mb-4">
                     <span className="text-sm font-medium text-muted">
-                        待确认 {pendingCount} 项
+                        wait for confirm {pendingCount} items
                     </span>
-                    <Button
-                        variant="default"
-                        onClick={() => {
-                            setConfirmingAll(true);
-                            confirmAllMutation.mutate();
-                        }}
-                        disabled={confirmAllMutation.isPending || confirmingAll}
-                        size="sm"
-                    >
-                        {confirmAllMutation.isPending ? "确认中..." : "全部确认"}
-                    </Button>
+                    <div className="flex gap-2">
+                        {queuedMessages && queuedMessages.some(m => m.status === 'failed') && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={confirmingAll}
+                                onClick={async () => {
+                                    setConfirmingAll(true); // Re-use loading state or add new one? Let's use confirmingAll to block UI
+                                    const failed = queuedMessages.filter(m => m.status === 'failed');
+                                    // Client side retry loop
+                                    await Promise.all(failed.map(async (msg) => {
+                                        try {
+                                            let payload: any = {};
+                                            if (msg.contentType === "text") {
+                                                payload.text = msg.content;
+                                            } else if (msg.contentType === "image") {
+                                                try {
+                                                    if (msg.content.startsWith("[")) {
+                                                        const images = JSON.parse(msg.content);
+                                                        payload.images = images.map((data: string) => ({ data, mimeType: "image/jpeg" }));
+                                                    } else {
+                                                        payload.images = [{ data: msg.content, mimeType: "image/jpeg" }];
+                                                    }
+                                                } catch (e) {
+                                                    payload.images = [{ data: msg.content, mimeType: "image/jpeg" }];
+                                                }
+                                            } else {
+                                                // Mixed/Other
+                                                try {
+                                                    payload = JSON.parse(msg.content);
+                                                } catch {
+                                                    payload.text = msg.content;
+                                                }
+                                            }
+                                            await sendMessage(ledgerId, payload);
+                                        } catch (e) { console.error(e) }
+                                    }));
+                                    queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+                                    setConfirmingAll(false);
+                                }}
+                            >
+                                Retry All Failed
+                            </Button>
+                        )}
+                        <Button
+                            variant="default"
+                            onClick={() => {
+                                setConfirmingAll(true);
+                                confirmAllMutation.mutate();
+                            }}
+                            disabled={confirmAllMutation.isPending || confirmingAll || pendingCount === 0}
+                            size="sm"
+                        >
+                            {confirmAllMutation.isPending ? "Configuring..." : "Confirm All"}
+                        </Button>
+                    </div>
                 </div>
             )}
 
@@ -209,7 +254,21 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                                                 </span>
                                             </div>
                                             <p className="text-xs text-muted truncate">
-                                                {msg.contentType === 'text' ? msg.content : '[图片]'}
+                                                {(() => {
+                                                    if (msg.contentType === "image") return "[图片]";
+                                                    if (msg.contentType === "text") {
+                                                        if (msg.content.startsWith("{")) {
+                                                            try {
+                                                                const parsed = JSON.parse(msg.content);
+                                                                return parsed.text || (parsed.images?.length ? "[图片]" : "[内容]");
+                                                            } catch {
+                                                                return msg.content;
+                                                            }
+                                                        }
+                                                        return msg.content;
+                                                    }
+                                                    return "[消息]";
+                                                })()}
                                             </p>
                                             {msg.error && (
                                                 <p className="text-xs text-danger mt-1">{msg.error}</p>

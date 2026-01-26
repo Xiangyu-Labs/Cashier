@@ -245,7 +245,7 @@ export function BatchTransactionCard({
 
               {/* Expanded Transactions */}
               {isExpanded && (
-                <div className="p-3 pl-16 pr-4 space-y-3 bg-gray-50/30 border-t border-gray-100/50 inner-shadow">
+                <div className="p-3 space-y-3 bg-gray-50/30 border-t border-gray-100/50 inner-shadow">
                   {group.items.map((tx) => (
                     <TransactionCard
                       key={tx.id}
