@@ -82,17 +82,60 @@ export function BatchTransactionCard({
     });
   }, [transactions]);
 
-  // Overall summary for the header
-  const summaryText = useMemo(() => {
-    const totals: Record<string, number> = {};
-    groupedTransactions.forEach((g) => {
-      const curr = g.currency || "?";
-      totals[curr] = (totals[curr] || 0) + g.total;
-    });
-    return Object.entries(totals)
-      .map(([curr, total]) => `${curr} ${total.toFixed(2)}`)
-      .join(", ");
-  }, [groupedTransactions]);
+  // Parse content based on type
+  const { text, images } = useMemo(() => {
+    const content = inputMessage.content;
+    const type = inputMessage.contentType;
+
+    let textContent: string | null = null;
+    let imagesContent: string[] = [];
+
+    try {
+      const trimmed = content.trim();
+      let isParsed = false;
+
+      // Try parsing JSON if it looks like one, regardless of stated type (since mixed is stored as text)
+      if ((trimmed.startsWith("{") || trimmed.startsWith("["))) {
+        try {
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed)) {
+            // Likely array of image data strings
+            imagesContent = parsed;
+            isParsed = true;
+          } else if (typeof parsed === "object" && parsed !== null) {
+            // Likely mixed content object
+            if (parsed.text || parsed.images) {
+              if (parsed.text) textContent = parsed.text;
+              if (parsed.images) {
+                imagesContent = parsed.images.map((img: any) => img.data || img);
+              }
+              isParsed = true;
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parse error, treat as raw string
+        }
+      }
+
+      if (!isParsed) {
+        if (type === "image") {
+          // Single image
+          imagesContent = [content];
+        } else {
+          // Text (or failed JSON parse)
+          textContent = content;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse message content:", e);
+      // Fallback
+      if (type === "image") imagesContent = [content];
+      else textContent = content;
+    }
+
+    return { text: textContent, images: imagesContent };
+  }, [inputMessage]);
+
 
   const toggleExpand = (key: string) => {
     const newSet = new Set(expandedKeys);
@@ -115,50 +158,47 @@ export function BatchTransactionCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden mb-4 transition-all hover:shadow-md">
-      {/* Header */}
-      <div className="bg-gray-50/50 p-4 border-b border-gray-100 flex gap-4 items-start">
-        {inputMessage.contentType === "image" ? (
-          <div className="flex-shrink-0 relative group">
-            <img
-              src={inputMessage.content}
-              alt="Input"
-              className="w-16 h-16 object-cover rounded border border-gray-200"
-            />
-          </div>
-        ) : (
-          <div className="flex-shrink-0 w-16 h-16 bg-blue-50 text-blue-500 rounded flex items-center justify-center border border-blue-100">
-            <span className="text-2xl">📝</span>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+      {/* 1. Date Header */}
+      <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+        <span className="text-sm font-medium text-muted">
+          {new Date(inputMessage.createdAt).toLocaleString("zh-CN", {
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+        {/* Optional: Add status badge or similar here if needed */}
+      </div>
+
+      {/* 2. User Content Section */}
+      <div className="p-4 space-y-3">
+        {/* Images Grid */}
+        {images.length > 0 && (
+          <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+            {images.map((img, idx) => (
+              <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50">
+                <img
+                  src={img}
+                  alt={`User upload ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start">
-            <h3 className="font-medium text-gray-900 truncate pr-4">
-              {inputMessage.contentType === "text"
-                ? inputMessage.content
-                : summaryText || "无金额"}
-            </h3>
-            <span className="text-xs text-muted whitespace-nowrap">
-              {new Date(inputMessage.createdAt).toLocaleString("zh-CN")}
-            </span>
+        {/* User Text */}
+        {text && (
+          <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+            {text}
           </div>
-
-          <div className="mt-1 text-sm text-gray-500">
-            {inputMessage.contentType === "text" && (
-              <p className="line-clamp-1 mb-1">{inputMessage.content}</p>
-            )}
-            {inputMessage.contentType === "text" && (
-              <p className="font-medium text-primary">
-                {summaryText || "无金额"}
-              </p>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Grouped Categories List */}
-      <div className="divide-y divide-gray-100">
+      {/* 3. Transaction Details (Category Groups) */}
+      <div className="border-t border-gray-100 divide-y divide-gray-50">
         {groupedTransactions.map((group) => {
           const isExpanded = expandedKeys.has(group.key);
           const hasIssues = group.items.some(
@@ -216,10 +256,6 @@ export function BatchTransactionCard({
                       hideCategory={true}
                     />
                   ))}
-                  {/* Show AI Response for the whole batch if user wants context, or per item. 
-                      Displaying it here might be repetitive if strictly per-item logic is used.
-                      Let's stick to per-item description for now as added in TransactionCard.
-                  */}
                 </div>
               )}
             </div>
@@ -233,17 +269,10 @@ export function BatchTransactionCard({
           <Button
             onClick={handleConfirm}
             disabled={isConfirming}
-            className="bg-primary hover:bg-primary/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-white shadow-sm"
           >
             {isConfirming ? "确认中..." : "确认整单"}
           </Button>
-        </div>
-      )}
-
-      {/* Confirmed Footer - Maybe link to detail? */}
-      {isConfirmed && (
-        <div className="p-2 bg-gray-50 border-t border-gray-100 flex justify-end">
-          {/* Optional: Add 'Review again' or similar if needed */}
         </div>
       )}
     </div>
