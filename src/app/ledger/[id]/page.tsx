@@ -13,18 +13,32 @@ import {
 import { InputMessage, Transaction } from "@/types/api";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecordTab } from "@/components/ledger/RecordTab";
 import { VerifyTab } from "@/components/ledger/VerifyTab";
 import { HistoryTab } from "@/components/ledger/HistoryTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { TransactionInput } from "@/components/ledger/TransactionInput";
+import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStatus";
 
 export default function LedgerPage() {
   const params = useParams();
   const ledgerId = params.id as string;
   const [activeTab, setActiveTab] = useState("record");
+  const [isInputOpen, setIsInputOpen] = useState(false);
 
   const { data: ledger, isLoading: ledgerLoading } = useQuery({
     queryKey: ["ledger", ledgerId],
@@ -120,6 +134,7 @@ export default function LedgerPage() {
   }, [confirmedTxs]);
 
   const pendingCount = (pendingGroups.batches.length + pendingGroups.others.length) || 0;
+  const processingCount = queuedMessages?.length || 0;
 
   if (ledgerLoading) {
     return (
@@ -148,13 +163,42 @@ export default function LedgerPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-lg font-bold truncate max-w-[200px]">{ledger.name}</h1>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold truncate max-w-[150px]">{ledger.name}</h1>
+              {processingCount > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="text-xs text-primary flex items-center gap-1 hover:underline">
+                      <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
+                      {processingCount} 个任务处理中...
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="start">
+                    <div className="p-3 border-b border-border bg-surface2/50">
+                      <h4 className="font-medium text-sm">正在处理的任务</h4>
+                    </div>
+                    <div className="p-2">
+                      <TransactionQueueStatus queuedMessages={queuedMessages || []} />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
           </div>
-          <Link href={`/ledger/${ledgerId}/categories`}>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 text-xs">
-              设置分类
+          <div className="flex items-center gap-2">
+            <Link href={`/ledger/${ledgerId}/categories`}>
+              <Button variant="ghost" size="sm" className="text-muted hover:text-text text-xs">
+                分类
+              </Button>
+            </Link>
+            <Button
+              size="sm"
+              onClick={() => setIsInputOpen(true)}
+              className="rounded-full h-8 w-8 p-0"
+            >
+              <Plus className="h-5 w-5" />
             </Button>
-          </Link>
+          </div>
         </div>
       </header>
 
@@ -200,6 +244,18 @@ export default function LedgerPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
+        <DialogContent className="sm:max-w-md top-[20%] translate-y-0">
+          <DialogHeader>
+            <DialogTitle>记一笔</DialogTitle>
+          </DialogHeader>
+          <TransactionInput
+            ledgerId={ledgerId}
+            onSuccess={() => setIsInputOpen(false)} // Optional: close on success?
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
