@@ -210,6 +210,7 @@ export function BatchTransactionCard({
                       categories={categories}
                       onUpdate={(data) => onUpdateTransaction(tx.id, data)}
                       onDelete={() => onDeleteTransaction(tx.id)}
+                      hideCategory={true}
                     />
                   ))}
                   {/* Show AI Response for the whole batch if user wants context, or per item. 

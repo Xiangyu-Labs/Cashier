@@ -23,7 +23,8 @@ export function TransactionCard({
   categories,
   onUpdate,
   onDelete,
-}: TransactionCardProps) {
+  hideCategory = false,
+}: TransactionCardProps & { hideCategory?: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     itemName: transaction.itemName,
@@ -122,14 +123,16 @@ export function TransactionCard({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl">
-                  {transaction.category?.icon || "📝"}
-                </div>
+                {!hideCategory && (
+                  <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl">
+                    {transaction.category?.icon || "📝"}
+                  </div>
+                )}
                 <div>
                   <p className="font-medium text-text">{transaction.itemName}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {transaction.category ? (
-                      <span className="text-xs text-muted">{transaction.category.name}</span>
+                      !hideCategory && <span className="text-xs text-muted">{transaction.category.name}</span>
                     ) : (
                       <Badge variant="warning" className="text-[10px] px-1 h-5">需分类</Badge>
                     )}
