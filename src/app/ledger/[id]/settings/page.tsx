@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, UseMutationResult } from "@tanstack/react-query";
 import { Reorder, useDragControls } from "framer-motion";
 import { Plus, Trash2, Check, X, Pencil, GripVertical, ArrowLeft } from "lucide-react";
 import {
@@ -17,6 +17,8 @@ import {
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Category } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { AlertCircle } from "lucide-react";
 
 
 
@@ -64,7 +66,7 @@ export default function LedgerSettingsPage() {
 
     // Mutations
     const updateLedgerMutation = useMutation({
-        mutationFn: (data: { language?: string; currencies?: string[] }) =>
+        mutationFn: (data: { language?: string; currencies?: string[]; autoConfirm?: boolean }) =>
             updateLedger(ledgerId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ledger", ledgerId] });
@@ -160,7 +162,28 @@ export default function LedgerSettingsPage() {
             <main className="max-w-4xl mx-auto p-6 space-y-8">
                 {/* Language Settings */}
 
+                {/* Automation Settings */}
+                <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+                    <h2 className="text-lg font-medium mb-6">自动化</h2>
 
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <div className="font-medium">免确认模式</div>
+                            <div className="text-sm text-[var(--muted)]">AI 识别的交易将直接入账，跳过确认步骤</div>
+                        </div>
+                        <Switch
+                            checked={ledger.autoConfirm || false}
+                            onCheckedChange={(checked) => updateLedgerMutation.mutate({ autoConfirm: checked })}
+                        />
+                    </div>
+
+                    {ledger.autoConfirm && (
+                        <div className="mt-4 flex items-start gap-2 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-[var(--radius)] text-sm">
+                            <AlertCircle className="h-5 w-5 shrink-0" />
+                            <span>开启此功能后，AI 可能会犯错导致并在您的账本中创建错误记录，建议您定期进行二次检查。</span>
+                        </div>
+                    )}
+                </section>
                 {/* Data Configuration */}
                 <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
                     <h2 className="text-lg font-medium mb-6">数据配置</h2>
@@ -268,8 +291,8 @@ function SortableCategoryItem({
     editingCategoryData: { name: string; description: string };
     setEditingCategoryData: (data: { name: string; description: string }) => void;
     setIsEditingCategory: (id: string | null) => void;
-    updateCategoryMutation: any;
-    deleteCategoryMutation: any;
+    updateCategoryMutation: UseMutationResult<Category, Error, { id: string; data: Partial<Category> }, unknown>;
+    deleteCategoryMutation: UseMutationResult<void, Error, string, unknown>;
     handleDragEnd: () => void;
 }) {
     const dragControls = useDragControls();

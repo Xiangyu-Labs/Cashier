@@ -7,6 +7,7 @@ export interface Ledger {
   currencies: string[];
   createdAt: string;
   updatedAt: string;
+  autoConfirm: boolean;
 }
 
 export interface Settings {

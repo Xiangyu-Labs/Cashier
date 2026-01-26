@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { inputMessages, ledgers, categories, transactions } from "@/lib/db/schema";
-import { eq, asc, and, notInArray } from "drizzle-orm";
+import { inputMessages, ledgers, transactions } from "@/lib/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { MessageInput } from "@/lib/message-processor/types";
 
@@ -64,13 +64,15 @@ async function processNextMessage() {
                 // mixed or complex json
                 messageInput = JSON.parse(nextMessage.content);
             }
-        } catch (e) {
+        } catch {
             throw new Error("Failed to parse message content");
         }
 
-        // Fetch global settings
-        const settings = await db.query.settings.findFirst();
-        const autoConfirm = settings?.autoConfirm || false;
+        // Fetch ledger settings
+        const ledger = await db.query.ledgers.findFirst({
+            where: eq(ledgers.id, nextMessage.ledgerId)
+        });
+        const autoConfirm = ledger?.autoConfirm || false;
 
         const processor = getMessageProcessor();
         const result = await processor.process(messageInput, {
@@ -92,7 +94,7 @@ async function processNextMessage() {
 
         for (const tx of validTransactions) {
             let categoryId: string | null = null;
-            let itemName = tx.itemName || "未分类";
+            const itemName = tx.itemName || "未分类";
 
             if (tx.category) {
                 const matchedCategory = allCategories.find(
@@ -113,7 +115,7 @@ async function processNextMessage() {
                 currency: tx.currency,
                 itemName,
                 status: tx.status || "pending",
-                sourceType: nextMessage.contentType as any, // Cast to match enum
+                sourceType: nextMessage.contentType as "text" | "image" | "mixed",
                 transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
                 description: metadata.notes || null,
                 metadata,

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { confirmTransactions, updateTransaction, deleteTransaction, sendMessage } from "@/lib/api";
+import { confirmTransactions, updateTransaction, deleteTransaction, sendMessage, retryMessage } from "@/lib/api";
 import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
@@ -66,24 +66,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
 
     const retryMessageMutation = useMutation({
         mutationFn: async (message: InputMessage) => {
-            // Re-send content based on type
-            if (message.contentType === "text") {
-                return sendMessage(ledgerId, { text: message.content });
-            } else if (message.contentType === "image") {
-                // This is tricky because we might not have the original base64 if it wasn't stored or if it was stored as URL.
-                // But our API/Route puts data URL in content for single image.
-                // For multiple images, it puts JSON.
-                // For now, let's assume we can just pass specific instructions or re-trigger.
-                // Actually, a better "Retry" might be a specific endpoint to "re-queue" a message.
-                // BUT, for simplicity as per plan, we might just re-send content if possible or show error.
-                // Let's assume content is the data.
-                if (message.content.startsWith("data:")) {
-                    return sendMessage(ledgerId, { images: [{ data: message.content, mimeType: "image/jpeg" }] }); // MimeType guess?
-                }
-                // Fallback: Just show error "Cannot retry automatically"
-                throw new Error("Cannot retry this message type automatically yet.");
-            }
-            return sendMessage(ledgerId, { text: message.content }); // Fallback
+            return retryMessage(ledgerId, message.id);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
@@ -166,7 +149,9 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
             {(pendingCount > 0 || (queuedMessages && queuedMessages.some(m => m.status === 'failed'))) && (
                 <div className="flex justify-between items-center bg-surface2/30 p-3 rounded-lg border border-border mb-4">
                     <span className="text-sm font-medium text-muted">
-                        wait for confirm {pendingCount} items
+                        {pendingCount > 0 ? `待确认 ${pendingCount} 项` : ""}
+                        {pendingCount > 0 && queuedMessages?.some(m => m.status === 'failed') ? "，" : ""}
+                        {queuedMessages?.some(m => m.status === 'failed') ? `有 ${queuedMessages.filter(m => m.status === 'failed').length} 个失败` : ""}
                     </span>
                     <div className="flex gap-2">
                         {queuedMessages && queuedMessages.some(m => m.status === 'failed') && (
@@ -175,41 +160,14 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                                 size="sm"
                                 disabled={confirmingAll}
                                 onClick={async () => {
-                                    setConfirmingAll(true); // Re-use loading state or add new one? Let's use confirmingAll to block UI
+                                    setConfirmingAll(true);
                                     const failed = queuedMessages.filter(m => m.status === 'failed');
-                                    // Client side retry loop
-                                    await Promise.all(failed.map(async (msg) => {
-                                        try {
-                                            let payload: any = {};
-                                            if (msg.contentType === "text") {
-                                                payload.text = msg.content;
-                                            } else if (msg.contentType === "image") {
-                                                try {
-                                                    if (msg.content.startsWith("[")) {
-                                                        const images = JSON.parse(msg.content);
-                                                        payload.images = images.map((data: string) => ({ data, mimeType: "image/jpeg" }));
-                                                    } else {
-                                                        payload.images = [{ data: msg.content, mimeType: "image/jpeg" }];
-                                                    }
-                                                } catch (e) {
-                                                    payload.images = [{ data: msg.content, mimeType: "image/jpeg" }];
-                                                }
-                                            } else {
-                                                // Mixed/Other
-                                                try {
-                                                    payload = JSON.parse(msg.content);
-                                                } catch {
-                                                    payload.text = msg.content;
-                                                }
-                                            }
-                                            await sendMessage(ledgerId, payload);
-                                        } catch (e) { console.error(e) }
-                                    }));
+                                    await Promise.all(failed.map(msg => retryMessage(ledgerId, msg.id)));
                                     queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
                                     setConfirmingAll(false);
                                 }}
                             >
-                                Retry All Failed
+                                重试所有失败
                             </Button>
                         )}
                         <Button
@@ -221,7 +179,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                             disabled={confirmAllMutation.isPending || confirmingAll || pendingCount === 0}
                             size="sm"
                         >
-                            {confirmAllMutation.isPending ? "Configuring..." : "Confirm All"}
+                            {confirmAllMutation.isPending ? "正在确认..." : "全部确认"}
                         </Button>
                     </div>
                 </div>
@@ -239,7 +197,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                             <Card key={key} className="border-dashed border-primary/30 bg-surface2/20">
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        {msg.status === 'processing' ? (
+                                        {msg.status === 'processing' || msg.status === 'queued' ? (
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary shrink-0"></div>
                                         ) : (
                                             <div className="h-4 w-4 rounded-full bg-danger/20 text-danger flex items-center justify-center shrink-0">!</div>
@@ -247,7 +205,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
                                         <div className="flex flex-col min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-medium">
-                                                    {msg.status === 'processing' ? '正在处理...' : '处理失败'}
+                                                    {msg.status === 'processing' ? '正在处理...' : msg.status === 'queued' ? '排队中...' : '处理失败'}
                                                 </span>
                                                 <span className="text-xs text-muted">
                                                     {new Date(msg.createdAt).toLocaleTimeString()}

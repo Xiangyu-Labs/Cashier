@@ -42,6 +42,7 @@ export const ledgers = pgTable("ledgers", {
   currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  autoConfirm: boolean("auto_confirm").default(false),
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({

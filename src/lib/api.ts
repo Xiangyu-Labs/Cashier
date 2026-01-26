@@ -63,7 +63,7 @@ export function createLedger(data: { name: string }): Promise<Ledger> {
 
 export function updateLedger(
   id: string,
-  data: { name?: string; language?: string; currencies?: string[] }
+  data: { name?: string; language?: string; currencies?: string[]; autoConfirm?: boolean }
 ): Promise<Ledger> {
   return request(
     `${API_BASE}/ledgers/${id}`,
@@ -275,5 +275,18 @@ export function fetchInputMessages(
     `${API_BASE}/ledgers/${ledgerId}/messages?${searchParams}`,
     undefined,
     "Failed to fetch messages"
+  );
+}
+
+export function retryMessage(
+  ledgerId: string,
+  messageId: string
+): Promise<{ success: boolean; message: string }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
+    {
+      method: "POST",
+    },
+    "Failed to retry message"
   );
 }
