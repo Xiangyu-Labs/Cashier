@@ -32,7 +32,7 @@ describe("OpenAIMessageProcessor", () => {
     mockGenerateContent = vi.fn();
     vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: mockGenerateContent,
-    } as any);
+    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   });
 
   describe("process()", () => {
