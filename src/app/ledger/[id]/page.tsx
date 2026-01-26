@@ -15,7 +15,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RecordTab } from "@/components/ledger/RecordTab";
+
 import { VerifyTab } from "@/components/ledger/VerifyTab";
 import { HistoryTab } from "@/components/ledger/HistoryTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
@@ -37,7 +37,7 @@ import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStat
 export default function LedgerPage() {
   const params = useParams();
   const ledgerId = params.id as string;
-  const [activeTab, setActiveTab] = useState("record");
+  const [activeTab, setActiveTab] = useState("history");
   const [isInputOpen, setIsInputOpen] = useState(false);
 
   const { data: ledger, isLoading: ledgerLoading } = useQuery({
@@ -204,8 +204,8 @@ export default function LedgerPage() {
 
       <main className="max-w-md mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="record">记账</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="history">明细</TabsTrigger>
             <TabsTrigger value="verify" className="relative">
               核对
               {pendingCount > 0 && (
@@ -215,13 +215,11 @@ export default function LedgerPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="history">明细</TabsTrigger>
             <TabsTrigger value="stats">统计</TabsTrigger>
+            {/* Kept grid-cols-4 for spacing but removed one item, might need adjustment if grid looks off, assuming user wants to keep layout or we should adjust cols */}
           </TabsList>
 
-          <TabsContent value="record" className="mt-0">
-            <RecordTab ledgerId={ledgerId} queuedMessages={queuedMessages} />
-          </TabsContent>
+
 
           <TabsContent value="verify" className="mt-0">
             <VerifyTab
