@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/ledgers/[id]/messages/route";
+import { DELETE } from "@/app/api/ledgers/[id]/messages/[messageId]/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -275,5 +276,64 @@ describe("POST /api/ledgers/[id]/messages", () => {
       unit: "kg",
       originalName: "红富士苹果"
     });
+  });
+
+  it("should delete message and associated transactions", async () => {
+    // 1. Create a message first
+    const createReq = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ text: "待删除的项目 100元" }),
+      }
+    );
+    const createRes = await POST(createReq, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
+    const createData = await createRes.json();
+    const messageId = createData.messageId;
+
+    // Wait for processing to ensure transactions are created
+    const db = getTestDb();
+    let retries = 0;
+    while (retries < 10) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
+
+    // Verify transaction exists
+    const txsBefore = await db.query.transactions.findMany({
+      where: eq(transactions.inputMessageId, messageId),
+    });
+    expect(txsBefore.length).toBeGreaterThan(0);
+
+    // 2. DELETE request
+    const deleteReq = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/messages/${messageId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const deleteRes = await DELETE(deleteReq, {
+      params: Promise.resolve({ id: testLedgerId, messageId }),
+    });
+
+    expect(deleteRes.status).toBe(204);
+
+    // 3. Verify deletion
+    const messageAfter = await db.query.inputMessages.findFirst({
+      where: eq(inputMessages.id, messageId),
+    });
+    expect(messageAfter).toBeUndefined();
+
+    const txsAfter = await db.query.transactions.findMany({
+      where: eq(transactions.inputMessageId, messageId),
+    });
+    expect(txsAfter.length).toBe(0);
   });
 });

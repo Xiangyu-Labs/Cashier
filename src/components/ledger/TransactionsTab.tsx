@@ -7,6 +7,7 @@ import {
     updateTransaction,
     deleteTransaction,
     retryMessage,
+    deleteMessage,
 } from "@/lib/api";
 import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
@@ -44,18 +45,6 @@ type TimelineItem =
         data: Transaction;
     };
 
-function getMessageStatusText(status?: string) {
-    switch (status) {
-        case "processing":
-            return "正在处理...";
-        case "queued":
-            return "排队中...";
-        case "failed":
-            return "处理失败";
-        default:
-            return status || "未知状态";
-    }
-}
 
 function getMessageContentSummary(msg: InputMessage): string {
     if (msg.contentType === "image") return "[图片]";
@@ -135,6 +124,17 @@ export function TransactionsTab({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+        },
+    });
+
+    const deleteMessageMutation = useMutation({
+        mutationFn: async (messageId: string) => {
+            return deleteMessage(ledgerId, messageId);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
 
@@ -249,53 +249,23 @@ export function TransactionsTab({
 
                     if (item.type === "queue") {
                         const msg = item.data;
-                        const isProcessing =
-                            msg.status === "processing" || msg.status === "queued";
+                        const status = msg.status as "queued" | "processing" | "failed" | "completed";
+
+                        // Use BatchTransactionCard even for queue items to show consistent UI
+                        // Passing empty transactions for now as queue items might not have them processed yet
                         return (
-                            <Card
+                            <BatchTransactionCard
                                 key={key}
-                                className="border-dashed border-primary/30 bg-surface2/20"
-                            >
-                                <CardContent className="p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        {isProcessing ? (
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary shrink-0"></div>
-                                        ) : (
-                                            <div className="h-4 w-4 rounded-full bg-danger/20 text-danger flex items-center justify-center shrink-0">
-                                                !
-                                            </div>
-                                        )}
-                                        <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium">
-                                                    {getMessageStatusText(msg.status)}
-                                                </span>
-                                                <span className="text-xs text-muted">
-                                                    {new Date(msg.createdAt).toLocaleTimeString()}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-muted truncate">
-                                                {getMessageContentSummary(msg)}
-                                            </p>
-                                            {msg.error && (
-                                                <p className="text-xs text-danger mt-1">
-                                                    {msg.error}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {msg.status === "failed" && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => retryMessageMutation.mutate(msg)}
-                                            disabled={retryMessageMutation.isPending}
-                                        >
-                                            重试
-                                        </Button>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                inputMessage={msg}
+                                transactions={[]}
+                                categories={categories}
+                                status={status}
+                                onDelete={() => {
+                                    if (confirm("确定要删除这条记录吗？")) {
+                                        deleteMessageMutation.mutate(msg.id);
+                                    }
+                                }}
+                            />
                         );
                     }
 
@@ -307,6 +277,20 @@ export function TransactionsTab({
                                 transactions={item.data.transactions}
                                 categories={categories}
                                 isConfirmed={item.status === "confirmed"}
+                                status={item.status === "confirmed" ? "completed" : "processing"} // Actually logic for 'processing' here is tricky, basically if it's in batch it's parsed.
+                                // If item.status is pending, it means it's waiting for user confirmation? 
+                                // No, 'batch' type in timeline comes from pendingGroups or confirmedGroups.
+                                // pendingGroups means transactions are generated but not confirmed.
+                                // So status is effectively 'queued' (waiting for user) or 'completed' (done/confirmed).
+                                // Let's use 'processing' for pending confirmation? Or just pass undefined/calculated?
+                                // Actually better mapping:
+                                // Pending Confirmation -> status="queued" (waiting action) or maybe "processing"
+                                // Confirmed -> status="completed"
+
+                                // Let's map pending batch to "processing" (since it needs attention) or "queued"?
+                                // "queued" in queue items means generic queue.
+                                // Let's use "processing" for waiting confirmation in the UI sense (waiting user action).
+
                                 onConfirm={async (ids) => {
                                     await confirmBatchMutation.mutateAsync(ids);
                                 }}
@@ -314,6 +298,11 @@ export function TransactionsTab({
                                     updateMutation.mutate({ transactionId: id, data })
                                 }
                                 onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                                onDelete={() => {
+                                    if (confirm("确定要删除这条记录及其关联的所有交易吗？")) {
+                                        deleteMessageMutation.mutate(item.data.inputMessage.id);
+                                    }
+                                }}
                             />
                         );
                     }

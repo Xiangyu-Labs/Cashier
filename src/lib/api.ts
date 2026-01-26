@@ -291,6 +291,19 @@ export function retryMessage(
   );
 }
 
+export function deleteMessage(
+  ledgerId: string,
+  messageId: string
+): Promise<void> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete message"
+  );
+}
+
 // API Keys
 export interface ApiKey {
   id: string;

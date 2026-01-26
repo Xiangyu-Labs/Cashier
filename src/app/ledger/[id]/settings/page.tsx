@@ -180,7 +180,9 @@ export default function LedgerSettingsPage() {
                         <Switch
                             checked={ledger.autoConfirm || false}
                             onCheckedChange={(checked) => updateLedgerMutation.mutate({ autoConfirm: checked })}
+                            className="data-[state=unchecked]:bg-zinc-200 dark:data-[state=unchecked]:bg-zinc-700"
                         />
+
                     </div>
 
                     {ledger.autoConfirm && (
@@ -332,7 +334,7 @@ function ApiKeySection({ ledgerId }: { ledgerId: string }) {
                             <div>
                                 <div className="font-medium text-sm">{key.name}</div>
                                 <div className="text-xs text-[var(--muted)]">
-                                    Created: {new Date(key.createdAt).toLocaleDateString()}
+                                    创建于: {new Date(key.createdAt).toLocaleDateString()}
                                 </div>
                             </div>
                             <Button
@@ -349,7 +351,7 @@ function ApiKeySection({ ledgerId }: { ledgerId: string }) {
 
                 {apiKeys?.length === 0 && !isLoading && (
                     <div className="text-center text-sm text-[var(--muted)] py-4">
-                        No API Keys found (暂无 API Key)
+                        暂无 API Key
                     </div>
                 )}
 
@@ -357,36 +359,34 @@ function ApiKeySection({ ledgerId }: { ledgerId: string }) {
                     {!isCreateOpen ? (
                         <Button onClick={() => setIsCreateOpen(true)} variant="outline" className="w-full">
                             <Plus size={16} className="mr-2" />
-                            Create New Key
+                            创建新密钥
                         </Button>
                     ) : (
                         <div className="space-y-3 bg-[var(--surface2)] p-4 rounded-[var(--radius)]">
                             {!createdKey ? (
                                 <>
-                                    <h4 className="font-medium text-sm">New API Key Name</h4>
+                                    <h4 className="font-medium text-sm">新密钥名称</h4>
                                     <input
                                         type="text"
                                         value={newKeyName}
                                         onChange={(e) => setNewKeyName(e.target.value)}
                                         className="w-full p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                                        placeholder="e.g. My Shortcut"
+                                        placeholder="例如: 我的快捷指令"
                                     />
                                     <div className="flex gap-2 justify-end">
-                                        <Button variant="ghost" size="sm" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                                        <Button variant="ghost" size="sm" onClick={() => setIsCreateOpen(false)}>取消</Button>
                                         <Button size="sm" onClick={handleCreate} disabled={!newKeyName.trim() || createMutation.isPending}>
-                                            {createMutation.isPending ? "Creating..." : "Create"}
+                                            {createMutation.isPending ? "创建中..." : "创建"}
                                         </Button>
                                     </div>
                                 </>
                             ) : (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 text-green-500 font-medium text-sm">
-                                        <Check size={16} /> Key Created!
+                                        <Check size={16} /> 密钥已创建!
                                     </div>
                                     <p className="text-xs text-[var(--muted)]">
-                                        Please copy this key immediately. It will not be shown again.
-                                        <br />
-                                        (请立即复制此 Key，它将不再显示)
+                                        请立即复制此 Key，它将不再显示
                                     </p>
                                     <div className="flex items-center gap-2 p-2 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] font-mono text-sm break-all">
                                         <span className="flex-1">{createdKey.key}</span>
@@ -400,7 +400,7 @@ function ApiKeySection({ ledgerId }: { ledgerId: string }) {
                                         </Button>
                                     </div>
                                     <Button className="w-full" onClick={() => { setCreatedKey(null); setIsCreateOpen(false); }}>
-                                        Done
+                                        完成
                                     </Button>
                                 </div>
                             )}

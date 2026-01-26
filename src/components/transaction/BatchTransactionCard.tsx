@@ -1,10 +1,10 @@
-
 import { InputMessage, Transaction, Category } from "@/types/api";
 import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { Badge } from "@/components/ui/badge";
 import { ImageViewer } from "@/components/ui/image-viewer";
 
 function getSafeImageSrc(data: string): string {
@@ -22,7 +22,7 @@ interface BatchTransactionCardProps {
   categories: Category[];
   isConfirmed?: boolean;
   onConfirm?: (ids: string[]) => Promise<void>;
-  onUpdateTransaction: (
+  onUpdateTransaction?: (
     transactionId: string,
     data: {
       categoryId?: string | null;
@@ -31,7 +31,9 @@ interface BatchTransactionCardProps {
       currency?: string | null;
     }
   ) => void;
-  onDeleteTransaction: (transactionId: string) => void;
+  onDeleteTransaction?: (transactionId: string) => void;
+  onDelete?: () => void;
+  status: "queued" | "processing" | "completed" | "failed";
 }
 
 export function BatchTransactionCard({
@@ -42,6 +44,8 @@ export function BatchTransactionCard({
   onConfirm,
   onUpdateTransaction,
   onDeleteTransaction,
+  onDelete,
+  status,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -50,7 +54,7 @@ export function BatchTransactionCard({
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   // Group transactions by Category ID + Currency
-  const groupedTransactions = useMemo(() => {
+  const { groupedTransactions, totalAmounts } = useMemo(() => {
     const groups: Record<
       string,
       {
@@ -64,10 +68,13 @@ export function BatchTransactionCard({
       }
     > = {};
 
+    const totals: Record<string, number> = {};
+
     transactions.forEach((tx) => {
       const catId = tx.categoryId || "unclassified";
       const currency = tx.currency || "unknown";
       const key = `${catId}-${currency}`;
+      const amount = parseFloat(tx.amount);
 
       if (!groups[key]) {
         groups[key] = {
@@ -81,16 +88,22 @@ export function BatchTransactionCard({
         };
       }
 
-      groups[key].total += parseFloat(tx.amount);
+      groups[key].total += amount;
       groups[key].items.push(tx);
+
+      if (tx.currency) {
+        totals[tx.currency] = (totals[tx.currency] || 0) + amount;
+      }
     });
 
-    return Object.values(groups).sort((a, b) => {
+    const sortedGroups = Object.values(groups).sort((a, b) => {
       // Sort unclassified to top if pending? Or bottom?
       if (a.categoryId === null) return -1;
       if (b.categoryId === null) return 1;
       return b.total - a.total; // Descending by amount
     });
+
+    return { groupedTransactions: sortedGroups, totalAmounts: totals };
   }, [transactions]);
 
   // Parse content based on type
@@ -180,7 +193,43 @@ export function BatchTransactionCard({
             minute: "2-digit",
           })}
         </span>
-        {/* Optional: Add status badge or similar here if needed */}
+        <div className="flex items-center gap-3">
+          {/* Status Badge */}
+          {status === "queued" && (
+            <Badge variant="default" className="font-normal">
+              排队中
+            </Badge>
+          )}
+          {status === "processing" && (
+            <Badge variant="info" className="animate-pulse font-normal">
+              处理中...
+            </Badge>
+          )}
+          {status === "failed" && (
+            <Badge variant="error" className="font-normal">
+              处理失败
+            </Badge>
+          )}
+
+          {/* Total Amount (only if available) */}
+          {(status === "completed" || isConfirmed) && Object.entries(totalAmounts).map(([currency, total]) => (
+            <span key={currency} className="text-sm font-bold text-text">
+              <span className="text-xs text-muted mr-1">{currency}</span>
+              {total.toFixed(2)}
+            </span>
+          ))}
+
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onDelete}
+              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* 2. User Content Section */}
@@ -266,8 +315,8 @@ export function BatchTransactionCard({
                       key={tx.id}
                       transaction={tx}
                       categories={categories}
-                      onUpdate={(data) => onUpdateTransaction(tx.id, data)}
-                      onDelete={() => onDeleteTransaction(tx.id)}
+                      onUpdate={(data) => onUpdateTransaction?.(tx.id, data)}
+                      onDelete={() => onDeleteTransaction?.(tx.id)}
                       hideCategory={true}
                     />
                   ))}
