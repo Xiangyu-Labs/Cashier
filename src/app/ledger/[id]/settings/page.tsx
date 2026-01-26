@@ -12,8 +12,14 @@ import {
     createCategory,
     updateCategory,
     deleteCategory,
-    reorderCategories
+    reorderCategories,
+    fetchApiKeys,
+    createApiKey,
+    deleteApiKey,
+    ApiKey,
 } from "@/lib/api";
+import { Copy, Eye, EyeOff } from "lucide-react";
+
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Category } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -184,6 +190,10 @@ export default function LedgerSettingsPage() {
                         </div>
                     )}
                 </section>
+
+                {/* API Keys Settings */}
+                <ApiKeySection ledgerId={ledgerId} />
+
                 {/* Data Configuration */}
                 <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
                     <h2 className="text-lg font-medium mb-6">数据配置</h2>
@@ -273,6 +283,132 @@ export default function LedgerSettingsPage() {
                 </section>
             </main>
         </div>
+    );
+}
+
+function ApiKeySection({ ledgerId }: { ledgerId: string }) {
+    const queryClient = useQueryClient();
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [newKeyName, setNewKeyName] = useState("");
+    const [createdKey, setCreatedKey] = useState<ApiKey | null>(null);
+
+    const { data: apiKeys, isLoading } = useQuery({
+        queryKey: ["apiKeys", ledgerId],
+        queryFn: () => fetchApiKeys(ledgerId),
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (name: string) => createApiKey(ledgerId, name),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+            setCreatedKey(data);
+            setNewKeyName("");
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (keyId: string) => deleteApiKey(ledgerId, keyId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+        },
+    });
+
+    const handleCreate = () => {
+        if (!newKeyName.trim()) return;
+        createMutation.mutate(newKeyName.trim());
+    };
+
+    return (
+        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <h2 className="text-lg font-medium mb-6">API Keys</h2>
+            <div className="space-y-4">
+                {isLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary)]"></div>
+                    </div>
+                ) : (
+                    apiKeys?.map((key) => (
+                        <div key={key.id} className="flex items-center justify-between p-3 bg-[var(--surface2)] rounded-[var(--radius)]">
+                            <div>
+                                <div className="font-medium text-sm">{key.name}</div>
+                                <div className="text-xs text-[var(--muted)]">
+                                    Created: {new Date(key.createdAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteMutation.mutate(key.id)}
+                                className="text-[var(--danger)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                            >
+                                <Trash2 size={16} />
+                            </Button>
+                        </div>
+                    ))
+                )}
+
+                {apiKeys?.length === 0 && !isLoading && (
+                    <div className="text-center text-sm text-[var(--muted)] py-4">
+                        No API Keys found (暂无 API Key)
+                    </div>
+                )}
+
+                <div className="pt-2">
+                    {!isCreateOpen ? (
+                        <Button onClick={() => setIsCreateOpen(true)} variant="outline" className="w-full">
+                            <Plus size={16} className="mr-2" />
+                            Create New Key
+                        </Button>
+                    ) : (
+                        <div className="space-y-3 bg-[var(--surface2)] p-4 rounded-[var(--radius)]">
+                            {!createdKey ? (
+                                <>
+                                    <h4 className="font-medium text-sm">New API Key Name</h4>
+                                    <input
+                                        type="text"
+                                        value={newKeyName}
+                                        onChange={(e) => setNewKeyName(e.target.value)}
+                                        className="w-full p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                                        placeholder="e.g. My Shortcut"
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                        <Button variant="ghost" size="sm" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                                        <Button size="sm" onClick={handleCreate} disabled={!newKeyName.trim() || createMutation.isPending}>
+                                            {createMutation.isPending ? "Creating..." : "Create"}
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-green-500 font-medium text-sm">
+                                        <Check size={16} /> Key Created!
+                                    </div>
+                                    <p className="text-xs text-[var(--muted)]">
+                                        Please copy this key immediately. It will not be shown again.
+                                        <br />
+                                        (请立即复制此 Key，它将不再显示)
+                                    </p>
+                                    <div className="flex items-center gap-2 p-2 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] font-mono text-sm break-all">
+                                        <span className="flex-1">{createdKey.key}</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => navigator.clipboard.writeText(createdKey.key || "")}
+                                            title="Copy"
+                                        >
+                                            <Copy size={16} />
+                                        </Button>
+                                    </div>
+                                    <Button className="w-full" onClick={() => { setCreatedKey(null); setIsCreateOpen(false); }}>
+                                        Done
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
     );
 }
 

@@ -103,4 +103,15 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      key TEXT NOT NULL UNIQUE,
+      ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMP
+    );
+  `);
 }

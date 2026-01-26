@@ -278,15 +278,53 @@ export function fetchInputMessages(
   );
 }
 
-export function retryMessage(
-  ledgerId: string,
-  messageId: string
-): Promise<{ success: boolean; message: string }> {
+return request(
+  `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
+  {
+    method: "POST",
+  },
+  "Failed to retry message"
+);
+}
+
+// API Keys
+export interface ApiKey {
+  id: string;
+  name: string;
+  key?: string; // Only present on creation usually, but our list might not return it? Checking backend.
+  // Actually, backend 'list' returns all fields including key if we simply use findMany. 
+  // Ideally we mask it, but for this MVP user said "show once" or "manage". 
+  // Let's assume list returns masked or full? 
+  // My backend logic `db.query.apiKeys.findMany` returns everything including the `key`. 
+  // The user requirement said: "create... POST... key... create/delete in settings".
+  // Usually we show key only on creation. 
+  // Let's stick to the plan: List keys (id, name, created_at, last_used), Create -> returns key.
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+export function fetchApiKeys(ledgerId: string): Promise<ApiKey[]> {
+  return request(`${API_BASE}/ledgers/${ledgerId}/api-keys`, undefined, "Failed to fetch API keys");
+}
+
+export function createApiKey(ledgerId: string, name: string): Promise<ApiKey> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
+    `${API_BASE}/ledgers/${ledgerId}/api-keys`,
     {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
     },
-    "Failed to retry message"
+    "Failed to create API key"
+  );
+}
+
+export function deleteApiKey(ledgerId: string, keyId: string): Promise<void> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/api-keys/${keyId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete API key"
   );
 }

@@ -39,10 +39,11 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
+      sql`TRUNCATE transactions, input_messages, categories, ledgers, api_keys CASCADE`
     );
   }
 });
+
 
 afterEach(() => {
   cleanup();

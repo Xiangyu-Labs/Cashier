@@ -145,3 +145,22 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 }));
 
 // 预设分类
+
+// API Keys
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(), // Store raw key for simplicity (sk_...)
+  ledgerId: uuid("ledger_id")
+    .notNull()
+    .references(() => ledgers.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+});
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  ledger: one(ledgers, {
+    fields: [apiKeys.ledgerId],
+    references: [ledgers.id],
+  }),
+}));
