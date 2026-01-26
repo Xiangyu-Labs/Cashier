@@ -17,25 +17,35 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleInit = async () => {
-      if (!isLoading && ledgers) {
-        if (ledgers.length > 0) {
-          router.replace(`/ledger/${ledgers[0].id}`);
-        } else if (!creatingRef.current) {
-          // Auto create default ledger
-          creatingRef.current = true;
-          setStatusText("正在创建默认账本...");
+      // Wait for loading to finish
+      if (isLoading || !ledgers) {
+        return;
+      }
 
-          try {
-            const newLedger = await createLedger({
-              name: "我的账本",
-            });
-            router.replace(`/ledger/${newLedger.id}`);
-          } catch (error) {
-            console.error("Failed to auto-create ledger:", error);
-            creatingRef.current = false;
-            router.replace("/ledgers");
-          }
-        }
+      // If ledgers exist, redirect to the first one
+      if (ledgers.length > 0) {
+        router.replace(`/ledger/${ledgers[0].id}`);
+        return;
+      }
+
+      // If already creating, do nothing
+      if (creatingRef.current) {
+        return;
+      }
+
+      // Auto create default ledger
+      creatingRef.current = true;
+      setStatusText("正在创建默认账本...");
+
+      try {
+        const newLedger = await createLedger({
+          name: "我的账本",
+        });
+        router.replace(`/ledger/${newLedger.id}`);
+      } catch (error) {
+        console.error("Failed to auto-create ledger:", error);
+        creatingRef.current = false;
+        router.replace("/ledgers");
       }
     };
 

@@ -10,123 +10,145 @@ import {
 
 const API_BASE = "/api";
 
-// Settings API
-export async function fetchSettings(): Promise<Settings> {
-  const res = await fetch(`${API_BASE}/settings`);
-  if (!res.ok) throw new Error("Failed to fetch settings");
+async function request<T>(
+  url: string,
+  options?: RequestInit,
+  errorMessage = "Request failed"
+): Promise<T> {
+  const res = await fetch(url, options);
+  if (!res.ok) throw new Error(errorMessage);
+  // Handle 204 No Content or empty responses if needed, but current API seems to always return JSON or void
+  // If void/no content is possible, we might need to check content-length or status text
+  if (res.status === 204) return {} as T;
   return res.json();
 }
 
-export async function updateSettings(data: Partial<Settings>): Promise<Settings> {
-  const res = await fetch(`${API_BASE}/settings`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update settings");
-  return res.json();
+// Settings API
+export function fetchSettings(): Promise<Settings> {
+  return request(`${API_BASE}/settings`, undefined, "Failed to fetch settings");
+}
+
+export function updateSettings(data: Partial<Settings>): Promise<Settings> {
+  return request(
+    `${API_BASE}/settings`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to update settings"
+  );
 }
 
 // Ledger API
-export async function fetchLedgers(): Promise<Ledger[]> {
-  const res = await fetch(`${API_BASE}/ledgers`);
-  if (!res.ok) throw new Error("Failed to fetch ledgers");
-  return res.json();
+export function fetchLedgers(): Promise<Ledger[]> {
+  return request(`${API_BASE}/ledgers`, undefined, "Failed to fetch ledgers");
 }
 
-export async function fetchLedger(id: string): Promise<Ledger> {
-  const res = await fetch(`${API_BASE}/ledgers/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch ledger");
-  return res.json();
+export function fetchLedger(id: string): Promise<Ledger> {
+  return request(`${API_BASE}/ledgers/${id}`, undefined, "Failed to fetch ledger");
 }
 
-export async function createLedger(data: {
-  name: string;
-}): Promise<Ledger> {
-  const res = await fetch(`${API_BASE}/ledgers`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create ledger");
-  return res.json();
+export function createLedger(data: { name: string }): Promise<Ledger> {
+  return request(
+    `${API_BASE}/ledgers`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to create ledger"
+  );
 }
 
-export async function updateLedger(
+export function updateLedger(
   id: string,
   data: { name?: string; language?: string; currencies?: string[] }
 ): Promise<Ledger> {
-  const res = await fetch(`${API_BASE}/ledgers/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update ledger");
-  return res.json();
+  return request(
+    `${API_BASE}/ledgers/${id}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to update ledger"
+  );
 }
 
-export async function deleteLedger(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/ledgers/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete ledger");
+export function deleteLedger(id: string): Promise<void> {
+  return request(
+    `${API_BASE}/ledgers/${id}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete ledger"
+  );
 }
 
-// Category API (Global, but using placeholder ID for route compatibility)
+// Category API
 // We use "global" as the ID since the backend logic ignores it now.
 const GLOBAL_ID = "global";
 
-export async function fetchCategories(ledgerId: string = GLOBAL_ID): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/ledgers/${ledgerId}/categories`);
-  if (!res.ok) throw new Error("Failed to fetch categories");
-  return res.json();
+export function fetchCategories(ledgerId: string = GLOBAL_ID): Promise<Category[]> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/categories`,
+    undefined,
+    "Failed to fetch categories"
+  );
 }
 
-export async function createCategory(
+export function createCategory(
   ledgerId: string = GLOBAL_ID,
   data: { name: string; description?: string; icon?: string }
 ): Promise<Category> {
-  const res = await fetch(`${API_BASE}/ledgers/${ledgerId}/categories`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create category");
-  return res.json();
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/categories`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to create category"
+  );
 }
 
-export async function updateCategory(
+export function updateCategory(
   ledgerId: string = GLOBAL_ID,
   categoryId: string,
-  data: { name?: string; description?: string; icon?: string; sortOrder?: number }
+  data: {
+    name?: string;
+    description?: string;
+    icon?: string;
+    sortOrder?: number;
+  }
 ): Promise<Category> {
-  const res = await fetch(
+  return request(
     `${API_BASE}/ledgers/${ledgerId}/categories/${categoryId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }
+    },
+    "Failed to update category"
   );
-  if (!res.ok) throw new Error("Failed to update category");
-  return res.json();
 }
 
-export async function deleteCategory(
+export function deleteCategory(
   ledgerId: string = GLOBAL_ID,
   categoryId: string
 ): Promise<void> {
-  const res = await fetch(
+  return request(
     `${API_BASE}/ledgers/${ledgerId}/categories/${categoryId}`,
     {
       method: "DELETE",
-    }
+    },
+    "Failed to delete category"
   );
-  if (!res.ok) throw new Error("Failed to delete category");
 }
 
 // Transaction API
-export async function fetchTransactions(
+export function fetchTransactions(
   ledgerId: string,
   params?: { status?: "pending" | "confirmed"; limit?: number; offset?: number }
 ): Promise<Transaction[]> {
@@ -135,14 +157,14 @@ export async function fetchTransactions(
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
 
-  const res = await fetch(
-    `${API_BASE}/ledgers/${ledgerId}/transactions?${searchParams}`
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/transactions?${searchParams}`,
+    undefined,
+    "Failed to fetch transactions"
   );
-  if (!res.ok) throw new Error("Failed to fetch transactions");
-  return res.json();
 }
 
-export async function updateTransaction(
+export function updateTransaction(
   ledgerId: string,
   transactionId: string,
   data: {
@@ -154,63 +176,61 @@ export async function updateTransaction(
     status?: "pending" | "confirmed";
   }
 ): Promise<Transaction> {
-  const res = await fetch(
+  return request(
     `${API_BASE}/ledgers/${ledgerId}/transactions/${transactionId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }
+    },
+    "Failed to update transaction"
   );
-  if (!res.ok) throw new Error("Failed to update transaction");
-  return res.json();
 }
 
-export async function deleteTransaction(
+export function deleteTransaction(
   ledgerId: string,
   transactionId: string
 ): Promise<void> {
-  const res = await fetch(
+  return request(
     `${API_BASE}/ledgers/${ledgerId}/transactions/${transactionId}`,
     {
       method: "DELETE",
-    }
+    },
+    "Failed to delete transaction"
   );
-  if (!res.ok) throw new Error("Failed to delete transaction");
 }
 
-export async function confirmTransactions(
+export function confirmTransactions(
   ledgerId: string,
   data: { transactionIds?: string[]; confirmAll?: boolean }
 ): Promise<{ success: boolean; updatedCount: number }> {
-  const res = await fetch(
+  return request(
     `${API_BASE}/ledgers/${ledgerId}/transactions/confirm`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }
+    },
+    "Failed to confirm transactions"
   );
-  if (!res.ok) throw new Error("Failed to confirm transactions");
-  return res.json();
 }
 
-export async function fetchTransactionSummary(
+export function fetchTransactionSummary(
   ledgerId: string,
   status?: "pending" | "confirmed"
 ): Promise<TransactionSummary> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status);
 
-  const res = await fetch(
-    `${API_BASE}/ledgers/${ledgerId}/transactions/summary?${searchParams}`
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/transactions/summary?${searchParams}`,
+    undefined,
+    "Failed to fetch summary"
   );
-  if (!res.ok) throw new Error("Failed to fetch summary");
-  return res.json();
 }
 
 // Message API
-export async function sendMessage(
+export function sendMessage(
   ledgerId: string,
   data: {
     text?: string;
@@ -218,25 +238,27 @@ export async function sendMessage(
     audio?: { data: string; mimeType: string };
   }
 ): Promise<MessageResponse> {
-  const res = await fetch(`${API_BASE}/ledgers/${ledgerId}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to send message");
-  return res.json();
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to send message"
+  );
 }
 
-export async function fetchInputMessages(
+export function fetchInputMessages(
   ledgerId: string,
   status?: string[]
 ): Promise<InputMessage[]> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status.join(","));
 
-  const res = await fetch(
-    `${API_BASE}/ledgers/${ledgerId}/messages?${searchParams}`
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/messages?${searchParams}`,
+    undefined,
+    "Failed to fetch messages"
   );
-  if (!res.ok) throw new Error("Failed to fetch messages");
-  return res.json();
 }

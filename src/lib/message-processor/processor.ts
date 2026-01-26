@@ -89,38 +89,44 @@ export class OpenAIMessageProcessor implements MessageProcessor {
 
   private parseResponse(response: string): ParsedTransaction[] {
     try {
-      // Clean up possible markdown code blocks
-      let cleaned = response.trim();
-      if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.slice(7);
-      } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.slice(3);
-      }
-      if (cleaned.endsWith("```")) {
-        cleaned = cleaned.slice(0, -3);
-      }
-      cleaned = cleaned.trim();
+      // Remove markdown code blocks if present
+      const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
 
       const parsed = JSON.parse(cleaned);
       const validated = aiResponseSchema.parse(parsed);
 
       return validated.transactions.map((t) => {
-        // Construct metadata object if any field exists
-        const metadata = (t.quantity || t.unit_price || t.unit || t.original_name || t.notes) ? {
-          quantity: t.quantity,
-          unitPrice: t.unit_price,
-          unit: t.unit,
-          originalName: t.original_name,
-          notes: t.notes,
-        } : null;
+        const {
+          quantity,
+          unit_price,
+          unit,
+          original_name,
+          notes,
+          item_name,
+          amount,
+          currency,
+          category,
+          transaction_date,
+        } = t;
+
+        const hasMetadata =
+          quantity || unit_price || unit || original_name || notes;
 
         return {
-          itemName: t.item_name,
-          amount: t.amount,
-          currency: t.currency,
-          category: t.category,
-          transactionDate: t.transaction_date,
-          metadata
+          itemName: item_name,
+          amount,
+          currency,
+          category,
+          transactionDate: transaction_date,
+          metadata: hasMetadata
+            ? {
+              quantity,
+              unitPrice: unit_price,
+              unit,
+              originalName: original_name,
+              notes,
+            }
+            : null,
         };
       });
     } catch (error) {
