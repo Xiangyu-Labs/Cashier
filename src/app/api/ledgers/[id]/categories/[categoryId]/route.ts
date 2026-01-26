@@ -16,7 +16,7 @@ type RouteParams = { params: Promise<{ id: string; categoryId: string }> };
 // PATCH /api/ledgers/[id]/categories/[categoryId] - 更新分类
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id: ledgerId, categoryId } = await params;
+    const { categoryId } = await params;
     const body = await request.json();
     const validated = updateCategorySchema.parse(body);
 
@@ -26,9 +26,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...validated,
         updatedAt: new Date(),
       })
-      .where(
-        and(eq(categories.id, categoryId), eq(categories.ledgerId, ledgerId))
-      )
+      .where(eq(categories.id, categoryId))
       .returning();
 
     if (!updated) {
@@ -57,12 +55,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/ledgers/[id]/categories/[categoryId] - 删除分类
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id: ledgerId, categoryId } = await params;
+    const { categoryId } = await params;
     const [deleted] = await db
       .delete(categories)
-      .where(
-        and(eq(categories.id, categoryId), eq(categories.ledgerId, ledgerId))
-      )
+      .where(eq(categories.id, categoryId))
       .returning();
 
     if (!deleted) {

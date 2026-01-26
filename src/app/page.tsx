@@ -28,7 +28,6 @@ export default function HomePage() {
           try {
             const newLedger = await createLedger({
               name: "我的账本",
-              language: "zh-CN"
             });
             router.replace(`/ledger/${newLedger.id}`);
           } catch (error) {
