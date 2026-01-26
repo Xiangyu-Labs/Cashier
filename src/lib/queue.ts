@@ -36,37 +36,13 @@ async function processNextMessage() {
         .where(eq(inputMessages.id, nextMessage.id));
 
     try {
-
-
         // Fetch global categories
         const allCategories = await db.query.categories.findMany({
             orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
         });
 
         // Parse content back to MessageInput
-        let messageInput: MessageInput;
-        try {
-            if (nextMessage.contentType === "text") {
-                messageInput = { text: nextMessage.content };
-            } else if (nextMessage.contentType === "image") {
-                // Check if content is JSON array or single string
-                if (nextMessage.content.startsWith("[")) {
-                    const images = JSON.parse(nextMessage.content);
-                    messageInput = {
-                        images: images.map((data: string) => ({ data, mimeType: "image/jpeg" })), // Simplification, mimeType might be lost if not stored separately
-                    };
-                } else {
-                    messageInput = {
-                        images: [{ data: nextMessage.content, mimeType: "image/jpeg" }],
-                    };
-                }
-            } else {
-                // mixed or complex json
-                messageInput = JSON.parse(nextMessage.content);
-            }
-        } catch {
-            throw new Error("Failed to parse message content");
-        }
+        const messageInput = parseMessageContent(nextMessage);
 
         // Fetch ledger settings
         const ledger = await db.query.ledgers.findFirst({
@@ -140,5 +116,30 @@ async function processNextMessage() {
     } finally {
         // 7. Process next message (Recursive-like but async safe)
         await processNextMessage();
+    }
+}
+
+function parseMessageContent(message: typeof inputMessages.$inferSelect): MessageInput {
+    try {
+        if (message.contentType === "text") {
+            return { text: message.content };
+        } else if (message.contentType === "image") {
+            // Check if content is JSON array or single string
+            if (message.content.startsWith("[")) {
+                const images = JSON.parse(message.content);
+                return {
+                    images: images.map((data: string) => ({ data, mimeType: "image/jpeg" })), // Simplification
+                };
+            } else {
+                return {
+                    images: [{ data: message.content, mimeType: "image/jpeg" }],
+                };
+            }
+        } else {
+            // mixed or complex json
+            return JSON.parse(message.content);
+        }
+    } catch {
+        throw new Error("Failed to parse message content");
     }
 }

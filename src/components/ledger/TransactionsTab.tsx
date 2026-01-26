@@ -8,7 +8,6 @@ import { BatchTransactionCard } from "@/components/transaction/BatchTransactionC
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStatus";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -75,45 +74,30 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
 
 
     const pendingCount = pendingGroups.batches.length + pendingGroups.others.length;
+    const failedMessages = queuedMessages?.filter(m => m.status === 'failed') || [];
+    const hasFailedMessages = failedMessages.length > 0;
 
-    // Combine lists? Or keep sections?
-    // User wants "Merge details and check two tabs".
-    // Usually a timeline view is best.
-
-    // Let's mix them. Sort by date?
-    // Messages have createdAt. Transactions have transactionDate or createdAt.
-    // Batches are grouped by InputMessage. We can sort batches by InputMessage.createdAt.
-    // "Others" (single transactions) have createdAt.
-
-    // Let's create a unified list of "Items" to render.
-    // Item can be: QueueStatus (Processing/Failed), Batch (Pending/Confirmed), SingleTransaction (Pending/Confirmed).
-
-    // 1. Queued/Failed Messages
+    // Prepare unified timeline items
     const queueItems = (queuedMessages || []).map(msg => ({
         type: 'queue' as const,
         date: msg.createdAt,
         data: msg
     }));
 
-    // 2. Batches (Pending)
     const pendingBatchItems = pendingGroups.batches.map(batch => ({
-        type: 'batch',
-        status: 'pending',
+        type: 'batch' as const,
+        status: 'pending' as const,
         date: batch.inputMessage.createdAt,
         data: batch
     }));
 
-    // 3. Batches (Confirmed)
     const confirmedBatchItems = confirmedGroups.batches.map(batch => ({
-        type: 'batch',
-        status: 'confirmed',
+        type: 'batch' as const,
+        status: 'confirmed' as const,
         date: batch.inputMessage.createdAt,
         data: batch
     }));
 
-    // 4. Singles (Pending) -> Wrapped in a card? Or individual?
-    // Let's group "others" by day maybe? Or just list them.
-    // Simplest: Treat each "Other" transaction as an item.
     const pendingSingleItems = pendingGroups.others.map(tx => ({
         type: 'single' as const,
         status: 'pending' as const,
@@ -128,16 +112,10 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
         data: tx
     }));
 
-    type TimelineItem =
-        | { type: 'queue'; date: string; data: InputMessage }
-        | { type: 'batch'; status: 'pending' | 'confirmed'; date: string; data: { inputMessage: InputMessage; transactions: Transaction[] } }
-        | { type: 'single'; status: 'pending' | 'confirmed'; date: string; data: Transaction };
-
-    // Merge and Sort
-    const allItems: TimelineItem[] = [
+    const allItems = [
         ...queueItems,
-        ...pendingBatchItems.map(i => ({ ...i, type: 'batch' as const, status: 'pending' as const })),
-        ...confirmedBatchItems.map(i => ({ ...i, type: 'batch' as const, status: 'confirmed' as const })),
+        ...pendingBatchItems,
+        ...confirmedBatchItems,
         ...pendingSingleItems,
         ...confirmedSingleItems
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -146,23 +124,22 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
     return (
         <div className="space-y-4">
             {/* Header Action for Pending */}
-            {(pendingCount > 0 || (queuedMessages && queuedMessages.some(m => m.status === 'failed'))) && (
+            {(pendingCount > 0 || hasFailedMessages) && (
                 <div className="flex justify-between items-center bg-surface2/30 p-3 rounded-lg border border-border mb-4">
                     <span className="text-sm font-medium text-muted">
                         {pendingCount > 0 ? `待确认 ${pendingCount} 项` : ""}
-                        {pendingCount > 0 && queuedMessages?.some(m => m.status === 'failed') ? "，" : ""}
-                        {queuedMessages?.some(m => m.status === 'failed') ? `有 ${queuedMessages.filter(m => m.status === 'failed').length} 个失败` : ""}
+                        {pendingCount > 0 && hasFailedMessages ? "，" : ""}
+                        {hasFailedMessages ? `有 ${failedMessages.length} 个失败` : ""}
                     </span>
                     <div className="flex gap-2">
-                        {queuedMessages && queuedMessages.some(m => m.status === 'failed') && (
+                        {hasFailedMessages && (
                             <Button
                                 variant="destructive"
                                 size="sm"
                                 disabled={confirmingAll}
                                 onClick={async () => {
                                     setConfirmingAll(true);
-                                    const failed = queuedMessages.filter(m => m.status === 'failed');
-                                    await Promise.all(failed.map(msg => retryMessage(ledgerId, msg.id)));
+                                    await Promise.all(failedMessages.map(msg => retryMessage(ledgerId, msg.id)));
                                     queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
                                     setConfirmingAll(false);
                                 }}
@@ -186,7 +163,7 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
             )}
 
             <div className="space-y-6">
-                {allItems.map((item, index) => {
+                {allItems.map((item) => {
                     const key = item.type === 'queue' ? (item.data as InputMessage).id
                         : item.type === 'batch' ? (item.data as any).inputMessage.id
                             : (item.data as Transaction).id;
@@ -250,7 +227,6 @@ export function TransactionsTab({ ledgerId, pendingGroups, confirmedGroups, queu
 
                     if (item.type === 'batch') {
                         const batch = item.data as { inputMessage: InputMessage; transactions: Transaction[] };
-                        // We need to differentiate status visually? BatchTransactionCard handles "isConfirmed" prop.
                         return (
                             <BatchTransactionCard
                                 key={key}
