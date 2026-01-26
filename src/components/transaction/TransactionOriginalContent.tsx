@@ -1,4 +1,6 @@
 import { FileText, Image as ImageIcon, Mic } from "lucide-react";
+import { useState } from "react";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 interface TransactionOriginalContentProps {
     content: string;
@@ -9,6 +11,8 @@ export function TransactionOriginalContent({
     content,
     contentType,
 }: TransactionOriginalContentProps) {
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
     switch (contentType) {
         case "text":
             return (
@@ -39,10 +43,17 @@ export function TransactionOriginalContent({
                                 key={idx}
                                 src={imgSrc}
                                 alt={`原始图片 ${idx + 1}`}
-                                className="max-w-full max-h-48 rounded-lg border border-border object-contain"
+                                className="max-w-full max-h-48 rounded-lg border border-border object-contain cursor-pointer hover:opacity-90"
+                                onClick={() => setSelectedImageIndex(idx)}
                             />
                         ))}
                     </div>
+                    <ImageViewer
+                        images={images}
+                        initialIndex={selectedImageIndex ?? 0}
+                        open={selectedImageIndex !== null}
+                        onOpenChange={(open) => !open && setSelectedImageIndex(null)}
+                    />
                 </div>
             );
         }

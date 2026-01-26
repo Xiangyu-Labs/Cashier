@@ -5,7 +5,8 @@ import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ImageViewer } from "@/components/ui/image-viewer";
+
 
 interface BatchTransactionCardProps {
   inputMessage: InputMessage;
@@ -35,7 +36,7 @@ export function BatchTransactionCard({
   onDeleteTransaction,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   // Track expanded categories. Default to open for pending? No, user asked for breakdown.
   // "Click beverage, see all items". So default closed.
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -183,7 +184,7 @@ export function BatchTransactionCard({
               <div
                 key={idx}
                 className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setSelectedImage(img)}
+                onClick={() => setSelectedImageIndex(idx)}
               >
                 <img
                   src={img}
@@ -282,22 +283,13 @@ export function BatchTransactionCard({
         </div>
       )}
 
-      {/* Image Zoom Dialog */}
-      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center">
-          <DialogTitle className="sr-only">Image Zoom</DialogTitle>
-          <DialogDescription className="sr-only">Zoomed view of the transaction image</DialogDescription>
-          {selectedImage && (
-            <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
-              <img
-                src={selectedImage}
-                alt="Zoomed"
-                className="max-w-full max-h-[90vh] object-contain pointer-events-auto"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* ImageViewer Component */}
+      <ImageViewer
+        images={images}
+        initialIndex={typeof selectedImageIndex === 'number' ? selectedImageIndex : 0}
+        open={selectedImageIndex !== null}
+        onOpenChange={(open) => !open && setSelectedImageIndex(null)}
+      />
     </div>
   );
 }

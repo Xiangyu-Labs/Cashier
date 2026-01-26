@@ -11,13 +11,13 @@ const badgeVariants = cva(
         default:
           "border-transparent bg-surface2 text-text hover:bg-surface2/80",
         success:
-          "border-transparent bg-[rgba(16,163,127,0.2)] text-primary hover:bg-[rgba(16,163,127,0.3)]",
+          "border-transparent bg-primary/20 text-primary hover:bg-primary/30",
         warning:
-          "border-transparent bg-[rgba(245,158,11,0.2)] text-warning hover:bg-[rgba(245,158,11,0.3)]",
+          "border-transparent bg-warning/20 text-warning hover:bg-warning/30",
         error:
-          "border-transparent bg-[rgba(239,68,68,0.2)] text-danger hover:bg-[rgba(239,68,68,0.3)]",
+          "border-transparent bg-danger/20 text-danger hover:bg-danger/30",
         info:
-          "border-transparent bg-[rgba(59,130,246,0.2)] text-info hover:bg-[rgba(59,130,246,0.3)]",
+          "border-transparent bg-info/20 text-info hover:bg-info/30",
         outline: "text-text",
       },
     },
@@ -29,7 +29,7 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+  VariantProps<typeof badgeVariants> { }
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
