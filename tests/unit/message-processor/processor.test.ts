@@ -17,7 +17,6 @@ describe("OpenAIMessageProcessor", () => {
   let mockGenerateContent: ReturnType<typeof vi.fn>;
 
   const defaultContext: ProcessorContext = {
-    ledgerId: "test-ledger-id",
     language: "zh-CN",
     categories: [
       { id: "cat-1", name: "餐饮", description: "外卖、堂食" },

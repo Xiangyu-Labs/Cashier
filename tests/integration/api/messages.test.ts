@@ -33,16 +33,24 @@ describe("POST /api/ledgers/[id]/messages", () => {
       .returning();
     testLedgerId = ledger.id;
 
-    const [category] = await db
-      .insert(categories)
-      .values({
-        ledgerId: testLedgerId,
-        name: "餐饮",
-        description: "外卖、堂食",
-        sortOrder: 1,
-      })
-      .returning();
-    testCategoryId = category.id;
+    const category = await db.query.categories.findFirst({
+      where: eq(categories.name, "餐饮"),
+    });
+
+    // Fallback if not seeded (though setup should seed it)
+    if (category) {
+      testCategoryId = category.id;
+    } else {
+      const [newCat] = await db
+        .insert(categories)
+        .values({
+          name: "餐饮",
+          description: "外卖、堂食",
+          sortOrder: 1,
+        })
+        .returning();
+      testCategoryId = newCat.id;
+    }
   });
 
   it("should process text message and create pending transaction", async () => {

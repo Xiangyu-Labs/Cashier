@@ -35,6 +35,10 @@ beforeEach(async () => {
     await testDb.execute(
       sql`TRUNCATE transactions, input_messages, categories, ledgers CASCADE`
     );
+    // Seed default categories
+    if (schema.DEFAULT_CATEGORIES && schema.DEFAULT_CATEGORIES.length > 0) {
+      await testDb.insert(schema.categories).values(schema.DEFAULT_CATEGORIES);
+    }
   }
 });
 
@@ -44,6 +48,7 @@ afterEach(() => {
 
 async function runMigrations() {
   // Drop tables to ensure clean state with new schema
+  await testDb.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
   await testDb.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
   await testDb.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
   await testDb.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
@@ -77,10 +82,19 @@ async function runMigrations() {
 
   // Create tables
   await testDb.execute(sql`
+    CREATE TABLE IF NOT EXISTS settings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      language TEXT NOT NULL DEFAULT 'zh-CN',
+      currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await testDb.execute(sql`
     CREATE TABLE IF NOT EXISTS ledgers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name TEXT NOT NULL,
-      language TEXT NOT NULL DEFAULT 'zh-CN',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
@@ -89,7 +103,6 @@ async function runMigrations() {
   await testDb.execute(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       description TEXT,
       icon TEXT,

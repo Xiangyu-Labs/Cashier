@@ -6,7 +6,6 @@ import { z } from "zod";
 
 const updateLedgerSchema = z.object({
   name: z.string().min(1).optional(),
-  language: z.string().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -15,13 +14,10 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+    // Categories are no longer a relation of ledger directly in the schema logic (global).
+    // The frontend should fetch categories separately if needed, or use the global categories API.
     const ledger = await db.query.ledgers.findFirst({
       where: eq(ledgers.id, id),
-      with: {
-        categories: {
-          orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
-        },
-      },
     });
 
     if (!ledger) {

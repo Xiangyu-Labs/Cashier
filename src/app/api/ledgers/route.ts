@@ -6,7 +6,6 @@ import { z } from "zod";
 
 const createLedgerSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  language: z.string().default("zh-CN"),
 });
 
 // GET /api/ledgers - 获取所有账本
@@ -25,7 +24,7 @@ export async function GET() {
   }
 }
 
-// POST /api/ledgers - 创建新账本（含预设分类）
+// POST /api/ledgers - 创建新账本
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -36,20 +35,8 @@ export async function POST(request: NextRequest) {
       .insert(ledgers)
       .values({
         name: validated.name,
-        language: validated.language,
       })
       .returning();
-
-    // 创建预设分类
-    await db.insert(categories).values(
-      DEFAULT_CATEGORIES.map((cat) => ({
-        ledgerId: newLedger.id,
-        name: cat.name,
-        description: cat.description,
-        icon: cat.icon,
-        sortOrder: cat.sortOrder,
-      }))
-    );
 
     return NextResponse.json(newLedger, { status: 201 });
   } catch (error) {

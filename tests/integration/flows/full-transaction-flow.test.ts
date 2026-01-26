@@ -6,7 +6,7 @@ import { POST as sendMessage } from "@/app/api/ledgers/[id]/messages/route";
 import { GET as getTransactions } from "@/app/api/ledgers/[id]/transactions/route";
 import { GET as getCategories } from "@/app/api/ledgers/[id]/categories/route";
 import { getTestDb } from "../../setup";
-import { inputMessages, transactions } from "@/lib/db/schema";
+import { inputMessages, transactions, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
@@ -22,7 +22,7 @@ describe("Full Transaction Flow", () => {
     // Step 1: Create a new ledger
     const createRequest = new NextRequest("http://localhost/api/ledgers", {
       method: "POST",
-      body: JSON.stringify({ name: "E2E Test Ledger", language: "zh-CN" }),
+      body: JSON.stringify({ name: "E2E Test Ledger" }),
     });
 
     const createResponse = await createLedger(createRequest);
@@ -32,17 +32,23 @@ describe("Full Transaction Flow", () => {
     expect(ledger.id).toBeDefined();
     expect(ledger.name).toBe("E2E Test Ledger");
 
-    // Step 2: Verify ledger was created with categories
+    // Step 2: Verify ledger was created (and categories exist globally)
     const getResponse = await getLedger(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const ledgerWithCategories = await getResponse.json();
-
+    const fetchedLedger = await getResponse.json();
     expect(getResponse.status).toBe(200);
-    expect(ledgerWithCategories.categories.length).toBeGreaterThan(0);
-    expect(ledgerWithCategories.categories.map((c: any) => c.name)).toContain("餐饮");
-    expect(ledgerWithCategories.categories.map((c: any) => c.name)).toContain("交通");
+    expect(fetchedLedger.id).toBe(ledger.id);
+
+    // Verify categories via Categories API
+    const catResponse = await getCategories(
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/categories`),
+      { params: Promise.resolve({ id: ledger.id }) }
+    );
+    const fetchedCategories = await catResponse.json();
+    expect(fetchedCategories.length).toBeGreaterThanOrEqual(2);
+    expect(fetchedCategories.map((c: any) => c.name)).toContain("餐饮");
 
     // Step 3: Send a message to create transactions
     const messageRequest = new NextRequest(

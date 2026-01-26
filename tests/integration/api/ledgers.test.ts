@@ -33,7 +33,7 @@ describe("GET /api/ledgers", () => {
 });
 
 describe("POST /api/ledgers", () => {
-  it("should create a new ledger with default categories", async () => {
+  it("should create a new ledger", async () => {
     const request = new NextRequest("http://localhost/api/ledgers", {
       method: "POST",
       body: JSON.stringify({ name: "New Ledger" }),
@@ -44,16 +44,7 @@ describe("POST /api/ledgers", () => {
 
     expect(response.status).toBe(201);
     expect(data.name).toBe("New Ledger");
-    expect(data.language).toBe("zh-CN");
     expect(data.id).toBeDefined();
-
-    // Verify categories were created
-    const db = getTestDb();
-    const cats = await db.query.categories.findMany({
-      where: eq(categories.ledgerId, data.id),
-    });
-    expect(cats.length).toBeGreaterThan(0);
-    expect(cats.map((c) => c.name)).toContain("餐饮");
   });
 
   it("should return 400 for missing name", async () => {
@@ -78,18 +69,5 @@ describe("POST /api/ledgers", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
-  });
-
-  it("should accept custom language", async () => {
-    const request = new NextRequest("http://localhost/api/ledgers", {
-      method: "POST",
-      body: JSON.stringify({ name: "English Ledger", language: "en" }),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(201);
-    expect(data.language).toBe("en");
   });
 });
