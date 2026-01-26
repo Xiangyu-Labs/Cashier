@@ -1,6 +1,6 @@
-import { Part } from "@google/generative-ai";
+import { ChatCompletionContentPart, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
-import { getGeminiClient } from "../ai/gemini";
+import { getOpenAIClient } from "../ai/openai";
 import { buildTransactionPrompt } from "../ai/prompts";
 import {
   MessageInput,
@@ -13,7 +13,7 @@ import {
 // Zod schema for validating AI response
 const transactionSchema = z.object({
   item_name: z.string(),
-  amount: z.number().nonnegative(),
+  amount: z.number().positive(),
   currency: z.string().nullable(),
   category: z.string().nullable(),
   transaction_date: z.string().nullable(),
@@ -28,55 +28,57 @@ const aiResponseSchema = z.object({
   transactions: z.array(transactionSchema),
 });
 
-export class GeminiMessageProcessor implements MessageProcessor {
+export class OpenAIMessageProcessor implements MessageProcessor {
   async process(
     input: MessageInput,
     context: ProcessorContext
   ): Promise<ProcessResult> {
-    const client = getGeminiClient();
+    const client = getOpenAIClient();
     const systemPrompt = buildTransactionPrompt(context.language, context.categories);
 
-    // 构建多模态内容
-    const parts: Part[] = [];
+    // Construct user message content parts
+    const contentParts: ChatCompletionContentPart[] = [];
 
-    // 添加文本
+    // Add text
     if (input.text) {
-      parts.push({ text: input.text });
+      contentParts.push({ type: "text", text: input.text });
     }
 
-    // 添加图片
+    // Add images
     if (input.images && input.images.length > 0) {
       for (const image of input.images) {
         if (image.data.startsWith("data:")) {
-          // Base64 data URL
-          const base64Data = image.data.split(",")[1];
-          parts.push({
-            inlineData: {
-              mimeType: image.mimeType,
-              data: base64Data,
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: image.data,
             },
           });
         } else {
-          // 假设是 base64 字符串
-          parts.push({
-            inlineData: {
-              mimeType: image.mimeType,
-              data: image.data,
+          // Assume valid base64, construct data URL
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${image.mimeType};base64,${image.data}`,
             },
           });
         }
       }
     }
 
-    // 如果没有任何内容，添加一个提示
-    if (parts.length === 0) {
-      parts.push({ text: "（无输入内容）" });
+    // If no content, add a placeholder hint (though validation should prevent this)
+    if (contentParts.length === 0) {
+      contentParts.push({ type: "text", text: "（无输入内容）" });
     }
 
-    // 调用 Gemini API
-    const rawResponse = await client.generateContent(systemPrompt, parts);
+    const messages: ChatCompletionMessageParam[] = [
+      { role: "user", content: contentParts },
+    ];
 
-    // 解析响应
+    // Call OpenAI API
+    const rawResponse = await client.generateContent(systemPrompt, messages);
+
+    // Parse response
     const transactions = this.parseResponse(rawResponse);
 
     return {
@@ -87,7 +89,7 @@ export class GeminiMessageProcessor implements MessageProcessor {
 
   private parseResponse(response: string): ParsedTransaction[] {
     try {
-      // 清理可能的 markdown 代码块
+      // Clean up possible markdown code blocks
       let cleaned = response.trim();
       if (cleaned.startsWith("```json")) {
         cleaned = cleaned.slice(7);
@@ -129,12 +131,12 @@ export class GeminiMessageProcessor implements MessageProcessor {
   }
 }
 
-// 单例实例
-let processor: GeminiMessageProcessor | null = null;
+// Singleton instance
+let processor: OpenAIMessageProcessor | null = null;
 
 export function getMessageProcessor(): MessageProcessor {
   if (!processor) {
-    processor = new GeminiMessageProcessor();
+    processor = new OpenAIMessageProcessor();
   }
   return processor;
 }

@@ -4,16 +4,16 @@ import { POST } from "@/app/api/ledgers/[id]/messages/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { MOCK_RESPONSES } from "../../helpers/mocks/gemini";
+import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
-// Mock Gemini
-vi.mock("@/lib/ai/gemini", () => ({
-  getGeminiClient: vi.fn(() => ({
+// Mock OpenAI
+vi.mock("@/lib/ai/openai", () => ({
+  getOpenAIClient: vi.fn(() => ({
     generateContent: vi.fn(),
   })),
 }));
 
-import { getGeminiClient } from "@/lib/ai/gemini";
+import { getOpenAIClient } from "@/lib/ai/openai";
 
 describe("POST /api/ledgers/[id]/messages", () => {
   let testLedgerId: string;
@@ -21,7 +21,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   beforeEach(async () => {
     // Reset mock to default
-    vi.mocked(getGeminiClient).mockReturnValue({
+    vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.singleTransaction),
     } as any);
 
@@ -221,7 +221,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should persist transactions with metadata", async () => {
     // Override mock for this test
-    vi.mocked(getGeminiClient).mockReturnValue({
+    vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata),
     } as any);
 

@@ -8,11 +8,11 @@ import { GET as getCategories } from "@/app/api/ledgers/[id]/categories/route";
 import { getTestDb } from "../../setup";
 import { inputMessages, transactions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { MOCK_RESPONSES } from "../../helpers/mocks/gemini";
+import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
-// Mock Gemini for all E2E tests
-vi.mock("@/lib/ai/gemini", () => ({
-  getGeminiClient: () => ({
+// Mock OpenAI for all E2E tests
+vi.mock("@/lib/ai/openai", () => ({
+  getOpenAIClient: () => ({
     generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.multipleTransactions),
   }),
 }));
@@ -60,11 +60,22 @@ describe("Full Transaction Flow", () => {
 
     expect(messageResponse.status).toBe(200);
     expect(messageResult.messageId).toBeDefined();
-    expect(messageResult.transactions).toHaveLength(2);
-    expect(messageResult.transactions[0].status).toBe("pending");
-    expect(messageResult.transactions[1].status).toBe("pending");
+    expect(messageResult.status).toBe("queued");
+
+    // Wait for processing
+    const db = getTestDb();
+    let retries = 0;
+    while (retries < 20) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, messageResult.messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
 
     // Step 4: Verify transactions are persisted
+    // Fetch transactions directly from API or DB
     const transactionsRequest = new NextRequest(
       `http://localhost/api/ledgers/${ledger.id}/transactions`
     );
@@ -80,7 +91,6 @@ describe("Full Transaction Flow", () => {
     expect(allTransactions.map((t: any) => t.itemName)).toContain("面包");
 
     // Step 5: Verify input message was saved with AI response
-    const db = getTestDb();
     const savedMessage = await db.query.inputMessages.findFirst({
       where: eq(inputMessages.id, messageResult.messageId),
     });
@@ -99,13 +109,26 @@ describe("Full Transaction Flow", () => {
     const ledger = await (await createLedger(createRequest)).json();
 
     // Create pending transactions via message
-    await sendMessage(
+    const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/messages`, {
         method: "POST",
         body: JSON.stringify({ text: "test expense" }),
       }),
       { params: Promise.resolve({ id: ledger.id }) }
     );
+    const messageResult = await messageResponse.json();
+
+    // Wait for processing
+    const db = getTestDb();
+    let retries = 0;
+    while (retries < 20) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, messageResult.messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
 
     // Filter by pending status
     const pendingRequest = new NextRequest(
@@ -149,8 +172,19 @@ describe("Full Transaction Flow", () => {
     );
     const messageResult = await messageResponse.json();
 
-    // Verify data exists
+    // Wait for processing
     const db = getTestDb();
+    let retries = 0;
+    while (retries < 20) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, messageResult.messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
+
+    // Verify data exists
     let txCount = await db.query.transactions.findMany({
       where: eq(transactions.ledgerId, ledger.id),
     });
@@ -226,13 +260,26 @@ describe("Full Transaction Flow", () => {
     expect(dailyCategory).toBeDefined();
 
     // Send message (mock returns 牛奶 -> 日用品, 面包 -> 餐饮)
-    await sendMessage(
+    const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/messages`, {
         method: "POST",
         body: JSON.stringify({ text: "购物清单" }),
       }),
       { params: Promise.resolve({ id: ledger.id }) }
     );
+    const messageResult = await messageResponse.json();
+
+    // Wait for processing
+    const db = getTestDb();
+    let retries = 0;
+    while (retries < 20) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, messageResult.messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
 
     // Get transactions and verify category associations
     const transactionsResponse = await getTransactions(

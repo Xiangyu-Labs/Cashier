@@ -1,19 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GeminiMessageProcessor } from "@/lib/message-processor/processor";
+import { OpenAIMessageProcessor } from "@/lib/message-processor/processor";
 import { MessageInput, ProcessorContext } from "@/lib/message-processor/types";
-import { MOCK_RESPONSES } from "../../helpers/mocks/gemini";
+import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
-// Mock the Gemini client
-vi.mock("@/lib/ai/gemini", () => ({
-  getGeminiClient: vi.fn(() => ({
+// Mock the OpenAI client
+vi.mock("@/lib/ai/openai", () => ({
+  getOpenAIClient: vi.fn(() => ({
     generateContent: vi.fn(),
   })),
 }));
 
-import { getGeminiClient } from "@/lib/ai/gemini";
+import { getOpenAIClient } from "@/lib/ai/openai";
 
-describe("GeminiMessageProcessor", () => {
-  let processor: GeminiMessageProcessor;
+describe("OpenAIMessageProcessor", () => {
+  let processor: OpenAIMessageProcessor;
   let mockGenerateContent: ReturnType<typeof vi.fn>;
 
   const defaultContext: ProcessorContext = {
@@ -28,9 +28,9 @@ describe("GeminiMessageProcessor", () => {
   };
 
   beforeEach(() => {
-    processor = new GeminiMessageProcessor();
+    processor = new OpenAIMessageProcessor();
     mockGenerateContent = vi.fn();
-    vi.mocked(getGeminiClient).mockReturnValue({
+    vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: mockGenerateContent,
     } as any);
   });
@@ -173,7 +173,7 @@ describe("GeminiMessageProcessor", () => {
       expect(result.rawResponse).toBe(MOCK_RESPONSES.singleTransaction);
     });
 
-    it("should call generateContent with system prompt and parts", async () => {
+    it("should call generateContent with system prompt and messages", async () => {
       const input: MessageInput = { text: "午餐25元" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
@@ -181,10 +181,13 @@ describe("GeminiMessageProcessor", () => {
       await processor.process(input, defaultContext);
 
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
-      const [systemPrompt, parts] = mockGenerateContent.mock.calls[0];
+      const [systemPrompt, messages] = mockGenerateContent.mock.calls[0];
       expect(systemPrompt).toContain("简体中文");
       expect(systemPrompt).toContain("餐饮");
-      expect(parts).toContainEqual({ text: "午餐25元" });
+      expect(messages).toHaveLength(1);
+      expect(messages[0].role).toBe("user");
+      expect(messages[0].content).toHaveLength(1);
+      expect(messages[0].content[0]).toEqual({ type: "text", text: "午餐25元" });
     });
 
     it("should handle image input", async () => {
@@ -204,11 +207,13 @@ describe("GeminiMessageProcessor", () => {
       expect(result.transactions).toHaveLength(1);
       expect(mockGenerateContent).toHaveBeenCalled();
 
-      const [, parts] = mockGenerateContent.mock.calls[0];
-      expect(parts).toContainEqual({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: "/9j/4AAQSkZ...",
+      const [, messages] = mockGenerateContent.mock.calls[0];
+      const content = messages[0].content;
+      expect(content).toHaveLength(1);
+      expect(content[0]).toEqual({
+        type: "image_url",
+        image_url: {
+          url: "data:image/jpeg;base64,/9j/4AAQSkZ...",
         },
       });
     });
@@ -227,11 +232,13 @@ describe("GeminiMessageProcessor", () => {
 
       await processor.process(input, defaultContext);
 
-      const [, parts] = mockGenerateContent.mock.calls[0];
-      expect(parts).toContainEqual({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: "/9j/4AAQSkZ...",
+      const [, messages] = mockGenerateContent.mock.calls[0];
+      const content = messages[0].content;
+      expect(content).toHaveLength(1);
+      expect(content[0]).toEqual({
+        type: "image_url",
+        image_url: {
+          url: "data:image/jpeg;base64,/9j/4AAQSkZ...",
         },
       });
     });
@@ -243,8 +250,10 @@ describe("GeminiMessageProcessor", () => {
 
       await processor.process(input, defaultContext);
 
-      const [, parts] = mockGenerateContent.mock.calls[0];
-      expect(parts).toContainEqual({ text: "（无输入内容）" });
+      const [, messages] = mockGenerateContent.mock.calls[0];
+      const content = messages[0].content;
+      expect(content).toHaveLength(1);
+      expect(content[0]).toEqual({ type: "text", text: "（无输入内容）" });
     });
 
     it("should handle mixed input (text + image)", async () => {
@@ -262,13 +271,14 @@ describe("GeminiMessageProcessor", () => {
 
       await processor.process(input, defaultContext);
 
-      const [, parts] = mockGenerateContent.mock.calls[0];
-      expect(parts).toHaveLength(2);
-      expect(parts).toContainEqual({ text: "这是小票" });
-      expect(parts).toContainEqual({
-        inlineData: {
-          mimeType: "image/png",
-          data: "iVBORw0KGgo...",
+      const [, messages] = mockGenerateContent.mock.calls[0];
+      const content = messages[0].content;
+      expect(content).toHaveLength(2);
+      expect(content[0]).toEqual({ type: "text", text: "这是小票" });
+      expect(content[1]).toEqual({
+        type: "image_url",
+        image_url: {
+          url: "data:image/png;base64,iVBORw0KGgo...",
         },
       });
     });
