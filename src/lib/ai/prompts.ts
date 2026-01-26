@@ -33,7 +33,12 @@ ${categoryList}
       "amount": 38.00,
       "currency": "CNY",
       "category": "分类名称",
-      "transaction_date": "2025-01-25"
+      "transaction_date": "2025-01-25",
+      "quantity": 2,
+      "unit_price": 19.00,
+      "unit": "个",
+      "original_name": "Product Original Name (if not in target language)",
+      "notes": "关于商品的价格计算、数量或其他备注信息"
     }
   ]
 }
@@ -45,5 +50,8 @@ ${categoryList}
 - 根据商品名称匹配最合适的分类，如果无法匹配任何分类，category 填 null
 - transaction_date 尽量从输入中提取（如小票日期），格式为 YYYY-MM-DD，没有则填 null
 - 金额必须是正数
+- 如果商品包含数量和单价，请提取到 quantity 和 unit_price
+- 如果商品原名是外语，建议在 original_name 中保留
+- 识别任何关于该商品的额外信息（如价格计算方式、购买数量详情、原始名称翻译说明等），放入 notes 字段
 - 只返回 JSON，不要其他文字`;
 }

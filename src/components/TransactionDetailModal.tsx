@@ -264,6 +264,26 @@ export function TransactionDetailModal({
                 <span className="text-gray-500">交易日期</span>
                 <span>{formatDate(transaction.transactionDate)}</span>
               </div>
+              {/* Metadata Fields */}
+              {transaction.metadata?.quantity && (
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-500">数量</span>
+                  <span>{transaction.metadata.quantity}</span>
+                </div>
+              )}
+              {transaction.metadata?.unitPrice && (
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-500">单价</span>
+                  <span>{transaction.metadata.unitPrice}</span>
+                </div>
+              )}
+              {transaction.metadata?.originalName && (
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-500">原始名称</span>
+                  <span>{transaction.metadata.originalName}</span>
+                </div>
+              )}
+
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-500">状态</span>
                 <span
@@ -303,20 +323,6 @@ export function TransactionDetailModal({
                 {renderOriginalContent()}
               </div>
             </div>
-
-            {/* AI Response */}
-            {transaction.inputMessage?.aiResponse && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  AI 解析结果
-                </h4>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-x-auto">
-                    {transaction.inputMessage.aiResponse}
-                  </pre>
-                </div>
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2 border-t">

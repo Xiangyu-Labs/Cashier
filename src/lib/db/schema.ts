@@ -7,6 +7,7 @@ import {
   integer,
   pgEnum,
   date,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -104,6 +105,7 @@ export const transactions = pgTable("transactions", {
   status: transactionStatusEnum("status").notNull().default("pending"),
   sourceType: sourceTypeEnum("source_type").notNull(),
   transactionDate: date("transaction_date", { mode: "date" }),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

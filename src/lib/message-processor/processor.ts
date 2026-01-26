@@ -17,6 +17,11 @@ const transactionSchema = z.object({
   currency: z.string().nullable(),
   category: z.string().nullable(),
   transaction_date: z.string().nullable(),
+  quantity: z.number().optional(),
+  unit_price: z.number().optional(),
+  unit: z.string().optional(),
+  original_name: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 const aiResponseSchema = z.object({
@@ -97,13 +102,25 @@ export class GeminiMessageProcessor implements MessageProcessor {
       const parsed = JSON.parse(cleaned);
       const validated = aiResponseSchema.parse(parsed);
 
-      return validated.transactions.map((t) => ({
-        itemName: t.item_name,
-        amount: t.amount,
-        currency: t.currency,
-        category: t.category,
-        transactionDate: t.transaction_date,
-      }));
+      return validated.transactions.map((t) => {
+        // Construct metadata object if any field exists
+        const metadata = (t.quantity || t.unit_price || t.unit || t.original_name || t.notes) ? {
+          quantity: t.quantity,
+          unitPrice: t.unit_price,
+          unit: t.unit,
+          originalName: t.original_name,
+          notes: t.notes,
+        } : null;
+
+        return {
+          itemName: t.item_name,
+          amount: t.amount,
+          currency: t.currency,
+          category: t.category,
+          transactionDate: t.transaction_date,
+          metadata
+        };
+      });
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Raw response:", response);

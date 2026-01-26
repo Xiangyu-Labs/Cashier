@@ -14,6 +14,13 @@ export interface ParsedTransaction {
   currency: string | null;
   category: string | null; // 分类名称，需要匹配到 categoryId
   transactionDate: string | null; // YYYY-MM-DD 格式
+  metadata?: {
+    quantity?: number;
+    unitPrice?: number;
+    unit?: string;
+    originalName?: string;
+    notes?: string;
+  } | null;
 }
 
 export interface ProcessResult {

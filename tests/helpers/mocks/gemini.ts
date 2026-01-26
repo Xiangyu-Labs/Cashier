@@ -7,6 +7,10 @@ export interface MockGeminiResponse {
     currency: string | null;
     category: string | null;
     transaction_date: string | null;
+    quantity?: number;
+    unit_price?: number;
+    unit?: string;
+    original_name?: string;
   }>;
 }
 
@@ -24,6 +28,22 @@ export const MOCK_RESPONSES = {
         currency: "CNY",
         category: "餐饮",
         transaction_date: "2025-01-25",
+      },
+    ],
+  }),
+
+  transactionWithMetadata: mockGeminiResponse({
+    transactions: [
+      {
+        item_name: "苹果",
+        amount: 20,
+        currency: "CNY",
+        category: "水果",
+        transaction_date: "2025-01-25",
+        quantity: 2,
+        unit_price: 10,
+        unit: "kg",
+        original_name: "红富士苹果",
       },
     ],
   }),

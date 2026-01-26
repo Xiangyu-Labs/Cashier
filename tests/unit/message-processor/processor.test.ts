@@ -50,6 +50,59 @@ describe("GeminiMessageProcessor", () => {
         currency: "CNY",
         category: "餐饮",
         transactionDate: "2025-01-25",
+        metadata: null
+      });
+    });
+
+    it("should parse transaction with metadata (quantity, unit price, etc)", async () => {
+      const input: MessageInput = { text: "苹果2公斤，每公斤10元" };
+
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata);
+
+      const result = await processor.process(input, defaultContext);
+
+      expect(result.transactions).toHaveLength(1);
+      const tx = result.transactions[0];
+      expect(tx.itemName).toBe("苹果");
+      expect(tx.metadata).toEqual({
+        quantity: 2,
+        unitPrice: 10,
+        unit: "kg",
+        originalName: "红富士苹果",
+      });
+    });
+
+    it("should parse transaction with notes", async () => {
+      const input: MessageInput = { text: "买了一箱牛奶，每盒5元，一共24盒，大家平分" };
+
+      const responseWithNotes = JSON.stringify({
+        transactions: [
+          {
+            item_name: "牛奶",
+            amount: 120,
+            currency: "CNY",
+            category: "餐饮",
+            transaction_date: "2025-01-25",
+            quantity: 24,
+            unit_price: 5,
+            unit: "盒",
+            notes: "大家平分",
+          },
+        ],
+      });
+
+      mockGenerateContent.mockResolvedValue(responseWithNotes);
+
+      const result = await processor.process(input, defaultContext);
+
+      expect(result.transactions).toHaveLength(1);
+      const tx = result.transactions[0];
+      expect(tx.itemName).toBe("牛奶");
+      expect(tx.metadata).toEqual({
+        quantity: 24,
+        unitPrice: 5,
+        unit: "盒",
+        notes: "大家平分",
       });
     });
 
@@ -99,7 +152,7 @@ describe("GeminiMessageProcessor", () => {
     });
 
     it("should handle foreign currency", async () => {
-      const input: MessageInput = { text: "Coffee $4.50" };
+      const input: MessageInput = { text: "Coffee .50" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.foreignCurrency);
 

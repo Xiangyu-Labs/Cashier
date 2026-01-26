@@ -1,5 +1,3 @@
-// API 类型定义
-
 export interface Ledger {
   id: string;
   name: string;
@@ -44,6 +42,12 @@ export interface Transaction {
   createdAt: string;
   category?: Category | null;
   inputMessage?: InputMessage | null;
+  metadata?: {
+    quantity?: number;
+    unitPrice?: number;
+    originalName?: string;
+    [key: string]: any;
+  } | null;
 }
 
 export interface TransactionSummary {

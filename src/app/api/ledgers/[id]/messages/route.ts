@@ -126,6 +126,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           transactionDate: tx.transactionDate
             ? new Date(tx.transactionDate)
             : null,
+          metadata: tx.metadata || null,
         })
         .returning();
 

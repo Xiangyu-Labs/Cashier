@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,8 +13,10 @@ import {
   confirmTransactions,
   fetchCategories,
 } from "@/lib/api";
-import { Transaction, Category } from "@/types/api";
+import { Transaction, Category, InputMessage } from "@/types/api";
 import { TransactionDetailModal } from "@/components/TransactionDetailModal";
+import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
+import { TransactionCard } from "@/components/transaction/TransactionCard";
 import Link from "next/link";
 
 export default function LedgerPage() {
@@ -54,6 +56,35 @@ export default function LedgerPage() {
     queryFn: () => fetchTransactionSummary(ledgerId, "confirmed"),
   });
 
+  // Group pending transactions
+  const pendingGroups = useMemo(() => {
+    if (!pendingTxs) return { batches: [], others: [] };
+
+    const batches: Record<string, { inputMessage: InputMessage; transactions: Transaction[] }> = {};
+    const others: Transaction[] = [];
+
+    pendingTxs.forEach((tx) => {
+      if (tx.inputMessage && tx.inputMessageId) {
+        if (!batches[tx.inputMessageId]) {
+          batches[tx.inputMessageId] = {
+            inputMessage: tx.inputMessage,
+            transactions: [],
+          };
+        }
+        batches[tx.inputMessageId].transactions.push(tx);
+      } else {
+        others.push(tx);
+      }
+    });
+
+    return {
+      batches: Object.values(batches).sort((a, b) =>
+        new Date(b.inputMessage.createdAt).getTime() - new Date(a.inputMessage.createdAt).getTime()
+      ),
+      others,
+    };
+  }, [pendingTxs]);
+
   const sendMutation = useMutation({
     mutationFn: (data: Parameters<typeof sendMessage>[1]) =>
       sendMessage(ledgerId, data),
@@ -85,8 +116,17 @@ export default function LedgerPage() {
     },
   });
 
-  const confirmMutation = useMutation({
+  const confirmAllMutation = useMutation({
     mutationFn: () => confirmTransactions(ledgerId, { confirmAll: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+      queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+    },
+  });
+
+  const confirmBatchMutation = useMutation({
+    mutationFn: (transactionIds: string[]) =>
+      confirmTransactions(ledgerId, { transactionIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
       queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
@@ -241,33 +281,61 @@ export default function LedgerPage() {
         </section>
 
         {/* 待确认记录 */}
-        {pendingTxs && pendingTxs.length > 0 && (
-          <section className="bg-white rounded-lg shadow p-4">
-            <div className="flex justify-between items-center mb-4">
+        {(pendingGroups.batches.length > 0 || pendingGroups.others.length > 0) && (
+          <section className="space-y-4">
+            <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">
-                待确认 ({pendingTxs.length})
+                待确认
               </h2>
               <button
-                onClick={() => confirmMutation.mutate()}
-                disabled={confirmMutation.isPending}
+                onClick={() => confirmAllMutation.mutate()}
+                disabled={confirmAllMutation.isPending}
                 className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                {confirmMutation.isPending ? "确认中..." : "全部确认"}
+                {confirmAllMutation.isPending ? "确认中..." : "全部确认"}
               </button>
             </div>
-            <div className="space-y-3">
-              {pendingTxs.map((tx) => (
-                <TransactionCard
-                  key={tx.id}
-                  transaction={tx}
+
+            {/* Batched Transactions */}
+            <div className="space-y-4">
+              {pendingGroups.batches.map((batch) => (
+                <BatchTransactionCard
+                  key={batch.inputMessage.id}
+                  inputMessage={batch.inputMessage}
+                  transactions={batch.transactions}
                   categories={categories || []}
-                  onUpdate={(data) =>
-                    updateMutation.mutate({ transactionId: tx.id, data })
+                  onConfirm={async (ids) => {
+                    await confirmBatchMutation.mutateAsync(ids);
+                  }}
+                  onUpdateTransaction={(id, data) => 
+                    updateMutation.mutate({ transactionId: id, data })
                   }
-                  onDelete={() => deleteMutation.mutate(tx.id)}
+                  onDeleteTransaction={(id) => deleteMutation.mutate(id)}
                 />
               ))}
             </div>
+
+            {/* Other Transactions */}
+            {pendingGroups.others.length > 0 && (
+               <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 p-3 border-b border-gray-100">
+                  <h3 className="font-medium text-gray-700">其他记录</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  {pendingGroups.others.map((tx) => (
+                    <TransactionCard
+                      key={tx.id}
+                      transaction={tx}
+                      categories={categories || []}
+                      onUpdate={(data) =>
+                        updateMutation.mutate({ transactionId: tx.id, data })
+                      }
+                      onDelete={() => deleteMutation.mutate(tx.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -349,149 +417,6 @@ export default function LedgerPage() {
           }
         }}
       />
-    </div>
-  );
-}
-
-// 交易卡片组件
-function TransactionCard({
-  transaction,
-  categories,
-  onUpdate,
-  onDelete,
-}: {
-  transaction: Transaction;
-  categories: Category[];
-  onUpdate: (data: { categoryId?: string | null; itemName?: string; amount?: number; currency?: string | null }) => void;
-  onDelete: () => void;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    itemName: transaction.itemName,
-    amount: parseFloat(transaction.amount),
-    currency: transaction.currency || "",
-    categoryId: transaction.categoryId || "",
-  });
-
-  const handleSave = () => {
-    onUpdate({
-      itemName: editData.itemName,
-      amount: editData.amount,
-      currency: editData.currency || null,
-      categoryId: editData.categoryId || null,
-    });
-    setIsEditing(false);
-  };
-
-  const needsAttention = !transaction.categoryId || !transaction.currency;
-
-  return (
-    <div
-      className={`p-3 rounded-lg border ${
-        needsAttention ? "border-yellow-300 bg-yellow-50" : "border-gray-200"
-      }`}
-    >
-      {isEditing ? (
-        <div className="space-y-3">
-          <input
-            type="text"
-            value={editData.itemName}
-            onChange={(e) =>
-              setEditData((prev) => ({ ...prev, itemName: e.target.value }))
-            }
-            className="w-full p-2 border rounded"
-            placeholder="商品名称"
-          />
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={editData.amount}
-              onChange={(e) =>
-                setEditData((prev) => ({
-                  ...prev,
-                  amount: parseFloat(e.target.value) || 0,
-                }))
-              }
-              className="w-24 p-2 border rounded"
-              placeholder="金额"
-            />
-            <input
-              type="text"
-              value={editData.currency}
-              onChange={(e) =>
-                setEditData((prev) => ({ ...prev, currency: e.target.value }))
-              }
-              className="w-20 p-2 border rounded"
-              placeholder="货币"
-            />
-            <select
-              value={editData.categoryId}
-              onChange={(e) =>
-                setEditData((prev) => ({ ...prev, categoryId: e.target.value }))
-              }
-              className="flex-1 p-2 border rounded"
-            >
-              <option value="">选择分类</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setIsEditing(false)}
-              className="px-3 py-1 text-sm text-gray-600"
-            >
-              取消
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
-            >
-              保存
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">
-              {transaction.category?.icon || "📝"}
-            </span>
-            <div>
-              <p className="font-medium">{transaction.itemName}</p>
-              <p className="text-xs text-gray-500">
-                {transaction.category?.name || (
-                  <span className="text-yellow-600">需要选择分类</span>
-                )}
-                {!transaction.currency && (
-                  <span className="text-yellow-600 ml-2">需要选择货币</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <p className="font-semibold">
-              {transaction.currency || "?"}{" "}
-              {parseFloat(transaction.amount).toFixed(2)}
-            </p>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="text-blue-600 text-sm"
-            >
-              编辑
-            </button>
-            <button
-              onClick={onDelete}
-              className="text-red-500 text-sm"
-            >
-              删除
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

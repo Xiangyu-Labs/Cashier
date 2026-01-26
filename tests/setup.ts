@@ -36,6 +36,12 @@ beforeEach(async () => {
 });
 
 async function runMigrations() {
+  // Drop tables to ensure clean state with new schema
+  await testDb.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
+  await testDb.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
+  await testDb.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
+  await testDb.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
+
   // Create enums
   await testDb.execute(sql`
     DO $$ BEGIN
@@ -104,6 +110,7 @@ async function runMigrations() {
       status transaction_status NOT NULL DEFAULT 'pending',
       source_type source_type NOT NULL,
       transaction_date DATE,
+      metadata JSONB,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);

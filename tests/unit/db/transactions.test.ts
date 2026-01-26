@@ -59,6 +59,34 @@ describe("Transactions Database Operations", () => {
       expect(created.categoryId).toBe(category.id);
     });
 
+    it("should create a transaction with metadata", async () => {
+      const db = getTestDb();
+      const [ledger] = await db
+        .insert(ledgers)
+        .values({ name: "Test Ledger" })
+        .returning();
+
+      const metadata = {
+        quantity: 2,
+        unit: "kg",
+        unitPrice: 10,
+        originalName: "红富士苹果"
+      };
+
+      const [created] = await db
+        .insert(transactions)
+        .values({
+          ledgerId: ledger.id,
+          amount: "20.00",
+          itemName: "苹果",
+          sourceType: "text",
+          metadata
+        })
+        .returning();
+
+      expect(created.metadata).toEqual(metadata);
+    });
+
     it("should create a transaction with all fields", async () => {
       const db = getTestDb();
       const [ledger] = await db
@@ -225,6 +253,7 @@ describe("Transactions Database Operations", () => {
           amount: "25.00",
           itemName: "To Delete",
           sourceType: "text",
+          status: "pending"
         })
         .returning();
 
