@@ -4,6 +4,7 @@ import { POST as REORDER } from "@/app/api/ledgers/[id]/categories/reorder/route
 import { getTestDb } from "../../setup";
 import { ledgers, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { Category } from "@/types/api";
 
 describe("GET /api/ledgers/[id]/categories", () => {
   let testLedgerId: string;
@@ -22,7 +23,7 @@ describe("GET /api/ledgers/[id]/categories", () => {
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/categories`),
       { params: Promise.resolve({ id: testLedgerId }) }
     );
-    const data = await response.json();
+    const data = (await response.json()) as Category[];
 
     expect(response.status).toBe(200);
     expect(data.length).toBe(0);
@@ -40,10 +41,10 @@ describe("GET /api/ledgers/[id]/categories", () => {
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/categories`),
       { params: Promise.resolve({ id: testLedgerId }) }
     );
-    const data = await response.json();
+    const data = (await response.json()) as Category[];
 
     // Check relative ordering
-    const names = data.map((c: any) => c.name);
+    const names = data.map((c) => c.name);
 
     expect(names).toHaveLength(2);
     expect(names).toContain("Order 50");

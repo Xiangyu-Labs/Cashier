@@ -24,7 +24,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
     // Reset mock to default
     vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.singleTransaction),
-    } as any);
+    } as unknown as ReturnType<typeof getOpenAIClient>);
 
     const db = getTestDb();
 
@@ -52,6 +52,59 @@ describe("POST /api/ledgers/[id]/messages", () => {
         .returning();
       testCategoryId = newCat.id;
     }
+  });
+
+  // ...
+
+  it("should persist transactions with metadata", async () => {
+    // Override mock for this test
+    vi.mocked(getOpenAIClient).mockReturnValue({
+      generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata),
+    } as unknown as ReturnType<typeof getOpenAIClient>);
+
+    const request = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ text: "苹果2公斤，每公斤10元" }),
+      }
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.status).toBe("queued");
+
+    // Wait for processing
+    const db = getTestDb();
+    let retries = 0;
+    while (retries < 10) {
+      const message = await db.query.inputMessages.findFirst({
+        where: eq(inputMessages.id, data.messageId),
+      });
+      if (message?.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retries++;
+    }
+
+    const savedTx = await db.query.transactions.findFirst({
+      where: eq(transactions.inputMessageId, data.messageId)
+    });
+
+    expect(savedTx).toBeDefined();
+    expect(savedTx?.itemName).toBe("苹果");
+    // Ensure metadata is saved as JSON
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metadata = savedTx?.metadata as any;
+    expect(metadata).toEqual({
+      quantity: 2,
+      unitPrice: 10,
+      unit: "kg",
+      originalName: "红富士苹果"
+    });
   });
 
   it("should process text message and create pending transaction", async () => {
@@ -232,7 +285,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
     // Override mock for this test
     vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata),
-    } as any);
+    } as unknown as ReturnType<typeof getOpenAIClient>);
 
     const request = new NextRequest(
       `http://localhost/api/ledgers/${testLedgerId}/messages`,
@@ -269,6 +322,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
     expect(savedTx).toBeDefined();
     expect(savedTx?.itemName).toBe("苹果");
     // Ensure metadata is saved as JSON
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const metadata = savedTx?.metadata as any;
     expect(metadata).toEqual({
       quantity: 2,

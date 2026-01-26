@@ -108,7 +108,7 @@ function getMessageContent(sourceType: string, validated: z.infer<typeof transac
     // Deep normalization for mixed content json structure
     const copy = JSON.parse(JSON.stringify(validated));
     if (copy.images) {
-        copy.images.forEach((img: any) => {
+        copy.images.forEach((img: { data: string; mimeType: string }) => {
             if (img.data) img.data = normalizeImage(img.data);
         });
     }

@@ -9,6 +9,7 @@ import { getTestDb } from "../../setup";
 import { inputMessages, transactions, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
+import { Category, Transaction } from "@/types/api";
 
 // Mock OpenAI for all E2E tests
 vi.mock("@/lib/ai/openai", () => ({
@@ -46,9 +47,9 @@ describe("Full Transaction Flow", () => {
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/categories`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const fetchedCategories = await catResponse.json();
+    const fetchedCategories = (await catResponse.json()) as Category[];
     expect(fetchedCategories.length).toBeGreaterThanOrEqual(2);
-    expect(fetchedCategories.map((c: any) => c.name)).toContain("餐饮");
+    expect(fetchedCategories.map((c) => c.name)).toContain("餐饮");
 
     // Step 3: Send a message to create transactions
     const messageRequest = new NextRequest(
@@ -89,12 +90,12 @@ describe("Full Transaction Flow", () => {
     const transactionsResponse = await getTransactions(transactionsRequest, {
       params: Promise.resolve({ id: ledger.id }),
     });
-    const allTransactions = await transactionsResponse.json();
+    const allTransactions = (await transactionsResponse.json()) as Transaction[];
 
     expect(allTransactions).toHaveLength(2);
-    expect(allTransactions.every((t: any) => t.status === "pending")).toBe(true);
-    expect(allTransactions.map((t: any) => t.itemName)).toContain("牛奶");
-    expect(allTransactions.map((t: any) => t.itemName)).toContain("面包");
+    expect(allTransactions.every((t) => t.status === "pending")).toBe(true);
+    expect(allTransactions.map((t) => t.itemName)).toContain("牛奶");
+    expect(allTransactions.map((t) => t.itemName)).toContain("面包");
 
     // Step 5: Verify input message was saved with AI response
     const savedMessage = await db.query.inputMessages.findFirst({
@@ -143,10 +144,10 @@ describe("Full Transaction Flow", () => {
     const pendingResponse = await getTransactions(pendingRequest, {
       params: Promise.resolve({ id: ledger.id }),
     });
-    const pendingTransactions = await pendingResponse.json();
+    const pendingTransactions = (await pendingResponse.json()) as Transaction[];
 
     expect(pendingTransactions.length).toBeGreaterThan(0);
-    expect(pendingTransactions.every((t: any) => t.status === "pending")).toBe(true);
+    expect(pendingTransactions.every((t) => t.status === "pending")).toBe(true);
 
     // Filter by confirmed status (should be empty)
     const confirmedRequest = new NextRequest(
@@ -257,19 +258,20 @@ describe("Full Transaction Flow", () => {
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/categories`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const allCategories = await categoriesResponse.json();
+    const allCategories = (await categoriesResponse.json()) as Category[];
 
-    const foodCategory = allCategories.find((c: any) => c.name === "餐饮");
-    const dailyCategory = allCategories.find((c: any) => c.name === "日用");
+    const foodCategory = allCategories.find((c) => c.name === "餐饮");
+    const dailyCategory = allCategories.find((c) => c.name === "日用");
 
     expect(foodCategory).toBeDefined();
     expect(dailyCategory).toBeDefined();
 
     // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
+    // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ text: "购物清单" }),
+        body: JSON.stringify({ text: "超市购物：牛奶15元，面包8元" }),
       }),
       { params: Promise.resolve({ id: ledger.id }) }
     );
@@ -287,25 +289,40 @@ describe("Full Transaction Flow", () => {
       retries++;
     }
 
+    // Verify processing completion
+    const finalMessage = await db.query.inputMessages.findFirst({
+      where: eq(inputMessages.id, messageResult.messageId),
+    });
+
+    if (finalMessage?.status !== "completed") {
+      console.error("Message processing failed:", {
+        status: finalMessage?.status,
+        error: finalMessage?.error,
+        aiResponse: finalMessage?.aiResponse
+      });
+    }
+    expect(finalMessage?.status).toBe("completed");
+
     // Get transactions and verify category associations
     const transactionsResponse = await getTransactions(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/transactions`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const allTransactions = await transactionsResponse.json();
+    const allTransactions = (await transactionsResponse.json()) as Transaction[];
 
-    const milkTx = allTransactions.find((t: any) => t.itemName === "牛奶");
-    const breadTx = allTransactions.find((t: any) => t.itemName === "面包");
+    const milkTx = allTransactions.find((t) => t.itemName === "牛奶");
+    const breadTx = allTransactions.find((t) => t.itemName === "面包");
 
+    expect(milkTx).toBeDefined();
     expect(milkTx).toBeDefined();
     expect(breadTx).toBeDefined();
 
     // 牛奶 should be associated with 日用
-    expect(milkTx.categoryId).toBe(dailyCategory.id);
-    expect(milkTx.category?.name).toBe("日用");
+    expect(milkTx!.categoryId).toBe(dailyCategory!.id);
+    expect(milkTx!.category?.name).toBe("日用");
 
     // 面包 should be associated with 餐饮
-    expect(breadTx.categoryId).toBe(foodCategory.id);
-    expect(breadTx.category?.name).toBe("餐饮");
+    expect(breadTx!.categoryId).toBe(foodCategory!.id);
+    expect(breadTx!.category?.name).toBe("餐饮");
   });
 });

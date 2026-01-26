@@ -23,7 +23,8 @@ const { mockCreate, mockOpenAI } = vi.hoisted(() => {
         }
     }
 
-    (mockOpenAI as any).APIError = MockAPIError;
+    // Use unknown then intersection for safer casting than any
+    (mockOpenAI as unknown as { APIError: typeof MockAPIError }).APIError = MockAPIError;
 
     return { mockCreate, mockOpenAI };
 });
@@ -99,7 +100,7 @@ describe("OpenAIClient Retry Logic", () => {
     });
 
     it("should NOT retry on 400 Bad Request", async () => {
-        // @ts-ignore
+        // @ts-expect-error Testing invalid error construction
         const error = new mockOpenAI.APIError(400, "Bad Request");
         mockCreate.mockRejectedValueOnce(error);
 

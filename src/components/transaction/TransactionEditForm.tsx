@@ -25,7 +25,10 @@ export function TransactionEditForm({
     onSave,
     onCancel,
 }: TransactionEditFormProps) {
-    const handleChange = (field: keyof TransactionEditFormData, value: any) => {
+    const handleChange = <K extends keyof TransactionEditFormData>(
+        field: K,
+        value: TransactionEditFormData[K]
+    ) => {
         onChange({ ...data, [field]: value });
     };
 

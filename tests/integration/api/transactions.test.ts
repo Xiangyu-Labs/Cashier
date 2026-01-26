@@ -268,34 +268,41 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(data[0].inputMessage.content).toContain("data:image");
   });
 
-  it("should return inputMessage with audio contentType", async () => {
+  it("should return inputMessage with contentType", async () => {
+    // 1. Create input message with text
     const db = getTestDb();
-
-    const [inputMessage] = await db
+    const [msg] = await db
       .insert(inputMessages)
       .values({
         ledgerId: testLedgerId,
-        contentType: "audio",
-        content: "data:audio/webm;base64,GkXfo59...",
+        contentType: "text",
+        content: "Audio Note converted",
         aiResponse: null,
       })
       .returning();
 
+    // 2. Create transaction linked to it
     await db.insert(transactions).values({
       ledgerId: testLedgerId,
-      inputMessageId: inputMessage.id,
-      amount: "50.00",
-      itemName: "从语音识别",
-      sourceType: "audio",
+      amount: "100",
+      itemName: "Voice Item",
+      status: "pending",
+      inputMessageId: msg.id,
+      sourceType: "text",
     });
 
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/transactions`),
-      { params: Promise.resolve({ id: testLedgerId }) }
+    // 3. Query
+    const request = new NextRequest(
+      `http://localhost/api/ledgers/${testLedgerId}/transactions`
     );
+    const response = await GET(request, {
+      params: Promise.resolve({ id: testLedgerId }),
+    });
     const data = await response.json();
 
-    expect(data[0].inputMessage.contentType).toBe("audio");
-    expect(data[0].inputMessage.content).toContain("data:audio");
+    expect(data).toHaveLength(1);
+    expect(data[0].inputMessage).toBeDefined();
+    expect(data[0].inputMessage.contentType).toBe("text");
+    expect(data[0].inputMessage.content).toContain("Audio Note");
   });
 });

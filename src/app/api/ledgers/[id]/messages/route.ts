@@ -32,7 +32,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const conditions = [eq(inputMessages.ledgerId, ledgerId)];
 
   if (status) {
-    const statuses = status.split(",") as any[];
+    // Validate or cast to allowed status values
+    const statuses = status.split(",") as ("queued" | "processing" | "completed" | "failed")[];
     conditions.push(inArray(inputMessages.status, statuses));
   }
 
@@ -125,7 +126,7 @@ function getMessageContent(sourceType: string, validated: z.infer<typeof message
   // Deep normalization for mixed content json structure
   const copy = JSON.parse(JSON.stringify(validated));
   if (copy.images) {
-    copy.images.forEach((img: any) => {
+    copy.images.forEach((img: { data: string; mimeType: string }) => {
       if (img.data) img.data = normalizeImage(img.data);
     });
   }

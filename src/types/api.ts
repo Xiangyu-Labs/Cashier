@@ -57,6 +57,7 @@ export interface Transaction {
     quantity?: number;
     unitPrice?: number;
     originalName?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
   } | null;
 }

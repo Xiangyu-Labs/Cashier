@@ -26,18 +26,18 @@ export function ImageViewer({
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
 
+    const resetView = () => {
+        setScale(1)
+        setRotation(0)
+        setPosition({ x: 0, y: 0 })
+    }
+
     React.useEffect(() => {
         if (open) {
             setIndex(initialIndex)
             resetView()
         }
     }, [open, initialIndex])
-
-    const resetView = () => {
-        setScale(1)
-        setRotation(0)
-        setPosition({ x: 0, y: 0 })
-    }
 
     const handleZoomIn = () => setScale((s) => Math.min(s + 0.5, 4))
     const handleZoomOut = () => setScale((s) => Math.max(s - 0.5, 1)) // Min scale 1 to avoid disappearing
@@ -187,7 +187,7 @@ export function ImageViewer({
                                         i === index ? "border-primary scale-110" : "border-transparent opacity-50 hover:opacity-80"
                                     )}
                                 >
-                                    <img src={img} className="w-full h-full object-cover" />
+                                    <img src={img} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>

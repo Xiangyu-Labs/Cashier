@@ -53,11 +53,15 @@ const baseInputMessage: InputMessage = {
 };
 
 describe("BatchTransactionCard", () => {
+    const mockUpdateTransaction = vi.fn();
+    const mockDeleteTransaction = vi.fn();
+
     const defaultProps = {
-        transactions: [mockTransaction],
+        transactions: [],
         categories: mockCategories,
-        onUpdateTransaction: vi.fn(),
-        onDeleteTransaction: vi.fn(),
+        onUpdateTransaction: mockUpdateTransaction,
+        onDeleteTransaction: mockDeleteTransaction,
+        status: "queued" as const,
     };
 
     it("renders date header", () => {
@@ -121,7 +125,7 @@ describe("BatchTransactionCard", () => {
     });
 
     it("renders transaction details groups", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} />);
         expect(screen.getByText("Food")).toBeTruthy();
         expect(screen.getByText(/50.00/)).toBeTruthy();
     });
@@ -143,7 +147,7 @@ describe("BatchTransactionCard", () => {
         fireEvent.click(thumbnail!);
 
         // Expect dialog to be open and show the image
-        const zoomedImg = await screen.findByAltText("Zoomed");
+        const zoomedImg = await screen.findByAltText("Image 1");
         expect(zoomedImg).toBeTruthy();
         expect(zoomedImg.getAttribute("src")).toBe("data:image/png;base64,fake-image-data");
 
