@@ -27,7 +27,7 @@ export default function LedgersPage() {
 
   const createMutation = useMutation({
     mutationFn: createLedger,
-    onSuccess: (newLedger) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ledgers"] });
       setShowCreateModal(false);
       setNewLedgerName("");

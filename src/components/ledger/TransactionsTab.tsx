@@ -13,7 +13,6 @@ import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -46,25 +45,6 @@ type TimelineItem =
     };
 
 
-function getMessageContentSummary(msg: InputMessage): string {
-    if (msg.contentType === "image") return "[图片]";
-
-    if (msg.contentType === "text") {
-        if (msg.content.startsWith("{")) {
-            try {
-                const parsed = JSON.parse(msg.content);
-                return (
-                    parsed.text || (parsed.images?.length ? "[图片]" : "[内容]")
-                );
-            } catch {
-                return msg.content;
-            }
-        }
-        return msg.content;
-    }
-
-    return "[消息]";
-}
 
 export function TransactionsTab({
     ledgerId,
@@ -118,14 +98,6 @@ export function TransactionsTab({
         },
     });
 
-    const retryMessageMutation = useMutation({
-        mutationFn: async (message: InputMessage) => {
-            return retryMessage(ledgerId, message.id);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
-        },
-    });
 
     const deleteMessageMutation = useMutation({
         mutationFn: async (messageId: string) => {

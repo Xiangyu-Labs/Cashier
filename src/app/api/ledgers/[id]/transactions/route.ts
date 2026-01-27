@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { transactions, categories } from "@/lib/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { transactions } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
 const querySchema = z.object({

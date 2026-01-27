@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import * as React from "react"
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
@@ -141,14 +142,13 @@ export function ImageViewer({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                 >
-                    <img
+                    <Image
                         src={images[index]}
                         alt={`Image ${index + 1}`}
-                        className="max-w-full max-h-full object-contain transition-transform duration-100 ease-out"
+                        fill
+                        className="object-contain transition-transform duration-100 ease-out"
                         style={{
                             transform: `translate(${position.x}px, ${position.y}px) rotate(${rotation}deg) scale(${scale})`,
-                            maxWidth: scale > 1 ? 'none' : '100%',
-                            maxHeight: scale > 1 ? 'none' : '100%',
                         }}
                         draggable={false}
                     />
@@ -187,7 +187,7 @@ export function ImageViewer({
                                         i === index ? "border-primary scale-110" : "border-transparent opacity-50 hover:opacity-80"
                                     )}
                                 >
-                                    <img src={img} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                                    <Image src={img} alt={`Thumbnail ${i + 1}`} fill className="object-cover" />
                                 </button>
                             ))}
                         </div>

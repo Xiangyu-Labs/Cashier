@@ -14,8 +14,6 @@ vi.mock("@/lib/queue", () => ({
 
 describe("API Keys & Transaction Ingestion", () => {
     let testLedgerId: string;
-    let apiKey: string;
-    let keyId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
@@ -46,8 +44,6 @@ describe("API Keys & Transaction Ingestion", () => {
         expect(newKey.key).toBeDefined();
         expect(newKey.name).toBe("Test Key");
 
-        apiKey = newKey.key;
-        keyId = newKey.id;
 
         // List Keys
         const listReq = new NextRequest(

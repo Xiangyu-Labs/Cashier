@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
+import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
 import { Category } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 

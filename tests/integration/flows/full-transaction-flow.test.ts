@@ -6,7 +6,7 @@ import { POST as sendMessage } from "@/app/api/ledgers/[id]/messages/route";
 import { GET as getTransactions } from "@/app/api/ledgers/[id]/transactions/route";
 import { GET as getCategories } from "@/app/api/ledgers/[id]/categories/route";
 import { getTestDb } from "../../setup";
-import { inputMessages, transactions, categories } from "@/lib/db/schema";
+import { inputMessages, transactions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 import { Category, Transaction } from "@/types/api";

@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { apiKeys, ledgers } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { createApiKey, listApiKeys } from "@/lib/api-keys";
 

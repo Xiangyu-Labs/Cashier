@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 import { GET } from "@/app/api/ledgers/[id]/transactions/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 describe("GET /api/ledgers/[id]/transactions", () => {
   let testLedgerId: string;

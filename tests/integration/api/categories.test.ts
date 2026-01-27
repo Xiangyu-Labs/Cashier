@@ -3,7 +3,6 @@ import { GET, POST } from "@/app/api/ledgers/[id]/categories/route";
 import { POST as REORDER } from "@/app/api/ledgers/[id]/categories/reorder/route";
 import { getTestDb } from "../../setup";
 import { ledgers, categories } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { Category } from "@/types/api";
 
 describe("GET /api/ledgers/[id]/categories", () => {

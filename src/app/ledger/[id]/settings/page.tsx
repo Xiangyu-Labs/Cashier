@@ -18,7 +18,7 @@ import {
     deleteApiKey,
     ApiKey,
 } from "@/lib/api";
-import { Copy, Eye, EyeOff } from "lucide-react";
+import { Copy } from "lucide-react";
 
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Category } from "@/types/api";

@@ -111,7 +111,7 @@ function parseMessageContent(message: typeof inputMessages.$inferSelect): Messag
             if (typeof parsed === 'object' && parsed !== null && (parsed.text || parsed.images)) {
                 return parsed;
             }
-        } catch (e) {
+        } catch {
             // Not a JSON object or doesn't look like MessageInput, treat as raw text
             // console.warn("Failed to parse potential mixed content:", e);
         }

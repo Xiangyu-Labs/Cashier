@@ -56,8 +56,6 @@ export default function LedgerPage() {
     );
   }
 
-  const pendingCount =
-    (pendingGroups.batches.length || 0) + (pendingGroups.others.length || 0);
 
   const showTasksIndicator =
     stats.queuedCount > 0 || stats.processingCount > 0 || stats.failedCount > 0;

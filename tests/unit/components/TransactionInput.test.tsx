@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TransactionInput } from "@/components/ledger/TransactionInput";
 import { vi, describe, it, expect } from "vitest";

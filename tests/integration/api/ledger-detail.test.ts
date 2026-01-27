@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, PATCH, DELETE } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories } from "@/lib/db/schema";
+import { ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("GET /api/ledgers/[id]", () => {

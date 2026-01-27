@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import Image from "next/image";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -136,7 +137,7 @@ export function BatchTransactionCard({
               isParsed = true;
             }
           }
-        } catch (e) {
+        } catch {
           // Ignore JSON parse error, treat as raw string
         }
       }
@@ -243,10 +244,11 @@ export function BatchTransactionCard({
                 className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setSelectedImageIndex(idx)}
               >
-                <img
+                <Image
                   src={getSafeImageSrc(img)}
                   alt={`User upload ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
             ))}

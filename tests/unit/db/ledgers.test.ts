@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, categories } from "@/lib/db/schema";
+import { ledgers } from "@/lib/db/schema";
 // DEFAULT_CATEGORIES might still be exported but logic is different now.
 
 describe("Ledgers Database Operations", () => {

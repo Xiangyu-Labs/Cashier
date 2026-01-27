@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgers, categories } from "@/lib/db/schema";
 import { DEFAULT_CATEGORIES } from "@/config/default-categories";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const createLedgerSchema = z.object({

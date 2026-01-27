@@ -1,5 +1,6 @@
 import { FileText, Image as ImageIcon, Mic } from "lucide-react";
 import { useState } from "react";
+import Image from "next/image";
 import { ImageViewer } from "@/components/ui/image-viewer";
 
 interface TransactionOriginalContentProps {
@@ -39,11 +40,15 @@ export function TransactionOriginalContent({
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {images.map((imgSrc, idx) => (
-                            <img
+                            <Image
                                 key={idx}
                                 src={imgSrc}
                                 alt={`原始图片 ${idx + 1}`}
-                                className="max-w-full max-h-48 rounded-lg border border-border object-contain cursor-pointer hover:opacity-90"
+                                width={0}
+                                height={0}
+                                sizes="100vw"
+                                style={{ width: "auto", height: "192px" }} // h-48 is 12rem = 192px
+                                className="max-w-full rounded-lg border border-border object-contain cursor-pointer hover:opacity-90"
                                 onClick={() => setSelectedImageIndex(idx)}
                             />
                         ))}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
 import {
     fetchSettings,
     updateSettings,

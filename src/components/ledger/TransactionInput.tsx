@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { sendMessage } from "@/lib/api";
@@ -85,10 +86,12 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
                 <div className="flex flex-wrap gap-2">
                     {images.map((img, idx) => (
                         <div key={idx} className="relative group">
-                            <img
+                            <Image
                                 src={img.data}
                                 alt={`Uploaded ${idx + 1}`}
-                                className="w-20 h-20 object-cover rounded-md border border-border"
+                                width={80}
+                                height={80}
+                                className="object-cover rounded-md border border-border"
                             />
                             <button
                                 onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
