@@ -28,6 +28,11 @@ export function TransactionQueueStatus({ queuedMessages }: TransactionQueueStatu
                             (失败)
                         </span>
                     )}
+                    {msg.status === "to_confirm" && (
+                        <span className="text-xs text-warning" title="待确认">
+                            (待确认)
+                        </span>
+                    )}
                 </div>
             ))}
         </div>

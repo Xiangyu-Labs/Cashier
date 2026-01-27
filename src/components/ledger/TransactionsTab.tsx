@@ -292,27 +292,22 @@ export function TransactionsTab({
     return (
         <div className="space-y-0">
             {/* Header: Month Picker and Summary */}
-            <div className="sticky top-14 z-20 bg-primary text-primary-foreground -mx-4 -mt-4 px-4 pb-12 pt-4 mb-[-2rem] shadow-sm">
-                <div className="flex justify-between items-start mb-4">
+            {/* Header: Month Picker and Summary */}
+            <div className="sticky top-14 z-[1] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4 mb-2 border-b border-border/40">
+                <div className="flex justify-between items-center px-2">
                     <div className="flex items-center gap-2">
                         <MonthPicker date={currentDate} onDateChange={setCurrentDate} />
                     </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <div className="text-primary-foreground/70 text-xs mb-1">本月支出 ({monthStats.currency})</div>
-                        <div className="text-2xl font-bold font-mono">{monthStats.total.toFixed(2)}</div>
-                    </div>
-                    {/* Income placeholder if needed, user said ignore income for now */}
-                    <div>
-                        {/* <div className="text-primary-foreground/70 text-xs mb-1">本月收入</div>
-                        <div className="text-2xl font-bold font-mono">0.00</div> */}
+
+                    <div className="flex flex-col items-end">
+                        <div className="text-muted-foreground text-[10px] mb-0.5">本月支出 ({monthStats.currency})</div>
+                        <div className="text-xl font-bold font-mono tracking-tight">{monthStats.total.toFixed(2)}</div>
                     </div>
                 </div>
             </div>
 
-            {/* Content Layer with white background and rounded top */}
-            <div className="relative bg-bg rounded-t-3xl min-h-[500px] pt-6 px-1 space-y-4">
+            {/* Content Layer */}
+            <div className="relative pt-2 space-y-4">
 
                 {/* Pending Actions */}
                 {(pendingCount > 0 || hasFailedMessages) && (

@@ -33,10 +33,8 @@ async function processNextMessage() {
     try {
         await handleMessageProcessing(nextMessage);
 
-        await db
-            .update(inputMessages)
-            .set({ status: "completed" })
-            .where(eq(inputMessages.id, nextMessage.id));
+        // Status update is now handled inside handleMessageProcessing
+        // because it could be 'completed' OR 'to_confirm'
 
     } catch (error) {
         console.error(`Failed to process message ${nextMessage.id}:`, error);
@@ -60,7 +58,7 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
     const messageInput: MessageInput = {
         text: message.text || undefined,
         images: message.imageUrls && message.imageUrls.length > 0
-            ? message.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" }))
+            ? message.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" })) // Assuming jpeg for simplicity, or we could store mimeType
             : undefined
     };
 
@@ -78,6 +76,7 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
         })),
     }, autoConfirm);
 
+    // Save AI response for debugging
     await db
         .update(inputMessages)
         .set({ aiResponse: result.rawResponse })
@@ -85,31 +84,46 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
 
     const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
 
-    for (const tx of validTransactions) {
-        const categoryId = tx.category
-            ? allCategories.find(c => c.name === tx.category)?.id ?? null
-            : null;
+    if (validTransactions.length === 0) {
+        await db
+            .update(inputMessages)
+            .set({ status: "completed" }) // Nothing to add, just complete
+            .where(eq(inputMessages.id, message.id));
+        return;
+    }
 
-        const metadata = tx.metadata || {};
+    if (autoConfirm) {
+        // Direct insertion
+        for (const tx of validTransactions) {
+            const categoryId = tx.category
+                ? allCategories.find(c => c.name === tx.category)?.id ?? null
+                : null;
 
-        // Determine source type based on input
-        let sourceType: "text" | "image" = "text";
-        if (message.imageUrls && message.imageUrls.length > 0) {
-            sourceType = "image";
+            await db.insert(transactions).values({
+                ledgerId: message.ledgerId,
+                categoryId,
+                inputMessageId: message.id,
+                amount: tx.amount.toString(),
+                currency: tx.currency,
+                itemName: tx.itemName || "未分类",
+                description: tx.notes || null,
+                transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
+            });
         }
 
-        await db.insert(transactions).values({
-            ledgerId: message.ledgerId,
-            categoryId,
-            inputMessageId: message.id,
-            amount: tx.amount.toString(),
-            currency: tx.currency,
-            itemName: tx.itemName || "未分类",
-            status: tx.status || "pending",
-            sourceType: sourceType,
-            transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
-            description: metadata.notes || null,
-            metadata,
-        });
+        await db
+            .update(inputMessages)
+            .set({ status: "completed" })
+            .where(eq(inputMessages.id, message.id));
+
+    } else {
+        // Pending confirmation
+        await db
+            .update(inputMessages)
+            .set({
+                status: "to_confirm",
+                proposedTransactions: validTransactions
+            })
+            .where(eq(inputMessages.id, message.id));
     }
 }

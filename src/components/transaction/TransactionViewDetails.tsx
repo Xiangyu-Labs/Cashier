@@ -72,37 +72,18 @@ export function TransactionViewDetails({
 
                 <div className="flex justify-between items-center">
                     <span className="text-sm text-muted">状态</span>
-                    <Badge
-                        variant={transaction.status === "confirmed" ? "success" : "warning"}
-                    >
-                        {transaction.status === "confirmed" ? "已确认" : "待确认"}
-                    </Badge>
+                    <Badge variant="success">已确认</Badge>
                 </div>
 
-                {transaction.metadata?.quantity && (
+                {transaction.description && (
                     <div className="flex justify-between items-center border-t border-border/50 pt-2 mt-1">
-                        <span className="text-sm text-muted">数量</span>
-                        <span className="text-sm text-text">
-                            {transaction.metadata.quantity}
+                        <span className="text-sm text-muted">备注</span>
+                        <span className="text-sm text-text max-w-[200px] truncate" title={transaction.description}>
+                            {transaction.description}
                         </span>
                     </div>
                 )}
-                {transaction.metadata?.unitPrice && (
-                    <div className="flex justify-between items-center border-t border-border/50 pt-2">
-                        <span className="text-sm text-muted">单价</span>
-                        <span className="text-sm text-text">
-                            {transaction.metadata.unitPrice}
-                        </span>
-                    </div>
-                )}
-                {transaction.metadata?.originalName && (
-                    <div className="flex justify-between items-center border-t border-border/50 pt-2">
-                        <span className="text-sm text-muted">原始名称</span>
-                        <span className="text-sm text-text">
-                            {transaction.metadata.originalName}
-                        </span>
-                    </div>
-                )}
+
                 <div className="flex justify-between items-center border-t border-border/50 pt-2">
                     <span className="text-sm text-muted">创建时间</span>
                     <span className="text-sm text-text">

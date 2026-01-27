@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inputMessages, ledgers } from "@/lib/db/schema";
+import { inputMessages, ledgers, categories, transactions } from "@/lib/db/schema";
 import { eq, inArray, and, asc } from "drizzle-orm";
 import { z } from "zod";
 
@@ -18,8 +18,6 @@ const messageSchema = z.object({
     .optional(),
 });
 
-
-
 type RouteParams = { params: Promise<{ id: string }> };
 
 // GET /api/ledgers/[id]/messages - 获取消息列表 (主要用于获取队列中的消息)
@@ -32,7 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (status) {
     // Validate or cast to allowed status values
-    const statuses = status.split(",") as ("queued" | "processing" | "completed" | "failed")[];
+    const statuses = status.split(",") as ("queued" | "processing" | "to_confirm" | "completed" | "failed")[];
     conditions.push(inArray(inputMessages.status, statuses));
   }
 
@@ -114,3 +112,73 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+// PATCH /api/ledgers/[id]/messages - 确认消息 (将 proposed 转换为 actual transactions)
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id: ledgerId } = await params;
+    const body = await request.json();
+    const { messageId, action } = body;
+
+    if (!messageId || action !== 'confirm') {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const message = await db.query.inputMessages.findFirst({
+      where: and(
+        eq(inputMessages.id, messageId),
+        eq(inputMessages.ledgerId, ledgerId)
+      )
+    });
+
+    if (!message) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    if (message.status !== 'to_confirm') {
+      return NextResponse.json({ error: "Message is not pending confirmation" }, { status: 400 });
+    }
+
+    // Convert proposed transactions to actual transactions
+    const proposed = message.proposedTransactions as any[]; // Type assertion
+
+    if (proposed && proposed.length > 0) {
+      const allCategories = await db.query.categories.findMany({
+        where: eq(categories.ledgerId, ledgerId)
+      });
+
+      for (const tx of proposed) {
+        const categoryId = tx.category
+          ? allCategories.find(c => c.name === tx.category)?.id ?? null
+          : null;
+
+        await db.insert(transactions).values({
+          ledgerId: message.ledgerId,
+          categoryId,
+          inputMessageId: message.id,
+          amount: tx.amount.toString(),
+          currency: tx.currency,
+          itemName: tx.itemName || "未分类",
+          description: tx.notes || null,
+          transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
+        });
+      }
+    }
+
+    // Mark message as completed
+    await db.update(inputMessages)
+      .set({
+        status: 'completed',
+        proposedTransactions: null // Optional: clear proposed to save space, or keep for history
+      })
+      .where(eq(inputMessages.id, messageId));
+
+    return NextResponse.json({ status: "success" });
+
+  } catch (error) {
+    console.error("Failed to confirm message:", error);
+    return NextResponse.json(
+      { error: "Failed to confirm message" },
+      { status: 500 }
+    );
+  }
+}

@@ -33,8 +33,10 @@ export interface InputMessage {
   text: string | null;
   imageUrls: string[];
   aiResponse: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proposedTransactions?: any[] | null;
   createdAt: string;
-  status?: "queued" | "processing" | "completed" | "failed";
+  status?: "queued" | "processing" | "to_confirm" | "completed" | "failed";
   error?: string | null;
 }
 
@@ -47,19 +49,10 @@ export interface Transaction {
   currency: string | null;
   itemName: string;
   description: string | null;
-  status: "pending" | "confirmed";
-  sourceType: "text" | "image";
   transactionDate: string | null;
   createdAt: string;
   category?: Category | null;
   inputMessage?: InputMessage | null;
-  metadata?: {
-    quantity?: number;
-    unitPrice?: number;
-    originalName?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any;
-  } | null;
 }
 
 export interface TransactionSummary {

@@ -17,6 +17,7 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
   "pending",
   "confirmed",
 ]);
+// Deprecated but kept for now to avoid immediate break, will be removed
 export const sourceTypeEnum = pgEnum("source_type", [
   "text",
   "image",
@@ -26,6 +27,7 @@ export const sourceTypeEnum = pgEnum("source_type", [
 export const messageStatusEnum = pgEnum("message_status", [
   "queued",
   "processing",
+  "to_confirm",
   "completed",
   "failed",
 ]);
@@ -47,15 +49,7 @@ export const ledgersRelations = relations(ledgers, ({ many }) => ({
   inputMessages: many(inputMessages),
 }));
 
-// Global Settings (全局设置)
-export const settings = pgTable("settings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  language: text("language").notNull().default("zh-CN"),
-  currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  autoConfirm: boolean("auto_confirm").default(false),
-});
+
 
 // Category（全局分类 -> 账本分类）
 export const categories = pgTable("categories", {
@@ -84,8 +78,6 @@ export const inputMessages = pgTable("input_messages", {
   ledgerId: uuid("ledger_id")
     .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
-  // content: text("content").notNull(), // REMOVED
-  // contentType: contentTypeEnum("content_type").notNull(), // REMOVED
 
   // New flattened structure
   text: text("text"), // Nullable, for text content
@@ -96,6 +88,10 @@ export const inputMessages = pgTable("input_messages", {
   status: messageStatusEnum("status").notNull().default("queued"),
   error: text("error"),
   aiResponse: text("ai_response"),
+
+  // Proposed transactions awaiting confirmation
+  proposedTransactions: jsonb("proposed_transactions").$type<any[]>(),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -125,11 +121,8 @@ export const transactions = pgTable("transactions", {
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
   itemName: text("item_name").notNull(),
-  description: text("description"),
-  status: transactionStatusEnum("status").notNull().default("pending"),
-  sourceType: sourceTypeEnum("source_type").notNull(),
+  description: text("description"), // Stores the consolidated notes
   transactionDate: date("transaction_date", { mode: "date" }),
-  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLedgers, createLedger } from "@/lib/api";
 
 export default function HomePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const creatingRef = useRef(false);
   const [statusText, setStatusText] = useState("加载中...");
 
@@ -41,11 +42,13 @@ export default function HomePage() {
         const newLedger = await createLedger({
           name: "我的账本",
         });
+        await queryClient.invalidateQueries({ queryKey: ["ledgers"] });
         router.replace(`/ledger/${newLedger.id}`);
       } catch (error) {
         console.error("Failed to auto-create ledger:", error);
         creatingRef.current = false;
-        router.replace("/ledgers");
+        setStatusText("创建失败，请刷新重试");
+        creatingRef.current = false;
       }
     };
 

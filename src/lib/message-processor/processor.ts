@@ -17,11 +17,7 @@ const transactionSchema = z.object({
   currency: z.string().nullable(),
   category: z.string().nullable(),
   transaction_date: z.string().nullable(),
-  quantity: z.number().nullable().optional(),
-  unit_price: z.number().nullable().optional(),
-  unit: z.string().nullable().optional(),
-  original_name: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(), // Consolidated notes
 });
 
 const aiResponseSchema = z.object({
@@ -104,10 +100,6 @@ export class OpenAIMessageProcessor implements MessageProcessor {
 
       return validated.transactions.map((t) => {
         const {
-          quantity,
-          unit_price,
-          unit,
-          original_name,
           notes,
           item_name,
           amount,
@@ -116,24 +108,13 @@ export class OpenAIMessageProcessor implements MessageProcessor {
           transaction_date,
         } = t;
 
-        const hasMetadata =
-          quantity || unit_price || unit || original_name || notes;
-
         return {
           itemName: item_name,
           amount,
           currency,
           category,
           transactionDate: transaction_date,
-          metadata: hasMetadata
-            ? {
-              quantity,
-              unitPrice: unit_price,
-              unit,
-              originalName: original_name,
-              notes,
-            }
-            : null,
+          metadata: notes ? { notes } : null, // Temporarily keep metadata structure in processor types if needed, or better yet, just return what's needed. Wait, ParsedTransaction type probably needs update too.
         };
       });
     } catch (error) {

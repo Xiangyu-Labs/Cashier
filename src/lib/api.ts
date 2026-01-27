@@ -5,7 +5,6 @@ import {
   TransactionSummary,
   MessageResponse,
   InputMessage,
-  Settings,
 } from "@/types/api";
 
 const API_BASE = "/api";
@@ -23,22 +22,7 @@ async function request<T>(
   return res.json();
 }
 
-// Settings API
-export function fetchSettings(): Promise<Settings> {
-  return request(`${API_BASE}/settings`, undefined, "Failed to fetch settings");
-}
 
-export function updateSettings(data: Partial<Settings>): Promise<Settings> {
-  return request(
-    `${API_BASE}/settings`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to update settings"
-  );
-}
 
 // Ledger API
 export function fetchLedgers(): Promise<Ledger[]> {

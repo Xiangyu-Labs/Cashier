@@ -19,36 +19,17 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
+  // sourceType is removed effectively from usage but enum might linger in DB if not dropped. 
+  // For test setup we can just skip creating it or keep it if existing code still references type only.
+  // But we should update message_status
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE TYPE source_type AS ENUM ('text', 'image', 'audio', 'mixed');
-    EXCEPTION WHEN duplicate_object THEN null;
-    END $$;
-  `);
-  await db.execute(sql`
-    DO $$ BEGIN
-      CREATE TYPE content_type AS ENUM ('text', 'image', 'audio');
-    EXCEPTION WHEN duplicate_object THEN null;
-    END $$;
-  `);
-  await db.execute(sql`
-    DO $$ BEGIN
-      CREATE TYPE message_status AS ENUM ('queued', 'processing', 'completed', 'failed');
+      CREATE TYPE message_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
 
-  // Create tables
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS settings (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      language TEXT NOT NULL DEFAULT 'zh-CN',
-      currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
-      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      auto_confirm BOOLEAN DEFAULT FALSE
-    );
-  `);
+  // Settings table removed
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS ledgers (
@@ -84,6 +65,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       status message_status NOT NULL DEFAULT 'queued',
       error TEXT,
       ai_response TEXT,
+      proposed_transactions JSONB,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
@@ -98,10 +80,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       currency TEXT,
       item_name TEXT NOT NULL,
       description TEXT,
-      status transaction_status NOT NULL DEFAULT 'pending',
-      source_type source_type NOT NULL,
       transaction_date DATE,
-      metadata JSONB,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);

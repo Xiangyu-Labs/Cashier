@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ArrowLeft, Plus, Settings } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionsTab } from "@/components/ledger/TransactionsTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
@@ -23,6 +23,8 @@ import {
 import { TransactionInput } from "@/components/ledger/TransactionInput";
 import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStatus";
 import { useLedgerData } from "@/hooks/useLedgerData";
+
+import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
 
 export default function LedgerPage() {
   const params = useParams();
@@ -65,54 +67,45 @@ export default function LedgerPage() {
       <header className="bg-surface border-b border-border sticky top-0 z-10">
         <div className="max-w-md mx-auto px-4 h-14 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Link href="/ledgers">
-              <Button variant="ghost" size="icon" className="-ml-2">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-bold truncate max-w-[150px]">
-                {ledger.name}
-              </h1>
-              {showTasksIndicator && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="text-xs flex items-center gap-2 hover:opacity-80 transition-opacity">
-                      {stats.processingCount > 0 && (
-                        <span className="flex items-center gap-1 text-primary">
-                          <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
-                          {stats.processingCount} 处理中
-                        </span>
-                      )}
-                      {stats.queuedCount > 0 && (
-                        <span className="text-muted">
-                          {stats.queuedCount} 排队
-                        </span>
-                      )}
-                      {stats.failedCount > 0 && (
-                        <span className="flex items-center gap-1 text-danger font-medium">
-                          <span className="h-2 w-2 rounded-full bg-danger"></span>
-                          {stats.failedCount} 失败
-                        </span>
-                      )}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="start">
-                    <div className="p-3 border-b border-border bg-surface2/50 flex justify-between items-center">
-                      <h4 className="font-medium text-sm">任务队列</h4>
-                      <span className="text-xs text-muted">
-                        共 {queuedMessages.length} 个任务
+            <LedgerSwitcher currentLedgerId={ledgerId} />
+            {showTasksIndicator && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="text-xs flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    {stats.processingCount > 0 && (
+                      <span className="flex items-center gap-1 text-primary">
+                        <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
+                        {stats.processingCount} 处理中
                       </span>
-                    </div>
-                    <div className="p-2">
-                      <TransactionQueueStatus
-                        queuedMessages={queuedMessages}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
+                    )}
+                    {stats.queuedCount > 0 && (
+                      <span className="text-muted">
+                        {stats.queuedCount} 排队
+                      </span>
+                    )}
+                    {stats.failedCount > 0 && (
+                      <span className="flex items-center gap-1 text-danger font-medium">
+                        <span className="h-2 w-2 rounded-full bg-danger"></span>
+                        {stats.failedCount} 失败
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-3 border-b border-border bg-surface2/50 flex justify-between items-center">
+                    <h4 className="font-medium text-sm">任务队列</h4>
+                    <span className="text-xs text-muted">
+                      共 {queuedMessages.length} 个任务
+                    </span>
+                  </div>
+                  <div className="p-2">
+                    <TransactionQueueStatus
+                      queuedMessages={queuedMessages}
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/ledger/${ledgerId}/settings`}>
@@ -135,7 +128,7 @@ export default function LedgerPage() {
             </Button>
           </div>
         </div>
-      </header>
+      </header >
 
       <main className="max-w-md mx-auto p-4">
         <Tabs
@@ -174,6 +167,6 @@ export default function LedgerPage() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
