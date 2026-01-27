@@ -1,7 +1,7 @@
 import { InputMessage, Transaction, Category } from "@/types/api";
 import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,8 @@ export function BatchTransactionCard({
   status,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
+  // Default to collapsed as requested
+  const [isContentExpanded, setIsContentExpanded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   // Track expanded categories. Default to open for pending? No, user asked for breakdown.
   // "Click beverage, see all items". So default closed.
@@ -230,38 +232,57 @@ export function BatchTransactionCard({
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setIsContentExpanded(!isContentExpanded)}
+            className="h-6 w-6 text-muted-foreground hover:text-primary"
+            title={isContentExpanded ? "收起原始内容" : "查看原始内容"}
+          >
+            {isContentExpanded ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
 
       {/* 2. User Content Section */}
-      <div className="p-4 space-y-3">
-        {/* Images Grid */}
-        {images.length > 0 && (
-          <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
-            {images.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setSelectedImageIndex(idx)}
-              >
-                <Image
-                  src={getSafeImageSrc(img)}
-                  alt={`User upload ${idx + 1}`}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+      {isContentExpanded && (
+        <div className="p-4 space-y-3 bg-gray-50/30 border-b border-gray-100 animate-in slide-in-from-top-2 duration-200">
+          {/* Images Grid */}
+          {images.length > 0 && (
+            <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+              {images.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setSelectedImageIndex(idx)}
+                >
+                  <Image
+                    src={getSafeImageSrc(img)}
+                    alt={`User upload ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* User Text */}
-        {text && (
-          <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-            {text}
-          </div>
-        )}
-      </div>
+          {/* User Text */}
+          {text && (
+            <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+              {text}
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* 3. Transaction Details (Category Groups) */}
       <div className="border-t border-gray-100 divide-y divide-gray-50">
@@ -330,17 +351,19 @@ export function BatchTransactionCard({
       </div>
 
       {/* Footer Actions */}
-      {!isConfirmed && onConfirm && (
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-          <Button
-            onClick={handleConfirm}
-            disabled={isConfirming}
-            className="bg-primary hover:bg-primary/90 text-white shadow-sm"
-          >
-            {isConfirming ? "确认中..." : "确认整单"}
-          </Button>
-        </div>
-      )}
+      {
+        !isConfirmed && onConfirm && (
+          <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <Button
+              onClick={handleConfirm}
+              disabled={isConfirming}
+              className="bg-primary hover:bg-primary/90 text-white shadow-sm"
+            >
+              {isConfirming ? "确认中..." : "确认整单"}
+            </Button>
+          </div>
+        )
+      }
 
       {/* ImageViewer Component */}
       <ImageViewer
@@ -349,6 +372,6 @@ export function BatchTransactionCard({
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
-    </div>
+    </div >
   );
 }
