@@ -37,7 +37,6 @@ export default function LedgerPage() {
     pendingGroups,
     confirmedGroups,
     queuedMessages,
-    summary,
     stats,
   } = useLedgerData(ledgerId);
 
@@ -161,7 +160,7 @@ export default function LedgerPage() {
           </TabsContent>
 
           <TabsContent value="stats" className="mt-0">
-            <StatsTab summary={summary} />
+            <StatsTab ledgerId={ledgerId} />
           </TabsContent>
         </Tabs>
       </main>

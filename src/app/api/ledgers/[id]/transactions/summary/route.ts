@@ -5,12 +5,29 @@ import { eq, and, sql } from "drizzle-orm";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// GET /api/ledgers/[id]/transactions/summary - 按分类汇总
+// GET /api/ledgers/[id]/transactions/summary - 按分类汇总 + 趋势
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") || "confirmed";
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // 构建过滤条件
+    const conditions = [
+      eq(transactions.ledgerId, ledgerId),
+      eq(transactions.status, status as "pending" | "confirmed"),
+    ];
+
+    if (startDate) {
+      conditions.push(sql`${transactions.transactionDate} >= ${startDate}::date`);
+    }
+    if (endDate) {
+      conditions.push(sql`${transactions.transactionDate} <= ${endDate}::date`);
+    }
+
+    const whereClause = and(...conditions);
 
     // 获取按分类汇总的数据
     const summary = await db
@@ -24,18 +41,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .from(transactions)
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(
-        and(
-          eq(transactions.ledgerId, ledgerId),
-          eq(transactions.status, status as "pending" | "confirmed")
-        )
-      )
+      .where(whereClause)
       .groupBy(
         transactions.categoryId,
         categories.name,
         categories.icon,
         transactions.currency
-      );
+      )
+      .orderBy(sql`sum(${transactions.amount}) DESC`);
 
     // 计算总金额（按货币分组）
     const totals = await db
@@ -45,13 +58,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         count: sql<number>`count(*)::int`,
       })
       .from(transactions)
-      .where(
-        and(
-          eq(transactions.ledgerId, ledgerId),
-          eq(transactions.status, status as "pending" | "confirmed")
-        )
-      )
+      .where(whereClause)
       .groupBy(transactions.currency);
+
+    // 计算趋势（按日期分组）
+    const trend = await db
+      .select({
+        date: transactions.transactionDate,
+        total: sql<string>`sum(${transactions.amount})`,
+      })
+      .from(transactions)
+      .where(whereClause)
+      .groupBy(transactions.transactionDate)
+      .orderBy(transactions.transactionDate);
 
     return NextResponse.json({
       byCategory: summary.map((s) => ({
@@ -66,6 +85,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         currency: t.currency,
         total: parseFloat(t.total || "0"),
         count: t.count,
+      })),
+      trend: trend.map((t) => ({
+        date: t.date,
+        total: parseFloat(t.total || "0"),
       })),
     });
   } catch (error) {

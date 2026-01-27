@@ -76,6 +76,10 @@ export interface TransactionSummary {
     total: number;
     count: number;
   }[];
+  trend: {
+    date: string;
+    total: number;
+  }[];
 }
 
 export interface MessageResponse {

@@ -232,10 +232,14 @@ export function confirmTransactions(
 
 export function fetchTransactionSummary(
   ledgerId: string,
-  status?: "pending" | "confirmed"
+  status?: "pending" | "confirmed",
+  startDate?: string,
+  endDate?: string
 ): Promise<TransactionSummary> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status);
+  if (startDate) searchParams.set("startDate", startDate);
+  if (endDate) searchParams.set("endDate", endDate);
 
   return request(
     `${API_BASE}/ledgers/${ledgerId}/transactions/summary?${searchParams}`,

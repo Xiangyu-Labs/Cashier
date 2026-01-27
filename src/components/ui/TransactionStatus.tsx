@@ -6,10 +6,9 @@ export type TransactionStatusType = "queued" | "processing" | "completed" | "fai
 interface TransactionStatusProps {
     status: TransactionStatusType;
     className?: string;
-    showIcon?: boolean;
 }
 
-export function TransactionStatus({ status, className, showIcon = true }: TransactionStatusProps) {
+export function TransactionStatus({ status, className }: TransactionStatusProps) {
     const config = {
         queued: {
             label: "排队中",
@@ -18,11 +17,10 @@ export function TransactionStatus({ status, className, showIcon = true }: Transa
             bgClass: "bg-muted",
         },
         processing: {
-            label: "处理中...",
+            label: "处理中",
             icon: Loader2,
             colorClass: "text-info",
             bgClass: "bg-info",
-            animate: true,
         },
         completed: {
             label: "已完成",
@@ -44,7 +42,6 @@ export function TransactionStatus({ status, className, showIcon = true }: Transa
 
     const configItem = config[status];
     const { label, icon: Icon, colorClass, bgClass } = configItem;
-    const animate = "animate" in configItem ? configItem.animate : false;
 
     return (
         <div className={cn("inline-flex items-center gap-2", className)}>
