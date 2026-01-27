@@ -17,12 +17,7 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
   "pending",
   "confirmed",
 ]);
-// Deprecated but kept for now to avoid immediate break, will be removed
-export const sourceTypeEnum = pgEnum("source_type", [
-  "text",
-  "image",
-  "mixed",
-]);
+
 
 export const messageStatusEnum = pgEnum("message_status", [
   "queued",

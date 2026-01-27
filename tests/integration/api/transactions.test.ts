@@ -301,4 +301,59 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(data).toHaveLength(1);
     expect(data[0].itemName).toBe("Today Created");
   });
+  it("should return pending transactions from inputMessages", async () => {
+    const db = getTestDb();
+
+    // Create an input message with status 'to_confirm' and proposed transactions
+    const [msg] = await db
+      .insert(inputMessages)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Purchase data",
+        status: "to_confirm",
+        proposedTransactions: [
+          {
+            itemName: "Pending Item 1",
+            amount: 50,
+            currency: "CNY",
+            category: "餐饮", // Should match testCategoryId which is 餐饮
+            notes: "Lunch with team"
+          },
+          {
+            itemName: "Pending Item 2",
+            amount: 100,
+            currency: "USD",
+            category: "Unknown Category"
+          }
+        ]
+      })
+      .returning();
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/transactions?status=pending`),
+      { params: Promise.resolve({ id: testLedgerId }) }
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toHaveLength(2);
+
+    // Verify first item (fully matched)
+    const item1 = data.find((t: { itemName: string }) => t.itemName === "Pending Item 1");
+    expect(item1).toBeDefined();
+    expect(item1.amount).toBe("50");
+    expect(item1.currency).toBe("CNY");
+    expect(item1.categoryId).toBe(testCategoryId);
+    expect(item1.category).toBeDefined();
+    expect(item1.category.name).toBe("餐饮");
+    expect(item1.description).toBe("Lunch with team");
+    expect(item1.id).toContain(`pending:${msg.id}`);
+
+    // Verify second item (unmatched category)
+    const item2 = data.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");
+    expect(item2).toBeDefined();
+    expect(item2.amount).toBe("100");
+    expect(item2.currency).toBe("USD");
+    expect(item2.categoryId).toBeNull();
+  });
 });
