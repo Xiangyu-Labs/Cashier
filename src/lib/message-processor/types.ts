@@ -34,7 +34,7 @@ export interface ProcessorContext {
 }
 
 export interface MessageProcessor {
-  process(input: MessageInput, context: ProcessorContext, autoConfirm?: boolean): Promise<ProcessResult>;
+  process(input: MessageInput, context: ProcessorContext): Promise<ProcessResult>;
 }
 
 export type SourceType = "text" | "image" | "mixed";

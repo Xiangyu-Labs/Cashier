@@ -74,7 +74,7 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
             name: c.name,
             description: c.description,
         })),
-    }, autoConfirm);
+    });
 
     // Save AI response for debugging
     await db
@@ -91,6 +91,17 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
             .where(eq(inputMessages.id, message.id));
         return;
     }
+
+    // Always save proposed transactions first (or effectively prepare them)
+    // We update the message to `to_confirm` state with the proposed transactions.
+    // If auto-confirm is on, we'll immediately process them.
+    await db
+        .update(inputMessages)
+        .set({
+            status: "to_confirm",
+            proposedTransactions: validTransactions
+        })
+        .where(eq(inputMessages.id, message.id));
 
     if (autoConfirm) {
         // Direct insertion
@@ -111,19 +122,10 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
             });
         }
 
+        // Mark as completed
         await db
             .update(inputMessages)
             .set({ status: "completed" })
-            .where(eq(inputMessages.id, message.id));
-
-    } else {
-        // Pending confirmation
-        await db
-            .update(inputMessages)
-            .set({
-                status: "to_confirm",
-                proposedTransactions: validTransactions
-            })
             .where(eq(inputMessages.id, message.id));
     }
 }

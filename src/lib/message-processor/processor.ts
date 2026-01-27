@@ -27,8 +27,7 @@ const aiResponseSchema = z.object({
 export class OpenAIMessageProcessor implements MessageProcessor {
   async process(
     input: MessageInput,
-    context: ProcessorContext,
-    autoConfirm: boolean = false
+    context: ProcessorContext
   ): Promise<ProcessResult> {
     const client = getOpenAIClient();
     const systemPrompt = buildTransactionPrompt(context.categories);
