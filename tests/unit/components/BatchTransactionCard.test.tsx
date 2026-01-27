@@ -71,6 +71,11 @@ describe("BatchTransactionCard", () => {
 
     it("renders text content", () => {
         render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} />);
+
+        // Expand content
+        const expandButton = screen.getByTitle("查看原始内容");
+        fireEvent.click(expandButton);
+
         expect(screen.getByText("Lunch 50")).toBeTruthy();
     });
 
@@ -81,6 +86,10 @@ describe("BatchTransactionCard", () => {
             content: "data:image/png;base64,fake-image-data",
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+
+        // Expand content
+        const expandButton = screen.getByTitle("查看原始内容");
+        fireEvent.click(expandButton);
 
         const imgs = screen.getAllByRole("img");
         // Expect at least one image with the src
@@ -96,6 +105,10 @@ describe("BatchTransactionCard", () => {
             content: JSON.stringify(imagesData),
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+
+        // Expand content
+        const expandButton = screen.getByTitle("查看原始内容");
+        fireEvent.click(expandButton);
 
         const imgs = screen.getAllByRole("img");
         // Filter out any icons that might be rendered as imgs (though mocked CategoryIcon is a div)
@@ -117,6 +130,10 @@ describe("BatchTransactionCard", () => {
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
 
+        // Expand content
+        const expandButton = screen.getByTitle("查看原始内容");
+        fireEvent.click(expandButton);
+
         expect(screen.getByText("Mixed notes")).toBeTruthy();
 
         const imgs = screen.getAllByRole("img");
@@ -137,6 +154,10 @@ describe("BatchTransactionCard", () => {
             content: "data:image/png;base64,fake-image-data",
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+
+        // Expand content
+        const expandButton = screen.getByTitle("查看原始内容");
+        fireEvent.click(expandButton);
 
         // Find the thumbnail image
         const imgs = screen.getAllByRole("img");
