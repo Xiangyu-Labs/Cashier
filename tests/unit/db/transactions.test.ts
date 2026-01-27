@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
+import { ledgers, categories, transactions, receipts } from "@/lib/db/schema";
 
 describe("Transactions Database Operations", () => {
   describe("CREATE", () => {
@@ -62,8 +62,8 @@ describe("Transactions Database Operations", () => {
         .values({ name: "Test Ledger" })
         .returning();
 
-      const [message] = await db
-        .insert(inputMessages)
+      const [receipt] = await db
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           text: "午餐25.5元",
@@ -74,7 +74,7 @@ describe("Transactions Database Operations", () => {
         .insert(transactions)
         .values({
           ledgerId: ledger.id,
-          inputMessageId: message.id,
+          receiptId: receipt.id,
           amount: "25.50",
           currency: "CNY",
           itemName: "午餐",
@@ -85,7 +85,7 @@ describe("Transactions Database Operations", () => {
 
       expect(created.currency).toBe("CNY");
       expect(created.description).toBe("在公司附近吃的");
-      expect(created.inputMessageId).toBe(message.id);
+      expect(created.receiptId).toBe(receipt.id);
       expect(created.transactionDate).toEqual(new Date("2025-01-25"));
     });
   });

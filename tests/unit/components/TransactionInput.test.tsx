@@ -16,7 +16,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-    sendMessage: vi.fn(),
+    createReceipt: vi.fn(),
 }));
 
 describe("TransactionInput", () => {

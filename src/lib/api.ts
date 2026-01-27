@@ -3,8 +3,8 @@ import {
   Category,
   Transaction,
   TransactionSummary,
-  MessageResponse,
-  InputMessage,
+  ReceiptResponse,
+  Receipt,
 } from "@/types/api";
 
 const API_BASE = "/api";
@@ -240,63 +240,63 @@ export function fetchTransactionSummary(
   );
 }
 
-// Message API
-export function sendMessage(
+// Receipt API
+export function createReceipt(
   ledgerId: string,
   data: {
     text?: string;
     images?: { data: string; mimeType: string }[];
     audio?: { data: string; mimeType: string };
   }
-): Promise<MessageResponse> {
+): Promise<ReceiptResponse> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/messages`,
+    `${API_BASE}/ledgers/${ledgerId}/receipts`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
-    "Failed to send message"
+    "Failed to send receipt"
   );
 }
 
-export function fetchInputMessages(
+export function fetchReceipts(
   ledgerId: string,
   status?: string[]
-): Promise<InputMessage[]> {
+): Promise<Receipt[]> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status.join(","));
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/messages?${searchParams}`,
+    `${API_BASE}/ledgers/${ledgerId}/receipts?${searchParams}`,
     undefined,
-    "Failed to fetch messages"
+    "Failed to fetch receipts"
   );
 }
 
-export function retryMessage(
+export function retryReceipt(
   ledgerId: string,
-  messageId: string
+  receiptId: string
 ): Promise<{ success: boolean; message: string }> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}/retry`,
+    `${API_BASE}/ledgers/${ledgerId}/receipts/${receiptId}/retry`,
     {
       method: "POST",
     },
-    "Failed to retry message"
+    "Failed to retry receipt"
   );
 }
 
-export function deleteMessage(
+export function deleteReceipt(
   ledgerId: string,
-  messageId: string
+  receiptId: string
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/messages/${messageId}`,
+    `${API_BASE}/ledgers/${ledgerId}/receipts/${receiptId}`,
     {
       method: "DELETE",
     },
-    "Failed to delete message"
+    "Failed to delete receipt"
   );
 }
 

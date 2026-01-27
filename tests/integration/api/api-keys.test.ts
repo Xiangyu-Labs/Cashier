@@ -4,12 +4,12 @@ import { POST as createApiKeyPOST, GET as listApiKeysGET } from "@/app/api/ledge
 import { DELETE as deleteApiKeyDELETE } from "@/app/api/ledgers/[id]/api-keys/[keyId]/route";
 import { POST as transactionPOST } from "@/app/api/v1/transactions/route";
 import { getTestDb } from "../../setup";
-import { ledgers, apiKeys, inputMessages } from "@/lib/db/schema";
+import { ledgers, apiKeys, receipts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // Mock Queue
 vi.mock("@/lib/queue", () => ({
-    processMessageQueue: vi.fn().mockResolvedValue(undefined),
+    processReceiptQueue: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("API Keys & Transaction Ingestion", () => {
@@ -85,12 +85,12 @@ describe("API Keys & Transaction Ingestion", () => {
         expect(data.status).toBe("queued");
 
         // Check DB
-        const msg = await db.query.inputMessages.findFirst({
-            where: eq(inputMessages.id, data.messageId)
+        const receipt = await db.query.receipts.findFirst({
+            where: eq(receipts.id, data.receiptId)
         });
-        expect(msg).toBeDefined();
-        expect(msg?.text).toBe("API Transaction");
-        expect(msg?.ledgerId).toBe(testLedgerId);
+        expect(receipt).toBeDefined();
+        expect(receipt?.text).toBe("API Transaction");
+        expect(receipt?.ledgerId).toBe(testLedgerId);
     });
 
     it("should reject transaction with invalid api key", async () => {

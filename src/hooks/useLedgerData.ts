@@ -5,12 +5,12 @@ import {
     fetchTransactions,
     fetchTransactionSummary,
     fetchCategories,
-    fetchInputMessages,
+    fetchReceipts,
 } from "@/lib/api";
-import { InputMessage, Transaction } from "@/types/api";
+import { Receipt, Transaction } from "@/types/api";
 
 type TransactionBatch = {
-    inputMessage: InputMessage;
+    receipt: Receipt;
     transactions: Transaction[];
 };
 
@@ -26,21 +26,21 @@ function groupTransactions(transactions?: Transaction[]): GroupedTransactions {
     const others: Transaction[] = [];
 
     for (const tx of transactions) {
-        if (tx.inputMessage && tx.inputMessageId) {
-            if (!batches[tx.inputMessageId]) {
-                batches[tx.inputMessageId] = {
-                    inputMessage: tx.inputMessage,
+        if (tx.receipt && tx.receiptId) {
+            if (!batches[tx.receiptId]) {
+                batches[tx.receiptId] = {
+                    receipt: tx.receipt,
                     transactions: [],
                 };
             }
-            batches[tx.inputMessageId].transactions.push(tx);
+            batches[tx.receiptId].transactions.push(tx);
         } else {
             others.push(tx);
         }
     }
 
     const sortedBatches = Object.values(batches).sort((a, b) =>
-        new Date(b.inputMessage.createdAt).getTime() - new Date(a.inputMessage.createdAt).getTime()
+        new Date(b.receipt.createdAt).getTime() - new Date(a.receipt.createdAt).getTime()
     );
 
     return {
@@ -52,24 +52,24 @@ function groupTransactions(transactions?: Transaction[]): GroupedTransactions {
 export function useLedgerData(ledgerId: string) {
     const queryClient = useQueryClient();
 
-    // Poll for queued/processing messages first to determine if we need to poll others
-    const { data: queuedMessages } = useQuery({
-        queryKey: ["messages", ledgerId, "queued"],
-        queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing", "failed"]),
+    // Poll for queued/processing receipts first to determine if we need to poll others
+    const { data: queuedReceipts } = useQuery({
+        queryKey: ["receipts", ledgerId, "queued"],
+        queryFn: () => fetchReceipts(ledgerId, ["queued", "processing", "failed"]),
         refetchInterval: (query) => {
             const data = query.state.data;
             return data && data.length > 0 ? 1000 : 5000;
         },
     });
 
-    const isProcessing = queuedMessages?.some(m => m.status === 'queued' || m.status === 'processing');
+    const isProcessing = queuedReceipts?.some(m => m.status === 'queued' || m.status === 'processing');
     const refetchInterval = isProcessing ? 1000 : false;
 
     // Track previous queue length to detect completion
-    const prevQueueLengthRef = useRef(queuedMessages?.length || 0);
+    const prevQueueLengthRef = useRef(queuedReceipts?.length || 0);
 
     useEffect(() => {
-        const currentLength = queuedMessages?.length || 0;
+        const currentLength = queuedReceipts?.length || 0;
         // If queue size decreased, something finished processing (or was deleted)
         // In either case, we should refresh transactions to show the result
         if (currentLength < prevQueueLengthRef.current) {
@@ -77,7 +77,7 @@ export function useLedgerData(ledgerId: string) {
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         }
         prevQueueLengthRef.current = currentLength;
-    }, [queuedMessages?.length, queryClient, ledgerId]);
+    }, [queuedReceipts?.length, queryClient, ledgerId]);
 
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
         queryKey: ["ledger", ledgerId],
@@ -110,9 +110,9 @@ export function useLedgerData(ledgerId: string) {
     const pendingGroups = useMemo(() => groupTransactions(pendingTxs), [pendingTxs]);
     const confirmedGroups = useMemo(() => groupTransactions(confirmedTxs), [confirmedTxs]);
 
-    const processingMessages = queuedMessages?.filter((m) => m.status === "processing") || [];
-    const queuedOnlyMessages = queuedMessages?.filter((m) => m.status === "queued") || [];
-    const failedMessages = queuedMessages?.filter((m) => m.status === "failed") || [];
+    const processingReceipts = queuedReceipts?.filter((m) => m.status === "processing") || [];
+    const queuedOnlyReceipts = queuedReceipts?.filter((m) => m.status === "queued") || [];
+    const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed") || [];
 
     return {
         ledger,
@@ -120,13 +120,13 @@ export function useLedgerData(ledgerId: string) {
         categories: categories || [],
         confirmedTxs,
         summary,
-        queuedMessages: queuedMessages || [],
+        queuedReceipts: queuedReceipts || [],
         pendingGroups,
         confirmedGroups,
         stats: {
-            processingCount: processingMessages.length,
-            queuedCount: queuedOnlyMessages.length,
-            failedCount: failedMessages.length,
+            processingCount: processingReceipts.length,
+            queuedCount: queuedOnlyReceipts.length,
+            failedCount: failedReceipts.length,
         },
     };
 }

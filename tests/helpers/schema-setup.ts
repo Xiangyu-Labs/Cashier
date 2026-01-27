@@ -7,7 +7,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   // Drop tables to ensure clean state with new schema
   await db.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS receipts CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`); // Ensure old table is also dropped
   await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
 
@@ -25,9 +26,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
-  // sourceType is removed effectively from usage but enum might linger in DB if not dropped. 
-  // For test setup we can just skip creating it or keep it if existing code still references type only.
-  // But we should update message_status
+
   await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE message_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed');
@@ -63,7 +62,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS input_messages (
+    CREATE TABLE IF NOT EXISTS receipts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
       text TEXT,
@@ -81,7 +80,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
       category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-      input_message_id UUID REFERENCES input_messages(id) ON DELETE SET NULL,
+      receipt_id UUID REFERENCES receipts(id) ON DELETE SET NULL,
       amount DECIMAL(12, 2) NOT NULL,
       currency TEXT,
       item_name TEXT NOT NULL,

@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateTransaction, deleteTransaction } from "@/lib/api";
-import { Transaction, Category, InputMessage } from "@/types/api";
+import { Transaction, Category, Receipt } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { useState } from "react";
 interface HistoryTabProps {
     ledgerId: string;
     confirmedGroups: {
-        batches: { inputMessage: InputMessage; transactions: Transaction[] }[];
+        batches: { receipt: Receipt; transactions: Transaction[] }[];
         others: Transaction[];
     };
     categories: Category[];
@@ -54,8 +54,8 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
         <div className="space-y-4">
             {confirmedGroups.batches.map((batch) => (
                 <BatchTransactionCard
-                    key={batch.inputMessage.id}
-                    inputMessage={batch.inputMessage}
+                    key={batch.receipt.id}
+                    receipt={batch.receipt}
                     transactions={batch.transactions}
                     categories={categories}
                     isConfirmed={true}

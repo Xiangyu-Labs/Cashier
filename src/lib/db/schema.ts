@@ -41,7 +41,7 @@ export const ledgers = pgTable("ledgers", {
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({
   transactions: many(transactions),
-  inputMessages: many(inputMessages),
+  receipts: many(receipts),
 }));
 
 
@@ -67,8 +67,8 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   transactions: many(transactions),
 }));
 
-// InputMessage（原始输入）
-export const inputMessages = pgTable("input_messages", {
+// Receipts (Input Messages / Queue)
+export const receipts = pgTable("receipts", {
   id: uuid("id").primaryKey().defaultRandom(),
   ledgerId: uuid("ledger_id")
     .notNull()
@@ -90,11 +90,11 @@ export const inputMessages = pgTable("input_messages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const inputMessagesRelations = relations(
-  inputMessages,
+export const receiptsRelations = relations(
+  receipts,
   ({ one, many }) => ({
     ledger: one(ledgers, {
-      fields: [inputMessages.ledgerId],
+      fields: [receipts.ledgerId],
       references: [ledgers.id],
     }),
     transactions: many(transactions),
@@ -110,7 +110,7 @@ export const transactions = pgTable("transactions", {
   categoryId: uuid("category_id").references(() => categories.id, {
     onDelete: "set null",
   }),
-  inputMessageId: uuid("input_message_id").references(() => inputMessages.id, {
+  receiptId: uuid("receipt_id").references(() => receipts.id, {
     onDelete: "set null",
   }),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
@@ -130,9 +130,9 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     fields: [transactions.categoryId],
     references: [categories.id],
   }),
-  inputMessage: one(inputMessages, {
-    fields: [transactions.inputMessageId],
-    references: [inputMessages.id],
+  receipt: one(receipts, {
+    fields: [transactions.receiptId],
+    references: [receipts.id],
   }),
 }));
 

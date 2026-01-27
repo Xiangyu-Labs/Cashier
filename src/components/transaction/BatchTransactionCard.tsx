@@ -1,4 +1,4 @@
-import { InputMessage, Transaction, Category } from "@/types/api";
+import { Receipt, Transaction, Category } from "@/types/api";
 import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff } from "lucide-react";
@@ -18,7 +18,7 @@ function getSafeImageSrc(data: string): string {
 
 
 interface BatchTransactionCardProps {
-  inputMessage: InputMessage;
+  receipt: Receipt;
   transactions: Transaction[];
   categories: Category[];
   isConfirmed?: boolean;
@@ -38,7 +38,7 @@ interface BatchTransactionCardProps {
 }
 
 export function BatchTransactionCard({
-  inputMessage,
+  receipt,
   transactions,
   categories,
   isConfirmed = false,
@@ -112,10 +112,10 @@ export function BatchTransactionCard({
   // Parse content based on type
   const { text, images } = useMemo(() => {
     return {
-      text: inputMessage.text,
-      images: inputMessage.imageUrls || []
+      text: receipt.text,
+      images: receipt.imageUrls || []
     };
-  }, [inputMessage]);
+  }, [receipt]);
 
 
   const toggleExpand = (key: string) => {
@@ -143,7 +143,7 @@ export function BatchTransactionCard({
       {/* 1. Date Header */}
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
         <span className="text-sm font-medium text-muted">
-          {new Date(inputMessage.createdAt).toLocaleString("zh-CN", {
+          {new Date(receipt.createdAt).toLocaleString("zh-CN", {
             month: "long",
             day: "numeric",
             hour: "2-digit",

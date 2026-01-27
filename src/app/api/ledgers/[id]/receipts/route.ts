@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inputMessages, ledgers, categories, transactions } from "@/lib/db/schema";
+import { receipts, ledgers, categories, transactions } from "@/lib/db/schema";
 import { eq, inArray, and, asc } from "drizzle-orm";
 import { z } from "zod";
 
-import { processMessageQueue } from "@/lib/queue";
+import { processReceiptQueue } from "@/lib/queue";
 
 const messageSchema = z.object({
   text: z.string().optional(),
@@ -20,29 +20,29 @@ const messageSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// GET /api/ledgers/[id]/messages - 获取消息列表 (主要用于获取队列中的消息)
+// GET /api/ledgers/[id]/receipts - 获取消息列表 (主要用于获取队列中的消息)
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id: ledgerId } = await params;
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get("status"); // e.g. "queued,processing"
 
-  const conditions = [eq(inputMessages.ledgerId, ledgerId)];
+  const conditions = [eq(receipts.ledgerId, ledgerId)];
 
   if (status) {
     // Validate or cast to allowed status values
     const statuses = status.split(",") as ("queued" | "processing" | "to_confirm" | "completed" | "failed")[];
-    conditions.push(inArray(inputMessages.status, statuses));
+    conditions.push(inArray(receipts.status, statuses));
   }
 
-  const messages = await db.query.inputMessages.findMany({
+  const result = await db.query.receipts.findMany({
     where: and(...conditions),
-    orderBy: [asc(inputMessages.createdAt)],
+    orderBy: [asc(receipts.createdAt)],
   });
 
-  return NextResponse.json(messages);
+  return NextResponse.json(result);
 }
 
-// POST /api/ledgers/[id]/messages - 处理多模态输入
+// POST /api/ledgers/[id]/receipts - 处理多模态输入
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    // Save input message with 'queued' status
-    const [savedMessage] = await db
-      .insert(inputMessages)
+    // Save receipt with 'queued' status
+    const [savedReceipt] = await db
+      .insert(receipts)
       .values({
         ledgerId,
         text: validated.text || null,
@@ -88,14 +88,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .returning();
 
     // Trigger background processing (Fire and Forget)
-    processMessageQueue().catch((err) => {
+    processReceiptQueue().catch((err) => {
       console.error("Background processing failed to start:", err);
     });
 
     return NextResponse.json({
-      messageId: savedMessage.id,
+      receiptId: savedReceipt.id,
       status: "queued",
-      message: "Message queued for processing",
+      message: "Receipt queued for processing",
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -104,38 +104,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    console.error("Failed to queue message:", error);
+    console.error("Failed to queue receipt:", error);
     return NextResponse.json(
-      { error: "Failed to queue message" },
+      { error: "Failed to queue receipt" },
       { status: 500 }
     );
   }
 }
 
-// PATCH /api/ledgers/[id]/messages - 确认消息 (将 proposed 转换为 actual transactions)
+// PATCH /api/ledgers/[id]/receipts - 确认消息 (将 proposed 转换为 actual transactions)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
     const body = await request.json();
-    const { messageId, action } = body;
+    const { receiptId, action } = body;
 
-    if (!messageId || action !== 'confirm') {
+    if (!receiptId || action !== 'confirm') {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const message = await db.query.inputMessages.findFirst({
+    const receipt = await db.query.receipts.findFirst({
       where: and(
-        eq(inputMessages.id, messageId),
-        eq(inputMessages.ledgerId, ledgerId)
+        eq(receipts.id, receiptId),
+        eq(receipts.ledgerId, ledgerId)
       )
     });
 
-    if (!message) {
-      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    if (!receipt) {
+      return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
     }
 
-    if (message.status !== 'to_confirm') {
-      return NextResponse.json({ error: "Message is not pending confirmation" }, { status: 400 });
+    if (receipt.status !== 'to_confirm') {
+      return NextResponse.json({ error: "Receipt is not pending confirmation" }, { status: 400 });
     }
 
     // Convert proposed transactions to actual transactions
@@ -147,7 +147,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       notes?: string;
       transactionDate?: string;
     };
-    const proposed = message.proposedTransactions as ProposedTransaction[];
+    const proposed = receipt.proposedTransactions as ProposedTransaction[];
 
     if (proposed && proposed.length > 0) {
       const allCategories = await db.query.categories.findMany({
@@ -160,9 +160,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           : null;
 
         await db.insert(transactions).values({
-          ledgerId: message.ledgerId,
+          ledgerId: receipt.ledgerId,
           categoryId,
-          inputMessageId: message.id,
+          receiptId: receipt.id,
           amount: tx.amount.toString(),
           currency: tx.currency,
           itemName: tx.itemName || "未分类",
@@ -172,20 +172,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Mark message as completed
-    await db.update(inputMessages)
+    // Mark receipt as completed
+    await db.update(receipts)
       .set({
         status: 'completed',
         proposedTransactions: null // Optional: clear proposed to save space, or keep for history
       })
-      .where(eq(inputMessages.id, messageId));
+      .where(eq(receipts.id, receiptId));
 
     return NextResponse.json({ status: "success" });
 
   } catch (error) {
-    console.error("Failed to confirm message:", error);
+    console.error("Failed to confirm receipt:", error);
     return NextResponse.json(
-      { error: "Failed to confirm message" },
+      { error: "Failed to confirm receipt" },
       { status: 500 }
     );
   }

@@ -37,7 +37,7 @@ export default function LedgerPage() {
     isLedgerLoading,
     categories,
     pendingGroups,
-    queuedMessages,
+    queuedReceipts,
     stats,
   } = useLedgerData(ledgerId);
 
@@ -95,12 +95,12 @@ export default function LedgerPage() {
                   <div className="p-3 border-b border-border bg-surface2/50 flex justify-between items-center">
                     <h4 className="font-medium text-sm">任务队列</h4>
                     <span className="text-xs text-muted">
-                      共 {queuedMessages.length} 个任务
+                      共 {queuedReceipts.length} 个任务
                     </span>
                   </div>
                   <div className="p-2">
                     <TransactionQueueStatus
-                      queuedMessages={queuedMessages}
+                      queuedReceipts={queuedReceipts}
                     />
                   </div>
                 </PopoverContent>
@@ -145,7 +145,7 @@ export default function LedgerPage() {
             <TransactionsTab
               ledgerId={ledgerId}
               pendingGroups={pendingGroups}
-              queuedMessages={queuedMessages}
+              queuedReceipts={queuedReceipts}
               categories={categories}
             />
           </TabsContent>

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { sendMessage } from "@/lib/api";
+import { createReceipt } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send } from "lucide-react";
@@ -24,9 +24,9 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
             text?: string;
             images?: { data: string; mimeType: string }[];
         }) =>
-            sendMessage(ledgerId, data),
+            createReceipt(ledgerId, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["messages", ledgerId, "queued"] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             setText("");
             setImages([]);
             onSuccess?.();

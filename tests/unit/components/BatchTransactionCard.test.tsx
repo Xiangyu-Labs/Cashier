@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { vi, describe, it, expect } from "vitest";
-import { InputMessage, Transaction, Category } from "@/types/api";
+import { Receipt, Transaction, Category } from "@/types/api";
 
 // Mock dependencies
 vi.mock("@/components/CategoryIcon", () => ({
@@ -30,7 +30,7 @@ const mockTransaction: Transaction = {
     id: "tx1",
     ledgerId: "l1",
     categoryId: "cat1",
-    inputMessageId: "msg1",
+    receiptId: "msg1",
     amount: "50",
     currency: "CNY",
     itemName: "Lunch",
@@ -40,7 +40,7 @@ const mockTransaction: Transaction = {
     category: mockCategories[0],
 };
 
-const baseInputMessage: InputMessage = {
+const baseReceipt: Receipt = {
     id: "msg1",
     ledgerId: "l1",
     text: "Lunch 50",
@@ -63,12 +63,12 @@ describe("BatchTransactionCard", () => {
     };
 
     it("renders date header", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} />);
         expect(screen.getByText(/1月1日/)).toBeTruthy();
     });
 
     it("renders text content", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("查看原始内容");
@@ -78,12 +78,12 @@ describe("BatchTransactionCard", () => {
     });
 
     it("renders single image content", () => {
-        const inputMessage: InputMessage = {
-            ...baseInputMessage,
+        const receipt: Receipt = {
+            ...baseReceipt,
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("查看原始内容");
@@ -97,12 +97,12 @@ describe("BatchTransactionCard", () => {
 
     it("renders multiple images content", () => {
         const imagesData = ["data:image/png;base64,img1", "data:image/png;base64,img2"];
-        const inputMessage: InputMessage = {
-            ...baseInputMessage,
+        const receipt: Receipt = {
+            ...baseReceipt,
             text: null,
             imageUrls: imagesData,
         };
-        render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("查看原始内容");
@@ -117,19 +117,19 @@ describe("BatchTransactionCard", () => {
     });
 
     it("renders transaction details groups", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} />);
+        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[mockTransaction]} />);
         expect(screen.getByText("Food")).toBeTruthy();
         const amounts = screen.getAllByText(/50.00/);
         expect(amounts.length).toBeGreaterThan(0);
     });
 
     it("opens image zoom dialog on click", async () => {
-        const inputMessage: InputMessage = {
-            ...baseInputMessage,
+        const receipt: Receipt = {
+            ...baseReceipt,
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
+        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("查看原始内容");
@@ -153,12 +153,12 @@ describe("BatchTransactionCard", () => {
     });
 
     it("renders status when no transactions", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[]} status="queued" />);
+        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[]} status="queued" />);
         expect(screen.getByText("排队中")).toBeTruthy();
     });
 
     it("renders total amount and hides status when transactions exist", () => {
-        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} status="processing" />);
+        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[mockTransaction]} status="processing" />);
         // Should show total amount (50.00 CNY)
         const currencies = screen.getAllByText("CNY");
         expect(currencies.length).toBeGreaterThan(0);

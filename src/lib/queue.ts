@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
-import { inputMessages, ledgers, transactions } from "@/lib/db/schema";
+import { receipts, ledgers, transactions } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { MessageInput } from "@/lib/message-processor/types";
 
 let isProcessing = false;
 
-export async function processMessageQueue() {
+export async function processReceiptQueue() {
     if (isProcessing) return;
     isProcessing = true;
 
@@ -19,52 +19,52 @@ export async function processMessageQueue() {
 
 // Process messages until queue is empty
 async function processNextMessage() {
-    let nextMessage = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.status, "queued"),
-        orderBy: [asc(inputMessages.createdAt)],
+    let nextReceipt = await db.query.receipts.findFirst({
+        where: eq(receipts.status, "queued"),
+        orderBy: [asc(receipts.createdAt)],
     });
 
-    while (nextMessage) {
+    while (nextReceipt) {
         await db
-            .update(inputMessages)
+            .update(receipts)
             .set({ status: "processing" })
-            .where(eq(inputMessages.id, nextMessage.id));
+            .where(eq(receipts.id, nextReceipt.id));
 
         try {
-            await handleMessageProcessing(nextMessage);
+            await handleReceiptProcessing(nextReceipt);
         } catch (error) {
-            console.error(`Failed to process message ${nextMessage.id}:`, error);
+            console.error(`Failed to process receipt ${nextReceipt.id}:`, error);
             await db
-                .update(inputMessages)
+                .update(receipts)
                 .set({
                     status: "failed",
                     error: error instanceof Error ? error.message : "Unknown error"
                 })
-                .where(eq(inputMessages.id, nextMessage.id));
+                .where(eq(receipts.id, nextReceipt.id));
         }
 
         // Fetch next
-        nextMessage = await db.query.inputMessages.findFirst({
-            where: eq(inputMessages.status, "queued"),
-            orderBy: [asc(inputMessages.createdAt)],
+        nextReceipt = await db.query.receipts.findFirst({
+            where: eq(receipts.status, "queued"),
+            orderBy: [asc(receipts.createdAt)],
         });
     }
 }
 
-async function handleMessageProcessing(message: typeof inputMessages.$inferSelect) {
+async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
     const allCategories = await db.query.categories.findMany({
         orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
     });
 
     const messageInput: MessageInput = {
-        text: message.text || undefined,
-        images: message.imageUrls && message.imageUrls.length > 0
-            ? message.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" })) // Assuming jpeg for simplicity, or we could store mimeType
+        text: receipt.text || undefined,
+        images: receipt.imageUrls && receipt.imageUrls.length > 0
+            ? receipt.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" })) // Assuming jpeg for simplicity, or we could store mimeType
             : undefined
     };
 
     const ledger = await db.query.ledgers.findFirst({
-        where: eq(ledgers.id, message.ledgerId)
+        where: eq(ledgers.id, receipt.ledgerId)
     });
     const autoConfirm = ledger?.autoConfirm || false;
 
@@ -79,30 +79,30 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
 
     // Save AI response for debugging
     await db
-        .update(inputMessages)
+        .update(receipts)
         .set({ aiResponse: result.rawResponse })
-        .where(eq(inputMessages.id, message.id));
+        .where(eq(receipts.id, receipt.id));
 
     const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
 
     if (validTransactions.length === 0) {
         await db
-            .update(inputMessages)
+            .update(receipts)
             .set({ status: "completed" }) // Nothing to add, just complete
-            .where(eq(inputMessages.id, message.id));
+            .where(eq(receipts.id, receipt.id));
         return;
     }
 
     // Always save proposed transactions first (or effectively prepare them)
-    // We update the message to `to_confirm` state with the proposed transactions.
+    // We update the receipt to `to_confirm` state with the proposed transactions.
     // If auto-confirm is on, we'll immediately process them.
     await db
-        .update(inputMessages)
+        .update(receipts)
         .set({
             status: "to_confirm",
             proposedTransactions: validTransactions
         })
-        .where(eq(inputMessages.id, message.id));
+        .where(eq(receipts.id, receipt.id));
 
     if (autoConfirm) {
         // Direct insertion
@@ -112,9 +112,9 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
                 : null;
 
             await db.insert(transactions).values({
-                ledgerId: message.ledgerId,
+                ledgerId: receipt.ledgerId,
                 categoryId,
-                inputMessageId: message.id,
+                receiptId: receipt.id,
                 amount: tx.amount.toString(),
                 currency: tx.currency,
                 itemName: tx.itemName || "未分类",
@@ -125,8 +125,8 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
 
         // Mark as completed
         await db
-            .update(inputMessages)
+            .update(receipts)
             .set({ status: "completed" })
-            .where(eq(inputMessages.id, message.id));
+            .where(eq(receipts.id, receipt.id));
     }
 }

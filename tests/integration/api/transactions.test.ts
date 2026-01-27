@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/ledgers/[id]/transactions/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
+import { ledgers, categories, transactions, receipts } from "@/lib/db/schema";
 
 describe("GET /api/ledgers/[id]/transactions", () => {
   let testLedgerId: string;
@@ -133,12 +133,12 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(response.status).toBe(400);
   });
 
-  it("should return transactions with inputMessage relation when linked", async () => {
+  it("should return transactions with receipt relation when linked", async () => {
     const db = getTestDb();
 
-    // Create an input message
-    const [inputMessage] = await db
-      .insert(inputMessages)
+    // Create a receipt
+    const [receipt] = await db
+      .insert(receipts)
       .values({
         ledgerId: testLedgerId,
         text: "午餐花了25.5元",
@@ -146,11 +146,11 @@ describe("GET /api/ledgers/[id]/transactions", () => {
       })
       .returning();
 
-    // Create transaction linked to input message
+    // Create transaction linked to receipt
     await db.insert(transactions).values({
       ledgerId: testLedgerId,
       categoryId: testCategoryId,
-      inputMessageId: inputMessage.id,
+      receiptId: receipt.id,
       amount: "25.50",
       itemName: "午餐",
     });
@@ -163,16 +163,16 @@ describe("GET /api/ledgers/[id]/transactions", () => {
 
     expect(response.status).toBe(200);
     expect(data).toHaveLength(1);
-    expect(data[0].inputMessage).toBeDefined();
-    expect(data[0].inputMessage.id).toBe(inputMessage.id);
-    expect(data[0].inputMessage.text).toBe("午餐花了25.5元");
-    expect(data[0].inputMessage.aiResponse).toContain("午餐");
+    expect(data[0].receipt).toBeDefined();
+    expect(data[0].receipt.id).toBe(receipt.id);
+    expect(data[0].receipt.text).toBe("午餐花了25.5元");
+    expect(data[0].receipt.aiResponse).toContain("午餐");
   });
 
-  it("should return null inputMessage when transaction has no linked message", async () => {
+  it("should return null receipt when transaction has no linked receipt", async () => {
     const db = getTestDb();
 
-    // Create transaction without input message
+    // Create transaction without receipt
     await db.insert(transactions).values({
       ledgerId: testLedgerId,
       categoryId: testCategoryId,
@@ -188,14 +188,14 @@ describe("GET /api/ledgers/[id]/transactions", () => {
 
     expect(response.status).toBe(200);
     expect(data).toHaveLength(1);
-    expect(data[0].inputMessage).toBeNull();
+    expect(data[0].receipt).toBeNull();
   });
 
-  it("should return inputMessage with image contentType", async () => {
+  it("should return receipt with image contentType", async () => {
     const db = getTestDb();
 
-    const [inputMessage] = await db
-      .insert(inputMessages)
+    const [receipt] = await db
+      .insert(receipts)
       .values({
         ledgerId: testLedgerId,
         imageUrls: ["data:image/png;base64,iVBORw0KGgo..."],
@@ -205,7 +205,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
 
     await db.insert(transactions).values({
       ledgerId: testLedgerId,
-      inputMessageId: inputMessage.id,
+      receiptId: receipt.id,
       amount: "100.00",
       itemName: "从图片识别",
     });
@@ -216,15 +216,15 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data[0].inputMessage.imageUrls).toHaveLength(1);
-    expect(data[0].inputMessage.imageUrls[0]).toContain("data:image");
+    expect(data[0].receipt.imageUrls).toHaveLength(1);
+    expect(data[0].receipt.imageUrls[0]).toContain("data:image");
   });
 
-  it("should return inputMessage with contentType", async () => {
-    // 1. Create input message with text
+  it("should return receipt with contentType", async () => {
+    // 1. Create receipt with text
     const db = getTestDb();
-    const [msg] = await db
-      .insert(inputMessages)
+    const [rcpt] = await db
+      .insert(receipts)
       .values({
         ledgerId: testLedgerId,
         text: "Audio Note converted",
@@ -237,7 +237,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
       ledgerId: testLedgerId,
       amount: "100",
       itemName: "Voice Item",
-      inputMessageId: msg.id,
+      receiptId: rcpt.id,
     });
 
     // 3. Query
@@ -250,8 +250,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(data).toHaveLength(1);
-    expect(data[0].inputMessage).toBeDefined();
-    expect(data[0].inputMessage.text).toContain("Audio Note");
+    expect(data[0].receipt).toBeDefined();
+    expect(data[0].receipt.text).toContain("Audio Note");
   });
   it("should filter by date range", async () => {
     const db = getTestDb();
@@ -301,12 +301,12 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(data).toHaveLength(1);
     expect(data[0].itemName).toBe("Today Created");
   });
-  it("should return pending transactions from inputMessages", async () => {
+  it("should return pending transactions from receipts", async () => {
     const db = getTestDb();
 
-    // Create an input message with status 'to_confirm' and proposed transactions
-    const [msg] = await db
-      .insert(inputMessages)
+    // Create a receipt with status 'to_confirm' and proposed transactions
+    const [rcpt] = await db
+      .insert(receipts)
       .values({
         ledgerId: testLedgerId,
         text: "Purchase data",
@@ -347,7 +347,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(item1.category).toBeDefined();
     expect(item1.category.name).toBe("餐饮");
     expect(item1.description).toBe("Lunch with team");
-    expect(item1.id).toContain(`pending:${msg.id}`);
+    expect(item1.id).toContain(`pending:${rcpt.id}`);
 
     // Verify second item (unmatched category)
     const item2 = data.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");

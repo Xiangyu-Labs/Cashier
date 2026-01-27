@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { POST } from "@/app/api/ledgers/[id]/messages/route";
-import { DELETE } from "@/app/api/ledgers/[id]/messages/[messageId]/route";
+import { POST } from "@/app/api/ledgers/[id]/receipts/route";
+import { DELETE } from "@/app/api/ledgers/[id]/receipts/[receiptId]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories, transactions, inputMessages } from "@/lib/db/schema";
+import { ledgers, categories, transactions, receipts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
@@ -16,7 +16,7 @@ vi.mock("@/lib/ai/openai", () => ({
 
 import { getOpenAIClient } from "@/lib/ai/openai";
 
-describe("POST /api/ledgers/[id]/messages", () => {
+describe("POST /api/ledgers/[id]/receipts", () => {
   let testLedgerId: string;
   let testCategoryId: string;
 
@@ -63,7 +63,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({ text: "苹果2公斤，每公斤10元" }),
@@ -82,12 +82,12 @@ describe("POST /api/ledgers/[id]/messages", () => {
     const db = getTestDb();
     let retries = 0;
     while (retries < 30) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, data.messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, data.receiptId),
       });
-      if (message?.status === "completed") break;
-      if (message?.status === "failed") {
-        console.error("Message processing failed:", message.error);
+      if (receipt?.status === "completed") break;
+      if (receipt?.status === "failed") {
+        console.error("Receipt processing failed:", receipt.error);
         break;
       }
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -95,7 +95,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
     }
 
     const savedTx = await db.query.transactions.findFirst({
-      where: eq(transactions.inputMessageId, data.messageId)
+      where: eq(transactions.receiptId, data.receiptId)
     });
 
     expect(savedTx).toBeDefined();
@@ -107,7 +107,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should process text message and create pending transaction", async () => {
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({ text: "午餐花了25.5元" }),
@@ -120,23 +120,23 @@ describe("POST /api/ledgers/[id]/messages", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.messageId).toBeDefined();
+    expect(data.receiptId).toBeDefined();
     expect(data.status).toBe("queued");
 
     // Poll until processed
     const db = getTestDb();
     let retries = 0;
     while (retries < 10) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, data.messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, data.receiptId),
       });
-      if (message?.status === "completed") break;
+      if (receipt?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
 
     const savedTransactions = await db.query.transactions.findMany({
-      where: eq(transactions.inputMessageId, data.messageId),
+      where: eq(transactions.receiptId, data.receiptId),
     });
 
     expect(savedTransactions).toHaveLength(1);
@@ -146,7 +146,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should match category by name", async () => {
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({ text: "午餐" }),
@@ -164,16 +164,16 @@ describe("POST /api/ledgers/[id]/messages", () => {
     const db = getTestDb();
     let retries = 0;
     while (retries < 10) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, data.messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, data.receiptId),
       });
-      if (message?.status === "completed") break;
+      if (receipt?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
 
     const savedTransactions = await db.query.transactions.findMany({
-      where: eq(transactions.inputMessageId, data.messageId),
+      where: eq(transactions.receiptId, data.receiptId),
       with: { category: true }
     });
 
@@ -185,7 +185,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should save input message with AI response", async () => {
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({ text: "午餐25元" }),
@@ -198,26 +198,26 @@ describe("POST /api/ledgers/[id]/messages", () => {
     const data = await response.json();
 
     const db = getTestDb();
-    const savedMessage = await db.query.inputMessages.findFirst({
-      where: eq(inputMessages.id, data.messageId),
+    const savedReceipt = await db.query.receipts.findFirst({
+      where: eq(receipts.id, data.receiptId),
     });
 
-    expect(savedMessage).toBeDefined();
-    expect(savedMessage).toBeDefined();
+    expect(savedReceipt).toBeDefined();
+    expect(savedReceipt).toBeDefined();
     // aiResponse might not be populated immediately if we check too fast, 
     // but the content should be there.
-    expect(savedMessage?.status).toBeDefined();
-    expect(savedMessage?.status).toBeDefined();
-    expect(savedMessage?.text).toBe("午餐25元");
-    expect(savedMessage?.imageUrls).toEqual([]);
+    expect(savedReceipt?.status).toBeDefined();
+    expect(savedReceipt?.status).toBeDefined();
+    expect(savedReceipt?.text).toBe("午餐25元");
+    expect(savedReceipt?.imageUrls).toEqual([]);
 
     // Wait for processing to prevent race condition with next test
     let retries = 0;
     while (retries < 30) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, data.messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, data.receiptId),
       });
-      if (message?.status === "completed" || message?.status === "failed") break;
+      if (receipt?.status === "completed" || receipt?.status === "failed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
@@ -225,7 +225,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should return 400 when no input provided", async () => {
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({}),
@@ -243,7 +243,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should return 404 for non-existent ledger", async () => {
     const request = new NextRequest(
-      "http://localhost/api/ledgers/non-existent/messages",
+      "http://localhost/api/ledgers/non-existent/receipts",
       {
         method: "POST",
         body: JSON.stringify({ text: "test" }),
@@ -261,7 +261,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   it("should handle image input", async () => {
     const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -284,19 +284,19 @@ describe("POST /api/ledgers/[id]/messages", () => {
     expect(data.status).toBe("queued");
 
     const db = getTestDb();
-    const savedMessage = await db.query.inputMessages.findFirst({
-      where: eq(inputMessages.id, data.messageId),
+    const savedReceipt = await db.query.receipts.findFirst({
+      where: eq(receipts.id, data.receiptId),
     });
-    expect(savedMessage?.imageUrls).toHaveLength(1);
-    expect(savedMessage?.text).toBeNull();
+    expect(savedReceipt?.imageUrls).toHaveLength(1);
+    expect(savedReceipt?.text).toBeNull();
 
     // Wait for processing to prevent race condition with next test
     let retries = 0;
     while (retries < 30) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, data.messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, data.receiptId),
       });
-      if (message?.status === "completed" || message?.status === "failed") break;
+      if (receipt?.status === "completed" || receipt?.status === "failed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
@@ -304,10 +304,10 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
 
 
-  it("should delete message and associated transactions", async () => {
+  it("should delete receipt and associated transactions", async () => {
     // 1. Create a message first
     const createReq = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts`,
       {
         method: "POST",
         body: JSON.stringify({ text: "待删除的项目 100元" }),
@@ -317,48 +317,48 @@ describe("POST /api/ledgers/[id]/messages", () => {
       params: Promise.resolve({ id: testLedgerId }),
     });
     const createData = await createRes.json();
-    const messageId = createData.messageId;
+    const receiptId = createData.receiptId;
 
     // Wait for processing to ensure transactions are created
     const db = getTestDb();
     let retries = 0;
     while (retries < 10) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, messageId),
+      const receipt = await db.query.receipts.findFirst({
+        where: eq(receipts.id, receiptId),
       });
-      if (message?.status === "completed") break;
+      if (receipt?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
 
     // Verify transaction exists
     const txsBefore = await db.query.transactions.findMany({
-      where: eq(transactions.inputMessageId, messageId),
+      where: eq(transactions.receiptId, receiptId),
     });
     expect(txsBefore.length).toBeGreaterThan(0);
 
     // 2. DELETE request
     const deleteReq = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/messages/${messageId}`,
+      `http://localhost/api/ledgers/${testLedgerId}/receipts/${receiptId}`,
       {
         method: "DELETE",
       }
     );
 
     const deleteRes = await DELETE(deleteReq, {
-      params: Promise.resolve({ id: testLedgerId, messageId }),
+      params: Promise.resolve({ id: testLedgerId, receiptId }),
     });
 
     expect(deleteRes.status).toBe(204);
 
     // 3. Verify deletion
-    const messageAfter = await db.query.inputMessages.findFirst({
-      where: eq(inputMessages.id, messageId),
+    const receiptAfter = await db.query.receipts.findFirst({
+      where: eq(receipts.id, receiptId),
     });
-    expect(messageAfter).toBeUndefined();
+    expect(receiptAfter).toBeUndefined();
 
     const txsAfter = await db.query.transactions.findMany({
-      where: eq(transactions.inputMessageId, messageId),
+      where: eq(transactions.receiptId, receiptId),
     });
     expect(txsAfter.length).toBe(0);
   });

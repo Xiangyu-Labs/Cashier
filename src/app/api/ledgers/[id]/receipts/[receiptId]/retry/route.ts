@@ -1,30 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inputMessages } from "@/lib/db/schema";
+import { receipts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { processMessageQueue } from "@/lib/queue";
+import { processReceiptQueue } from "@/lib/queue";
 
-type RouteParams = { params: Promise<{ id: string; messageId: string }> };
+type RouteParams = { params: Promise<{ id: string; receiptId: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
-        const { id: ledgerId, messageId } = await params;
+        const { id: ledgerId, receiptId } = await params;
 
-        // Verify message exists and belongs to ledger
-        const message = await db.query.inputMessages.findFirst({
+        // Verify receipt exists and belongs to ledger
+        const receipt = await db.query.receipts.findFirst({
             where: and(
-                eq(inputMessages.id, messageId),
-                eq(inputMessages.ledgerId, ledgerId)
+                eq(receipts.id, receiptId),
+                eq(receipts.ledgerId, ledgerId)
             )
         });
 
-        if (!message) {
-            return NextResponse.json({ error: "Message not found" }, { status: 404 });
+        if (!receipt) {
+            return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
         }
 
-        // Update message status to queued
+        // Update receipt status to queued
         await db
-            .update(inputMessages)
+            .update(receipts)
             .set({
                 status: "queued",
                 error: null,
@@ -32,24 +32,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 // We do typically want to update the timestamp so we know when the *retry* happened, 
                 // but for queue ordering purposes (FIFO), we might want to keep the original creation time 
                 // so it gets prioritized if it's old. 
-                // Logic in queue.ts: orderBy: [asc(inputMessages.createdAt)]
+                // Logic in queue.ts: orderBy: [asc(receipts.createdAt)]
                 // So keeping createdAt means it will be processed asap (since it's old).
             })
-            .where(eq(inputMessages.id, messageId));
+            .where(eq(receipts.id, receiptId));
 
         // Trigger processing
-        processMessageQueue().catch((err) => {
+        processReceiptQueue().catch((err) => {
             console.error("Background processing failed to start:", err);
         });
 
         return NextResponse.json({
             success: true,
-            message: "Message requeued for processing",
+            message: "Receipt requeued for processing",
         });
     } catch (error) {
-        console.error("Failed to retry message:", error);
+        console.error("Failed to retry receipt:", error);
         return NextResponse.json(
-            { error: "Failed to retry message" },
+            { error: "Failed to retry receipt" },
             { status: 500 }
         );
     }

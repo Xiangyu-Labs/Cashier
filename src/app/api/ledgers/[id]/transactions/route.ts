@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { transactions, inputMessages, categories } from "@/lib/db/schema";
+import { transactions, receipts, categories } from "@/lib/db/schema";
 import { eq, and, gte, lte, or, isNull } from "drizzle-orm";
 import { z } from "zod";
 
@@ -33,15 +33,15 @@ export async function GET(
       status: searchParams.get("status") || undefined,
     });
 
-    // If querying for pending transactions, fetch from inputMessages
+    // If querying for pending transactions, fetch from receipts
     if (query.status === "pending") {
-      // 1. Fetch messages with 'to_confirm' status
-      const messages = await db.query.inputMessages.findMany({
+      // 1. Fetch receipts with 'to_confirm' status
+      const pendingReceipts = await db.query.receipts.findMany({
         where: and(
-          eq(inputMessages.ledgerId, ledgerId),
-          eq(inputMessages.status, "to_confirm")
+          eq(receipts.ledgerId, ledgerId),
+          eq(receipts.status, "to_confirm")
         ),
-        orderBy: (inputMessages, { desc }) => [desc(inputMessages.createdAt)],
+        orderBy: (receipts, { desc }) => [desc(receipts.createdAt)],
       });
 
       // 2. Fetch all categories for mapping
@@ -62,10 +62,10 @@ export async function GET(
         transactionDate?: string;
       }
 
-      for (const msg of messages) {
-        if (!msg.proposedTransactions || !Array.isArray(msg.proposedTransactions)) continue;
+      for (const receipt of pendingReceipts) {
+        if (!receipt.proposedTransactions || !Array.isArray(receipt.proposedTransactions)) continue;
 
-        const proposedTxs = msg.proposedTransactions as unknown as ProposedTransaction[];
+        const proposedTxs = receipt.proposedTransactions as unknown as ProposedTransaction[];
 
         proposedTxs.forEach((ptx, index) => {
           // Find category object
@@ -73,20 +73,20 @@ export async function GET(
           const category = allCategories.find(c => c.name === categoryName) || null;
 
           pendingTransactions.push({
-            id: `pending:${msg.id}:${index}`, // Synthesized ID
-            ledgerId: msg.ledgerId,
+            id: `pending:${receipt.id}:${index}`, // Synthesized ID
+            ledgerId: receipt.ledgerId,
             categoryId: category?.id || null,
-            inputMessageId: msg.id,
+            receiptId: receipt.id,
             amount: ptx.amount?.toString() || "0",
             currency: ptx.currency || "CNY",
             itemName: ptx.itemName || "未分类",
             description: ptx.notes || null,
-            transactionDate: ptx.transactionDate ? new Date(ptx.transactionDate) : msg.createdAt,
-            createdAt: msg.createdAt,
-            updatedAt: msg.createdAt,
+            transactionDate: ptx.transactionDate ? new Date(ptx.transactionDate) : receipt.createdAt,
+            createdAt: receipt.createdAt,
+            updatedAt: receipt.createdAt,
             // Relations
             category: category,
-            inputMessage: msg,
+            receipt: receipt,
           });
         });
       }
@@ -135,7 +135,7 @@ export async function GET(
       where: and(...conditions),
       with: {
         category: true,
-        inputMessage: true,
+        receipt: true,
       },
       orderBy: (transactions, { desc }) => [desc(transactions.createdAt)],
       limit: query.limit,

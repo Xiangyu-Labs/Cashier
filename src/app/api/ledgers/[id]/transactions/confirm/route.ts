@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { transactions, inputMessages, categories } from "@/lib/db/schema";
+import { transactions, receipts, categories } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { z } from "zod";
 
@@ -31,16 +31,16 @@ export async function POST(
         const { transactionIds, confirmAll } = confirmSchema.parse(body);
 
         if (confirmAll) {
-            // Logic for confirming ALL pending messages
-            // 1. Fetch all to_confirm messages
-            const messages = await db.query.inputMessages.findMany({
+            // Logic for confirming ALL pending receipts
+            // 1. Fetch all to_confirm receipts
+            const pendingReceipts = await db.query.receipts.findMany({
                 where: and(
-                    eq(inputMessages.ledgerId, ledgerId),
-                    eq(inputMessages.status, "to_confirm")
+                    eq(receipts.ledgerId, ledgerId),
+                    eq(receipts.status, "to_confirm")
                 ),
             });
 
-            if (messages.length === 0) {
+            if (pendingReceipts.length === 0) {
                 return NextResponse.json({ success: true, updatedCount: 0 });
             }
 
@@ -50,37 +50,37 @@ export async function POST(
 
             let count = 0;
 
-            for (const msg of messages) {
-                if (!msg.proposedTransactions || !Array.isArray(msg.proposedTransactions)) {
-                    // Provide a fallback to complete empty messages or skip?
+            for (const receipt of pendingReceipts) {
+                if (!receipt.proposedTransactions || !Array.isArray(receipt.proposedTransactions)) {
+                    // Provide a fallback to complete empty receipts or skip?
                     // Mark as completed anyway to clear queue if it's stuck
-                    await db.update(inputMessages).set({ status: 'completed' }).where(eq(inputMessages.id, msg.id));
+                    await db.update(receipts).set({ status: 'completed' }).where(eq(receipts.id, receipt.id));
                     continue;
                 }
 
-                const proposedTxs = msg.proposedTransactions as unknown as ProposedTransaction[];
+                const proposedTxs = receipt.proposedTransactions as unknown as ProposedTransaction[];
 
                 for (const tx of proposedTxs) {
                     const categoryName = tx.category;
                     const category = allCategories.find(c => c.name === categoryName);
 
                     await db.insert(transactions).values({
-                        ledgerId: msg.ledgerId,
+                        ledgerId: receipt.ledgerId,
                         categoryId: category?.id || null,
-                        inputMessageId: msg.id,
+                        receiptId: receipt.id,
                         amount: tx.amount?.toString() || "0",
                         currency: tx.currency || "CNY",
                         itemName: tx.itemName || "未分类",
                         description: tx.notes || null,
-                        transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(msg.createdAt),
+                        transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(receipt.createdAt),
                     });
                     count++;
                 }
 
                 await db
-                    .update(inputMessages)
+                    .update(receipts)
                     .set({ status: "completed" })
-                    .where(eq(inputMessages.id, msg.id));
+                    .where(eq(receipts.id, receipt.id));
             }
 
             return NextResponse.json({ success: true, updatedCount: count });
@@ -91,34 +91,33 @@ export async function POST(
         }
 
         // Logic for confirming specific transactions (by ID list)
-        // IDs are in format: "pending:messageId:index"
-        // We need to group them by messageId
-
-        const messageGroups: Record<string, number[]> = {};
+        // IDs are in format: "pending:receiptId:index"
+        // We need to group them by receiptId
+        const receiptGroups: Record<string, number[]> = {};
 
         for (const id of transactionIds) {
             if (!id.startsWith("pending:")) continue;
             const parts = id.split(":");
             if (parts.length !== 3) continue;
-            const msgId = parts[1];
+            const receiptId = parts[1];
             const idx = parseInt(parts[2], 10);
 
-            if (!messageGroups[msgId]) {
-                messageGroups[msgId] = [];
+            if (!receiptGroups[receiptId]) {
+                receiptGroups[receiptId] = [];
             }
-            messageGroups[msgId].push(idx);
+            receiptGroups[receiptId].push(idx);
         }
 
-        const messageIds = Object.keys(messageGroups);
-        if (messageIds.length === 0) {
+        const receiptIds = Object.keys(receiptGroups);
+        if (receiptIds.length === 0) {
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        const messages = await db.query.inputMessages.findMany({
+        const pendingReceipts = await db.query.receipts.findMany({
             where: and(
-                eq(inputMessages.ledgerId, ledgerId),
-                inArray(inputMessages.id, messageIds),
-                eq(inputMessages.status, "to_confirm")
+                eq(receipts.ledgerId, ledgerId),
+                inArray(receipts.id, receiptIds),
+                eq(receipts.status, "to_confirm")
             )
         });
 
@@ -128,11 +127,11 @@ export async function POST(
 
         let updatedCount = 0;
 
-        for (const msg of messages) {
-            const indices = messageGroups[msg.id];
-            if (!msg.proposedTransactions || !Array.isArray(msg.proposedTransactions)) continue;
+        for (const receipt of pendingReceipts) {
+            const indices = receiptGroups[receipt.id];
+            if (!receipt.proposedTransactions || !Array.isArray(receipt.proposedTransactions)) continue;
 
-            const proposedTxs = msg.proposedTransactions as unknown as ProposedTransaction[];
+            const proposedTxs = receipt.proposedTransactions as unknown as ProposedTransaction[];
 
             for (const idx of indices) {
                 const tx = proposedTxs[idx];
@@ -142,27 +141,21 @@ export async function POST(
                 const category = allCategories.find(c => c.name === categoryName);
 
                 await db.insert(transactions).values({
-                    ledgerId: msg.ledgerId,
+                    ledgerId: receipt.ledgerId,
                     categoryId: category?.id || null,
-                    inputMessageId: msg.id,
+                    receiptId: receipt.id,
                     amount: tx.amount?.toString() || "0",
                     currency: tx.currency || "CNY",
                     itemName: tx.itemName || "未分类",
                     description: tx.notes || null,
-                    transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(msg.createdAt),
+                    transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(receipt.createdAt),
                 });
                 updatedCount++;
             }
 
-            // Check if we processed all? 
-            // For simplicity in this MVP, if we process ANY transaction from a message, 
-            // we consider the message "completed" in terms of queue status.
-            // Or we should check if all indices were covered?
-            // The UI sends all indices for a batch. So safe to assume completion.
-
-            await db.update(inputMessages)
+            await db.update(receipts)
                 .set({ status: 'completed' })
-                .where(eq(inputMessages.id, msg.id));
+                .where(eq(receipts.id, receipt.id));
         }
 
         return NextResponse.json({ success: true, updatedCount });

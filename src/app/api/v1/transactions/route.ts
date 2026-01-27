@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiKey } from "@/lib/api-keys";
 import { db } from "@/lib/db";
-import { inputMessages, apiKeys } from "@/lib/db/schema";
+import { receipts, apiKeys } from "@/lib/db/schema";
 import { z } from "zod";
 
-import { processMessageQueue } from "@/lib/queue";
+import { processReceiptQueue } from "@/lib/queue";
 import { eq } from "drizzle-orm";
 
 const transactionSchema = z.object({
@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Save input message with 'queued' status
-        const [savedMessage] = await db
-            .insert(inputMessages)
+        // Save receipt with 'queued' status
+        const [savedReceipt] = await db
+            .insert(receipts)
             .values({
                 ledgerId: apiKey.ledgerId,
                 text: text || null,
@@ -81,14 +81,14 @@ export async function POST(request: NextRequest) {
         }
 
         // Trigger background processing (Fire and Forget)
-        processMessageQueue().catch((err) => {
+        processReceiptQueue().catch((err) => {
             console.error("Background processing failed to start:", err);
         });
 
         return NextResponse.json({
-            messageId: savedMessage.id,
+            receiptId: savedReceipt.id,
             status: "queued",
-            message: "Message queued for processing",
+            message: "Receipt queued for processing",
         }, { status: 201 });
     } catch (error) {
         console.error("Failed to process transaction via API:", error);

@@ -27,7 +27,7 @@ export interface Category {
   updatedAt: string;
 }
 
-export interface InputMessage {
+export interface Receipt {
   id: string;
   ledgerId: string;
   text: string | null;
@@ -44,7 +44,7 @@ export interface Transaction {
   id: string;
   ledgerId: string;
   categoryId: string | null;
-  inputMessageId: string | null;
+  receiptId: string | null;
   amount: string;
   currency: string | null;
   itemName: string;
@@ -52,7 +52,7 @@ export interface Transaction {
   transactionDate: string | null;
   createdAt: string;
   category?: Category | null;
-  inputMessage?: InputMessage | null;
+  receipt?: Receipt | null;
 }
 
 export interface TransactionSummary {
@@ -75,7 +75,7 @@ export interface TransactionSummary {
   }[];
 }
 
-export interface MessageResponse {
-  messageId: string;
+export interface ReceiptResponse {
+  receiptId: string;
   transactions: Transaction[];
 }

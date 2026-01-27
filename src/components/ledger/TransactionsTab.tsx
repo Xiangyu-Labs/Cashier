@@ -1,16 +1,14 @@
-"use client";
-
 import { useState, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
     confirmTransactions,
     updateTransaction,
     deleteTransaction,
-    retryMessage,
-    deleteMessage,
+    retryReceipt,
+    deleteReceipt,
     fetchTransactions,
 } from "@/lib/api";
-import { Transaction, Category, InputMessage } from "@/types/api";
+import { Transaction, Category, Receipt } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { Button } from "@/components/ui/button";
@@ -21,21 +19,21 @@ import { MonthPicker } from "@/components/ui/month-picker";
 interface TransactionsTabProps {
     ledgerId: string;
     pendingGroups: {
-        batches: { inputMessage: InputMessage; transactions: Transaction[] }[];
+        batches: { receipt: Receipt; transactions: Transaction[] }[];
         others: Transaction[];
     };
-    queuedMessages?: InputMessage[];
+    queuedReceipts?: Receipt[];
     categories: Category[];
 }
 
 // Separate helper for the timeline item types
 type TimelineItem =
-    | { type: "queue"; date: string; data: InputMessage }
+    | { type: "queue"; date: string; data: Receipt }
     | {
         type: "batch";
         status: "pending" | "confirmed";
         date: string;
-        data: { inputMessage: InputMessage; transactions: Transaction[] };
+        data: { receipt: Receipt; transactions: Transaction[] };
     }
     | {
         type: "single";
@@ -50,7 +48,7 @@ export function TransactionsTab({
     ledgerId,
     pendingGroups,
     // confirmedGroups, // Deprecated, we manage confirmed transactions here
-    queuedMessages = [],
+    queuedReceipts = [],
     categories,
 }: TransactionsTabProps) {
     const queryClient = useQueryClient();
@@ -100,7 +98,7 @@ export function TransactionsTab({
     const { toast } = useToast();
     const [deleteConfirm, setDeleteConfirm] = useState<{
         open: boolean;
-        type: "message" | "batch" | "transaction" | null;
+        type: "receipt" | "batch" | "transaction" | null;
         id: string | null;
         title: string;
         description: string;
@@ -115,8 +113,8 @@ export function TransactionsTab({
     const handleDeleteConfirm = () => {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
 
-        if (deleteConfirm.type === "message" || deleteConfirm.type === "batch") {
-            deleteMessageMutation.mutate(deleteConfirm.id);
+        if (deleteConfirm.type === "receipt" || deleteConfirm.type === "batch") {
+            deleteReceiptMutation.mutate(deleteConfirm.id);
         } else if (deleteConfirm.type === "transaction") {
             deleteMutation.mutate(deleteConfirm.id);
         }
@@ -172,12 +170,12 @@ export function TransactionsTab({
     });
 
 
-    const deleteMessageMutation = useMutation({
-        mutationFn: async (messageId: string) => {
-            return deleteMessage(ledgerId, messageId);
+    const deleteReceiptMutation = useMutation({
+        mutationFn: async (receiptId: string) => {
+            return deleteReceipt(ledgerId, receiptId);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
@@ -192,9 +190,9 @@ export function TransactionsTab({
 
     const pendingCount =
         pendingGroups.batches.length + pendingGroups.others.length;
-    const failedMessages =
-        queuedMessages?.filter((m) => m.status === "failed") || [];
-    const hasFailedMessages = failedMessages.length > 0;
+    const failedReceipts =
+        queuedReceipts?.filter((m) => m.status === "failed") || [];
+    const hasFailedReceipts = failedReceipts.length > 0;
 
     // Calculate Summary Stats for current month (Frontend Aggregation)
     const monthStats = useMemo(() => {
@@ -207,15 +205,15 @@ export function TransactionsTab({
 
     // Prepare unified timeline items
     const allItems: TimelineItem[] = [
-        ...queuedMessages.map(
-            (msg) => ({ type: "queue", date: msg.createdAt, data: msg } as const)
+        ...queuedReceipts.map(
+            (receipt) => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)
         ),
         ...pendingGroups.batches.map(
             (batch) =>
             ({
                 type: "batch",
                 status: "pending",
-                date: batch.inputMessage.createdAt,
+                date: batch.receipt.createdAt,
                 data: batch,
             } as const)
         ),
@@ -250,14 +248,14 @@ export function TransactionsTab({
     const handleRetryAll = async () => {
         setConfirmingAll(true);
         await Promise.all(
-            failedMessages.map((msg) => retryMessage(ledgerId, msg.id))
+            failedReceipts.map((receipt) => retryReceipt(ledgerId, receipt.id))
         );
-        queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
+        queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
         setConfirmingAll(false);
         toast({
             variant: "success",
             title: "重试已提交",
-            description: "正在重试所有失败的消息",
+            description: "正在重试所有失败的记录",
         });
     };
 
@@ -310,15 +308,15 @@ export function TransactionsTab({
             <div className="relative pt-2 space-y-4">
 
                 {/* Pending Actions */}
-                {(pendingCount > 0 || hasFailedMessages) && (
+                {(pendingCount > 0 || hasFailedReceipts) && (
                     <div className="flex justify-between items-center bg-surface2/50 p-3 rounded-lg border border-border/50 mb-6 mx-2">
                         <span className="text-sm font-medium text-muted">
                             {pendingCount > 0 ? `待确认 ${pendingCount} 项` : ""}
-                            {pendingCount > 0 && hasFailedMessages ? "，" : ""}
-                            {hasFailedMessages ? `有 ${failedMessages.length} 个失败` : ""}
+                            {pendingCount > 0 && hasFailedReceipts ? "，" : ""}
+                            {hasFailedReceipts ? `有 ${failedReceipts.length} 个失败` : ""}
                         </span>
                         <div className="flex gap-2">
-                            {hasFailedMessages && (
+                            {hasFailedReceipts && (
                                 <Button
                                     variant="destructive"
                                     size="sm"
@@ -359,25 +357,25 @@ export function TransactionsTab({
                                         item.type === "queue"
                                             ? item.data.id
                                             : item.type === "batch"
-                                                ? item.data.inputMessage.id
+                                                ? item.data.receipt.id
                                                 : item.data.id;
 
                                     if (item.type === "queue") {
-                                        const msg = item.data;
-                                        const status = msg.status as "queued" | "processing" | "failed" | "completed";
+                                        const receipt = item.data;
+                                        const status = receipt.status as "queued" | "processing" | "failed" | "completed";
 
                                         return (
                                             <BatchTransactionCard
                                                 key={key}
-                                                inputMessage={msg}
+                                                receipt={receipt}
                                                 transactions={[]}
                                                 categories={categories}
                                                 status={status}
                                                 onDelete={() => {
                                                     setDeleteConfirm({
                                                         open: true,
-                                                        type: "message",
-                                                        id: msg.id,
+                                                        type: "receipt",
+                                                        id: receipt.id,
                                                         title: "确认删除",
                                                         description: "确定要删除这条记录吗？",
                                                     });
@@ -390,7 +388,7 @@ export function TransactionsTab({
                                         return (
                                             <BatchTransactionCard
                                                 key={key}
-                                                inputMessage={item.data.inputMessage}
+                                                receipt={item.data.receipt}
                                                 transactions={item.data.transactions}
                                                 categories={categories}
                                                 isConfirmed={item.status === "confirmed"}
@@ -414,7 +412,7 @@ export function TransactionsTab({
                                                     setDeleteConfirm({
                                                         open: true,
                                                         type: "batch",
-                                                        id: item.data.inputMessage.id,
+                                                        id: item.data.receipt.id,
                                                         title: "确认删除",
                                                         description: "确定要删除这条记录及其关联的所有交易吗？",
                                                     });

@@ -99,10 +99,10 @@ export function TransactionViewDetails({
                     原始输入
                 </h4>
                 <div className="p-4 bg-surface2 rounded-lg border border-border">
-                    {transaction.inputMessage ? (
+                    {transaction.receipt ? (
                         <TransactionOriginalContent
-                            text={transaction.inputMessage.text}
-                            images={transaction.inputMessage.imageUrls}
+                            text={transaction.receipt.text}
+                            images={transaction.receipt.imageUrls}
                         />
                     ) : (
                         <p className="text-muted text-sm italic">无原始记录</p>

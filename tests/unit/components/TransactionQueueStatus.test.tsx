@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStatus";
 import { describe, it, expect } from "vitest";
-import { InputMessage } from "@/types/api";
+import { Receipt } from "@/types/api";
 
 describe("TransactionQueueStatus", () => {
-    const mockMessages: InputMessage[] = [
+    const mockReceipts: Receipt[] = [
         {
             id: "1",
             ledgerId: "test-ledger",
@@ -26,12 +26,12 @@ describe("TransactionQueueStatus", () => {
     ];
 
     it("renders nothing when queue is empty", () => {
-        const { container } = render(<TransactionQueueStatus queuedMessages={[]} />);
+        const { container } = render(<TransactionQueueStatus queuedReceipts={[]} />);
         expect(container.firstChild).toBeNull();
     });
 
-    it("renders queued messages", () => {
-        render(<TransactionQueueStatus queuedMessages={mockMessages} />);
+    it("renders queued receipts", () => {
+        render(<TransactionQueueStatus queuedReceipts={mockReceipts} />);
 
         expect(screen.getByText("Lunch")).toBeTruthy();
         expect(screen.getByText("排队中")).toBeTruthy();
