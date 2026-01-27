@@ -35,7 +35,6 @@ export default function LedgerPage() {
     isLedgerLoading,
     categories,
     pendingGroups,
-    confirmedGroups,
     queuedMessages,
     stats,
   } = useLedgerData(ledgerId);
@@ -153,7 +152,6 @@ export default function LedgerPage() {
             <TransactionsTab
               ledgerId={ledgerId}
               pendingGroups={pendingGroups}
-              confirmedGroups={confirmedGroups}
               queuedMessages={queuedMessages}
               categories={categories}
             />

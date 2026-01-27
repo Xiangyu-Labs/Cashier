@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
     confirmTransactions,
     updateTransaction,
     deleteTransaction,
     retryMessage,
     deleteMessage,
+    fetchTransactions,
 } from "@/lib/api";
 import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
@@ -15,14 +16,11 @@ import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { MonthPicker } from "@/components/ui/month-picker";
 
 interface TransactionsTabProps {
     ledgerId: string;
     pendingGroups: {
-        batches: { inputMessage: InputMessage; transactions: Transaction[] }[];
-        others: Transaction[];
-    };
-    confirmedGroups: {
         batches: { inputMessage: InputMessage; transactions: Transaction[] }[];
         others: Transaction[];
     };
@@ -51,12 +49,31 @@ type TimelineItem =
 export function TransactionsTab({
     ledgerId,
     pendingGroups,
-    confirmedGroups,
+    // confirmedGroups, // Deprecated, we manage confirmed transactions here
     queuedMessages = [],
     categories,
 }: TransactionsTabProps) {
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Calculate start and end of the selected month
+    const { startDate, endDate } = useMemo(() => {
+        const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        return { startDate: start, endDate: end };
+    }, [currentDate]);
+
+    // Fetch confirmed transactions for the selected month
+    const { data: monthTransactions = [] } = useQuery({
+        queryKey: ["transactions", ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()],
+        queryFn: () => fetchTransactions(ledgerId, {
+            status: "confirmed",
+            limit: 1000, // Reasonable limit for a month
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+        }),
+    });
 
     const updateMutation = useMutation({
         mutationFn: ({
@@ -179,6 +196,15 @@ export function TransactionsTab({
         queuedMessages?.filter((m) => m.status === "failed") || [];
     const hasFailedMessages = failedMessages.length > 0;
 
+    // Calculate Summary Stats for current month (Frontend Aggregation)
+    const monthStats = useMemo(() => {
+        const total = monthTransactions.reduce((sum: number, tx: Transaction) => sum + parseFloat(tx.amount || "0"), 0);
+        // Only count valid currencies (ignore those without currency or assume base if needed)
+        // Taking the first currency found as primary for symbol display
+        const currency = monthTransactions.find((tx: Transaction) => tx.currency)?.currency || "CNY";
+        return { total, currency };
+    }, [monthTransactions]);
+
     // Prepare unified timeline items
     const allItems: TimelineItem[] = [
         ...queuedMessages.map(
@@ -193,13 +219,16 @@ export function TransactionsTab({
                 data: batch,
             } as const)
         ),
-        ...confirmedGroups.batches.map(
-            (batch) =>
+        // Filter confirmed by date (although React Query handles fetching, we might overlap if pending becomes confirmed)
+        // Actually pending items are usually "Recent", so we show all pending.
+        // Confirmed items are fetched specifically for this month.
+        ...monthTransactions.map(
+            (tx: Transaction) =>
             ({
-                type: "batch",
+                type: "single",
                 status: "confirmed",
-                date: batch.inputMessage.createdAt,
-                data: batch,
+                date: tx.transactionDate || tx.createdAt, // Use logic consistent with backend
+                data: tx,
             } as const)
         ),
         ...pendingGroups.others.map(
@@ -207,15 +236,6 @@ export function TransactionsTab({
             ({
                 type: "single",
                 status: "pending",
-                date: tx.createdAt,
-                data: tx,
-            } as const)
-        ),
-        ...confirmedGroups.others.map(
-            (tx) =>
-            ({
-                type: "single",
-                status: "confirmed",
                 date: tx.createdAt,
                 data: tx,
             } as const)
@@ -254,6 +274,7 @@ export function TransactionsTab({
         } else if (date.toDateString() === yesterday.toDateString()) {
             dateKey = "昨天";
         } else {
+            // For other months, just show the date
             dateKey = date.toLocaleDateString("zh-CN", {
                 month: "long",
                 day: "numeric",
@@ -269,166 +290,193 @@ export function TransactionsTab({
     }, {} as Record<string, TimelineItem[]>);
 
     return (
-        <div className="space-y-4">
-            {/* Header Action for Pending */}
-            {(pendingCount > 0 || hasFailedMessages) && (
-                <div className="flex justify-between items-center bg-surface2/30 p-3 rounded-lg border border-border mb-4">
-                    <span className="text-sm font-medium text-muted">
-                        {pendingCount > 0 ? `待确认 ${pendingCount} 项` : ""}
-                        {pendingCount > 0 && hasFailedMessages ? "，" : ""}
-                        {hasFailedMessages ? `有 ${failedMessages.length} 个失败` : ""}
-                    </span>
-                    <div className="flex gap-2">
-                        {hasFailedMessages && (
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                disabled={confirmingAll}
-                                onClick={handleRetryAll}
-                            >
-                                重试所有失败
-                            </Button>
-                        )}
-                        <Button
-                            variant="default"
-                            onClick={handleConfirmAll}
-                            disabled={
-                                confirmAllMutation.isPending ||
-                                confirmingAll ||
-                                pendingCount === 0
-                            }
-                            size="sm"
-                        >
-                            {confirmAllMutation.isPending ? "正在确认..." : "全部确认"}
-                        </Button>
+        <div className="space-y-0">
+            {/* Header: Month Picker and Summary */}
+            <div className="sticky top-14 z-20 bg-primary text-primary-foreground -mx-4 -mt-4 px-4 pb-12 pt-4 mb-[-2rem] shadow-sm">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-2">
+                        <MonthPicker date={currentDate} onDateChange={setCurrentDate} />
                     </div>
                 </div>
-            )}
-
-            <div className="space-y-8">
-                {Object.entries(groupedItems).map(([dateLabel, items]) => (
-                    <div key={dateLabel} className="space-y-4">
-                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur py-2 border-b border-border/50">
-                            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-primary/50"></span>
-                                {dateLabel}
-                            </h3>
-                        </div>
-                        <div className="space-y-6">
-                            {items.map((item) => {
-                                const key =
-                                    item.type === "queue"
-                                        ? item.data.id
-                                        : item.type === "batch"
-                                            ? item.data.inputMessage.id
-                                            : item.data.id;
-
-                                if (item.type === "queue") {
-                                    const msg = item.data;
-                                    const status = msg.status as "queued" | "processing" | "failed" | "completed";
-
-                                    return (
-                                        <BatchTransactionCard
-                                            key={key}
-                                            inputMessage={msg}
-                                            transactions={[]}
-                                            categories={categories}
-                                            status={status}
-                                            onDelete={() => {
-                                                setDeleteConfirm({
-                                                    open: true,
-                                                    type: "message",
-                                                    id: msg.id,
-                                                    title: "确认删除",
-                                                    description: "确定要删除这条记录吗？",
-                                                });
-                                            }}
-                                        />
-                                    );
-                                }
-
-                                if (item.type === "batch") {
-                                    return (
-                                        <BatchTransactionCard
-                                            key={key}
-                                            inputMessage={item.data.inputMessage}
-                                            transactions={item.data.transactions}
-                                            categories={categories}
-                                            isConfirmed={item.status === "confirmed"}
-                                            status={item.status === "confirmed" ? "completed" : "processing"}
-                                            onConfirm={async (ids) => {
-                                                await confirmBatchMutation.mutateAsync(ids);
-                                            }}
-                                            onUpdateTransaction={(id, data) =>
-                                                updateMutation.mutate({ transactionId: id, data })
-                                            }
-                                            onDeleteTransaction={(id) => {
-                                                setDeleteConfirm({
-                                                    open: true,
-                                                    type: "transaction",
-                                                    id: id,
-                                                    title: "确认删除",
-                                                    description: "确定要删除这条交易吗？此操作无法撤销。",
-                                                });
-                                            }}
-                                            onDelete={() => {
-                                                setDeleteConfirm({
-                                                    open: true,
-                                                    type: "batch",
-                                                    id: item.data.inputMessage.id,
-                                                    title: "确认删除",
-                                                    description: "确定要删除这条记录及其关联的所有交易吗？",
-                                                });
-                                            }}
-                                        />
-                                    );
-                                }
-
-                                if (item.type === "single") {
-                                    return (
-                                        <TransactionCard
-                                            key={key}
-                                            transaction={item.data}
-                                            categories={categories}
-                                            onUpdate={(data) =>
-                                                updateMutation.mutate({
-                                                    transactionId: item.data.id,
-                                                    data,
-                                                })
-                                            }
-                                            onDelete={() => {
-                                                setDeleteConfirm({
-                                                    open: true,
-                                                    type: "transaction",
-                                                    id: item.data.id,
-                                                    title: "确认删除",
-                                                    description: "确定要删除这条交易吗？此操作无法撤销。",
-                                                });
-                                            }}
-                                        />
-                                    );
-                                }
-
-                                return null;
-                            })}
-                        </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <div className="text-primary-foreground/70 text-xs mb-1">本月支出 ({monthStats.currency})</div>
+                        <div className="text-2xl font-bold font-mono">{monthStats.total.toFixed(2)}</div>
                     </div>
-                ))}
-
-                {allItems.length === 0 && (
-                    <div className="text-center py-10 text-muted">暂无记录</div>
-                )}
+                    {/* Income placeholder if needed, user said ignore income for now */}
+                    <div>
+                        {/* <div className="text-primary-foreground/70 text-xs mb-1">本月收入</div>
+                        <div className="text-2xl font-bold font-mono">0.00</div> */}
+                    </div>
+                </div>
             </div>
 
-            <ConfirmDialog
-                open={deleteConfirm.open}
-                onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title={deleteConfirm.title}
-                description={deleteConfirm.description}
-                onConfirm={handleDeleteConfirm}
-                variant="destructive"
-                confirmLabel="删除"
-            />
+            {/* Content Layer with white background and rounded top */}
+            <div className="relative bg-bg rounded-t-3xl min-h-[500px] pt-6 px-1 space-y-4">
+
+                {/* Pending Actions */}
+                {(pendingCount > 0 || hasFailedMessages) && (
+                    <div className="flex justify-between items-center bg-surface2/50 p-3 rounded-lg border border-border/50 mb-6 mx-2">
+                        <span className="text-sm font-medium text-muted">
+                            {pendingCount > 0 ? `待确认 ${pendingCount} 项` : ""}
+                            {pendingCount > 0 && hasFailedMessages ? "，" : ""}
+                            {hasFailedMessages ? `有 ${failedMessages.length} 个失败` : ""}
+                        </span>
+                        <div className="flex gap-2">
+                            {hasFailedMessages && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={confirmingAll}
+                                    onClick={handleRetryAll}
+                                >
+                                    重试所有失败
+                                </Button>
+                            )}
+                            <Button
+                                variant="default"
+                                onClick={handleConfirmAll}
+                                disabled={
+                                    confirmAllMutation.isPending ||
+                                    confirmingAll ||
+                                    pendingCount === 0
+                                }
+                                size="sm"
+                            >
+                                {confirmAllMutation.isPending ? "正在确认..." : "全部确认"}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="space-y-8">
+                    {Object.entries(groupedItems).map(([dateLabel, items]) => (
+                        <div key={dateLabel} className="space-y-2">
+                            <div className="sticky top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
+                                <h3 className="text-xs font-medium text-muted flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
+                                    {dateLabel}
+                                </h3>
+                            </div>
+                            <div className="space-y-4 px-2">
+                                {items.map((item) => {
+                                    const key =
+                                        item.type === "queue"
+                                            ? item.data.id
+                                            : item.type === "batch"
+                                                ? item.data.inputMessage.id
+                                                : item.data.id;
+
+                                    if (item.type === "queue") {
+                                        const msg = item.data;
+                                        const status = msg.status as "queued" | "processing" | "failed" | "completed";
+
+                                        return (
+                                            <BatchTransactionCard
+                                                key={key}
+                                                inputMessage={msg}
+                                                transactions={[]}
+                                                categories={categories}
+                                                status={status}
+                                                onDelete={() => {
+                                                    setDeleteConfirm({
+                                                        open: true,
+                                                        type: "message",
+                                                        id: msg.id,
+                                                        title: "确认删除",
+                                                        description: "确定要删除这条记录吗？",
+                                                    });
+                                                }}
+                                            />
+                                        );
+                                    }
+
+                                    if (item.type === "batch") {
+                                        return (
+                                            <BatchTransactionCard
+                                                key={key}
+                                                inputMessage={item.data.inputMessage}
+                                                transactions={item.data.transactions}
+                                                categories={categories}
+                                                isConfirmed={item.status === "confirmed"}
+                                                status={item.status === "confirmed" ? "completed" : "processing"}
+                                                onConfirm={async (ids) => {
+                                                    await confirmBatchMutation.mutateAsync(ids);
+                                                }}
+                                                onUpdateTransaction={(id, data) =>
+                                                    updateMutation.mutate({ transactionId: id, data })
+                                                }
+                                                onDeleteTransaction={(id) => {
+                                                    setDeleteConfirm({
+                                                        open: true,
+                                                        type: "transaction",
+                                                        id: id,
+                                                        title: "确认删除",
+                                                        description: "确定要删除这条交易吗？此操作无法撤销。",
+                                                    });
+                                                }}
+                                                onDelete={() => {
+                                                    setDeleteConfirm({
+                                                        open: true,
+                                                        type: "batch",
+                                                        id: item.data.inputMessage.id,
+                                                        title: "确认删除",
+                                                        description: "确定要删除这条记录及其关联的所有交易吗？",
+                                                    });
+                                                }}
+                                            />
+                                        );
+                                    }
+
+                                    if (item.type === "single") {
+                                        return (
+                                            <TransactionCard
+                                                key={key}
+                                                transaction={item.data}
+                                                categories={categories}
+                                                onUpdate={(data) =>
+                                                    updateMutation.mutate({
+                                                        transactionId: item.data.id,
+                                                        data,
+                                                    })
+                                                }
+                                                onDelete={() => {
+                                                    setDeleteConfirm({
+                                                        open: true,
+                                                        type: "transaction",
+                                                        id: item.data.id,
+                                                        title: "确认删除",
+                                                        description: "确定要删除这条交易吗？此操作无法撤销。",
+                                                    });
+                                                }}
+                                            />
+                                        );
+                                    }
+
+                                    return null;
+                                })}
+                            </div>
+                        </div>
+                    ))}
+
+                    {allItems.length === 0 && (
+                        <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                            <span className="text-4xl opacity-20">📭</span>
+                            <span>本月暂无记录</span>
+                        </div>
+                    )}
+                </div>
+
+                <ConfirmDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+                    title={deleteConfirm.title}
+                    description={deleteConfirm.description}
+                    onConfirm={handleDeleteConfirm}
+                    variant="destructive"
+                    confirmLabel="删除"
+                />
+            </div>
         </div>
     );
 }

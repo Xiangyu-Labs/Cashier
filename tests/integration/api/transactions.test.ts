@@ -300,4 +300,52 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(data[0].inputMessage).toBeDefined();
     expect(data[0].inputMessage.text).toContain("Audio Note");
   });
+  it("should filter by date range", async () => {
+    const db = getTestDb();
+    const today = new Date();
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+
+
+    await db.insert(transactions).values([
+      { ledgerId: testLedgerId, amount: "10", itemName: "Today", transactionDate: today, sourceType: "text" },
+      { ledgerId: testLedgerId, amount: "20", itemName: "LastMonth", transactionDate: lastMonth, sourceType: "text" },
+    ]);
+
+    // Query starting from 1st of current month
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/transactions?startDate=${startOfMonth.toISOString()}`),
+      { params: Promise.resolve({ id: testLedgerId }) }
+    );
+    const data = await response.json();
+
+    expect(data).toHaveLength(1);
+    expect(data[0].itemName).toBe("Today");
+  });
+
+  it("should fallback to createdAt for date filtering when transactionDate is null", async () => {
+    const db = getTestDb();
+    const today = new Date();
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+    await db.insert(transactions).values([
+      { ledgerId: testLedgerId, amount: "10", itemName: "Today Created", createdAt: today, sourceType: "text" },
+      { ledgerId: testLedgerId, amount: "20", itemName: "Old Created", createdAt: lastMonth, sourceType: "text" },
+    ]);
+
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/transactions?startDate=${startOfMonth.toISOString()}`),
+      { params: Promise.resolve({ id: testLedgerId }) }
+    );
+    const data = await response.json();
+
+    expect(data).toHaveLength(1);
+    expect(data[0].itemName).toBe("Today Created");
+  });
 });

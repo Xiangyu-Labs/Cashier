@@ -165,12 +165,20 @@ export function reorderCategories(
 // Transaction API
 export function fetchTransactions(
   ledgerId: string,
-  params?: { status?: "pending" | "confirmed"; limit?: number; offset?: number }
+  params?: {
+    status?: "pending" | "confirmed";
+    limit?: number;
+    offset?: number;
+    startDate?: string;
+    endDate?: string;
+  }
 ): Promise<Transaction[]> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
+  if (params?.startDate) searchParams.set("startDate", params.startDate);
+  if (params?.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
     `${API_BASE}/ledgers/${ledgerId}/transactions?${searchParams}`,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte, or, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -9,6 +9,8 @@ const querySchema = z.object({
   categoryId: z.string().uuid().optional(),
   limit: z.coerce.number().positive().optional().default(50),
   offset: z.coerce.number().nonnegative().optional().default(0),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -27,6 +29,8 @@ export async function GET(
       categoryId: searchParams.get("categoryId") || undefined,
       limit: searchParams.get("limit") || undefined,
       offset: searchParams.get("offset") || undefined,
+      startDate: searchParams.get("startDate") || undefined,
+      endDate: searchParams.get("endDate") || undefined,
     });
 
     const conditions = [eq(transactions.ledgerId, ledgerId)];
@@ -36,6 +40,32 @@ export async function GET(
     }
     if (query.categoryId) {
       conditions.push(eq(transactions.categoryId, query.categoryId));
+    }
+
+    if (query.startDate) {
+      const startDate = new Date(query.startDate);
+      conditions.push(
+        or(
+          gte(transactions.transactionDate, startDate),
+          and(
+            isNull(transactions.transactionDate),
+            gte(transactions.createdAt, startDate)
+          )
+        )
+      );
+    }
+
+    if (query.endDate) {
+      const endDate = new Date(query.endDate);
+      conditions.push(
+        or(
+          lte(transactions.transactionDate, endDate),
+          and(
+            isNull(transactions.transactionDate),
+            lte(transactions.createdAt, endDate)
+          )
+        )
+      );
     }
 
     const result = await db.query.transactions.findMany({
