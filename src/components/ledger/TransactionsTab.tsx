@@ -241,6 +241,33 @@ export function TransactionsTab({
         });
     };
 
+    // Group items by date
+    const groupedItems = allItems.reduce((groups, item) => {
+        const date = new Date(item.date);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        let dateKey = "";
+        if (date.toDateString() === today.toDateString()) {
+            dateKey = "今天";
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            dateKey = "昨天";
+        } else {
+            dateKey = date.toLocaleDateString("zh-CN", {
+                month: "long",
+                day: "numeric",
+                weekday: "long"
+            });
+        }
+
+        if (!groups[dateKey]) {
+            groups[dateKey] = [];
+        }
+        groups[dateKey].push(item);
+        return groups;
+    }, {} as Record<string, TimelineItem[]>);
+
     return (
         <div className="space-y-4">
             {/* Header Action for Pending */}
@@ -278,105 +305,115 @@ export function TransactionsTab({
                 </div>
             )}
 
-            <div className="space-y-6">
-                {allItems.map((item) => {
-                    const key =
-                        item.type === "queue"
-                            ? item.data.id
-                            : item.type === "batch"
-                                ? item.data.inputMessage.id
-                                : item.data.id;
+            <div className="space-y-8">
+                {Object.entries(groupedItems).map(([dateLabel, items]) => (
+                    <div key={dateLabel} className="space-y-4">
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur py-2 border-b border-border/50">
+                            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-primary/50"></span>
+                                {dateLabel}
+                            </h3>
+                        </div>
+                        <div className="space-y-6">
+                            {items.map((item) => {
+                                const key =
+                                    item.type === "queue"
+                                        ? item.data.id
+                                        : item.type === "batch"
+                                            ? item.data.inputMessage.id
+                                            : item.data.id;
 
-                    if (item.type === "queue") {
-                        const msg = item.data;
-                        const status = msg.status as "queued" | "processing" | "failed" | "completed";
+                                if (item.type === "queue") {
+                                    const msg = item.data;
+                                    const status = msg.status as "queued" | "processing" | "failed" | "completed";
 
-                        // Use BatchTransactionCard even for queue items to show consistent UI
-                        // Passing empty transactions for now as queue items might not have them processed yet
-                        return (
-                            <BatchTransactionCard
-                                key={key}
-                                inputMessage={msg}
-                                transactions={[]}
-                                categories={categories}
-                                status={status}
-                                onDelete={() => {
-                                    setDeleteConfirm({
-                                        open: true,
-                                        type: "message",
-                                        id: msg.id,
-                                        title: "确认删除",
-                                        description: "确定要删除这条记录吗？",
-                                    });
-                                }}
-                            />
-                        );
-                    }
-
-                    if (item.type === "batch") {
-                        return (
-                            <BatchTransactionCard
-                                key={key}
-                                inputMessage={item.data.inputMessage}
-                                transactions={item.data.transactions}
-                                categories={categories}
-                                isConfirmed={item.status === "confirmed"}
-                                status={item.status === "confirmed" ? "completed" : "processing"}
-                                onConfirm={async (ids) => {
-                                    await confirmBatchMutation.mutateAsync(ids);
-                                }}
-                                onUpdateTransaction={(id, data) =>
-                                    updateMutation.mutate({ transactionId: id, data })
+                                    return (
+                                        <BatchTransactionCard
+                                            key={key}
+                                            inputMessage={msg}
+                                            transactions={[]}
+                                            categories={categories}
+                                            status={status}
+                                            onDelete={() => {
+                                                setDeleteConfirm({
+                                                    open: true,
+                                                    type: "message",
+                                                    id: msg.id,
+                                                    title: "确认删除",
+                                                    description: "确定要删除这条记录吗？",
+                                                });
+                                            }}
+                                        />
+                                    );
                                 }
-                                onDeleteTransaction={(id) => {
-                                    setDeleteConfirm({
-                                        open: true,
-                                        type: "transaction",
-                                        id: id,
-                                        title: "确认删除",
-                                        description: "确定要删除这条交易吗？此操作无法撤销。",
-                                    });
-                                }}
-                                onDelete={() => {
-                                    setDeleteConfirm({
-                                        open: true,
-                                        type: "batch",
-                                        id: item.data.inputMessage.id,
-                                        title: "确认删除",
-                                        description: "确定要删除这条记录及其关联的所有交易吗？",
-                                    });
-                                }}
-                            />
-                        );
-                    }
 
-                    if (item.type === "single") {
-                        return (
-                            <TransactionCard
-                                key={key}
-                                transaction={item.data}
-                                categories={categories}
-                                onUpdate={(data) =>
-                                    updateMutation.mutate({
-                                        transactionId: item.data.id,
-                                        data,
-                                    })
+                                if (item.type === "batch") {
+                                    return (
+                                        <BatchTransactionCard
+                                            key={key}
+                                            inputMessage={item.data.inputMessage}
+                                            transactions={item.data.transactions}
+                                            categories={categories}
+                                            isConfirmed={item.status === "confirmed"}
+                                            status={item.status === "confirmed" ? "completed" : "processing"}
+                                            onConfirm={async (ids) => {
+                                                await confirmBatchMutation.mutateAsync(ids);
+                                            }}
+                                            onUpdateTransaction={(id, data) =>
+                                                updateMutation.mutate({ transactionId: id, data })
+                                            }
+                                            onDeleteTransaction={(id) => {
+                                                setDeleteConfirm({
+                                                    open: true,
+                                                    type: "transaction",
+                                                    id: id,
+                                                    title: "确认删除",
+                                                    description: "确定要删除这条交易吗？此操作无法撤销。",
+                                                });
+                                            }}
+                                            onDelete={() => {
+                                                setDeleteConfirm({
+                                                    open: true,
+                                                    type: "batch",
+                                                    id: item.data.inputMessage.id,
+                                                    title: "确认删除",
+                                                    description: "确定要删除这条记录及其关联的所有交易吗？",
+                                                });
+                                            }}
+                                        />
+                                    );
                                 }
-                                onDelete={() => {
-                                    setDeleteConfirm({
-                                        open: true,
-                                        type: "transaction",
-                                        id: item.data.id,
-                                        title: "确认删除",
-                                        description: "确定要删除这条交易吗？此操作无法撤销。",
-                                    });
-                                }}
-                            />
-                        );
-                    }
 
-                    return null;
-                })}
+                                if (item.type === "single") {
+                                    return (
+                                        <TransactionCard
+                                            key={key}
+                                            transaction={item.data}
+                                            categories={categories}
+                                            onUpdate={(data) =>
+                                                updateMutation.mutate({
+                                                    transactionId: item.data.id,
+                                                    data,
+                                                })
+                                            }
+                                            onDelete={() => {
+                                                setDeleteConfirm({
+                                                    open: true,
+                                                    type: "transaction",
+                                                    id: item.data.id,
+                                                    title: "确认删除",
+                                                    description: "确定要删除这条交易吗？此操作无法撤销。",
+                                                });
+                                            }}
+                                        />
+                                    );
+                                }
+
+                                return null;
+                            })}
+                        </div>
+                    </div>
+                ))}
 
                 {allItems.length === 0 && (
                     <div className="text-center py-10 text-muted">暂无记录</div>
