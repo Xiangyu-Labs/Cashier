@@ -96,7 +96,7 @@ export async function GET(
       // Sort by createdAt desc (or custom sort if needed)
       pendingTransactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      return NextResponse.json(pendingTransactions);
+      return NextResponse.json({ items: pendingTransactions });
     }
 
     const conditions = [eq(transactions.ledgerId, ledgerId)];

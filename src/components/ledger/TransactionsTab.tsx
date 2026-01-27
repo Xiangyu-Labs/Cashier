@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import {
     confirmTransactions,
     updateTransaction,
@@ -58,19 +58,31 @@ export function TransactionsTab({
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
     const [isPendingConfirmationCollapsed, setIsPendingConfirmationCollapsed] = useState(defaultCollapsed);
+    const [isQueuedCollapsed, setIsQueuedCollapsed] = useState(defaultCollapsed);
     // Error section defaults to expanded as well
     const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed);
 
     useEffect(() => {
         setIsPendingConfirmationCollapsed(defaultCollapsed);
+        setIsQueuedCollapsed(defaultCollapsed);
         setIsErrorCollapsed(defaultCollapsed);
     }, [defaultCollapsed]);
 
-    // Fetch ALL receipts for the main list (history view)
-    const { data: allReceipts = [] } = useQuery({
+    // Fetch ALL receipts for the main list (history view) - using Infinite Query
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery({
         queryKey: ["receipts", ledgerId, "all"],
-        queryFn: () => fetchReceipts(ledgerId),
+        queryFn: ({ pageParam }) => fetchReceipts(ledgerId, { cursor: pageParam }),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
+
+    const allReceipts = (data?.pages.flatMap((page) => page.items) || [])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Create a map of receiptId -> transactions from confirmedGroups for fast lookup
     const confirmedTransactionsMap = new Map<string, Transaction[]>();
@@ -154,12 +166,12 @@ export function TransactionsTab({
     });
 
     const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
-    const hasFailedReceipts = failedReceipts.length > 0;
-    const pendingCount = pendingGroups.batches.length + pendingGroups.others.length;
+    const processingReceipts = queuedReceipts?.filter((m) => m.status === "queued" || m.status === "processing") || [];
 
     // Pinned set logic
     const pinnedReceiptIds = new Set([
         ...failedReceipts.map(r => r.id),
+        ...processingReceipts.map(r => r.id),
         ...pendingGroups.batches.map(b => b.receipt.id)
     ]);
 
@@ -183,6 +195,10 @@ export function TransactionsTab({
 
     const abnormalItems: PinnedItem[] = [
         ...failedReceipts.map(receipt => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const processingItems: PinnedItem[] = [
+        ...processingReceipts.map(receipt => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const handleRetryReceipt = async (receiptId: string) => {
@@ -235,6 +251,8 @@ export function TransactionsTab({
         if (item.type === "queue" && (item.data.status === "failed" || item.data.status === "invalid")) {
             className = "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800";
             onRetryProp = () => handleRetryReceipt(item.data.id);
+        } else if (item.type === "queue" && (item.data.status === "queued" || item.data.status === "processing")) {
+            className = "bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800";
         } else {
             className = "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800";
         }
@@ -245,7 +263,7 @@ export function TransactionsTab({
                     receipt={item.data}
                     transactions={[]}
                     categories={categories}
-                    status={item.data.status as any}
+                    status={item.data.status || 'processing'}
                     className={className}
                     defaultExpanded={true}
                     onRetry={onRetryProp}
@@ -290,6 +308,35 @@ export function TransactionsTab({
 
     return (
         <div className="space-y-4">
+            {/* Processing/Queued Section (Blue) */}
+            <AnimatePresence mode="popLayout">
+                {processingItems.length > 0 && (
+                    <motion.div layout className="space-y-4 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center py-2">
+                            <button onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
+                                <h3 className="text-sm font-medium text-blue-500 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                    排队中&处理中 ({processingItems.length})
+                                </h3>
+                                <motion.div animate={{ rotate: isQueuedCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
+                                    <ChevronDown className="w-4 h-4 text-blue-500" />
+                                </motion.div>
+                            </button>
+                        </div>
+                        <AnimatePresence>
+                            {!isQueuedCollapsed && (
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                    <AnimatePresence mode="popLayout">
+                                        {processingItems.map(item => renderPinnedItem(item))}
+                                    </AnimatePresence>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        <div className="h-px bg-border/50 mt-4 mx-2" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Pending Confirmation Section (Yellow) */}
             <AnimatePresence mode="popLayout">
                 {pendingConfirmationItems.length > 0 && (
@@ -372,35 +419,43 @@ export function TransactionsTab({
                         <span>暂无记录</span>
                     </div>
                 ) : (
-                    allReceipts
-                        .filter(receipt => !pinnedReceiptIds.has(receipt.id)) // Filter out pinned items to key feed clean
-                        .map((receipt) => {
-                            // Check if we have confirmed transactions for this receipt
-                            const transactions = confirmedTransactionsMap.get(receipt.id) || [];
-                            // Determine if confirmed (if in valid list or has status)
-                            const isConfirmed = receipt.status === 'completed' || receipt.status === 'to_confirm';
-
-                            return (
-                                <div key={receipt.id}>
-                                    <BatchTransactionCard
-                                        receipt={receipt}
-                                        transactions={transactions}
-                                        categories={categories}
-                                        status={receipt.status as any}
-                                        isConfirmed={true} // For the feed, we act as if it's display-only/confirmed style (no action buttons) unless it's strictly pending
-                                        // Wait, if it's pending it should have been pinned. 
-                                        // If it's processing/queued but not in pinned receipt IDs?
-                                        // 'pinnedReceiptIds' covers failed and pending-batches.
-                                        // So here we mostly have 'completed' or 'queued/processing' that haven't failed.
-                                        // If 'queued', transactions will be empty, correct.
-                                        // If 'completed', transactions should be found in map.
-                                        onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
-                                        onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })} // Allow edit even in feed? User said "view detailed". Why not allow edit if needed.
-                                        onDeleteTransaction={(id) => deleteMutation.mutate(id)}
-                                    />
+                    <>
+                        {allReceipts
+                            .filter(receipt => !pinnedReceiptIds.has(receipt.id)) // Filter out pinned items to key feed clean
+                            .map((receipt) => {
+                                // Check if we have confirmed transactions for this receipt
+                                const transactions = confirmedTransactionsMap.get(receipt.id) || [];
+                                return (
+                                    <div key={receipt.id}>
+                                        <BatchTransactionCard
+                                            receipt={receipt}
+                                            transactions={transactions}
+                                            categories={categories}
+                                            status={receipt.status || 'completed'}
+                                            isConfirmed={true}
+                                            onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
+                                            onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })}
+                                            onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        {/* Sentinel for Infinite Scroll */}
+                        <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                            {isFetchingNextPage ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
+                                    <span>加载中...</span>
                                 </div>
-                            );
-                        })
+                            ) : hasNextPage ? (
+                                <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
+                                    <span>加载更多</span>
+                                </motion.div>
+                            ) : (
+                                <span className="opacity-50 text-xs">没有更多了</span>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
 

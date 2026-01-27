@@ -38,7 +38,7 @@ interface BatchTransactionCardProps {
   onDelete?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "completed" | "failed" | "invalid";
+  status: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
   className?: string;
 }
 
@@ -215,7 +215,7 @@ export function BatchTransactionCard({
             <div className="p-4 space-y-3">
               {/* Images Grid */}
               {images.length > 0 && (
-                <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+                <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
                   {images.map((img, idx) => (
                     <div
                       key={idx}
