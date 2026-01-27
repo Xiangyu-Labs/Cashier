@@ -40,6 +40,7 @@ export const ledgers = pgTable("ledgers", {
   autoConfirm: boolean("auto_confirm").default(false),
   autoRecognizeDate: boolean("auto_recognize_date").default(false),
   collapsePendingDefault: boolean("collapse_pending_default").default(false),
+  mergeSimilarItems: boolean("merge_similar_items").default(false),
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({

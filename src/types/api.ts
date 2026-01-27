@@ -10,6 +10,7 @@ export interface Ledger {
   autoConfirm: boolean;
   autoRecognizeDate: boolean;
   collapsePendingDefault: boolean;
+  mergeSimilarItems: boolean;
 }
 
 export interface Settings {

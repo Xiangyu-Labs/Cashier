@@ -106,3 +106,50 @@ ${categoryList}
   ]
 }`;
 }
+
+export function buildSummarizationPrompt(
+  items: { itemName: string; amount: number; notes?: string | null }[],
+  originalText?: string
+): string {
+  const itemsJson = JSON.stringify(items, null, 2);
+
+  return `你是一个专业的账单整理助手。你的任务是将同一天、同一类别的多条消费记录合并为一条摘要式记录。
+
+### 用户原始输入 (参考)
+${originalText || "（无原始文本）"}
+
+### 待合并的记录 (同一组消费记录)
+${itemsJson}
+
+### 任务要求
+1. **数据源**:
+   - **必须且只能** 基于 "待合并的记录" (JSON) 中的数据进行合并（如金额加总）。
+   - "用户原始输入" **仅供参考**，用于帮助你生成更准确的 "item_name" (摘要名)，不要从中提取额外的消费记录。
+2. **生成摘要名称 (item_name)**:
+   - 为该组起一个精简的总结性名称（如“早餐组合”、“超市日用”、“打车出行”）。
+   - **字数限制**: 严格控制在 6 个字以内。
+   - 必须能概括该组内的主要消费内容。
+3. **合并备注 (notes)**:
+   - 将该组内所有原始记录的 \`notes\` 以及原始的 \`item_name\` 进行合理合并。
+   - 保留关键信息（如具体商品名、商家、数量），去除冗余。
+
+### 输出格式
+请返回 STRICT JSON 格式，不要包含 markdown 代码块。结构如下：
+{
+  "item_name": "精简摘要名",
+  "notes": "合并后的详细备注..."
+}
+
+### 示例
+**输入**:
+[
+  { "itemName": "包子", "amount": 3.0, "notes": "商家: 早餐店" },
+  { "itemName": "豆浆", "amount": 2.5, "notes": "无糖" }
+]
+
+**输出**:
+{
+  "item_name": "早餐组合",
+  "notes": "包子(商家: 早餐店), 豆浆(无糖)"
+}`;
+}

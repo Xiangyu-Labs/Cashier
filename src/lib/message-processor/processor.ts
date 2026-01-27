@@ -1,7 +1,7 @@
 import { ChatCompletionContentPart, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
 import { getOpenAIClient } from "../ai/openai";
-import { buildTransactionPrompt } from "../ai/prompts";
+import { buildTransactionPrompt, buildSummarizationPrompt } from "../ai/prompts";
 import {
   MessageInput,
   MessageProcessor,
@@ -23,6 +23,11 @@ const transactionSchema = z.object({
 const aiResponseSchema = z.object({
   transactions: z.array(transactionSchema).optional().default([]),
   is_valid: z.boolean().optional().default(true),
+});
+
+const summarizationSchema = z.object({
+  item_name: z.string(),
+  notes: z.string().nullable().optional(),
 });
 
 export class OpenAIMessageProcessor implements MessageProcessor {
@@ -79,14 +84,93 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     // Parse response
     const { transactions: data, isValid } = this.parseResponse(rawResponse);
 
-    // Apply auto-confirm if enabled
-    const transactions = data;
+    let transactions = data;
+
+    // Apply merge similar items if enabled
+    if (context.mergeSimilarItems && transactions.length > 0) {
+      // Pass original text if available
+      const originalText = input.text || undefined;
+      transactions = await this.summarizeTransactions(transactions, originalText);
+    }
 
     return {
       transactions,
       isValid,
       rawResponse,
     };
+  }
+
+  private async summarizeTransactions(
+    transactions: ParsedTransaction[],
+    originalText?: string
+  ): Promise<ParsedTransaction[]> {
+    const finalTransactions: ParsedTransaction[] = [];
+    const groups: { [key: string]: ParsedTransaction[] } = {};
+
+    // 1. Group by category and date
+    // Key format: "date|category" or just maintain a map
+    for (const t of transactions) {
+      if (!t.transactionDate || !t.category) {
+        finalTransactions.push(t); // Cannot merge if missing date or category
+        continue;
+      }
+      const key = `${t.transactionDate}|${t.category}`;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(t);
+    }
+
+    const client = getOpenAIClient();
+
+    // 2. Process groups
+    for (const key in groups) {
+      const group = groups[key];
+      if (group.length <= 1) {
+        finalTransactions.push(...group);
+        continue;
+      }
+
+      // Prepare items for GPT-2
+      const itemsToSummarize = group.map(t => ({
+        itemName: t.itemName,
+        amount: t.amount,
+        notes: t.notes
+      }));
+
+      const prompt = buildSummarizationPrompt(itemsToSummarize, originalText);
+
+      try {
+        const response = await client.generateContent(prompt, []); // Empty messages array as prompt is system prompt equivalent
+
+        // Parse GPT-2 response
+        const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        const { item_name, notes } = summarizationSchema.parse(parsed);
+
+        // Create merged transaction
+        const totalAmount = group.reduce((sum, t) => sum + t.amount, 0);
+
+        // Use the first item's metadata for shared fields
+        const representative = group[0];
+
+        finalTransactions.push({
+          itemName: item_name,
+          amount: totalAmount,
+          currency: representative.currency,
+          category: representative.category,
+          transactionDate: representative.transactionDate,
+          notes: notes || null
+        });
+
+      } catch (error) {
+        console.error("Failed to summarize group:", error);
+        // Fallback: keep original items
+        finalTransactions.push(...group);
+      }
+    }
+
+    return finalTransactions;
   }
 
   private parseResponse(response: string): { transactions: ParsedTransaction[], isValid: boolean } {

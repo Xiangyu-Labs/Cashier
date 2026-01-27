@@ -165,6 +165,21 @@ export default function LedgerSettingsPage() {
                             }}
                         />
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">合并账单同类项</h3>
+                            <p className="text-sm text-[var(--muted)]">开启后，同一天同一类别的多条消费将合并为一条摘要记录。</p>
+                        </div>
+                        <Switch
+                            checked={ledger.mergeSimilarItems || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ mergeSimilarItems: checked });
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 

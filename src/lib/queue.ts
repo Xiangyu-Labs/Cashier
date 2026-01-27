@@ -97,6 +97,7 @@ async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
             name: c.name,
             description: c.description,
         })),
+        mergeSimilarItems: ledger?.mergeSimilarItems || false,
     });
 
     // Save AI response for debugging
