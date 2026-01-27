@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Transaction, Category } from "@/types/api";
 import { TransactionEditForm, TransactionEditFormData } from "./transaction/TransactionEditForm";
 import { TransactionViewDetails } from "./transaction/TransactionViewDetails";
@@ -38,6 +40,9 @@ export function TransactionDetailModal({
     transactionDate: "",
   });
 
+  const { toast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Reset edit state when transaction changes
   const handleOpen = () => {
     if (transaction) {
@@ -64,10 +69,14 @@ export function TransactionDetailModal({
   };
 
   const handleDelete = () => {
-    if (confirm("确定要删除这条记录吗？")) {
-      onDelete();
-      onClose();
-    }
+    onDelete();
+    setShowDeleteConfirm(false);
+    onClose();
+    toast({
+      variant: "success",
+      title: "删除成功",
+      description: "交易记录已删除",
+    });
   };
 
   const handleClose = () => {
@@ -78,31 +87,43 @@ export function TransactionDetailModal({
   if (!transaction) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent onAnimationEnd={handleOpen} className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>交易详情</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
+        <DialogContent onAnimationEnd={handleOpen} className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>交易详情</DialogTitle>
+          </DialogHeader>
 
-        <div className="py-4">
-          {isEditing ? (
-            <TransactionEditForm
-              data={editData}
-              categories={categories}
-              onChange={setEditData}
-              onSave={handleSave}
-              onCancel={() => setIsEditing(false)}
-            />
-          ) : (
-            <TransactionViewDetails
-              transaction={transaction}
-              onEdit={() => setIsEditing(true)}
-              onDelete={handleDelete}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="py-4">
+            {isEditing ? (
+              <TransactionEditForm
+                data={editData}
+                categories={categories}
+                onChange={setEditData}
+                onSave={handleSave}
+                onCancel={() => setIsEditing(false)}
+              />
+            ) : (
+              <TransactionViewDetails
+                transaction={transaction}
+                onEdit={() => setIsEditing(true)}
+                onDelete={() => setShowDeleteConfirm(true)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="确认删除"
+        description="确定要删除这条记录吗？此操作无法撤销。"
+        onConfirm={handleDelete}
+        variant="destructive"
+        confirmLabel="删除"
+      />
+    </>
   );
 }
 

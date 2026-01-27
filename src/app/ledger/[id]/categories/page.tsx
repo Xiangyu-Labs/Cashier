@@ -22,12 +22,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function CategoriesPage() {
   const params = useParams();
   const queryClient = useQueryClient();
   const ledgerId = params.id as string;
+  const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -35,6 +38,15 @@ export default function CategoriesPage() {
     name: "",
     description: "",
     icon: "",
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    id: string | null;
+    name: string;
+  }>({
+    open: false,
+    id: null,
+    name: "",
   });
 
 
@@ -49,7 +61,19 @@ export default function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
+      toast({
+        variant: "success",
+        title: "创建成功",
+        description: "分类已创建",
+      });
     },
+    onError: () => {
+      toast({
+        variant: "error",
+        title: "创建失败",
+        description: "无法创建分类，请稍后重试",
+      });
+    }
   });
 
   const updateMutation = useMutation({
@@ -63,14 +87,39 @@ export default function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
+      toast({
+        variant: "success",
+        title: "更新成功",
+        description: "分类已更新",
+      });
     },
+    onError: () => {
+      toast({
+        variant: "error",
+        title: "更新失败",
+        description: "无法更新分类，请稍后重试",
+      });
+    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (categoryId: string) => deleteCategory(ledgerId, categoryId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
+      setDeleteConfirm({ ...deleteConfirm, open: false });
+      toast({
+        variant: "success",
+        title: "删除成功",
+        description: "分类已删除",
+      });
     },
+    onError: () => {
+      toast({
+        variant: "error",
+        title: "删除失败",
+        description: "无法删除分类，请稍后重试",
+      });
+    }
   });
 
   const resetForm = () => {
@@ -103,8 +152,16 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = (category: Category) => {
-    if (confirm(`确定要删除分类「${category.name}」吗？相关记录将变为未分类。`)) {
-      deleteMutation.mutate(category.id);
+    setDeleteConfirm({
+      open: true,
+      id: category.id,
+      name: category.name,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm.id) {
+      deleteMutation.mutate(deleteConfirm.id);
     }
   };
 
@@ -283,6 +340,16 @@ export default function CategoriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        title="确认删除"
+        description={`确定要删除分类「${deleteConfirm.name}」吗？相关记录将变为未分类。`}
+        onConfirm={handleConfirmDelete}
+        variant="destructive"
+        confirmLabel="删除"
+      />
     </div>
   );
 }

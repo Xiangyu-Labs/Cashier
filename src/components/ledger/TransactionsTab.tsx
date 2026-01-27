@@ -13,6 +13,8 @@ import { Transaction, Category, InputMessage } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -78,6 +80,36 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
+    const { toast } = useToast();
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+        open: boolean;
+        type: "message" | "batch" | "transaction" | null;
+        id: string | null;
+        title: string;
+        description: string;
+    }>({
+        open: false,
+        type: null,
+        id: null,
+        title: "",
+        description: "",
+    });
+
+    const handleDeleteConfirm = () => {
+        if (!deleteConfirm.id || !deleteConfirm.type) return;
+
+        if (deleteConfirm.type === "message" || deleteConfirm.type === "batch") {
+            deleteMessageMutation.mutate(deleteConfirm.id);
+        } else if (deleteConfirm.type === "transaction") {
+            deleteMutation.mutate(deleteConfirm.id);
+        }
+        setDeleteConfirm({ ...deleteConfirm, open: false });
+        toast({
+            variant: "success",
+            title: "删除成功",
+            description: "记录已删除",
+        });
+    };
 
     const confirmAllMutation = useMutation({
         mutationFn: () => confirmTransactions(ledgerId, { confirmAll: true }),
@@ -85,8 +117,20 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
             setConfirmingAll(false);
+            toast({
+                variant: "success",
+                title: "确认成功",
+                description: "所有交易已确认",
+            });
         },
-        onError: () => setConfirmingAll(false),
+        onError: () => {
+            setConfirmingAll(false);
+            toast({
+                variant: "error",
+                title: "确认失败",
+                description: "无法确认交易，请稍后重试",
+            });
+        },
     });
 
     const confirmBatchMutation = useMutation({
@@ -95,7 +139,19 @@ export function TransactionsTab({
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            toast({
+                variant: "success",
+                title: "确认成功",
+                description: "交易批次已确认",
+            });
         },
+        onError: () => {
+            toast({
+                variant: "error",
+                title: "确认失败",
+                description: "无法确认交易，请稍后重试",
+            });
+        }
     });
 
 
@@ -108,6 +164,13 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
+        onError: () => {
+            toast({
+                variant: "error",
+                title: "删除失败",
+                description: "无法删除记录，请稍后重试",
+            });
+        }
     });
 
     const pendingCount =
@@ -171,6 +234,11 @@ export function TransactionsTab({
         );
         queryClient.invalidateQueries({ queryKey: ["messages", ledgerId] });
         setConfirmingAll(false);
+        toast({
+            variant: "success",
+            title: "重试已提交",
+            description: "正在重试所有失败的消息",
+        });
     };
 
     return (
@@ -233,9 +301,13 @@ export function TransactionsTab({
                                 categories={categories}
                                 status={status}
                                 onDelete={() => {
-                                    if (confirm("确定要删除这条记录吗？")) {
-                                        deleteMessageMutation.mutate(msg.id);
-                                    }
+                                    setDeleteConfirm({
+                                        open: true,
+                                        type: "message",
+                                        id: msg.id,
+                                        title: "确认删除",
+                                        description: "确定要删除这条记录吗？",
+                                    });
                                 }}
                             />
                         );
@@ -249,31 +321,30 @@ export function TransactionsTab({
                                 transactions={item.data.transactions}
                                 categories={categories}
                                 isConfirmed={item.status === "confirmed"}
-                                status={item.status === "confirmed" ? "completed" : "processing"} // Actually logic for 'processing' here is tricky, basically if it's in batch it's parsed.
-                                // If item.status is pending, it means it's waiting for user confirmation? 
-                                // No, 'batch' type in timeline comes from pendingGroups or confirmedGroups.
-                                // pendingGroups means transactions are generated but not confirmed.
-                                // So status is effectively 'queued' (waiting for user) or 'completed' (done/confirmed).
-                                // Let's use 'processing' for pending confirmation? Or just pass undefined/calculated?
-                                // Actually better mapping:
-                                // Pending Confirmation -> status="queued" (waiting action) or maybe "processing"
-                                // Confirmed -> status="completed"
-
-                                // Let's map pending batch to "processing" (since it needs attention) or "queued"?
-                                // "queued" in queue items means generic queue.
-                                // Let's use "processing" for waiting confirmation in the UI sense (waiting user action).
-
+                                status={item.status === "confirmed" ? "completed" : "processing"}
                                 onConfirm={async (ids) => {
                                     await confirmBatchMutation.mutateAsync(ids);
                                 }}
                                 onUpdateTransaction={(id, data) =>
                                     updateMutation.mutate({ transactionId: id, data })
                                 }
-                                onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                                onDeleteTransaction={(id) => {
+                                    setDeleteConfirm({
+                                        open: true,
+                                        type: "transaction",
+                                        id: id,
+                                        title: "确认删除",
+                                        description: "确定要删除这条交易吗？此操作无法撤销。",
+                                    });
+                                }}
                                 onDelete={() => {
-                                    if (confirm("确定要删除这条记录及其关联的所有交易吗？")) {
-                                        deleteMessageMutation.mutate(item.data.inputMessage.id);
-                                    }
+                                    setDeleteConfirm({
+                                        open: true,
+                                        type: "batch",
+                                        id: item.data.inputMessage.id,
+                                        title: "确认删除",
+                                        description: "确定要删除这条记录及其关联的所有交易吗？",
+                                    });
                                 }}
                             />
                         );
@@ -291,7 +362,15 @@ export function TransactionsTab({
                                         data,
                                     })
                                 }
-                                onDelete={() => deleteMutation.mutate(item.data.id)}
+                                onDelete={() => {
+                                    setDeleteConfirm({
+                                        open: true,
+                                        type: "transaction",
+                                        id: item.data.id,
+                                        title: "确认删除",
+                                        description: "确定要删除这条交易吗？此操作无法撤销。",
+                                    });
+                                }}
                             />
                         );
                     }
@@ -303,6 +382,16 @@ export function TransactionsTab({
                     <div className="text-center py-10 text-muted">暂无记录</div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={deleteConfirm.open}
+                onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+                title={deleteConfirm.title}
+                description={deleteConfirm.description}
+                onConfirm={handleDeleteConfirm}
+                variant="destructive"
+                confirmLabel="删除"
+            />
         </div>
     );
 }
