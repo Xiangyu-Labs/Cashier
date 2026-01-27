@@ -20,11 +20,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       eq(transactions.status, status as "pending" | "confirmed"),
     ];
 
+    // Use transactionDate if available, otherwise fallback to createdAt
+    const dateCol = sql<string>`COALESCE(${transactions.transactionDate}, ${transactions.createdAt}::date)`;
+
     if (startDate) {
-      conditions.push(sql`${transactions.transactionDate} >= ${startDate}::date`);
+      conditions.push(sql`${dateCol} >= ${startDate}::date`);
     }
     if (endDate) {
-      conditions.push(sql`${transactions.transactionDate} <= ${endDate}::date`);
+      conditions.push(sql`${dateCol} <= ${endDate}::date`);
     }
 
     const whereClause = and(...conditions);
@@ -64,13 +67,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // 计算趋势（按日期分组）
     const trend = await db
       .select({
-        date: transactions.transactionDate,
+        date: dateCol,
         total: sql<string>`sum(${transactions.amount})`,
       })
       .from(transactions)
       .where(whereClause)
-      .groupBy(transactions.transactionDate)
-      .orderBy(transactions.transactionDate);
+      .groupBy(dateCol)
+      .orderBy(dateCol);
 
     return NextResponse.json({
       byCategory: summary.map((s) => ({
