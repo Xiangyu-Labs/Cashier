@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import {
     confirmTransactions,
     updateTransaction,
@@ -66,13 +66,21 @@ export function TransactionsTab({
         setIsErrorCollapsed(defaultCollapsed);
     }, [defaultCollapsed]);
 
-    // Fetch ALL receipts for the main list (history view)
-    const { data: rawReceipts = [] } = useQuery({
+    // Fetch ALL receipts for the main list (history view) - using Infinite Query
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery({
         queryKey: ["receipts", ledgerId, "all"],
-        queryFn: () => fetchReceipts(ledgerId),
+        queryFn: ({ pageParam }) => fetchReceipts(ledgerId, { cursor: pageParam }),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
 
-    const allReceipts = rawReceipts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const allReceipts = (data?.pages.flatMap((page) => page.items) || [])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Create a map of receiptId -> transactions from confirmedGroups for fast lookup
     const confirmedTransactionsMap = new Map<string, Transaction[]>();
@@ -374,35 +382,52 @@ export function TransactionsTab({
                         <span>暂无记录</span>
                     </div>
                 ) : (
-                    allReceipts
-                        .filter(receipt => !pinnedReceiptIds.has(receipt.id)) // Filter out pinned items to key feed clean
-                        .map((receipt) => {
-                            // Check if we have confirmed transactions for this receipt
-                            const transactions = confirmedTransactionsMap.get(receipt.id) || [];
-                            // Determine if confirmed (if in valid list or has status)
-                            const isConfirmed = receipt.status === 'completed' || receipt.status === 'to_confirm';
+                    <>
+                        {allReceipts
+                            .filter(receipt => !pinnedReceiptIds.has(receipt.id)) // Filter out pinned items to key feed clean
+                            .map((receipt) => {
+                                // Check if we have confirmed transactions for this receipt
+                                const transactions = confirmedTransactionsMap.get(receipt.id) || [];
+                                // Determine if confirmed (if in valid list or has status)
+                                const isConfirmed = receipt.status === 'completed' || receipt.status === 'to_confirm';
 
-                            return (
-                                <div key={receipt.id}>
-                                    <BatchTransactionCard
-                                        receipt={receipt}
-                                        transactions={transactions}
-                                        categories={categories}
-                                        status={receipt.status as any}
-                                        isConfirmed={true} // For the feed, we act as if it's display-only/confirmed style (no action buttons) unless it's strictly pending
-                                        // Wait, if it's pending it should have been pinned. 
-                                        // If it's processing/queued but not in pinned receipt IDs?
-                                        // 'pinnedReceiptIds' covers failed and pending-batches.
-                                        // So here we mostly have 'completed' or 'queued/processing' that haven't failed.
-                                        // If 'queued', transactions will be empty, correct.
-                                        // If 'completed', transactions should be found in map.
-                                        onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
-                                        onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })} // Allow edit even in feed? User said "view detailed". Why not allow edit if needed.
-                                        onDeleteTransaction={(id) => deleteMutation.mutate(id)}
-                                    />
+                                return (
+                                    <div key={receipt.id}>
+                                        <BatchTransactionCard
+                                            receipt={receipt}
+                                            transactions={transactions}
+                                            categories={categories}
+                                            status={receipt.status as any}
+                                            isConfirmed={true} // For the feed, we act as if it's display-only/confirmed style (no action buttons) unless it's strictly pending
+                                            // Wait, if it's pending it should have been pinned. 
+                                            // If it's processing/queued but not in pinned receipt IDs?
+                                            // 'pinnedReceiptIds' covers failed and pending-batches.
+                                            // So here we mostly have 'completed' or 'queued/processing' that haven't failed.
+                                            // If 'queued', transactions will be empty, correct.
+                                            // If 'completed', transactions should be found in map.
+                                            onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
+                                            onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })} // Allow edit even in feed? User said "view detailed". Why not allow edit if needed.
+                                            onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        {/* Sentinel for Infinite Scroll */}
+                        <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                            {isFetchingNextPage ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
+                                    <span>加载中...</span>
                                 </div>
-                            );
-                        })
+                            ) : hasNextPage ? (
+                                <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
+                                    <span>加载更多</span>
+                                </motion.div>
+                            ) : (
+                                <span className="opacity-50 text-xs">没有更多了</span>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
 

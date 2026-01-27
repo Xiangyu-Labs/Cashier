@@ -103,7 +103,10 @@ async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
     // Save AI response for debugging
     await db
         .update(receipts)
-        .set({ aiResponse: result.rawResponse })
+        .set({
+            aiResponse: result.rawResponse,
+            title: result.title
+        })
 
         .where(eq(receipts.id, receipt.id));
 

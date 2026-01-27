@@ -53,9 +53,12 @@ export function useLedgerData(ledgerId: string) {
     const queryClient = useQueryClient();
 
     // Poll for queued/processing receipts first to determine if we need to poll others
-    const { data: queuedReceipts } = useQuery({
+    const { data: queuedReceipts = [] } = useQuery({
         queryKey: ["receipts", ledgerId, "queued"],
-        queryFn: () => fetchReceipts(ledgerId, ["queued", "processing", "failed", "invalid"]),
+        queryFn: async () => {
+            const res = await fetchReceipts(ledgerId, { status: ["queued", "processing", "failed", "invalid"] });
+            return res.items;
+        },
         refetchInterval: (query) => {
             const data = query.state.data;
             return data && data.length > 0 ? 1000 : 5000;
@@ -91,13 +94,19 @@ export function useLedgerData(ledgerId: string) {
 
     const { data: pendingTxs } = useQuery({
         queryKey: ["transactions", ledgerId, "pending"],
-        queryFn: () => fetchTransactions(ledgerId, { status: "pending" }),
+        queryFn: async () => {
+            const res = await fetchTransactions(ledgerId, { status: "pending" });
+            return res.items;
+        },
         refetchInterval,
     });
 
     const { data: confirmedTxs } = useQuery({
         queryKey: ["transactions", ledgerId, "confirmed"],
-        queryFn: () => fetchTransactions(ledgerId, { status: "confirmed", limit: 100 }),
+        queryFn: async () => {
+            const res = await fetchTransactions(ledgerId, { status: "confirmed", limit: 100 });
+            return res.items;
+        },
         refetchInterval,
     });
 

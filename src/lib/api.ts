@@ -147,20 +147,28 @@ export function reorderCategories(
 }
 
 // Transaction API
+export interface PaginatedResponse<T> {
+  items: T[];
+  nextCursor?: string | null;
+}
+
+// Transaction API
 export function fetchTransactions(
   ledgerId: string,
   params?: {
     status?: "pending" | "confirmed";
     limit?: number;
     offset?: number;
+    cursor?: string;
     startDate?: string;
     endDate?: string;
   }
-): Promise<Transaction[]> {
+): Promise<PaginatedResponse<Transaction>> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
+  if (params?.cursor) searchParams.set("cursor", params.cursor);
   if (params?.startDate) searchParams.set("startDate", params.startDate);
   if (params?.endDate) searchParams.set("endDate", params.endDate);
 
@@ -262,10 +270,16 @@ export function createReceipt(
 
 export function fetchReceipts(
   ledgerId: string,
-  status?: string[]
-): Promise<Receipt[]> {
+  params: {
+    status?: string[];
+    limit?: number;
+    cursor?: string;
+  } = {}
+): Promise<PaginatedResponse<Receipt>> {
   const searchParams = new URLSearchParams();
-  if (status) searchParams.set("status", status.join(","));
+  if (params.status) searchParams.set("status", params.status.join(","));
+  if (params.limit) searchParams.set("limit", params.limit.toString());
+  if (params.cursor) searchParams.set("cursor", params.cursor);
 
   return request(
     `${API_BASE}/ledgers/${ledgerId}/receipts?${searchParams}`,

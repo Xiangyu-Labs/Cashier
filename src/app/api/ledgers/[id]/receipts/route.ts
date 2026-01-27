@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { receipts, ledgers, categories, transactions } from "@/lib/db/schema";
-import { eq, inArray, and, asc } from "drizzle-orm";
+import { eq, inArray, and, asc, desc, lte } from "drizzle-orm";
 import { z } from "zod";
 
 import { processReceiptQueue } from "@/lib/queue";
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id: ledgerId } = await params;
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get("status"); // e.g. "queued,processing"
+  const limit = parseInt(searchParams.get("limit") || "20");
+  const cursor = searchParams.get("cursor"); // createdAt timestamp
 
   const conditions = [eq(receipts.ledgerId, ledgerId)];
 
@@ -34,12 +36,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     conditions.push(inArray(receipts.status, statuses));
   }
 
+  if (cursor) {
+    conditions.push(lte(receipts.createdAt, new Date(cursor)));
+  }
+
   const result = await db.query.receipts.findMany({
     where: and(...conditions),
-    orderBy: [asc(receipts.createdAt)],
+    orderBy: [desc(receipts.createdAt)], // Default to newest first
+    limit: limit + 1, // Fetch one more to check if there are more
   });
 
-  return NextResponse.json(result);
+  let nextCursor = null;
+  if (result.length > limit) {
+    const nextItem = result.pop(); // Remove the extra item
+    if (nextItem) {
+      nextCursor = nextItem.createdAt.toISOString();
+    }
+  }
+
+  return NextResponse.json({
+    items: result,
+    nextCursor,
+  });
 }
 
 // POST /api/ledgers/[id]/receipts - 处理多模态输入

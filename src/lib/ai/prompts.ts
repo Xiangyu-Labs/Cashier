@@ -21,6 +21,7 @@ ${categoryList}
 请返回 STRICT JSON 格式，不要包含 markdown 代码块（\`\`\`json ... \`\`\`），直接返回 JSON 对象。结构如下：
 {
   "is_valid": true,
+  "title": "简短的账单标题 (e.g. 7-11 购物)",
   "transactions": [
     {
       "item_name": "商品名称",

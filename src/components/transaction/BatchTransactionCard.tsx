@@ -158,6 +158,9 @@ export function BatchTransactionCard({
             hour: "2-digit",
             minute: "2-digit",
           })}
+          {receipt.title && (
+            <span className="ml-3 font-medium text-text">{receipt.title}</span>
+          )}
         </span>
         <div className="flex items-center gap-3">
           {/* Status Indicator - only show if no transactions parsed yet */}

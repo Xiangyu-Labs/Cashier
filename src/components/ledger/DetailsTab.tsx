@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTransactions, updateTransaction, deleteTransaction } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { fetchTransactions, updateTransaction, deleteTransaction, fetchTransactionSummary } from "@/lib/api";
 import { Transaction, Category } from "@/types/api";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
 import { MonthPicker } from "@/components/ui/month-picker";
@@ -25,23 +25,42 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
         return { startDate: start, endDate: end };
     }, [currentDate]);
 
-    // Fetch confirmed transactions for the selected month
-    const { data: monthTransactions = [] } = useQuery({
-        queryKey: ["transactions", ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()],
-        queryFn: () => fetchTransactions(ledgerId, {
-            status: "confirmed",
-            limit: 1000,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString()
-        }),
+    // Fetch Summary for the Month (Total)
+    const { data: summaryData } = useQuery({
+        queryKey: ["transactions", ledgerId, "summary", startDate.toISOString(), endDate.toISOString()],
+        queryFn: () => fetchTransactionSummary(ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()),
     });
+
+    // Fetch confirmed transactions for the selected month (Infinite Scroll)
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery({
+        queryKey: ["transactions", ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()],
+        queryFn: ({ pageParam }) => fetchTransactions(ledgerId, {
+            status: "confirmed",
+            limit: 20,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            cursor: pageParam
+        }),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+    });
+
+    const monthTransactions = useMemo(() => {
+        return data?.pages.flatMap(p => p.items) || [];
+    }, [data]);
 
     // Calculate Summary Stats
     const monthStats = useMemo(() => {
-        const total = monthTransactions.reduce((sum: number, tx: Transaction) => sum + parseFloat(tx.amount || "0"), 0);
-        const currency = monthTransactions.find((tx: Transaction) => tx.currency)?.currency || "CNY";
+        // Use summary data if available, otherwise 0
+        const total = summaryData?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
+        const currency = summaryData?.totals[0]?.currency || "CNY";
         return { total, currency };
-    }, [monthTransactions]);
+    }, [summaryData]);
 
     const updateMutation = useMutation({
         mutationFn: ({ transactionId, data }: { transactionId: string; data: Parameters<typeof updateTransaction>[2] }) =>
@@ -164,6 +183,24 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                         </motion.div>
                     ))}
                 </AnimatePresence>
+
+                {/* Sentinel for Infinite Scroll */}
+                {monthTransactions.length > 0 && (
+                    <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                        {isFetchingNextPage ? (
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
+                                <span>加载中...</span>
+                            </div>
+                        ) : hasNextPage ? (
+                            <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
+                                <span>加载更多</span>
+                            </motion.div>
+                        ) : (
+                            <span className="opacity-50 text-xs">没有更多了</span>
+                        )}
+                    </div>
+                )}
 
                 {monthTransactions.length === 0 && (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">

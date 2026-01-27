@@ -79,6 +79,7 @@ export const receipts = pgTable("receipts", {
     .references(() => ledgers.id, { onDelete: "cascade" }),
 
   // New flattened structure
+  title: text("title"),
   text: text("text"), // Nullable, for text content
   imageUrls: jsonb("image_urls")
     .$type<string[]>()

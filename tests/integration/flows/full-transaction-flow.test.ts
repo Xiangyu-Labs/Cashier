@@ -103,7 +103,8 @@ describe("Full Transaction Flow", () => {
     const transactionsResponse = await getTransactions(transactionsRequest, {
       params: Promise.resolve({ id: ledger.id }),
     });
-    const allTransactions = (await transactionsResponse.json()) as Transaction[];
+    const responseBody = await transactionsResponse.json();
+    const allTransactions = responseBody.items as Transaction[];
 
     expect(allTransactions).toHaveLength(2);
     expect(allTransactions.map((t) => t.itemName)).toContain("牛奶");
@@ -116,6 +117,7 @@ describe("Full Transaction Flow", () => {
 
     expect(savedMessage).toBeDefined();
     expect(savedMessage?.aiResponse).toBeDefined();
+    expect(savedMessage?.title).toBe("超市购物");
     expect(savedMessage?.text).toContain("超市购物");
   });
 
@@ -286,7 +288,8 @@ describe("Full Transaction Flow", () => {
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/transactions`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const allTransactions = (await transactionsResponse.json()) as Transaction[];
+    const responseBody = await transactionsResponse.json();
+    const allTransactions = responseBody.items as Transaction[];
 
     const milkTx = allTransactions.find((t) => t.itemName === "牛奶");
     const breadTx = allTransactions.find((t) => t.itemName === "面包");

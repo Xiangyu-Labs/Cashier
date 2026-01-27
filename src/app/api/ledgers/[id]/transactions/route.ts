@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { transactions, receipts, categories } from "@/lib/db/schema";
-import { eq, and, gte, lte, or, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 
 const querySchema = z.object({
   categoryId: z.string().uuid().optional(),
   limit: z.coerce.number().positive().optional().default(50),
   offset: z.coerce.number().nonnegative().optional().default(0),
+  cursor: z.string().optional(), // transactionDate or createdAt timestamp
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   status: z.enum(["pending", "confirmed"]).optional(),
@@ -28,6 +29,7 @@ export async function GET(
       categoryId: searchParams.get("categoryId") || undefined,
       limit: searchParams.get("limit") || undefined,
       offset: searchParams.get("offset") || undefined,
+      cursor: searchParams.get("cursor") || undefined,
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
       status: searchParams.get("status") || undefined,
@@ -131,18 +133,52 @@ export async function GET(
       }
     }
 
+    // Cursor-based pagination logic
+    if (query.cursor) {
+      const cursorDate = new Date(query.cursor);
+      // We prioritize transactionDate, but fallback to createdAt.
+      // Since we sort by transactionDate desc (mostly), the cursor should target that.
+      // However, transactions can have null transactionDate.
+      // The sort logic is complex: date desc, then createdAt desc.
+      // Simplifying assumption: We use a simple cursor on the effective date.
+
+      const dateCondition = or(
+        lt(transactions.transactionDate, cursorDate),
+        and(
+          isNull(transactions.transactionDate),
+          lt(transactions.createdAt, cursorDate)
+        )
+      );
+      if (dateCondition) {
+        conditions.push(dateCondition);
+      }
+    }
+
     const result = await db.query.transactions.findMany({
       where: and(...conditions),
       with: {
         category: true,
         receipt: true,
       },
-      orderBy: (transactions, { desc }) => [desc(transactions.createdAt)],
-      limit: query.limit,
+      orderBy: (transactions, { desc }) => [desc(transactions.transactionDate), desc(transactions.createdAt)],
+      limit: query.limit + 1, // Fetch one extra to check for next page
       offset: query.offset,
     });
 
-    return NextResponse.json(result);
+    let nextCursor = null;
+    if (result.length > query.limit) {
+      const nextItem = result.pop(); // Remove extra item
+      if (nextItem) {
+        // Use the effective date for cursor
+        const nextDate = nextItem.transactionDate || nextItem.createdAt;
+        nextCursor = new Date(nextDate).toISOString();
+      }
+    }
+
+    return NextResponse.json({
+      items: result,
+      nextCursor
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

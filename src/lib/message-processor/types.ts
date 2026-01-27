@@ -21,6 +21,7 @@ export interface ParsedTransaction {
 export interface ProcessResult {
   transactions: ParsedTransaction[];
   isValid?: boolean;
+  title?: string;
   rawResponse: string; // AI 原始返回，用于调试
 }
 

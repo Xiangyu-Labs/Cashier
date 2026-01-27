@@ -22,6 +22,7 @@ const transactionSchema = z.object({
 
 const aiResponseSchema = z.object({
   transactions: z.array(transactionSchema).optional().default([]),
+  title: z.string().optional(),
   is_valid: z.boolean().optional().default(true),
 });
 
@@ -82,7 +83,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     const rawResponse = await client.generateContent(systemPrompt, messages);
 
     // Parse response
-    const { transactions: data, isValid } = this.parseResponse(rawResponse);
+    const { transactions: data, isValid, title } = this.parseResponse(rawResponse);
 
     let transactions = data;
 
@@ -96,6 +97,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     return {
       transactions,
       isValid,
+      title,
       rawResponse,
     };
   }
@@ -173,7 +175,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     return finalTransactions;
   }
 
-  private parseResponse(response: string): { transactions: ParsedTransaction[], isValid: boolean } {
+  private parseResponse(response: string): { transactions: ParsedTransaction[], isValid: boolean, title?: string } {
     try {
       // Remove markdown code blocks if present
       const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
@@ -205,7 +207,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
         };
       });
 
-      return { transactions, isValid: true };
+      return { transactions, isValid: true, title: validated.title };
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Raw response:", response);

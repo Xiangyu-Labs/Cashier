@@ -45,7 +45,9 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
       auto_confirm BOOLEAN DEFAULT FALSE,
-      auto_recognize_date BOOLEAN DEFAULT FALSE
+      auto_recognize_date BOOLEAN DEFAULT FALSE,
+      collapse_pending_default BOOLEAN DEFAULT FALSE,
+      merge_similar_items BOOLEAN DEFAULT FALSE
     );
   `);
 
@@ -66,6 +68,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     CREATE TABLE IF NOT EXISTS receipts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
+      title TEXT,
       text TEXT,
       image_urls JSONB DEFAULT '[]'::jsonb,
       status message_status NOT NULL DEFAULT 'queued',

@@ -9,6 +9,7 @@ export interface MockOpenAIResponse {
         transaction_date: string | null;
         notes?: string;
     }>;
+    title?: string;
 }
 
 export function mockOpenAIResponse(response: MockOpenAIResponse): string {
@@ -27,6 +28,7 @@ export const MOCK_RESPONSES = {
                 transaction_date: "2025-01-25",
             },
         ],
+        title: "午餐消费",
     }),
 
     transactionWithMetadata: mockOpenAIResponse({
@@ -59,6 +61,7 @@ export const MOCK_RESPONSES = {
                 transaction_date: null,
             },
         ],
+        title: "超市购物",
     }),
 
     emptyTransactions: mockOpenAIResponse({ transactions: [] }),

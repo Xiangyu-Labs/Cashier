@@ -34,6 +34,7 @@ export interface Category {
 export interface Receipt {
   id: string;
   ledgerId: string;
+  title: string | null;
   text: string | null;
   imageUrls: string[];
   aiResponse: string | null;
