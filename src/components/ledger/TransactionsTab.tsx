@@ -231,12 +231,6 @@ export function TransactionsTab({
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const timelineItems: TimelineItem[] = [
-        // Only include non-failed queued receipts
-        ...queuedReceipts
-            .filter(r => !failedReceiptsIds.has(r.id))
-            .map(
-                (receipt) => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)
-            ),
         // Confirmed transactions
         ...monthTransactions.map(
             (tx: Transaction) =>
