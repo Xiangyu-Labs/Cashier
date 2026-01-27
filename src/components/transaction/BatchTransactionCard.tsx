@@ -35,7 +35,7 @@ interface BatchTransactionCardProps {
   ) => void;
   onDeleteTransaction?: (transactionId: string) => void;
   onDelete?: () => void;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: "queued" | "processing" | "completed" | "failed" | "invalid";
   className?: string;
 }
 
@@ -300,7 +300,7 @@ export function BatchTransactionCard({
             <Button
               onClick={handleConfirm}
               disabled={isConfirming}
-              className="bg-primary hover:bg-primary/90 text-white shadow-sm"
+              className="bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm"
             >
               {isConfirming ? "确认中..." : "确认账单"}
             </Button>

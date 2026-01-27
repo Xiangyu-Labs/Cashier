@@ -25,6 +25,7 @@ export const messageStatusEnum = pgEnum("message_status", [
   "to_confirm",
   "completed",
   "failed",
+  "invalid",
 ]);
 
 

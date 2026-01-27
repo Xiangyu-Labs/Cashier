@@ -82,7 +82,16 @@ async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
     await db
         .update(receipts)
         .set({ aiResponse: result.rawResponse })
+
         .where(eq(receipts.id, receipt.id));
+
+    if (result.isValid === false) {
+        await db
+            .update(receipts)
+            .set({ status: "invalid" })
+            .where(eq(receipts.id, receipt.id));
+        return;
+    }
 
     const validTransactions = result.transactions
         .filter((tx) => tx.amount > 0)

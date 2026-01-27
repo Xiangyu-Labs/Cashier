@@ -21,7 +21,8 @@ const transactionSchema = z.object({
 });
 
 const aiResponseSchema = z.object({
-  transactions: z.array(transactionSchema),
+  transactions: z.array(transactionSchema).optional().default([]),
+  is_valid: z.boolean().optional().default(true),
 });
 
 export class OpenAIMessageProcessor implements MessageProcessor {
@@ -76,18 +77,19 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     const rawResponse = await client.generateContent(systemPrompt, messages);
 
     // Parse response
-    const data = this.parseResponse(rawResponse);
+    const { transactions: data, isValid } = this.parseResponse(rawResponse);
 
     // Apply auto-confirm if enabled
     const transactions = data;
 
     return {
       transactions,
+      isValid,
       rawResponse,
     };
   }
 
-  private parseResponse(response: string): ParsedTransaction[] {
+  private parseResponse(response: string): { transactions: ParsedTransaction[], isValid: boolean } {
     try {
       // Remove markdown code blocks if present
       const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
@@ -95,7 +97,11 @@ export class OpenAIMessageProcessor implements MessageProcessor {
       const parsed = JSON.parse(cleaned);
       const validated = aiResponseSchema.parse(parsed);
 
-      return validated.transactions.map((t) => {
+      if (validated.is_valid === false) {
+        return { transactions: [], isValid: false };
+      }
+
+      const transactions = validated.transactions.map((t) => {
         const {
           notes,
           item_name,
@@ -114,6 +120,8 @@ export class OpenAIMessageProcessor implements MessageProcessor {
           notes: notes || null,
         };
       });
+
+      return { transactions, isValid: true };
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Raw response:", response);

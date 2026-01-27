@@ -34,7 +34,8 @@ describe("Auto-recognize Transaction Time", () => {
         ledgerId = ledger.id;
 
         // Create Category
-        const [category] = await db
+        // Create Category
+        await db
             .insert(categories)
             .values({
                 name: "Food",

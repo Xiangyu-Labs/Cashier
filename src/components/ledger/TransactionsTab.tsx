@@ -191,7 +191,7 @@ export function TransactionsTab({
     const pendingCount =
         pendingGroups.batches.length + pendingGroups.others.length;
     const failedReceipts =
-        queuedReceipts?.filter((m) => m.status === "failed") || [];
+        queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
     const hasFailedReceipts = failedReceipts.length > 0;
 
     // Calculate Summary Stats for current month (Frontend Aggregation)
@@ -204,7 +204,7 @@ export function TransactionsTab({
     }, [monthTransactions]);
 
     // Prepare pinned items (Failed + Pending) and timeline items (Rest)
-    const failedReceiptsIds = new Set(failedReceipts.map(r => r.id));
+
 
     const pinnedItems: TimelineItem[] = [
         ...failedReceipts.map(
@@ -301,7 +301,7 @@ export function TransactionsTab({
         // Determine style for pinned items
         let className = "";
         if (isPinned) {
-            if (item.type === "queue" && item.data.status === "failed") {
+            if (item.type === "queue" && (item.data.status === "failed" || item.data.status === "invalid")) {
                 className = "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800";
             } else {
                 className = "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800";
@@ -310,7 +310,7 @@ export function TransactionsTab({
 
         if (item.type === "queue") {
             const receipt = item.data;
-            const status = receipt.status as "queued" | "processing" | "failed" | "completed";
+            const status = receipt.status as "queued" | "processing" | "failed" | "completed" | "invalid";
 
             return (
                 <BatchTransactionCard

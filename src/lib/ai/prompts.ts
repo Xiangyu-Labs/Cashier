@@ -20,6 +20,7 @@ ${categoryList}
 ### 输出要求
 请返回 STRICT JSON 格式，不要包含 markdown 代码块（\`\`\`json ... \`\`\`），直接返回 JSON 对象。结构如下：
 {
+  "is_valid": true,
   "transactions": [
     {
       "item_name": "商品名称",
@@ -46,6 +47,11 @@ ${categoryList}
 6. **Notes 字段**: 将数量、单价、规格、原始外语名称、商家名称等所有非核心字段的信息，整合成一段简洁的文本放入 \`notes\`。
    - 格式示例: "数量: 2, 单价: 19.9, 商家: 7-Eleven"
 
+### 非法/无效输入检测
+增加 json 字段 "is_valid"。
+- 如果输入内容**不是**账单、收据、发票或任何消费记录（例如：风景照、随机文字、无关截图），请将 "is_valid" 设为 false，并且不需要返回 transactions。
+- 如果是有效的消费记录，"is_valid" 设为 true。
+
 ### Few-Shot Examples (参考示例)
 
 **输入**:
@@ -53,6 +59,7 @@ ${categoryList}
 
 **输出**:
 {
+  "is_valid": true,
   "transactions": [
     {
       "item_name": "可乐",
@@ -72,12 +79,21 @@ ${categoryList}
     }
   ]
 }
+ 
+**输入**:
+"一张风景图片"
+ 
+**输出**:
+{
+  "is_valid": false
+}
 
 **输入**:
 "Yesterday taxi to airport 50 USD" (假设当前日期是 2025-05-20)
 
 **输出**:
 {
+  "is_valid": true,
   "transactions": [
     {
       "item_name": "Taxi to airport",

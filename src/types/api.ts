@@ -38,7 +38,7 @@ export interface Receipt {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   proposedTransactions?: any[] | null;
   createdAt: string;
-  status?: "queued" | "processing" | "to_confirm" | "completed" | "failed";
+  status?: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
   error?: string | null;
 }
 

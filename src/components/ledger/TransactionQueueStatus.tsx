@@ -28,6 +28,11 @@ export function TransactionQueueStatus({ queuedReceipts }: TransactionQueueStatu
                             (失败)
                         </span>
                     )}
+                    {receipt.status === "invalid" && (
+                        <span className="text-xs text-danger" title="无效账单">
+                            (无效)
+                        </span>
+                    )}
                     {receipt.status === "to_confirm" && (
                         <span className="text-xs text-warning" title="待确认">
                             (待确认)

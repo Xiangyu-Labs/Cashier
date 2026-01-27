@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
-export type TransactionStatusType = "queued" | "processing" | "to_confirm" | "completed" | "failed";
+export type TransactionStatusType = "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
 
 interface TransactionStatusProps {
     status: TransactionStatusType;
@@ -36,6 +36,12 @@ export function TransactionStatus({ status, className }: TransactionStatusProps)
         },
         failed: {
             label: "处理失败",
+            icon: AlertCircle,
+            colorClass: "text-danger",
+            bgClass: "bg-danger",
+        },
+        invalid: {
+            label: "无效账单",
             icon: AlertCircle,
             colorClass: "text-danger",
             bgClass: "bg-danger",
