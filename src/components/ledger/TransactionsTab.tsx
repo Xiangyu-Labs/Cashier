@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -45,7 +46,6 @@ type TimelineItem =
     };
 
 
-
 export function TransactionsTab({
     ledgerId,
     pendingGroups,
@@ -60,10 +60,6 @@ export function TransactionsTab({
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Sync state with prop if default changes (e.g. from settings update)
-    // using useMemo or useEffect to update state when prop changes is tricky if we want to allow manual toggle.
-    // simpler: valid key on the component to force reset, OR just useEffect.
-    // Let's use useEffect to respect the latest setting if it changes.
-    // But this overrides manual toggle if the prop changes. Since prop likely only changes on mount or setting update, this is acceptable.
     useEffect(() => {
         setIsPendingCollapsed(defaultCollapsed);
     }, [defaultCollapsed]);
@@ -108,6 +104,25 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
+
+    const deleteReceiptMutation = useMutation({
+        mutationFn: async (receiptId: string) => {
+            return deleteReceipt(ledgerId, receiptId);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+        },
+        onError: () => {
+            toast({
+                variant: "error",
+                title: "删除失败",
+                description: "无法删除记录，请稍后重试",
+            });
+        }
+    });
+
     const { toast } = useToast();
     const [deleteConfirm, setDeleteConfirm] = useState<{
         open: boolean;
@@ -182,25 +197,6 @@ export function TransactionsTab({
         }
     });
 
-
-    const deleteReceiptMutation = useMutation({
-        mutationFn: async (receiptId: string) => {
-            return deleteReceipt(ledgerId, receiptId);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-        },
-        onError: () => {
-            toast({
-                variant: "error",
-                title: "删除失败",
-                description: "无法删除记录，请稍后重试",
-            });
-        }
-    });
-
     const pendingCount =
         pendingGroups.batches.length + pendingGroups.others.length;
     const failedReceipts =
@@ -217,8 +213,6 @@ export function TransactionsTab({
     }, [monthTransactions]);
 
     // Prepare pinned items (Failed + Pending) and timeline items (Rest)
-
-
     const pinnedItems: TimelineItem[] = [
         ...failedReceipts.map(
             (receipt) => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)
@@ -321,101 +315,114 @@ export function TransactionsTab({
             }
         }
 
-        if (item.type === "queue") {
-            const receipt = item.data;
-            const status = receipt.status as "queued" | "processing" | "failed" | "completed" | "invalid";
+        const content = (() => {
+            if (item.type === "queue") {
+                const receipt = item.data;
+                const status = receipt.status as "queued" | "processing" | "failed" | "completed" | "invalid";
 
-            return (
-                <BatchTransactionCard
-                    key={key}
-                    receipt={receipt}
-                    transactions={[]}
-                    categories={categories}
-                    status={status}
-                    className={className}
-                    onDelete={() => {
-                        setDeleteConfirm({
-                            open: true,
-                            type: "receipt",
-                            id: receipt.id,
-                            title: "确认删除",
-                            description: "确定要删除这条记录吗？",
-                        });
-                    }}
-                />
-            );
-        }
+                return (
+                    <BatchTransactionCard
+                        receipt={receipt}
+                        transactions={[]}
+                        categories={categories}
+                        status={status}
+                        className={className}
+                        onDelete={() => {
+                            setDeleteConfirm({
+                                open: true,
+                                type: "receipt",
+                                id: receipt.id,
+                                title: "确认删除",
+                                description: "确定要删除这条记录吗？",
+                            });
+                        }}
+                    />
+                );
+            }
 
-        if (item.type === "batch") {
-            return (
-                <BatchTransactionCard
-                    key={key}
-                    receipt={item.data.receipt}
-                    transactions={item.data.transactions}
-                    categories={categories}
-                    isConfirmed={item.status === "confirmed"}
-                    status={item.status === "confirmed" ? "completed" : "processing"}
-                    className={className}
-                    onConfirm={async (ids) => {
-                        await confirmBatchMutation.mutateAsync(ids);
-                    }}
-                    onUpdateTransaction={(id, data) =>
-                        updateMutation.mutate({ transactionId: id, data })
-                    }
-                    onDeleteTransaction={(id) => {
-                        setDeleteConfirm({
-                            open: true,
-                            type: "transaction",
-                            id: id,
-                            title: "确认删除",
-                            description: "确定要删除这条交易吗？此操作无法撤销。",
-                        });
-                    }}
-                    onDelete={() => {
-                        setDeleteConfirm({
-                            open: true,
-                            type: "batch",
-                            id: item.data.receipt.id,
-                            title: "确认删除",
-                            description: "确定要删除这条记录及其关联的所有交易吗？",
-                        });
-                    }}
-                />
-            );
-        }
+            if (item.type === "batch") {
+                return (
+                    <BatchTransactionCard
+                        receipt={item.data.receipt}
+                        transactions={item.data.transactions}
+                        categories={categories}
+                        isConfirmed={item.status === "confirmed"}
+                        status={item.status === "confirmed" ? "completed" : "processing"}
+                        className={className}
+                        onConfirm={async (ids) => {
+                            await confirmBatchMutation.mutateAsync(ids);
+                        }}
+                        onUpdateTransaction={(id, data) =>
+                            updateMutation.mutate({ transactionId: id, data })
+                        }
+                        onDeleteTransaction={(id) => {
+                            setDeleteConfirm({
+                                open: true,
+                                type: "transaction",
+                                id: id,
+                                title: "确认删除",
+                                description: "确定要删除这条交易吗？此操作无法撤销。",
+                            });
+                        }}
+                        onDelete={() => {
+                            setDeleteConfirm({
+                                open: true,
+                                type: "batch",
+                                id: item.data.receipt.id,
+                                title: "确认删除",
+                                description: "确定要删除这条记录及其关联的所有交易吗？",
+                            });
+                        }}
+                    />
+                );
+            }
 
-        if (item.type === "single") {
-            return (
-                <TransactionCard
-                    key={key}
-                    transaction={item.data}
-                    categories={categories}
-                    className={className}
-                    onUpdate={(data) =>
-                        updateMutation.mutate({
-                            transactionId: item.data.id,
-                            data,
-                        })
-                    }
-                    onDelete={() => {
-                        setDeleteConfirm({
-                            open: true,
-                            type: "transaction",
-                            id: item.data.id,
-                            title: "确认删除",
-                            description: "确定要删除这条交易吗？此操作无法撤销。",
-                        });
-                    }}
-                />
-            );
-        }
+            if (item.type === "single") {
+                return (
+                    <TransactionCard
+                        transaction={item.data}
+                        categories={categories}
+                        className={className}
+                        onUpdate={(data) =>
+                            updateMutation.mutate({
+                                transactionId: item.data.id,
+                                data,
+                            })
+                        }
+                        onDelete={() => {
+                            setDeleteConfirm({
+                                open: true,
+                                type: "transaction",
+                                id: item.data.id,
+                                title: "确认删除",
+                                description: "确定要删除这条交易吗？此操作无法撤销。",
+                            });
+                        }}
+                    />
+                );
+            }
+            return null;
+        })();
 
-        return null;
+        if (!content) return null;
+
+        // Wrap in motion div
+        return (
+            <motion.div
+                key={key}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+            >
+                {content}
+            </motion.div>
+        );
     };
 
     return (
         <div className="space-y-0">
-            {/* Header: Month Picker and Summary */}
             {/* Header: Month Picker and Summary */}
             <div className="sticky top-14 z-[1] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4 mb-2 border-b border-border/40">
                 <div className="flex justify-between items-center px-2">
@@ -434,79 +441,109 @@ export function TransactionsTab({
             <div className="relative pt-2 space-y-4">
 
                 {/* Pinned Items Section (Pending Confirmation & Failed) */}
-                {pinnedItems.length > 0 && (
-                    <div className="space-y-4 px-2 mb-8">
-                        {/* Action Header */}
-                        <div className="flex justify-between items-center mb-2">
-                            <button
-                                onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}
-                                className="flex items-center gap-2 group cursor-pointer"
-                            >
-                                <h3 className="text-sm font-medium text-warning flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
-                                    待处理事项 ({pinnedItems.length})
-                                </h3>
-                                <ChevronDown
-                                    className={`w-4 h-4 text-warning transition-transform duration-200 ${isPendingCollapsed ? "-rotate-90" : ""
-                                        }`}
-                                />
-                            </button>
-                            <div className="flex gap-2">
-                                {hasFailedReceipts && !isPendingCollapsed && (
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        className="h-7 text-xs"
-                                        disabled={confirmingAll}
-                                        onClick={handleRetryAll}
+                <AnimatePresence mode="popLayout">
+                    {pinnedItems.length > 0 && (
+                        <motion.div
+                            layout
+                            className="space-y-4 px-2 mb-8"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            {/* Action Header */}
+                            <div className="flex justify-between items-center mb-2">
+                                <button
+                                    onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}
+                                    className="flex items-center gap-2 group cursor-pointer"
+                                >
+                                    <h3 className="text-sm font-medium text-warning flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                                        待处理事项 ({pinnedItems.length})
+                                    </h3>
+                                    <motion.div
+                                        animate={{ rotate: isPendingCollapsed ? -90 : 0 }}
+                                        transition={{ duration: 0.2 }}
                                     >
-                                        重试失败
-                                    </Button>
-                                )}
-                                {pendingCount > 0 && !isPendingCollapsed && (
-                                    <Button
-                                        variant="default"
-                                        onClick={handleConfirmAll}
-                                        disabled={
-                                            confirmAllMutation.isPending ||
-                                            confirmingAll
-                                        }
-                                        size="sm"
-                                        className="h-7 text-xs bg-warning text-warning-foreground hover:bg-warning/90"
+                                        <ChevronDown className="w-4 h-4 text-warning" />
+                                    </motion.div>
+                                </button>
+                                <div className="flex gap-2">
+                                    {hasFailedReceipts && !isPendingCollapsed && (
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            disabled={confirmingAll}
+                                            onClick={handleRetryAll}
+                                        >
+                                            重试失败
+                                        </Button>
+                                    )}
+                                    {pendingCount > 0 && !isPendingCollapsed && (
+                                        <Button
+                                            variant="default"
+                                            onClick={handleConfirmAll}
+                                            disabled={
+                                                confirmAllMutation.isPending ||
+                                                confirmingAll
+                                            }
+                                            size="sm"
+                                            className="h-7 text-xs bg-warning text-warning-foreground hover:bg-warning/90"
+                                        >
+                                            {confirmAllMutation.isPending ? "确认中..." : "全部确认"}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <AnimatePresence>
+                                {!isPendingCollapsed && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="space-y-4 overflow-hidden"
                                     >
-                                        {confirmAllMutation.isPending ? "确认中..." : "全部确认"}
-                                    </Button>
+                                        <AnimatePresence mode="popLayout">
+                                            {pinnedItems.map(item => renderItem(item, true))}
+                                        </AnimatePresence>
+                                    </motion.div>
                                 )}
-                            </div>
-                        </div>
+                            </AnimatePresence>
 
-                        {!isPendingCollapsed && (
-                            <div className="space-y-4">
-                                {pinnedItems.map(item => renderItem(item, true))}
-                            </div>
-                        )}
-
-                        {/* Divider */}
-                        <div className="h-px bg-border/50 my-6 mx-2" />
-                    </div>
-                )}
+                            {/* Divider */}
+                            <div className="h-px bg-border/50 my-6 mx-2" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
 
                 {/* Timeline Items */}
                 <div className="space-y-8">
-                    {Object.entries(groupedItems).map(([dateLabel, items]) => (
-                        <div key={dateLabel} className="space-y-2">
-                            <div className="sticky top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
-                                <h3 className="text-xs font-medium text-muted flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                    {dateLabel}
-                                </h3>
-                            </div>
-                            <div className="space-y-4 px-2">
-                                {items.map((item) => renderItem(item, false))}
-                            </div>
-                        </div>
-                    ))}
+                    <AnimatePresence mode="popLayout">
+                        {Object.entries(groupedItems).map(([dateLabel, items]) => (
+                            <motion.div
+                                key={dateLabel}
+                                layout
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="space-y-2"
+                            >
+                                <div className="sticky top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
+                                    <h3 className="text-xs font-medium text-muted flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
+                                        {dateLabel}
+                                    </h3>
+                                </div>
+                                <div className="space-y-4 px-2">
+                                    <AnimatePresence mode="popLayout">
+                                        {items.map((item) => renderItem(item, false))}
+                                    </AnimatePresence>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
 
                     {pinnedItems.length === 0 && timelineItems.length === 0 && (
                         <div className="text-center py-20 text-muted flex flex-col items-center gap-2">

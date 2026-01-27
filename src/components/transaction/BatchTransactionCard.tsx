@@ -8,6 +8,7 @@ import { TransactionStatus } from "@/components/ui/TransactionStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -195,36 +196,45 @@ export function BatchTransactionCard({
       </div>
 
       {/* 2. User Content Section */}
-      {isContentExpanded && (
-        <div className="p-4 space-y-3 bg-surface2/30 border-b border-border animate-in slide-in-from-top-2 duration-200">
-          {/* Images Grid */}
-          {images.length > 0 && (
-            <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
-              {images.map((img, idx) => (
-                <div
-                  key={idx}
-                  className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setSelectedImageIndex(idx)}
-                >
-                  <Image
-                    src={getSafeImageSrc(img)}
-                    alt={`User upload ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                  />
+      <AnimatePresence>
+        {isContentExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden bg-surface2/30 border-b border-border"
+          >
+            <div className="p-4 space-y-3">
+              {/* Images Grid */}
+              {images.length > 0 && (
+                <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setSelectedImageIndex(idx)}
+                    >
+                      <Image
+                        src={getSafeImageSrc(img)}
+                        alt={`User upload ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* User Text */}
-          {text && (
-            <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-              {text}
+              {/* User Text */}
+              {text && (
+                <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+                  {text}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
       {/* 3. Transaction Details (Category Groups) */}
@@ -265,29 +275,39 @@ export function BatchTransactionCard({
                     </span>
                     {group.total.toFixed(2)}
                   </span>
-                  {isExpanded ? (
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 0 : -90 }}
+                    transition={{ duration: 0.2 }}
+                  >
                     <ChevronDown className="h-4 w-4 text-muted" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted" />
-                  )}
+                  </motion.div>
                 </div>
               </div>
 
               {/* Expanded Transactions */}
-              {isExpanded && (
-                <div className="p-3 space-y-3 bg-surface2/30 border-t border-border/50 inner-shadow">
-                  {group.items.map((tx) => (
-                    <TransactionCard
-                      key={tx.id}
-                      transaction={tx}
-                      categories={categories}
-                      onUpdate={(data) => onUpdateTransaction?.(tx.id, data)}
-                      onDelete={() => onDeleteTransaction?.(tx.id)}
-                      hideCategory={true}
-                    />
-                  ))}
-                </div>
-              )}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-3 space-y-3 bg-surface2/30 border-t border-border/50 inner-shadow">
+                      {group.items.map((tx) => (
+                        <TransactionCard
+                          key={tx.id}
+                          transaction={tx}
+                          categories={categories}
+                          onUpdate={(data) => onUpdateTransaction?.(tx.id, data)}
+                          onDelete={() => onDeleteTransaction?.(tx.id)}
+                          hideCategory={true}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })}

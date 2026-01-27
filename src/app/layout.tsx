@@ -16,6 +16,20 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Cashier - AI 记账助手",
   description: "AI 驱动的智能记账工具",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cashier",
+  },
+};
+
+export const viewport = {
+  themeColor: "#10a37f",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Prevent zooming on mobile for app-like feel
 };
 
 export default function RootLayout({

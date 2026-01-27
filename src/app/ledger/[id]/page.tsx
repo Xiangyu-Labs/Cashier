@@ -64,8 +64,8 @@ export default function LedgerPage() {
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* Top Navigation */}
-      <header className="bg-surface border-b border-border sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 h-14 flex justify-between items-center">
+      <header className="bg-surface border-b border-border sticky top-0 z-50 backdrop-blur-md bg-surface/80 supports-[backdrop-filter]:bg-surface/60">
+        <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
           <div className="flex items-center gap-3">
             <LedgerSwitcher currentLedgerId={ledgerId} />
             {showTasksIndicator && (
@@ -75,18 +75,18 @@ export default function LedgerPage() {
                     {stats.processingCount > 0 && (
                       <span className="flex items-center gap-1 text-primary">
                         <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
-                        {stats.processingCount} 处理中
+                        {stats.processingCount}
                       </span>
                     )}
                     {stats.queuedCount > 0 && (
                       <span className="text-muted">
-                        {stats.queuedCount} 排队
+                        {stats.queuedCount}
                       </span>
                     )}
                     {stats.failedCount > 0 && (
                       <span className="flex items-center gap-1 text-danger font-medium">
                         <span className="h-2 w-2 rounded-full bg-danger"></span>
-                        {stats.failedCount} 失败
+                        {stats.failedCount}
                       </span>
                     )}
                   </button>
@@ -130,7 +130,7 @@ export default function LedgerPage() {
         </div>
       </header >
 
-      <main className="max-w-md mx-auto p-4">
+      <main className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 transition-all duration-300">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
