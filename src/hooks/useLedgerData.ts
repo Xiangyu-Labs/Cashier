@@ -55,7 +55,7 @@ export function useLedgerData(ledgerId: string) {
     // Poll for queued/processing receipts first to determine if we need to poll others
     const { data: queuedReceipts } = useQuery({
         queryKey: ["receipts", ledgerId, "queued"],
-        queryFn: () => fetchReceipts(ledgerId, ["queued", "processing", "failed"]),
+        queryFn: () => fetchReceipts(ledgerId, ["queued", "processing", "failed", "invalid"]),
         refetchInterval: (query) => {
             const data = query.state.data;
             return data && data.length > 0 ? 1000 : 5000;
@@ -112,7 +112,7 @@ export function useLedgerData(ledgerId: string) {
 
     const processingReceipts = queuedReceipts?.filter((m) => m.status === "processing") || [];
     const queuedOnlyReceipts = queuedReceipts?.filter((m) => m.status === "queued") || [];
-    const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed") || [];
+    const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
 
     return {
         ledger,

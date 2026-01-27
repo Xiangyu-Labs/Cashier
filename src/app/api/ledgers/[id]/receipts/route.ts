@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (status) {
     // Validate or cast to allowed status values
-    const statuses = status.split(",") as ("queued" | "processing" | "to_confirm" | "completed" | "failed")[];
+    const statuses = status.split(",") as ("queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid")[];
     conditions.push(inArray(receipts.status, statuses));
   }
 
