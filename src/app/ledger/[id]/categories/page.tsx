@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -26,7 +26,19 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function CategoriesPage() {
+interface CreateCategoryData {
+  name: string;
+  description?: string;
+  icon?: string;
+}
+
+interface UpdateCategoryPayload {
+  categoryId: string;
+  data: Partial<CreateCategoryData>;
+}
+
+
+export default function CategoriesPage(): React.ReactElement {
   const params = useParams();
   const queryClient = useQueryClient();
   const ledgerId = params.id as string;
@@ -56,7 +68,7 @@ export default function CategoriesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string; icon?: string }) =>
+    mutationFn: (data: CreateCategoryData) =>
       createCategory(ledgerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
@@ -77,13 +89,7 @@ export default function CategoriesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
-      categoryId,
-      data,
-    }: {
-      categoryId: string;
-      data: { name?: string; description?: string; icon?: string };
-    }) => updateCategory(ledgerId, categoryId, data),
+    mutationFn: ({ categoryId, data }: UpdateCategoryPayload) => updateCategory(ledgerId, categoryId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();

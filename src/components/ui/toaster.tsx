@@ -8,9 +8,10 @@ import {
     ToastTitle,
     ToastViewport,
 } from "@/components/ui/toast"
+import React from "react";
 import { useToast } from "@/hooks/use-toast"
 
-export function Toaster() {
+export function Toaster(): React.ReactElement {
     const { toasts } = useToast()
 
     return (

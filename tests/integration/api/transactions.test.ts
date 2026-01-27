@@ -50,7 +50,9 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     });
 
     const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/transactions`),
+      new NextRequest(
+        `http://localhost/api/ledgers/${testLedgerId}/transactions`
+      ),
       { params: Promise.resolve({ id: testLedgerId }) }
     );
     const data = await response.json();
@@ -58,7 +60,6 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(response.status).toBe(200);
     expect(data).toHaveLength(1);
     expect(data[0].itemName).toBe("午餐");
-    expect(data[0].category).toBeDefined();
     expect(data[0].category.name).toBe("餐饮");
   });
 

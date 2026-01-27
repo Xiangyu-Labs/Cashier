@@ -14,7 +14,10 @@ const querySchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 // GET /api/ledgers/[id]/transactions - 获取交易列表
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+): Promise<NextResponse> {
   try {
     const { id: ledgerId } = await params;
     const searchParams = request.nextUrl.searchParams;

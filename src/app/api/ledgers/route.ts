@@ -9,7 +9,7 @@ const createLedgerSchema = z.object({
 });
 
 // GET /api/ledgers - 获取所有账本
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const allLedgers = await db.query.ledgers.findMany({
       orderBy: (ledgers, { desc }) => [desc(ledgers.createdAt)],
@@ -25,7 +25,7 @@ export async function GET() {
 }
 
 // POST /api/ledgers - 创建新账本
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const validated = createLedgerSchema.parse(body);

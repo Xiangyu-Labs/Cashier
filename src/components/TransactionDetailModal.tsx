@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,7 @@ export function TransactionDetailModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Reset edit state when transaction changes
-  const handleOpen = () => {
+  const handleOpen = useCallback(() => {
     if (transaction) {
       setEditData({
         itemName: transaction.itemName,
@@ -55,9 +55,9 @@ export function TransactionDetailModal({
       });
       setIsEditing(false);
     }
-  };
+  }, [transaction]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onUpdate({
       itemName: editData.itemName,
       amount: editData.amount,
@@ -66,9 +66,9 @@ export function TransactionDetailModal({
       transactionDate: editData.transactionDate || null,
     });
     setIsEditing(false);
-  };
+  }, [editData, onUpdate]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     onDelete();
     setShowDeleteConfirm(false);
     onClose();
@@ -77,12 +77,12 @@ export function TransactionDetailModal({
       title: "删除成功",
       description: "交易记录已删除",
     });
-  };
+  }, [onDelete, onClose, toast]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsEditing(false);
     onClose();
-  };
+  }, [onClose]);
 
   if (!transaction) return null;
 
