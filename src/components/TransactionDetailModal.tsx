@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ export function TransactionDetailModal({
   onClose,
   onUpdate,
   onDelete,
-}: TransactionDetailModalProps) {
+}: TransactionDetailModalProps): ReactNode | null {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<TransactionEditFormData>({
     itemName: "",

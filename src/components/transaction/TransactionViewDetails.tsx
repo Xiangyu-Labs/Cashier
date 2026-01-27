@@ -4,6 +4,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Transaction } from "@/types/api";
 import { Calendar, Edit2, Tag, Trash2 } from "lucide-react";
 import { TransactionOriginalContent } from "./TransactionOriginalContent";
+import { type ReactNode } from "react";
 
 interface TransactionViewDetailsProps {
     transaction: Transaction;
@@ -15,7 +16,7 @@ export function TransactionViewDetails({
     transaction,
     onEdit,
     onDelete,
-}: TransactionViewDetailsProps) {
+}: TransactionViewDetailsProps): ReactNode {
     // Format dates for display
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return "未知";

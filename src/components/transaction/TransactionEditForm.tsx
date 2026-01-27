@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Category } from "@/types/api";
+import { type ReactNode } from "react";
 
 export interface TransactionEditFormData {
     itemName: string;
@@ -24,7 +25,7 @@ export function TransactionEditForm({
     onChange,
     onSave,
     onCancel,
-}: TransactionEditFormProps) {
+}: TransactionEditFormProps): ReactNode {
     const handleChange = <K extends keyof TransactionEditFormData>(
         field: K,
         value: TransactionEditFormData[K]

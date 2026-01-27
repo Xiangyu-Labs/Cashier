@@ -17,36 +17,37 @@ export async function processMessageQueue() {
     }
 }
 
+// Process messages until queue is empty
 async function processNextMessage() {
-    const nextMessage = await db.query.inputMessages.findFirst({
+    let nextMessage = await db.query.inputMessages.findFirst({
         where: eq(inputMessages.status, "queued"),
         orderBy: [asc(inputMessages.createdAt)],
     });
 
-    if (!nextMessage) return;
-
-    await db
-        .update(inputMessages)
-        .set({ status: "processing" })
-        .where(eq(inputMessages.id, nextMessage.id));
-
-    try {
-        await handleMessageProcessing(nextMessage);
-
-        // Status update is now handled inside handleMessageProcessing
-        // because it could be 'completed' OR 'to_confirm'
-
-    } catch (error) {
-        console.error(`Failed to process message ${nextMessage.id}:`, error);
+    while (nextMessage) {
         await db
             .update(inputMessages)
-            .set({
-                status: "failed",
-                error: error instanceof Error ? error.message : "Unknown error"
-            })
+            .set({ status: "processing" })
             .where(eq(inputMessages.id, nextMessage.id));
-    } finally {
-        await processNextMessage();
+
+        try {
+            await handleMessageProcessing(nextMessage);
+        } catch (error) {
+            console.error(`Failed to process message ${nextMessage.id}:`, error);
+            await db
+                .update(inputMessages)
+                .set({
+                    status: "failed",
+                    error: error instanceof Error ? error.message : "Unknown error"
+                })
+                .where(eq(inputMessages.id, nextMessage.id));
+        }
+
+        // Fetch next
+        nextMessage = await db.query.inputMessages.findFirst({
+            where: eq(inputMessages.status, "queued"),
+            orderBy: [asc(inputMessages.createdAt)],
+        });
     }
 }
 

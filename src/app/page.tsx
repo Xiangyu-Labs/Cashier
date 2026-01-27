@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLedgers, createLedger } from "@/lib/api";
 
-export default function HomePage() {
+export default function HomePage(): ReactNode {
   const router = useRouter();
   const queryClient = useQueryClient();
   const creatingRef = useRef(false);
