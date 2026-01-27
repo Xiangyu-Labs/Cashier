@@ -150,6 +150,21 @@ export default function LedgerSettingsPage() {
                             }}
                         />
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">默认折叠待处理事项</h3>
+                            <p className="text-sm text-[var(--muted)]">如果开启，待处理事项列表默认收起，只显示标题和数量。</p>
+                        </div>
+                        <Switch
+                            checked={ledger.collapsePendingDefault || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ collapsePendingDefault: checked });
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 

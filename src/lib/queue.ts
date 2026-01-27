@@ -18,6 +18,27 @@ export async function processReceiptQueue() {
 }
 
 // Process messages until queue is empty
+export async function recoverProcessingReceipts() {
+    try {
+        const result = await db
+            .update(receipts)
+            .set({ status: "queued" })
+            .where(eq(receipts.status, "processing"))
+            .returning({ id: receipts.id });
+
+        if (result.length > 0) {
+            console.log(`Recovered ${result.length} processing receipts to queued state.`);
+            // Restart processing
+            processReceiptQueue().catch(err => {
+                console.error("Failed to restart queue processing after recovery:", err);
+            });
+        }
+    } catch (error) {
+        console.error("Failed to recover processing receipts:", error);
+    }
+}
+
+// Process messages until queue is empty
 async function processNextMessage() {
     let nextReceipt = await db.query.receipts.findFirst({
         where: eq(receipts.status, "queued"),

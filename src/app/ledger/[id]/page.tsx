@@ -147,6 +147,7 @@ export default function LedgerPage() {
               pendingGroups={pendingGroups}
               queuedReceipts={queuedReceipts}
               categories={categories}
+              defaultCollapsed={ledger.collapsePendingDefault}
             />
           </TabsContent>
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
     confirmTransactions,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { MonthPicker } from "@/components/ui/month-picker";
+import { ChevronDown } from "lucide-react";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -24,6 +25,7 @@ interface TransactionsTabProps {
     };
     queuedReceipts?: Receipt[];
     categories: Category[];
+    defaultCollapsed?: boolean;
 }
 
 // Separate helper for the timeline item types
@@ -50,10 +52,21 @@ export function TransactionsTab({
     // confirmedGroups, // Deprecated, we manage confirmed transactions here
     queuedReceipts = [],
     categories,
+    defaultCollapsed = false,
 }: TransactionsTabProps) {
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
+    const [isPendingCollapsed, setIsPendingCollapsed] = useState(defaultCollapsed);
     const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Sync state with prop if default changes (e.g. from settings update)
+    // using useMemo or useEffect to update state when prop changes is tricky if we want to allow manual toggle.
+    // simpler: valid key on the component to force reset, OR just useEffect.
+    // Let's use useEffect to respect the latest setting if it changes.
+    // But this overrides manual toggle if the prop changes. Since prop likely only changes on mount or setting update, this is acceptable.
+    useEffect(() => {
+        setIsPendingCollapsed(defaultCollapsed);
+    }, [defaultCollapsed]);
 
     // Calculate start and end of the selected month
     const { startDate, endDate } = useMemo(() => {
@@ -425,12 +438,21 @@ export function TransactionsTab({
                     <div className="space-y-4 px-2 mb-8">
                         {/* Action Header */}
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-sm font-medium text-warning flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
-                                待处理事项 ({pinnedItems.length})
-                            </h3>
+                            <button
+                                onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}
+                                className="flex items-center gap-2 group cursor-pointer"
+                            >
+                                <h3 className="text-sm font-medium text-warning flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                                    待处理事项 ({pinnedItems.length})
+                                </h3>
+                                <ChevronDown
+                                    className={`w-4 h-4 text-warning transition-transform duration-200 ${isPendingCollapsed ? "-rotate-90" : ""
+                                        }`}
+                                />
+                            </button>
                             <div className="flex gap-2">
-                                {hasFailedReceipts && (
+                                {hasFailedReceipts && !isPendingCollapsed && (
                                     <Button
                                         variant="destructive"
                                         size="sm"
@@ -441,7 +463,7 @@ export function TransactionsTab({
                                         重试失败
                                     </Button>
                                 )}
-                                {pendingCount > 0 && (
+                                {pendingCount > 0 && !isPendingCollapsed && (
                                     <Button
                                         variant="default"
                                         onClick={handleConfirmAll}
@@ -458,9 +480,11 @@ export function TransactionsTab({
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            {pinnedItems.map(item => renderItem(item, true))}
-                        </div>
+                        {!isPendingCollapsed && (
+                            <div className="space-y-4">
+                                {pinnedItems.map(item => renderItem(item, true))}
+                            </div>
+                        )}
 
                         {/* Divider */}
                         <div className="h-px bg-border/50 my-6 mx-2" />

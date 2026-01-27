@@ -9,6 +9,7 @@ export interface Ledger {
   updatedAt: string;
   autoConfirm: boolean;
   autoRecognizeDate: boolean;
+  collapsePendingDefault: boolean;
 }
 
 export interface Settings {
