@@ -36,6 +36,8 @@ interface BatchTransactionCardProps {
   ) => void;
   onDeleteTransaction?: (transactionId: string) => void;
   onDelete?: () => void;
+  defaultExpanded?: boolean;
+  onRetry?: () => Promise<void>;
   status: "queued" | "processing" | "completed" | "failed" | "invalid";
   className?: string;
 }
@@ -49,12 +51,15 @@ export function BatchTransactionCard({
   onUpdateTransaction,
   onDeleteTransaction,
   onDelete,
+  defaultExpanded = false,
+  onRetry,
   status,
   className,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
-  // Default to collapsed as requested
-  const [isContentExpanded, setIsContentExpanded] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  // Initialize from defaultExpanded prop
+  const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   // Track expanded categories. Default to open for pending? No, user asked for breakdown.
   // "Click beverage, see all items". So default closed.
@@ -315,15 +320,35 @@ export function BatchTransactionCard({
 
       {/* Footer Actions */}
       {
-        !isConfirmed && onConfirm && (
-          <div className="p-4 bg-surface2 border-t border-border flex justify-end">
-            <Button
-              onClick={handleConfirm}
-              disabled={isConfirming}
-              className="bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm"
-            >
-              {isConfirming ? "确认中..." : "确认账单"}
-            </Button>
+        (!isConfirmed && (onConfirm || (onRetry && (status === "failed" || status === "invalid")))) && (
+          <div className="p-4 bg-surface2 border-t border-border flex justify-end gap-2">
+            {onRetry && (status === "failed" || status === "invalid") && (
+              <Button
+                onClick={async () => {
+                  if (!onRetry) return;
+                  setIsRetrying(true);
+                  try {
+                    await onRetry();
+                  } finally {
+                    setIsRetrying(false);
+                  }
+                }}
+                disabled={isRetrying}
+                variant="destructive"
+                className="shadow-sm"
+              >
+                {isRetrying ? "重试中..." : "重试"}
+              </Button>
+            )}
+            {onConfirm && (
+              <Button
+                onClick={handleConfirm}
+                disabled={isConfirming}
+                className="bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm"
+              >
+                {isConfirming ? "确认中..." : "确认账单"}
+              </Button>
+            )}
           </div>
         )
       }
