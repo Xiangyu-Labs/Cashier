@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Book } from "lucide-react";
 import { LedgerItem } from "@/components/ledger/LedgerItem";
@@ -145,10 +146,13 @@ export default function LedgersPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-[var(--text)]">我的账本</h1>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            新建账本
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              新建账本
+            </Button>
+          </div>
         </div>
 
         {ledgers && ledgers.length === 0 ? (
