@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, inputMessages } from "@/lib/db/schema";
+import { ledgers, receipts } from "@/lib/db/schema";
 
-describe("InputMessages Database Operations", () => {
+describe("Receipts Database Operations", () => {
   describe("CREATE", () => {
     it("should create a text input message", async () => {
       const db = getTestDb();
@@ -13,7 +13,7 @@ describe("InputMessages Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(inputMessages)
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           text: "午餐花了25.5元",
@@ -36,7 +36,7 @@ describe("InputMessages Database Operations", () => {
       const imageUrl = "data:image/jpeg;base64,fake...";
 
       const [created] = await db
-        .insert(inputMessages)
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           imageUrls: [imageUrl],
@@ -57,13 +57,13 @@ describe("InputMessages Database Operations", () => {
         .values({ name: "Test Ledger" })
         .returning();
 
-      await db.insert(inputMessages).values([
+      await db.insert(receipts).values([
         { ledgerId: ledger.id, text: "Message 1" },
         { ledgerId: ledger.id, text: "Message 2" },
       ]);
 
-      const found = await db.query.inputMessages.findMany({
-        where: eq(inputMessages.ledgerId, ledger.id),
+      const found = await db.query.receipts.findMany({
+        where: eq(receipts.ledgerId, ledger.id),
       });
 
       expect(found).toHaveLength(2);
@@ -77,15 +77,15 @@ describe("InputMessages Database Operations", () => {
         .returning();
 
       const [message] = await db
-        .insert(inputMessages)
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           text: "Test message",
         })
         .returning();
 
-      const found = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, message.id),
+      const found = await db.query.receipts.findFirst({
+        where: eq(receipts.id, message.id),
         with: { ledger: true },
       });
 
@@ -103,7 +103,7 @@ describe("InputMessages Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(inputMessages)
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           text: "午餐25元",
@@ -119,9 +119,9 @@ describe("InputMessages Database Operations", () => {
       });
 
       const [updated] = await db
-        .update(inputMessages)
+        .update(receipts)
         .set({ aiResponse })
-        .where(eq(inputMessages.id, created.id))
+        .where(eq(receipts.id, created.id))
         .returning();
 
       expect(updated.aiResponse).toBe(aiResponse);
@@ -137,17 +137,17 @@ describe("InputMessages Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(inputMessages)
+        .insert(receipts)
         .values({
           ledgerId: ledger.id,
           text: "To delete",
         })
         .returning();
 
-      await db.delete(inputMessages).where(eq(inputMessages.id, created.id));
+      await db.delete(receipts).where(eq(receipts.id, created.id));
 
-      const found = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, created.id),
+      const found = await db.query.receipts.findFirst({
+        where: eq(receipts.id, created.id),
       });
 
       expect(found).toBeUndefined();
@@ -160,15 +160,15 @@ describe("InputMessages Database Operations", () => {
         .values({ name: "Test Ledger" })
         .returning();
 
-      await db.insert(inputMessages).values({
+      await db.insert(receipts).values({
         ledgerId: ledger.id,
         text: "Will be deleted",
       });
 
       await db.delete(ledgers).where(eq(ledgers.id, ledger.id));
 
-      const orphaned = await db.query.inputMessages.findMany({
-        where: eq(inputMessages.ledgerId, ledger.id),
+      const orphaned = await db.query.receipts.findMany({
+        where: eq(receipts.ledgerId, ledger.id),
       });
 
       expect(orphaned).toHaveLength(0);

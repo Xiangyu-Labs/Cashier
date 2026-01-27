@@ -44,7 +44,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      auto_confirm BOOLEAN DEFAULT FALSE
+      auto_confirm BOOLEAN DEFAULT FALSE,
+      auto_recognize_date BOOLEAN DEFAULT FALSE
     );
   `);
 

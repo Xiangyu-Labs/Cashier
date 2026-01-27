@@ -9,10 +9,14 @@ import {
     fetchCategories,
     createCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    fetchApiKeys,
+    createApiKey,
+    deleteApiKey
 } from "@/lib/api";
 import { CurrencySection } from "./components/CurrencySection";
 import { CategorySection } from "./components/CategorySection";
+import { ApiKeySection } from "./components/ApiKeySection";
 import { Category, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -72,6 +76,26 @@ export default function LedgerSettingsPage() {
         },
     });
 
+    // API Keys Query
+    const { data: apiKeys } = useQuery({
+        queryKey: ["apiKeys", ledgerId],
+        queryFn: () => fetchApiKeys(ledgerId),
+    });
+
+    const createApiKeyMutation = useMutation({
+        mutationFn: (name: string) => createApiKey(ledgerId, name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+        },
+    });
+
+    const deleteApiKeyMutation = useMutation({
+        mutationFn: (id: string) => deleteApiKey(ledgerId, id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+        },
+    });
+
     if (isLedgerLoading || isCategoriesLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -94,21 +118,38 @@ export default function LedgerSettingsPage() {
             {/* AI Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
                 <h2 className="text-lg font-medium mb-6">智能助理</h2>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-base font-medium">跳过核对</h3>
-                        <p className="text-sm text-[var(--muted)]">AI 识别的账单直接入账，不再需要手动确认</p>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">跳过核对</h3>
+                            <p className="text-sm text-[var(--muted)]">AI 识别的账单直接入账，不再需要手动确认</p>
+                        </div>
+                        <Switch
+                            checked={ledger.autoConfirm || false}
+                            onCheckedChange={(checked: boolean) => {
+                                if (checked) {
+                                    setShowAutoConfirmWarning(true);
+                                } else {
+                                    updateLedgerMutation.mutate({ autoConfirm: false });
+                                }
+                            }}
+                        />
                     </div>
-                    <Switch
-                        checked={ledger.autoConfirm || false}
-                        onCheckedChange={(checked: boolean) => {
-                            if (checked) {
-                                setShowAutoConfirmWarning(true);
-                            } else {
-                                updateLedgerMutation.mutate({ autoConfirm: false });
-                            }
-                        }}
-                    />
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">自动识别交易时间</h3>
+                            <p className="text-sm text-[var(--muted)]">如果开启，AI 将尝试从账单中识别交易时间。如果关闭或未识别到，则使用上传时间。</p>
+                        </div>
+                        <Switch
+                            checked={ledger.autoRecognizeDate || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ autoRecognizeDate: checked });
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -165,6 +206,15 @@ export default function LedgerSettingsPage() {
                         />
                     )}
                 </div>
+            </section>
+
+            {/* API Keys Settings */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+                <ApiKeySection
+                    apiKeys={apiKeys || []}
+                    onCreateApiKey={(name) => createApiKeyMutation.mutateAsync(name)}
+                    onDeleteApiKey={(id) => deleteApiKeyMutation.mutate(id)}
+                />
             </section>
         </div>
     );

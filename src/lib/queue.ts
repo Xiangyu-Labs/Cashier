@@ -67,6 +67,7 @@ async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
         where: eq(ledgers.id, receipt.ledgerId)
     });
     const autoConfirm = ledger?.autoConfirm || false;
+    const autoRecognizeDate = ledger?.autoRecognizeDate || false;
 
     const processor = getMessageProcessor();
     const result = await processor.process(messageInput, {
@@ -83,7 +84,21 @@ async function handleReceiptProcessing(receipt: typeof receipts.$inferSelect) {
         .set({ aiResponse: result.rawResponse })
         .where(eq(receipts.id, receipt.id));
 
-    const validTransactions = result.transactions.filter((tx) => tx.amount > 0);
+    const validTransactions = result.transactions
+        .filter((tx) => tx.amount > 0)
+        .map((tx) => {
+            // If autoRecognizeDate is false, we ignore AI's date and use current date
+            // However, we want to persist "Today" effectively. 
+            // If we set null, the DB default might be used? No, existing code used new Date().
+            // Let's explicitly set it if we want to override.
+
+            // Actually, existing code: transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
+
+            if (!autoRecognizeDate) {
+                return { ...tx, transactionDate: new Date().toISOString() };
+            }
+            return tx;
+        });
 
     if (validTransactions.length === 0) {
         await db

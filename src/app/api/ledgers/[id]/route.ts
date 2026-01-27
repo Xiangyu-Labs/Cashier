@@ -9,6 +9,7 @@ const updateLedgerSchema = z.object({
   language: z.string().optional(),
   currencies: z.array(z.string()).optional(),
   autoConfirm: z.boolean().optional(),
+  autoRecognizeDate: z.boolean().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

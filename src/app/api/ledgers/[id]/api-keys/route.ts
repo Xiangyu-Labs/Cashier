@@ -9,7 +9,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     try {
         const keys = await listApiKeys(ledgerId);
-        return NextResponse.json(keys);
+        // Mask keys before returning
+        const maskedKeys = keys.map(k => ({
+            ...k,
+            key: k.key ? `${k.key.substring(0, 8)}...${k.key.substring(k.key.length - 4)}` : undefined
+        }));
+        return NextResponse.json(maskedKeys);
     } catch (error) {
         console.error("Failed to list api keys:", error);
         return NextResponse.json({ error: "Failed to list API keys" }, { status: 500 });

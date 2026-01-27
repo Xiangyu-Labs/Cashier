@@ -37,6 +37,7 @@ export const ledgers = pgTable("ledgers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   autoConfirm: boolean("auto_confirm").default(false),
+  autoRecognizeDate: boolean("auto_recognize_date").default(false),
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({

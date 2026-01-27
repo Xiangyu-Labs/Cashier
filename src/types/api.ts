@@ -8,6 +8,7 @@ export interface Ledger {
   createdAt: string;
   updatedAt: string;
   autoConfirm: boolean;
+  autoRecognizeDate: boolean;
 }
 
 export interface Settings {
@@ -15,6 +16,7 @@ export interface Settings {
   language: string;
   currencies: string[];
   autoConfirm?: boolean;
+  autoRecognizeDate?: boolean;
 }
 
 export interface Category {
