@@ -11,7 +11,7 @@ describe("TransactionStatus", () => {
 
     it("renders processing status correctly", () => {
         render(<TransactionStatus status="processing" />);
-        expect(screen.getByText("处理中...")).toBeTruthy();
+        expect(screen.getByText("处理中")).toBeTruthy();
         // Check for spinner icon wrapper or class if possible, but text is good enough for now
     });
 
