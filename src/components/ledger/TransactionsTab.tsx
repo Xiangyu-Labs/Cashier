@@ -67,10 +67,12 @@ export function TransactionsTab({
     }, [defaultCollapsed]);
 
     // Fetch ALL receipts for the main list (history view)
-    const { data: allReceipts = [] } = useQuery({
+    const { data: rawReceipts = [] } = useQuery({
         queryKey: ["receipts", ledgerId, "all"],
         queryFn: () => fetchReceipts(ledgerId),
     });
+
+    const allReceipts = rawReceipts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Create a map of receiptId -> transactions from confirmedGroups for fast lookup
     const confirmedTransactionsMap = new Map<string, Transaction[]>();

@@ -63,15 +63,31 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
-    // Group items by date
+    // Group items by date - Refactored to ensure strict sorting
     const groupedItems = useMemo(() => {
-        return monthTransactions.reduce((groups, tx) => {
+        // First, ensure all transactions are sorted by date (newest first)
+        const sortedTransactions = [...monthTransactions].sort((a, b) => {
+            const dateA = new Date(a.transactionDate || a.createdAt).getTime();
+            const dateB = new Date(b.transactionDate || b.createdAt).getTime();
+            return dateB - dateA;
+        });
+
+        // Group them
+        const groups: Record<string, { timestamp: number; title: string; items: Transaction[] }> = {};
+
+        sortedTransactions.forEach(tx => {
             const date = new Date(tx.transactionDate || tx.createdAt);
             const today = new Date();
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
 
             let dateKey = "";
+            let sortTimestamp = 0; // Use midnight timestamp for sorting groups
+
+            // Normalize to midnight for consistent grouping
+            const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            sortTimestamp = midnight.getTime();
+
             if (date.toDateString() === today.toDateString()) {
                 dateKey = "今天";
             } else if (date.toDateString() === yesterday.toDateString()) {
@@ -80,11 +96,18 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                 dateKey = date.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
             }
 
-            if (!groups[dateKey]) groups[dateKey] = [];
-            groups[dateKey].push(tx);
-            // Sort within group? API usually returns sorted, but safe to ensure if needed.
-            return groups;
-        }, {} as Record<string, Transaction[]>);
+            if (!groups[dateKey]) {
+                groups[dateKey] = {
+                    title: dateKey,
+                    timestamp: sortTimestamp,
+                    items: []
+                };
+            }
+            groups[dateKey].items.push(tx);
+        });
+
+        // Convert to array and sort groups by timestamp descending
+        return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
     }, [monthTransactions]);
 
     return (
@@ -105,9 +128,9 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
 
             <div className="space-y-8 pt-2">
                 <AnimatePresence mode="popLayout">
-                    {Object.entries(groupedItems).map(([dateLabel, items]) => (
+                    {groupedItems.map((group) => (
                         <motion.div
-                            key={dateLabel}
+                            key={group.title}
                             layout
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -117,11 +140,11 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                             <div className="sticky top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
                                 <h3 className="text-xs font-medium text-muted flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                    {dateLabel}
+                                    {group.title}
                                 </h3>
                             </div>
                             <div className="space-y-4 px-2">
-                                {items.map((tx) => (
+                                {group.items.map((tx) => (
                                     <motion.div
                                         key={tx.id}
                                         layout
