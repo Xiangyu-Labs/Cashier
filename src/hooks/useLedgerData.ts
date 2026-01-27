@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     fetchLedger,
     fetchTransactions,
@@ -50,6 +50,35 @@ function groupTransactions(transactions?: Transaction[]): GroupedTransactions {
 }
 
 export function useLedgerData(ledgerId: string) {
+    const queryClient = useQueryClient();
+
+    // Poll for queued/processing messages first to determine if we need to poll others
+    const { data: queuedMessages } = useQuery({
+        queryKey: ["messages", ledgerId, "queued"],
+        queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing", "failed"]),
+        refetchInterval: (query) => {
+            const data = query.state.data;
+            return data && data.length > 0 ? 1000 : 5000;
+        },
+    });
+
+    const isProcessing = queuedMessages?.some(m => m.status === 'queued' || m.status === 'processing');
+    const refetchInterval = isProcessing ? 1000 : false;
+
+    // Track previous queue length to detect completion
+    const prevQueueLengthRef = useRef(queuedMessages?.length || 0);
+
+    useEffect(() => {
+        const currentLength = queuedMessages?.length || 0;
+        // If queue size decreased, something finished processing (or was deleted)
+        // In either case, we should refresh transactions to show the result
+        if (currentLength < prevQueueLengthRef.current) {
+            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+        }
+        prevQueueLengthRef.current = currentLength;
+    }, [queuedMessages?.length, queryClient, ledgerId]);
+
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
         queryKey: ["ledger", ledgerId],
         queryFn: () => fetchLedger(ledgerId),
@@ -63,26 +92,19 @@ export function useLedgerData(ledgerId: string) {
     const { data: pendingTxs } = useQuery({
         queryKey: ["transactions", ledgerId, "pending"],
         queryFn: () => fetchTransactions(ledgerId, { status: "pending" }),
+        refetchInterval,
     });
 
     const { data: confirmedTxs } = useQuery({
         queryKey: ["transactions", ledgerId, "confirmed"],
         queryFn: () => fetchTransactions(ledgerId, { status: "confirmed", limit: 100 }),
+        refetchInterval,
     });
 
     const { data: summary } = useQuery({
         queryKey: ["summary", ledgerId],
         queryFn: () => fetchTransactionSummary(ledgerId, "confirmed"),
-    });
-
-    // Poll for queued/processing messages
-    const { data: queuedMessages } = useQuery({
-        queryKey: ["messages", ledgerId, "queued"],
-        queryFn: () => fetchInputMessages(ledgerId, ["queued", "processing", "failed"]),
-        refetchInterval: (query) => {
-            const data = query.state.data;
-            return data && data.length > 0 ? 1000 : 5000;
-        },
+        refetchInterval,
     });
 
     const pendingGroups = useMemo(() => groupTransactions(pendingTxs), [pendingTxs]);
@@ -96,7 +118,7 @@ export function useLedgerData(ledgerId: string) {
         ledger,
         isLedgerLoading,
         categories: categories || [],
-        confirmedTxs, // Exposed if needed directly, though groups are preferred
+        confirmedTxs,
         summary,
         queuedMessages: queuedMessages || [],
         pendingGroups,
