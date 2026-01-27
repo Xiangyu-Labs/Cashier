@@ -144,7 +144,8 @@ describe("BatchTransactionCard", () => {
     it("renders transaction details groups", () => {
         render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} />);
         expect(screen.getByText("Food")).toBeTruthy();
-        expect(screen.getByText(/50.00/)).toBeTruthy();
+        const amounts = screen.getAllByText(/50.00/);
+        expect(amounts.length).toBeGreaterThan(0);
     });
 
     it("opens image zoom dialog on click", async () => {
@@ -174,5 +175,23 @@ describe("BatchTransactionCard", () => {
 
         // Close via Escape
         fireEvent.keyDown(zoomedImg, { key: "Escape", code: "Escape" });
+    });
+
+    it("renders status when no transactions", () => {
+        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[]} status="queued" />);
+        expect(screen.getByText("排队中")).toBeTruthy();
+    });
+
+    it("renders total amount and hides status when transactions exist", () => {
+        render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} status="processing" />);
+        // Should show total amount (50.00 CNY)
+        const currencies = screen.getAllByText("CNY");
+        expect(currencies.length).toBeGreaterThan(0);
+        const amounts = screen.getAllByText(/50.00/);
+        expect(amounts.length).toBeGreaterThan(0);
+
+        // Should NOT show status "Processing..."
+        const processingText = screen.queryByText("处理中...");
+        expect(processingText).toBeNull();
     });
 });

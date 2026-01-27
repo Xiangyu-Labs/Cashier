@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Badge } from "@/components/ui/badge";
+import { TransactionStatus } from "@/components/ui/TransactionStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
 
@@ -197,25 +197,11 @@ export function BatchTransactionCard({
           })}
         </span>
         <div className="flex items-center gap-3">
-          {/* Status Badge */}
-          {status === "queued" && (
-            <Badge variant="default" className="font-normal">
-              排队中
-            </Badge>
-          )}
-          {status === "processing" && (
-            <Badge variant="info" className="animate-pulse font-normal">
-              处理中...
-            </Badge>
-          )}
-          {status === "failed" && (
-            <Badge variant="error" className="font-normal">
-              处理失败
-            </Badge>
-          )}
+          {/* Status Indicator - only show if no transactions parsed yet */}
+          {transactions.length === 0 && <TransactionStatus status={status} />}
 
-          {/* Total Amount (only if available) */}
-          {(status === "completed" || isConfirmed) && Object.entries(totalAmounts).map(([currency, total]) => (
+          {/* Total Amount (always show if available) */}
+          {Object.entries(totalAmounts).map(([currency, total]) => (
             <span key={currency} className="text-sm font-bold text-text">
               <span className="text-xs text-muted mr-1">{currency}</span>
               {total.toFixed(2)}
@@ -359,7 +345,7 @@ export function BatchTransactionCard({
               disabled={isConfirming}
               className="bg-primary hover:bg-primary/90 text-white shadow-sm"
             >
-              {isConfirming ? "确认中..." : "确认整单"}
+              {isConfirming ? "确认中..." : "确认账单"}
             </Button>
           </div>
         )
