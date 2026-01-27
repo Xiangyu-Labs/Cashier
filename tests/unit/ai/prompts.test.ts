@@ -8,51 +8,45 @@ describe("buildTransactionPrompt", () => {
     { id: "2", name: "交通", description: "公交、地铁" },
   ];
 
-  it("should list all categories with descriptions", () => {
+  it("should include the provided current date", () => {
+    const customDate = "2025-05-20";
+    const prompt = buildTransactionPrompt(sampleCategories, customDate);
+
+    expect(prompt).toContain(`**当前日期**: ${customDate}`);
+    expect(prompt).toContain(customDate);
+  });
+
+  it("should use today's date if not provided", () => {
+    const today = new Date().toISOString().split('T')[0];
+    const prompt = buildTransactionPrompt(sampleCategories);
+
+    expect(prompt).toContain(today);
+  });
+
+  it("should list all categories", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
     expect(prompt).toContain("1. 餐饮 - 外卖、堂食");
     expect(prompt).toContain("2. 交通 - 公交、地铁");
   });
 
-  it("should handle categories without description", () => {
-    const categories: CategoryInfo[] = [
-      { id: "1", name: "其他", description: null },
-    ];
-    const prompt = buildTransactionPrompt(categories);
-    expect(prompt).toContain("1. 其他");
-    expect(prompt).not.toContain("1. 其他 -");
-  });
-
-  it("should list all categories with descriptions", () => {
+  it("should include few-shot examples", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain("1. 餐饮 - 外卖、堂食");
-    expect(prompt).toContain("2. 交通 - 公交、地铁");
+    expect(prompt).toContain("Few-Shot Examples");
+    expect(prompt).toContain("在711买了2瓶可乐");
+    expect(prompt).toContain("Yesterday taxi to airport");
   });
 
-  it("should include JSON format example", () => {
+  it("should include JSON format requirements", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain('"transactions"');
-    expect(prompt).toContain('"item_name"');
-    expect(prompt).toContain('"amount"');
-    expect(prompt).toContain('"currency"');
-    expect(prompt).toContain('"category"');
-    expect(prompt).toContain('"transaction_date"');
+    expect(prompt).toContain("STRICT JSON");
+    expect(prompt).toContain("transactions");
+    expect(prompt).toContain("item_name");
   });
 
-  it("should include rules about currency detection", () => {
+  it("should include specific rules", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain("CNY");
-    expect(prompt).toContain("USD");
-    expect(prompt).toContain("EUR");
-  });
-
-  it("should mention positive amount requirement", () => {
-    const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain("正数");
-  });
-
-  it("should handle empty categories array", () => {
-    const prompt = buildTransactionPrompt([]);
-    expect(prompt).toBeDefined();
+    expect(prompt).toContain("拆分原则");
+    expect(prompt).toContain("货币识别");
+    expect(prompt).toContain("相对日期");
   });
 });

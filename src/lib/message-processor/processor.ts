@@ -30,7 +30,8 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     context: ProcessorContext
   ): Promise<ProcessResult> {
     const client = getOpenAIClient();
-    const systemPrompt = buildTransactionPrompt(context.categories);
+    const currentDate = new Date().toISOString().split("T")[0];
+    const systemPrompt = buildTransactionPrompt(context.categories, currentDate);
 
     // Construct user message content parts
     const contentParts: ChatCompletionContentPart[] = [];
