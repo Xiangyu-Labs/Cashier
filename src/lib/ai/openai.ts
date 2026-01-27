@@ -40,6 +40,7 @@ export class OpenAIClient {
                         { role: "system", content: systemPrompt },
                         ...messages,
                     ],
+                    max_tokens: 4096,
                 });
 
                 return response.choices[0]?.message?.content || "";

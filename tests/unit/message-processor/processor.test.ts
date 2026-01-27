@@ -330,7 +330,7 @@ describe("OpenAIMessageProcessor", () => {
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
 
-    it("should reject zero amount via Zod validation", async () => {
+    it("should accept zero amount via Zod validation", async () => {
       const input: MessageInput = { text: "free item" };
 
       mockGenerateContent.mockResolvedValue(
@@ -347,7 +347,8 @@ describe("OpenAIMessageProcessor", () => {
         })
       );
 
-      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
+      const result = await processor.process(input, defaultContext);
+      expect(result.transactions[0].amount).toBe(0);
     });
 
     it("should handle malformed JSON gracefully", async () => {
