@@ -13,6 +13,7 @@ interface StatsHeaderProps {
     label: string;
     totalExpense: number;
     averageDaily: number;
+    currencySymbol?: string;
 }
 
 export function StatsHeader({
@@ -23,6 +24,7 @@ export function StatsHeader({
     label,
     totalExpense,
     averageDaily,
+    currencySymbol = "CNY",
 }: StatsHeaderProps) {
     const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
     const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
@@ -74,7 +76,8 @@ export function StatsHeader({
             {/* 3. Summary Stats */}
             <div className="flex flex-col items-center gap-1">
                 <div className="text-sm text-muted">总支出</div>
-                <div className="text-4xl font-bold font-mono tracking-tight text-text">
+                <div className="text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
+                    <span className="text-xl text-muted font-normal">{currencySymbol}</span>
                     {totalExpense.toFixed(2)}
                 </div>
                 <div className="text-xs text-muted flex items-center gap-1">

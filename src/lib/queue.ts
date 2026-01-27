@@ -107,7 +107,7 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
             itemName: tx.itemName || "未分类",
             status: tx.status || "pending",
             sourceType: sourceType,
-            transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
+            transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
             description: metadata.notes || null,
             metadata,
         });

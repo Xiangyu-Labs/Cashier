@@ -43,7 +43,13 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
         enabled: !!ledgerId,
     });
 
-    const totalExpense = summary?.totals.find((t) => t.currency === "CNY")?.total || 0;
+    // Find the currency with the highest total expense
+    const primaryCurrencyTotal = summary?.totals.reduce((max, current) => {
+        return (current.total > (max?.total || 0)) ? current : max;
+    }, summary?.totals[0]);
+
+    const totalExpense = primaryCurrencyTotal?.total || 0;
+    const currencySymbol = primaryCurrencyTotal?.currency || "CNY";
 
     const daysInPeriod = Math.max(
         1,
@@ -63,6 +69,7 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
                 label={label}
                 totalExpense={totalExpense}
                 averageDaily={averageDaily}
+                currencySymbol={currencySymbol}
             />
 
             <div className="space-y-2">
