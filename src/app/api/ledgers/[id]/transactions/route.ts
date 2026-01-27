@@ -44,28 +44,30 @@ export async function GET(
 
     if (query.startDate) {
       const startDate = new Date(query.startDate);
-      conditions.push(
-        or(
-          gte(transactions.transactionDate, startDate),
-          and(
-            isNull(transactions.transactionDate),
-            gte(transactions.createdAt, startDate)
-          )
+      const dateCondition = or(
+        gte(transactions.transactionDate, startDate),
+        and(
+          isNull(transactions.transactionDate),
+          gte(transactions.createdAt, startDate)
         )
       );
+      if (dateCondition) {
+        conditions.push(dateCondition);
+      }
     }
 
     if (query.endDate) {
       const endDate = new Date(query.endDate);
-      conditions.push(
-        or(
-          lte(transactions.transactionDate, endDate),
-          and(
-            isNull(transactions.transactionDate),
-            lte(transactions.createdAt, endDate)
-          )
+      const dateCondition = or(
+        lte(transactions.transactionDate, endDate),
+        and(
+          isNull(transactions.transactionDate),
+          lte(transactions.createdAt, endDate)
         )
       );
+      if (dateCondition) {
+        conditions.push(dateCondition);
+      }
     }
 
     const result = await db.query.transactions.findMany({
