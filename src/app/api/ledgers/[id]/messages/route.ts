@@ -139,7 +139,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Convert proposed transactions to actual transactions
-    const proposed = message.proposedTransactions as any[]; // Type assertion
+    type ProposedTransaction = {
+      amount: number;
+      currency: string | null;
+      itemName: string;
+      category?: string;
+      notes?: string;
+      transactionDate?: string;
+    };
+    const proposed = message.proposedTransactions as ProposedTransaction[];
 
     if (proposed && proposed.length > 0) {
       const allCategories = await db.query.categories.findMany({

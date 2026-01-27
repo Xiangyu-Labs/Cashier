@@ -90,7 +90,7 @@ export const inputMessages = pgTable("input_messages", {
   aiResponse: text("ai_response"),
 
   // Proposed transactions awaiting confirmation
-  proposedTransactions: jsonb("proposed_transactions").$type<any[]>(),
+  proposedTransactions: jsonb("proposed_transactions").$type<unknown[]>(),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

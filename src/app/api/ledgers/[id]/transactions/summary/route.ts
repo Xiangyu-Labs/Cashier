@@ -10,14 +10,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get("status") || "confirmed";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-
     // 构建过滤条件
     const conditions = [
       eq(transactions.ledgerId, ledgerId),
-      eq(transactions.status, status as "pending" | "confirmed"),
     ];
 
     // Use transactionDate if available, otherwise fallback to createdAt

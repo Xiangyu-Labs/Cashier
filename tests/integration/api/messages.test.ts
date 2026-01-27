@@ -30,7 +30,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
     const [ledger] = await db
       .insert(ledgers)
-      .values({ name: "Test Ledger" })
+      .values({ name: "Test Ledger", autoConfirm: true })
       .returning();
     testLedgerId = ledger.id;
 
@@ -56,7 +56,7 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
   // ...
 
-  it("should persist transactions with metadata", async () => {
+  it("should persist transactions with notes", async () => {
     // Override mock for this test
     vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata),
@@ -100,15 +100,9 @@ describe("POST /api/ledgers/[id]/messages", () => {
 
     expect(savedTx).toBeDefined();
     expect(savedTx?.itemName).toBe("苹果");
-    // Ensure metadata is saved as JSON
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const metadata = savedTx?.metadata as any;
-    expect(metadata).toEqual({
-      quantity: 2,
-      unitPrice: 10,
-      unit: "kg",
-      originalName: "红富士苹果"
-    });
+    // Ensure notes are saved in description
+    expect(savedTx?.description).toContain("2kg");
+    expect(savedTx?.description).toContain("10元");
   });
 
   it("should process text message and create pending transaction", async () => {
@@ -146,7 +140,6 @@ describe("POST /api/ledgers/[id]/messages", () => {
     });
 
     expect(savedTransactions).toHaveLength(1);
-    expect(savedTransactions[0].status).toBe("pending");
     expect(savedTransactions[0].itemName).toBe("午餐");
     expect(savedTransactions[0].amount).toBe("25.50");
   });

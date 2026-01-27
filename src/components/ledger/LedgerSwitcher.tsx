@@ -21,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { fetchLedgers, createLedger } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Ledger } from "@/types/api";
 
 interface LedgerSwitcherProps {
     currentLedgerId: string;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as createLedger, GET as getLedgers } from "@/app/api/ledgers/route";
-import { GET as getLedger, DELETE as deleteLedger } from "@/app/api/ledgers/[id]/route";
+import { GET as getLedger, DELETE as deleteLedger, PATCH as updateLedger } from "@/app/api/ledgers/[id]/route";
 import { POST as sendMessage } from "@/app/api/ledgers/[id]/messages/route";
 import { GET as getTransactions } from "@/app/api/ledgers/[id]/transactions/route";
 import { GET as getCategories } from "@/app/api/ledgers/[id]/categories/route";
@@ -32,6 +32,19 @@ describe("Full Transaction Flow", () => {
     expect(createResponse.status).toBe(201);
     expect(ledger.id).toBeDefined();
     expect(ledger.name).toBe("E2E Test Ledger");
+
+    // Enable auto-confirm for testing transaction creation flow
+    const updateRequest = new NextRequest(
+      `http://localhost/api/ledgers/${ledger.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ autoConfirm: true }),
+      }
+    );
+    const updateResponse = await updateLedger(updateRequest, {
+      params: Promise.resolve({ id: ledger.id }),
+    });
+    expect(updateResponse.status).toBe(200);
 
     // Step 2: Verify ledger was created (and categories exist globally)
     const getResponse = await getLedger(
@@ -93,7 +106,6 @@ describe("Full Transaction Flow", () => {
     const allTransactions = (await transactionsResponse.json()) as Transaction[];
 
     expect(allTransactions).toHaveLength(2);
-    expect(allTransactions.every((t) => t.status === "pending")).toBe(true);
     expect(allTransactions.map((t) => t.itemName)).toContain("牛奶");
     expect(allTransactions.map((t) => t.itemName)).toContain("面包");
 
@@ -107,59 +119,7 @@ describe("Full Transaction Flow", () => {
     expect(savedMessage?.text).toContain("超市购物");
   });
 
-  it("should filter transactions by status", async () => {
-    // Create ledger
-    const createRequest = new NextRequest("http://localhost/api/ledgers", {
-      method: "POST",
-      body: JSON.stringify({ name: "Filter Test Ledger" }),
-    });
-    const ledger = await (await createLedger(createRequest)).json();
-
-    // Create pending transactions via message
-    const messageResponse = await sendMessage(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ text: "test expense" }),
-      }),
-      { params: Promise.resolve({ id: ledger.id }) }
-    );
-    const messageResult = await messageResponse.json();
-
-    // Wait for processing
-    const db = getTestDb();
-    let retries = 0;
-    while (retries < 20) {
-      const message = await db.query.inputMessages.findFirst({
-        where: eq(inputMessages.id, messageResult.messageId),
-      });
-      if (message?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
-
-    // Filter by pending status
-    const pendingRequest = new NextRequest(
-      `http://localhost/api/ledgers/${ledger.id}/transactions?status=pending`
-    );
-    const pendingResponse = await getTransactions(pendingRequest, {
-      params: Promise.resolve({ id: ledger.id }),
-    });
-    const pendingTransactions = (await pendingResponse.json()) as Transaction[];
-
-    expect(pendingTransactions.length).toBeGreaterThan(0);
-    expect(pendingTransactions.every((t) => t.status === "pending")).toBe(true);
-
-    // Filter by confirmed status (should be empty)
-    const confirmedRequest = new NextRequest(
-      `http://localhost/api/ledgers/${ledger.id}/transactions?status=confirmed`
-    );
-    const confirmedResponse = await getTransactions(confirmedRequest, {
-      params: Promise.resolve({ id: ledger.id }),
-    });
-    const confirmedTransactions = await confirmedResponse.json();
-
-    expect(confirmedTransactions).toHaveLength(0);
-  });
+  // Status filtering test removed as status field was removed from transactions table
 
   it("should cascade delete all related data when ledger is deleted", async () => {
     // Create ledger
@@ -168,6 +128,15 @@ describe("Full Transaction Flow", () => {
       body: JSON.stringify({ name: "Delete Test Ledger" }),
     });
     const ledger = await (await createLedger(createRequest)).json();
+
+    // Enable auto-confirm
+    await updateLedger(
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ autoConfirm: true }),
+      }),
+      { params: Promise.resolve({ id: ledger.id }) }
+    );
 
     // Create transactions via message
     const messageResponse = await sendMessage(
@@ -252,6 +221,15 @@ describe("Full Transaction Flow", () => {
       body: JSON.stringify({ name: "Category Association Test" }),
     });
     const ledger = await (await createLedger(createRequest)).json();
+
+    // Enable auto-confirm
+    await updateLedger(
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ autoConfirm: true }),
+      }),
+      { params: Promise.resolve({ id: ledger.id }) }
+    );
 
     // Get categories to find 餐饮 and 日用品
     const categoriesResponse = await getCategories(

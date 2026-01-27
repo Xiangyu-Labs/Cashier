@@ -18,15 +18,12 @@ describe("Transactions Database Operations", () => {
           ledgerId: ledger.id,
           amount: "25.50",
           itemName: "午餐",
-          sourceType: "text",
         })
         .returning();
 
       expect(created.id).toBeDefined();
       expect(created.amount).toBe("25.50");
       expect(created.itemName).toBe("午餐");
-      expect(created.status).toBe("pending");
-      expect(created.sourceType).toBe("text");
     });
 
     it("should create a transaction with category", async () => {
@@ -52,39 +49,10 @@ describe("Transactions Database Operations", () => {
           categoryId: category.id,
           amount: "30.00",
           itemName: "晚餐",
-          sourceType: "text",
         })
         .returning();
 
       expect(created.categoryId).toBe(category.id);
-    });
-
-    it("should create a transaction with metadata", async () => {
-      const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
-
-      const metadata = {
-        quantity: 2,
-        unit: "kg",
-        unitPrice: 10,
-        originalName: "红富士苹果"
-      };
-
-      const [created] = await db
-        .insert(transactions)
-        .values({
-          ledgerId: ledger.id,
-          amount: "20.00",
-          itemName: "苹果",
-          sourceType: "text",
-          metadata
-        })
-        .returning();
-
-      expect(created.metadata).toEqual(metadata);
     });
 
     it("should create a transaction with all fields", async () => {
@@ -111,8 +79,6 @@ describe("Transactions Database Operations", () => {
           currency: "CNY",
           itemName: "午餐",
           description: "在公司附近吃的",
-          status: "pending",
-          sourceType: "text",
           transactionDate: new Date("2025-01-25"),
         })
         .returning();
@@ -133,8 +99,8 @@ describe("Transactions Database Operations", () => {
         .returning();
 
       await db.insert(transactions).values([
-        { ledgerId: ledger.id, amount: "10.00", itemName: "Item 1", sourceType: "text" },
-        { ledgerId: ledger.id, amount: "20.00", itemName: "Item 2", sourceType: "text" },
+        { ledgerId: ledger.id, amount: "10.00", itemName: "Item 1" },
+        { ledgerId: ledger.id, amount: "20.00", itemName: "Item 2" },
       ]);
 
       const found = await db.query.transactions.findMany({
@@ -167,7 +133,6 @@ describe("Transactions Database Operations", () => {
           categoryId: category.id,
           amount: "25.00",
           itemName: "午餐",
-          sourceType: "text",
         })
         .returning();
 
@@ -179,36 +144,12 @@ describe("Transactions Database Operations", () => {
       expect(found?.category).toBeDefined();
       expect(found?.category?.name).toBe("餐饮");
     });
-
-    it("should filter transactions by status", async () => {
-      const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
-
-      await db.insert(transactions).values([
-        { ledgerId: ledger.id, amount: "10.00", itemName: "Pending", status: "pending", sourceType: "text" },
-        { ledgerId: ledger.id, amount: "20.00", itemName: "Confirmed", status: "confirmed", sourceType: "text" },
-      ]);
-
-      const pending = await db.query.transactions.findMany({
-        where: eq(transactions.status, "pending"),
-      });
-
-      const confirmed = await db.query.transactions.findMany({
-        where: eq(transactions.status, "confirmed"),
-      });
-
-      expect(pending).toHaveLength(1);
-      expect(pending[0].itemName).toBe("Pending");
-      expect(confirmed).toHaveLength(1);
-      expect(confirmed[0].itemName).toBe("Confirmed");
-    });
   });
 
   describe("UPDATE", () => {
-    it("should update transaction status to confirmed", async () => {
+    // Status update test removed as status is removed from transactions
+    // We can test updating other fields like description or amount
+    it("should update transaction description", async () => {
       const db = getTestDb();
       const [ledger] = await db
         .insert(ledgers)
@@ -221,19 +162,16 @@ describe("Transactions Database Operations", () => {
           ledgerId: ledger.id,
           amount: "25.00",
           itemName: "午餐",
-          sourceType: "text",
         })
         .returning();
 
-      expect(created.status).toBe("pending");
-
       const [updated] = await db
         .update(transactions)
-        .set({ status: "confirmed" })
+        .set({ description: "Updated Note" })
         .where(eq(transactions.id, created.id))
         .returning();
 
-      expect(updated.status).toBe("confirmed");
+      expect(updated.description).toBe("Updated Note");
     });
   });
 
@@ -251,8 +189,6 @@ describe("Transactions Database Operations", () => {
           ledgerId: ledger.id,
           amount: "25.00",
           itemName: "To Delete",
-          sourceType: "text",
-          status: "pending"
         })
         .returning();
 
@@ -276,7 +212,6 @@ describe("Transactions Database Operations", () => {
         ledgerId: ledger.id,
         amount: "25.00",
         itemName: "Will Be Deleted",
-        sourceType: "text",
       });
 
       await db.delete(ledgers).where(eq(ledgers.id, ledger.id));
@@ -311,7 +246,6 @@ describe("Transactions Database Operations", () => {
           categoryId: category.id,
           amount: "25.00",
           itemName: "午餐",
-          sourceType: "text",
         })
         .returning();
 

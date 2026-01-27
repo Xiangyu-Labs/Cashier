@@ -3,6 +3,7 @@ import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/lib/db/schema";
 
 export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
+  console.log("Starting createTestSchema...");
   // Drop tables to ensure clean state with new schema
   await db.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
@@ -11,6 +12,11 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
 
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
+
+  await db.execute(sql`DROP TYPE IF EXISTS transaction_status CASCADE`);
+  await db.execute(sql`DROP TYPE IF EXISTS message_status CASCADE`);
+  // Drop unused enum if exists
+  await db.execute(sql`DROP TYPE IF EXISTS source_type CASCADE`);
 
   // Create enums
   await db.execute(sql`
@@ -95,4 +101,12 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       last_used_at TIMESTAMP
     );
   `);
+  console.log("Finished createTestSchema.");
+
+  const tables = await db.execute(sql`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public'
+  `);
+  console.log("Tables in DB:", tables.map(t => t.table_name));
 }

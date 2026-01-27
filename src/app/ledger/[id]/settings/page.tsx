@@ -149,7 +149,7 @@ export default function LedgerSettingsPage() {
                     {/* Currency Settings */}
                     <CurrencySection
                         // Adapt CurrencySection to accept ledger structure which is compatible with Settings for these fields
-                        settings={ledger as any}
+                        settings={ledger as unknown as Ledger}
                         onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
                     />
 

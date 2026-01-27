@@ -28,8 +28,6 @@ describe("Stats Regression Test", () => {
                 ledgerId: ledger.id,
                 amount: "100.00",
                 itemName: "No Date Transaction",
-                status: "confirmed",
-                sourceType: "text",
                 transactionDate: null, // Explicitly null
             })
             .returning();

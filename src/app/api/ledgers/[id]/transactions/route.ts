@@ -5,7 +5,6 @@ import { eq, and, gte, lte, or, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 const querySchema = z.object({
-  status: z.enum(["pending", "confirmed"]).optional(),
   categoryId: z.string().uuid().optional(),
   limit: z.coerce.number().positive().optional().default(50),
   offset: z.coerce.number().nonnegative().optional().default(0),
@@ -25,7 +24,6 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
 
     const query = querySchema.parse({
-      status: searchParams.get("status") || undefined,
       categoryId: searchParams.get("categoryId") || undefined,
       limit: searchParams.get("limit") || undefined,
       offset: searchParams.get("offset") || undefined,
@@ -35,9 +33,6 @@ export async function GET(
 
     const conditions = [eq(transactions.ledgerId, ledgerId)];
 
-    if (query.status) {
-      conditions.push(eq(transactions.status, query.status));
-    }
     if (query.categoryId) {
       conditions.push(eq(transactions.categoryId, query.categoryId));
     }

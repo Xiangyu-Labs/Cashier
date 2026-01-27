@@ -79,10 +79,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     const data = this.parseResponse(rawResponse);
 
     // Apply auto-confirm if enabled
-    const transactions = data.map(t => ({
-      ...t,
-      status: autoConfirm ? "confirmed" : "pending"
-    })) as ParsedTransaction[];
+    const transactions = data;
 
     return {
       transactions,
@@ -114,7 +111,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
           currency,
           category,
           transactionDate: transaction_date,
-          metadata: notes ? { notes } : null, // Temporarily keep metadata structure in processor types if needed, or better yet, just return what's needed. Wait, ParsedTransaction type probably needs update too.
+          notes: notes || null,
         };
       });
     } catch (error) {

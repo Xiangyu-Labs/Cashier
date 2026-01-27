@@ -53,8 +53,6 @@ describe("TransactionDetailModal", () => {
         categoryId: "c1",
         amount: "100",
         currency: "CNY",
-        status: "confirmed",
-        sourceType: "text",
         inputMessageId: null,
         description: null,
         transactionDate: "2023-01-01",

@@ -35,8 +35,6 @@ const mockTransaction: Transaction = {
     currency: "CNY",
     itemName: "Lunch",
     description: null,
-    status: "pending",
-    sourceType: "text",
     transactionDate: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     category: mockCategories[0],

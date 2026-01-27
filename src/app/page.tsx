@@ -53,7 +53,7 @@ export default function HomePage() {
     };
 
     handleInit();
-  }, [ledgers, isLoading, router]);
+  }, [ledgers, isLoading, router, queryClient]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">
