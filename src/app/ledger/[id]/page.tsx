@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionsTab } from "@/components/ledger/TransactionsTab";
+import { DetailsTab } from "@/components/ledger/DetailsTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
 import {
   Dialog,
@@ -37,6 +38,7 @@ export default function LedgerPage() {
     isLedgerLoading,
     categories,
     pendingGroups,
+    confirmedGroups,
     queuedReceipts,
     stats,
   } = useLedgerData(ledgerId);
@@ -136,8 +138,9 @@ export default function LedgerPage() {
           onValueChange={setActiveTab}
           className="w-full space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="history">账单</TabsTrigger>
+            <TabsTrigger value="details">明细</TabsTrigger>
             <TabsTrigger value="stats">统计</TabsTrigger>
           </TabsList>
 
@@ -145,9 +148,17 @@ export default function LedgerPage() {
             <TransactionsTab
               ledgerId={ledgerId}
               pendingGroups={pendingGroups}
+              confirmedGroups={confirmedGroups}
               queuedReceipts={queuedReceipts}
               categories={categories}
               defaultCollapsed={ledger.collapsePendingDefault}
+            />
+          </TabsContent>
+
+          <TabsContent value="details" className="mt-0">
+            <DetailsTab
+              ledgerId={ledgerId}
+              categories={categories}
             />
           </TabsContent>
 
