@@ -33,6 +33,7 @@ interface TransactionCardProps {
   }) => void;
   onDelete: () => void;
   hideCategory?: boolean;
+  className?: string;
 }
 
 export function TransactionCard({
@@ -41,6 +42,7 @@ export function TransactionCard({
   onUpdate,
   onDelete,
   hideCategory = false,
+  className,
 }: TransactionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -80,7 +82,8 @@ export function TransactionCard({
   return (
     <Card
       className={cn(
-        cardVariants({ status: needsAttention ? "attention" : "default" })
+        cardVariants({ status: needsAttention ? "attention" : "default" }),
+        className
       )}
     >
       <CardContent className="p-4">

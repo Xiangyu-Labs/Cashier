@@ -7,6 +7,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { TransactionStatus } from "@/components/ui/TransactionStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -35,6 +36,7 @@ interface BatchTransactionCardProps {
   onDeleteTransaction?: (transactionId: string) => void;
   onDelete?: () => void;
   status: "queued" | "processing" | "completed" | "failed";
+  className?: string;
 }
 
 export function BatchTransactionCard({
@@ -47,6 +49,7 @@ export function BatchTransactionCard({
   onDeleteTransaction,
   onDelete,
   status,
+  className,
 }: BatchTransactionCardProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   // Default to collapsed as requested
@@ -139,7 +142,7 @@ export function BatchTransactionCard({
   };
 
   return (
-    <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6">
+    <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
       {/* 1. Date Header */}
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
         <span className="text-sm font-medium text-muted">
