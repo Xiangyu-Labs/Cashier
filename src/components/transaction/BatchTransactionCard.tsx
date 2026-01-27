@@ -185,9 +185,9 @@ export function BatchTransactionCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+    <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6">
       {/* 1. Date Header */}
-      <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+      <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
         <span className="text-sm font-medium text-muted">
           {new Date(inputMessage.createdAt).toLocaleString("zh-CN", {
             month: "long",
@@ -253,14 +253,14 @@ export function BatchTransactionCard({
 
       {/* 2. User Content Section */}
       {isContentExpanded && (
-        <div className="p-4 space-y-3 bg-gray-50/30 border-b border-gray-100 animate-in slide-in-from-top-2 duration-200">
+        <div className="p-4 space-y-3 bg-surface2/30 border-b border-border animate-in slide-in-from-top-2 duration-200">
           {/* Images Grid */}
           {images.length > 0 && (
             <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
               {images.map((img, idx) => (
                 <div
                   key={idx}
-                  className="relative aspect-square rounded-lg overflow-hidden border border-border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity"
+                  className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
                   onClick={() => setSelectedImageIndex(idx)}
                 >
                   <Image
@@ -285,7 +285,7 @@ export function BatchTransactionCard({
 
 
       {/* 3. Transaction Details (Category Groups) */}
-      <div className="border-t border-gray-100 divide-y divide-gray-50">
+      <div className="border-t border-border divide-y divide-border">
         {groupedTransactions.map((group) => {
           const isExpanded = expandedKeys.has(group.key);
           const hasIssues = group.items.some(
@@ -293,11 +293,11 @@ export function BatchTransactionCard({
           );
 
           return (
-            <div key={group.key} className="bg-white">
+            <div key={group.key} className="bg-surface">
               {/* Category Summary Row */}
               <div
                 onClick={() => toggleExpand(group.key)}
-                className={`w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors ${isExpanded ? "bg-gray-50/80" : ""
+                className={`w-full flex items-center justify-between p-4 cursor-pointer hover:bg-surface2 transition-colors ${isExpanded ? "bg-surface2/80" : ""
                   }`}
               >
                 <div className="flex items-center gap-3">
@@ -332,7 +332,7 @@ export function BatchTransactionCard({
 
               {/* Expanded Transactions */}
               {isExpanded && (
-                <div className="p-3 space-y-3 bg-gray-50/30 border-t border-gray-100/50 inner-shadow">
+                <div className="p-3 space-y-3 bg-surface2/30 border-t border-border/50 inner-shadow">
                   {group.items.map((tx) => (
                     <TransactionCard
                       key={tx.id}
@@ -353,7 +353,7 @@ export function BatchTransactionCard({
       {/* Footer Actions */}
       {
         !isConfirmed && onConfirm && (
-          <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <div className="p-4 bg-surface2 border-t border-border flex justify-end">
             <Button
               onClick={handleConfirm}
               disabled={isConfirming}

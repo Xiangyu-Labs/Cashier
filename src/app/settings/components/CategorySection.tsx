@@ -38,14 +38,14 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
                                     type="text"
                                     value={editingCategoryData.name}
                                     onChange={e => setEditingCategoryData({ ...editingCategoryData, name: e.target.value })}
-                                    className="flex-1 px-2 py-1 text-sm rounded bg-white"
+                                    className="flex-1 px-2 py-1 text-sm rounded bg-surface"
                                 />
                                 <input
                                     type="text"
                                     value={editingCategoryData.description || ""}
                                     onChange={e => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
                                     placeholder="描述"
-                                    className="flex-1 px-2 py-1 text-sm rounded bg-white text-[var(--muted)]"
+                                    className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)]"
                                 />
                                 <button
                                     onClick={() => {

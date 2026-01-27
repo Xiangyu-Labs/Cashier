@@ -186,7 +186,7 @@ export default function LedgerSettingsPage() {
                     </div>
 
                     {ledger.autoConfirm && (
-                        <div className="mt-4 flex items-start gap-2 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 p-3 rounded-[var(--radius)] text-sm">
+                        <div className="mt-4 flex items-start gap-2 bg-warning/10 text-warning p-3 rounded-[var(--radius)] text-sm">
                             <AlertCircle className="h-5 w-5 shrink-0" />
                             <span>开启此功能后，AI 可能会犯错导致并在您的账本中创建错误记录，建议您定期进行二次检查。</span>
                         </div>
@@ -454,14 +454,14 @@ function SortableCategoryItem({
                         type="text"
                         value={editingCategoryData.name}
                         onChange={e => setEditingCategoryData({ ...editingCategoryData, name: e.target.value })}
-                        className="flex-1 px-2 py-1 text-sm rounded bg-white text-black"
+                        className="flex-1 px-2 py-1 text-sm rounded bg-surface text-text"
                     />
                     <input
                         type="text"
                         value={editingCategoryData.description || ""}
                         onChange={e => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
                         placeholder="描述"
-                        className="flex-1 px-2 py-1 text-sm rounded bg-white text-[var(--muted)]"
+                        className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)]"
                     />
                     <button
                         onClick={() => updateCategoryMutation.mutate({
