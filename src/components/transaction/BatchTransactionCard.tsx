@@ -111,56 +111,10 @@ export function BatchTransactionCard({
 
   // Parse content based on type
   const { text, images } = useMemo(() => {
-    const content = inputMessage.content;
-    const type = inputMessage.contentType;
-
-    let textContent: string | null = null;
-    let imagesContent: string[] = [];
-
-    try {
-      const trimmed = content.trim();
-      let isParsed = false;
-
-      // Try parsing JSON if it looks like one, regardless of stated type (since mixed is stored as text)
-      if ((trimmed.startsWith("{") || trimmed.startsWith("["))) {
-        try {
-          const parsed = JSON.parse(content);
-          if (Array.isArray(parsed)) {
-            // Likely array of image data strings
-            imagesContent = parsed;
-            isParsed = true;
-          } else if (typeof parsed === "object" && parsed !== null) {
-            // Likely mixed content object
-            if (parsed.text || parsed.images) {
-              if (parsed.text) textContent = parsed.text;
-              if (parsed.images) {
-                imagesContent = parsed.images.map((img: { data?: string } | string) => (typeof img === "object" && img.data ? img.data : img as string));
-              }
-              isParsed = true;
-            }
-          }
-        } catch {
-          // Ignore JSON parse error, treat as raw string
-        }
-      }
-
-      if (!isParsed) {
-        if (type === "image") {
-          // Single image
-          imagesContent = [content];
-        } else {
-          // Text (or failed JSON parse)
-          textContent = content;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse message content:", e);
-      // Fallback
-      if (type === "image") imagesContent = [content];
-      else textContent = content;
-    }
-
-    return { text: textContent, images: imagesContent };
+    return {
+      text: inputMessage.text,
+      images: inputMessage.imageUrls || []
+    };
   }, [inputMessage]);
 
 

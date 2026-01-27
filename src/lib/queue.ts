@@ -57,7 +57,12 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
         orderBy: (categories, { asc }) => [asc(categories.sortOrder)],
     });
 
-    const messageInput = parseMessageContent(message);
+    const messageInput: MessageInput = {
+        text: message.text || undefined,
+        images: message.imageUrls && message.imageUrls.length > 0
+            ? message.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" }))
+            : undefined
+    };
 
     const ledger = await db.query.ledgers.findFirst({
         where: eq(ledgers.id, message.ledgerId)
@@ -87,6 +92,12 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
 
         const metadata = tx.metadata || {};
 
+        // Determine source type based on input
+        let sourceType: "text" | "image" = "text";
+        if (message.imageUrls && message.imageUrls.length > 0) {
+            sourceType = "image";
+        }
+
         await db.insert(transactions).values({
             ledgerId: message.ledgerId,
             categoryId,
@@ -95,44 +106,10 @@ async function handleMessageProcessing(message: typeof inputMessages.$inferSelec
             currency: tx.currency,
             itemName: tx.itemName || "未分类",
             status: tx.status || "pending",
-            sourceType: message.contentType as "text" | "image" | "mixed",
+            sourceType: sourceType,
             transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : null,
             description: metadata.notes || null,
             metadata,
         });
-    }
-}
-
-function parseMessageContent(message: typeof inputMessages.$inferSelect): MessageInput {
-    if (message.contentType === "text") {
-        // Try to parse as JSON first in case it's a mixed message stored as text
-        try {
-            const parsed = JSON.parse(message.content);
-            if (typeof parsed === 'object' && parsed !== null && (parsed.text || parsed.images)) {
-                return parsed;
-            }
-        } catch {
-            // Not a JSON object or doesn't look like MessageInput, treat as raw text
-            // console.warn("Failed to parse potential mixed content:", e);
-        }
-        return { text: message.content };
-    }
-
-    if (message.contentType === "image") {
-        if (message.content.startsWith("[")) {
-            const images = JSON.parse(message.content);
-            return {
-                images: images.map((data: string) => ({ data, mimeType: "image/jpeg" })),
-            };
-        }
-        return {
-            images: [{ data: message.content, mimeType: "image/jpeg" }],
-        };
-    }
-
-    try {
-        return JSON.parse(message.content);
-    } catch {
-        throw new Error("Failed to parse message content");
     }
 }

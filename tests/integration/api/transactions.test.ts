@@ -183,8 +183,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
       .insert(inputMessages)
       .values({
         ledgerId: testLedgerId,
-        contentType: "text",
-        content: "午餐花了25.5元",
+        text: "午餐花了25.5元",
         aiResponse: JSON.stringify({ transactions: [{ item_name: "午餐", amount: 25.5 }] }),
       })
       .returning();
@@ -209,8 +208,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(data).toHaveLength(1);
     expect(data[0].inputMessage).toBeDefined();
     expect(data[0].inputMessage.id).toBe(inputMessage.id);
-    expect(data[0].inputMessage.contentType).toBe("text");
-    expect(data[0].inputMessage.content).toBe("午餐花了25.5元");
+    expect(data[0].inputMessage.text).toBe("午餐花了25.5元");
     expect(data[0].inputMessage.aiResponse).toContain("午餐");
   });
 
@@ -244,8 +242,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
       .insert(inputMessages)
       .values({
         ledgerId: testLedgerId,
-        contentType: "image",
-        content: "data:image/png;base64,iVBORw0KGgo...",
+        imageUrls: ["data:image/png;base64,iVBORw0KGgo..."],
         aiResponse: null,
       })
       .returning();
@@ -264,8 +261,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data[0].inputMessage.contentType).toBe("image");
-    expect(data[0].inputMessage.content).toContain("data:image");
+    expect(data[0].inputMessage.imageUrls).toHaveLength(1);
+    expect(data[0].inputMessage.imageUrls[0]).toContain("data:image");
   });
 
   it("should return inputMessage with contentType", async () => {
@@ -275,8 +272,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
       .insert(inputMessages)
       .values({
         ledgerId: testLedgerId,
-        contentType: "text",
-        content: "Audio Note converted",
+        text: "Audio Note converted",
         aiResponse: null,
       })
       .returning();
@@ -302,7 +298,6 @@ describe("GET /api/ledgers/[id]/transactions", () => {
 
     expect(data).toHaveLength(1);
     expect(data[0].inputMessage).toBeDefined();
-    expect(data[0].inputMessage.contentType).toBe("text");
-    expect(data[0].inputMessage.content).toContain("Audio Note");
+    expect(data[0].inputMessage.text).toContain("Audio Note");
   });
 });

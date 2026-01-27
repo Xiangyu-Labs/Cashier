@@ -55,14 +55,16 @@ describe("TransactionDetailModal", () => {
         currency: "CNY",
         status: "confirmed",
         sourceType: "text",
+        inputMessageId: null,
+        description: null,
+        transactionDate: "2023-01-01",
         createdAt: "2023-01-01",
-        updatedAt: "2023-01-01",
         itemName: "Test Item",
-        category: { id: "c1", name: "Food", icon: "food", ledgerId: "l1", sortOrder: 0, createdAt: "", updatedAt: "" }
+        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
     };
 
     const mockCategories: Category[] = [
-        { id: "c1", name: "Food", icon: "food", ledgerId: "l1", sortOrder: 0, createdAt: "", updatedAt: "" }
+        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
     ];
 
     const mockOnClose = vi.fn();

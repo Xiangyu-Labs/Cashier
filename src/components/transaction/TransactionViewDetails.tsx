@@ -119,8 +119,8 @@ export function TransactionViewDetails({
                 <div className="p-4 bg-surface2 rounded-lg border border-border">
                     {transaction.inputMessage ? (
                         <TransactionOriginalContent
-                            content={transaction.inputMessage.content}
-                            contentType={transaction.inputMessage.contentType}
+                            text={transaction.inputMessage.text}
+                            images={transaction.inputMessage.imageUrls}
                         />
                     ) : (
                         <p className="text-muted text-sm italic">无原始记录</p>

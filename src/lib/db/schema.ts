@@ -22,10 +22,7 @@ export const sourceTypeEnum = pgEnum("source_type", [
   "image",
   "mixed",
 ]);
-export const contentTypeEnum = pgEnum("content_type", [
-  "text",
-  "image",
-]);
+
 export const messageStatusEnum = pgEnum("message_status", [
   "queued",
   "processing",
@@ -87,8 +84,15 @@ export const inputMessages = pgTable("input_messages", {
   ledgerId: uuid("ledger_id")
     .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
-  contentType: contentTypeEnum("content_type").notNull(),
-  content: text("content").notNull(),
+  // content: text("content").notNull(), // REMOVED
+  // contentType: contentTypeEnum("content_type").notNull(), // REMOVED
+
+  // New flattened structure
+  text: text("text"), // Nullable, for text content
+  imageUrls: jsonb("image_urls")
+    .$type<string[]>()
+    .default([]), // For image URLs/Base64, default empty array
+
   status: messageStatusEnum("status").notNull().default("queued"),
   error: text("error"),
   aiResponse: text("ai_response"),

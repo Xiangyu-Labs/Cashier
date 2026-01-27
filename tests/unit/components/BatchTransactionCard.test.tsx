@@ -45,8 +45,8 @@ const mockTransaction: Transaction = {
 const baseInputMessage: InputMessage = {
     id: "msg1",
     ledgerId: "l1",
-    contentType: "text",
-    content: "Lunch 50",
+    text: "Lunch 50",
+    imageUrls: [],
     aiResponse: null,
     createdAt: new Date("2024-01-01T12:00:00").toISOString(),
     status: "completed",
@@ -82,8 +82,8 @@ describe("BatchTransactionCard", () => {
     it("renders single image content", () => {
         const inputMessage: InputMessage = {
             ...baseInputMessage,
-            contentType: "image",
-            content: "data:image/png;base64,fake-image-data",
+            text: null,
+            imageUrls: ["data:image/png;base64,fake-image-data"],
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
 
@@ -97,12 +97,12 @@ describe("BatchTransactionCard", () => {
         expect(userImg).toBeTruthy();
     });
 
-    it("renders multiple images content (JSON array)", () => {
+    it("renders multiple images content", () => {
         const imagesData = ["data:image/png;base64,img1", "data:image/png;base64,img2"];
         const inputMessage: InputMessage = {
             ...baseInputMessage,
-            contentType: "image",
-            content: JSON.stringify(imagesData),
+            text: null,
+            imageUrls: imagesData,
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
 
@@ -118,29 +118,6 @@ describe("BatchTransactionCard", () => {
         expect(userImgs[1].getAttribute("src")).toBe(imagesData[1]);
     });
 
-    it("renders mixed content (JSON object)", () => {
-        const mixedContent = {
-            text: "Mixed notes",
-            images: [{ data: "data:image/png;base64,img1", mimeType: "image/png" }]
-        };
-        const inputMessage: InputMessage = {
-            ...baseInputMessage,
-            contentType: "text", // The backend might save mixed as text or mixed, component handles parsing
-            content: JSON.stringify(mixedContent),
-        };
-        render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
-
-        // Expand content
-        const expandButton = screen.getByTitle("查看原始内容");
-        fireEvent.click(expandButton);
-
-        expect(screen.getByText("Mixed notes")).toBeTruthy();
-
-        const imgs = screen.getAllByRole("img");
-        const userImgs = imgs.filter(img => img.getAttribute("src")?.startsWith("data:image"));
-        expect(userImgs).toHaveLength(1);
-    });
-
     it("renders transaction details groups", () => {
         render(<BatchTransactionCard inputMessage={baseInputMessage} {...defaultProps} transactions={[mockTransaction]} />);
         expect(screen.getByText("Food")).toBeTruthy();
@@ -151,8 +128,8 @@ describe("BatchTransactionCard", () => {
     it("opens image zoom dialog on click", async () => {
         const inputMessage: InputMessage = {
             ...baseInputMessage,
-            contentType: "image",
-            content: "data:image/png;base64,fake-image-data",
+            text: null,
+            imageUrls: ["data:image/png;base64,fake-image-data"],
         };
         render(<BatchTransactionCard inputMessage={inputMessage} {...defaultProps} />);
 

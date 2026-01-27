@@ -89,7 +89,7 @@ describe("API Keys & Transaction Ingestion", () => {
             where: eq(inputMessages.id, data.messageId)
         });
         expect(msg).toBeDefined();
-        expect(msg?.content).toBe("API Transaction");
+        expect(msg?.text).toBe("API Transaction");
         expect(msg?.ledgerId).toBe(testLedgerId);
     });
 

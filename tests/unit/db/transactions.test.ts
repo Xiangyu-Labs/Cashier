@@ -98,8 +98,7 @@ describe("Transactions Database Operations", () => {
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "text",
-          content: "午餐25.5元",
+          text: "午餐25.5元",
         })
         .returning();
 

@@ -16,14 +16,13 @@ describe("InputMessages Database Operations", () => {
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "text",
-          content: "午餐花了25.5元",
+          text: "午餐花了25.5元",
         })
         .returning();
 
       expect(created.id).toBeDefined();
-      expect(created.contentType).toBe("text");
-      expect(created.content).toBe("午餐花了25.5元");
+      expect(created.text).toBe("午餐花了25.5元");
+      expect(created.imageUrls).toEqual([]);
       expect(created.aiResponse).toBeNull();
     });
 
@@ -34,21 +33,19 @@ describe("InputMessages Database Operations", () => {
         .values({ name: "Test Ledger" })
         .returning();
 
-      const imageContent = JSON.stringify({
-        images: [{ data: "base64...", mimeType: "image/jpeg" }],
-      });
+      const imageUrl = "data:image/jpeg;base64,fake...";
 
       const [created] = await db
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "image",
-          content: imageContent,
+          imageUrls: [imageUrl],
         })
         .returning();
 
-      expect(created.contentType).toBe("image");
-      expect(JSON.parse(created.content)).toHaveProperty("images");
+      expect(created.text).toBeNull();
+      expect(created.imageUrls).toHaveLength(1);
+      expect(created.imageUrls![0]).toBe(imageUrl);
     });
   });
 
@@ -61,8 +58,8 @@ describe("InputMessages Database Operations", () => {
         .returning();
 
       await db.insert(inputMessages).values([
-        { ledgerId: ledger.id, contentType: "text", content: "Message 1" },
-        { ledgerId: ledger.id, contentType: "text", content: "Message 2" },
+        { ledgerId: ledger.id, text: "Message 1" },
+        { ledgerId: ledger.id, text: "Message 2" },
       ]);
 
       const found = await db.query.inputMessages.findMany({
@@ -83,8 +80,7 @@ describe("InputMessages Database Operations", () => {
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "text",
-          content: "Test message",
+          text: "Test message",
         })
         .returning();
 
@@ -110,8 +106,7 @@ describe("InputMessages Database Operations", () => {
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "text",
-          content: "午餐25元",
+          text: "午餐25元",
         })
         .returning();
 
@@ -145,8 +140,7 @@ describe("InputMessages Database Operations", () => {
         .insert(inputMessages)
         .values({
           ledgerId: ledger.id,
-          contentType: "text",
-          content: "To delete",
+          text: "To delete",
         })
         .returning();
 
@@ -168,8 +162,7 @@ describe("InputMessages Database Operations", () => {
 
       await db.insert(inputMessages).values({
         ledgerId: ledger.id,
-        contentType: "text",
-        content: "Will be deleted",
+        text: "Will be deleted",
       });
 
       await db.delete(ledgers).where(eq(ledgers.id, ledger.id));

@@ -214,8 +214,9 @@ describe("POST /api/ledgers/[id]/messages", () => {
     // aiResponse might not be populated immediately if we check too fast, 
     // but the content should be there.
     expect(savedMessage?.status).toBeDefined();
-    expect(savedMessage?.contentType).toBe("text");
-    expect(savedMessage!.content).toBe("午餐25元");
+    expect(savedMessage?.status).toBeDefined();
+    expect(savedMessage?.text).toBe("午餐25元");
+    expect(savedMessage?.imageUrls).toEqual([]);
 
     // Wait for processing to prevent race condition with next test
     let retries = 0;
@@ -293,7 +294,8 @@ describe("POST /api/ledgers/[id]/messages", () => {
     const savedMessage = await db.query.inputMessages.findFirst({
       where: eq(inputMessages.id, data.messageId),
     });
-    expect(savedMessage?.contentType).toBe("image");
+    expect(savedMessage?.imageUrls).toHaveLength(1);
+    expect(savedMessage?.text).toBeNull();
 
     // Wait for processing to prevent race condition with next test
     let retries = 0;

@@ -104,7 +104,7 @@ describe("Full Transaction Flow", () => {
 
     expect(savedMessage).toBeDefined();
     expect(savedMessage?.aiResponse).toBeDefined();
-    expect(savedMessage?.content).toContain("超市购物");
+    expect(savedMessage?.text).toContain("超市购物");
   });
 
   it("should filter transactions by status", async () => {

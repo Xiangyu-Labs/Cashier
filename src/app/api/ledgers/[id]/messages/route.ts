@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { inputMessages, ledgers } from "@/lib/db/schema";
 import { eq, inArray, and, asc } from "drizzle-orm";
 import { z } from "zod";
-import { MessageInput, determineSourceType } from "@/lib/message-processor/types";
+
 import { processMessageQueue } from "@/lib/queue";
 
 const messageSchema = z.object({
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const validated = messageSchema.parse(body);
 
-    if (!validated.text && !validated.images?.length) {
+    if (!validated.text && (!validated.images || validated.images.length === 0)) {
       return NextResponse.json(
         { error: "At least one input (text or images) is required" },
         { status: 400 }
@@ -66,16 +66,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Ledger not found" }, { status: 404 });
     }
 
-    const sourceType = determineSourceType(validated as MessageInput);
-    const content = getMessageContent(sourceType, validated);
+    // Normalize images
+    const imageUrls: string[] = [];
+    if (validated.images) {
+      validated.images.forEach((img) => {
+        let data = img.data;
+        if (!data.startsWith("data:") && !data.startsWith("http")) {
+          data = `data:image/jpeg;base64,${data}`;
+        }
+        imageUrls.push(data);
+      });
+    }
 
     // Save input message with 'queued' status
     const [savedMessage] = await db
       .insert(inputMessages)
       .values({
         ledgerId,
-        contentType: sourceType === "mixed" ? "text" : sourceType,
-        content,
+        text: validated.text || null,
+        imageUrls: imageUrls,
         status: "queued",
       })
       .returning();
@@ -105,29 +114,3 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-function getMessageContent(sourceType: string, validated: z.infer<typeof messageSchema>): string {
-  const normalizeImage = (data: string) => {
-    if (data.startsWith("data:") || data.startsWith("http")) return data;
-    return `data:image/jpeg;base64,${data}`;
-  };
-
-  if (sourceType === "image" && validated.images && validated.images.length > 0) {
-    if (validated.images.length === 1) {
-      return normalizeImage(validated.images[0].data);
-    }
-    return JSON.stringify(validated.images.map((img) => normalizeImage(img.data)));
-  }
-
-  if (sourceType === "text" && validated.text) {
-    return validated.text;
-  }
-
-  // Deep normalization for mixed content json structure
-  const copy = JSON.parse(JSON.stringify(validated));
-  if (copy.images) {
-    copy.images.forEach((img: { data: string; mimeType: string }) => {
-      if (img.data) img.data = normalizeImage(img.data);
-    });
-  }
-  return JSON.stringify(copy);
-}

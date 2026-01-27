@@ -8,8 +8,8 @@ describe("TransactionQueueStatus", () => {
         {
             id: "1",
             ledgerId: "test-ledger",
-            contentType: "text",
-            content: "Lunch",
+            text: "Lunch",
+            imageUrls: [],
             status: "queued",
             aiResponse: null,
             createdAt: new Date().toISOString(),
@@ -17,8 +17,8 @@ describe("TransactionQueueStatus", () => {
         {
             id: "2",
             ledgerId: "test-ledger",
-            contentType: "image",
-            content: "base64...",
+            text: null,
+            imageUrls: ["base64..."],
             status: "processing",
             aiResponse: null,
             createdAt: new Date().toISOString(),

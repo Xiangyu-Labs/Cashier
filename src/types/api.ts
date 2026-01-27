@@ -30,8 +30,8 @@ export interface Category {
 export interface InputMessage {
   id: string;
   ledgerId: string;
-  contentType: "text" | "image" | "audio";
-  content: string;
+  text: string | null;
+  imageUrls: string[];
   aiResponse: string | null;
   createdAt: string;
   status?: "queued" | "processing" | "completed" | "failed";
@@ -48,7 +48,7 @@ export interface Transaction {
   itemName: string;
   description: string | null;
   status: "pending" | "confirmed";
-  sourceType: "text" | "image" | "audio" | "mixed";
+  sourceType: "text" | "image";
   transactionDate: string | null;
   createdAt: string;
   category?: Category | null;

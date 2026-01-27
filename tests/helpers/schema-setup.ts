@@ -8,6 +8,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
+
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
 
   // Create enums
@@ -77,8 +79,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     CREATE TABLE IF NOT EXISTS input_messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
-      content_type content_type NOT NULL,
-      content TEXT NOT NULL,
+      text TEXT,
+      image_urls JSONB DEFAULT '[]'::jsonb,
       status message_status NOT NULL DEFAULT 'queued',
       error TEXT,
       ai_response TEXT,

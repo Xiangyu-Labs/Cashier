@@ -18,18 +18,8 @@ export function TransactionQueueStatus({ queuedMessages }: TransactionQueueStatu
                     <TransactionStatus status={msg.status || "queued"} className="shrink-0" />
                     <span className="truncate flex-1">
                         {(() => {
-                            if (msg.contentType === "image") return "[图片]";
-                            if (msg.contentType === "text") {
-                                if (msg.content.startsWith("{")) {
-                                    try {
-                                        const parsed = JSON.parse(msg.content);
-                                        return parsed.text || "[图片]";
-                                    } catch {
-                                        return msg.content;
-                                    }
-                                }
-                                return msg.content;
-                            }
+                            if (msg.text) return msg.text;
+                            if (msg.imageUrls && msg.imageUrls.length > 0) return "[图片]";
                             return "[消息]";
                         })()}
                     </span>
