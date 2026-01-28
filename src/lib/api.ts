@@ -359,3 +359,35 @@ export function deleteApiKey(ledgerId: string, keyId: string): Promise<void> {
     "Failed to delete API key"
   );
 }
+
+// GPT Tasks
+export interface GptTask {
+  id: string;
+  type: string;
+  title: string;
+  ledgerId: string | null;
+  entityId: string | null;
+  entityType: string | null;
+  status: "queued" | "running" | "completed" | "failed";
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export function fetchGptTasks(
+  ledgerId: string,
+  params: { activeOnly?: boolean; limit?: number } = {}
+): Promise<GptTask[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("ledgerId", ledgerId);
+  if (params.activeOnly) searchParams.set("activeOnly", "true");
+  if (params.limit) searchParams.set("limit", params.limit.toString());
+
+  return request(
+    `${API_BASE}/gpt/tasks?${searchParams}`,
+    undefined,
+    "Failed to fetch GPT tasks"
+  );
+}
+

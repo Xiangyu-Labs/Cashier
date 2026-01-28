@@ -29,6 +29,7 @@ export const messageStatusEnum = pgEnum("message_status", [
 ]);
 
 
+
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -160,4 +161,50 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     fields: [apiKeys.ledgerId],
     references: [ledgers.id],
   }),
+}));
+
+// GPT Tasks (Unified task queue for all GPT operations)
+// Uses text fields instead of enums for flexibility - new task types don't require schema changes
+export const gptTasks = pgTable("gpt_tasks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  // Task metadata (flexible text fields)
+  type: text("type").notNull(),              // e.g. "parse_receipt", "summarize", "chat_query"
+  title: text("title").notNull(),            // User-visible task description
+  ledgerId: uuid("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
+
+  // Associated entity (generic reference - can be receiptId or other entity)
+  entityId: uuid("entity_id"),               // Generic reference, type determines meaning
+  entityType: text("entity_type"),           // e.g. "receipt", "transaction", null
+
+  // Status (GPT infra is best-effort: failed tasks stay failed, business layer handles recovery)
+  status: text("status").notNull().default("queued"), // queued, running, completed, failed
+  error: text("error"),
+
+  // Input/Output/Progress (all JSONB for flexibility)
+  input: jsonb("input").$type<unknown>(),
+  output: jsonb("output").$type<unknown>(),
+  progress: jsonb("progress").$type<TaskProgress>(), // Generic progress tracking
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(), // Additional task-specific data
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+// Type for progress tracking (flexible structure)
+export interface TaskProgress {
+  currentStep?: string;      // Current step name
+  completedSteps?: string[]; // List of completed steps
+  totalSteps?: number;       // Optional: total steps count
+  data?: unknown;            // Step-specific intermediate data
+}
+
+export const gptTasksRelations = relations(gptTasks, ({ one }) => ({
+  ledger: one(ledgers, {
+    fields: [gptTasks.ledgerId],
+    references: [ledgers.id],
+  }),
+  // Note: entityId is generic - relations are handled by entityType at application level
 }));
