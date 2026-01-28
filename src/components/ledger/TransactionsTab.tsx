@@ -115,6 +115,7 @@ export function TransactionsTab({
             updateTransaction(ledgerId, transactionId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
@@ -123,6 +124,7 @@ export function TransactionsTab({
         mutationFn: (transactionId: string) => deleteTransaction(ledgerId, transactionId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
@@ -163,6 +165,7 @@ export function TransactionsTab({
         mutationFn: () => confirmTransactions(ledgerId, { confirmAll: true }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
             setConfirmingAll(false);
             toast({ variant: "success", title: t("confirmSuccess"), description: "" });
@@ -177,6 +180,7 @@ export function TransactionsTab({
         mutationFn: (transactionIds: string[]) => confirmTransactions(ledgerId, { transactionIds }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
             toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },

@@ -141,6 +141,7 @@ export default function LedgerSettingsPage() {
                             if (newLang !== locale) {
                                 // Redirect to the new locale
                                 router.push(pathname, { locale: newLang });
+                                router.refresh();
                             }
                         }}
                         className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
