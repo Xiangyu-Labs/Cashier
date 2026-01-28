@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryEditForm, LedgerEntryEditFormData } from "./LedgerEntryEditForm";
-import { LedgerEntryViewDetails } from "./LedgerEntryViewDetails";
+import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
 
 interface LedgerEntryDetailModalProps {
@@ -20,6 +19,7 @@ interface LedgerEntryDetailModalProps {
     amount?: number;
     currency?: string | null;
     entryDate?: string | null;
+    description?: string | null;
   }) => void;
   onDelete: () => void;
 }
@@ -43,24 +43,26 @@ export function LedgerEntryDetailModal({
     currency: "",
     categoryId: "",
     entryDate: "",
+    description: "",
   });
 
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Reset edit state when ledgerEntry changes
-  const handleOpen = useCallback(() => {
-    if (ledgerEntry) {
+  // Initialize edit data when ledgerEntry changes or modal opens
+  useEffect(() => {
+    if (ledgerEntry && open) {
       setEditData({
         itemName: ledgerEntry.itemName,
         amount: parseFloat(ledgerEntry.amount),
         currency: ledgerEntry.currency || "",
         categoryId: ledgerEntry.categoryId || "",
         entryDate: ledgerEntry.entryDate || "",
+        description: ledgerEntry.description || "",
       });
-      setIsEditing(false);
+      setIsEditing(false); // Default to view mode
     }
-  }, [ledgerEntry]);
+  }, [ledgerEntry, open]);
 
   const handleSave = useCallback(() => {
     onUpdate({
@@ -69,6 +71,7 @@ export function LedgerEntryDetailModal({
       currency: editData.currency || null,
       categoryId: editData.categoryId || null,
       entryDate: editData.entryDate || null,
+      description: editData.description || null,
     });
     setIsEditing(false);
   }, [editData, onUpdate]);
@@ -80,7 +83,7 @@ export function LedgerEntryDetailModal({
     toast({
       variant: "success",
       title: tTab("deleteSuccess"),
-      description: tTab("deleteSuccess"),
+      description: "",
     });
   }, [onDelete, onClose, toast, tTab]);
 
@@ -94,27 +97,35 @@ export function LedgerEntryDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-        <DialogContent onAnimationEnd={handleOpen} className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("title")}</DialogTitle>
+            <DialogTitle>{isEditing ? t("edit") : t("title")}</DialogTitle>
           </DialogHeader>
 
-          <div className="py-4">
-            {isEditing ? (
-              <LedgerEntryEditForm
-                data={editData}
-                categories={categories}
-                onChange={setEditData}
-                onSave={handleSave}
-                onCancel={() => setIsEditing(false)}
-              />
-            ) : (
-              <LedgerEntryViewDetails
-                ledgerEntry={ledgerEntry}
-                onEdit={() => setIsEditing(true)}
-                onDelete={() => setShowDeleteConfirm(true)}
-              />
-            )}
+          <div className="py-2">
+            <LedgerEntryViewDetails
+              ledgerEntry={ledgerEntry}
+              isEditing={isEditing}
+              editData={editData}
+              categories={categories}
+              onEditStart={() => setIsEditing(true)}
+              onEditChange={setEditData}
+              onEditSave={handleSave}
+              onEditCancel={() => {
+                setIsEditing(false);
+                if (ledgerEntry) {
+                  setEditData({
+                    itemName: ledgerEntry.itemName,
+                    amount: parseFloat(ledgerEntry.amount),
+                    currency: ledgerEntry.currency || "",
+                    categoryId: ledgerEntry.categoryId || "",
+                    entryDate: ledgerEntry.entryDate || "",
+                    description: ledgerEntry.description || "",
+                  });
+                }
+              }}
+              onDelete={() => setShowDeleteConfirm(true)}
+            />
           </div>
         </DialogContent>
       </Dialog>

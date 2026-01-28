@@ -124,7 +124,9 @@
         "amount": "金额",
         "currency": "货币",
         "selectCategory": "选择分类",
-        "unknown": "未知"
+        "unknown": "未知",
+        "expand": "展开",
+        "collapse": "收起"
     },
     "Settings": {
         "title": "设置",

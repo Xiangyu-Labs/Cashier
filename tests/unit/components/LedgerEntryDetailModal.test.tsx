@@ -38,10 +38,16 @@ vi.mock("@/components/ledger-entry/LedgerEntryEditForm", () => ({
 }));
 
 vi.mock("@/components/ledger-entry/LedgerEntryViewDetails", () => ({
-    LedgerEntryViewDetails: ({ onEdit, onDelete }: { onEdit: () => void, onDelete: () => void }) => (
+    LedgerEntryViewDetails: ({ isEditing, onEditStart, onEditSave, onDelete }: { isEditing: boolean, onEditStart: () => void, onEditSave: () => void, onDelete: () => void }) => (
         <div>
-            <button onClick={onEdit}>Edit</button>
-            <button onClick={onDelete}>Delete</button>
+            {isEditing ? (
+                <button onClick={onEditSave}>Save</button>
+            ) : (
+                <>
+                    <button onClick={onEditStart}>Edit</button>
+                    <button onClick={onDelete}>Delete</button>
+                </>
+            )}
         </div>
     ),
 }));
