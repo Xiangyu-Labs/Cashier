@@ -99,31 +99,31 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
             <div className="mb-6">
                 <h3 className="text-base font-medium">{t("processedTokenStats")}</h3>
                 <p className="text-sm text-muted">
-                    基于 gpt-tokenizer 精确计算的 AI 处理系统消耗概览
+                    {t("tokenStatsDesc")}
                 </p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted">总消耗</p>
+                    <p className="text-sm font-medium text-muted">{t("totalConsumption")}</p>
                     <p className="text-2xl font-bold">{formatNum(stats.totalTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted">输入 Tokens</p>
+                    <p className="text-sm font-medium text-muted">{t("inputTokens")}</p>
                     <p className="text-xl">{formatNum(stats.totalInputTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted">输出 Tokens</p>
+                    <p className="text-sm font-medium text-muted">{t("outputTokens")}</p>
                     <p className="text-xl">{formatNum(stats.totalOutputTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted">平均/任务</p>
+                    <p className="text-sm font-medium text-muted">{t("averagePerTask")}</p>
                     <p className="text-xl">{formatNum(stats.averageTokensPerTask)}</p>
                 </div>
             </div>
 
             <div className="mt-4 text-[10px] text-muted opacity-70">
-                * 统计范围仅包含通过处理系统（Processing System）完成的任务。采用成熟的 `gpt-tokenizer` 精确计算。
+                {t("tokenStatsFootnote")}
             </div>
 
             <div className="mt-8 pt-6 border-t border-border">

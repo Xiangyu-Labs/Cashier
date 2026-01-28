@@ -15,6 +15,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 
+import { useTranslations } from "next-intl";
+
 interface ServiceCredentialSectionProps {
     credentials: ServiceCredential[];
     onCreateCredential: (name: string) => Promise<ServiceCredential>;
@@ -22,6 +24,8 @@ interface ServiceCredentialSectionProps {
 }
 
 export function ServiceCredentialSection({ credentials, onCreateCredential, onDeleteCredential }: ServiceCredentialSectionProps) {
+    const t = useTranslations("ServiceCredentials");
+    const tCommon = useTranslations("Common");
     const [newCredName, setNewCredName] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
@@ -36,53 +40,53 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
             setIsCreateDialogOpen(false);
         } catch (error) {
             console.error("Failed to create credential", error);
-            toast.error("创建凭证失败");
+            toast.error(t("createFailed"));
         }
     };
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        toast.success("凭证已复制到剪贴板");
+        toast.success(t("copied"));
     };
 
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h2 className="text-lg font-medium">Service Credentials</h2>
-                    <p className="text-sm text-[var(--muted)]">
-                        管理用于外部集成的服务凭证 (API Keys)
+                    <h2 className="text-lg font-medium">{t("title")}</h2>
+                    <p className="text-sm text-muted">
+                        {t("description")}
                     </p>
                 </div>
                 <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
                     <Plus size={16} />
-                    新建凭证
+                    {t("newCredential")}
                 </Button>
             </div>
 
             <div className="space-y-3">
                 {credentials.length === 0 ? (
-                    <div className="text-center py-8 text-[var(--muted)] border border-dashed border-[var(--border)] rounded-[var(--radius)]">
-                        暂无服务凭证
+                    <div className="text-center py-8 text-muted border border-dashed border-border rounded-[var(--radius)]">
+                        {t("noCredentials")}
                     </div>
                 ) : (
                     credentials.map((cred) => (
                         <div
                             key={cred.id}
-                            className="flex items-center justify-between p-4 bg-[var(--surface2)] rounded-[var(--radius)] border border-[var(--border)]"
+                            className="flex items-center justify-between p-4 bg-surface2 rounded-[var(--radius)] border border-border"
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="p-2 bg-[var(--surface)] rounded-full">
-                                    <Key size={16} className="text-[var(--primary)]" />
+                                <div className="p-2 bg-surface rounded-full">
+                                    <Key size={16} className="text-primary" />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="font-medium text-sm truncate">{cred.name}</div>
-                                    <div className="text-xs text-[var(--muted)] font-mono truncate">
+                                    <div className="text-xs text-muted font-mono truncate">
                                         {/* Display masked key directly from prop, no copy button for list items */}
                                         {cred.key || "******"}
                                     </div>
-                                    <div className="text-[10px] text-[var(--muted)] mt-1">
-                                        创建于 {new Date(cred.createdAt).toLocaleDateString()}
+                                    <div className="text-[10px] text-muted mt-1">
+                                        {t("createdAt", { date: new Date(cred.createdAt).toLocaleDateString() })}
                                     </div>
                                 </div>
                             </div>
@@ -90,7 +94,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setCredentialToDelete(cred.id)}
-                                className="text-[var(--muted)] hover:text-[var(--danger)] shrink-0"
+                                className="text-muted hover:text-danger shrink-0"
                             >
                                 <Trash2 size={16} />
                             </Button>
@@ -103,14 +107,14 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>新建服务凭证</DialogTitle>
+                        <DialogTitle>{t("createTitle")}</DialogTitle>
                         <DialogDescription>
-                            创建一个新的服务凭证用于外部系统访问此账本。
+                            {t("createDesc")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <Input
-                            placeholder="凭证名称 (例如: 自动记账脚本)"
+                            placeholder={t("namePlaceholder")}
                             value={newCredName}
                             onChange={(e) => setNewCredName(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -118,10 +122,10 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
-                            取消
+                            {tCommon("cancel")}
                         </Button>
                         <Button onClick={handleCreate} disabled={!newCredName.trim()}>
-                            创建
+                            {tCommon("confirm")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -131,13 +135,13 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
             <Dialog open={!!createdCredential} onOpenChange={(open) => !open && setCreatedCredential(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>服务凭证创建成功</DialogTitle>
+                        <DialogTitle>{t("createSuccessTitle")}</DialogTitle>
                         <DialogDescription>
-                            这是您唯一一次查看完整凭证密钥的机会。请立即复制并妥善保存。
+                            {t("createSuccessDesc")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
-                        <div className="p-4 bg-[var(--surface)] rounded border font-mono text-sm break-all relative group">
+                        <div className="p-4 bg-surface rounded border font-mono text-sm break-all relative group">
                             {createdCredential?.key}
                             <Button
                                 size="sm"
@@ -145,7 +149,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                                 className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => copyToClipboard(createdCredential?.key || "")}
                             >
-                                <Copy size={14} className="mr-1" /> 复制
+                                <Copy size={14} className="mr-1" /> {t("copy")}
                             </Button>
                         </div>
                         <Button
@@ -153,12 +157,12 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                             onClick={() => copyToClipboard(createdCredential?.key || "")}
                         >
                             <Copy size={16} />
-                            复制凭证
+                            {t("copyCredential")}
                         </Button>
                     </div>
                     <DialogFooter>
                         <Button onClick={() => setCreatedCredential(null)}>
-                            我已保存
+                            {t("saved")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -168,14 +172,14 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
             <Dialog open={!!credentialToDelete} onOpenChange={(open) => !open && setCredentialToDelete(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>删除服务凭证</DialogTitle>
+                        <DialogTitle>{t("deleteTitle")}</DialogTitle>
                         <DialogDescription>
-                            确定要删除这个凭证吗？删除后使用此凭证的外部应用将无法访问。此操作无法撤销。
+                            {t("deleteDesc")}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setCredentialToDelete(null)}>
-                            取消
+                            {tCommon("cancel")}
                         </Button>
                         <Button
                             variant="destructive"
@@ -186,7 +190,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                                 }
                             }}
                         >
-                            删除
+                            {tCommon("delete")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

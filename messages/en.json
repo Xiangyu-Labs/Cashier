@@ -55,7 +55,13 @@
         "statusFailed": "Failed",
         "statusCancelled": "Cancelled",
         "processedTokenStats": "Processed Token Stats",
-        "activeTasks": "Active Tasks"
+        "tokenStatsDesc": "AI processing system consumption overview based on gpt-tokenizer",
+        "tokenStatsFootnote": "* Stats only include tasks completed via the Processing System. Uses gpt-tokenizer for precision.",
+        "activeTasks": "Active Tasks",
+        "totalConsumption": "Total Consumption",
+        "inputTokens": "Input Tokens",
+        "outputTokens": "Output Tokens",
+        "averagePerTask": "Avg/Task"
     },
     "StatsTab": {
         "expenseTrend": "Expense Trend",
@@ -165,5 +171,24 @@
         "cancel": "Cancel",
         "confirmEnable": "Confirm Enable",
         "taskCenter": "Task Center"
+    },
+    "ServiceCredentials": {
+        "title": "Service Credentials",
+        "description": "Manage service credentials (API Keys) for external integrations",
+        "newCredential": "New Credential",
+        "noCredentials": "No service credentials yet",
+        "createdAt": "Created at {date}",
+        "createTitle": "Create New Service Credential",
+        "createDesc": "Create a new service credential for external systems to access this ledger.",
+        "namePlaceholder": "Credential name (e.g., automatic notes script)",
+        "createSuccessTitle": "Service Credential Created Successfully",
+        "createSuccessDesc": "This is your only chance to view the full credential key. Please copy and save it immediately.",
+        "copy": "Copy",
+        "copyCredential": "Copy Credential",
+        "saved": "I've saved it",
+        "deleteTitle": "Delete Service Credential",
+        "deleteDesc": "Are you sure you want to delete this credential? External apps using this credential will no longer be able to access it. This action cannot be undone.",
+        "createFailed": "Failed to create credential",
+        "copied": "Credential copied to clipboard"
     }
 }
