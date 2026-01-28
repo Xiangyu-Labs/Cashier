@@ -117,8 +117,8 @@
         "send": "Send"
     },
     "LedgerEntryDetail": {
-        "category": "Category",
-        "entryDate": "Date",
+        "category": "Transaction Category",
+        "entryDate": "Transaction Time",
         "status": "Status",
         "confirmed": "Confirmed",
         "description": "Description",

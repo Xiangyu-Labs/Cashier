@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
   categories: EntryCategory[];
+  preferredCurrencies?: string[];
   open: boolean;
   onClose: () => void;
   onUpdate: (data: {
@@ -27,6 +28,7 @@ interface LedgerEntryDetailModalProps {
 export function LedgerEntryDetailModal({
   ledgerEntry,
   categories,
+  preferredCurrencies,
   open,
   onClose,
   onUpdate,
@@ -105,6 +107,7 @@ export function LedgerEntryDetailModal({
             isEditing={isEditing}
             editData={editData}
             categories={categories}
+            preferredCurrencies={preferredCurrencies}
             onEditStart={() => setIsEditing(true)}
             onEditChange={setEditData}
             onEditSave={handleSave}
@@ -116,7 +119,7 @@ export function LedgerEntryDetailModal({
                   amount: parseFloat(ledgerEntry.amount),
                   currency: ledgerEntry.currency || "",
                   categoryId: ledgerEntry.categoryId || "",
-                  entryDate: ledgerEntry.entryDate || "",
+                  entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
                   description: ledgerEntry.description || "",
                 });
               }

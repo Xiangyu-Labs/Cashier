@@ -8,7 +8,7 @@ import {
     deleteSourceDocument,
     fetchSourceDocuments,
 } from "@/lib/api";
-import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
+import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ interface LedgerEntriesTabProps {
     queuedSourceDocuments?: SourceDocument[];
     categories: EntryCategory[];
     defaultCollapsed?: boolean;
+    ledger?: Ledger;
 }
 
 // Helper types
@@ -57,6 +58,7 @@ export function LedgerEntriesTab({
     queuedSourceDocuments = [],
     categories,
     defaultCollapsed = false,
+    ledger,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
@@ -518,6 +520,7 @@ export function LedgerEntriesTab({
             <LedgerEntryDetailModal
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
+                preferredCurrencies={ledger?.currencies}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);

@@ -8,6 +8,10 @@ import { type ReactNode, useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { useMemo } from "react";
 
 export interface LedgerEntryEditFormData {
     itemName: string;
@@ -23,6 +27,7 @@ interface LedgerEntryViewDetailsProps {
     isEditing: boolean;
     editData: LedgerEntryEditFormData;
     categories: EntryCategory[];
+    preferredCurrencies?: string[];
     onEditStart: () => void;
     onEditChange: (data: LedgerEntryEditFormData) => void;
     onEditSave: () => void;
@@ -35,6 +40,7 @@ export function LedgerEntryViewDetails({
     isEditing,
     editData,
     categories,
+    preferredCurrencies = [],
     onEditStart,
     onEditChange,
     onEditSave,
@@ -90,6 +96,14 @@ export function LedgerEntryViewDetails({
         onEditChange({ ...editData, [field]: value });
     };
 
+    const sortedCurrencies = useMemo(() => {
+        const preferred = preferredCurrencies.filter(c => c !== "unknown");
+        const remaining = SUPPORTED_CURRENCIES.filter(c => !preferred.includes(c));
+        return [...preferred, ...remaining.sort()];
+    }, [preferredCurrencies]);
+
+    const showUnknown = ledgerEntry.status === "pending";
+
     return (
         <div className="space-y-6">
             {/* Header Info */}
@@ -115,12 +129,18 @@ export function LedgerEntryViewDetails({
                             />
                             <div className="flex gap-2 items-end">
                                 <div className="w-24">
-                                    <Input
+                                    <select
                                         value={editData.currency}
                                         onChange={(e) => handleFieldChange("currency", e.target.value)}
-                                        placeholder="CNY"
-                                        className="text-sm"
-                                    />
+                                        className="w-full h-10 rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        {showUnknown && (
+                                            <option value="unknown">???</option>
+                                        )}
+                                        {sortedCurrencies.map(curr => (
+                                            <option key={curr} value={curr}>{curr}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="flex-1">
                                     <Input
@@ -154,6 +174,7 @@ export function LedgerEntryViewDetails({
                     {/* Date on the left */}
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted" />
+                        <span className="text-sm text-muted mr-1">{t("entryDate")}:</span>
                         {isEditing ? (
                             <Input
                                 type="date"
@@ -170,19 +191,54 @@ export function LedgerEntryViewDetails({
 
                     {/* Category on the right */}
                     <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted mr-1">{t("category")}:</span>
                         {isEditing ? (
-                            <select
-                                value={editData.categoryId}
-                                onChange={(e) => handleFieldChange("categoryId", e.target.value)}
-                                className="h-8 rounded-md border border-border bg-surface px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 max-w-[120px]"
-                            >
-                                <option value="">{t("selectCategory")}</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>
-                                        {cat.icon} {cat.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="h-8 w-[140px] justify-between px-2 py-1 text-xs font-normal border-border bg-surface"
+                                    >
+                                        <div className="flex items-center gap-1.5 overflow-hidden">
+                                            {editData.categoryId ? (
+                                                <>
+                                                    <CategoryIcon
+                                                        iconName={categories.find(c => c.id === editData.categoryId)?.icon}
+                                                        className="h-3 w-3 shrink-0"
+                                                    />
+                                                    <span className="truncate">
+                                                        {categories.find(c => c.id === editData.categoryId)?.name}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span className="text-muted-foreground">{t("selectCategory")}</span>
+                                            )}
+                                        </div>
+                                        <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[180px] p-1" align="end">
+                                    <div className="max-h-[200px] overflow-y-auto">
+                                        {categories.map((cat) => (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => handleFieldChange("categoryId", cat.id)}
+                                                className={cn(
+                                                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                                                    editData.categoryId === cat.id ? "bg-accent text-accent-foreground" : "text-text"
+                                                )}
+                                            >
+                                                <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
+                                                <span className="flex-1 truncate">{cat.name}</span>
+                                                {editData.categoryId === cat.id && (
+                                                    <Check className="h-3 w-3" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         ) : (
                             ledgerEntry.category ? (
                                 <Badge variant="default" className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-none transition-colors">

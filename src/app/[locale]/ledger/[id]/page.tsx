@@ -107,6 +107,7 @@ export default function LedgerPage() {
               queuedSourceDocuments={queuedSourceDocuments}
               categories={categories}
               defaultCollapsed={ledger.collapsePendingDefault}
+              ledger={ledger}
             />
           </TabsContent>
 
@@ -114,6 +115,7 @@ export default function LedgerPage() {
             <DetailsTab
               ledgerId={ledgerId}
               categories={categories}
+              ledger={ledger}
             />
           </TabsContent>
 

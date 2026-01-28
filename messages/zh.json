@@ -117,8 +117,8 @@
         "send": "发送"
     },
     "LedgerEntryDetail": {
-        "category": "分类",
-        "entryDate": "日期",
+        "category": "交易类别",
+        "entryDate": "交易时间",
         "status": "状态",
         "confirmed": "已确认",
         "description": "备注",

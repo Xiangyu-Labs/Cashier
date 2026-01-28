@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { fetchLedgerEntries, updateLedgerEntry, deleteLedgerEntry, fetchLedgerEntrySummary } from "@/lib/api";
-import { LedgerEntry, EntryCategory } from "@/types/api";
+import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
@@ -13,9 +13,10 @@ import { useTranslations, useLocale } from "next-intl";
 interface DetailsTabProps {
     ledgerId: string;
     categories: EntryCategory[];
+    ledger?: Ledger;
 }
 
-export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
+export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tLedger = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
@@ -257,6 +258,7 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             <LedgerEntryDetailModal
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
+                preferredCurrencies={ledger?.currencies}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);
