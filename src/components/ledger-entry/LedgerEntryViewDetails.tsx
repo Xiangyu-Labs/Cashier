@@ -4,6 +4,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { LedgerEntry } from "@/types/api";
 import { Calendar, Edit2, Tag, Trash2 } from "lucide-react";
 import { SourceDocumentOriginalContent } from "./SourceDocumentOriginalContent";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -37,7 +38,7 @@ export function LedgerEntryViewDetails({
             {/* Header Info */}
             <div className="flex items-start gap-4">
                 <div className="h-16 w-16 rounded-2xl bg-surface2 flex items-center justify-center text-3xl shadow-sm border border-border">
-                    {ledgerEntry.category?.icon || "📝"}
+                    <CategoryIcon iconName={ledgerEntry.category?.icon} className="h-8 w-8" />
                 </div>
                 <div className="flex-1">
                     <h3 className="text-xl font-semibold text-text">
@@ -74,11 +75,6 @@ export function LedgerEntryViewDetails({
                     <span className="text-sm text-text">
                         {formatDate(ledgerEntry.entryDate)}
                     </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted">{t("status")}</span>
-                    <Badge variant="success">{t("confirmed")}</Badge>
                 </div>
 
                 {ledgerEntry.description && (
