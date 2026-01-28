@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { transactions, receipts, categories } from "@/lib/db/schema";
 import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const querySchema = z.object({
   categoryId: z.string().uuid().optional(),
@@ -186,7 +187,7 @@ export async function GET(
         { status: 400 }
       );
     }
-    console.error("Failed to fetch transactions:", error);
+    logger.error({ error }, "Failed to fetch transactions");
     return NextResponse.json(
       { error: "Failed to fetch transactions" },
       { status: 500 }

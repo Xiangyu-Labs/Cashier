@@ -5,12 +5,13 @@ import { db } from "@/lib/db";
 import { gptTasks } from "@/lib/db/schema";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { CreateTaskParams, GptTask, TaskStatus, TaskProgress } from "./types";
+import { logger } from "@/lib/logger";
 
 // Lazy import to avoid circular dependency with task-worker
 async function triggerQueueProcessing(): Promise<void> {
     const { processTaskQueue } = await import("./task-worker");
     processTaskQueue().catch((err: Error) => {
-        console.error("Failed to trigger task queue processing:", err);
+        logger.error({ err }, "Failed to trigger task queue processing");
     });
 }
 

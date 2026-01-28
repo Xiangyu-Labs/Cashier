@@ -3,6 +3,7 @@ import { receipts, ledgers, transactions } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { MessageInput } from "@/lib/message-processor/types";
+import { logger } from "@/lib/logger";
 
 let isProcessing = false;
 
@@ -27,14 +28,14 @@ export async function recoverProcessingReceipts() {
             .returning({ id: receipts.id });
 
         if (result.length > 0) {
-            console.log(`Recovered ${result.length} processing receipts to queued state.`);
+            logger.info({ count: result.length }, "Recovered processing receipts to queued state");
             // Restart processing
             processReceiptQueue().catch(err => {
-                console.error("Failed to restart queue processing after recovery:", err);
+                logger.error({ err }, "Failed to restart queue processing after recovery");
             });
         }
     } catch (error) {
-        console.error("Failed to recover processing receipts:", error);
+        logger.error({ error }, "Failed to recover processing receipts");
     }
 }
 
@@ -54,7 +55,7 @@ async function processNextMessage() {
         try {
             await handleReceiptProcessing(nextReceipt);
         } catch (error) {
-            console.error(`Failed to process receipt ${nextReceipt.id}:`, error);
+            logger.error({ error, receiptId: nextReceipt.id }, "Failed to process receipt");
             await db
                 .update(receipts)
                 .set({

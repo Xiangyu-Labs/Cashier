@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { logger } from "@/lib/logger";
 
 export class OpenAIClient {
     private client: OpenAI;
@@ -62,7 +63,7 @@ export class OpenAIClient {
                     // Otherwise, retry if it is explicitly retryable or if we want to be robust
                     if (isRetryable || true) {
                         const delay = baseDelay * Math.pow(2, attempt);
-                        console.warn(`OpenAI request failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
+                        logger.warn({ err: error, attempt: attempt + 1, maxRetries: maxRetries + 1, delay }, "OpenAI request failed, retrying");
                         await new Promise((resolve) => setTimeout(resolve, delay));
                         continue;
                     }

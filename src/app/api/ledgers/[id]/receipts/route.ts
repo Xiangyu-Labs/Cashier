@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { receipts, ledgers, categories, transactions } from "@/lib/db/schema";
 import { eq, inArray, and, asc, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 import { processReceiptQueue } from "@/lib/queue";
 
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    console.error("Failed to queue receipt:", error);
+    logger.error({ error }, "Failed to queue receipt");
     return NextResponse.json(
       { error: "Failed to queue receipt" },
       { status: 500 }
@@ -229,7 +230,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ status: "success" });
 
   } catch (error) {
-    console.error("Failed to confirm receipt:", error);
+    logger.error({ error }, "Failed to confirm receipt");
     return NextResponse.json(
       { error: "Failed to confirm receipt" },
       { status: 500 }

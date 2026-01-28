@@ -1,5 +1,7 @@
+import { logger } from "@/lib/logger";
+
 export async function register() {
-    console.log("Starting Cashier service...");
+    logger.info("Starting Cashier service...");
 
     // Only run on server-side runtime (not edge or browser)
     if (process.env.NEXT_RUNTIME === 'nodejs') {
@@ -15,7 +17,7 @@ export async function register() {
             const { handleTasksOnStartup } = await import("@/lib/gpt/recovery");
             await handleTasksOnStartup();
         } catch (error) {
-            console.error("Failed during startup recovery:", error);
+            logger.error({ error }, "Failed during startup recovery");
         }
     }
 }

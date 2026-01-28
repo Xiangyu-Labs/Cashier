@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ledgers, categories } from "@/lib/db/schema";
 import { DEFAULT_CATEGORIES } from "@/config/default-categories";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const createLedgerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -16,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
     });
     return NextResponse.json(allLedgers);
   } catch (error) {
-    console.error("Failed to fetch ledgers:", error);
+    logger.error({ error }, "Failed to fetch ledgers");
     return NextResponse.json(
       { error: "Failed to fetch ledgers" },
       { status: 500 }
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-    console.error("Failed to create ledger:", error);
+    logger.error({ error }, "Failed to create ledger");
     return NextResponse.json(
       { error: "Failed to create ledger" },
       { status: 500 }

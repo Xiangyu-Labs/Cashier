@@ -3,6 +3,7 @@ import { validateApiKey } from "@/lib/api-keys";
 import { db } from "@/lib/db";
 import { receipts, apiKeys } from "@/lib/db/schema";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 import { processReceiptQueue } from "@/lib/queue";
 import { eq } from "drizzle-orm";
@@ -76,13 +77,13 @@ export async function POST(request: NextRequest) {
         // We await this to ensure it completes, catching error silently to not block response
         try {
             await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, apiKey.id));
-        } catch (e) {
-            console.error("Failed to update api key usage", e);
+        } catch (error) {
+            logger.error({ error, apiKeyId: apiKey.id }, "Failed to update api key usage");
         }
 
         // Trigger background processing (Fire and Forget)
         processReceiptQueue().catch((err) => {
-            console.error("Background processing failed to start:", err);
+            logger.error({ err }, "Background processing failed to start");
         });
 
         return NextResponse.json({
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
             message: "Receipt queued for processing",
         }, { status: 201 });
     } catch (error) {
-        console.error("Failed to process transaction via API:", error);
+        logger.error({ error }, "Failed to process transaction via API");
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

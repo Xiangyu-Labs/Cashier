@@ -10,6 +10,7 @@ import {
     updateTaskProgress,
     getTask,
 } from "./task-service";
+import { logger } from "@/lib/logger";
 
 const N_WORKERS = parseInt(process.env.GPT_WORKER_COUNT || "1", 10);
 let runningWorkers = 0;
@@ -30,7 +31,7 @@ export async function processTaskQueue(): Promise<void> {
  */
 async function spawnWorker(): Promise<void> {
     runningWorkers++;
-    console.log(`[GPT Worker] Instance ${runningWorkers}/${N_WORKERS} started`);
+    logger.info({ runningWorkers, totalWorkers: N_WORKERS }, "[GPT Worker] Instance started");
 
     try {
         let task = await claimNextTask();
@@ -39,10 +40,10 @@ async function spawnWorker(): Promise<void> {
             task = await claimNextTask();
         }
     } catch (err) {
-        console.error("[GPT Worker] Critical loop error:", err);
+        logger.error({ err }, "[GPT Worker] Critical loop error");
     } finally {
         runningWorkers--;
-        console.log(`[GPT Worker] Instance finished. Active workers: ${runningWorkers}`);
+        logger.info({ runningWorkers }, "[GPT Worker] Instance finished");
     }
 }
 
@@ -73,14 +74,14 @@ async function executeTask(task: GptTask): Promise<void> {
     };
 
     try {
-        console.log(`Task ${task.id} (${task.type}): Starting execution`);
+        logger.info({ taskId: task.id, taskType: task.type }, "Starting task execution");
 
         const output = await handler.execute(task, context);
 
         // FINAL CHECK: Re-verify task status BEFORE calling onComplete/markTaskCompleted
         const finalTaskCheck = await getTask(task.id);
         if (!finalTaskCheck || finalTaskCheck.status === "cancelled") {
-            console.log(`Task ${task.id} (${task.type}): Cancelled or deleted during execution, skipping completion.`);
+            logger.info({ taskId: task.id, taskType: task.type }, "Task cancelled or deleted during execution, skipping completion");
             return;
         }
 
@@ -96,18 +97,18 @@ async function executeTask(task: GptTask): Promise<void> {
         };
 
         await markTaskCompleted(task.id, output, metadata);
-        console.log(`Task ${task.id} (${task.type}): Completed successfully`);
+        logger.info({ taskId: task.id, taskType: task.type }, "Task completed successfully");
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        console.error(`Task ${task.id} (${task.type}): Failed with error:`, errorMessage);
+        logger.error({ error, taskId: task.id, taskType: task.type }, "Task failed with error");
 
         // Call error handler if defined (best-effort notification)
         if (handler.onError) {
             try {
                 await handler.onError(error instanceof Error ? error : new Error(errorMessage), task);
             } catch (handlerError) {
-                console.error(`Task ${task.id}: onError handler failed:`, handlerError);
+                logger.error({ handlerError, taskId: task.id }, "onError handler failed");
             }
         }
 

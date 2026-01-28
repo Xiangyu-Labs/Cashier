@@ -1,5 +1,6 @@
 import { ChatCompletionContentPart, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { getOpenAIClient } from "../ai/openai";
 import { buildTransactionPrompt, buildSummarizationPrompt } from "../ai/prompts";
 import {
@@ -166,7 +167,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
         });
 
       } catch (error) {
-        console.error("Failed to summarize group:", error);
+        logger.error({ error, key }, "Failed to summarize group");
         // Fallback: keep original items
         finalTransactions.push(...group);
       }
@@ -209,8 +210,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
 
       return { transactions, isValid: true, title: validated.title };
     } catch (error) {
-      console.error("Failed to parse AI response:", error);
-      console.error("Raw response:", response);
+      logger.error({ error, response }, "Failed to parse AI response");
       // Throw error to let the queue processor handle it and mark message as failed
       throw new Error(`Failed to parse AI response: ${error instanceof Error ? error.message : "Unknown error"}`);
     }

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { gptTasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { processTaskQueue } from "./task-worker";
+import { logger } from "@/lib/logger";
 
 /**
  * Handle tasks that were running when the service stopped.
@@ -27,15 +28,15 @@ export async function handleTasksOnStartup(): Promise<void> {
             .returning({ id: gptTasks.id });
 
         if (result.length > 0) {
-            console.log(`[Task Recovery] Marked ${result.length} interrupted tasks as failed.`);
+            logger.info({ count: result.length }, "[Task Recovery] Marked interrupted tasks as failed");
         }
 
         // Start processing any queued tasks
         processTaskQueue().catch((err) => {
-            console.error("[Task Recovery] Failed to start queue processing:", err);
+            logger.error({ err }, "[Task Recovery] Failed to start queue processing");
         });
 
     } catch (error) {
-        console.error("[Task Recovery] Failed to handle tasks on startup:", error);
+        logger.error({ error }, "[Task Recovery] Failed to handle tasks on startup");
     }
 }
