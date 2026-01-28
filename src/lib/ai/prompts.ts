@@ -2,6 +2,7 @@ import { CategoryInfo } from "../message-processor/types";
 
 export function buildTransactionPrompt(
   categories: CategoryInfo[],
+  targetLanguage: string = "zh-CN",
   currentDate?: string
 ): string {
   const categoryList = categories
@@ -10,56 +11,57 @@ export function buildTransactionPrompt(
 
   const today = currentDate || new Date().toISOString().split('T')[0];
 
-  return `你是一个专业的记账助手。你的任务是根据用户的输入（可能包含文字、图片、语音转录文本），精准识别其中的消费信息，并返回符合规范的 JSON 格式记录列表。
+  return `You are a professional bookkeeping assistant. Your task is to accurately identify spending information from user input (which may include text, images, or voice transcripts) and return a list of records in a standard JSON format.
 
-### 上下文信息
-- **当前日期**: ${today} (如果用户输入 "昨天"、"今天" 等相对日期，请基于此日期计算。如果不明确，优先使用此日期)
-- **可用分类**:
+### Context Information
+- **Current Date**: ${today} (Use this as the base for relative dates like "yesterday" or "today". If unclear, prioritize this date.)
+- **Available Categories**:
 ${categoryList}
+- **Target Language**: ${targetLanguage} (ALL user-visible fields like title, item_name, and notes MUST be translated into this language.)
 
-### 输出要求
-请返回 STRICT JSON 格式，不要包含 markdown 代码块（\`\`\`json ... \`\`\`），直接返回 JSON 对象。结构如下：
+### Output Requirements
+Return STRICT JSON format. Do NOT include markdown code blocks (\`\`\`json ... \`\`\`). Return the JSON object directly.
+Structure:
 {
   "is_valid": true,
-  "title": "简短且具有描述性的账单标题 (格式: 商家名 - 核心商品, e.g. 7-11 - 早餐组合)",
+  "title": "Short and descriptive bill title (Format: Merchant - Core item, e.g., 7-11 - Breakfast Set)",
   "transactions": [
     {
-      "item_name": "商品名称",
+      "item_name": "Item Name",
       "amount": 38.00,
       "currency": "CNY",
-      "category": "分类名称",
+      "category": "Category Name",
       "transaction_date": "2025-01-25",
-      "notes": "详细描述"
+      "notes": "Detailed description"
     }
   ]
 }
 
-### 核心规则
-1. **标题 (title)**: 生成一个有意义的标题，最好包含商家名称和主要消费内容，便于快速识别。
-2. **拆分原则**: 如果是购物小票或包含多个不同商品，请拆分成多条记录。注意识别小票中的 "Total" 或 "合计" 行作为参考，但不要将其作为单独的商品条目。
-3. **货币识别**: 优先从内容中识别货币（符号 $ -> USD, ¥ -> CNY 或 JPY 等）。如果是中文语境且无明确符号，默认视为 CNY。
-   - 常见货币: CNY, USD, EUR, JPY, HKD, TWD, GBP.
-   - 无法确定填 null。
-4. **分类匹配**: 必须从"可用分类"列表中选择最贴切的名称填入 \`category\`。如果没有合适的，填 null。
-5. **日期处理**:
-   - 优先提取明确日期 (YYYY-MM-DD)。
-   - 处理相对日期: "昨天" -> ${today} 减1天。
-   - 无法提取时，默认使用当前日期 ${today}。
-6. **金额**: 必须为正数 (number)。避免提取由子项相加得到的中间小计。
-7. **Notes 字段**: 将数量、单价、规格、原始外语名称、商家名称、分店信息等所有非核心字段的信息，整合成一段简洁的文本放入 \`notes\`。
-   - 格式示例: "数量: 2, 单价: 19.9, 商家: 7-Eleven (涉谷店)"
+### Core Rules
+1. **Title**: Generate a meaningful title, preferably including the merchant name and main consumption content, for quick identification.
+2. **Splitting Principle**: If it's a shopping receipt or contains multiple different items, split them into multiple records. Identify "Total" or "Subtotal" lines for reference, but do not include them as separate items.
+3. **Currency Identification**: Prioritize currency from content (e.g., $ -> USD, ¥ -> CNY or JPY). In a Chinese context without symbols, default to CNY.
+   - Supported codes: CNY, USD, EUR, JPY, HKD, TWD, GBP.
+   - Use null if unable to determine.
+4. **Category Matching**: You MUST select the most appropriate name from the "Available Categories" list for the \`category\` field. Use null if no suitable category is found.
+5. **Date Handling**:
+   - Prioritize explicit dates (YYYY-MM-DD).
+   - Resolve relative dates: "yesterday" -> ${today} minus 1 day.
+   - Use ${today} as default if no date is found.
+6. **Amount**: Must be a positive number. Avoid intermediate subtotals.
+7. **Notes Field**: Consolidation of quantity, unit price, specifications, original foreign names, merchant name, branch info, etc. 
+8. **TRANSLATION**: Ensure "title", "item_name", and "notes" are translated into ${targetLanguage}.
 
-### 非法/无效输入检测
-增加 json 字段 "is_valid"。
-- 如果输入内容**不是**账单、收据、发票或任何消费记录（例如：风景照、随机文字、无关截图），请将 "is_valid" 设为 false，并且不需要返回 transactions。
-- 如果是有效的消费记录，"is_valid" 设为 true。
+### Validation
+- If the input is NOT a bill, receipt, invoice, or any consumption record, set "is_valid" to false and return no transactions.
+- If it is a valid record, set "is_valid" to true.
 
-### Few-Shot Examples (参考示例)
+### Examples
 
-**输入**:
-"在711买了2瓶可乐一共6块钱，还有一个三明治12.5"
+**Input**:
+"Bought 2 bottles of Coke at 711 for 6 yuan, and a sandwich for 12.5"
 
-**输出**:
+**Output (Target: zh-CN)**:
 {
   "is_valid": true,
   "title": "7-11 - 可乐与三明治",
@@ -83,18 +85,10 @@ ${categoryList}
   ]
 }
 
-**输入**:
-"一张风景图片"
+**Input**:
+"Yesterday taxi to airport 50 USD" (Base date: 2025-05-20, Target: en-US)
 
-**输出**:
-{
-  "is_valid": false
-}
-
-**输入**:
-"Yesterday taxi to airport 50 USD" (假设当前日期是 2025-05-20)
-
-**输出**:
+**Output**:
 {
   "is_valid": true,
   "title": "Taxi - Airport Trip",
@@ -103,7 +97,7 @@ ${categoryList}
       "item_name": "Taxi to airport",
       "amount": 50.00,
       "currency": "USD",
-      "category": "交通",
+      "category": "Transportation",
       "transaction_date": "2025-05-19",
       "notes": "Yesterday"
     }
@@ -113,48 +107,53 @@ ${categoryList}
 
 export function buildSummarizationPrompt(
   items: { itemName: string; amount: number; notes?: string | null }[],
+  targetLanguage: string = "zh-CN",
   originalText?: string
 ): string {
   const itemsJson = JSON.stringify(items, null, 2);
 
-  return `你是一个专业的账单整理助手。你的任务是将同一天、同一类别的多条消费记录合并为一条摘要式记录。
+  return `You are a professional bookkeeping assistant. Your task is to merge multiple consumption records from the same day and category into a single summary record.
 
-### 用户原始输入 (参考)
-${originalText || "（无原始文本）"}
+### Original User Input (for context)
+${originalText || "(No original text provided)"}
 
-### 待合并的记录 (同一组消费记录)
+### Records to Merge
 ${itemsJson}
 
-### 任务要求
-1. **数据源**:
-   - **必须且只能** 基于 "待合并的记录" (JSON) 中的数据进行合并（如金额加总）。
-   - "用户原始输入" **仅供参考**，用于帮助你生成更准确的 "item_name" (摘要名)，不要从中提取额外的消费记录。
-2. **生成摘要名称 (item_name)**:
-   - 为该组起一个精简的总结性名称（如“早餐组合”、“超市日用”、“打车出行”）。
-   - **字数限制**: 控制在 10 个字以内，保持简洁明白。
-   - 必须能概括该组内的主要消费内容。
-3. **合并备注 (notes)**:
-   - 将该组内所有原始记录的 \`notes\` 以及原始的 \`item_name\` 进行合理合并。
-   - **去重与精简**: 如果有多条相同的备注（如相同的商家），请合并显示（例如 "商家: 7-Eleven (x3)"）。
-   - 保留关键信息（如具体商品名、商家、数量），去除冗余。
+### Target Language: ${targetLanguage}
 
-### 输出格式
-请返回 STRICT JSON 格式，不要包含 markdown 代码块。结构如下：
+### Tasks
+1. **Data Source**:
+   - Merge based ONLY on the data in "Records to Merge" (JSON).
+   - "Original User Input" is for context to help generate a more accurate "item_name" (summary name). Do not extract new items from it.
+2. **Summary Name (item_name)**:
+   - Create a concise summary (e.g., "Breakfast Set", "Supermarket Daily", "Taxi Trip").
+   - **Limit**: Under 10 characters in the target language.
+   - Must represent the main content of the group.
+3. **Merge Notes (notes)**:
+   - Combine all original \`notes\` and \`item_name\` values.
+   - **Deduplicate and Simplify**: If there are multiple identical notes (e.g., same merchant), combine them (e.g., "Merchant: 7-Eleven (x3)").
+   - Keep key info like specific items, merchants, and quantities.
+4. **Translation**: Ensure "item_name" and "notes" are translated into ${targetLanguage}.
+
+### Output Format
+Return STRICT JSON format. Do NOT include markdown code blocks.
+Structure:
 {
-  "item_name": "精简摘要名",
-  "notes": "合并后的详细备注..."
+  "item_name": "Concise Summary Name",
+  "notes": "Consolidated detailed notes..."
 }
 
-### 示例
-**输入**:
+### Example (Target: zh-CN)
+**Input**:
 [
-  { "itemName": "包子", "amount": 3.0, "notes": "商家: 早餐店" },
-  { "itemName": "豆浆", "amount": 2.5, "notes": "无糖, 商家: 早餐店" }
+  { "itemName": "Baozi", "amount": 3.0, "notes": "Merchant: Bakery" },
+  { "itemName": "Soy Milk", "amount": 2.5, "notes": "Sugar-free, Merchant: Bakery" }
 ]
 
-**输出**:
+**Output**:
 {
   "item_name": "早餐组合",
-  "notes": "包子, 豆浆(无糖); 商家: 早餐店"
+  "notes": "包子, 豆浆(无糖); 商家: 包子铺"
 }`;
 }

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Category } from "@/types/api";
 import { type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 export interface TransactionEditFormData {
     itemName: string;
@@ -26,6 +27,9 @@ export function TransactionEditForm({
     onSave,
     onCancel,
 }: TransactionEditFormProps): ReactNode {
+    const t = useTranslations("TransactionDetail");
+    const tCommon = useTranslations("Common");
+
     const handleChange = <K extends keyof TransactionEditFormData>(
         field: K,
         value: TransactionEditFormData[K]
@@ -36,7 +40,7 @@ export function TransactionEditForm({
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium text-text">商品名称</label>
+                <label className="text-sm font-medium text-text">{t("itemName")}</label>
                 <Input
                     type="text"
                     value={data.itemName}
@@ -46,7 +50,7 @@ export function TransactionEditForm({
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">金额</label>
+                    <label className="text-sm font-medium text-text">{t("amount")}</label>
                     <Input
                         type="number"
                         value={data.amount}
@@ -56,7 +60,7 @@ export function TransactionEditForm({
                     />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">货币</label>
+                    <label className="text-sm font-medium text-text">{t("currency")}</label>
                     <Input
                         type="text"
                         value={data.currency}
@@ -67,13 +71,13 @@ export function TransactionEditForm({
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-text">分类</label>
+                <label className="text-sm font-medium text-text">{t("category")}</label>
                 <select
                     value={data.categoryId}
                     onChange={(e) => handleChange("categoryId", e.target.value)}
                     className="flex h-9 w-full rounded-md border border-border bg-surface px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                    <option value="">选择分类</option>
+                    <option value="">{t("selectCategory")}</option>
                     {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>
                             {cat.icon} {cat.name}
@@ -83,7 +87,7 @@ export function TransactionEditForm({
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-text">交易日期</label>
+                <label className="text-sm font-medium text-text">{t("transactionDate")}</label>
                 <Input
                     type="date"
                     value={data.transactionDate}
@@ -93,9 +97,9 @@ export function TransactionEditForm({
 
             <div className="flex justify-end gap-2 pt-2">
                 <Button variant="secondary" onClick={onCancel}>
-                    取消
+                    {tCommon("cancel")}
                 </Button>
-                <Button onClick={onSave}>保存</Button>
+                <Button onClick={onSave}>{tCommon("save")}</Button>
             </div>
         </div>
     );

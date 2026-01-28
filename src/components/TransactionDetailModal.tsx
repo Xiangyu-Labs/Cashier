@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Transaction, Category } from "@/types/api";
 import { TransactionEditForm, TransactionEditFormData } from "./transaction/TransactionEditForm";
 import { TransactionViewDetails } from "./transaction/TransactionViewDetails";
+import { useTranslations } from "next-intl";
 
 interface TransactionDetailModalProps {
   transaction: Transaction | null;
@@ -31,6 +32,10 @@ export function TransactionDetailModal({
   onUpdate,
   onDelete,
 }: TransactionDetailModalProps): ReactNode | null {
+  const t = useTranslations("TransactionDetail");
+  const tTab = useTranslations("TransactionsTab");
+  const tCommon = useTranslations("Common");
+
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<TransactionEditFormData>({
     itemName: "",
@@ -74,10 +79,10 @@ export function TransactionDetailModal({
     onClose();
     toast({
       variant: "success",
-      title: "删除成功",
-      description: "交易记录已删除",
+      title: tTab("deleteSuccess"),
+      description: tTab("deleteSuccess"), // The previous description was "交易记录已删除", but we can reuse this
     });
-  }, [onDelete, onClose, toast]);
+  }, [onDelete, onClose, toast, tTab]);
 
   const handleClose = useCallback(() => {
     setIsEditing(false);
@@ -91,7 +96,7 @@ export function TransactionDetailModal({
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent onAnimationEnd={handleOpen} className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>交易详情</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
           </DialogHeader>
 
           <div className="py-4">
@@ -117,11 +122,11 @@ export function TransactionDetailModal({
       <ConfirmDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
-        title="确认删除"
-        description="确定要删除这条记录吗？此操作无法撤销。"
+        title={tTab("deleteConfirmTitle")}
+        description={tTab("deleteConfirmDesc")}
         onConfirm={handleDelete}
         variant="destructive"
-        confirmLabel="删除"
+        confirmLabel={tCommon("delete")}
       />
     </>
   );

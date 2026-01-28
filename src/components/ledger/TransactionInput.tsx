@@ -8,12 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send } from "lucide-react";
 
+import { useTranslations } from "next-intl";
+
 interface TransactionInputProps {
     ledgerId: string;
     onSuccess?: () => void;
 }
 
 export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps) {
+    const t = useTranslations("TransactionInput");
+    const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
     const [text, setText] = useState("");
     const [images, setImages] = useState<{ data: string; mimeType: string }[]>([]);
@@ -76,7 +80,7 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onPaste={handlePaste}
-                placeholder="输入消费记录，例如：午饭35元... (支持粘贴图片)"
+                placeholder={t("placeholder")}
                 className="resize-none"
                 rows={5}
                 autoFocus
@@ -118,7 +122,7 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    <Camera className="h-4 w-4 mr-2" /> 图片
+                    <Camera className="h-4 w-4 mr-2" /> {t("image")}
                 </Button>
                 <div className="flex-1" />
                 <Button
@@ -126,9 +130,9 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
                     disabled={sendMutation.isPending || (!text && images.length === 0)}
                     className="flex-1 sm:flex-initial"
                 >
-                    {sendMutation.isPending ? "发送中..." : (
+                    {sendMutation.isPending ? tCommon("sending_status") : (
                         <>
-                            <Send className="h-4 w-4 mr-2" /> 发送
+                            <Send className="h-4 w-4 mr-2" /> {t("send")}
                         </>
                     )}
                 </Button>

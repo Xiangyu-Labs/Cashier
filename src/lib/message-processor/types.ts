@@ -34,6 +34,7 @@ export interface CategoryInfo {
 export interface ProcessorContext {
     categories: CategoryInfo[];
     mergeSimilarItems?: boolean;
+    language?: string;
 }
 
 export interface MessageProcessor {

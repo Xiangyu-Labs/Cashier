@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Plus, Settings } from "lucide-react";
@@ -21,9 +20,12 @@ import { useLedgerData } from "@/hooks/useLedgerData";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
 import { TaskCenter } from "@/components/TaskCenter";
+import { useTranslations } from "next-intl";
+import { Link as I18nLink } from "@/i18n/routing";
 
 export default function LedgerPage() {
   const params = useParams();
+  const t = useTranslations("LedgerPage");
   const ledgerId = params.id as string;
   const [activeTab, setActiveTab] = useState("history");
   const [isInputOpen, setIsInputOpen] = useState(false);
@@ -48,7 +50,7 @@ export default function LedgerPage() {
   if (!ledger) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
-        <p className="text-muted">账本不存在</p>
+        <p className="text-muted">{t("notFound")}</p>
       </div>
     );
   }
@@ -63,16 +65,16 @@ export default function LedgerPage() {
             <TaskCenter ledgerId={ledgerId} />
           </div>
           <div className="flex items-center gap-2">
-            <Link href={`/ledger/${ledgerId}/settings`}>
+            <I18nLink href={`/ledger/${ledgerId}/settings`}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-muted hover:text-text h-8 w-8 sm:h-9 sm:w-9"
-                title="设置"
+                title={t("settings")}
               >
                 <Settings className="h-5 w-5" />
               </Button>
-            </Link>
+            </I18nLink>
             <ThemeToggle />
             <Button
               size="sm"
@@ -92,9 +94,9 @@ export default function LedgerPage() {
           className="w-full space-y-4"
         >
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="history">账单</TabsTrigger>
-            <TabsTrigger value="details">明细</TabsTrigger>
-            <TabsTrigger value="stats">统计</TabsTrigger>
+            <TabsTrigger value="history">{t("history")}</TabsTrigger>
+            <TabsTrigger value="details">{t("details")}</TabsTrigger>
+            <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="history" className="mt-0">
@@ -124,7 +126,7 @@ export default function LedgerPage() {
       <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
         <DialogContent className="sm:max-w-md top-[20%] translate-y-0 w-[calc(100%-2rem)] mx-auto rounded-xl">
           <DialogHeader>
-            <DialogTitle>记一笔</DialogTitle>
+            <DialogTitle>{t("newRecord")}</DialogTitle>
           </DialogHeader>
           <TransactionInput
             ledgerId={ledgerId}

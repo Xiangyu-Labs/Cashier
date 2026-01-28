@@ -1,6 +1,7 @@
 "use client";
 
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { useTranslations } from "next-intl";
 
 
 interface CategoryStat {
@@ -19,6 +20,8 @@ interface StatsRankingProps {
 }
 
 export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
+    const t = useTranslations("StatsTab");
+
     if (isLoading) {
         return (
             <div className="space-y-4 px-2">
@@ -40,7 +43,7 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
         return (
             <div className="text-center py-12 text-muted">
                 <div className="text-4xl mb-2 opacity-20">📭</div>
-                <div className="text-sm">本期无支出</div>
+                <div className="text-sm">{t("noExpenses")}</div>
             </div>
         );
     }
@@ -51,7 +54,7 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
     return (
         <div className="space-y-5 px-2">
             <h3 className="font-semibold text-lg flex items-center gap-2">
-                支出排行榜
+                {t("expenseRanking")}
             </h3>
 
             <div className="space-y-5">

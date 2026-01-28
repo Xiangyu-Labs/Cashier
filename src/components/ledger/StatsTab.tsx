@@ -11,12 +11,14 @@ import {
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
+import { useTranslations } from "next-intl";
 
 interface StatsTabProps {
     ledgerId?: string;
 }
 
 export function StatsTab({ ledgerId }: StatsTabProps) {
+    const t = useTranslations("StatsTab");
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -74,7 +76,7 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
 
             <div className="space-y-2">
                 <h3 className="font-semibold px-2 text-sm text-muted uppercase tracking-wider">
-                    支出趋势
+                    {t("expenseTrend")}
                 </h3>
                 <StatsChart
                     data={summary?.trend || []}

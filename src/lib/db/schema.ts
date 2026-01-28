@@ -12,6 +12,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import defaultLedger from "@/config/default-ledger.json";
 
 // Enums
 export const transactionStatusEnum = pgEnum("transaction_status", [
@@ -35,14 +36,14 @@ export const messageStatusEnum = pgEnum("message_status", [
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  language: text("language").notNull().default("zh-CN"),
-  currencies: jsonb("currencies").$type<string[]>().default(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]),
+  language: text("language").notNull().default(defaultLedger.settings.language),
+  currencies: jsonb("currencies").$type<string[]>().default(defaultLedger.settings.currencies),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  autoConfirm: boolean("auto_confirm").default(false),
-  autoRecognizeDate: boolean("auto_recognize_date").default(false),
-  collapsePendingDefault: boolean("collapse_pending_default").default(false),
-  mergeSimilarItems: boolean("merge_similar_items").default(false),
+  autoConfirm: boolean("auto_confirm").default(defaultLedger.settings.autoConfirm),
+  autoRecognizeDate: boolean("auto_recognize_date").default(defaultLedger.settings.autoRecognizeDate),
+  collapsePendingDefault: boolean("collapse_pending_default").default(defaultLedger.settings.collapsePendingDefault),
+  mergeSimilarItems: boolean("merge_similar_items").default(defaultLedger.settings.mergeSimilarItems),
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({

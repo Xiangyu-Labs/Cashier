@@ -33,7 +33,7 @@ export function fetchLedger(id: string): Promise<Ledger> {
   return request(`${API_BASE}/ledgers/${id}`, undefined, "Failed to fetch ledger");
 }
 
-export function createLedger(data: { name: string }): Promise<Ledger> {
+export function createLedger(data: { name: string; language?: string }): Promise<Ledger> {
   return request(
     `${API_BASE}/ledgers`,
     {

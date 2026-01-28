@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     fetchLedger,
@@ -22,11 +22,16 @@ import { Category, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Languages } from "lucide-react";
+import { useTranslations, useLocale } from 'next-intl';
+import { usePathname, useRouter } from "@/i18n/routing";
 
 export default function LedgerSettingsPage() {
     const params = useParams();
     const router = useRouter();
+    const pathname = usePathname();
+    const locale = useLocale();
+    const t = useTranslations('Settings');
     const ledgerId = params.id as string;
     const queryClient = useQueryClient();
     const [showAutoConfirmWarning, setShowAutoConfirmWarning] = useState(false);
@@ -113,17 +118,47 @@ export default function LedgerSettingsPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="text-2xl font-semibold">账本设置 - {ledger.name}</h1>
+                <h1 className="text-2xl font-semibold">{t('title')} - {ledger.name}</h1>
             </div>
+
+            {/* General Settings (Language) */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Languages className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-medium">{t('language')}</h2>
+                            <p className="text-sm text-[var(--muted)]">设置当前账本使用的 UI 语言和 AI 识别语言</p>
+                        </div>
+                    </div>
+                    <select
+                        value={ledger.language || 'zh'}
+                        onChange={(e) => {
+                            const newLang = e.target.value;
+                            updateLedgerMutation.mutate({ language: newLang });
+                            if (newLang !== locale) {
+                                // Redirect to the new locale
+                                router.push(pathname, { locale: newLang });
+                            }
+                        }}
+                        className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    >
+                        <option value="zh">简体中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </section>
 
             {/* AI Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
-                <h2 className="text-lg font-medium mb-6">智能助理</h2>
+                <h2 className="text-lg font-medium mb-6">{t('assistant')}</h2>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">跳过核对</h3>
-                            <p className="text-sm text-[var(--muted)]">AI 识别的账单直接入账，不再需要手动确认</p>
+                            <h3 className="text-base font-medium">{t('autoConfirm')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('autoConfirmDesc')}</p>
                         </div>
                         <Switch
                             checked={ledger.autoConfirm || false}
@@ -141,8 +176,8 @@ export default function LedgerSettingsPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">自动识别交易时间</h3>
-                            <p className="text-sm text-[var(--muted)]">如果开启，AI 将尝试从账单中识别交易时间。如果关闭或未识别到，则使用上传时间。</p>
+                            <h3 className="text-base font-medium">{t('autoRecognizeDate')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('autoRecognizeDateDesc')}</p>
                         </div>
                         <Switch
                             checked={ledger.autoRecognizeDate || false}
@@ -156,8 +191,8 @@ export default function LedgerSettingsPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">默认折叠待处理事项</h3>
-                            <p className="text-sm text-[var(--muted)]">如果开启，待处理事项列表默认收起，只显示标题和数量。</p>
+                            <h3 className="text-base font-medium">{t('collapsePending')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('collapsePendingDesc')}</p>
                         </div>
                         <Switch
                             checked={ledger.collapsePendingDefault || false}
@@ -171,8 +206,8 @@ export default function LedgerSettingsPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">合并账单同类项</h3>
-                            <p className="text-sm text-[var(--muted)]">开启后，同一天同一类别的多条消费将合并为一条摘要记录。</p>
+                            <h3 className="text-base font-medium">{t('mergeSimilar')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('mergeSimilarDesc')}</p>
                         </div>
                         <Switch
                             checked={ledger.mergeSimilarItems || false}
@@ -188,17 +223,17 @@ export default function LedgerSettingsPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-danger flex items-center gap-2">
-                            ⚠️ 风险提示
+                            ⚠️ {t('riskTitle')}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-4 text-sm text-[var(--muted)] space-y-3">
-                        <p>开启「跳过核对」后，AI 识别的所有账单将<strong>直接计入账本</strong>。</p>
-                        <p>虽然 AI 准确率很高，但仍可能出现识别错误（如金额、分类错误）。开启此功能意味着您接受可能存在的记账误差。</p>
-                        <p>建议您定期（如每周）查看账单列表，检查是否有异常记录。</p>
+                        <p>{t('riskDesc1')}</p>
+                        <p>{t('riskDesc2')}</p>
+                        <p>{t('riskDesc3')}</p>
                     </div>
                     <div className="flex justify-end gap-3 mt-4">
                         <Button variant="ghost" onClick={() => setShowAutoConfirmWarning(false)}>
-                            取消
+                            {t('cancel')}
                         </Button>
                         <Button
                             variant="destructive"
@@ -207,7 +242,7 @@ export default function LedgerSettingsPage() {
                                 setShowAutoConfirmWarning(false);
                             }}
                         >
-                            确认开启
+                            {t('confirmEnable')}
                         </Button>
                     </div>
                 </DialogContent>
@@ -215,7 +250,7 @@ export default function LedgerSettingsPage() {
 
             {/* Data Configuration */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
-                <h2 className="text-lg font-medium mb-6">数据配置</h2>
+                <h2 className="text-lg font-medium mb-6">{t('dataConfig')}</h2>
 
                 <div className="space-y-8">
                     {/* Currency Settings */}

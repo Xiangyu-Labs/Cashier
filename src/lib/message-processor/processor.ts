@@ -36,7 +36,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
   ): Promise<ProcessResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildTransactionPrompt(context.categories, currentDate);
+    const systemPrompt = buildTransactionPrompt(context.categories, context.language, currentDate);
 
     const contentParts: ChatCompletionContentPart[] = [];
 
@@ -62,7 +62,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     let transactions = data;
 
     if (context.mergeSimilarItems && transactions.length > 0) {
-      transactions = await summarizeTransactions(transactions, input.text || undefined);
+      transactions = await summarizeTransactions(transactions, context.language, input.text || undefined);
     }
 
     return {

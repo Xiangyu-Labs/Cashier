@@ -7,6 +7,7 @@ import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations, useLocale } from "next-intl";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -14,6 +15,10 @@ interface DetailsTabProps {
 }
 
 export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
+    const t = useTranslations("DetailsTab");
+    const tTransactions = useTranslations("TransactionsTab");
+    const tCommon = useTranslations("Common");
+    const locale = useLocale();
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
@@ -63,7 +68,6 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
 
     // Calculate Summary Stats
     const monthStats = useMemo(() => {
-        // Use summary data if available, otherwise 0
         const total = summaryData?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
         const currency = summaryData?.totals[0]?.currency || "CNY";
         return { total, currency };
@@ -83,7 +87,7 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-            toast({ variant: "success", title: "删除成功", description: "记录已删除" });
+            toast({ variant: "success", title: tTransactions("deleteSuccess"), description: "" });
         },
     });
 
@@ -91,14 +95,12 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
 
     // Group items by date - Refactored to ensure strict sorting
     const groupedItems = useMemo(() => {
-        // First, ensure all transactions are sorted by date (newest first)
         const sortedTransactions = [...monthTransactions].sort((a, b) => {
             const dateA = new Date(a.transactionDate || a.createdAt).getTime();
             const dateB = new Date(b.transactionDate || b.createdAt).getTime();
             return dateB - dateA;
         });
 
-        // Group them
         const groups: Record<string, { timestamp: number; title: string; items: Transaction[] }> = {};
 
         sortedTransactions.forEach(tx => {
@@ -108,18 +110,17 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             yesterday.setDate(yesterday.getDate() - 1);
 
             let dateKey = "";
-            let sortTimestamp = 0; // Use midnight timestamp for sorting groups
+            let sortTimestamp = 0;
 
-            // Normalize to midnight for consistent grouping
             const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             sortTimestamp = midnight.getTime();
 
             if (date.toDateString() === today.toDateString()) {
-                dateKey = "今天";
+                dateKey = t("today");
             } else if (date.toDateString() === yesterday.toDateString()) {
-                dateKey = "昨天";
+                dateKey = t("yesterday");
             } else {
-                dateKey = date.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
+                dateKey = date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
             }
 
             if (!groups[dateKey]) {
@@ -132,9 +133,8 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             groups[dateKey].items.push(tx);
         });
 
-        // Convert to array and sort groups by timestamp descending
         return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [monthTransactions]);
+    }, [monthTransactions, t, locale]);
 
     return (
         <div className="space-y-0">
@@ -150,7 +150,7 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <div className="text-muted-foreground text-[10px] mb-0.5">支出统计 ({monthStats.currency})</div>
+                        <div className="text-muted-foreground text-[10px] mb-0.5">{t("expenseSummary", { currency: monthStats.currency })}</div>
                         <div className="text-xl font-bold font-mono tracking-tight">{monthStats.total.toFixed(2)}</div>
                     </div>
                 </div>
@@ -200,14 +200,14 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                         {isFetchingNextPage ? (
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
-                                <span>加载中...</span>
+                                <span>{tCommon("loading")}</span>
                             </div>
                         ) : hasNextPage ? (
                             <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                <span>加载更多</span>
+                                <span>{tTransactions("loadMore")}</span>
                             </motion.div>
                         ) : (
-                            <span className="opacity-50 text-xs">没有更多了</span>
+                            <span className="opacity-50 text-xs">{tTransactions("noMore")}</span>
                         )}
                     </div>
                 )}
@@ -215,12 +215,12 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                 {isLoading ? (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
-                        <span>加载中...</span>
+                        <span>{tCommon("loading")}</span>
                     </div>
                 ) : monthTransactions.length === 0 && (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">📭</span>
-                        <span>本月暂无支出</span>
+                        <span>{t("noExpenses")}</span>
                     </div>
                 )}
             </div>
@@ -228,14 +228,14 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             <ConfirmDialog
                 open={deleteConfirm.open}
                 onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title="确认删除"
-                description="确定要删除这条交易吗？此操作无法撤销。"
+                title={tTransactions("deleteConfirmTitle")}
+                description={tTransactions("deleteConfirmDesc")}
                 onConfirm={() => {
                     if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id);
                     setDeleteConfirm({ open: false, id: null });
                 }}
                 variant="destructive"
-                confirmLabel="删除"
+                confirmLabel={tCommon("delete")}
             />
         </div>
     );

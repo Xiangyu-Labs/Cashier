@@ -5,6 +5,7 @@ import { fetchGptTasks, GptTask } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Activity, Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface TaskCenterProps {
     ledgerId: string;
@@ -26,12 +27,13 @@ function TaskStatusIcon({ status }: { status: GptTask["status"] }) {
 }
 
 function TaskStatusBadge({ status }: { status: GptTask["status"] }) {
+    const t = useTranslations("TaskCenter");
     const statusConfig = {
-        queued: { label: "排队中", className: "bg-muted/10 text-muted" },
-        running: { label: "处理中", className: "bg-primary/10 text-primary" },
-        completed: { label: "已完成", className: "bg-primary/10 text-primary" },
-        failed: { label: "失败", className: "bg-danger/10 text-danger" },
-        cancelled: { label: "已取消", className: "bg-surface2 text-muted" },
+        queued: { label: t("statusQueued"), className: "bg-muted/10 text-muted" },
+        running: { label: t("statusRunning"), className: "bg-primary/10 text-primary" },
+        completed: { label: t("statusCompleted"), className: "bg-primary/10 text-primary" },
+        failed: { label: t("statusFailed"), className: "bg-danger/10 text-danger" },
+        cancelled: { label: t("statusCancelled"), className: "bg-surface2 text-muted" },
     };
 
     const config = statusConfig[status];
@@ -43,6 +45,9 @@ function TaskStatusBadge({ status }: { status: GptTask["status"] }) {
 }
 
 export function TaskCenter({ ledgerId }: TaskCenterProps) {
+    const t = useTranslations("TaskCenter");
+    const tCommon = useTranslations("Common");
+
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: ["gpt-tasks", ledgerId],
         queryFn: () => fetchGptTasks(ledgerId, { limit: 50 }),
@@ -76,13 +81,13 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                             </div>
                             <span className="text-primary font-semibold text-xs whitespace-nowrap">
-                                {activeTasks.length} <span className="hidden sm:inline">个任务处理中</span>
+                                {t("runningTasks", { count: activeTasks.length })}
                             </span>
                         </>
                     ) : (
                         <>
                             <Activity className="w-4 h-4 opacity-70" />
-                            <span className="hidden md:inline">任务中心</span>
+                            <span className="hidden md:inline">{t("taskCenter")}</span>
                         </>
                     )}
                 </Button>
@@ -95,7 +100,7 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface2/30">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold tracking-tight">任务队列</span>
+                        <span className="text-sm font-semibold tracking-tight">{t("taskQueue")}</span>
                         {activeTasks.length > 0 && (
                             <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full leading-none font-bold">
                                 {activeTasks.length}
@@ -122,7 +127,7 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center py-12 text-muted">
                                 <Loader2 className="w-6 h-6 animate-spin mb-2 opacity-50" />
-                                <p className="text-xs">加载中...</p>
+                                <p className="text-xs">{tCommon("loading")}</p>
                             </div>
                         ) : visibleTasks.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -130,8 +135,8 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                                     <Inbox className="w-6 h-6 text-muted opacity-30" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-medium text-text">暂无活跃任务</p>
-                                    <p className="text-xs text-muted mt-0.5">新的记录处理将显示在这里</p>
+                                    <p className="text-sm font-medium text-text">{t("noActiveTasks")}</p>
+                                    <p className="text-xs text-muted mt-0.5">{t("noActiveTasksDesc")}</p>
                                 </div>
                             </div>
                         ) : (

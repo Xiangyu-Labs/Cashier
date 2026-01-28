@@ -128,6 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         receiptId: savedReceipt.id,
         text: validated.text,
         imageUrls: imageUrls,
+        language: ledger.language,
         categories: await db.query.categories.findMany({
           where: (categories, { eq, or, isNull }) => or(eq(categories.ledgerId, ledgerId), isNull(categories.ledgerId))
         }),

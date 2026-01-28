@@ -4,6 +4,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DateRangeType, addPeriod } from "@/lib/date-utils";
+import { useTranslations } from "next-intl";
 
 interface StatsHeaderProps {
     rangeType: DateRangeType;
@@ -26,6 +27,7 @@ export function StatsHeader({
     averageDaily,
     currencySymbol = "CNY",
 }: StatsHeaderProps) {
+    const t = useTranslations("StatsTab");
     const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
     const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
 
@@ -47,7 +49,7 @@ export function StatsHeader({
                                 : "text-muted hover:text-text"
                         )}
                     >
-                        {type === "week" ? "周" : type === "month" ? "月" : "年"}
+                        {t(type)}
                     </button>
                 ))}
             </div>
@@ -75,13 +77,13 @@ export function StatsHeader({
 
             {/* 3. Summary Stats */}
             <div className="flex flex-col items-center gap-1">
-                <div className="text-sm text-muted">总支出</div>
+                <div className="text-sm text-muted">{t("totalExpense")}</div>
                 <div className="text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
                     <span className="text-xl text-muted font-normal">{currencySymbol}</span>
                     {totalExpense.toFixed(2)}
                 </div>
                 <div className="text-xs text-muted flex items-center gap-1">
-                    平均每日 <span className="font-mono">{averageDaily.toFixed(2)}</span>
+                    {t("averageDaily")} <span className="font-mono">{averageDaily.toFixed(2)}</span>
                 </div>
             </div>
         </div>

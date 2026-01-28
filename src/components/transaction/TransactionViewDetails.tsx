@@ -5,6 +5,7 @@ import { Transaction } from "@/types/api";
 import { Calendar, Edit2, Tag, Trash2 } from "lucide-react";
 import { TransactionOriginalContent } from "./TransactionOriginalContent";
 import { type ReactNode } from "react";
+import { useTranslations, useLocale } from "next-intl";
 
 interface TransactionViewDetailsProps {
     transaction: Transaction;
@@ -17,14 +18,18 @@ export function TransactionViewDetails({
     onEdit,
     onDelete,
 }: TransactionViewDetailsProps): ReactNode {
+    const t = useTranslations("TransactionDetail");
+    const tCommon = useTranslations("Common");
+    const locale = useLocale();
+
     // Format dates for display
     const formatDate = (dateStr: string | null) => {
-        if (!dateStr) return "未知";
-        return new Date(dateStr).toLocaleDateString("zh-CN");
+        if (!dateStr) return t("unknown");
+        return new Date(dateStr).toLocaleDateString(locale);
     };
 
     const formatDateTime = (dateStr: string) => {
-        return new Date(dateStr).toLocaleString("zh-CN");
+        return new Date(dateStr).toLocaleString(locale);
     };
 
     return (
@@ -51,20 +56,20 @@ export function TransactionViewDetails({
             <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface2/30 p-4">
                 <div className="flex justify-between items-center">
                     <span className="text-sm text-muted flex items-center gap-2">
-                        <Tag className="h-4 w-4" /> 分类
+                        <Tag className="h-4 w-4" /> {t("category")}
                     </span>
                     {transaction.category ? (
                         <Badge variant="default" className="font-normal">
                             {transaction.category.name}
                         </Badge>
                     ) : (
-                        <Badge variant="warning">未分类</Badge>
+                        <Badge variant="warning">{tCommon("unclassified")}</Badge>
                     )}
                 </div>
 
                 <div className="flex justify-between items-center">
                     <span className="text-sm text-muted flex items-center gap-2">
-                        <Calendar className="h-4 w-4" /> 交易日期
+                        <Calendar className="h-4 w-4" /> {t("transactionDate")}
                     </span>
                     <span className="text-sm text-text">
                         {formatDate(transaction.transactionDate)}
@@ -72,13 +77,13 @@ export function TransactionViewDetails({
                 </div>
 
                 <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted">状态</span>
-                    <Badge variant="success">已确认</Badge>
+                    <span className="text-sm text-muted">{t("status")}</span>
+                    <Badge variant="success">{t("confirmed")}</Badge>
                 </div>
 
                 {transaction.description && (
                     <div className="flex justify-between items-center border-t border-border/50 pt-2 mt-1">
-                        <span className="text-sm text-muted">备注</span>
+                        <span className="text-sm text-muted">{t("description")}</span>
                         <span className="text-sm text-text max-w-[200px] truncate" title={transaction.description}>
                             {transaction.description}
                         </span>
@@ -86,7 +91,7 @@ export function TransactionViewDetails({
                 )}
 
                 <div className="flex justify-between items-center border-t border-border/50 pt-2">
-                    <span className="text-sm text-muted">创建时间</span>
+                    <span className="text-sm text-muted">{t("createdAt")}</span>
                     <span className="text-sm text-text">
                         {formatDateTime(transaction.createdAt)}
                     </span>
@@ -96,7 +101,7 @@ export function TransactionViewDetails({
             {/* Original Input */}
             <div>
                 <h4 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                    原始输入
+                    {t("originalInput")}
                 </h4>
                 <div className="p-4 bg-surface2 rounded-lg border border-border">
                     {transaction.receipt ? (
@@ -105,7 +110,7 @@ export function TransactionViewDetails({
                             images={transaction.receipt.imageUrls}
                         />
                     ) : (
-                        <p className="text-muted text-sm italic">无原始记录</p>
+                        <p className="text-muted text-sm italic">{t("noOriginal")}</p>
                     )}
                 </div>
             </div>
@@ -118,11 +123,11 @@ export function TransactionViewDetails({
                     className="mr-auto"
                 >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    删除
+                    {tCommon("delete")}
                 </Button>
                 <Button onClick={onEdit}>
                     <Edit2 className="h-4 w-4 mr-2" />
-                    编辑
+                    {t("edit")}
                 </Button>
             </DialogFooter>
         </div>

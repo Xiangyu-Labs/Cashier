@@ -8,6 +8,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { Card, CardContent } from "@/components/ui/card";
 import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import { useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 
 interface HistoryTabProps {
     ledgerId: string;
@@ -19,6 +20,9 @@ interface HistoryTabProps {
 }
 
 export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTabProps) {
+    const t = useTranslations("HistoryTab");
+    const tCommon = useTranslations("Common");
+    const locale = useLocale();
     const queryClient = useQueryClient();
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -45,7 +49,7 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
     if (!hasHistory) {
         return (
             <div className="py-16 text-center text-muted">
-                暂无已确认记录
+                {t("noHistory")}
             </div>
         );
     }
@@ -70,7 +74,7 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
             {confirmedGroups.others.length > 0 && (
                 <Card>
                     <div className="bg-surface2 p-3 border-b border-border">
-                        <h3 className="font-medium text-text">其他历史记录</h3>
+                        <h3 className="font-medium text-text">{t("otherHistory")}</h3>
                     </div>
                     <CardContent className="p-4 space-y-2">
                         {confirmedGroups.others.map((tx) => (
@@ -89,10 +93,10 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
                                     <div>
                                         <p className="font-medium text-text">{tx.itemName}</p>
                                         <p className="text-xs text-muted">
-                                            {tx.category?.name || "未分类"}
+                                            {tx.category?.name || tCommon("unclassified")}
                                             {tx.transactionDate && (
                                                 <span className="ml-2">
-                                                    · {new Date(tx.transactionDate).toLocaleDateString("zh-CN")}
+                                                    · {new Date(tx.transactionDate).toLocaleDateString(locale)}
                                                 </span>
                                             )}
                                         </p>

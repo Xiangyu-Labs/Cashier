@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { ArrowLeft, Plus, Pencil, Trash2, Info } from "lucide-react";
 import {
   fetchCategories,

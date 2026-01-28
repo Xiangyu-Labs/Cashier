@@ -1,13 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { fetchTransactionSummary } from "@/lib/api";
 import { Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 interface LedgerItemProps {
     ledger: Ledger;
@@ -16,6 +17,7 @@ interface LedgerItemProps {
 }
 
 export function LedgerItem({ ledger, onEdit, onDelete }: LedgerItemProps) {
+    const t = useTranslations("LedgerItem");
     const router = useRouter();
 
     // Fetch summary for this ledger
@@ -78,7 +80,7 @@ export function LedgerItem({ ledger, onEdit, onDelete }: LedgerItemProps) {
                         {stats.currency} {stats.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <p className="text-xs text-[var(--muted)]">
-                        总支出 ({stats.count} 笔)
+                        {t("totalExpense", { count: stats.count })}
                     </p>
                 </div>
             </CardContent>

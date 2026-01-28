@@ -9,12 +9,12 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations, useLocale } from "next-intl";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
     return data;
   }
-  // Assume jpeg if not specified, or we could try to guess/default
   return `data:image/jpeg;base64,${data}`;
 }
 
@@ -56,13 +56,13 @@ export function BatchTransactionCard({
   status,
   className,
 }: BatchTransactionCardProps) {
+  const t = useTranslations("BatchTransactionCard");
+  const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  // Initialize from defaultExpanded prop
   const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  // Track expanded categories. Default to open for pending? No, user asked for breakdown.
-  // "Click beverage, see all items". So default closed.
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   // Group transactions by Category ID + Currency
@@ -92,7 +92,7 @@ export function BatchTransactionCard({
         groups[key] = {
           key,
           categoryId: tx.categoryId,
-          categoryName: tx.category?.name || "未分类",
+          categoryName: tx.category?.name || tCommon("unclassified"),
           categoryIcon: tx.category?.icon || "📝",
           currency: tx.currency || "",
           total: 0,
@@ -109,14 +109,13 @@ export function BatchTransactionCard({
     });
 
     const sortedGroups = Object.values(groups).sort((a, b) => {
-      // Sort unclassified to top if pending? Or bottom?
       if (a.categoryId === null) return -1;
       if (b.categoryId === null) return 1;
-      return b.total - a.total; // Descending by amount
+      return b.total - a.total;
     });
 
     return { groupedTransactions: sortedGroups, totalAmounts: totals };
-  }, [transactions]);
+  }, [transactions, tCommon]);
 
   // Parse content based on type
   const { text, images } = useMemo(() => {
@@ -162,7 +161,7 @@ export function BatchTransactionCard({
       {/* 1. Date Header */}
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
         <span className="text-sm font-medium text-muted">
-          {new Date(receipt.createdAt).toLocaleString("zh-CN", {
+          {new Date(receipt.createdAt).toLocaleString(locale, {
             month: "long",
             day: "numeric",
             hour: "2-digit",
@@ -202,7 +201,7 @@ export function BatchTransactionCard({
             size="icon-sm"
             onClick={() => setIsContentExpanded(!isContentExpanded)}
             className="h-6 w-6 text-muted-foreground hover:text-primary"
-            title={isContentExpanded ? "收起原始内容" : "查看原始内容"}
+            title={isContentExpanded ? t("collapseContent") : t("viewContent")}
           >
             {isContentExpanded ? (
               <Eye className="h-4 w-4" />
@@ -221,14 +220,14 @@ export function BatchTransactionCard({
                 onClick={(e) => { e.stopPropagation(); handleRetry(); }}
                 disabled={isRetrying}
                 className="h-7 px-2 text-xs border-red-600/30 hover:bg-red-600/10 hover:text-red-700 text-red-600 dark:text-red-400 dark:border-red-400/30 dark:hover:text-red-300"
-                title="重试"
+                title={tCommon("retry")}
               >
                 {isRetrying ? (
                   <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 ) : (
                   <RotateCcw className="h-3.5 w-3.5 mr-1" />
                 )}
-                重试
+                {tCommon("retry")}
               </Button>
             </>
           )}
@@ -243,14 +242,14 @@ export function BatchTransactionCard({
                 onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
                 disabled={isConfirming}
                 className="h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
-                title="确认账单"
+                title={t("confirmBill")}
               >
                 {isConfirming ? (
                   <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 ) : (
                   <Check className="h-4 w-4 mr-1" />
                 )}
-                确认
+                {tCommon("confirm")}
               </Button>
             </>
           )}
@@ -322,9 +321,9 @@ export function BatchTransactionCard({
                   <div className="text-left">
                     <p className="font-medium text-text">{group.categoryName}</p>
                     <p className="text-xs text-muted">
-                      {group.items.length} 笔记录
+                      {t("records", { count: group.items.length })}
                       {hasIssues && !isConfirmed && (
-                        <span className="ml-2 text-warning">Wait for edit</span>
+                        <span className="ml-2 text-warning">{t("requireEdit")}</span>
                       )}
                     </p>
                   </div>
@@ -374,23 +373,6 @@ export function BatchTransactionCard({
           );
         })}
       </div>
-
-      {/* Footer Actions */}
-      {/* Footer Actions - Only show if NO Header actions are used (e.g. for some other future state). 
-          Currently Confirm and Retry are both in Header. 
-          We hide footer if onConfirm OR onRetry is present for these statuses.
-      */}
-      {
-        (!isConfirmed &&
-          !(onConfirm) &&
-          !(onRetry && (status === "failed" || status === "invalid")) &&
-          (onRetry || onConfirm) // Fallback check
-        ) && (
-          <div className="p-4 bg-surface2 border-t border-border flex justify-end gap-2">
-            {/* Legacy footer logic if ever needed */}
-          </div>
-        )
-      }
 
       {/* ImageViewer Component */}
       <ImageViewer

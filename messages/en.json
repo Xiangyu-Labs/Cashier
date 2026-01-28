@@ -1,0 +1,141 @@
+{
+    "HomePage": {
+        "loading": "Loading...",
+        "creating": "Creating default ledger...",
+        "defaultLedgerName": "My Ledger",
+        "createFailed": "Creation failed, please refresh to retry"
+    },
+    "LedgerPage": {
+        "notFound": "Ledger not found",
+        "settings": "Settings",
+        "history": "Transactions",
+        "details": "Details",
+        "stats": "Stats",
+        "newRecord": "New Record"
+    },
+    "LedgerItem": {
+        "totalExpense": "Total Expense ({count} records)"
+    },
+    "DetailsTab": {
+        "expenseSummary": "Expense Summary ({currency})",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "noExpenses": "No expenses in this period"
+    },
+    "HistoryTab": {
+        "noHistory": "No confirmed records",
+        "otherHistory": "Other History"
+    },
+    "LedgerSwitcher": {
+        "selectLedger": "Select Ledger",
+        "newLedger": "New Ledger",
+        "ledgerName": "Ledger Name",
+        "placeholder": "e.g., Daily Expenses",
+        "create": "Create",
+        "creating": "Creating...",
+        "createSuccess": "Created successfully",
+        "createSuccessDesc": "Ledger created",
+        "createFailed": "Creation failed",
+        "createFailedDesc": "Failed to create ledger, please try again later"
+    },
+    "TaskCenter": {
+        "taskCenter": "Task Center",
+        "taskQueue": "Task Queue",
+        "runningTasks": "{count} {count, plural, one {task} other {tasks}} processing",
+        "noActiveTasks": "No active tasks",
+        "noActiveTasksDesc": "New record processing will appear here",
+        "statusQueued": "Queued",
+        "statusRunning": "Running",
+        "statusCompleted": "Completed",
+        "statusFailed": "Failed",
+        "statusCancelled": "Cancelled"
+    },
+    "StatsTab": {
+        "expenseTrend": "Expense Trend",
+        "expenseRanking": "Expense Ranking",
+        "averageDaily": "Avg Daily",
+        "totalExpense": "Total Expense",
+        "month": "Month",
+        "week": "Week",
+        "year": "Year"
+    },
+    "TransactionsTab": {
+        "processing": "Processing",
+        "pending": "Pending",
+        "confirmAll": "Confirm All",
+        "confirming": "Confirming...",
+        "abnormal": "Abnormal Bills",
+        "deleteAll": "Delete All",
+        "retryAll": "Retry All",
+        "noRecords": "No Records",
+        "loadMore": "Load More",
+        "noMore": "No more items",
+        "manualRecord": "Manual Record",
+        "deleteConfirmTitle": "Delete Confirmation",
+        "deleteConfirmDesc": "Are you sure you want to delete this record? This action cannot be undone.",
+        "deleteSuccess": "Deleted successfully",
+        "confirmSuccess": "Confirmed successfully",
+        "deleteFailed": "Delete failed",
+        "confirmFailed": "Confirm failed",
+        "retrySubmitted": "Retry submitted",
+        "retryAllDesc": "Retrying all failed records",
+        "deleteAllConfirmTitle": "Delete All Abnormal Bills",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
+    },
+    "Common": {
+        "confirm": "Confirm",
+        "delete": "Delete",
+        "retry": "Retry",
+        "cancel": "Cancel",
+        "save": "Save",
+        "loading": "Loading...",
+        "sending": "Sending...",
+        "success": "Success",
+        "error": "Error",
+        "sending_status": "Sending..."
+    },
+    "TransactionInput": {
+        "placeholder": "Enter consumption record, e.g.: lunch 35 dollars... (supports pasting images)",
+        "image": "Image",
+        "send": "Send"
+    },
+    "TransactionDetail": {
+        "title": "Transaction Details",
+        "category": "Category",
+        "transactionDate": "Transaction Date",
+        "status": "Status",
+        "confirmed": "Confirmed",
+        "description": "Description",
+        "createdAt": "Created At",
+        "originalInput": "Original Input",
+        "noOriginal": "No original record",
+        "edit": "Edit",
+        "itemName": "Item Name",
+        "amount": "Amount",
+        "currency": "Currency",
+        "selectCategory": "Select Category",
+        "unknown": "Unknown"
+    },
+    "Settings": {
+        "title": "Settings",
+        "assistant": "Smart Assistant",
+        "autoConfirm": "Auto-confirm",
+        "autoConfirmDesc": "AI-identified bills are processed automatically and no longer require manual confirmation",
+        "autoRecognizeDate": "Auto-recognize Transaction Date",
+        "autoRecognizeDateDesc": "If enabled, AI will try to identify the transaction date from the bill. If disabled or not identified, the upload time will be used.",
+        "collapsePending": "Collapse Pending Items by Default",
+        "collapsePendingDesc": "If enabled, the pending items list is collapsed by default, showing only the title and quantity.",
+        "mergeSimilar": "Merge Similar Transactions",
+        "mergeSimilarDesc": "When enabled, multiple transactions of the same category on the same day will be merged into a single summary record.",
+        "dataConfig": "Data Configuration",
+        "language": "Language",
+        "chinese": "Chinese",
+        "english": "English",
+        "riskTitle": "Risk Warning",
+        "riskDesc1": "After enabling 'Auto-confirm', all bills identified by AI will be directly recorded in the ledger.",
+        "riskDesc2": "While AI accuracy is high, identification errors (e.g., amount, category errors) may still occur. Enabling this feature means you accept potential bookkeeping errors.",
+        "riskDesc3": "It is recommended that you check the transaction list regularly (e.g., weekly) to check for abnormal records.",
+        "cancel": "Cancel",
+        "confirmEnable": "Confirm Enable"
+    }
+}

@@ -14,6 +14,7 @@ const summarizationSchema = z.object({
  */
 export async function summarizeTransactions(
     transactions: ParsedTransaction[],
+    targetLanguage: string = "zh-CN",
     originalText?: string
 ): Promise<ParsedTransaction[]> {
     const finalTransactions: ParsedTransaction[] = [];
@@ -45,7 +46,7 @@ export async function summarizeTransactions(
             notes: t.notes
         }));
 
-        const prompt = buildSummarizationPrompt(itemsToSummarize, originalText);
+        const prompt = buildSummarizationPrompt(itemsToSummarize, targetLanguage, originalText);
 
         try {
             const response = await client.generateContent(prompt, []);

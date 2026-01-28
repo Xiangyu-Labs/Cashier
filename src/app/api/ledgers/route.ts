@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgers, categories } from "@/lib/db/schema";
-import { DEFAULT_CATEGORIES } from "@/config/default-categories";
+import defaultLedger from "@/config/default-ledger.json";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
 const createLedgerSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  language: z.string().optional(),
 });
 
 // GET /api/ledgers - 获取所有账本
@@ -36,15 +37,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .insert(ledgers)
       .values({
         name: validated.name,
-        language: "zh-CN",
-        currencies: ["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"],
+        language: validated.language || defaultLedger.settings.language,
+        currencies: defaultLedger.settings.currencies,
+        autoConfirm: defaultLedger.settings.autoConfirm,
+        autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
+        collapsePendingDefault: defaultLedger.settings.collapsePendingDefault,
+        mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,
       })
       .returning();
 
     // Seed categories for the new ledger
-    if (DEFAULT_CATEGORIES.length > 0) {
+    if (defaultLedger.categories.length > 0) {
       await db.insert(categories).values(
-        DEFAULT_CATEGORIES.map((cat) => ({
+        defaultLedger.categories.map((cat) => ({
           ...cat,
           ledgerId: newLedger.id,
         }))

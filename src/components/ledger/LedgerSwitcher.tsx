@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Plus, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,12 +21,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { fetchLedgers, createLedger } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslations } from "next-intl";
 
 interface LedgerSwitcherProps {
     currentLedgerId: string;
 }
 
 export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
+    const t = useTranslations("LedgerSwitcher");
+    const tCommon = useTranslations("Common");
     const router = useRouter();
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -49,16 +52,16 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
             setNewLedgerName("");
             setOpen(false);
             toast({
-                title: "创建成功",
-                description: "账本已创建",
+                title: t("createSuccess"),
+                description: t("createSuccessDesc"),
                 variant: "success",
             });
             router.push(`/ledger/${newLedger.id}`);
         },
         onError: () => {
             toast({
-                title: "创建失败",
-                description: "无法创建账本，请稍后重试",
+                title: t("createFailed"),
+                description: t("createFailedDesc"),
                 variant: "error",
             });
         },
@@ -82,7 +85,7 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
                         aria-expanded={open}
                         className="w-auto px-2 hover:bg-transparent text-lg font-bold hover:text-primary transition-colors hover:bg-accent/10"
                     >
-                        <span className="truncate text-left max-w-[100px] sm:max-w-[150px]">{currentLedger?.name || "选择账本"}</span>
+                        <span className="truncate text-left max-w-[100px] sm:max-w-[150px]">{currentLedger?.name || t("selectLedger")}</span>
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
@@ -114,7 +117,7 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
                             onClick={() => setShowCreateModal(true)}
                         >
                             <Plus className="h-4 w-4" />
-                            <span>新建账本</span>
+                            <span>{t("newLedger")}</span>
                         </div>
                     </div>
                 </PopoverContent>
@@ -123,17 +126,17 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>新建账本</DialogTitle>
+                        <DialogTitle>{t("newLedger")}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-text">
-                                账本名称
+                                {t("ledgerName")}
                             </label>
                             <Input
                                 value={newLedgerName}
                                 onChange={(e) => setNewLedgerName(e.target.value)}
-                                placeholder="例如：日常开销"
+                                placeholder={t("placeholder")}
                                 autoFocus
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && newLedgerName.trim()) {
@@ -151,13 +154,13 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
                                 setNewLedgerName("");
                             }}
                         >
-                            取消
+                            {tCommon("cancel")}
                         </Button>
                         <Button
                             onClick={handleCreate}
                             disabled={!newLedgerName.trim() || createMutation.isPending}
                         >
-                            {createMutation.isPending ? "创建中..." : "创建"}
+                            {createMutation.isPending ? t("creating") : t("create")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

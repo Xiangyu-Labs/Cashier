@@ -17,6 +17,7 @@ export interface ParseReceiptInput {
     text?: string;
     imageUrls?: string[];
     categories: CategoryInfo[];
+    language?: string;
     settings: {
         mergeSimilarItems: boolean;
         autoRecognizeDate: boolean;
@@ -52,7 +53,8 @@ const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
             },
             {
                 categories: input.categories,
-                mergeSimilarItems: false // Handle merge in step 2
+                mergeSimilarItems: false, // Handle merge in step 2
+                language: input.language
             }
         );
 
@@ -79,7 +81,7 @@ const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
                 data: { parseResult: transactions },
             });
 
-            transactions = await summarizeTransactions(transactions, input.text);
+            transactions = await summarizeTransactions(transactions, input.language, input.text);
         }
 
         return {

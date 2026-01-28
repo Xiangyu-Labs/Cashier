@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { useTranslations } from "next-intl";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -56,6 +57,8 @@ export function TransactionsTab({
     categories,
     defaultCollapsed = false,
 }: TransactionsTabProps) {
+    const t = useTranslations("TransactionsTab");
+    const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
     const [isPendingConfirmationCollapsed, setIsPendingConfirmationCollapsed] = useState(defaultCollapsed);
@@ -132,7 +135,7 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
         onError: () => {
-            toast({ variant: "error", title: "删除失败", description: "无法删除记录，请稍后重试" });
+            toast({ variant: "error", title: t("deleteFailed"), description: tCommon("error") });
         }
     });
 
@@ -153,7 +156,7 @@ export function TransactionsTab({
             deleteMutation.mutate(deleteConfirm.id);
         }
         setDeleteConfirm({ ...deleteConfirm, open: false });
-        toast({ variant: "success", title: "删除成功", description: "记录已删除" });
+        toast({ variant: "success", title: t("deleteSuccess"), description: "" });
     }
 
     const confirmAllMutation = useMutation({
@@ -162,11 +165,11 @@ export function TransactionsTab({
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
             setConfirmingAll(false);
-            toast({ variant: "success", title: "确认成功", description: "所有交易已确认" });
+            toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },
         onError: () => {
             setConfirmingAll(false);
-            toast({ variant: "error", title: "确认失败", description: "无法确认交易，请稍后重试" });
+            toast({ variant: "error", title: t("confirmFailed"), description: tCommon("error") });
         },
     });
 
@@ -175,9 +178,9 @@ export function TransactionsTab({
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-            toast({ variant: "success", title: "确认成功", description: "交易批次已确认" });
+            toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },
-        onError: () => toast({ variant: "error", title: "确认失败", description: "无法确认交易，请稍后重试" })
+        onError: () => toast({ variant: "error", title: t("confirmFailed"), description: tCommon("error") })
     });
 
     function isDateInRange(dateStr: string) {
@@ -209,7 +212,7 @@ export function TransactionsTab({
         await Promise.all(failedReceipts.map((receipt) => retryReceipt(ledgerId, receipt.id)));
         queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
         setConfirmingAll(false);
-        toast({ variant: "success", title: "重试已提交", description: "正在重试所有失败的记录" });
+        toast({ variant: "success", title: t("retrySubmitted"), description: t("retryAllDesc") });
     }
 
     const pendingConfirmationItems: PinnedItem[] = [
@@ -232,7 +235,7 @@ export function TransactionsTab({
     async function handleRetryReceipt(receiptId: string) {
         await retryReceipt(ledgerId, receiptId);
         queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
-        toast({ variant: "success", title: "重试已提交", description: "正在重试该记录" });
+        toast({ variant: "success", title: t("retrySubmitted"), description: "" });
     }
 
     function handleDeleteAllErrors() {
@@ -240,8 +243,8 @@ export function TransactionsTab({
             open: true,
             type: "receipt",
             id: "ALL_ERRORS",
-            title: "删除所有异常账单",
-            description: "确定要删除所有异常账单吗？此操作无法撤销。"
+            title: t("deleteAllConfirmTitle"),
+            description: t("deleteAllConfirmDesc")
         });
     }
 
@@ -253,10 +256,10 @@ export function TransactionsTab({
                 queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
                 queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
                 queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-                toast({ variant: "success", title: "删除成功", description: "所有异常账单已删除" });
+                toast({ variant: "success", title: t("deleteSuccess"), description: "" });
             } catch (error) {
                 console.error("Failed to delete abnormal bills:", error);
-                toast({ variant: "error", title: "删除失败", description: "无法删除部分记录" });
+                toast({ variant: "error", title: t("deleteFailed"), description: "" });
             }
         } else {
             handleDeleteConfirm();
@@ -289,7 +292,7 @@ export function TransactionsTab({
                     className={className}
                     defaultExpanded={true}
                     onRetry={onRetryProp}
-                    onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: item.data.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
+                    onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: item.data.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                 />;
             }
             if (item.type === "batch") {
@@ -302,16 +305,16 @@ export function TransactionsTab({
                     defaultExpanded={true}
                     onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
                     onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })}
-                    onDeleteTransaction={(id) => setDeleteConfirm({ open: true, type: "transaction", id, title: "确认删除", description: "确定要删除这条交易吗？此操作无法撤销。" })}
-                    onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: item.data.receipt.id, title: "确认删除", description: "确定要删除这条记录及其关联的所有交易吗？" })}
+                    onDeleteTransaction={(id) => setDeleteConfirm({ open: true, type: "transaction", id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                    onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: item.data.receipt.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                 />;
             }
             if (item.type === "single") {
                 return (
                     <div className={`p-4 rounded-xl border ${className}`}>
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-muted">手动记录</span>
-                            <Button variant="ghost" size="icon-sm" onClick={() => setDeleteConfirm({ open: true, type: "transaction", id: item.data.id, title: "确认删除", description: "确定要删除这条交易吗？" })}><span className="sr-only">Delete</span>🗑️</Button>
+                            <span className="text-sm text-muted">{t("manualRecord")}</span>
+                            <Button variant="ghost" size="icon-sm" onClick={() => setDeleteConfirm({ open: true, type: "transaction", id: item.data.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}><span className="sr-only">Delete</span>🗑️</Button>
                         </div>
                         <div className="text-sm">{item.data.itemName} - {item.data.amount} {item.data.currency}</div>
                     </div>
@@ -347,7 +350,7 @@ export function TransactionsTab({
                             <button onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-blue-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                    处理中 ({processingItems.length})
+                                    {t("processing")} ({processingItems.length})
                                 </h3>
                                 <motion.div animate={{ rotate: isQueuedCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
                                     <ChevronDown className="w-4 h-4 text-blue-500" />
@@ -376,14 +379,14 @@ export function TransactionsTab({
                             <button onClick={() => setIsPendingConfirmationCollapsed(!isPendingConfirmationCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-warning flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
-                                    待确认账单 ({pendingConfirmationItems.length})
+                                    {t("pending")} ({pendingConfirmationItems.length})
                                 </h3>
                                 <motion.div animate={{ rotate: isPendingConfirmationCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
                                     <ChevronDown className="w-4 h-4 text-warning" />
                                 </motion.div>
                             </button>
                             <div className="flex gap-2">
-                                <Button variant="default" onClick={handleConfirmAll} disabled={confirmAllMutation.isPending || confirmingAll} size="sm" className="h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95">{confirmAllMutation.isPending ? "确认中..." : "全部确认"}</Button>
+                                <Button variant="default" onClick={handleConfirmAll} disabled={confirmAllMutation.isPending || confirmingAll} size="sm" className="h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95">{confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}</Button>
                             </div>
                         </div>
                         <AnimatePresence>
@@ -396,10 +399,6 @@ export function TransactionsTab({
                             )}
                         </AnimatePresence>
 
-                        {/* Splitter Line - only if we have more content below, but user said "if category is empty don't show splitter". Pinned items act as a group. */}
-                        {/* User said "Too high". Let's reduce margin or remove it if not needed. */}
-                        {/* Actually, visually, we just need a small separator if there is subsequent content. */}
-                        {/* If we have abnormal items, we might need a separator? Or just space? */}
                         <div className="h-px bg-border/50 mt-4 mx-2" />
                     </motion.div>
                 )}
@@ -413,15 +412,15 @@ export function TransactionsTab({
                             <button onClick={() => setIsErrorCollapsed(!isErrorCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-red-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                                    异常账单 ({abnormalItems.length})
+                                    {t("abnormal")} ({abnormalItems.length})
                                 </h3>
                                 <motion.div animate={{ rotate: isErrorCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
                                     <ChevronDown className="w-4 h-4 text-red-500" />
                                 </motion.div>
                             </button>
                             <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95" onClick={handleDeleteAllErrors}>全部删除</Button>
-                                <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm transition-all active:scale-95" disabled={confirmingAll} onClick={handleRetryAll}>全部重试</Button>
+                                <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95" onClick={handleDeleteAllErrors}>{t("deleteAll")}</Button>
+                                <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm transition-all active:scale-95" disabled={confirmingAll} onClick={handleRetryAll}>{t("retryAll")}</Button>
                             </div>
                         </div>
                         <AnimatePresence>
@@ -443,12 +442,12 @@ export function TransactionsTab({
                 {isLoading ? (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
-                        <span>加载中...</span>
+                        <span>{tCommon("loading")}</span>
                     </div>
                 ) : allReceipts.length === 0 ? (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">🧾</span>
-                        <span>暂无记录</span>
+                        <span>{t("noRecords")}</span>
                     </div>
                 ) : (
                     <>
@@ -465,7 +464,7 @@ export function TransactionsTab({
                                             categories={categories}
                                             status={receipt.status || 'completed'}
                                             isConfirmed={true}
-                                            onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: "确认删除", description: "确定要删除这条记录吗？" })}
+                                            onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                             onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })}
                                             onDeleteTransaction={(id) => deleteMutation.mutate(id)}
                                         />
@@ -477,21 +476,21 @@ export function TransactionsTab({
                             {isFetchingNextPage ? (
                                 <div className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
-                                    <span>加载中...</span>
+                                    <span>{tCommon("loading")}</span>
                                 </div>
                             ) : hasNextPage ? (
                                 <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                    <span>加载更多</span>
+                                    <span>{t("loadMore")}</span>
                                 </motion.div>
                             ) : (
-                                <span className="opacity-50 text-xs">没有更多了</span>
+                                <span className="opacity-50 text-xs">{t("noMore")}</span>
                             )}
                         </div>
                     </>
                 )}
             </div>
 
-            <ConfirmDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })} title={deleteConfirm.title} description={deleteConfirm.description} onConfirm={handleDeleteConfirmAction} variant="destructive" confirmLabel="删除" />
+            <ConfirmDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })} title={deleteConfirm.title} description={deleteConfirm.description} onConfirm={handleDeleteConfirmAction} variant="destructive" confirmLabel={tCommon("delete")} />
         </div>
     );
 }

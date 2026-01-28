@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { DateRangeType, formatDateForApi } from "@/lib/date-utils";
+import { useLocale } from "next-intl";
 
 
 interface StatsChartProps {
@@ -19,6 +20,8 @@ export function StatsChart({
     endDate,
     isLoading
 }: StatsChartProps) {
+    const locale = useLocale();
+
     // Process Data based on Range Type
     const chartPoints = useMemo(() => {
         if (isLoading) return [];
@@ -37,8 +40,10 @@ export function StatsChart({
                     .filter(d => d.date.startsWith(monthPrefix))
                     .reduce((sum, d) => sum + d.total, 0);
 
+                const monthLabel = new Date(year, month, 1).toLocaleString(locale, { month: "short" });
+
                 points.push({
-                    label: `${month + 1}月`,
+                    label: monthLabel,
                     value: total,
                     fullDate: monthPrefix // Just for key/ref
                 });
@@ -56,9 +61,7 @@ export function StatsChart({
 
                 let label = "";
                 if (rangeType === "week") {
-                    // Mon, Tue... (Use Chinese)
-                    const split = ["日", "一", "二", "三", "四", "五", "六"];
-                    label = split[curr.getDay()];
+                    label = curr.toLocaleString(locale, { weekday: "short" });
                 } else {
                     // Day number for Month view
                     label = String(curr.getDate());
@@ -75,16 +78,9 @@ export function StatsChart({
             }
         }
         return points;
-    }, [data, rangeType, startDate, endDate, isLoading]);
+    }, [data, rangeType, startDate, endDate, isLoading, locale]);
 
     const maxVal = Math.max(...chartPoints.map(p => p.value), 1); // Avoid div by 0
-
-    // Y-Axis lines (0, 50%, 100% of visual range approx)
-    // We want the chart to take up most height but leave room for labels.
-
-    // SVG Coordinates
-    // Width: 100% (viewBox 0 0 100 100, preserveAspectRatio none)
-    // But points need to be mapped.
 
     if (isLoading) {
         return <div className="h-48 w-full bg-surface2/30 animate-pulse rounded-lg" />;
@@ -122,7 +118,6 @@ export function StatsChart({
                     />
 
                     {/* Points (Only show if sparse enough or interactive) */}
-                    {/* For Year/Week: Show all points. For Month: Show none or only non-zero? */}
                     {(rangeType !== "month" || chartPoints.length < 15) && chartPoints.map((p, i) => {
                         const x = (i / (chartPoints.length - 1)) * 100;
                         const y = 90 - (p.value / maxVal) * 80;
@@ -145,8 +140,6 @@ export function StatsChart({
                         let showLabel = false;
                         if (rangeType === "week" || rangeType === "year") {
                             showLabel = true;
-                            // For year, if screen is small, maybe every 2nd? 
-                            // But usually 12 items fit. 1,2,3...12.
                         } else if (rangeType === "month") {
                             // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
                             // Or just indices % 5 === 0
