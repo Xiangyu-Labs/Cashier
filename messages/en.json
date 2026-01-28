@@ -1,9 +1,8 @@
 {
     "ErrorCode": {
-        "ai_service_error": "AI service unavailable",
+        "internal_error": "Internal error",
         "parse_failed": "Unable to parse content",
-        "invalid_content": "Invalid receipt",
-        "unknown": "Unknown error"
+        "invalid_content": "Invalid stream"
     },
     "HomePage": {
         "loading": "Loading...",

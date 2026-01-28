@@ -1,9 +1,8 @@
 {
     "ErrorCode": {
-        "ai_service_error": "AI 服务暂时不可用",
+        "internal_error": "系统内部错误",
         "parse_failed": "无法识别内容格式",
-        "invalid_content": "非有效账单",
-        "unknown": "未知错误"
+        "invalid_content": "非有效流水"
     },
     "HomePage": {
         "loading": "加载中...",

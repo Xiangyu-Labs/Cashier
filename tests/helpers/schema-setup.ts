@@ -32,7 +32,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     END $$;
 
     DO $$ BEGIN
-      CREATE TYPE error_code AS ENUM ('ai_service_error', 'parse_failed', 'invalid_content', 'unknown');
+      CREATE TYPE error_code AS ENUM ('internal_error', 'parse_failed', 'invalid_content');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
 

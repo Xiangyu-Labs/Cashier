@@ -30,10 +30,9 @@ export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
 ]);
 
 export const errorCodeEnum = pgEnum("error_code", [
-  "ai_service_error",
+  "internal_error",
   "parse_failed",
   "invalid_content",
-  "unknown",
 ]);
 
 

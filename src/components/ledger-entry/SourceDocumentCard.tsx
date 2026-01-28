@@ -61,6 +61,7 @@ export function SourceDocumentCard({
   className,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
+  const tError = useTranslations("ErrorCode");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -179,12 +180,10 @@ export function SourceDocumentCard({
         <div className="flex items-center gap-3">
           {ledgerEntries.length === 0 && (
             <div className="flex items-center gap-2">
-              <ProcessingStatus status={status} />
-              {status === "error" && errorCode && (
-                <span className="text-xs text-danger/80">
-                  {t(`ErrorCode.${errorCode}`)}
-                </span>
-              )}
+              <ProcessingStatus
+                status={status}
+                label={status === "error" && errorCode ? tError(errorCode) : undefined}
+              />
             </div>
           )}
 

@@ -52,9 +52,11 @@ Structure:
 7. **Notes Field**: Consolidation of quantity, unit price, specifications, original foreign names, merchant name, branch info, etc. 
 8. **TRANSLATION**: Ensure "title", "item_name", and "notes" are translated into ${targetLanguage}.
 
-### Validation
-- If the input is NOT a bill, receipt, invoice, or any consumption record, set "is_valid" to false and return no ledger entries.
-- If it is a valid record, set "is_valid" to true.
+### Validation & Error Handling
+- **CRITICAL**: You MUST ALWAYS return a valid JSON object following the structure above, even if the input is junk, irrelevant, or empty. NO EXPLANATIONS. NO MARKDOWN.
+- If the input is NOT a financial record (e.g., general conversation, junk text, random photos), set \`"is_valid": false\` and return an empty \`"ledger_entries": []\`.
+- If it is a valid record, set \`"is_valid": true\`.
+- Do NOT say "I cannot help with this." Return the JSON with \`"is_valid": false\` instead.
 
 ### Examples
 

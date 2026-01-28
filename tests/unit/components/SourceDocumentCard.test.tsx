@@ -161,8 +161,7 @@ describe("SourceDocumentCard", () => {
 
     it("renders error status and message when errorCode is provided", () => {
         render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="error" errorCode="parse_failed" />);
-        expect(screen.getByText("处理异常")).toBeTruthy();
-        expect(screen.getByText("ErrorCode.parse_failed")).toBeTruthy();
+        expect(screen.getByText("parse_failed")).toBeTruthy();
     });
 
     it("renders total amount and hides status when ledger entries exist", () => {

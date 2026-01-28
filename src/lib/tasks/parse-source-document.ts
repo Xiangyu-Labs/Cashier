@@ -136,11 +136,9 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         const input = task.input as ParseSourceDocumentInput;
 
         // Determine error code
-        let errorCode: "ai_service_error" | "parse_failed" | "unknown" = "unknown";
+        let errorCode: "internal_error" | "parse_failed" = "internal_error";
         if (error.message.includes("AI response") || error.message.includes("JSON") || error.message.includes("parse")) {
             errorCode = "parse_failed";
-        } else if (error.message.includes("AI") || error.message.includes("OpenAI") || error.message.includes("service")) {
-            errorCode = "ai_service_error";
         }
 
         // Update source document status to error

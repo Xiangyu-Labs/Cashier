@@ -5,10 +5,11 @@ export type ProcessingStatusType = "queued" | "processing" | "to_confirm" | "com
 
 interface ProcessingStatusProps {
     status: ProcessingStatusType;
+    label?: string;
     className?: string;
 }
 
-export function ProcessingStatus({ status, className }: ProcessingStatusProps) {
+export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
     const config = {
         queued: {
             label: "处理中",
@@ -53,7 +54,8 @@ export function ProcessingStatus({ status, className }: ProcessingStatusProps) {
     }
 
     const configItem = config[status];
-    const { label, icon: Icon, colorClass, bgClass } = configItem;
+    const { label: configLabel, icon: Icon, colorClass, bgClass } = configItem;
+    const displayLabel = label || configLabel;
 
     return (
         <div className={cn("inline-flex items-center gap-2", className)}>
@@ -65,7 +67,7 @@ export function ProcessingStatus({ status, className }: ProcessingStatusProps) {
                 )}
             </div>
             <span className={cn("text-xs font-medium", colorClass)}>
-                {label}
+                {displayLabel}
             </span>
         </div>
     );
