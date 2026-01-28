@@ -151,49 +151,49 @@ export function LedgerEntryViewDetails({
             {/* Details Grid */}
             <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface2/30 p-4">
                 <div className="flex justify-between items-center h-10">
-                    <span className="text-sm text-muted flex items-center gap-2">
-                        <Tag className="h-4 w-4" /> {t("category")}
-                    </span>
-                    {isEditing ? (
-                        <select
-                            value={editData.categoryId}
-                            onChange={(e) => handleFieldChange("categoryId", e.target.value)}
-                            className="h-9 rounded-md border border-border bg-surface px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 max-w-[200px]"
-                        >
-                            <option value="">{t("selectCategory")}</option>
-                            {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.icon} {cat.name}
-                                </option>
-                            ))}
-                        </select>
-                    ) : (
-                        ledgerEntry.category ? (
-                            <Badge variant="default" className="font-normal">
-                                {ledgerEntry.category.name}
-                            </Badge>
+                    {/* Date on the left */}
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted" />
+                        {isEditing ? (
+                            <Input
+                                type="date"
+                                value={editData.entryDate}
+                                onChange={(e) => handleFieldChange("entryDate", e.target.value)}
+                                className="w-[140px] h-8 text-xs"
+                            />
                         ) : (
-                            <Badge variant="warning">{tCommon("unclassified")}</Badge>
-                        )
-                    )}
-                </div>
+                            <span className="text-sm text-text">
+                                {formatDate(ledgerEntry.entryDate)}
+                            </span>
+                        )}
+                    </div>
 
-                <div className="flex justify-between items-center h-10">
-                    <span className="text-sm text-muted flex items-center gap-2">
-                        <Calendar className="h-4 w-4" /> {t("entryDate")}
-                    </span>
-                    {isEditing ? (
-                        <Input
-                            type="date"
-                            value={editData.entryDate}
-                            onChange={(e) => handleFieldChange("entryDate", e.target.value)}
-                            className="w-[160px] h-9"
-                        />
-                    ) : (
-                        <span className="text-sm text-text">
-                            {formatDate(ledgerEntry.entryDate)}
-                        </span>
-                    )}
+                    {/* Category on the right */}
+                    <div className="flex items-center gap-2">
+                        {isEditing ? (
+                            <select
+                                value={editData.categoryId}
+                                onChange={(e) => handleFieldChange("categoryId", e.target.value)}
+                                className="h-8 rounded-md border border-border bg-surface px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 max-w-[120px]"
+                            >
+                                <option value="">{t("selectCategory")}</option>
+                                {categories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.icon} {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            ledgerEntry.category ? (
+                                <Badge variant="default" className="font-normal bg-muted/50 text-muted-foreground border-none">
+                                    <Tag className="h-3 w-3 mr-1 opacity-70" />
+                                    {ledgerEntry.category.name}
+                                </Badge>
+                            ) : (
+                                <Badge variant="warning">{tCommon("unclassified")}</Badge>
+                            )
+                        )}
+                    </div>
                 </div>
 
                 {/* Description / Remark */}
