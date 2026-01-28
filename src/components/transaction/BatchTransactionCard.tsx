@@ -1,7 +1,7 @@
 import { Receipt, Transaction, Category } from "@/types/api";
 import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
+import { ChevronDown, Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { TransactionStatus } from "@/components/ui/TransactionStatus";

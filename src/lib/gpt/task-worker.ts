@@ -128,16 +128,17 @@ export function isWorkerProcessing(): boolean {
 /**
  * Deeply removes 'images' and 'imageUrls' fields from an object to prevent tokenizing Base64 data.
  */
-function scrubImages(obj: any): any {
+function scrubImages(obj: unknown): unknown {
     if (Array.isArray(obj)) {
         return obj.map(scrubImages);
     } else if (obj !== null && typeof obj === 'object') {
-        const newObj: any = {};
-        for (const key in obj) {
+        const newObj: Record<string, unknown> = {};
+        const typedObj = obj as Record<string, unknown>;
+        for (const key in typedObj) {
             if (key === 'images' || key === 'imageUrls') {
                 continue;
             }
-            newObj[key] = scrubImages(obj[key]);
+            newObj[key] = scrubImages(typedObj[key]);
         }
         return newObj;
     }
@@ -157,7 +158,7 @@ function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: nu
     if (typeof input === "string" && (input.trim().startsWith("{") || input.trim().startsWith("["))) {
         try {
             inputObj = JSON.parse(input);
-        } catch (e) {
+        } catch {
             // Not valid JSON
         }
     }
@@ -165,19 +166,20 @@ function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: nu
     if (typeof inputObj === "string") {
         inputTokens = encode(inputObj).length;
     } else if (inputObj && typeof inputObj === "object") {
-        const msgInput = inputObj as any;
+        const msgInput = inputObj as Record<string, unknown>;
 
         // 1. Count images before scrubbing
-        const countImagesRecursive = (obj: any): number => {
+        const countImagesRecursive = (obj: unknown): number => {
             if (Array.isArray(obj)) {
                 return obj.reduce((sum, item) => sum + countImagesRecursive(item), 0);
             } else if (obj !== null && typeof obj === 'object') {
+                const typedObj = obj as Record<string, unknown>;
                 let count = 0;
-                if (Array.isArray(obj.images)) count += obj.images.length;
-                if (Array.isArray(obj.imageUrls)) count += obj.imageUrls.length;
-                for (const key in obj) {
+                if (Array.isArray(typedObj.images)) count += typedObj.images.length;
+                if (Array.isArray(typedObj.imageUrls)) count += typedObj.imageUrls.length;
+                for (const key in typedObj) {
                     if (key !== 'images' && key !== 'imageUrls') {
-                        count += countImagesRecursive(obj[key]);
+                        count += countImagesRecursive(typedObj[key]);
                     }
                 }
                 return count;

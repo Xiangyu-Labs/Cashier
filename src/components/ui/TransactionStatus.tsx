@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export type TransactionStatusType = "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid" | "pending";
 

@@ -43,6 +43,7 @@ const mockTransaction: Transaction = {
 const baseReceipt: Receipt = {
     id: "msg1",
     ledgerId: "l1",
+    title: null,
     text: "Lunch 50",
     imageUrls: [],
     aiResponse: null,
@@ -154,7 +155,7 @@ describe("BatchTransactionCard", () => {
 
     it("renders status when no transactions", () => {
         render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[]} status="queued" />);
-        expect(screen.getByText("排队中")).toBeTruthy();
+        expect(screen.getByText("处理中")).toBeTruthy();
     });
 
     it("renders total amount and hides status when transactions exist", () => {

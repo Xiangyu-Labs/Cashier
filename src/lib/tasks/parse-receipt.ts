@@ -3,10 +3,10 @@
 
 import { registerTask, TaskHandler, GptTask, TaskExecutionContext } from "@/lib/gpt";
 import { db } from "@/lib/db";
-import { receipts, transactions, categories } from "@/lib/db/schema";
+import { receipts, transactions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
-import { CategoryInfo, ParsedTransaction, ProcessResult } from "@/lib/message-processor/types";
+import { CategoryInfo, ParsedTransaction } from "@/lib/message-processor/types";
 import { buildSummarizationPrompt } from "@/lib/ai/prompts";
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { z } from "zod";
@@ -39,7 +39,7 @@ interface ParseReceiptOutput {
 /**
  * Parse Receipt Task Handler
  */
-const parseReceiptHandler: TaskHandler<ParseReceiptInput, ParseReceiptOutput> = {
+const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
     async execute(task: GptTask, context: TaskExecutionContext): Promise<ParseReceiptOutput> {
         const input = task.input as ParseReceiptInput;
 

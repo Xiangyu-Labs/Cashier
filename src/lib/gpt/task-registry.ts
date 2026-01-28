@@ -4,13 +4,13 @@
 import { TaskHandler } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const registry = new Map<string, TaskHandler<any, any>>();
+const registry = new Map<string, TaskHandler<any>>();
 
 /**
  * Register a task handler for a specific task type.
  * Call this at module initialization time.
  */
-export function registerTask<TInput, TOutput>(type: string, handler: TaskHandler<TInput, TOutput>): void {
+export function registerTask<TOutput>(type: string, handler: TaskHandler<TOutput>): void {
     if (registry.has(type)) {
         console.warn(`Task handler for type "${type}" is being overwritten.`);
     }

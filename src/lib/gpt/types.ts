@@ -44,7 +44,7 @@ export interface CreateTaskParams {
 }
 
 // Task handler interface - implement this for each task type
-export interface TaskHandler<TInput = unknown, TOutput = unknown> {
+export interface TaskHandler<TOutput = unknown> {
     /**
      * Execute the task. This is the main processing logic.
      * Can use context to checkpoint progress.
@@ -81,4 +81,4 @@ export interface TaskExecutionContext {
 }
 
 // Registry types
-export type TaskHandlerFactory<TInput = unknown, TOutput = unknown> = () => TaskHandler<TInput, TOutput>;
+export type TaskHandlerFactory<TOutput = unknown> = () => TaskHandler<TOutput>;

@@ -36,7 +36,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toEqual([]);
+    expect(data.items).toEqual([]);
+    expect(data.nextCursor).toBeNull();
   });
 
   it("should return transactions with category relation", async () => {
@@ -57,9 +58,9 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toHaveLength(1);
-    expect(data[0].itemName).toBe("午餐");
-    expect(data[0].category.name).toBe("餐饮");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].itemName).toBe("午餐");
+    expect(data.items[0].category.name).toBe("餐饮");
   });
 
   // Removed status filtering tests as status is removed from transactions
@@ -82,8 +83,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].itemName).toBe("餐饮交易");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].itemName).toBe("餐饮交易");
   });
 
   it("should respect limit parameter", async () => {
@@ -100,7 +101,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data).toHaveLength(2);
+    expect(data.items).toHaveLength(2);
   });
 
   it("should respect offset parameter", async () => {
@@ -118,8 +119,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].itemName).toBe("Middle");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].itemName).toBe("Middle");
   });
 
   // Removed invalid status test
@@ -162,11 +163,11 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toHaveLength(1);
-    expect(data[0].receipt).toBeDefined();
-    expect(data[0].receipt.id).toBe(receipt.id);
-    expect(data[0].receipt.text).toBe("午餐花了25.5元");
-    expect(data[0].receipt.aiResponse).toContain("午餐");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].receipt).toBeDefined();
+    expect(data.items[0].receipt.id).toBe(receipt.id);
+    expect(data.items[0].receipt.text).toBe("午餐花了25.5元");
+    expect(data.items[0].receipt.aiResponse).toContain("午餐");
   });
 
   it("should return null receipt when transaction has no linked receipt", async () => {
@@ -187,8 +188,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toHaveLength(1);
-    expect(data[0].receipt).toBeNull();
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].receipt).toBeNull();
   });
 
   it("should return receipt with image contentType", async () => {
@@ -216,8 +217,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data[0].receipt.imageUrls).toHaveLength(1);
-    expect(data[0].receipt.imageUrls[0]).toContain("data:image");
+    expect(data.items[0].receipt.imageUrls).toHaveLength(1);
+    expect(data.items[0].receipt.imageUrls[0]).toContain("data:image");
   });
 
   it("should return receipt with contentType", async () => {
@@ -249,9 +250,9 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     });
     const data = await response.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].receipt).toBeDefined();
-    expect(data[0].receipt.text).toContain("Audio Note");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].receipt).toBeDefined();
+    expect(data.items[0].receipt.text).toContain("Audio Note");
   });
   it("should filter by date range", async () => {
     const db = getTestDb();
@@ -275,8 +276,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].itemName).toBe("Today");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].itemName).toBe("Today");
   });
 
   it("should fallback to createdAt for date filtering when transactionDate is null", async () => {
@@ -298,8 +299,8 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     );
     const data = await response.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].itemName).toBe("Today Created");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].itemName).toBe("Today Created");
   });
   it("should return pending transactions from receipts", async () => {
     const db = getTestDb();
@@ -336,10 +337,10 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toHaveLength(2);
+    expect(data.items).toHaveLength(2);
 
     // Verify first item (fully matched)
-    const item1 = data.find((t: { itemName: string }) => t.itemName === "Pending Item 1");
+    const item1 = data.items.find((t: { itemName: string }) => t.itemName === "Pending Item 1");
     expect(item1).toBeDefined();
     expect(item1.amount).toBe("50");
     expect(item1.currency).toBe("CNY");
@@ -350,7 +351,7 @@ describe("GET /api/ledgers/[id]/transactions", () => {
     expect(item1.id).toContain(`pending:${rcpt.id}`);
 
     // Verify second item (unmatched category)
-    const item2 = data.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");
+    const item2 = data.items.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");
     expect(item2).toBeDefined();
     expect(item2.amount).toBe("100");
     expect(item2.currency).toBe("USD");

@@ -53,9 +53,6 @@ export async function GET(
       });
 
       // 3. Map to Transaction objects
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pendingTransactions: any[] = [];
-
       interface ProposedTransaction {
         category?: string;
         amount?: number | string;
@@ -64,6 +61,24 @@ export async function GET(
         notes?: string;
         transactionDate?: string;
       }
+
+      interface PendingTransaction {
+        id: string;
+        ledgerId: string;
+        categoryId: string | null;
+        receiptId: string;
+        amount: string;
+        currency: string;
+        itemName: string;
+        description: string | null;
+        transactionDate: Date;
+        createdAt: Date;
+        updatedAt: Date;
+        category: unknown;
+        receipt: unknown;
+      }
+
+      const pendingTransactions: PendingTransaction[] = [];
 
       for (const receipt of pendingReceipts) {
         if (!receipt.proposedTransactions || !Array.isArray(receipt.proposedTransactions)) continue;
@@ -95,7 +110,7 @@ export async function GET(
       }
 
       // Sort by createdAt desc (or custom sort if needed)
-      pendingTransactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      pendingTransactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return NextResponse.json({ items: pendingTransactions });
     }

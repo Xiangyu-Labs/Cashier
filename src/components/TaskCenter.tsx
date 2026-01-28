@@ -54,7 +54,7 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
     const visibleTasks = tasks.filter((t: GptTask) => t.status !== "completed" && t.status !== "failed");
 
     const { input: sessionInput, output: sessionOutput } = tasks.reduce((acc: { input: number, output: number }, t: GptTask) => {
-        const usage = (t.metadata as any)?.usage;
+        const usage = t.metadata?.usage as { inputTokens?: number, outputTokens?: number } | undefined;
         acc.input += (usage?.inputTokens || 0);
         acc.output += (usage?.outputTokens || 0);
         return acc;

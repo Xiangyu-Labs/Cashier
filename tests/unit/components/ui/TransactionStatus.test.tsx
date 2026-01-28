@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 describe("TransactionStatus", () => {
     it("renders queued status correctly", () => {
         render(<TransactionStatus status="queued" />);
-        expect(screen.getByText("排队中")).toBeTruthy();
+        expect(screen.getByText("处理中")).toBeTruthy();
     });
 
     it("renders processing status correctly", () => {
