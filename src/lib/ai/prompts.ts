@@ -31,7 +31,7 @@ Structure:
       "amount": 38.00,
       "currency": "CNY",
       "category": "Category Name",
-      "transaction_date": "2025-01-25",
+      "entry_date": "2025-01-25",
       "notes": "Detailed description"
     }
   ]
@@ -71,7 +71,7 @@ Structure:
       "amount": 6.00,
       "currency": "CNY",
       "category": "餐饮",
-      "transaction_date": "${today}",
+      "entry_date": "${today}",
       "notes": "数量: 2, 商家: 711"
     },
     {
@@ -79,7 +79,7 @@ Structure:
       "amount": 12.50,
       "currency": "CNY",
       "category": "餐饮",
-      "transaction_date": "${today}",
+      "entry_date": "${today}",
       "notes": "商家: 711"
     }
   ]
@@ -98,7 +98,7 @@ Structure:
       "amount": 50.00,
       "currency": "USD",
       "category": "Transportation",
-      "transaction_date": "2025-05-19",
+      "entry_date": "2025-05-19",
       "notes": "Yesterday"
     }
   ]

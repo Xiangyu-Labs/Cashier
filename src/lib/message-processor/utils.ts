@@ -21,11 +21,11 @@ export async function summarizeLedgerEntries(
     const groups = new Map<string, ParsedLedgerEntry[]>();
 
     for (const entry of ledgerEntries) {
-        if (!entry.transactionDate || !entry.category) {
+        if (!entry.entryDate || !entry.category) {
             finalEntries.push(entry);
             continue;
         }
-        const key = `${entry.transactionDate}|${entry.category}`;
+        const key = `${entry.entryDate}|${entry.category}`;
         if (!groups.has(key)) {
             groups.set(key, []);
         }
@@ -62,7 +62,7 @@ export async function summarizeLedgerEntries(
                 amount: totalAmount,
                 currency: representative.currency,
                 category: representative.category,
-                transactionDate: representative.transactionDate,
+                entryDate: representative.entryDate,
                 notes: notes || null
             });
         } catch (error) {

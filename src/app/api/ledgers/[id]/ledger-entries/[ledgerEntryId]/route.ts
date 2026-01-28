@@ -10,7 +10,7 @@ const updateLedgerEntrySchema = z.object({
   currency: z.string().nullable().optional(),
   itemName: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  transactionDate: z.string().nullable().optional(),
+  entryDate: z.string().nullable().optional(),
   status: z.enum(["pending", "confirmed"]).optional(),
 });
 
@@ -29,9 +29,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (validated.currency !== undefined) updateData.currency = validated.currency;
     if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
     if (validated.description !== undefined) updateData.description = validated.description;
-    if (validated.transactionDate !== undefined) {
-      updateData.transactionDate = validated.transactionDate
-        ? new Date(validated.transactionDate)
+    if (validated.entryDate !== undefined) {
+      updateData.entryDate = validated.entryDate
+        ? new Date(validated.entryDate)
         : null;
     }
     if (validated.status !== undefined) updateData.status = validated.status;

@@ -18,7 +18,7 @@ const ledgerEntrySchema = z.object({
   amount: z.number().min(0),
   currency: z.string().nullable(),
   category: z.string().nullable(),
-  transaction_date: z.string().nullable(),
+  entry_date: z.string().nullable(),
   notes: z.string().nullable().optional(),
 });
 
@@ -102,7 +102,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
         amount: t.amount,
         currency: t.currency,
         category: t.category,
-        transactionDate: t.transaction_date,
+        entryDate: t.entry_date,
         notes: t.notes || null,
       }));
 

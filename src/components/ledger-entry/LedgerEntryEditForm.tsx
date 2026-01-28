@@ -9,7 +9,7 @@ export interface LedgerEntryEditFormData {
     amount: number;
     currency: string;
     categoryId: string;
-    transactionDate: string;
+    entryDate: string;
 }
 
 interface LedgerEntryEditFormProps {
@@ -87,11 +87,11 @@ export function LedgerEntryEditForm({
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-text">{t("transactionDate")}</label>
+                <label className="text-sm font-medium text-text">{t("entryDate")}</label>
                 <Input
                     type="date"
-                    value={data.transactionDate}
-                    onChange={(e) => handleChange("transactionDate", e.target.value)}
+                    value={data.entryDate}
+                    onChange={(e) => handleChange("entryDate", e.target.value)}
                 />
             </div>
 

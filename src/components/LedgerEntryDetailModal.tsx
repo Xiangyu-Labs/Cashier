@@ -19,7 +19,7 @@ interface LedgerEntryDetailModalProps {
     itemName?: string;
     amount?: number;
     currency?: string | null;
-    transactionDate?: string | null;
+    entryDate?: string | null;
   }) => void;
   onDelete: () => void;
 }
@@ -33,7 +33,7 @@ export function LedgerEntryDetailModal({
   onDelete,
 }: LedgerEntryDetailModalProps): ReactNode | null {
   const t = useTranslations("LedgerEntryDetail");
-  const tTab = useTranslations("TransactionsTab");
+  const tTab = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
 
   const [isEditing, setIsEditing] = useState(false);
@@ -42,7 +42,7 @@ export function LedgerEntryDetailModal({
     amount: 0,
     currency: "",
     categoryId: "",
-    transactionDate: "",
+    entryDate: "",
   });
 
   const { toast } = useToast();
@@ -56,7 +56,7 @@ export function LedgerEntryDetailModal({
         amount: parseFloat(ledgerEntry.amount),
         currency: ledgerEntry.currency || "",
         categoryId: ledgerEntry.categoryId || "",
-        transactionDate: ledgerEntry.transactionDate || "",
+        entryDate: ledgerEntry.entryDate || "",
       });
       setIsEditing(false);
     }
@@ -68,7 +68,7 @@ export function LedgerEntryDetailModal({
       amount: editData.amount,
       currency: editData.currency || null,
       categoryId: editData.categoryId || null,
-      transactionDate: editData.transactionDate || null,
+      entryDate: editData.entryDate || null,
     });
     setIsEditing(false);
   }, [editData, onUpdate]);

@@ -63,7 +63,7 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         if (!input.settings.autoRecognizeDate) {
             entries = entries.map(entry => ({
                 ...entry,
-                transactionDate: new Date().toISOString().split("T")[0],
+                entryDate: new Date().toISOString().split("T")[0],
             }));
         }
 
@@ -109,7 +109,7 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
                     currency: entry.currency,
                     itemName: entry.itemName || "未分类",
                     description: entry.notes || null,
-                    transactionDate: entry.transactionDate ? new Date(entry.transactionDate) : new Date(),
+                    entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
                 };
             });
 

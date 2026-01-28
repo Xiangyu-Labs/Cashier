@@ -8,13 +8,13 @@
     "LedgerPage": {
         "notFound": "Ledger not found",
         "settings": "Settings",
-        "history": "Transactions",
+        "history": "Stream",
         "details": "Details",
         "stats": "Stats",
         "newRecord": "New Record"
     },
     "LedgerItem": {
-        "totalExpense": "Total Expense ({count} records)"
+        "totalExpense": "Total Expense ({count} entries)"
     },
     "DetailsTab": {
         "expenseSummary": "Expense Summary ({currency})",
@@ -59,12 +59,12 @@
         "week": "Week",
         "year": "Year"
     },
-    "TransactionsTab": {
+    "LedgerEntriesTab": {
         "processing": "Processing",
         "pending": "Pending",
         "confirmAll": "Confirm All",
         "confirming": "Confirming...",
-        "abnormal": "Abnormal Bills",
+        "abnormal": "Abnormal Entries",
         "deleteAll": "Delete All",
         "retryAll": "Retry All",
         "noRecords": "No Records",
@@ -79,14 +79,14 @@
         "confirmFailed": "Confirm failed",
         "retrySubmitted": "Retry submitted",
         "retryAllDesc": "Retrying all failed records",
-        "deleteAllConfirmTitle": "Delete All Abnormal Bills",
-        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
+        "deleteAllConfirmTitle": "Delete All Abnormal Records",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal records? This action cannot be undone."
     },
-    "BatchTransactionCard": {
+    "SourceDocumentCard": {
         "collapseContent": "Collapse Content",
         "viewContent": "View Content",
-        "confirmBill": "Confirm Bill",
-        "records": "{count} {count, plural, one {record} other {records}}",
+        "confirmDoc": "Confirm Entry",
+        "records": "{count} {count, plural, one {entry} other {entries}}",
         "requireEdit": "(Correction Required)"
     },
     "Common": {
@@ -99,17 +99,20 @@
         "sending": "Sending...",
         "success": "Success",
         "error": "Error",
-        "sending_status": "Sending..."
+        "input": "Input",
+        "output": "Output",
+        "sending_status": "Sending...",
+        "unclassified": "Unclassified"
     },
-    "TransactionInput": {
+    "SourceDocumentInput": {
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars... (supports pasting images)",
         "image": "Image",
         "send": "Send"
     },
-    "TransactionDetail": {
-        "title": "Transaction Details",
+    "LedgerEntryDetail": {
+        "title": "Entry Details",
         "category": "Category",
-        "transactionDate": "Transaction Date",
+        "entryDate": "Date",
         "status": "Status",
         "confirmed": "Confirmed",
         "description": "Description",
@@ -127,21 +130,21 @@
         "title": "Settings",
         "assistant": "Smart Assistant",
         "autoConfirm": "Auto-confirm",
-        "autoConfirmDesc": "AI-identified bills are processed automatically and no longer require manual confirmation",
-        "autoRecognizeDate": "Auto-recognize Transaction Date",
-        "autoRecognizeDateDesc": "If enabled, AI will try to identify the transaction date from the bill. If disabled or not identified, the upload time will be used.",
+        "autoConfirmDesc": "AI-identified entries are processed automatically and no longer require manual confirmation",
+        "autoRecognizeDate": "Auto-recognize Date",
+        "autoRecognizeDateDesc": "If enabled, AI will try to identify the date from the document. If disabled or not identified, the upload time will be used.",
         "collapsePending": "Collapse Pending Items by Default",
         "collapsePendingDesc": "If enabled, the pending items list is collapsed by default, showing only the title and quantity.",
-        "mergeSimilar": "Merge Similar Transactions",
-        "mergeSimilarDesc": "When enabled, multiple transactions of the same category on the same day will be merged into a single summary record.",
+        "mergeSimilar": "Merge Similar Entries",
+        "mergeSimilarDesc": "When enabled, multiple entries of the same category on the same day will be merged into a single summary record.",
         "dataConfig": "Data Configuration",
         "language": "Language",
         "chinese": "Chinese",
         "english": "English",
         "riskTitle": "Risk Warning",
-        "riskDesc1": "After enabling 'Auto-confirm', all bills identified by AI will be directly recorded in the ledger.",
+        "riskDesc1": "After enabling 'Auto-confirm', all records identified by AI will be directly recorded in the ledger.",
         "riskDesc2": "While AI accuracy is high, identification errors (e.g., amount, category errors) may still occur. Enabling this feature means you accept potential bookkeeping errors.",
-        "riskDesc3": "It is recommended that you check the transaction list regularly (e.g., weekly) to check for abnormal records.",
+        "riskDesc3": "It is recommended that you check the entry list regularly (e.g., weekly) for abnormal records.",
         "cancel": "Cancel",
         "confirmEnable": "Confirm Enable"
     }

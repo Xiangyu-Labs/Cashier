@@ -192,7 +192,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       itemName: string;
       category?: string;
       notes?: string;
-      transactionDate?: string;
+      entryDate?: string;
     };
     const proposed = sourceDocument.proposedLedgerEntries as ProposedLedgerEntry[];
 
@@ -214,7 +214,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           currency: entry.currency,
           itemName: entry.itemName || "未分类",
           description: entry.notes || null,
-          transactionDate: entry.transactionDate ? new Date(entry.transactionDate) : new Date(),
+          entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
         });
       }
     }

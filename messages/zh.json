@@ -8,7 +8,7 @@
     "LedgerPage": {
         "notFound": "账本不存在",
         "settings": "设置",
-        "history": "账单",
+        "history": "流水",
         "details": "明细",
         "stats": "统计",
         "newRecord": "记一笔"
@@ -59,12 +59,12 @@
         "week": "周",
         "year": "年"
     },
-    "TransactionsTab": {
+    "LedgerEntriesTab": {
         "processing": "处理中",
-        "pending": "待确认账单",
+        "pending": "待确认凭证",
         "confirmAll": "全部确认",
         "confirming": "确认中...",
-        "abnormal": "异常账单",
+        "abnormal": "异常凭证",
         "deleteAll": "全部删除",
         "retryAll": "全部重试",
         "noRecords": "暂无记录",
@@ -79,13 +79,13 @@
         "confirmFailed": "确认失败",
         "retrySubmitted": "重试已提交",
         "retryAllDesc": "正在重试所有失败的记录",
-        "deleteAllConfirmTitle": "删除所有异常账单",
-        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
+        "deleteAllConfirmTitle": "删除所有异常凭证",
+        "deleteAllConfirmDesc": "确定要删除所有异常记录吗？此操作无法撤销。"
     },
-    "BatchTransactionCard": {
+    "SourceDocumentCard": {
         "collapseContent": "折叠内容",
         "viewContent": "查看内容",
-        "confirmBill": "确认账单",
+        "confirmDoc": "确认入账",
         "records": "{count} 笔记录",
         "requireEdit": "(待修正)"
     },
@@ -99,17 +99,20 @@
         "sending": "发送中...",
         "success": "成功",
         "error": "错误",
-        "sending_status": "发送中..."
+        "input": "输入",
+        "output": "输出",
+        "sending_status": "发送中...",
+        "unclassified": "未分类"
     },
-    "TransactionInput": {
+    "SourceDocumentInput": {
         "placeholder": "输入消费记录，例如：午饭35元... (支持粘贴图片)",
         "image": "图片",
         "send": "发送"
     },
-    "TransactionDetail": {
-        "title": "交易详情",
+    "LedgerEntryDetail": {
+        "title": "分录详情",
         "category": "分类",
-        "transactionDate": "交易日期",
+        "entryDate": "日期",
         "status": "状态",
         "confirmed": "已确认",
         "description": "备注",
@@ -127,21 +130,21 @@
         "title": "设置",
         "assistant": "智能助理",
         "autoConfirm": "跳过核对",
-        "autoConfirmDesc": "AI 识别的账单直接入账，不再需要手动确认",
-        "autoRecognizeDate": "自动识别交易时间",
-        "autoRecognizeDateDesc": "如果开启，AI 将尝试从账单中识别交易时间。如果关闭或未识别到，则使用上传时间。",
+        "autoConfirmDesc": "AI 识别的凭证直接入账，不再需要手动确认",
+        "autoRecognizeDate": "自动识别日期",
+        "autoRecognizeDateDesc": "如果开启，AI 将尝试从凭证中识别日期。如果关闭或未识别到，则使用上传时间。",
         "collapsePending": "默认折叠待处理事项",
         "collapsePendingDesc": "如果开启，待处理事项列表默认收起，只显示标题和数量。",
-        "mergeSimilar": "合并账单同类项",
+        "mergeSimilar": "合并同类项",
         "mergeSimilarDesc": "开启后，同一天同一类别的多条消费将合并为一条摘要记录。",
         "dataConfig": "数据配置",
         "language": "语言",
         "chinese": "中文",
         "english": "英文",
         "riskTitle": "风险提示",
-        "riskDesc1": "开启「跳过核对」后，AI 识别的所有账单将直接计入账本。",
+        "riskDesc1": "开启「跳过核对」后，AI 识别的所有记录将直接计入账本。",
         "riskDesc2": "虽然 AI 准确率很高，但仍可能出现识别错误（如金额、分类错误）。开启此功能意味着您接受可能存在的记账误差。",
-        "riskDesc3": "建议您定期（如每周）查看账单列表，检查是否有异常记录。",
+        "riskDesc3": "建议您定期（如每周）查看流水列表，检查是否有异常记录。",
         "cancel": "取消",
         "confirmEnable": "确认开启"
     }

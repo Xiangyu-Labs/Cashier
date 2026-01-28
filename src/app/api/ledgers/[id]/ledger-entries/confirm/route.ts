@@ -17,7 +17,7 @@ interface ProposedLedgerEntry {
     currency?: string;
     itemName?: string;
     notes?: string;
-    transactionDate?: string;
+    entryDate?: string;
 }
 
 // POST /api/ledgers/[id]/ledger-entries/confirm - 确认账目
@@ -69,7 +69,7 @@ export async function POST(
                         currency: entry.currency || "CNY",
                         itemName: entry.itemName || "未分类",
                         description: entry.notes || null,
-                        transactionDate: entry.transactionDate ? new Date(entry.transactionDate) : new Date(doc.createdAt),
+                        entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(doc.createdAt),
                     });
                     count++;
                 }
@@ -144,7 +144,7 @@ export async function POST(
                     currency: entry.currency || "CNY",
                     itemName: entry.itemName || "未分类",
                     description: entry.notes || null,
-                    transactionDate: entry.transactionDate ? new Date(entry.transactionDate) : new Date(doc.createdAt),
+                    entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(doc.createdAt),
                 });
                 updatedCount++;
             }

@@ -19,7 +19,7 @@ function getSafeImageSrc(data: string): string {
 }
 
 
-interface BatchLedgerEntryCardProps {
+interface SourceDocumentCardProps {
   sourceDocument: SourceDocument;
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
@@ -43,7 +43,7 @@ interface BatchLedgerEntryCardProps {
   className?: string;
 }
 
-export function BatchLedgerEntryCard({
+export function SourceDocumentCard({
   sourceDocument,
   ledgerEntries,
   categories,
@@ -57,8 +57,8 @@ export function BatchLedgerEntryCard({
   onRetry,
   status,
   className,
-}: BatchLedgerEntryCardProps) {
-  const t = useTranslations("BatchLedgerEntryCard");
+}: SourceDocumentCardProps) {
+  const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [isConfirming, setIsConfirming] = useState(false);

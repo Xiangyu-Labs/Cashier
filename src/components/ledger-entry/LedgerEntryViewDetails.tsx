@@ -69,10 +69,10 @@ export function LedgerEntryViewDetails({
 
                 <div className="flex justify-between items-center">
                     <span className="text-sm text-muted flex items-center gap-2">
-                        <Calendar className="h-4 w-4" /> {t("transactionDate")}
+                        <Calendar className="h-4 w-4" /> {t("entryDate")}
                     </span>
                     <span className="text-sm text-text">
-                        {formatDate(ledgerEntry.transactionDate)}
+                        {formatDate(ledgerEntry.entryDate)}
                     </span>
                 </div>
 

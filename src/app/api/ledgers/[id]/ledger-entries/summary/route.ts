@@ -17,8 +17,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       eq(ledgerEntries.ledgerId, ledgerId),
     ];
 
-    // Use transactionDate if available, otherwise fallback to createdAt
-    const dateCol = sql<string>`COALESCE(${ledgerEntries.transactionDate}, ${ledgerEntries.createdAt}::date)`;
+    // Use entryDate if available, otherwise fallback to createdAt
+    const dateCol = sql<string>`COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}::date)`;
 
     if (startDate) {
       conditions.push(sql`${dateCol} >= ${startDate}::date`);

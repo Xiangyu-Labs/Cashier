@@ -126,10 +126,10 @@ export const ledgerEntries = pgTable("ledger_entries", {
   currency: text("currency"),
   itemName: text("item_name").notNull(),
   description: text("description"),
-  transactionDate: date("transaction_date", { mode: "date" }),
+  entryDate: date("entry_date", { mode: "date" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.transactionDate),
+  index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
   index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
   index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);

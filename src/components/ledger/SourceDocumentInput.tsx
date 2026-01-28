@@ -16,7 +16,7 @@ interface SourceDocumentInputProps {
 }
 
 export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInputProps) {
-    const t = useTranslations("TransactionInput"); // Keep translation key for now or rename later
+    const t = useTranslations("SourceDocumentInput");
     const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
     const [text, setText] = useState("");

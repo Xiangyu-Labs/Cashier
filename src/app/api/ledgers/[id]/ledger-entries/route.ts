@@ -9,7 +9,7 @@ const querySchema = z.object({
   categoryId: z.string().uuid().optional(),
   limit: z.coerce.number().positive().optional().default(50),
   offset: z.coerce.number().nonnegative().optional().default(0),
-  cursor: z.string().optional(), // transactionDate or createdAt timestamp
+  cursor: z.string().optional(), // entryDate or createdAt timestamp
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   status: z.enum(["pending", "confirmed"]).optional(),
@@ -59,7 +59,7 @@ export async function GET(
         currency?: string;
         itemName?: string;
         notes?: string;
-        transactionDate?: string;
+        entryDate?: string;
       }
 
       interface PendingLedgerEntry {
@@ -71,7 +71,7 @@ export async function GET(
         currency: string;
         itemName: string;
         description: string | null;
-        transactionDate: Date;
+        entryDate: Date;
         createdAt: Date;
         updatedAt: Date;
         category: unknown;
@@ -99,7 +99,7 @@ export async function GET(
             currency: pent.currency || "CNY",
             itemName: pent.itemName || "未分类",
             description: pent.notes || null,
-            transactionDate: pent.transactionDate ? new Date(pent.transactionDate) : doc.createdAt,
+            entryDate: pent.entryDate ? new Date(pent.entryDate) : doc.createdAt,
             createdAt: doc.createdAt,
             updatedAt: doc.createdAt,
             // Relations
@@ -124,9 +124,9 @@ export async function GET(
     if (query.startDate) {
       const startDate = new Date(query.startDate);
       const dateCondition = or(
-        gte(ledgerEntries.transactionDate, startDate),
+        gte(ledgerEntries.entryDate, startDate),
         and(
-          isNull(ledgerEntries.transactionDate),
+          isNull(ledgerEntries.entryDate),
           gte(ledgerEntries.createdAt, startDate)
         )
       );
@@ -138,9 +138,9 @@ export async function GET(
     if (query.endDate) {
       const endDate = new Date(query.endDate);
       const dateCondition = or(
-        lte(ledgerEntries.transactionDate, endDate),
+        lte(ledgerEntries.entryDate, endDate),
         and(
-          isNull(ledgerEntries.transactionDate),
+          isNull(ledgerEntries.entryDate),
           lte(ledgerEntries.createdAt, endDate)
         )
       );
@@ -153,9 +153,9 @@ export async function GET(
     if (query.cursor) {
       const cursorDate = new Date(query.cursor);
       const dateCondition = or(
-        lt(ledgerEntries.transactionDate, cursorDate),
+        lt(ledgerEntries.entryDate, cursorDate),
         and(
-          isNull(ledgerEntries.transactionDate),
+          isNull(ledgerEntries.entryDate),
           lt(ledgerEntries.createdAt, cursorDate)
         )
       );
@@ -170,7 +170,7 @@ export async function GET(
         category: true,
         sourceDocument: true,
       },
-      orderBy: (ledgerEntries, { desc }) => [desc(ledgerEntries.transactionDate), desc(ledgerEntries.createdAt)],
+      orderBy: (ledgerEntries, { desc }) => [desc(ledgerEntries.entryDate), desc(ledgerEntries.createdAt)],
       limit: query.limit + 1,
       offset: query.offset,
     });
@@ -179,7 +179,7 @@ export async function GET(
     if (result.length > query.limit) {
       const nextItem = result.pop();
       if (nextItem) {
-        const nextDate = nextItem.transactionDate || nextItem.createdAt;
+        const nextDate = nextItem.entryDate || nextItem.createdAt;
         nextCursor = new Date(nextDate).toISOString();
       }
     }

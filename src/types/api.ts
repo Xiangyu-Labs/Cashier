@@ -54,7 +54,7 @@ export interface LedgerEntry {
   currency: string | null;
   itemName: string;
   description: string | null;
-  transactionDate: string | null;
+  entryDate: string | null;
   createdAt: string;
   category?: EntryCategory | null;
   sourceDocument?: SourceDocument | null;

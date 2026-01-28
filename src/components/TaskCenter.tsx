@@ -108,11 +108,11 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                     </div>
                     {(sessionInput > 0 || sessionOutput > 0) && (
                         <div className="flex items-center gap-2 text-[10px] md:text-xs font-semibold shrink-0">
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-warning" title="会话输入消耗">
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-warning" title={tCommon("input")}>
                                 <span className="opacity-70 text-[8px]">IN</span>
                                 <span>{formatTokens(sessionInput)}</span>
                             </div>
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary" title="会话输出消耗">
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary" title={tCommon("output")}>
                                 <span className="opacity-70 text-[8px]">OUT</span>
                                 <span>{formatTokens(sessionOutput)}</span>
                             </div>

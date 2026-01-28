@@ -9,7 +9,7 @@ import {
     fetchSourceDocuments,
 } from "@/lib/api";
 import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
-import { BatchLedgerEntryCard } from "@/components/ledger-entry/BatchLedgerEntryCard";
+import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/LedgerEntryDetailModal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -58,7 +58,7 @@ export function LedgerEntriesTab({
     categories,
     defaultCollapsed = false,
 }: LedgerEntriesTabProps) {
-    const t = useTranslations("TransactionsTab");
+    const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
     const [confirmingAll, setConfirmingAll] = useState(false);
@@ -285,7 +285,7 @@ export function LedgerEntriesTab({
 
         const content = (() => {
             if (item.type === "queue") {
-                return <BatchLedgerEntryCard
+                return <SourceDocumentCard
                     sourceDocument={item.data}
                     ledgerEntries={[]}
                     categories={categories}
@@ -297,7 +297,7 @@ export function LedgerEntriesTab({
                 />;
             }
             if (item.type === "batch") {
-                return <BatchLedgerEntryCard
+                return <SourceDocumentCard
                     sourceDocument={item.data.sourceDocument}
                     ledgerEntries={item.data.ledgerEntries}
                     categories={categories}
@@ -458,7 +458,7 @@ export function LedgerEntriesTab({
                                 const entries = confirmedEntriesMap.get(doc.id) || [];
                                 return (
                                     <div key={doc.id} className="mb-4 sm:mb-6">
-                                        <BatchLedgerEntryCard
+                                        <SourceDocumentCard
                                             sourceDocument={doc}
                                             ledgerEntries={entries}
                                             categories={categories}

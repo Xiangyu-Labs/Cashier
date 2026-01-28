@@ -46,9 +46,9 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
     return (
         <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
             <div className="mb-6">
-                <h2 className="text-lg font-medium">AI Token 统计</h2>
+                <h2 className="text-lg font-medium">处理系统 Token 统计</h2>
                 <p className="text-sm text-[var(--muted)]">
-                    基于 gpt-tokenizer 精确计算的 GPT Token 消耗概览
+                    基于 gpt-tokenizer 精确计算的 AI 处理系统消耗概览
                 </p>
             </div>
 
@@ -58,11 +58,11 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
                     <p className="text-2xl font-bold">{formatNum(stats.totalTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">输入 Token</p>
+                    <p className="text-sm font-medium text-[var(--muted)]">输入 Tokens</p>
                     <p className="text-xl">{formatNum(stats.totalInputTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">输出 Token</p>
+                    <p className="text-sm font-medium text-[var(--muted)]">输出 Tokens</p>
                     <p className="text-xl">{formatNum(stats.totalOutputTokens)}</p>
                 </div>
                 <div className="space-y-1">
@@ -71,7 +71,7 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
                 </div>
             </div>
             <div className="mt-6 text-xs text-[var(--muted)] border-t border-[var(--border)] pt-4">
-                * 统计范围仅包含通过新处理任务系统处理的请求。采用成熟的 `gpt-tokenizer` 精确计算。
+                * 统计范围仅包含通过处理系统（Processing System）完成的任务。采用成熟的 `gpt-tokenizer` 精确计算。
             </div>
         </section>
     );

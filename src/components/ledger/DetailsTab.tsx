@@ -17,7 +17,7 @@ interface DetailsTabProps {
 
 export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
-    const tLedger = useTranslations("TransactionsTab");
+    const tLedger = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
@@ -94,15 +94,15 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
 
     const groupedItems = useMemo(() => {
         const sortedEntries = [...monthEntries].sort((a, b) => {
-            const dateA = new Date(a.transactionDate || a.createdAt).getTime();
-            const dateB = new Date(b.transactionDate || b.createdAt).getTime();
+            const dateA = new Date(a.entryDate || a.createdAt).getTime();
+            const dateB = new Date(b.entryDate || b.createdAt).getTime();
             return dateB - dateA;
         });
 
         const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[] }> = {};
 
         sortedEntries.forEach(entry => {
-            const date = new Date(entry.transactionDate || entry.createdAt);
+            const date = new Date(entry.entryDate || entry.createdAt);
             const today = new Date();
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);

@@ -13,7 +13,7 @@ export interface ParsedLedgerEntry {
     amount: number;
     currency: string | null;
     category: string | null; // 分类名称
-    transactionDate: string | null; // YYYY-MM-DD 格式
+    entryDate: string | null; // YYYY-MM-DD 格式
     notes?: string | null; // Consolidated notes
 }
 
