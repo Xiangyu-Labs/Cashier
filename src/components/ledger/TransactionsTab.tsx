@@ -144,7 +144,7 @@ export function TransactionsTab({
         description: string;
     }>({ open: false, type: null, id: null, title: "", description: "" });
 
-    const handleDeleteConfirm = () => {
+    function handleDeleteConfirm() {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
         if (deleteConfirm.type === "receipt" || deleteConfirm.type === "batch") {
             deleteReceiptMutation.mutate(deleteConfirm.id);
@@ -153,7 +153,7 @@ export function TransactionsTab({
         }
         setDeleteConfirm({ ...deleteConfirm, open: false });
         toast({ variant: "success", title: "删除成功", description: "记录已删除" });
-    };
+    }
 
     const confirmAllMutation = useMutation({
         mutationFn: () => confirmTransactions(ledgerId, { confirmAll: true }),
@@ -179,12 +179,11 @@ export function TransactionsTab({
         onError: () => toast({ variant: "error", title: "确认失败", description: "无法确认交易，请稍后重试" })
     });
 
-    // Helper to check if date is in range
-    const isDateInRange = (dateStr: string) => {
+    function isDateInRange(dateStr: string) {
         if (!dateRange.start || !dateRange.end) return true;
         const d = new Date(dateStr).getTime();
         return d >= dateRange.start.getTime() && d <= dateRange.end.getTime();
-    };
+    }
 
     const failedReceipts = (queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [])
         .filter(r => isDateInRange(r.createdAt));
@@ -198,19 +197,19 @@ export function TransactionsTab({
         ...pendingGroups.batches.filter(b => isDateInRange(b.receipt.createdAt)).map(b => b.receipt.id)
     ]);
 
-    const handleConfirmAll = () => {
+    function handleConfirmAll() {
         setConfirmingAll(true);
         confirmAllMutation.mutate();
-    };
+    }
 
-    const handleRetryAll = async () => {
+    async function handleRetryAll() {
         setConfirmingAll(true);
         // Retry all displayed failed receipts
         await Promise.all(failedReceipts.map((receipt) => retryReceipt(ledgerId, receipt.id)));
         queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
         setConfirmingAll(false);
         toast({ variant: "success", title: "重试已提交", description: "正在重试所有失败的记录" });
-    };
+    }
 
     const pendingConfirmationItems: PinnedItem[] = [
         ...pendingGroups.batches
@@ -229,30 +228,23 @@ export function TransactionsTab({
         ...processingReceipts.map(receipt => ({ type: "queue", date: receipt.createdAt, data: receipt } as const)),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const handleRetryReceipt = async (receiptId: string) => {
+    async function handleRetryReceipt(receiptId: string) {
         await retryReceipt(ledgerId, receiptId);
         queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
         toast({ variant: "success", title: "重试已提交", description: "正在重试该记录" });
-    };
+    }
 
-    const handleDeleteAllErrors = () => {
+    function handleDeleteAllErrors() {
         setDeleteConfirm({
             open: true,
-            type: "receipt", // We'll handle bulk delete specially or iterate? 
-            // Better to show a specific confirmation dialog. 
-            // For now, let's use a special ID or just handle it in the confirm.
-            // But the current state structure is simple. 
-            // Let's create a specialized function or just use a flag.
-            // Actually, let's just use the existing dialog but we need to know it's "delete all errors".
-            // Let's modify the deleteConfirm state or just handle it here.
+            type: "receipt",
             id: "ALL_ERRORS",
             title: "删除所有异常账单",
             description: "确定要删除所有异常账单吗？此操作无法撤销。"
         });
-    };
+    }
 
-    // Modified handleDeleteConfirm to handle "ALL_ERRORS"
-    const handleDeleteConfirmAction = async () => {
+    async function handleDeleteConfirmAction() {
         if (deleteConfirm.id === "ALL_ERRORS") {
             // Delete all failed receipts
             try {
@@ -261,17 +253,18 @@ export function TransactionsTab({
                 queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
                 queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
                 toast({ variant: "success", title: "删除成功", description: "所有异常账单已删除" });
-            } catch (e) {
+            } catch (error) {
+                console.error("Failed to delete abnormal bills:", error);
                 toast({ variant: "error", title: "删除失败", description: "无法删除部分记录" });
             }
         } else {
             handleDeleteConfirm();
         }
         setDeleteConfirm({ ...deleteConfirm, open: false });
-    };
+    }
 
 
-    const renderPinnedItem = (item: PinnedItem) => {
+    function renderPinnedItem(item: PinnedItem) {
         const key = item.type === "queue" ? item.data.id : item.type === "batch" ? item.data.receipt.id : item.data.id;
         let className = "";
         let onRetryProp = undefined;
@@ -332,7 +325,7 @@ export function TransactionsTab({
                 {content}
             </motion.div>
         );
-    };
+    }
 
     return (
         <div className="space-y-4">

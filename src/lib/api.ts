@@ -370,7 +370,7 @@ export interface GptTask {
   entityType: string | null;
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;

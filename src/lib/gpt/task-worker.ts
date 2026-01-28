@@ -89,18 +89,10 @@ async function executeTask(task: GptTask): Promise<void> {
             await handler.onComplete(output, task);
         }
 
-        // Calculate token usage (General estimation: 1 token ~= 4 chars)
-        const inputTokens = Math.ceil(JSON.stringify(task.input).length / 4);
-        const outputTokens = Math.ceil(JSON.stringify(output).length / 4);
-
         // Merge with existing metadata
         const metadata = {
             ...(task.metadata || {}),
-            usage: {
-                inputTokens,
-                outputTokens,
-                totalTokens: inputTokens + outputTokens
-            }
+            usage: calculateTokenUsage(task.input, output)
         };
 
         await markTaskCompleted(task.id, output, metadata);
@@ -128,4 +120,17 @@ async function executeTask(task: GptTask): Promise<void> {
  */
 export function isWorkerProcessing(): boolean {
     return runningWorkers > 0;
+}
+
+/**
+ * Calculate token usage (General estimation: 1 token ~= 4 chars)
+ */
+function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: number, outputTokens: number, totalTokens: number } {
+    const inputTokens = Math.ceil(JSON.stringify(input).length / 4);
+    const outputTokens = Math.ceil(JSON.stringify(output).length / 4);
+    return {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens
+    };
 }

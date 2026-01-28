@@ -53,16 +53,19 @@ export class OpenAIClient {
                         error.message.includes("timeout") ||
                         error.message.includes("ECONNRESET"));
 
-                if (attempt < maxRetries && (isRetryable || true)) { // Retry on most errors for robustness unless it's clearly a 400 Bad Request
-                    // Check if it is a 400 error which is usually not retryable
+                if (attempt < maxRetries) {
+                    // Check if it is a 400 error (except 429) which is usually not retryable
                     if (error instanceof OpenAI.APIError && error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
                         throw error;
                     }
 
-                    const delay = baseDelay * Math.pow(2, attempt);
-                    console.warn(`OpenAI request failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
-                    await new Promise((resolve) => setTimeout(resolve, delay));
-                    continue;
+                    // Otherwise, retry if it is explicitly retryable or if we want to be robust
+                    if (isRetryable || true) {
+                        const delay = baseDelay * Math.pow(2, attempt);
+                        console.warn(`OpenAI request failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
+                        await new Promise((resolve) => setTimeout(resolve, delay));
+                        continue;
+                    }
                 }
 
                 // If we're out of retries or it's not retryable, break loop

@@ -97,18 +97,13 @@ export async function markTaskRunning(taskId: string): Promise<void> {
  * Update task status to completed.
  */
 export async function markTaskCompleted(taskId: string, output: unknown, metadata?: Record<string, unknown>): Promise<void> {
-    const updateData: any = {
-        status: "completed",
-        output,
-        completedAt: new Date(),
-    };
-
-    if (metadata) {
-        updateData.metadata = metadata;
-    }
-
     await db.update(gptTasks)
-        .set(updateData)
+        .set({
+            status: "completed",
+            output,
+            completedAt: new Date(),
+            ...(metadata ? { metadata } : {}),
+        })
         .where(eq(gptTasks.id, taskId));
 }
 
@@ -190,20 +185,9 @@ export async function getRunningTasks(): Promise<GptTask[]> {
 // Helper to map DB row to GptTask type
 function mapToGptTask(row: typeof gptTasks.$inferSelect): GptTask {
     return {
-        id: row.id,
-        type: row.type,
-        title: row.title,
-        ledgerId: row.ledgerId,
-        entityId: row.entityId,
-        entityType: row.entityType,
+        ...row,
         status: row.status as TaskStatus,
-        error: row.error,
-        input: row.input,
-        output: row.output,
         progress: row.progress as TaskProgress | null,
         metadata: row.metadata as Record<string, unknown> | null,
-        createdAt: row.createdAt,
-        startedAt: row.startedAt,
-        completedAt: row.completedAt,
     };
 }
