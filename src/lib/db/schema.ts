@@ -62,6 +62,7 @@ export const entryCategories = pgTable("entry_categories", {
   description: text("description"),
   icon: text("icon"),
   sortOrder: integer("sort_order").notNull().default(0),
+  isEditable: boolean("is_editable").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

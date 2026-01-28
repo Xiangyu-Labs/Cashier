@@ -56,17 +56,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { categoryId } = await params;
-    const [deleted] = await db
-      .delete(entryCategories)
-      .where(eq(entryCategories.id, categoryId))
-      .returning();
 
-    if (!deleted) {
+    // First check if the category exists and is editable
+    const category = await db.query.entryCategories.findFirst({
+      where: eq(entryCategories.id, categoryId),
+    });
+
+    if (!category) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
       );
     }
+
+    if (!category.isEditable) {
+      return NextResponse.json(
+        { error: "This category cannot be deleted" },
+        { status: 403 }
+      );
+    }
+
+    await db
+      .delete(entryCategories)
+      .where(eq(entryCategories.id, categoryId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

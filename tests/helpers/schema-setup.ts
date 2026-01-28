@@ -61,6 +61,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       description TEXT,
       icon TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      is_editable BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );

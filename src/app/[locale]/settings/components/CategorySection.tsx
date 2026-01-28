@@ -75,23 +75,25 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
                                     <div className="font-medium text-sm">{category.name}</div>
                                     {category.description && <div className="text-xs text-[var(--muted)]">{category.description}</div>}
                                 </div>
-                                <div className="opacity-0 group-hover:opacity-100 flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setIsEditingCategory(category.id);
-                                            setEditingCategoryData({ name: category.name, description: category.description || "" });
-                                        }}
-                                        className="p-1 text-[var(--muted)] hover:text-[var(--primary)]"
-                                    >
-                                        <Pencil size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => onDeleteCategory(category.id)}
-                                        className="p-1 text-[var(--muted)] hover:text-[var(--danger)]"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
+                                {category.isEditable !== false && (
+                                    <div className="opacity-0 group-hover:opacity-100 flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setIsEditingCategory(category.id);
+                                                setEditingCategoryData({ name: category.name, description: category.description || "" });
+                                            }}
+                                            className="p-1 text-[var(--muted)] hover:text-[var(--primary)]"
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => onDeleteCategory(category.id)}
+                                            className="p-1 text-[var(--muted)] hover:text-[var(--danger)]"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>

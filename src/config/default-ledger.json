@@ -23,49 +23,57 @@
             "name": "餐饮",
             "description": "日常餐饮消费，包括早餐、午餐、晚餐、饮料水果及外卖等",
             "icon": "Utensils",
-            "sortOrder": 1
+            "sortOrder": 1,
+            "isEditable": true
         },
         {
             "name": "日用",
             "description": "生活日用品消耗，如洗护用品、清洁工具、厨房用品等",
             "icon": "ShoppingBag",
-            "sortOrder": 2
+            "sortOrder": 2,
+            "isEditable": true
         },
         {
             "name": "娱乐",
             "description": "休闲娱乐活动，如游戏、电影、演出及会员订阅等",
             "icon": "Gamepad2",
-            "sortOrder": 3
+            "sortOrder": 3,
+            "isEditable": true
         },
         {
             "name": "交通",
             "description": "日常交通出行，包括公交、地铁、打车、加油及停车费等",
             "icon": "Bus",
-            "sortOrder": 4
+            "sortOrder": 4,
+            "isEditable": true
         },
         {
             "name": "医疗",
             "description": "医疗健康支出，包括药品、挂号费、体检及保健品等",
             "icon": "Stethoscope",
-            "sortOrder": 5
+            "sortOrder": 5,
+            "isEditable": true
         },
         {
             "name": "会员",
             "description": "各类服务订阅与会员费用，如各类APP会员、健身卡等",
             "icon": "Crown",
-            "sortOrder": 6
+            "sortOrder": 6,
+            "isEditable": true
         },
         {
             "name": "购物",
             "description": "服饰鞋帽、电子数码、美妆护肤及其他个人物品购置",
             "icon": "Shirt",
-            "sortOrder": 7
+            "sortOrder": 7,
+            "isEditable": true
         },
         {
             "name": "其他",
             "description": "无法归类的支出",
             "icon": "Package",
-            "sortOrder": 8
+            "sortOrder": 8,
+            "isEditable": false
         }
     ]
 }
