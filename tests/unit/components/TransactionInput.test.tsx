@@ -23,19 +23,19 @@ describe("TransactionInput", () => {
     it("renders text area and buttons", () => {
         render(<TransactionInput ledgerId="test-ledger" />);
 
-        expect(screen.getByPlaceholderText(/输入消费记录/i)).toBeTruthy();
-        expect(screen.getByText("图片")).toBeTruthy();
-        expect(screen.getByText("发送")).toBeTruthy();
+        expect(screen.getByPlaceholderText("placeholder")).toBeTruthy();
+        expect(screen.getByText("image")).toBeTruthy();
+        expect(screen.getByText("send")).toBeTruthy();
     });
 
     it("sends text message", async () => {
         const user = userEvent.setup();
         render(<TransactionInput ledgerId="test-ledger" />);
 
-        const input = screen.getByPlaceholderText(/输入消费记录/i);
+        const input = screen.getByPlaceholderText("placeholder");
         await user.type(input, "Lunch 50");
 
-        const sendButton = screen.getByText("发送");
+        const sendButton = screen.getByText("send");
         await user.click(sendButton);
 
         expect(mockMutate).toHaveBeenCalledWith({
@@ -59,7 +59,7 @@ describe("TransactionInput", () => {
         const images = await screen.findAllByRole("img");
         expect(images).toHaveLength(1); // One preview image
 
-        const sendButton = screen.getByText("发送");
+        const sendButton = screen.getByText("send");
         await user.click(sendButton);
 
         expect(mockMutate).toHaveBeenCalledWith({

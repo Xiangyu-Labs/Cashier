@@ -82,6 +82,12 @@
         "deleteAllConfirmTitle": "Delete All Abnormal Bills",
         "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
     },
+    "BatchTransactionCard": {
+        "collapseContent": "Collapse Content",
+        "viewContent": "View Content",
+        "confirmBill": "Confirm Bill",
+        "requireEdit": "(Correction Required)"
+    },
     "Common": {
         "confirm": "Confirm",
         "delete": "Delete",

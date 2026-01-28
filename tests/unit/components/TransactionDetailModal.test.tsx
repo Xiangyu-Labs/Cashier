@@ -53,7 +53,7 @@ describe("TransactionDetailModal", () => {
         categoryId: "c1",
         amount: "100",
         currency: "CNY",
-        inputMessageId: null,
+        receiptId: null,
         description: null,
         transactionDate: "2023-01-01",
         createdAt: "2023-01-01",
@@ -84,7 +84,7 @@ describe("TransactionDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.queryByText("交易详情")).toBeNull();
+        expect(screen.queryByText("title")).toBeNull();
 
         rerender(
             <TransactionDetailModal
@@ -110,7 +110,7 @@ describe("TransactionDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.getByText("交易详情")).toBeDefined();
+        expect(screen.getByText("title")).toBeDefined();
         // Since we mocked ViewDetails, we check for Edit/Delete buttons
         expect(screen.getByText("Edit")).toBeDefined();
         expect(screen.getByText("Delete")).toBeDefined();

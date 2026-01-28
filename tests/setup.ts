@@ -55,3 +55,12 @@ vi.mock("@/lib/db", () => ({
     return getTestDb();
   },
 }));
+
+// Mock i18n globally
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+  useLocale: () => "zh",
+  useMessages: () => ({}),
+  useTimeZone: () => "UTC",
+  useNow: () => new Date(),
+}));

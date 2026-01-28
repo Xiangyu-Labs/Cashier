@@ -10,9 +10,9 @@ describe("buildTransactionPrompt", () => {
 
   it("should include the provided current date", () => {
     const customDate = "2025-05-20";
-    const prompt = buildTransactionPrompt(sampleCategories, customDate);
+    const prompt = buildTransactionPrompt(sampleCategories, "zh-CN", customDate);
 
-    expect(prompt).toContain(`**当前日期**: ${customDate}`);
+    expect(prompt).toContain(`- **Current Date**: ${customDate}`);
     expect(prompt).toContain(customDate);
   });
 
@@ -31,8 +31,8 @@ describe("buildTransactionPrompt", () => {
 
   it("should include few-shot examples", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain("Few-Shot Examples");
-    expect(prompt).toContain("在711买了2瓶可乐");
+    expect(prompt).toContain("### Examples");
+    expect(prompt).toContain("Bought 2 bottles of Coke");
     expect(prompt).toContain("Yesterday taxi to airport");
   });
 
@@ -45,8 +45,8 @@ describe("buildTransactionPrompt", () => {
 
   it("should include specific rules", () => {
     const prompt = buildTransactionPrompt(sampleCategories);
-    expect(prompt).toContain("拆分原则");
-    expect(prompt).toContain("货币识别");
-    expect(prompt).toContain("相对日期");
+    expect(prompt).toContain("Splitting Principle");
+    expect(prompt).toContain("Currency Identification");
+    expect(prompt).toContain("relative dates");
   });
 });

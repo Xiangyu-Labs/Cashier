@@ -72,7 +72,7 @@ describe("BatchTransactionCard", () => {
         render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} />);
 
         // Expand content
-        const expandButton = screen.getByTitle("查看原始内容");
+        const expandButton = screen.getByTitle("viewContent");
         fireEvent.click(expandButton);
 
         expect(screen.getByText("Lunch 50")).toBeTruthy();
@@ -87,7 +87,7 @@ describe("BatchTransactionCard", () => {
         render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
-        const expandButton = screen.getByTitle("查看原始内容");
+        const expandButton = screen.getByTitle("viewContent");
         fireEvent.click(expandButton);
 
         const imgs = screen.getAllByRole("img");
@@ -106,7 +106,7 @@ describe("BatchTransactionCard", () => {
         render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
-        const expandButton = screen.getByTitle("查看原始内容");
+        const expandButton = screen.getByTitle("viewContent");
         fireEvent.click(expandButton);
 
         const imgs = screen.getAllByRole("img");
@@ -133,7 +133,7 @@ describe("BatchTransactionCard", () => {
         render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
 
         // Expand content
-        const expandButton = screen.getByTitle("查看原始内容");
+        const expandButton = screen.getByTitle("viewContent");
         fireEvent.click(expandButton);
 
         // Find the thumbnail image
@@ -167,7 +167,7 @@ describe("BatchTransactionCard", () => {
         expect(amounts.length).toBeGreaterThan(0);
 
         // Should NOT show status "Processing..."
-        const processingText = screen.queryByText("处理中...");
+        const processingText = screen.queryByText("statusProcessing");
         expect(processingText).toBeNull();
     });
 });

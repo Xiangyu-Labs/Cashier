@@ -82,6 +82,12 @@
         "deleteAllConfirmTitle": "删除所有异常账单",
         "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
     },
+    "BatchTransactionCard": {
+        "collapseContent": "折叠内容",
+        "viewContent": "查看内容",
+        "confirmBill": "确认账单",
+        "requireEdit": "(待修正)"
+    },
     "Common": {
         "confirm": "确认",
         "delete": "删除",
