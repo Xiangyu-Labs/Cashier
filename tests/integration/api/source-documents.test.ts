@@ -82,22 +82,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(response.status).toBe(200);
     expect(data.status).toBe("queued");
 
-    // Wait for processing
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 30) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, data.sourceDocumentId),
-      });
-      if (doc?.status === "completed") break;
-      if (doc?.status === "failed") {
-        console.error("Source document processing failed:", doc.error);
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
-
     const savedEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId)
     });
@@ -130,18 +115,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(data.sourceDocumentId).toBeDefined();
     expect(data.status).toBe("queued");
 
-    // Poll until processed
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 10) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, data.sourceDocumentId),
-      });
-      if (doc?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
-
     const savedEntries = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId),
     });
@@ -170,18 +144,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
 
     expect(data.status).toBe("queued");
 
-    // Wait for processing
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 10) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, data.sourceDocumentId),
-      });
-      if (doc?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
-
     const savedEntries = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId),
       with: { category: true }
@@ -219,17 +182,10 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(savedDoc?.text).toBe("午餐25元");
     expect(savedDoc?.imageUrls).toEqual([]);
 
-    // Wait for processing to prevent race condition with next test
-    let retries = 0;
-    while (retries < 30) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, data.sourceDocumentId),
-      });
-      if (doc?.status === "completed" || doc?.status === "failed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    // Process tasks to ensure cleanup
+    await processAllPendingTasks();
   });
+
 
   it("should return 400 when no input provided", async () => {
     const request = new NextRequest(
@@ -304,17 +260,10 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(savedDoc?.imageUrls).toHaveLength(1);
     expect(savedDoc?.text).toBeNull();
 
-    // Wait for processing to prevent race condition with next test
-    let retries = 0;
-    while (retries < 30) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, data.sourceDocumentId),
-      });
-      if (doc?.status === "completed" || doc?.status === "failed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    // Process tasks to ensure cleanup
+    await processAllPendingTasks();
   });
+
 
 
   it("should delete source document and associated ledger entries", async () => {

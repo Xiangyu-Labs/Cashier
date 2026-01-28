@@ -95,7 +95,8 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         const { ledgerEntries: parsedEntries, title } = output;
         const validEntries = parsedEntries.filter(entry => entry.amount > 0);
 
-        if (input.settings.autoConfirm && validEntries.length > 0 && task.ledgerId) {
+        if (validEntries.length > 0 && task.ledgerId) {
+            const status = (input.settings.autoConfirm ? "confirmed" : "pending") as "confirmed" | "pending";
             const entriesToInsert = validEntries.map(entry => {
                 const categoryId = entry.category
                     ? input.categories.find((c) => c.name === entry.category)?.id ?? null
@@ -110,24 +111,21 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
                     itemName: entry.itemName || "未分类",
                     description: entry.notes || null,
                     entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
+                    status: status,
                 };
             });
 
-            if (entriesToInsert.length > 0) {
-                await db.insert(ledgerEntries).values(entriesToInsert);
-            }
+            await db.insert(ledgerEntries).values(entriesToInsert);
 
-            // Mark source document as completed
+            // Mark source document as completed or to_confirm
             await db.update(sourceDocuments).set({
-                status: "completed",
-                proposedLedgerEntries: validEntries,
+                status: input.settings.autoConfirm ? "completed" : "to_confirm",
                 title: title || null,
             }).where(eq(sourceDocuments.id, input.sourceDocumentId));
         } else {
-            // Update source document with proposed entries and title for manual confirmation
+            // Mark source document as completed if no valid entries
             await db.update(sourceDocuments).set({
-                status: validEntries.length > 0 ? "to_confirm" : "completed",
-                proposedLedgerEntries: validEntries,
+                status: "completed",
                 title: title || null,
             }).where(eq(sourceDocuments.id, input.sourceDocumentId));
         }

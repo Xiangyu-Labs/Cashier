@@ -38,8 +38,6 @@ export interface SourceDocument {
   text: string | null;
   imageUrls: string[];
   aiResponse: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  proposedLedgerEntries?: any[] | null;
   createdAt: string;
   status?: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
   error?: string | null;
@@ -55,6 +53,7 @@ export interface LedgerEntry {
   itemName: string;
   description: string | null;
   entryDate: string | null;
+  status?: "pending" | "confirmed";
   createdAt: string;
   category?: EntryCategory | null;
   sourceDocument?: SourceDocument | null;

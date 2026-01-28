@@ -267,30 +267,38 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
   it("should return pending ledger entries from source documents", async () => {
     const db = getTestDb();
 
-    // Create a source document with status 'to_confirm' and proposed entries
+    // Create a source document with status 'to_confirm'
     const [doc] = await db
       .insert(sourceDocuments)
       .values({
         ledgerId: testLedgerId,
         text: "Purchase data",
-        status: "to_confirm",
-        proposedLedgerEntries: [
-          {
-            itemName: "Pending Item 1",
-            amount: 50,
-            currency: "CNY",
-            category: "餐饮", // Should match testCategoryId which is 餐饮
-            notes: "Lunch with team"
-          },
-          {
-            itemName: "Pending Item 2",
-            amount: 100,
-            currency: "USD",
-            category: "Unknown Category"
-          }
-        ]
+        status: "to_confirm"
       })
       .returning();
+
+    // Create real pending ledger entries
+    const [entry1, entry2] = await db.insert(ledgerEntries).values([
+      {
+        ledgerId: testLedgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Pending Item 1",
+        amount: "50.00",
+        currency: "CNY",
+        categoryId: testCategoryId,
+        description: "Lunch with team",
+        status: "pending"
+      },
+      {
+        ledgerId: testLedgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Pending Item 2",
+        amount: "100.00",
+        currency: "USD",
+        categoryId: null,
+        status: "pending"
+      }
+    ]).returning();
 
     const response = await GET(
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?status=pending`),
@@ -304,19 +312,20 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     // Verify first item (fully matched)
     const item1 = data.items.find((t: { itemName: string }) => t.itemName === "Pending Item 1");
     expect(item1).toBeDefined();
-    expect(item1.amount).toBe("50");
+    expect(item1.amount).toBe("50.00");
     expect(item1.currency).toBe("CNY");
     expect(item1.categoryId).toBe(testCategoryId);
     expect(item1.category).toBeDefined();
     expect(item1.category.name).toBe("餐饮");
     expect(item1.description).toBe("Lunch with team");
-    expect(item1.id).toContain(`pending:${doc.id}`);
+    expect(item1.id).toBe(entry1.id); // Should be a real UUID
 
     // Verify second item (unmatched category)
     const item2 = data.items.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");
     expect(item2).toBeDefined();
-    expect(item2.amount).toBe("100");
+    expect(item2.amount).toBe("100.00");
     expect(item2.currency).toBe("USD");
     expect(item2.categoryId).toBeNull();
+    expect(item2.id).toBe(entry2.id); // Should be a real UUID
   });
 });

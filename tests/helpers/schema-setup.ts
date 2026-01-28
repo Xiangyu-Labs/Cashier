@@ -21,11 +21,17 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS gpt_tasks CASCADE`);
 
   await db.execute(sql`DROP TYPE IF EXISTS source_document_status CASCADE`);
+  await db.execute(sql`DROP TYPE IF EXISTS ledger_entry_status CASCADE`);
 
   // Create enums
   await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed', 'invalid');
+    EXCEPTION WHEN duplicate_object THEN null;
+    END $$;
+
+    DO $$ BEGIN
+      CREATE TYPE ledger_entry_status AS ENUM ('pending', 'confirmed');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
@@ -70,7 +76,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       status source_document_status NOT NULL DEFAULT 'queued',
       error TEXT,
       ai_response TEXT,
-      proposed_ledger_entries JSONB,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
@@ -86,6 +91,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       item_name TEXT NOT NULL,
       description TEXT,
       entry_date DATE,
+      status ledger_entry_status NOT NULL DEFAULT 'confirmed',
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);

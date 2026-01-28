@@ -91,8 +91,6 @@ export const sourceDocuments = pgTable("source_documents", {
   error: text("error"),
   aiResponse: text("ai_response"),
 
-  proposedLedgerEntries: jsonb("proposed_ledger_entries").$type<unknown[]>(),
-
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
@@ -127,11 +125,13 @@ export const ledgerEntries = pgTable("ledger_entries", {
   itemName: text("item_name").notNull(),
   description: text("description"),
   entryDate: date("entry_date", { mode: "date" }),
+  status: ledgerEntryStatusEnum("status").notNull().default("confirmed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
   index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
   index("idx_ledger_entries_created_at").on(table.createdAt),
+  index("idx_ledger_entries_status").on(table.ledgerId, table.status),
 ]);
 
 export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({

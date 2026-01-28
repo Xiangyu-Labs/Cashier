@@ -12,10 +12,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const status = searchParams.get("status");
+
     // 构建过滤条件
     const conditions = [
       eq(ledgerEntries.ledgerId, ledgerId),
     ];
+
+    if (status) {
+      conditions.push(eq(ledgerEntries.status, status as any));
+    }
 
     // Use entryDate if available, otherwise fallback to createdAt
     const dateCol = sql<string>`COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}::date)`;

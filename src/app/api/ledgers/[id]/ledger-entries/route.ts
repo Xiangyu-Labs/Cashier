@@ -36,86 +36,11 @@ export async function GET(
       status: searchParams.get("status") || undefined,
     });
 
-    // If querying for pending ledger entries, fetch from source documents
-    if (query.status === "pending") {
-      // 1. Fetch source documents with 'to_confirm' status
-      const pendingDocs = await db.query.sourceDocuments.findMany({
-        where: and(
-          eq(sourceDocuments.ledgerId, ledgerId),
-          eq(sourceDocuments.status, "to_confirm")
-        ),
-        orderBy: (sourceDocuments, { desc }) => [desc(sourceDocuments.createdAt)],
-      });
-
-      // 2. Fetch all categories for mapping
-      const allCategories = await db.query.entryCategories.findMany({
-        where: eq(entryCategories.ledgerId, ledgerId),
-      });
-
-      // 3. Map to LedgerEntry objects
-      interface ProposedLedgerEntry {
-        category?: string;
-        amount?: number | string;
-        currency?: string;
-        itemName?: string;
-        notes?: string;
-        entryDate?: string;
-      }
-
-      interface PendingLedgerEntry {
-        id: string;
-        ledgerId: string;
-        categoryId: string | null;
-        sourceDocumentId: string;
-        amount: string;
-        currency: string;
-        itemName: string;
-        description: string | null;
-        entryDate: Date;
-        createdAt: Date;
-        updatedAt: Date;
-        category: unknown;
-        sourceDocument: unknown;
-      }
-
-      const pendingEntries: PendingLedgerEntry[] = [];
-
-      for (const doc of pendingDocs) {
-        if (!doc.proposedLedgerEntries || !Array.isArray(doc.proposedLedgerEntries)) continue;
-
-        const proposedEntries = doc.proposedLedgerEntries as unknown as ProposedLedgerEntry[];
-
-        proposedEntries.forEach((pent, index) => {
-          // Find category object
-          const categoryName = pent.category;
-          const category = allCategories.find(c => c.name === categoryName) || null;
-
-          pendingEntries.push({
-            id: `pending:${doc.id}:${index}`, // Synthesized ID
-            ledgerId: doc.ledgerId,
-            categoryId: category?.id || null,
-            sourceDocumentId: doc.id,
-            amount: pent.amount?.toString() || "0",
-            currency: pent.currency || "CNY",
-            itemName: pent.itemName || "未分类",
-            description: pent.notes || null,
-            entryDate: pent.entryDate ? new Date(pent.entryDate) : doc.createdAt,
-            createdAt: doc.createdAt,
-            updatedAt: doc.createdAt,
-            // Relations
-            category: category,
-            sourceDocument: doc,
-          });
-        });
-      }
-
-      // Sort by createdAt desc
-      pendingEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      return NextResponse.json({ items: pendingEntries });
-    }
-
     const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
+
+    if (query.status) {
+      conditions.push(eq(ledgerEntries.status, query.status));
+    }
 
     if (query.categoryId) {
       conditions.push(eq(ledgerEntries.categoryId, query.categoryId));
