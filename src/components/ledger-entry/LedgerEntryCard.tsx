@@ -155,7 +155,7 @@ export function LedgerEntryCard({
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
                 {!hideCategory && (
                   <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl text-text">
                     <CategoryIcon
@@ -164,19 +164,32 @@ export function LedgerEntryCard({
                     />
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-text truncate">{ledgerEntry.itemName}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {ledgerEntry.category ? (
                       !hideCategory && (
-                        <span className="text-xs text-muted">
-                          {ledgerEntry.category.name}
-                        </span>
+                        <div className="flex items-center gap-1.5 text-xs text-muted min-w-0 flex-1">
+                          <span className="shrink-0">{ledgerEntry.category.name}</span>
+                          {ledgerEntry.description && (
+                            <>
+                              <span className="text-muted/30 ml-0.5 shrink-0">·</span>
+                              <span className="truncate text-muted/50 text-[11px] italic flex-1">
+                                {ledgerEntry.description}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       )
                     ) : (
-                      <Badge variant="warning" className="text-[10px] px-1 h-5">
-                        需分类
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="warning" className="text-[10px] px-1 h-5">
+                          需分类
+                        </Badge>
+                        {ledgerEntry.description && (
+                          <span className="text-xs text-muted truncate">{ledgerEntry.description}</span>
+                        )}
+                      </div>
                     )}
 
                     {!ledgerEntry.currency && (
@@ -222,11 +235,7 @@ export function LedgerEntryCard({
                 </div>
               </div>
             </div>
-            {ledgerEntry.description && (
-              <p className="text-xs text-muted bg-surface2 p-2 rounded truncate max-h-[3em] w-fit max-w-full">
-                {ledgerEntry.description}
-              </p>
-            )}
+            {/* Description is now inline with category above */}
           </div>
         )}
       </CardContent>
