@@ -43,6 +43,7 @@ export const ledgers = pgTable("ledgers", {
   name: text("name").notNull(),
   language: text("language").notNull().default(defaultLedger.settings.language),
   currencies: jsonb("currencies").$type<string[]>().default(defaultLedger.settings.currencies),
+  mainCurrency: text("main_currency").default(defaultLedger.settings.mainCurrency),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   autoConfirm: boolean("auto_confirm").default(defaultLedger.settings.autoConfirm),

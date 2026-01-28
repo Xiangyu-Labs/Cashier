@@ -3,6 +3,7 @@
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
 import { Settings } from "@/types/api";
+import { useTranslations } from "next-intl";
 
 interface CurrencySectionProps {
     settings: Settings;
@@ -10,9 +11,14 @@ interface CurrencySectionProps {
 }
 
 export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+    const t = useTranslations('Settings');
     const selectedCurrencies = settings.currencies || [];
+    const mainCurrency = settings.mainCurrency || "CNY";
 
     const toggleCurrency = (currency: string) => {
+        // Main currency must be enabled
+        if (currency === mainCurrency) return;
+
         const isSelected = selectedCurrencies.includes(currency);
         let newCurrencies: string[];
 
@@ -25,31 +31,67 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
         onUpdateSettings({ currencies: newCurrencies });
     };
 
+    const setMainCurrency = (currency: string) => {
+        const updates: Partial<Settings> = { mainCurrency: currency };
+        // Ensure main currency is also in the selected list
+        if (!selectedCurrencies.includes(currency)) {
+            updates.currencies = [...selectedCurrencies, currency];
+        }
+        onUpdateSettings(updates);
+    };
+
     return (
-        <div>
-            <h3 className="text-sm font-medium text-[var(--muted)] mb-4 uppercase tracking-wider">常用货币</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                {SUPPORTED_CURRENCIES.map(currency => {
-                    const isSelected = selectedCurrencies.includes(currency);
-                    return (
-                        <button
-                            key={currency}
-                            onClick={() => toggleCurrency(currency)}
-                            className={cn(
-                                "flex items-center justify-center px-3 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all border",
-                                isSelected
-                                    ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm"
-                                    : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--surface2)]"
-                            )}
-                        >
+        <div className="space-y-6">
+            {/* Main Currency Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-base font-medium">{t('mainCurrency')}</h3>
+                    <p className="text-sm text-muted">{t('mainCurrencyDesc')}</p>
+                </div>
+                <select
+                    value={mainCurrency}
+                    onChange={(e) => setMainCurrency(e.target.value)}
+                    className="w-full sm:w-auto bg-surface border border-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                >
+                    {SUPPORTED_CURRENCIES.map(currency => (
+                        <option key={currency} value={currency}>
                             {currency}
-                        </button>
-                    );
-                })}
+                        </option>
+                    ))}
+                </select>
             </div>
-            <p className="mt-4 text-xs text-[var(--muted)]">
-                点击选择该账本需要支持的货币。默认选中将用于快速记账和识别预览。
-            </p>
+
+            <div className="h-px bg-border" />
+
+            {/* Preferred Currencies Section */}
+            <div className="space-y-4">
+                <div>
+                    <h3 className="text-base font-medium">{t('preferredCurrencies')}</h3>
+                    <p className="text-sm text-muted">{t('preferredCurrenciesDesc')}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {SUPPORTED_CURRENCIES.map(currency => {
+                        const isSelected = selectedCurrencies.includes(currency);
+                        const isMain = currency === mainCurrency;
+                        return (
+                            <button
+                                key={`preferred-${currency}`}
+                                type="button"
+                                onClick={() => toggleCurrency(currency)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                                    isSelected
+                                        ? "bg-primary text-white border-primary shadow-sm"
+                                        : "bg-surface text-muted-foreground border-border hover:border-primary/50",
+                                    isMain && "opacity-80 cursor-default"
+                                )}
+                            >
+                                {currency}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }

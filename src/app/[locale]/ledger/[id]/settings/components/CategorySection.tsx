@@ -5,6 +5,8 @@ import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
+import { useTranslations } from "next-intl";
+
 interface CategorySectionProps {
     categories: EntryCategory[];
     onCreateCategory: (name: string) => void;
@@ -13,6 +15,7 @@ interface CategorySectionProps {
 }
 
 export function CategorySection({ categories, onCreateCategory, onUpdateCategory, onDeleteCategory }: CategorySectionProps) {
+    const t = useTranslations("Settings");
     const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
     const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
@@ -24,8 +27,11 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
     };
 
     return (
-        <div>
-            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">分类</h3>
+        <div className="space-y-4">
+            <div>
+                <h3 className="text-base font-medium">{t('categories')}</h3>
+                <p className="text-sm text-muted">{t('categoriesDesc')}</p>
+            </div>
 
             <div className="space-y-2 mb-4">
                 {categories.map(category => (

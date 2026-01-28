@@ -13,6 +13,7 @@
             "JPY",
             "SGD"
         ],
+        "mainCurrency": "CNY",
         "autoConfirm": false,
         "autoRecognizeDate": false,
         "collapsePendingDefault": false,

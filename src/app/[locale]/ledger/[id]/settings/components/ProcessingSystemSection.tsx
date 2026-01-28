@@ -55,6 +55,7 @@ function TaskStatusBadge({ status }: { status: ProcessingTask["status"] }) {
 export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
     const t = useTranslations("TaskCenter");
     const tCommon = useTranslations("Common");
+    const tSettings = useTranslations("Settings");
 
     const { data: stats, isLoading: isStatsLoading } = useQuery({
         queryKey: ["token-stats", ledgerId],
@@ -93,40 +94,41 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
     return (
         <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <h2 className="text-lg font-medium mb-6">{tSettings("taskCenter")}</h2>
+
             <div className="mb-6">
-                <h2 className="text-lg font-medium">处理系统 Token 统计</h2>
-                <p className="text-sm text-[var(--muted)]">
+                <h3 className="text-base font-medium">{t("processedTokenStats")}</h3>
+                <p className="text-sm text-muted">
                     基于 gpt-tokenizer 精确计算的 AI 处理系统消耗概览
                 </p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">总消耗</p>
+                    <p className="text-sm font-medium text-muted">总消耗</p>
                     <p className="text-2xl font-bold">{formatNum(stats.totalTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">输入 Tokens</p>
+                    <p className="text-sm font-medium text-muted">输入 Tokens</p>
                     <p className="text-xl">{formatNum(stats.totalInputTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">输出 Tokens</p>
+                    <p className="text-sm font-medium text-muted">输出 Tokens</p>
                     <p className="text-xl">{formatNum(stats.totalOutputTokens)}</p>
                 </div>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--muted)]">平均/任务</p>
+                    <p className="text-sm font-medium text-muted">平均/任务</p>
                     <p className="text-xl">{formatNum(stats.averageTokensPerTask)}</p>
                 </div>
             </div>
 
-            <div className="mt-4 text-[10px] text-[var(--muted)] opacity-70">
+            <div className="mt-4 text-[10px] text-muted opacity-70">
                 * 统计范围仅包含通过处理系统（Processing System）完成的任务。采用成熟的 `gpt-tokenizer` 精确计算。
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[var(--border)]">
+            <div className="mt-8 pt-6 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
-                    <Activity className="w-5 h-5 text-primary" />
-                    <h3 className="text-base font-medium">正在处理的任务</h3>
+                    <h3 className="text-base font-medium">{t("activeTasks")}</h3>
                     {activeTasks.length > 0 && (
                         <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full leading-none font-bold">
                             {activeTasks.length}

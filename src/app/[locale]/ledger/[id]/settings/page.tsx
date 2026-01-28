@@ -22,7 +22,7 @@ import { EntryCategory, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Languages } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { usePathname, useRouter } from "@/i18n/routing";
 
@@ -121,34 +121,47 @@ export default function LedgerSettingsPage() {
                 <h1 className="text-2xl font-semibold">{t('title')} - {ledger.name}</h1>
             </div>
 
-            {/* General Settings (Language) */}
+            {/* Appearance Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Languages className="w-5 h-5 text-primary" />
-                        </div>
+                <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-lg font-medium">{t('language')}</h2>
+                            <h3 className="text-base font-medium">{t('language')}</h3>
                             <p className="text-sm text-[var(--muted)]">设置当前账本使用的 UI 语言和 AI 识别语言</p>
                         </div>
+                        <select
+                            value={ledger.language || 'zh'}
+                            onChange={(e) => {
+                                const newLang = e.target.value;
+                                updateLedgerMutation.mutate({ language: newLang });
+                                if (newLang !== locale) {
+                                    // Redirect to the new locale
+                                    router.push(pathname, { locale: newLang });
+                                    router.refresh();
+                                }
+                            }}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                        >
+                            <option value="zh">简体中文</option>
+                            <option value="en">English</option>
+                        </select>
                     </div>
-                    <select
-                        value={ledger.language || 'zh'}
-                        onChange={(e) => {
-                            const newLang = e.target.value;
-                            updateLedgerMutation.mutate({ language: newLang });
-                            if (newLang !== locale) {
-                                // Redirect to the new locale
-                                router.push(pathname, { locale: newLang });
-                                router.refresh();
-                            }
-                        }}
-                        className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                    >
-                        <option value="zh">简体中文</option>
-                        <option value="en">English</option>
-                    </select>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('collapsePending')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('collapsePendingDesc')}</p>
+                        </div>
+                        <Switch
+                            checked={ledger.collapsePendingDefault || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ collapsePendingDefault: checked });
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -184,21 +197,6 @@ export default function LedgerSettingsPage() {
                             checked={ledger.autoRecognizeDate || false}
                             onCheckedChange={(checked: boolean) => {
                                 updateLedgerMutation.mutate({ autoRecognizeDate: checked });
-                            }}
-                        />
-                    </div>
-
-                    <div className="h-px bg-[var(--border)]" />
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('collapsePending')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('collapsePendingDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={ledger.collapsePendingDefault || false}
-                            onCheckedChange={(checked: boolean) => {
-                                updateLedgerMutation.mutate({ collapsePendingDefault: checked });
                             }}
                         />
                     </div>

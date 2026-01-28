@@ -53,7 +53,9 @@
         "statusRunning": "Running",
         "statusCompleted": "Completed",
         "statusFailed": "Failed",
-        "statusCancelled": "Cancelled"
+        "statusCancelled": "Cancelled",
+        "processedTokenStats": "Processed Token Stats",
+        "activeTasks": "Active Tasks"
     },
     "StatsTab": {
         "expenseTrend": "Expense Trend",
@@ -136,6 +138,7 @@
     },
     "Settings": {
         "title": "Settings",
+        "appearance": "Appearance",
         "assistant": "Smart Assistant",
         "autoConfirm": "Auto-confirm",
         "autoConfirmDesc": "AI-identified entries are processed automatically and no longer require manual confirmation",
@@ -149,11 +152,18 @@
         "language": "Language",
         "chinese": "Chinese",
         "english": "English",
+        "mainCurrency": "Main Currency",
+        "mainCurrencyDesc": "The base currency used for statistics and totals (currently summed 1:1).",
+        "preferredCurrencies": "Preferred Currencies",
+        "preferredCurrenciesDesc": "List of currencies used in this ledger. Main currency must be selected.",
+        "categories": "Categories",
+        "categoriesDesc": "Manage ledger expense categories and their priority",
         "riskTitle": "Risk Warning",
         "riskDesc1": "After enabling 'Auto-confirm', all records identified by AI will be directly recorded in the ledger.",
         "riskDesc2": "While AI accuracy is high, identification errors (e.g., amount, category errors) may still occur. Enabling this feature means you accept potential bookkeeping errors.",
         "riskDesc3": "It is recommended that you check the entry list regularly (e.g., weekly) for abnormal records.",
         "cancel": "Cancel",
-        "confirmEnable": "Confirm Enable"
+        "confirmEnable": "Confirm Enable",
+        "taskCenter": "Task Center"
     }
 }

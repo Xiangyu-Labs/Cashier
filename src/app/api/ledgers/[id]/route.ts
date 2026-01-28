@@ -8,6 +8,7 @@ const updateLedgerSchema = z.object({
   name: z.string().min(1).optional(),
   language: z.string().optional(),
   currencies: z.array(z.string()).optional(),
+  mainCurrency: z.string().optional(),
   autoConfirm: z.boolean().optional(),
   autoRecognizeDate: z.boolean().optional(),
   collapsePendingDefault: z.boolean().optional(),

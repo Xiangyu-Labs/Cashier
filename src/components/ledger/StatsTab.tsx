@@ -15,9 +15,17 @@ import { useTranslations } from "next-intl";
 
 interface StatsTabProps {
     ledgerId?: string;
+    // We can fetch ledger inside if not passed, but better valid to pass it if available.
+    // However, to keep it simple and consistent with existing pattern in this file (fetching summary),
+    // let's see. `fetchLedger` is available.
+    // But modifying the props is cleaner if parent has it.
+    // Let's stick to modifying the calculation first.
+    // If I don't have ledger object, I can't know main currency without fetching it.
+    // I will add a `ledger` prop.
+    ledger?: import("@/types/api").Ledger;
 }
 
-export function StatsTab({ ledgerId }: StatsTabProps) {
+export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
     const t = useTranslations("StatsTab");
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -45,12 +53,9 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
         enabled: !!ledgerId,
     });
 
-    const primaryCurrencyTotal = summary?.totals.reduce((max, current) => {
-        return (current.total > (max?.total || 0)) ? current : max;
-    }, summary?.totals[0]);
-
-    const totalExpense = primaryCurrencyTotal?.total || 0;
-    const currencySymbol = primaryCurrencyTotal?.currency || "CNY";
+    // Sum all totals for the main currency view
+    const totalExpense = summary?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
+    const currencySymbol = ledger?.mainCurrency || "CNY";
 
     const daysInPeriod = Math.max(
         1,

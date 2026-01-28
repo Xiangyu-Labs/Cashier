@@ -21,6 +21,7 @@ interface SourceDocumentCardProps {
   sourceDocument: SourceDocument;
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
+  mainCurrency?: string;
   isConfirmed?: boolean;
   onConfirm?: (ids: string[]) => Promise<void>;
   onUpdateLedgerEntry?: (
@@ -46,6 +47,7 @@ export function SourceDocumentCard({
   sourceDocument,
   ledgerEntries,
   categories,
+  mainCurrency = "CNY",
   isConfirmed = false,
   onConfirm,
   onUpdateLedgerEntry,
@@ -67,7 +69,7 @@ export function SourceDocumentCard({
   const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  const { sortedEntries, totalAmounts } = useMemo(() => {
+  const { sortedEntries, totalAmounts, mainTotal } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
@@ -76,14 +78,17 @@ export function SourceDocumentCard({
     });
 
     const totals: Record<string, number> = {};
+    let mainTotal = 0;
+
     ledgerEntries.forEach((entry) => {
       if (entry.currency) {
         const amount = parseFloat(entry.amount);
         totals[entry.currency] = (totals[entry.currency] || 0) + amount;
+        mainTotal += amount;
       }
     });
 
-    return { sortedEntries: sorted, totalAmounts: totals };
+    return { sortedEntries: sorted, totalAmounts: totals, mainTotal };
   }, [ledgerEntries]);
 
   const { text, images, hasUnknownCurrency } = useMemo(() => {
@@ -140,12 +145,10 @@ export function SourceDocumentCard({
             </div>
           )}
 
-          {Object.entries(totalAmounts).map(([currency, total]) => (
-            <span key={currency} className="text-sm font-bold text-text">
-              <span className="text-xs text-muted mr-1">{currency}</span>
-              {total.toFixed(2)}
-            </span>
-          ))}
+          <span className="text-sm font-bold text-text">
+            <span className="text-xs text-muted mr-1">{mainCurrency}</span>
+            {mainTotal.toFixed(2)}
+          </span>
 
           {onDelete && (
             <Button

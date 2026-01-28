@@ -119,7 +119,7 @@ export default function LedgerPage() {
           </TabsContent>
 
           <TabsContent value="stats" className="mt-0">
-            <StatsTab ledgerId={ledgerId} />
+            <StatsTab ledgerId={ledgerId} ledger={ledger} />
           </TabsContent>
         </Tabs>
       </main>

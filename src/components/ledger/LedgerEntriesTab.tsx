@@ -324,6 +324,7 @@ export function LedgerEntriesTab({
                     categories={categories}
                     status={item.data.status || 'processing'}
                     errorCode={item.data.errorCode}
+                    mainCurrency={ledger?.mainCurrency}
                     className={className}
                     defaultExpanded={true}
                     onRetry={onRetryProp}
@@ -336,6 +337,7 @@ export function LedgerEntriesTab({
                     ledgerEntries={item.data.ledgerEntries}
                     categories={categories}
                     status="pending"
+                    mainCurrency={ledger?.mainCurrency}
                     className={className}
                     defaultExpanded={true}
                     onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
@@ -509,6 +511,7 @@ export function LedgerEntriesTab({
                                             ledgerEntries={entries}
                                             categories={categories}
                                             status={doc.status || 'completed'}
+                                            mainCurrency={ledger?.mainCurrency}
                                             isConfirmed={true}
                                             onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: doc.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                             onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}

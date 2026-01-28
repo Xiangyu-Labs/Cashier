@@ -67,9 +67,9 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     const monthStats = useMemo(() => {
         const total = summaryData?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
-        const currency = summaryData?.totals[0]?.currency || "CNY";
+        const currency = ledger?.mainCurrency || "CNY";
         return { total, currency };
-    }, [summaryData]);
+    }, [summaryData, ledger]);
 
     const updateMutation = useMutation({
         mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>

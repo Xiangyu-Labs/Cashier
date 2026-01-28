@@ -5,6 +5,7 @@ export interface Ledger {
   name: string;
   language: string;
   currencies: string[];
+  mainCurrency: string;
   createdAt: string;
   updatedAt: string;
   autoConfirm: boolean;
@@ -17,6 +18,7 @@ export interface Settings {
   id: string;
   language: string;
   currencies: string[];
+  mainCurrency?: string;
   autoConfirm?: boolean;
   autoRecognizeDate?: boolean;
 }
