@@ -25,7 +25,8 @@ export interface GptTask {
     input: unknown;
     output: unknown;
     progress: TaskProgress | null;
-    metadata: Record<string, unknown> | null;
+    metadata: Record<string, any> | null;
+    // metadata.usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
     createdAt: Date;
     startedAt: Date | null;
     completedAt: Date | null;

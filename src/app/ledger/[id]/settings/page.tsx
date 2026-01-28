@@ -17,6 +17,7 @@ import {
 import { CurrencySection } from "./components/CurrencySection";
 import { CategorySection } from "./components/CategorySection";
 import { ApiKeySection } from "./components/ApiKeySection";
+import { TokenUsageSection } from "./components/TokenUsageSection";
 import { Category, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -237,6 +238,9 @@ export default function LedgerSettingsPage() {
                     )}
                 </div>
             </section>
+
+            {/* Token Usage Stats */}
+            <TokenUsageSection ledgerId={ledgerId} />
 
             {/* API Keys Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">

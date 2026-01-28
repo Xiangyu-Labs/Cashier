@@ -89,7 +89,21 @@ async function executeTask(task: GptTask): Promise<void> {
             await handler.onComplete(output, task);
         }
 
-        await markTaskCompleted(task.id, output);
+        // Calculate token usage (General estimation: 1 token ~= 4 chars)
+        const inputTokens = Math.ceil(JSON.stringify(task.input).length / 4);
+        const outputTokens = Math.ceil(JSON.stringify(output).length / 4);
+
+        // Merge with existing metadata
+        const metadata = {
+            ...(task.metadata || {}),
+            usage: {
+                inputTokens,
+                outputTokens,
+                totalTokens: inputTokens + outputTokens
+            }
+        };
+
+        await markTaskCompleted(task.id, output, metadata);
         console.log(`Task ${task.id} (${task.type}): Completed successfully`);
 
     } catch (error) {

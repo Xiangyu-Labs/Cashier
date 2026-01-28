@@ -60,11 +60,23 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
 
     const activeTasks = tasks.filter(t => t.status === "queued" || t.status === "running");
     const failedTasks = tasks.filter(t => t.status === "failed");
-    const recentTasks = tasks.slice(0, 20);
+    // User requested to hide failed tasks from this list (business logic handles retry/notify)
+    const visibleTasks = tasks.filter(t => t.status !== "completed" && t.status !== "failed");
+
+    // Calculate estimated total tokens from current list (simple session view)
+    const sessionTokens = tasks.reduce((sum, t) => {
+        const usage = (t.metadata as any)?.usage;
+        return sum + (usage?.totalTokens || 0);
+    }, 0);
+
+    const formatTokens = (num: number) => {
+        if (num > 1000) return `${(num / 1000).toFixed(1)}k`;
+        return num.toString();
+    };
 
     // Summary text for the trigger
     const getTaskSummary = () => {
-        if (activeTasks.length === 0 && failedTasks.length === 0) return null;
+        if (activeTasks.length === 0) return null;
 
         if (activeTasks.length > 0) {
             return (
@@ -75,20 +87,11 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
             );
         }
 
-        if (failedTasks.length > 0) {
-            return (
-                <span className="flex items-center gap-1 text-danger font-medium">
-                    <span className="h-2 w-2 rounded-full bg-danger"></span>
-                    {failedTasks.length} 个异常
-                </span>
-            );
-        }
-
         return null;
     };
 
     const summary = getTaskSummary();
-    if (!summary && recentTasks.length === 0) return null;
+    if (!summary && visibleTasks.length === 0) return null;
 
     return (
         <Popover>
@@ -114,6 +117,12 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                             </span>
                         )}
                     </button>
+                    {sessionTokens > 0 && (
+                        <div className="flex items-center px-4 py-2 border-l border-border/50 text-xs text-muted" title="本次会话Token预估消耗">
+                            <span className="mr-1">⚡️</span>
+                            {formatTokens(sessionTokens)}
+                        </div>
+                    )}
                     <button
                         onClick={() => setActiveTab("notifications")}
                         className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${activeTab === "notifications"
@@ -135,12 +144,12 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                                     加载中...
                                 </div>
-                            ) : recentTasks.length === 0 ? (
+                            ) : visibleTasks.length === 0 ? (
                                 <div className="text-center py-8 text-text/50">
                                     暂无任务记录
                                 </div>
                             ) : (
-                                recentTasks.map((task) => (
+                                visibleTasks.map((task) => (
                                     <div
                                         key={task.id}
                                         className={`flex items-start gap-2 p-2 rounded transition-colors ${task.status === "failed" ? "bg-danger/5" : "hover:bg-surface2/50"

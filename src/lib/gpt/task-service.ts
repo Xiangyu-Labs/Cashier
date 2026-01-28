@@ -96,13 +96,19 @@ export async function markTaskRunning(taskId: string): Promise<void> {
 /**
  * Update task status to completed.
  */
-export async function markTaskCompleted(taskId: string, output: unknown): Promise<void> {
+export async function markTaskCompleted(taskId: string, output: unknown, metadata?: Record<string, unknown>): Promise<void> {
+    const updateData: any = {
+        status: "completed",
+        output,
+        completedAt: new Date(),
+    };
+
+    if (metadata) {
+        updateData.metadata = metadata;
+    }
+
     await db.update(gptTasks)
-        .set({
-            status: "completed",
-            output,
-            completedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(gptTasks.id, taskId));
 }
 
