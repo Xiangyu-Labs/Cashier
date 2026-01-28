@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { TransactionDetailModal } from "@/components/TransactionDetailModal";
-import { Transaction, Category } from "@/types/api";
+import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
+import { LedgerEntry, EntryCategory } from "@/types/api";
 import { useEffect } from "react";
 
 // Mock sub-components/hooks
@@ -28,8 +28,8 @@ vi.mock("@/hooks/use-toast", () => ({
 }));
 
 // Mock child components to simplify testing parent logic
-vi.mock("@/components/transaction/TransactionEditForm", () => ({
-    TransactionEditForm: ({ onSave, onCancel }: { onSave: () => void, onCancel: () => void }) => (
+vi.mock("@/components/ledger-entry/LedgerEntryEditForm", () => ({
+    LedgerEntryEditForm: ({ onSave, onCancel }: { onSave: () => void, onCancel: () => void }) => (
         <div>
             <button onClick={onSave}>Save</button>
             <button onClick={onCancel}>Cancel</button>
@@ -37,8 +37,8 @@ vi.mock("@/components/transaction/TransactionEditForm", () => ({
     ),
 }));
 
-vi.mock("@/components/transaction/TransactionViewDetails", () => ({
-    TransactionViewDetails: ({ onEdit, onDelete }: { onEdit: () => void, onDelete: () => void }) => (
+vi.mock("@/components/ledger-entry/LedgerEntryViewDetails", () => ({
+    LedgerEntryViewDetails: ({ onEdit, onDelete }: { onEdit: () => void, onDelete: () => void }) => (
         <div>
             <button onClick={onEdit}>Edit</button>
             <button onClick={onDelete}>Delete</button>
@@ -46,22 +46,22 @@ vi.mock("@/components/transaction/TransactionViewDetails", () => ({
     ),
 }));
 
-describe("TransactionDetailModal", () => {
-    const mockTransaction: Transaction = {
+describe("LedgerEntryDetailModal", () => {
+    const mockLedgerEntry: LedgerEntry = {
         id: "1",
         ledgerId: "l1",
         categoryId: "c1",
         amount: "100",
         currency: "CNY",
-        receiptId: null,
+        sourceDocumentId: null,
         description: null,
-        transactionDate: "2023-01-01",
+        entryDate: "2023-01-01",
         createdAt: "2023-01-01",
         itemName: "Test Item",
         category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
     };
 
-    const mockCategories: Category[] = [
+    const mockCategories: EntryCategory[] = [
         { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
     ];
 
@@ -73,10 +73,10 @@ describe("TransactionDetailModal", () => {
         vi.clearAllMocks();
     });
 
-    it("renders nothing when closed or no transaction", () => {
+    it("renders nothing when closed or no ledger entry", () => {
         const { rerender } = render(
-            <TransactionDetailModal
-                transaction={null}
+            <LedgerEntryDetailModal
+                ledgerEntry={null}
                 categories={[]}
                 open={true}
                 onClose={mockOnClose}
@@ -87,8 +87,8 @@ describe("TransactionDetailModal", () => {
         expect(screen.queryByText("title")).toBeNull();
 
         rerender(
-            <TransactionDetailModal
-                transaction={mockTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={mockLedgerEntry}
                 categories={[]}
                 open={false}
                 onClose={mockOnClose}
@@ -96,13 +96,13 @@ describe("TransactionDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.queryByText("交易详情")).toBeNull();
+        expect(screen.queryByText("分录详情")).toBeNull();
     });
 
     it("renders details by default", () => {
         render(
-            <TransactionDetailModal
-                transaction={mockTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={mockLedgerEntry}
                 categories={mockCategories}
                 open={true}
                 onClose={mockOnClose}
@@ -118,8 +118,8 @@ describe("TransactionDetailModal", () => {
 
     it("switches to edit mode and saves", async () => {
         render(
-            <TransactionDetailModal
-                transaction={mockTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={mockLedgerEntry}
                 categories={mockCategories}
                 open={true}
                 onClose={mockOnClose}
@@ -139,8 +139,8 @@ describe("TransactionDetailModal", () => {
 
     it("shows confirm dialog on delete", () => {
         render(
-            <TransactionDetailModal
-                transaction={mockTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={mockLedgerEntry}
                 categories={mockCategories}
                 open={true}
                 onClose={mockOnClose}

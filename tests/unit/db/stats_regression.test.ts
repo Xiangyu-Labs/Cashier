@@ -1,38 +1,38 @@
 import { describe, it, expect } from "vitest";
 import { sql, eq, and } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, transactions } from "@/lib/db/schema";
+import { ledgers, ledgerEntries } from "@/lib/db/schema";
 
 /**
  * Regression Test for Statistics Data Issue
  * 
- * Issue: Confirmed transactions were missing from stats because they had null transactionDate.
- * Fix: The API was updated to use COALESCE(transaction_date, created_at) as the date source.
+ * Issue: Confirmed ledger entries were missing from stats because they had null entryDate.
+ * Fix: The API was updated to use COALESCE(entry_date, created_at) as the date source.
  * 
- * This test verifies that we can correctly filter and group transactions even if transactionDate is null,
+ * This test verifies that we can correctly filter and group ledger entries even if entryDate is null,
  * using the same SQL logic as the API.
  */
 describe("Stats Regression Test", () => {
-    it("should include transactions with null transactionDate in date-filtered queries using createdAt fallback", async () => {
+    it("should include ledger entries with null entryDate in date-filtered queries using createdAt fallback", async () => {
         const db = getTestDb();
         const [ledger] = await db
             .insert(ledgers)
             .values({ name: "Stats Regression Ledger" })
             .returning();
 
-        // Create a transaction with NO transactionDate (it defaults to null)
+        // Create a ledger entry with NO entryDate (it defaults to null)
         // But it has a createdAt (defaults to now)
         const [tx] = await db
-            .insert(transactions)
+            .insert(ledgerEntries)
             .values({
                 ledgerId: ledger.id,
                 amount: "100.00",
-                itemName: "No Date Transaction",
-                transactionDate: null, // Explicitly null
+                itemName: "No Date Entry",
+                entryDate: null, // Explicitly null
             })
             .returning();
 
-        expect(tx.transactionDate).toBeNull();
+        expect(tx.entryDate).toBeNull();
         expect(tx.createdAt).toBeDefined();
 
         // Simulate the API query logic
@@ -42,18 +42,18 @@ describe("Stats Regression Test", () => {
         const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
         // SQL logic mirrored from route.ts
-        const dateCol = sql<string>`COALESCE(${transactions.transactionDate}, ${transactions.createdAt}::date)`;
+        const dateCol = sql<string>`COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}::date)`;
 
         // Construct query with the coalesced date filter
         const found = await db
             .select({
-                id: transactions.id,
+                id: ledgerEntries.id,
                 date: dateCol
             })
-            .from(transactions)
+            .from(ledgerEntries)
             .where(
                 and(
-                    eq(transactions.ledgerId, ledger.id),
+                    eq(ledgerEntries.ledgerId, ledger.id),
                     sql`${dateCol} >= ${startDate.toISOString().split('T')[0]}::date`,
                     sql`${dateCol} <= ${endDate.toISOString().split('T')[0]}::date`
                 )

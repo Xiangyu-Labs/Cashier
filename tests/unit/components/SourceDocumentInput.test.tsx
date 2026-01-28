@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TransactionInput } from "@/components/ledger/TransactionInput";
+import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
 import { vi, describe, it, expect } from "vitest";
 
 // Mock the API and React Query
@@ -16,12 +16,12 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-    createReceipt: vi.fn(),
+    createSourceDocument: vi.fn(),
 }));
 
-describe("TransactionInput", () => {
+describe("SourceDocumentInput", () => {
     it("renders text area and buttons", () => {
-        render(<TransactionInput ledgerId="test-ledger" />);
+        render(<SourceDocumentInput ledgerId="test-ledger" />);
 
         expect(screen.getByPlaceholderText("placeholder")).toBeTruthy();
         expect(screen.getByText("image")).toBeTruthy();
@@ -30,7 +30,7 @@ describe("TransactionInput", () => {
 
     it("sends text message", async () => {
         const user = userEvent.setup();
-        render(<TransactionInput ledgerId="test-ledger" />);
+        render(<SourceDocumentInput ledgerId="test-ledger" />);
 
         const input = screen.getByPlaceholderText("placeholder");
         await user.type(input, "Lunch 50");
@@ -46,7 +46,7 @@ describe("TransactionInput", () => {
 
     it("handles image upload", async () => {
         const user = userEvent.setup();
-        const { container } = render(<TransactionInput ledgerId="test-ledger" />);
+        const { container } = render(<SourceDocumentInput ledgerId="test-ledger" />);
 
         const file = new File(["(⌐□_□)"], "chucknorris.png", { type: "image/png" });
         const input = container.querySelector('input[type="file"]') as HTMLInputElement;

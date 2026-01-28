@@ -6,31 +6,20 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   console.log("Starting createTestSchema...");
   // Drop tables to ensure clean state with new schema
   await db.execute(sql`DROP TABLE IF EXISTS settings CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS receipts CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`); // Ensure old table is also dropped
-  await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS ledger_entries CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS source_documents CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS entry_categories CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS gpt_tasks CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS processing_tasks CASCADE`);
 
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
 
-  await db.execute(sql`DROP TYPE IF EXISTS transaction_status CASCADE`);
-  await db.execute(sql`DROP TYPE IF EXISTS message_status CASCADE`);
-  // Drop unused enum if exists
-  await db.execute(sql`DROP TYPE IF EXISTS source_type CASCADE`);
+  await db.execute(sql`DROP TYPE IF EXISTS source_document_status CASCADE`);
 
   // Create enums
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE TYPE transaction_status AS ENUM ('pending', 'confirmed');
-    EXCEPTION WHEN duplicate_object THEN null;
-    END $$;
-  `);
-
-  await db.execute(sql`
-    DO $$ BEGIN
-      CREATE TYPE message_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed');
+      CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed', 'invalid');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
@@ -53,7 +42,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS categories (
+    CREATE TABLE IF NOT EXISTS entry_categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
@@ -66,31 +55,31 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS receipts (
+    CREATE TABLE IF NOT EXISTS source_documents (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
       title TEXT,
       text TEXT,
       image_urls JSONB DEFAULT '[]'::jsonb,
-      status message_status NOT NULL DEFAULT 'queued',
+      status source_document_status NOT NULL DEFAULT 'queued',
       error TEXT,
       ai_response TEXT,
-      proposed_transactions JSONB,
+      proposed_ledger_entries JSONB,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS transactions (
+    CREATE TABLE IF NOT EXISTS ledger_entries (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
-      category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-      receipt_id UUID REFERENCES receipts(id) ON DELETE SET NULL,
+      category_id UUID REFERENCES entry_categories(id) ON DELETE SET NULL,
+      source_document_id UUID REFERENCES source_documents(id) ON DELETE SET NULL,
       amount DECIMAL(12, 2) NOT NULL,
       currency TEXT,
       item_name TEXT NOT NULL,
       description TEXT,
-      transaction_date DATE,
+      entry_date DATE,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
@@ -107,7 +96,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS gpt_tasks (
+    CREATE TABLE IF NOT EXISTS processing_tasks (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       type TEXT NOT NULL,
       title TEXT NOT NULL,

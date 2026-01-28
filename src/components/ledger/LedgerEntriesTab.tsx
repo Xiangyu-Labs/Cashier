@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
-import { LedgerEntryDetailModal } from "@/components/LedgerEntryDetailModal";
+import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";

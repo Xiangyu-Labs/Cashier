@@ -44,19 +44,17 @@ export function createCategoryData(
   };
 }
 
-export function createTransactionData(
+export function createLedgerEntryData(
   ledgerId: string,
   overrides: Partial<{
     id: string;
     categoryId: string | null;
-    inputMessageId: string | null;
+    sourceDocumentId: string | null;
     amount: string;
     currency: string | null;
     itemName: string;
     description: string | null;
-    status: "pending" | "confirmed";
-    sourceType: "text" | "image" | "audio" | "mixed";
-    transactionDate: Date | null;
+    entryDate: Date | null;
     createdAt: Date;
   }> = {}
 ) {
@@ -64,25 +62,24 @@ export function createTransactionData(
     id: uuidv4(),
     ledgerId,
     categoryId: null,
-    inputMessageId: null,
+    sourceDocumentId: null,
     amount: "25.50",
     currency: "CNY",
     itemName: "午餐",
     description: null,
-    status: "pending" as const,
-    sourceType: "text" as const,
-    transactionDate: null,
+    entryDate: null,
     createdAt: new Date(),
     ...overrides,
   };
 }
 
-export function createInputMessageData(
+export function createSourceDocumentData(
   ledgerId: string,
   overrides: Partial<{
     id: string;
-    contentType: "text" | "image" | "audio";
-    content: string;
+    title: string | null;
+    text: string | null;
+    imageUrls: string[];
     aiResponse: string | null;
     createdAt: Date;
   }> = {}
@@ -90,19 +87,19 @@ export function createInputMessageData(
   return {
     id: uuidv4(),
     ledgerId,
-    contentType: "text" as const,
-    content: "午餐花了25.5元",
+    title: null,
+    text: "午餐花了25.5元",
+    imageUrls: [],
     aiResponse: null,
     createdAt: new Date(),
     ...overrides,
   };
 }
 
-export function createMessageInput(
+export function createSourceDocumentInput(
   overrides: Partial<{
     text: string;
     images: Array<{ data: string; mimeType: string }>;
-    audio: { data: string; mimeType: string };
   }> = {}
 ) {
   return {

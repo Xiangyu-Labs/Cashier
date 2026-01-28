@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, receipts } from "@/lib/db/schema";
+import { ledgers, sourceDocuments } from "@/lib/db/schema";
 
-describe("Receipts Database Operations", () => {
+describe("SourceDocuments Database Operations", () => {
   describe("CREATE", () => {
     it("should create a text input message", async () => {
       const db = getTestDb();
@@ -13,7 +13,7 @@ describe("Receipts Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(receipts)
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           text: "午餐花了25.5元",
@@ -36,7 +36,7 @@ describe("Receipts Database Operations", () => {
       const imageUrl = "data:image/jpeg;base64,fake...";
 
       const [created] = await db
-        .insert(receipts)
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           imageUrls: [imageUrl],
@@ -50,26 +50,26 @@ describe("Receipts Database Operations", () => {
   });
 
   describe("READ", () => {
-    it("should find messages by ledger id", async () => {
+    it("should find source documents by ledger id", async () => {
       const db = getTestDb();
       const [ledger] = await db
         .insert(ledgers)
         .values({ name: "Test Ledger" })
         .returning();
 
-      await db.insert(receipts).values([
+      await db.insert(sourceDocuments).values([
         { ledgerId: ledger.id, text: "Message 1" },
         { ledgerId: ledger.id, text: "Message 2" },
       ]);
 
-      const found = await db.query.receipts.findMany({
-        where: eq(receipts.ledgerId, ledger.id),
+      const found = await db.query.sourceDocuments.findMany({
+        where: eq(sourceDocuments.ledgerId, ledger.id),
       });
 
       expect(found).toHaveLength(2);
     });
 
-    it("should find message with ledger relation", async () => {
+    it("should find source document with ledger relation", async () => {
       const db = getTestDb();
       const [ledger] = await db
         .insert(ledgers)
@@ -77,15 +77,15 @@ describe("Receipts Database Operations", () => {
         .returning();
 
       const [message] = await db
-        .insert(receipts)
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           text: "Test message",
         })
         .returning();
 
-      const found = await db.query.receipts.findFirst({
-        where: eq(receipts.id, message.id),
+      const found = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, message.id),
         with: { ledger: true },
       });
 
@@ -103,7 +103,7 @@ describe("Receipts Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(receipts)
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           text: "午餐25元",
@@ -113,15 +113,15 @@ describe("Receipts Database Operations", () => {
       expect(created.aiResponse).toBeNull();
 
       const aiResponse = JSON.stringify({
-        transactions: [
-          { item_name: "午餐", amount: 25, currency: "CNY", category: "餐饮", transaction_date: null },
+        ledger_entries: [
+          { item_name: "午餐", amount: 25, currency: "CNY", category: "餐饮", entry_date: null },
         ],
       });
 
       const [updated] = await db
-        .update(receipts)
+        .update(sourceDocuments)
         .set({ aiResponse })
-        .where(eq(receipts.id, created.id))
+        .where(eq(sourceDocuments.id, created.id))
         .returning();
 
       expect(updated.aiResponse).toBe(aiResponse);
@@ -129,7 +129,7 @@ describe("Receipts Database Operations", () => {
   });
 
   describe("DELETE", () => {
-    it("should delete input message", async () => {
+    it("should delete source document", async () => {
       const db = getTestDb();
       const [ledger] = await db
         .insert(ledgers)
@@ -137,38 +137,38 @@ describe("Receipts Database Operations", () => {
         .returning();
 
       const [created] = await db
-        .insert(receipts)
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           text: "To delete",
         })
         .returning();
 
-      await db.delete(receipts).where(eq(receipts.id, created.id));
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, created.id));
 
-      const found = await db.query.receipts.findFirst({
-        where: eq(receipts.id, created.id),
+      const found = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, created.id),
       });
 
       expect(found).toBeUndefined();
     });
 
-    it("should cascade delete messages when ledger is deleted", async () => {
+    it("should cascade delete source documents when ledger is deleted", async () => {
       const db = getTestDb();
       const [ledger] = await db
         .insert(ledgers)
         .values({ name: "Test Ledger" })
         .returning();
 
-      await db.insert(receipts).values({
+      await db.insert(sourceDocuments).values({
         ledgerId: ledger.id,
         text: "Will be deleted",
       });
 
       await db.delete(ledgers).where(eq(ledgers.id, ledger.id));
 
-      const orphaned = await db.query.receipts.findMany({
-        where: eq(receipts.ledgerId, ledger.id),
+      const orphaned = await db.query.sourceDocuments.findMany({
+        where: eq(sourceDocuments.ledgerId, ledger.id),
       });
 
       expect(orphaned).toHaveLength(0);

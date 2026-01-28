@@ -22,6 +22,9 @@ import { createTestSchema } from "./helpers/schema-setup";
 beforeAll(async () => {
   if (process.env.NO_DB) return;
 
+  // Disable background workers in tests to ensure deterministic execution
+  process.env.PROCESSING_WORKER_COUNT = "0";
+
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });
 
@@ -39,7 +42,7 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE transactions, receipts, categories, ledgers, api_keys CASCADE`
+      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, api_keys, processing_tasks CASCADE`
     );
   }
 });

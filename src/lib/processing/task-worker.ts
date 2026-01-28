@@ -14,7 +14,6 @@ import { logger } from "@/lib/logger";
 import { encode } from "gpt-tokenizer";
 
 
-const N_WORKERS = parseInt(process.env.PROCESSING_WORKER_COUNT || process.env.GPT_WORKER_COUNT || "1", 10);
 let runningWorkers = 0;
 
 /**
@@ -22,18 +21,19 @@ let runningWorkers = 0;
  * Launches multiple worker loops according to PROCESSING_WORKER_COUNT env variable.
  */
 export async function processTaskQueue(): Promise<void> {
+    const N_WORKERS = parseInt(process.env.PROCESSING_WORKER_COUNT || process.env.GPT_WORKER_COUNT || "1", 10);
     // Fill up the worker pool to N_WORKERS
     while (runningWorkers < N_WORKERS) {
-        spawnWorker();
+        spawnWorker(N_WORKERS);
     }
 }
 
 /**
  * Spawn a single persistent worker loop.
  */
-async function spawnWorker(): Promise<void> {
+async function spawnWorker(totalWorkers: number): Promise<void> {
     runningWorkers++;
-    logger.info({ runningWorkers, totalWorkers: N_WORKERS }, "[Processing Worker] Instance started");
+    logger.info({ runningWorkers, totalWorkers }, "[Processing Worker] Instance started");
 
     try {
         let task = await claimNextProcessingTask();

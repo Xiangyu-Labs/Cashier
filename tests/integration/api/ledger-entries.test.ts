@@ -224,8 +224,8 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     lastMonth.setMonth(lastMonth.getMonth() - 1);
 
     await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, amount: "10", itemName: "Today", transactionDate: today },
-      { ledgerId: testLedgerId, amount: "20", itemName: "LastMonth", transactionDate: lastMonth },
+      { ledgerId: testLedgerId, amount: "10", itemName: "Today", entryDate: today },
+      { ledgerId: testLedgerId, amount: "20", itemName: "LastMonth", entryDate: lastMonth },
     ]);
 
     // Query starting from 1st of current month
@@ -241,7 +241,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     expect(data.items[0].itemName).toBe("Today");
   });
 
-  it("should fallback to createdAt for date filtering when transactionDate is null", async () => {
+  it("should fallback to createdAt for date filtering when entryDate is null", async () => {
     const db = getTestDb();
     const today = new Date();
     const lastMonth = new Date(today);

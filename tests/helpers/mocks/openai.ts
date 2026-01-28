@@ -1,12 +1,12 @@
 import { vi } from "vitest";
 
 export interface MockOpenAIResponse {
-    transactions: Array<{
+    ledger_entries: Array<{
         item_name: string;
         amount: number;
         currency: string | null;
         category: string | null;
-        transaction_date: string | null;
+        entry_date: string | null;
         notes?: string;
     }>;
     title?: string;
@@ -19,73 +19,73 @@ export function mockOpenAIResponse(response: MockOpenAIResponse): string {
 // Common test responses
 export const MOCK_RESPONSES = {
     singleTransaction: mockOpenAIResponse({
-        transactions: [
+        ledger_entries: [
             {
                 item_name: "午餐",
                 amount: 25.5,
                 currency: "CNY",
                 category: "餐饮",
-                transaction_date: "2025-01-25",
+                entry_date: "2025-01-25",
             },
         ],
         title: "午餐消费",
     }),
 
     transactionWithMetadata: mockOpenAIResponse({
-        transactions: [
+        ledger_entries: [
             {
                 item_name: "苹果",
                 amount: 20,
                 currency: "CNY",
                 category: "水果",
-                transaction_date: "2025-01-25",
+                entry_date: "2025-01-25",
                 notes: "2kg * 10元/kg, 红富士苹果"
             },
         ],
     }),
 
     multipleTransactions: mockOpenAIResponse({
-        transactions: [
+        ledger_entries: [
             {
                 item_name: "牛奶",
                 amount: 15,
                 currency: "CNY",
                 category: "日用",
-                transaction_date: null,
+                entry_date: null,
             },
             {
                 item_name: "面包",
                 amount: 8,
                 currency: "CNY",
                 category: "餐饮",
-                transaction_date: null,
+                entry_date: null,
             },
         ],
         title: "超市购物",
     }),
 
-    emptyTransactions: mockOpenAIResponse({ transactions: [] }),
+    emptyTransactions: mockOpenAIResponse({ ledger_entries: [] }),
 
     foreignCurrency: mockOpenAIResponse({
-        transactions: [
+        ledger_entries: [
             {
                 item_name: "Coffee",
                 amount: 4.5,
                 currency: "USD",
                 category: "饮料",
-                transaction_date: "2025-01-25",
+                entry_date: "2025-01-25",
             },
         ],
     }),
 
     markdownWrapped: `\`\`\`json
 {
-  "transactions": [{
+  "ledger_entries": [{
     "item_name": "咖啡",
     "amount": 30,
     "currency": "CNY",
     "category": "饮料",
-    "transaction_date": null
+    "entry_date": null
   }]
 }
 \`\`\``,

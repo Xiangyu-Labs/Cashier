@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { OpenAIMessageProcessor } from "@/lib/message-processor/processor";
-import { MessageInput, ProcessorContext } from "@/lib/message-processor/types";
+import { OpenAISourceDocumentProcessor } from "@/lib/message-processor/processor";
+import { SourceDocumentInput, ProcessorContext } from "@/lib/message-processor/types";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
 // Mock the OpenAI client
@@ -13,7 +13,7 @@ vi.mock("@/lib/ai/openai", () => ({
 import { getOpenAIClient } from "@/lib/ai/openai";
 
 describe("OpenAIMessageProcessor", () => {
-  let processor: OpenAIMessageProcessor;
+  let processor: OpenAISourceDocumentProcessor;
   let mockGenerateContent: ReturnType<typeof vi.fn>;
 
   const defaultContext: ProcessorContext = {
@@ -26,7 +26,7 @@ describe("OpenAIMessageProcessor", () => {
   };
 
   beforeEach(() => {
-    processor = new OpenAIMessageProcessor();
+    processor = new OpenAISourceDocumentProcessor();
     mockGenerateContent = vi.fn();
     vi.mocked(getOpenAIClient).mockReturnValue({
       generateContent: mockGenerateContent,
@@ -35,35 +35,35 @@ describe("OpenAIMessageProcessor", () => {
 
   describe("process()", () => {
     it("should parse single transaction from text input", async () => {
-      const input: MessageInput = { text: "午餐花了25.5元" };
+      const input: SourceDocumentInput = { text: "午餐花了25.5元" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0]).toEqual({
+      expect(result.ledgerEntries).toHaveLength(1);
+      expect(result.ledgerEntries[0]).toEqual({
         itemName: "午餐",
         amount: 25.5,
         currency: "CNY",
         category: "餐饮",
-        transactionDate: "2025-01-25",
+        entryDate: "2025-01-25",
         notes: null,
       });
     });
 
     it("should parse transaction with notes (replaces metadata)", async () => {
-      const input: MessageInput = { text: "苹果2公斤，每公斤10元" };
+      const input: SourceDocumentInput = { text: "苹果2公斤，每公斤10元" };
 
       // Mock response that puts details in notes
       const response = JSON.stringify({
-        transactions: [
+        ledger_entries: [
           {
             item_name: "苹果",
             amount: 20,
             currency: "CNY",
             category: "餐饮",
-            transaction_date: "2025-01-25",
+            entry_date: "2025-01-25",
             notes: "2kg * 10元/kg, 红富士苹果",
           },
         ],
@@ -73,24 +73,24 @@ describe("OpenAIMessageProcessor", () => {
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
-      const tx = result.transactions[0];
+      expect(result.ledgerEntries).toHaveLength(1);
+      const tx = result.ledgerEntries[0];
       expect(tx.itemName).toBe("苹果");
       expect(tx.notes).toContain("2kg");
       expect(tx.notes).toContain("10元");
     });
 
     it("should parse transaction with explicit notes", async () => {
-      const input: MessageInput = { text: "买了一箱牛奶，每盒5元，一共24盒，大家平分" };
+      const input: SourceDocumentInput = { text: "买了一箱牛奶，每盒5元，一共24盒，大家平分" };
 
       const responseWithNotes = JSON.stringify({
-        transactions: [
+        ledger_entries: [
           {
             item_name: "牛奶",
             amount: 120,
             currency: "CNY",
             category: "餐饮",
-            transaction_date: "2025-01-25",
+            entry_date: "2025-01-25",
             notes: "24盒 * 5元/盒; 大家平分",
           },
         ],
@@ -100,39 +100,39 @@ describe("OpenAIMessageProcessor", () => {
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
-      const tx = result.transactions[0];
+      expect(result.ledgerEntries).toHaveLength(1);
+      const tx = result.ledgerEntries[0];
       expect(tx.itemName).toBe("牛奶");
       expect(tx.notes).toContain("大家平分");
       expect(tx.notes).toContain("24盒");
     });
 
-    it("should parse multiple transactions", async () => {
-      const input: MessageInput = { text: "超市购物：牛奶15元，面包8元" };
+    it("should parse multiple ledger entries", async () => {
+      const input: SourceDocumentInput = { text: "超市购物：牛奶15元，面包8元" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.multipleTransactions);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(2);
-      expect(result.transactions[0].itemName).toBe("牛奶");
-      expect(result.transactions[1].itemName).toBe("面包");
+      expect(result.ledgerEntries).toHaveLength(2);
+      expect(result.ledgerEntries[0].itemName).toBe("牛奶");
+      expect(result.ledgerEntries[1].itemName).toBe("面包");
     });
 
     it("should handle markdown-wrapped JSON response", async () => {
-      const input: MessageInput = { text: "咖啡30元" };
+      const input: SourceDocumentInput = { text: "咖啡30元" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.markdownWrapped);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0].itemName).toBe("咖啡");
-      expect(result.transactions[0].amount).toBe(30);
+      expect(result.ledgerEntries).toHaveLength(1);
+      expect(result.ledgerEntries[0].itemName).toBe("咖啡");
+      expect(result.ledgerEntries[0].amount).toBe(30);
     });
 
     it("should throw error on invalid JSON response", async () => {
-      const input: MessageInput = { text: "invalid input" };
+      const input: SourceDocumentInput = { text: "invalid input" };
 
       mockGenerateContent.mockResolvedValue("Sorry, I cannot parse this.");
 
@@ -140,29 +140,29 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should return empty array on empty response", async () => {
-      const input: MessageInput = { text: "no transactions" };
+      const input: SourceDocumentInput = { text: "no transactions" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyTransactions);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(0);
+      expect(result.ledgerEntries).toHaveLength(0);
     });
 
     it("should handle foreign currency", async () => {
-      const input: MessageInput = { text: "Coffee .50" };
+      const input: SourceDocumentInput = { text: "Coffee .50" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.foreignCurrency);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0].currency).toBe("USD");
-      expect(result.transactions[0].amount).toBe(4.5);
+      expect(result.ledgerEntries).toHaveLength(1);
+      expect(result.ledgerEntries[0].currency).toBe("USD");
+      expect(result.ledgerEntries[0].amount).toBe(4.5);
     });
 
     it("should include rawResponse in result", async () => {
-      const input: MessageInput = { text: "test" };
+      const input: SourceDocumentInput = { text: "test" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
 
@@ -172,7 +172,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should call generateContent with system prompt and messages", async () => {
-      const input: MessageInput = { text: "午餐25元" };
+      const input: SourceDocumentInput = { text: "午餐25元" };
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
 
@@ -188,7 +188,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should handle image input", async () => {
-      const input: MessageInput = {
+      const input: SourceDocumentInput = {
         images: [
           {
             data: "data:image/jpeg;base64,/9j/4AAQSkZ...",
@@ -201,7 +201,7 @@ describe("OpenAIMessageProcessor", () => {
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
+      expect(result.ledgerEntries).toHaveLength(1);
       expect(mockGenerateContent).toHaveBeenCalled();
 
       const [, messages] = mockGenerateContent.mock.calls[0];
@@ -216,7 +216,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should handle raw base64 image (without data URL prefix)", async () => {
-      const input: MessageInput = {
+      const input: SourceDocumentInput = {
         images: [
           {
             data: "/9j/4AAQSkZ...",
@@ -241,7 +241,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should add placeholder text when no input provided", async () => {
-      const input: MessageInput = {};
+      const input: SourceDocumentInput = {};
 
       mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyTransactions);
 
@@ -254,7 +254,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should handle mixed input (text + image)", async () => {
-      const input: MessageInput = {
+      const input: SourceDocumentInput = {
         text: "这是小票",
         images: [
           {
@@ -286,17 +286,17 @@ describe("OpenAIMessageProcessor", () => {
 
   describe("parseResponse() - edge cases", () => {
     it("should handle null currency in response", async () => {
-      const input: MessageInput = { text: "some expense" };
+      const input: SourceDocumentInput = { text: "some expense" };
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
-          transactions: [
+          ledger_entries: [
             {
               item_name: "Unknown Item",
               amount: 50,
               currency: null,
               category: null,
-              transaction_date: null,
+              entry_date: null,
             },
           ],
         })
@@ -304,23 +304,23 @@ describe("OpenAIMessageProcessor", () => {
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions[0].currency).toBeNull();
-      expect(result.transactions[0].category).toBeNull();
-      expect(result.transactions[0].transactionDate).toBeNull();
+      expect(result.ledgerEntries[0].currency).toBeNull();
+      expect(result.ledgerEntries[0].category).toBeNull();
+      expect(result.ledgerEntries[0].entryDate).toBeNull();
     });
 
     it("should reject negative amounts via Zod validation", async () => {
-      const input: MessageInput = { text: "refund" };
+      const input: SourceDocumentInput = { text: "refund" };
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
-          transactions: [
+          ledger_entries: [
             {
               item_name: "Refund",
               amount: -50,
               currency: "CNY",
               category: null,
-              transaction_date: null,
+              entry_date: null,
             },
           ],
         })
@@ -331,28 +331,28 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should accept zero amount via Zod validation", async () => {
-      const input: MessageInput = { text: "free item" };
+      const input: SourceDocumentInput = { text: "free item" };
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
-          transactions: [
+          ledger_entries: [
             {
               item_name: "Free Item",
               amount: 0,
               currency: "CNY",
               category: null,
-              transaction_date: null,
+              entry_date: null,
             },
           ],
         })
       );
 
       const result = await processor.process(input, defaultContext);
-      expect(result.transactions[0].amount).toBe(0);
+      expect(result.ledgerEntries[0].amount).toBe(0);
     });
 
     it("should handle malformed JSON gracefully", async () => {
-      const input: MessageInput = { text: "test" };
+      const input: SourceDocumentInput = { text: "test" };
 
       mockGenerateContent.mockResolvedValue('{"transactions": [');
 
@@ -360,7 +360,7 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should handle response with only ``` markers", async () => {
-      const input: MessageInput = { text: "test" };
+      const input: SourceDocumentInput = { text: "test" };
 
       mockGenerateContent.mockResolvedValue(`\`\`\`
 ${MOCK_RESPONSES.singleTransaction}
@@ -368,7 +368,7 @@ ${MOCK_RESPONSES.singleTransaction}
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.transactions).toHaveLength(1);
+      expect(result.ledgerEntries).toHaveLength(1);
     });
   });
 });

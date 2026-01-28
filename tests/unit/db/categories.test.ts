@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { categories, ledgers } from "@/lib/db/schema";
+import { entryCategories as categories, ledgers } from "@/lib/db/schema";
 
 describe("Categories Database Operations", () => {
   let testLedgerId: string;
@@ -59,7 +59,7 @@ describe("Categories Database Operations", () => {
         { ledgerId: testLedgerId, name: "Cat C", sortOrder: 12 },
       ]);
 
-      const allCategories = await db.query.categories.findMany({
+      const allCategories = await db.query.entryCategories.findMany({
         where: eq(categories.ledgerId, testLedgerId),
       });
       expect(allCategories.length).toBeGreaterThanOrEqual(3);
@@ -71,7 +71,7 @@ describe("Categories Database Operations", () => {
       const db = getTestDb();
       const created = await createCategory();
 
-      const found = await db.query.categories.findFirst({
+      const found = await db.query.entryCategories.findFirst({
         where: eq(categories.id, created.id),
       });
 
@@ -103,7 +103,7 @@ describe("Categories Database Operations", () => {
 
       await db.delete(categories).where(eq(categories.id, created.id));
 
-      const found = await db.query.categories.findFirst({
+      const found = await db.query.entryCategories.findFirst({
         where: eq(categories.id, created.id),
       });
 

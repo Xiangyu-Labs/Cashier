@@ -1,20 +1,20 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
+import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { vi, describe, it, expect } from "vitest";
-import { Receipt, Transaction, Category } from "@/types/api";
+import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 
 // Mock dependencies
 vi.mock("@/components/CategoryIcon", () => ({
     CategoryIcon: () => <div data-testid="category-icon" />,
 }));
 
-vi.mock("@/components/transaction/TransactionCard", () => ({
-    TransactionCard: ({ transaction }: { transaction: Transaction }) => (
-        <div data-testid="transaction-card">{transaction.itemName}</div>
+vi.mock("@/components/ledger-entry/LedgerEntryCard", () => ({
+    LedgerEntryCard: ({ ledgerEntry }: { ledgerEntry: LedgerEntry }) => (
+        <div data-testid="ledger-entry-card">{ledgerEntry.itemName}</div>
     ),
 }));
 
-const mockCategories: Category[] = [
+const mockCategories: EntryCategory[] = [
     {
         id: "cat1",
         name: "Food",
@@ -26,21 +26,21 @@ const mockCategories: Category[] = [
     },
 ];
 
-const mockTransaction: Transaction = {
+const mockLedgerEntry: LedgerEntry = {
     id: "tx1",
     ledgerId: "l1",
     categoryId: "cat1",
-    receiptId: "msg1",
+    sourceDocumentId: "msg1",
     amount: "50",
     currency: "CNY",
     itemName: "Lunch",
     description: null,
-    transactionDate: new Date().toISOString(),
+    entryDate: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     category: mockCategories[0],
 };
 
-const baseReceipt: Receipt = {
+const baseSourceDocument: SourceDocument = {
     id: "msg1",
     ledgerId: "l1",
     title: null,
@@ -51,25 +51,25 @@ const baseReceipt: Receipt = {
     status: "completed",
 };
 
-describe("BatchTransactionCard", () => {
-    const mockUpdateTransaction = vi.fn();
-    const mockDeleteTransaction = vi.fn();
+describe("SourceDocumentCard", () => {
+    const mockUpdateLedgerEntry = vi.fn();
+    const mockDeleteLedgerEntry = vi.fn();
 
     const defaultProps = {
-        transactions: [],
+        ledgerEntries: [],
         categories: mockCategories,
-        onUpdateTransaction: mockUpdateTransaction,
-        onDeleteTransaction: mockDeleteTransaction,
+        onUpdateLedgerEntry: mockUpdateLedgerEntry,
+        onDeleteLedgerEntry: mockDeleteLedgerEntry,
         status: "queued" as const,
     };
 
     it("renders date header", () => {
-        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} />);
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
         expect(screen.getByText(/1月1日/)).toBeTruthy();
     });
 
     it("renders text content", () => {
-        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} />);
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -79,12 +79,12 @@ describe("BatchTransactionCard", () => {
     });
 
     it("renders single image content", () => {
-        const receipt: Receipt = {
-            ...baseReceipt,
+        const sourceDocument: SourceDocument = {
+            ...baseSourceDocument,
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
+        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -98,12 +98,12 @@ describe("BatchTransactionCard", () => {
 
     it("renders multiple images content", () => {
         const imagesData = ["data:image/png;base64,img1", "data:image/png;base64,img2"];
-        const receipt: Receipt = {
-            ...baseReceipt,
+        const sourceDocument: SourceDocument = {
+            ...baseSourceDocument,
             text: null,
             imageUrls: imagesData,
         };
-        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
+        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -117,20 +117,20 @@ describe("BatchTransactionCard", () => {
         expect(userImgs[1].getAttribute("src")).toBe(imagesData[1]);
     });
 
-    it("renders transaction details groups", () => {
-        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[mockTransaction]} />);
+    it("renders ledger entry details groups", () => {
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
         expect(screen.getByText("Food")).toBeTruthy();
         const amounts = screen.getAllByText(/50.00/);
         expect(amounts.length).toBeGreaterThan(0);
     });
 
     it("opens image zoom dialog on click", async () => {
-        const receipt: Receipt = {
-            ...baseReceipt,
+        const sourceDocument: SourceDocument = {
+            ...baseSourceDocument,
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<BatchTransactionCard receipt={receipt} {...defaultProps} />);
+        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -153,13 +153,13 @@ describe("BatchTransactionCard", () => {
         fireEvent.keyDown(zoomedImg, { key: "Escape", code: "Escape" });
     });
 
-    it("renders status when no transactions", () => {
-        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[]} status="queued" />);
+    it("renders status when no ledger entries", () => {
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="queued" />);
         expect(screen.getByText("处理中")).toBeTruthy();
     });
 
-    it("renders total amount and hides status when transactions exist", () => {
-        render(<BatchTransactionCard receipt={baseReceipt} {...defaultProps} transactions={[mockTransaction]} status="processing" />);
+    it("renders total amount and hides status when ledger entries exist", () => {
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
         // Should show total amount (50.00 CNY)
         const currencies = screen.getAllByText("CNY");
         expect(currencies.length).toBeGreaterThan(0);

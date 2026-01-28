@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { fetchLedgerEntries, updateLedgerEntry, deleteLedgerEntry, fetchLedgerEntrySummary } from "@/lib/api";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
-import { LedgerEntryDetailModal } from "@/components/LedgerEntryDetailModal";
+import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
