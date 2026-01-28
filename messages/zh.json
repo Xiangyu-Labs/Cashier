@@ -86,6 +86,7 @@
         "collapseContent": "折叠内容",
         "viewContent": "查看内容",
         "confirmBill": "确认账单",
+        "records": "{count} 笔记录",
         "requireEdit": "(待修正)"
     },
     "Common": {

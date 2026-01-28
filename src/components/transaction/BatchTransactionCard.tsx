@@ -167,9 +167,9 @@ export function BatchTransactionCard({
             hour: "2-digit",
             minute: "2-digit",
           })}
-          {(receipt.title || transactions.length > 0) && (
+          {receipt.title && (
             <span className="ml-3 font-medium text-text">
-              {receipt.title || transactions.slice(0, 3).map(tx => tx.itemName).join(", ") + (transactions.length > 3 ? "..." : "")}
+              {receipt.title}
             </span>
           )}
         </span>
@@ -322,8 +322,8 @@ export function BatchTransactionCard({
                   </div>
                   <div className="text-left">
                     <p className="font-medium text-text">{group.categoryName}</p>
-                    <p className="text-xs text-muted truncate max-w-[200px]">
-                      {group.items.map(tx => tx.itemName).join(", ")}
+                    <p className="text-xs text-muted">
+                      {t("records", { count: group.items.length })}
                       {hasIssues && !isConfirmed && (
                         <span className="ml-2 text-warning">{t("requireEdit")}</span>
                       )}

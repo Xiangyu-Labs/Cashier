@@ -86,6 +86,7 @@
         "collapseContent": "Collapse Content",
         "viewContent": "View Content",
         "confirmBill": "Confirm Bill",
+        "records": "{count} {count, plural, one {record} other {records}}",
         "requireEdit": "(Correction Required)"
     },
     "Common": {
