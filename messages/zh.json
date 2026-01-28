@@ -61,7 +61,7 @@
     },
     "LedgerEntriesTab": {
         "processing": "处理中",
-        "pending": "待确认凭证",
+        "pending": "待确认流水",
         "confirmAll": "全部确认",
         "confirming": "确认中...",
         "abnormal": "异常凭证",
@@ -117,7 +117,7 @@
         "confirmed": "已确认",
         "description": "备注",
         "createdAt": "创建时间",
-        "originalInput": "原始输入",
+        "originalInput": "原始流水",
         "noOriginal": "无原始记录",
         "edit": "编辑",
         "itemName": "商品名称",

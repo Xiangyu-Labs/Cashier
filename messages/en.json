@@ -61,7 +61,7 @@
     },
     "LedgerEntriesTab": {
         "processing": "Processing",
-        "pending": "Pending",
+        "pending": "Pending Stream",
         "confirmAll": "Confirm All",
         "confirming": "Confirming...",
         "abnormal": "Abnormal Entries",
@@ -117,7 +117,7 @@
         "confirmed": "Confirmed",
         "description": "Description",
         "createdAt": "Created At",
-        "originalInput": "Original Input",
+        "originalInput": "Original Stream",
         "noOriginal": "No original record",
         "edit": "Edit",
         "itemName": "Item Name",

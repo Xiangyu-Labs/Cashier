@@ -21,21 +21,9 @@ export function SourceDocumentOriginalContent({
 
     return (
         <div className="space-y-4">
-            {/* Text Content */}
-            {text && (
-                <div className="flex items-start gap-2">
-                    <FileText className="h-4 w-4 text-muted mt-1 shrink-0" />
-                    <p className="text-sm text-text whitespace-pre-wrap">{text}</p>
-                </div>
-            )}
-
             {/* Image Content */}
             {hasImages && (
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted">
-                        <ImageIcon className="h-4 w-4" />
-                        <span>原文图片 ({images.length})</span>
-                    </div>
                     <div className="flex flex-wrap gap-2">
                         {images.map((imgSrc, idx) => (
                             <div
@@ -58,6 +46,13 @@ export function SourceDocumentOriginalContent({
                         open={selectedImageIndex !== null}
                         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
                     />
+                </div>
+            )}
+
+            {/* Text Content */}
+            {text && (
+                <div className="flex items-start gap-2">
+                    <p className="text-sm text-text whitespace-pre-wrap">{text}</p>
                 </div>
             )}
         </div>
