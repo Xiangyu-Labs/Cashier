@@ -199,8 +199,6 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                                         <LedgerEntryCard
                                             ledgerEntry={entry}
                                             categories={categories}
-                                            onUpdate={(data) => updateMutation.mutate({ ledgerEntryId: entry.id, data })}
-                                            onDelete={() => setDeleteConfirm({ open: true, id: entry.id })}
                                             onView={() => {
                                                 setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);

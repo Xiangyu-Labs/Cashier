@@ -357,8 +357,6 @@ export function SourceDocumentCard({
                           key={entry.id}
                           ledgerEntry={entry}
                           categories={categories}
-                          onUpdate={(data) => onUpdateLedgerEntry?.(entry.id, data)}
-                          onDelete={() => onDeleteLedgerEntry?.(entry.id)}
                           onView={() => onViewLedgerEntry?.(entry)}
                           hideCategory={true}
                         />
