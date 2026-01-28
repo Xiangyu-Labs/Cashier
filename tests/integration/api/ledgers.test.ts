@@ -47,7 +47,7 @@ describe("POST /api/ledgers", () => {
     expect(data.name).toBe("New Ledger");
     expect(data.id).toBeDefined();
     expect(data.language).toBe("zh-CN");
-    expect(data.currencies).toEqual(["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]);
+    expect(data.currencies).toEqual(["AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"]);
 
     // Verify default categories are seeded
     const db = getTestDb();

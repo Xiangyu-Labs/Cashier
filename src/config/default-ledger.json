@@ -2,13 +2,16 @@
     "settings": {
         "language": "zh-CN",
         "currencies": [
+            "AUD",
+            "BRL",
+            "CAD",
+            "CHF",
             "CNY",
-            "USD",
             "EUR",
-            "JPY",
             "GBP",
             "HKD",
-            "TWD"
+            "JPY",
+            "SGD"
         ],
         "autoConfirm": false,
         "autoRecognizeDate": false,
@@ -60,7 +63,7 @@
         },
         {
             "name": "其他",
-            "description": "未归类或其他临时性支出",
+            "description": "无法归类的支出",
             "icon": "Package",
             "sortOrder": 8
         }

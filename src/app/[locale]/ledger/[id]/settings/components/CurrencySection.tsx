@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { cn } from "@/lib/utils";
 import { Settings } from "@/types/api";
 
 interface CurrencySectionProps {
@@ -10,54 +10,46 @@ interface CurrencySectionProps {
 }
 
 export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
-    const [newCurrency, setNewCurrency] = useState("");
+    const selectedCurrencies = settings.currencies || [];
 
-    const handleAddCurrency = () => {
-        if (!newCurrency) return;
-        const current = settings.currencies || [];
-        if (!current.includes(newCurrency.toUpperCase())) {
-            onUpdateSettings({ currencies: [...current, newCurrency.toUpperCase()] });
+    const toggleCurrency = (currency: string) => {
+        const isSelected = selectedCurrencies.includes(currency);
+        let newCurrencies: string[];
+
+        if (isSelected) {
+            newCurrencies = selectedCurrencies.filter((c: string) => c !== currency);
+        } else {
+            newCurrencies = [...selectedCurrencies, currency];
         }
-        setNewCurrency("");
-    };
 
-    const handleRemoveCurrency = (currency: string) => {
-        const current = settings.currencies || [];
-        onUpdateSettings({ currencies: current.filter(c => c !== currency) });
+        onUpdateSettings({ currencies: newCurrencies });
     };
 
     return (
         <div>
-            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">货币</h3>
-            <div className="flex flex-wrap gap-2 mb-3">
-                {settings.currencies?.map(currency => (
-                    <div key={currency} className="flex items-center gap-1 bg-[var(--surface2)] px-3 py-1 rounded-[var(--radius-sm)] text-sm">
-                        <span>{currency}</span>
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-4 uppercase tracking-wider">常用货币</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {SUPPORTED_CURRENCIES.map(currency => {
+                    const isSelected = selectedCurrencies.includes(currency);
+                    return (
                         <button
-                            onClick={() => handleRemoveCurrency(currency)}
-                            className="text-[var(--muted)] hover:text-[var(--danger)]"
+                            key={currency}
+                            onClick={() => toggleCurrency(currency)}
+                            className={cn(
+                                "flex items-center justify-center px-3 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all border",
+                                isSelected
+                                    ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm"
+                                    : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--surface2)]"
+                            )}
                         >
-                            <X size={14} />
+                            {currency}
                         </button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
-            <div className="flex gap-2 max-w-xs">
-                <input
-                    type="text"
-                    placeholder="输入货币代码 (如 USD)"
-                    value={newCurrency}
-                    onChange={e => setNewCurrency(e.target.value)}
-                    className="flex-1 p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] uppercase"
-                    maxLength={3}
-                />
-                <button
-                    onClick={handleAddCurrency}
-                    className="p-2 bg-[var(--surface2)] hover:bg-[var(--border)] rounded-[var(--radius)] transition-colors"
-                >
-                    <Plus size={18} />
-                </button>
-            </div>
+            <p className="mt-4 text-xs text-[var(--muted)]">
+                点击选择该账本需要支持的货币。默认选中将用于快速记账和识别预览。
+            </p>
         </div>
     );
 }
