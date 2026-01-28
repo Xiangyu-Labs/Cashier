@@ -120,7 +120,11 @@ export function LedgerEntriesTab({
             });
             // Update selected entry if it's the one being edited
             if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
-                setSelectedLedgerEntry(updatedEntry);
+                setSelectedLedgerEntry({
+                    ...updatedEntry,
+                    category: categories.find(c => c.id === updatedEntry.categoryId) || null,
+                    sourceDocument: selectedLedgerEntry.sourceDocument
+                });
             }
         },
         onError: () => {

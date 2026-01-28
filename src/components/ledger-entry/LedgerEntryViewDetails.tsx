@@ -6,7 +6,7 @@ import { LedgerEntry, EntryCategory } from "@/types/api";
 import { Calendar, Edit2, Tag, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { SourceDocumentOriginalContent } from "./SourceDocumentOriginalContent";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +48,32 @@ export function LedgerEntryViewDetails({
     const locale = useLocale();
 
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-    const DESCRIPTION_THRESHOLD = 200; // Character count threshold
+    const [needsFolding, setNeedsFolding] = useState(false);
+    const descriptionRef = useRef<HTMLDivElement>(null);
+
+    // Effect to check if description needs folding (exceeds 3 lines)
+    useEffect(() => {
+        if (!isEditing && ledgerEntry.description && descriptionRef.current) {
+            const element = descriptionRef.current;
+            // Temporarily remove line-clamp to measure full height
+            const isClamped = element.classList.contains("line-clamp-3");
+            if (isClamped) element.classList.remove("line-clamp-3");
+
+            const fullHeight = element.scrollHeight;
+
+            // Re-apply line-clamp to measure clamped height
+            element.classList.add("line-clamp-3");
+            const clampedHeight = element.clientHeight;
+
+            // If full height is greater than clamped height, it needs folding
+            setNeedsFolding(fullHeight > clampedHeight);
+
+            // Restore state based on isDescriptionExpanded
+            if (isDescriptionExpanded) {
+                element.classList.remove("line-clamp-3");
+            }
+        }
+    }, [ledgerEntry.description, isEditing, isDescriptionExpanded]);
 
     // Format dates for display
     const formatDate = (dateStr: string | null) => {
@@ -189,36 +214,25 @@ export function LedgerEntryViewDetails({
                     ) : (
                         ledgerEntry.description ? (
                             <div className="text-sm text-text">
-                                {ledgerEntry.description.length > DESCRIPTION_THRESHOLD && !isDescriptionExpanded ? (
-                                    <>
-                                        <p className="break-words">
-                                            {ledgerEntry.description.slice(0, DESCRIPTION_THRESHOLD)}...
-                                        </p>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setIsDescriptionExpanded(true)}
-                                            className="h-6 px-0 text-primary hover:text-primary/80 mt-1"
-                                        >
-                                            {t("expand")} <ChevronDown className="h-3 w-3 ml-1" />
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="break-words whitespace-pre-wrap">
-                                            {ledgerEntry.description}
-                                        </p>
-                                        {ledgerEntry.description.length > DESCRIPTION_THRESHOLD && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setIsDescriptionExpanded(false)}
-                                                className="h-6 px-0 text-primary hover:text-primary/80 mt-1"
-                                            >
-                                                {t("collapse")} <ChevronUp className="h-3 w-3 ml-1" />
-                                            </Button>
+                                <div
+                                    ref={descriptionRef}
+                                    className={`break-words whitespace-pre-wrap ${!isDescriptionExpanded ? "line-clamp-3" : ""}`}
+                                >
+                                    {ledgerEntry.description}
+                                </div>
+                                {needsFolding && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                        className="h-6 px-0 text-primary hover:text-primary/80 mt-1"
+                                    >
+                                        {isDescriptionExpanded ? (
+                                            <>{t("collapse")} <ChevronUp className="h-3 w-3 ml-1" /></>
+                                        ) : (
+                                            <>{t("expand")} <ChevronDown className="h-3 w-3 ml-1" /></>
                                         )}
-                                    </>
+                                    </Button>
                                 )}
                             </div>
                         ) : (

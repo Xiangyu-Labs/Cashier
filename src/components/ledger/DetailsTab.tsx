@@ -82,7 +82,11 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             });
             // Update selected entry if it's the one being edited to reflect changes in modal
             if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
-                setSelectedLedgerEntry(updatedEntry);
+                setSelectedLedgerEntry({
+                    ...updatedEntry,
+                    category: categories.find(c => c.id === updatedEntry.categoryId) || null,
+                    sourceDocument: selectedLedgerEntry.sourceDocument
+                });
             }
         },
         onError: () => {

@@ -95,6 +95,8 @@
         "retry": "Retry",
         "cancel": "Cancel",
         "save": "Save",
+        "saveSuccess": "Saved successfully",
+        "saveFailed": "Save failed",
         "loading": "Loading...",
         "sending": "Sending...",
         "success": "Success",
