@@ -155,7 +155,7 @@
         "mainCurrency": "Main Currency",
         "mainCurrencyDesc": "The base currency used for statistics and totals (currently summed 1:1).",
         "preferredCurrencies": "Preferred Currencies",
-        "preferredCurrenciesDesc": "List of currencies used in this ledger. Main currency must be selected.",
+        "preferredCurrenciesDesc": "List of currencies used in this ledger.",
         "categories": "Categories",
         "categoriesDesc": "Manage ledger expense categories and their priority",
         "riskTitle": "Risk Warning",

@@ -155,7 +155,7 @@
         "mainCurrency": "主货币",
         "mainCurrencyDesc": "统计与详情页展示所使用的基准货币（目前按 1:1 直接求和）",
         "preferredCurrencies": "偏好货币",
-        "preferredCurrenciesDesc": "此账本中常用的货币列表。主货币默认必须选中且不可取消。",
+        "preferredCurrenciesDesc": "此账本中常用的货币列表。",
         "categories": "分类",
         "categoriesDesc": "管理账本支出分类及其优先级",
         "riskTitle": "风险提示",

@@ -16,9 +16,6 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
     const mainCurrency = settings.mainCurrency || "CNY";
 
     const toggleCurrency = (currency: string) => {
-        // Main currency must be enabled
-        if (currency === mainCurrency) return;
-
         const isSelected = selectedCurrencies.includes(currency);
         let newCurrencies: string[];
 
@@ -32,12 +29,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
     };
 
     const setMainCurrency = (currency: string) => {
-        const updates: Partial<Settings> = { mainCurrency: currency };
-        // Ensure main currency is also in the selected list
-        if (!selectedCurrencies.includes(currency)) {
-            updates.currencies = [...selectedCurrencies, currency];
-        }
-        onUpdateSettings(updates);
+        onUpdateSettings({ mainCurrency: currency });
     };
 
     return (
@@ -72,7 +64,6 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
                 <div className="flex flex-wrap gap-2">
                     {SUPPORTED_CURRENCIES.map(currency => {
                         const isSelected = selectedCurrencies.includes(currency);
-                        const isMain = currency === mainCurrency;
                         return (
                             <button
                                 key={`preferred-${currency}`}
@@ -82,8 +73,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
                                     isSelected
                                         ? "bg-primary text-white border-primary shadow-sm"
-                                        : "bg-surface text-muted-foreground border-border hover:border-primary/50",
-                                    isMain && "opacity-80 cursor-default"
+                                        : "bg-surface text-muted-foreground border-border hover:border-primary/50"
                                 )}
                             >
                                 {currency}
