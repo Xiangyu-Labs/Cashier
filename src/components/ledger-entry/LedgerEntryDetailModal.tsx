@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryEditForm, LedgerEntryEditFormData } from "./ledger-entry/LedgerEntryEditForm";
-import { LedgerEntryViewDetails } from "./ledger-entry/LedgerEntryViewDetails";
+import { LedgerEntryEditForm, LedgerEntryEditFormData } from "./LedgerEntryEditForm";
+import { LedgerEntryViewDetails } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
 
 interface LedgerEntryDetailModalProps {

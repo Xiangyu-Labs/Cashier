@@ -9,10 +9,16 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS ledger_entries CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS source_documents CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS entry_categories CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS service_credentials CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS processing_tasks CASCADE`);
-
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
+
+  // Drop old names if they exist
+  await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS receipts CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS gpt_tasks CASCADE`);
 
   await db.execute(sql`DROP TYPE IF EXISTS source_document_status CASCADE`);
 
@@ -85,7 +91,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS api_keys (
+    CREATE TABLE IF NOT EXISTS service_credentials (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       key TEXT NOT NULL UNIQUE,
       ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,

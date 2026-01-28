@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/ledgers/route";
 import { PATCH } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories } from "@/lib/db/schema";
+import { ledgers, entryCategories as categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("GET /api/ledgers", () => {
@@ -51,11 +51,11 @@ describe("POST /api/ledgers", () => {
 
     // Verify default categories are seeded
     const db = getTestDb();
-    const ledgerCategories = await db.query.categories.findMany({
+    const ledgerCategories = await db.query.entryCategories.findMany({
       where: eq(categories.ledgerId, data.id),
     });
     expect(ledgerCategories.length).toBeGreaterThan(0);
-    expect(ledgerCategories.map(c => c.name)).toContain("餐饮"); // Check for one of the defaults
+    expect(ledgerCategories.map((c: { name: string }) => c.name)).toContain("餐饮"); // Check for one of the defaults
   });
 
   it("should return 400 for missing name", async () => {

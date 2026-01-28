@@ -2,14 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as createLedger, GET as getLedgers } from "@/app/api/ledgers/route";
 import { GET as getLedger, DELETE as deleteLedger, PATCH as updateLedger } from "@/app/api/ledgers/[id]/route";
-import { POST as sendMessage } from "@/app/api/ledgers/[id]/receipts/route";
-import { GET as getTransactions } from "@/app/api/ledgers/[id]/transactions/route";
-import { GET as getCategories } from "@/app/api/ledgers/[id]/categories/route";
+import { POST as sendMessage } from "@/app/api/ledgers/[id]/source-documents/route";
+import { GET as getTransactions } from "@/app/api/ledgers/[id]/ledger-entries/route";
+import { GET as getCategories } from "@/app/api/ledgers/[id]/entry-categories/route";
 import { getTestDb } from "../../setup";
-import { receipts, transactions } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
-import { Category, Transaction } from "@/types/api";
+import { processAllPendingTasks } from "../../helpers/processing";
+import { EntryCategory as Category, LedgerEntry as Transaction } from "@/types/api";
 
 // Mock OpenAI for all E2E tests
 vi.mock("@/lib/ai/openai", () => ({
@@ -57,7 +58,7 @@ describe("Full Transaction Flow", () => {
 
     // Verify categories via Categories API
     const catResponse = await getCategories(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/categories`),
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/entry-categories`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
     const fetchedCategories = (await catResponse.json()) as Category[];
@@ -66,7 +67,7 @@ describe("Full Transaction Flow", () => {
 
     // Step 3: Send a message to create transactions
     const messageRequest = new NextRequest(
-      `http://localhost/api/ledgers/${ledger.id}/receipts`,
+      `http://localhost/api/ledgers/${ledger.id}/source-documents`,
       {
         method: "POST",
         body: JSON.stringify({ text: "超市购物：牛奶15元，面包8元" }),
@@ -79,15 +80,18 @@ describe("Full Transaction Flow", () => {
     const messageResult = await messageResponse.json();
 
     expect(messageResponse.status).toBe(200);
-    expect(messageResult.receiptId).toBeDefined();
+    expect(messageResult.sourceDocumentId).toBeDefined();
     expect(messageResult.status).toBe("queued");
+
+    // Process the tasks
+    await processAllPendingTasks();
 
     // Wait for processing
     const db = getTestDb();
     let retries = 0;
     while (retries < 20) {
-      const message = await db.query.receipts.findFirst({
-        where: eq(receipts.id, messageResult.receiptId),
+      const message = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
       });
       if (message?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -97,7 +101,7 @@ describe("Full Transaction Flow", () => {
     // Step 4: Verify transactions are persisted
     // Fetch transactions directly from API or DB
     const transactionsRequest = new NextRequest(
-      `http://localhost/api/ledgers/${ledger.id}/transactions`
+      `http://localhost/api/ledgers/${ledger.id}/ledger-entries`
     );
 
     const transactionsResponse = await getTransactions(transactionsRequest, {
@@ -111,8 +115,8 @@ describe("Full Transaction Flow", () => {
     expect(allTransactions.map((t) => t.itemName)).toContain("面包");
 
     // Step 5: Verify input message was saved with AI response
-    const savedMessage = await db.query.receipts.findFirst({
-      where: eq(receipts.id, messageResult.receiptId),
+    const savedMessage = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
     });
 
     expect(savedMessage).toBeDefined();
@@ -142,7 +146,7 @@ describe("Full Transaction Flow", () => {
 
     // Create transactions via message
     const messageResponse = await sendMessage(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/receipts`, {
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/source-documents`, {
         method: "POST",
         body: JSON.stringify({ text: "test" }),
       }),
@@ -150,12 +154,15 @@ describe("Full Transaction Flow", () => {
     );
     const messageResult = await messageResponse.json();
 
+    // Process the tasks
+    await processAllPendingTasks();
+
     // Wait for processing
     const db = getTestDb();
     let retries = 0;
     while (retries < 20) {
-      const message = await db.query.receipts.findFirst({
-        where: eq(receipts.id, messageResult.receiptId),
+      const message = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
       });
       if (message?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -163,8 +170,8 @@ describe("Full Transaction Flow", () => {
     }
 
     // Verify data exists
-    let txCount = await db.query.transactions.findMany({
-      where: eq(transactions.ledgerId, ledger.id),
+    let txCount = await db.query.ledgerEntries.findMany({
+      where: eq(ledgerEntries.ledgerId, ledger.id),
     });
     expect(txCount.length).toBeGreaterThan(0);
 
@@ -176,13 +183,13 @@ describe("Full Transaction Flow", () => {
     expect(deleteResponse.status).toBe(200);
 
     // Verify all related data is deleted
-    txCount = await db.query.transactions.findMany({
-      where: eq(transactions.ledgerId, ledger.id),
+    txCount = await db.query.ledgerEntries.findMany({
+      where: eq(ledgerEntries.ledgerId, ledger.id),
     });
     expect(txCount).toHaveLength(0);
 
-    const messages = await db.query.receipts.findMany({
-      where: eq(receipts.ledgerId, ledger.id),
+    const messages = await db.query.sourceDocuments.findMany({
+      where: eq(sourceDocuments.ledgerId, ledger.id),
     });
     expect(messages).toHaveLength(0);
   });
@@ -235,7 +242,7 @@ describe("Full Transaction Flow", () => {
 
     // Get categories to find 餐饮 and 日用品
     const categoriesResponse = await getCategories(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/categories`),
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/entry-categories`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
     const allCategories = (await categoriesResponse.json()) as Category[];
@@ -249,7 +256,7 @@ describe("Full Transaction Flow", () => {
     // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     const messageResponse = await sendMessage(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/receipts`, {
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/source-documents`, {
         method: "POST",
         body: JSON.stringify({ text: "超市购物：牛奶15元，面包8元" }),
       }),
@@ -257,12 +264,15 @@ describe("Full Transaction Flow", () => {
     );
     const messageResult = await messageResponse.json();
 
+    // Process the tasks
+    await processAllPendingTasks();
+
     // Wait for processing
     const db = getTestDb();
     let retries = 0;
     while (retries < 20) {
-      const message = await db.query.receipts.findFirst({
-        where: eq(receipts.id, messageResult.receiptId),
+      const message = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
       });
       if (message?.status === "completed") break;
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -270,8 +280,8 @@ describe("Full Transaction Flow", () => {
     }
 
     // Verify processing completion
-    const finalMessage = await db.query.receipts.findFirst({
-      where: eq(receipts.id, messageResult.receiptId),
+    const finalMessage = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
     });
 
     if (finalMessage?.status !== "completed") {
@@ -285,7 +295,7 @@ describe("Full Transaction Flow", () => {
 
     // Get transactions and verify category associations
     const transactionsResponse = await getTransactions(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/transactions`),
+      new NextRequest(`http://localhost/api/ledgers/${ledger.id}/ledger-entries`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
     const responseBody = await transactionsResponse.json();

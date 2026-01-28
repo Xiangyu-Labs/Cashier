@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { GET, POST } from "@/app/api/ledgers/[id]/categories/route";
-import { POST as REORDER } from "@/app/api/ledgers/[id]/categories/reorder/route";
+import { GET, POST } from "@/app/api/ledgers/[id]/entry-categories/route";
+import { POST as REORDER } from "@/app/api/ledgers/[id]/entry-categories/reorder/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories } from "@/lib/db/schema";
-import { Category } from "@/types/api";
+import { ledgers, entryCategories as categories } from "@/lib/db/schema";
+import { EntryCategory as Category } from "@/types/api";
 
 describe("GET /api/ledgers/[id]/categories", () => {
   let testLedgerId: string;
@@ -217,7 +217,7 @@ describe("POST /api/ledgers/[id]/categories/reorder", () => {
 
     // Verify DB
     const db = getTestDb();
-    const allCategories = await db.query.categories.findMany({
+    const allCategories = await db.query.entryCategories.findMany({
       where: (cat, { eq }) => eq(cat.ledgerId, testLedgerId),
     });
 

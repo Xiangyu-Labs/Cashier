@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // Trigger processing using the processing task system
         const { createProcessingTask } = await import("@/lib/processing");
         const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks");
-        const { ledgers: ledgerTable, entryCategories } = await import("@/lib/db/schema");
+        const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
         const ledger = await db.query.ledgers.findFirst({
             where: eq(ledgerTable.id, ledgerId),

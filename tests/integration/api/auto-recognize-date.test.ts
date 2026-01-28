@@ -11,7 +11,7 @@ import * as processorModule from "@/lib/message-processor/processor";
 const mockProcess = vi.fn();
 vi.spyOn(processorModule, "getSourceDocumentProcessor").mockReturnValue({
     process: mockProcess
-} as any);
+} as ReturnType<typeof processorModule.getSourceDocumentProcessor>);
 
 describe("Auto-recognize Ledger Entry Time", () => {
     let ledgerId: string;

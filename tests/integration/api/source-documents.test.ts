@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/ledgers/[id]/source-documents/route";
 import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
@@ -15,6 +15,7 @@ vi.mock("@/lib/ai/openai", () => ({
 }));
 
 import { getOpenAIClient } from "@/lib/ai/openai";
+import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("POST /api/ledgers/[id]/source-documents", () => {
   let testLedgerId: string;
@@ -34,7 +35,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
       .returning();
     testLedgerId = ledger.id;
 
-    const category = await db.query.categories.findFirst({
+    const category = await db.query.entryCategories.findFirst({
       where: eq(categories.name, "餐饮"),
     });
 
@@ -74,6 +75,9 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
       params: Promise.resolve({ id: testLedgerId }),
     });
     const data = await response.json();
+
+    // Process
+    await processAllPendingTasks();
 
     expect(response.status).toBe(200);
     expect(data.status).toBe("queued");
@@ -119,6 +123,9 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     });
     const data = await response.json();
 
+    // Process
+    await processAllPendingTasks();
+
     expect(response.status).toBe(200);
     expect(data.sourceDocumentId).toBeDefined();
     expect(data.status).toBe("queued");
@@ -157,6 +164,9 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
       params: Promise.resolve({ id: testLedgerId }),
     });
     const data = await response.json();
+
+    // Process
+    await processAllPendingTasks();
 
     expect(data.status).toBe("queued");
 
@@ -236,7 +246,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain("Content (text or images) is required");
+    expect(data.error).toContain("At least one input (text or images) is required");
   });
 
   it("should return 404 for non-existent ledger", async () => {
@@ -260,22 +270,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     // If I renamed the directory `src/app/api/ledgers/[id]/receipts` to `source-documents`, then `route.ts` inside it handles both GET and POST.
     // I should verify this file exists and update it.
 
-    const request = new NextRequest(
-      "http://localhost/api/ledgers/non-existent/source-documents",
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "test" }),
-      }
-    );
-
-    // If the validation logic for ledger existence is inside the route handler
-    // But currently the route handler might rely on [id] being valid or check it.
-    // For now assuming it returns 404 or fails if ledger doesn't exist (due to foreign key constraint or explicit check).
-    // In V1 route it checks API key. In internal route, it should probably check ledger.
-    // Let's assume the test is valid for now.
-
-    // Actually, looking at previous implementation of receipts/route.ts (if it was copied/renamed):
-    // It likely does validation.
+    // TODO: Implement test for non-existent ledger
   });
 
   it("should handle image input", async () => {
@@ -336,6 +331,9 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     });
     const createData = await createRes.json();
     const sourceDocumentId = createData.sourceDocumentId;
+
+    // Process
+    await processAllPendingTasks();
 
     // Wait for processing to ensure ledger entries are created
     const db = getTestDb();
