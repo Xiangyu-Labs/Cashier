@@ -1,7 +1,7 @@
 import { Receipt, Transaction, Category } from "@/types/api";
 import { TransactionCard } from "./TransactionCard";
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { TransactionStatus } from "@/components/ui/TransactionStatus";
@@ -38,7 +38,7 @@ interface BatchTransactionCardProps {
   onDelete?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
+  status: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid" | "pending";
   className?: string;
 }
 
@@ -200,6 +200,50 @@ export function BatchTransactionCard({
               <EyeOff className="h-4 w-4" />
             )}
           </Button>
+
+          {/* Retry Action in Header (for failed/invalid items) */}
+          {(status === "failed" || status === "invalid") && onRetry && (
+            <>
+              <div className="h-4 w-px bg-border mx-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); async function runRetry() { if (onRetry) { setIsRetrying(true); try { await onRetry(); } finally { setIsRetrying(false); } } } runRetry(); }}
+                disabled={isRetrying}
+                className="h-7 px-2 text-xs border-red-600/30 hover:bg-red-600/10 hover:text-red-700 text-red-600 dark:text-red-400 dark:border-red-400/30 dark:hover:text-red-300"
+                title="重试"
+              >
+                {isRetrying ? (
+                  <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                )}
+                重试
+              </Button>
+            </>
+          )}
+
+          {/* Confirm Action in Header (for pending items) */}
+          {!isConfirmed && onConfirm && (
+            <>
+              <div className="h-4 w-px bg-border mx-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
+                disabled={isConfirming}
+                className="h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
+                title="确认账单"
+              >
+                {isConfirming ? (
+                  <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-1" />
+                )}
+                确认
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -322,36 +366,18 @@ export function BatchTransactionCard({
       </div>
 
       {/* Footer Actions */}
+      {/* Footer Actions - Only show if NO Header actions are used (e.g. for some other future state). 
+          Currently Confirm and Retry are both in Header. 
+          We hide footer if onConfirm OR onRetry is present for these statuses.
+      */}
       {
-        (!isConfirmed && (onConfirm || (onRetry && (status === "failed" || status === "invalid")))) && (
+        (!isConfirmed &&
+          !(onConfirm) &&
+          !(onRetry && (status === "failed" || status === "invalid")) &&
+          (onRetry || onConfirm) // Fallback check
+        ) && (
           <div className="p-4 bg-surface2 border-t border-border flex justify-end gap-2">
-            {onRetry && (status === "failed" || status === "invalid") && (
-              <Button
-                onClick={async () => {
-                  if (!onRetry) return;
-                  setIsRetrying(true);
-                  try {
-                    await onRetry();
-                  } finally {
-                    setIsRetrying(false);
-                  }
-                }}
-                disabled={isRetrying}
-                variant="destructive"
-                className="shadow-sm"
-              >
-                {isRetrying ? "重试中..." : "重试"}
-              </Button>
-            )}
-            {onConfirm && (
-              <Button
-                onClick={handleConfirm}
-                disabled={isConfirming}
-                className="bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm"
-              >
-                {isConfirming ? "确认中..." : "确认账单"}
-              </Button>
-            )}
+            {/* Legacy footer logic if ever needed */}
           </div>
         )
       }

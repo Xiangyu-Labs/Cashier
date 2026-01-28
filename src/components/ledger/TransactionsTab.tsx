@@ -296,7 +296,7 @@ export function TransactionsTab({
                     receipt={item.data.receipt}
                     transactions={item.data.transactions}
                     categories={categories}
-                    status="processing"
+                    status="pending"
                     className={className}
                     defaultExpanded={true}
                     onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
