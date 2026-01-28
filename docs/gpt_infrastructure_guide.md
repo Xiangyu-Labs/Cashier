@@ -114,3 +114,7 @@ For multi-step tasks, use `context.updateProgress` to save intermediate data in 
 
 ### 4. Purity
 Do **not** import business models (`receipts`, `transactions`, etc.) inside `src/lib/gpt`. Keep those imports strictly within `src/lib/tasks`.
+
+### 5. Concurrency Configuration
+The number of concurrent worker loops can be controlled via the environment variable:
+- `GPT_WORKER_COUNT`: Set this in your `.env` files (default is 1).

@@ -11,7 +11,7 @@ import {
     getTask,
 } from "./task-service";
 
-const N_WORKERS = parseInt(process.env.N_GPT_WORKERS || "1", 10);
+const N_WORKERS = parseInt(process.env.GPT_WORKER_COUNT || "1", 10);
 let runningWorkers = 0;
 
 /**
