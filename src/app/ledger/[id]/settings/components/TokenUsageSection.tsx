@@ -48,7 +48,7 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
             <div className="mb-6">
                 <h2 className="text-lg font-medium">AI Token 统计</h2>
                 <p className="text-sm text-[var(--muted)]">
-                    基于字符长度估算的 GPT Token 消耗概览
+                    基于 gpt-tokenizer 精确计算的 GPT Token 消耗概览
                 </p>
             </div>
 
@@ -71,7 +71,7 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
                 </div>
             </div>
             <div className="mt-6 text-xs text-[var(--muted)] border-t border-[var(--border)] pt-4">
-                * 统计范围仅包含通过新 GPT 任务系统处理的请求。计算方式为通用估算法 (1 Token ≈ 4 字符)，不代表实际计费 Token。
+                * 统计范围仅包含通过新 GPT 任务系统处理的请求。采用成熟的 `gpt-tokenizer` 精确计算。
             </div>
         </section>
     );

@@ -53,10 +53,12 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
     const activeTasks = tasks.filter((t: GptTask) => t.status === "queued" || t.status === "running");
     const visibleTasks = tasks.filter((t: GptTask) => t.status !== "completed" && t.status !== "failed");
 
-    const sessionTokens = tasks.reduce((sum: number, t: GptTask) => {
+    const { input: sessionInput, output: sessionOutput } = tasks.reduce((acc: { input: number, output: number }, t: GptTask) => {
         const usage = (t.metadata as any)?.usage;
-        return sum + (usage?.totalTokens || 0);
-    }, 0);
+        acc.input += (usage?.inputTokens || 0);
+        acc.output += (usage?.outputTokens || 0);
+        return acc;
+    }, { input: 0, output: 0 });
 
     const formatTokens = (num: number) => {
         if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
@@ -100,10 +102,16 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                             </span>
                         )}
                     </div>
-                    {sessionTokens > 0 && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-warning text-[10px] md:text-xs font-semibold shrink-0" title="预估会话消耗">
-                            <span>⚡️</span>
-                            <span>{formatTokens(sessionTokens)}</span>
+                    {(sessionInput > 0 || sessionOutput > 0) && (
+                        <div className="flex items-center gap-2 text-[10px] md:text-xs font-semibold shrink-0">
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-warning" title="会话输入消耗">
+                                <span className="opacity-70 text-[8px]">IN</span>
+                                <span>{formatTokens(sessionInput)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary" title="会话输出消耗">
+                                <span className="opacity-70 text-[8px]">OUT</span>
+                                <span>{formatTokens(sessionOutput)}</span>
+                            </div>
                         </div>
                     )}
                 </div>

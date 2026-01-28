@@ -11,10 +11,10 @@ interface TransactionStatusProps {
 export function TransactionStatus({ status, className }: TransactionStatusProps) {
     const config = {
         queued: {
-            label: "排队中",
-            icon: Clock,
-            colorClass: "text-muted-foreground",
-            bgClass: "bg-muted",
+            label: "处理中",
+            icon: Loader2,
+            colorClass: "text-info",
+            bgClass: "bg-info",
         },
         processing: {
             label: "处理中",
@@ -58,7 +58,7 @@ export function TransactionStatus({ status, className }: TransactionStatusProps)
     return (
         <div className={cn("inline-flex items-center gap-2", className)}>
             <div className="relative flex items-center justify-center">
-                {status === "processing" ? (
+                {status === "processing" || status === "queued" ? (
                     <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />
                 ) : (
                     <div className={cn("w-2 h-2 rounded-full", bgClass)} />

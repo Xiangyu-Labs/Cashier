@@ -11,6 +11,8 @@ import {
     getTask,
 } from "./task-service";
 import { logger } from "@/lib/logger";
+import { encode } from "gpt-tokenizer";
+
 
 const N_WORKERS = parseInt(process.env.GPT_WORKER_COUNT || "1", 10);
 let runningWorkers = 0;
@@ -124,14 +126,81 @@ export function isWorkerProcessing(): boolean {
 }
 
 /**
- * Calculate token usage (General estimation: 1 token ~= 4 chars)
+ * Deeply removes 'images' and 'imageUrls' fields from an object to prevent tokenizing Base64 data.
+ */
+function scrubImages(obj: any): any {
+    if (Array.isArray(obj)) {
+        return obj.map(scrubImages);
+    } else if (obj !== null && typeof obj === 'object') {
+        const newObj: any = {};
+        for (const key in obj) {
+            if (key === 'images' || key === 'imageUrls') {
+                continue;
+            }
+            newObj[key] = scrubImages(obj[key]);
+        }
+        return newObj;
+    }
+    return obj;
+}
+
+/**
+ * Calculate token usage using gpt-tokenizer.
+ * Robustly handles objects and stringified JSON by excluding large Base64 image data.
  */
 function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: number, outputTokens: number, totalTokens: number } {
-    const inputTokens = Math.ceil(JSON.stringify(input).length / 4);
-    const outputTokens = Math.ceil(JSON.stringify(output).length / 4);
+    let inputTokens = 0;
+    let inputObj = input;
+    let imageCount = 0;
+
+    // Handle stringified JSON
+    if (typeof input === "string" && (input.trim().startsWith("{") || input.trim().startsWith("["))) {
+        try {
+            inputObj = JSON.parse(input);
+        } catch (e) {
+            // Not valid JSON
+        }
+    }
+
+    if (typeof inputObj === "string") {
+        inputTokens = encode(inputObj).length;
+    } else if (inputObj && typeof inputObj === "object") {
+        const msgInput = inputObj as any;
+
+        // 1. Count images before scrubbing
+        const countImagesRecursive = (obj: any): number => {
+            if (Array.isArray(obj)) {
+                return obj.reduce((sum, item) => sum + countImagesRecursive(item), 0);
+            } else if (obj !== null && typeof obj === 'object') {
+                let count = 0;
+                if (Array.isArray(obj.images)) count += obj.images.length;
+                if (Array.isArray(obj.imageUrls)) count += obj.imageUrls.length;
+                for (const key in obj) {
+                    if (key !== 'images' && key !== 'imageUrls') {
+                        count += countImagesRecursive(obj[key]);
+                    }
+                }
+                return count;
+            }
+            return 0;
+        };
+        imageCount = countImagesRecursive(msgInput);
+
+        // 2. Scrub and tokenize text
+        const scrubbed = scrubImages(msgInput);
+        const textToTokenize = JSON.stringify(scrubbed);
+        inputTokens = encode(textToTokenize).length;
+
+        // 3. Add image estimate (1105 per image)
+        inputTokens += imageCount * 1105;
+    }
+
+    const outputText = typeof output === "string" ? output : JSON.stringify(output);
+    const outputTokens = encode(outputText).length;
+
     return {
         inputTokens,
         outputTokens,
-        totalTokens: inputTokens + outputTokens
+        totalTokens: inputTokens + outputTokens,
     };
 }

@@ -346,7 +346,7 @@ export function TransactionsTab({
                             <button onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-blue-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                    排队中&处理中 ({processingItems.length})
+                                    处理中 ({processingItems.length})
                                 </h3>
                                 <motion.div animate={{ rotate: isQueuedCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
                                     <ChevronDown className="w-4 h-4 text-blue-500" />
