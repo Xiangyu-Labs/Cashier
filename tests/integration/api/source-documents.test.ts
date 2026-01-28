@@ -176,8 +176,6 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     });
 
     expect(savedDoc).toBeDefined();
-    // aiResponse might not be populated immediately if we check too fast, 
-    // but the content should be there.
     expect(savedDoc?.status).toBeDefined();
     expect(savedDoc?.text).toBe("午餐25元");
     expect(savedDoc?.imageUrls).toEqual([]);

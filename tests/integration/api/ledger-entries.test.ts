@@ -139,7 +139,6 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       .values({
         ledgerId: testLedgerId,
         text: "午餐花了25.5元",
-        aiResponse: JSON.stringify({ ledgerEntries: [{ item_name: "午餐", amount: 25.5 }] }),
       })
       .returning();
 
@@ -163,7 +162,6 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     expect(data.items[0].sourceDocument).toBeDefined();
     expect(data.items[0].sourceDocument.id).toBe(doc.id);
     expect(data.items[0].sourceDocument.text).toBe("午餐花了25.5元");
-    expect(data.items[0].sourceDocument.aiResponse).toContain("午餐");
   });
 
   it("should return null source document when ledger entry has no linked document", async () => {
@@ -196,7 +194,6 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       .values({
         ledgerId: testLedgerId,
         imageUrls: ["data:image/png;base64,iVBORw0KGgo..."],
-        aiResponse: null,
       })
       .returning();
 

@@ -95,7 +95,6 @@ export const sourceDocuments = pgTable("source_documents", {
 
   status: sourceDocumentStatusEnum("status").notNull().default("queued"),
   errorCode: errorCodeEnum("error_code"),
-  aiResponse: text("ai_response"),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [

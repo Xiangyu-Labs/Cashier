@@ -47,7 +47,6 @@ const baseSourceDocument: SourceDocument = {
     title: null,
     text: "Lunch 50",
     imageUrls: [],
-    aiResponse: null,
     createdAt: new Date("2024-01-01T12:00:00").toISOString(),
     status: "completed",
 };

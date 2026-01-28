@@ -120,7 +120,6 @@ describe("Full Ledger Entry Flow", () => {
     });
 
     expect(savedMessage).toBeDefined();
-    expect(savedMessage?.aiResponse).toBeDefined();
     expect(savedMessage?.title).toBe("超市购物");
     expect(savedMessage?.text).toContain("超市购物");
   });
@@ -287,8 +286,7 @@ describe("Full Ledger Entry Flow", () => {
     if (finalMessage?.status !== "completed") {
       console.error("Message processing failed:", {
         status: finalMessage?.status,
-        error: finalMessage?.error,
-        aiResponse: finalMessage?.aiResponse
+        errorCode: finalMessage?.errorCode,
       });
     }
     expect(finalMessage?.status).toBe("completed");

@@ -23,7 +23,6 @@ describe("SourceDocuments Database Operations", () => {
       expect(created.id).toBeDefined();
       expect(created.text).toBe("午餐花了25.5元");
       expect(created.imageUrls).toEqual([]);
-      expect(created.aiResponse).toBeNull();
     });
 
     it("should create an image input message", async () => {
@@ -91,40 +90,6 @@ describe("SourceDocuments Database Operations", () => {
 
       expect(found?.ledger).toBeDefined();
       expect(found?.ledger.name).toBe("Parent Ledger");
-    });
-  });
-
-  describe("UPDATE", () => {
-    it("should update aiResponse after AI processing", async () => {
-      const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
-
-      const [created] = await db
-        .insert(sourceDocuments)
-        .values({
-          ledgerId: ledger.id,
-          text: "午餐25元",
-        })
-        .returning();
-
-      expect(created.aiResponse).toBeNull();
-
-      const aiResponse = JSON.stringify({
-        ledger_entries: [
-          { item_name: "午餐", amount: 25, currency: "CNY", category: "餐饮", entry_date: null },
-        ],
-      });
-
-      const [updated] = await db
-        .update(sourceDocuments)
-        .set({ aiResponse })
-        .where(eq(sourceDocuments.id, created.id))
-        .returning();
-
-      expect(updated.aiResponse).toBe(aiResponse);
     });
   });
 

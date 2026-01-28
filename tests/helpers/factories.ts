@@ -80,7 +80,6 @@ export function createSourceDocumentData(
     title: string | null;
     text: string | null;
     imageUrls: string[];
-    aiResponse: string | null;
     createdAt: Date;
   }> = {}
 ) {
@@ -90,7 +89,6 @@ export function createSourceDocumentData(
     title: null,
     text: "午餐花了25.5元",
     imageUrls: [],
-    aiResponse: null,
     createdAt: new Date(),
     ...overrides,
   };

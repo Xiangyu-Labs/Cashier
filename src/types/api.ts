@@ -38,7 +38,6 @@ export interface SourceDocument {
   title: string | null;
   text: string | null;
   imageUrls: string[];
-  aiResponse: string | null;
   createdAt: string;
   status?: "queued" | "processing" | "to_confirm" | "completed" | "error";
   errorCode?: "internal_error" | "parse_failed" | "invalid_content" | null;

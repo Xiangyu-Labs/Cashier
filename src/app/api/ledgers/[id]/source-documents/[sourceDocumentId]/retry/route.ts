@@ -27,8 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             .update(sourceDocuments)
             .set({
                 status: "queued",
-                error: null,
-                aiResponse: null,
+                errorCode: null,
             })
             .where(eq(sourceDocuments.id, sourceDocumentId));
 
