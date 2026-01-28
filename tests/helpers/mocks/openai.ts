@@ -10,10 +10,14 @@ export interface MockOpenAIResponse {
         notes?: string;
     }>;
     title?: string;
+    is_valid?: boolean;
 }
 
 export function mockOpenAIResponse(response: MockOpenAIResponse): string {
-    return JSON.stringify(response);
+    return JSON.stringify({
+        is_valid: true, // Default to true for mocks unless specified
+        ...response
+    });
 }
 
 // Common test responses
@@ -80,6 +84,7 @@ export const MOCK_RESPONSES = {
 
     markdownWrapped: `\`\`\`json
 {
+  "is_valid": true,
   "ledger_entries": [{
     "item_name": "咖啡",
     "amount": 30,

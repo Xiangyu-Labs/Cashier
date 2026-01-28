@@ -28,7 +28,24 @@ describe("GPT Prompts", () => {
         it("should include core rules about splitting and currency", () => {
             const prompt = buildLedgerEntryPrompt(categories);
             expect(prompt).toContain("**Splitting Principle**: If it's a shopping receipt");
-            expect(prompt).toContain("**Currency Identification**: Prioritize currency from content");
+            expect(prompt).toContain("**Currency Identification**:");
+        });
+
+        it("should include preferred currencies in the prompt", () => {
+            const prompt = buildLedgerEntryPrompt(categories, "zh-CN", "2025-01-28", ["USD", "HKD"]);
+            expect(prompt).toContain("- **User Preferred Currencies**: USD, HKD");
+            expect(prompt).toContain("Prioritize inferring these currencies");
+        });
+
+        it("should show 'None specified' when preferred currencies list is empty", () => {
+            const prompt = buildLedgerEntryPrompt(categories, "zh-CN", "2025-01-28", []);
+            expect(prompt).toContain("- **User Preferred Currencies**: None specified");
+        });
+
+        it("should include target language instructions", () => {
+            const prompt = buildLedgerEntryPrompt(categories, "en-US");
+            expect(prompt).toContain("- **Target Language**: en-US");
+            expect(prompt).toContain("translated into en-US");
         });
     });
 

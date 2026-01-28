@@ -59,6 +59,7 @@ describe("OpenAIMessageProcessor", () => {
 
       // Mock response that puts details in notes
       const response = JSON.stringify({
+        is_valid: true,
         ledger_entries: [
           {
             item_name: "苹果",
@@ -86,6 +87,7 @@ describe("OpenAIMessageProcessor", () => {
       const input: SourceDocumentInput = { text: "买了一箱牛奶，每盒5元，一共24盒，大家平分" };
 
       const responseWithNotes = JSON.stringify({
+        is_valid: true,
         ledger_entries: [
           {
             item_name: "牛奶",
@@ -209,6 +211,23 @@ describe("OpenAIMessageProcessor", () => {
       expect(systemPrompt).toContain("- **Common Currency Reference**: USD, AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, ZAR");
     });
 
+    it("should pass targetLanguage from context to buildLedgerEntryPrompt", async () => {
+      const input: SourceDocumentInput = { text: "午餐25元" };
+      const contextWithLanguage: ProcessorContext = {
+        ...defaultContext,
+        language: "en-US",
+      };
+
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+
+      await processor.process(input, contextWithLanguage);
+
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const [systemPrompt] = mockGenerateContent.mock.calls[0];
+
+      expect(systemPrompt).toContain("- **Target Language**: en-US");
+    });
+
     it("should handle image input", async () => {
       const input: SourceDocumentInput = {
         images: [
@@ -312,6 +331,7 @@ describe("OpenAIMessageProcessor", () => {
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
+          is_valid: true,
           ledger_entries: [
             {
               item_name: "Unknown Item",
@@ -336,6 +356,7 @@ describe("OpenAIMessageProcessor", () => {
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
+          is_valid: true,
           ledger_entries: [
             {
               item_name: "Refund",
@@ -349,7 +370,7 @@ describe("OpenAIMessageProcessor", () => {
       );
 
       // Should throw due to validation failure
-      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("AI response schema validation failed");
     });
 
     it("should accept zero amount via Zod validation", async () => {
@@ -357,6 +378,7 @@ describe("OpenAIMessageProcessor", () => {
 
       mockGenerateContent.mockResolvedValue(
         JSON.stringify({
+          is_valid: true,
           ledger_entries: [
             {
               item_name: "Free Item",
@@ -396,6 +418,7 @@ ${MOCK_RESPONSES.singleEntry}
     it("should throw error if category is not in allowed categories", async () => {
       const input: SourceDocumentInput = { text: "午餐花费25元" };
       const response = JSON.stringify({
+        is_valid: true,
         ledger_entries: [
           {
             item_name: "午餐",
@@ -409,12 +432,13 @@ ${MOCK_RESPONSES.singleEntry}
 
       mockGenerateContent.mockResolvedValue(response);
 
-      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid or missing category: 不存在的分类");
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid or missing category");
     });
 
     it("should throw 'parse error' if currency is neither 'unknown' nor a valid code", async () => {
       const input: SourceDocumentInput = { text: "some expense" };
       const response = JSON.stringify({
+        is_valid: true,
         ledger_entries: [
           {
             item_name: "Test Item",
@@ -428,7 +452,7 @@ ${MOCK_RESPONSES.singleEntry}
 
       mockGenerateContent.mockResolvedValue(response);
 
-      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response: parse error");
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid currency code");
     });
   });
 });
