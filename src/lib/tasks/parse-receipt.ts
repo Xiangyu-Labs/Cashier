@@ -3,7 +3,7 @@
 
 import { registerTask, TaskHandler, GptTask, TaskExecutionContext } from "@/lib/gpt";
 import { db } from "@/lib/db";
-import { receipts } from "@/lib/db/schema";
+import { receipts, transactions, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { CategoryInfo, ParsedTransaction, ProcessResult } from "@/lib/message-processor/types";
@@ -31,11 +31,16 @@ const summarizationSchema = z.object({
     notes: z.string().nullable().optional(),
 });
 
+interface ParseReceiptOutput {
+    transactions: ParsedTransaction[];
+    title?: string;
+}
+
 /**
  * Parse Receipt Task Handler
  */
-const parseReceiptHandler: TaskHandler<ParseReceiptInput, ParsedTransaction[]> = {
-    async execute(task: GptTask, context: TaskExecutionContext): Promise<ParsedTransaction[]> {
+const parseReceiptHandler: TaskHandler<ParseReceiptInput, ParseReceiptOutput> = {
+    async execute(task: GptTask, context: TaskExecutionContext): Promise<ParseReceiptOutput> {
         const input = task.input as ParseReceiptInput;
 
         // Step 1: Parse with GPT
@@ -68,7 +73,7 @@ const parseReceiptHandler: TaskHandler<ParseReceiptInput, ParsedTransaction[]> =
 
         // Check if valid
         if (result.isValid === false) {
-            return [];
+            return { transactions: [] };
         }
 
         // Step 2: Merge similar items (optional)
@@ -83,18 +88,50 @@ const parseReceiptHandler: TaskHandler<ParseReceiptInput, ParsedTransaction[]> =
             transactions = await summarizeTransactions(transactions, input.text);
         }
 
-        return transactions;
+        return {
+            transactions,
+            title: result.title
+        };
     },
 
-    async onComplete(transactions: ParsedTransaction[], task: GptTask): Promise<void> {
+    async onComplete(output: ParseReceiptOutput, task: GptTask): Promise<void> {
         const input = task.input as ParseReceiptInput;
-        const validTransactions = transactions.filter(tx => tx.amount > 0);
+        const { transactions: parsedTransactions, title } = output;
+        const validTransactions = parsedTransactions.filter(tx => tx.amount > 0);
 
-        // Update receipt with proposed transactions
-        await db.update(receipts).set({
-            status: validTransactions.length > 0 ? "to_confirm" : "completed",
-            proposedTransactions: validTransactions,
-        }).where(eq(receipts.id, input.receiptId));
+        if (input.settings.autoConfirm && validTransactions.length > 0 && task.ledgerId) {
+            // Direct insertion of transactions
+            for (const tx of validTransactions) {
+                const categoryId = tx.category
+                    ? input.categories.find((c) => c.name === tx.category)?.id ?? null
+                    : null;
+
+                await db.insert(transactions).values({
+                    ledgerId: task.ledgerId,
+                    categoryId,
+                    receiptId: input.receiptId,
+                    amount: tx.amount.toString(),
+                    currency: tx.currency,
+                    itemName: tx.itemName || "未分类",
+                    description: tx.notes || null,
+                    transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
+                });
+            }
+
+            // Mark receipt as completed
+            await db.update(receipts).set({
+                status: "completed",
+                proposedTransactions: validTransactions,
+                title: title || null,
+            }).where(eq(receipts.id, input.receiptId));
+        } else {
+            // Update receipt with proposed transactions and title for manual confirmation
+            await db.update(receipts).set({
+                status: validTransactions.length > 0 ? "to_confirm" : "completed",
+                proposedTransactions: validTransactions,
+                title: title || null,
+            }).where(eq(receipts.id, input.receiptId));
+        }
     },
 
     async onError(error: Error, task: GptTask): Promise<void> {

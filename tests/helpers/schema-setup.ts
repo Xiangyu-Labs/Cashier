@@ -11,6 +11,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS input_messages CASCADE`); // Ensure old table is also dropped
   await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS api_keys CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS gpt_tasks CASCADE`);
 
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
 
@@ -102,6 +103,26 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       name TEXT NOT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       last_used_at TIMESTAMP
+    );
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS gpt_tasks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
+      entity_id UUID,
+      entity_type TEXT,
+      status TEXT NOT NULL DEFAULT 'queued',
+      error TEXT,
+      input JSONB,
+      output JSONB,
+      progress JSONB,
+      metadata JSONB,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      started_at TIMESTAMP,
+      completed_at TIMESTAMP
     );
   `);
   console.log("Finished createTestSchema.");

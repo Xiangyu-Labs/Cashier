@@ -341,8 +341,8 @@ export function TransactionsTab({
             {/* Processing/Queued Section (Blue) */}
             <AnimatePresence mode="popLayout">
                 {processingItems.length > 0 && (
-                    <motion.div layout className="space-y-3 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex justify-between items-center py-1 sm:py-2">
+                    <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center min-h-[44px] px-3 bg-blue-50/40 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-900/20 rounded-xl transition-all group/header hover:bg-blue-50/60 dark:hover:bg-blue-900/20">
                             <button onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-blue-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -370,8 +370,8 @@ export function TransactionsTab({
             {/* Pending Confirmation Section (Yellow) */}
             <AnimatePresence mode="popLayout">
                 {pendingConfirmationItems.length > 0 && (
-                    <motion.div layout className="space-y-3 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex justify-between items-center py-1 sm:py-2">
+                    <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center min-h-[44px] px-3 bg-yellow-50/40 dark:bg-yellow-900/10 border border-yellow-100/50 dark:border-yellow-900/20 rounded-xl transition-all group/header hover:bg-yellow-50/60 dark:hover:bg-yellow-900/20">
                             <button onClick={() => setIsPendingConfirmationCollapsed(!isPendingConfirmationCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-warning flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
@@ -382,7 +382,7 @@ export function TransactionsTab({
                                 </motion.div>
                             </button>
                             <div className="flex gap-2">
-                                {!isPendingConfirmationCollapsed && (<Button variant="default" onClick={handleConfirmAll} disabled={confirmAllMutation.isPending || confirmingAll} size="sm" className="h-7 text-xs bg-warning text-warning-foreground hover:bg-warning/90">{confirmAllMutation.isPending ? "确认中..." : "全部确认"}</Button>)}
+                                <Button variant="default" onClick={handleConfirmAll} disabled={confirmAllMutation.isPending || confirmingAll} size="sm" className="h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95">{confirmAllMutation.isPending ? "确认中..." : "全部确认"}</Button>
                             </div>
                         </div>
                         <AnimatePresence>
@@ -407,8 +407,8 @@ export function TransactionsTab({
             {/* Abnormal Bills Section (Red) */}
             <AnimatePresence mode="popLayout">
                 {abnormalItems.length > 0 && (
-                    <motion.div layout className="space-y-4 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex justify-between items-center py-2">
+                    <motion.div layout className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center min-h-[44px] px-3 bg-red-50/40 dark:bg-red-900/10 border border-red-100/50 dark:border-red-900/20 rounded-xl transition-all group/header hover:bg-red-50/60 dark:hover:bg-red-900/20">
                             <button onClick={() => setIsErrorCollapsed(!isErrorCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-red-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
@@ -419,12 +419,8 @@ export function TransactionsTab({
                                 </motion.div>
                             </button>
                             <div className="flex gap-2">
-                                {!isErrorCollapsed && (
-                                    <>
-                                        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:bg-destructive/10" onClick={handleDeleteAllErrors}>全部删除</Button>
-                                        <Button variant="destructive" size="sm" className="h-7 text-xs" disabled={confirmingAll} onClick={handleRetryAll}>全部重试</Button>
-                                    </>
-                                )}
+                                <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95" onClick={handleDeleteAllErrors}>全部删除</Button>
+                                <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm transition-all active:scale-95" disabled={confirmingAll} onClick={handleRetryAll}>全部重试</Button>
                             </div>
                         </div>
                         <AnimatePresence>

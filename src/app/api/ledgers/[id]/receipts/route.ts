@@ -130,7 +130,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         receiptId: savedReceipt.id,
         text: validated.text,
         imageUrls: imageUrls,
-        categories: await db.query.categories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
+        categories: await db.query.categories.findMany({
+          where: (categories, { eq, or, isNull }) => or(eq(categories.ledgerId, ledgerId), isNull(categories.ledgerId))
+        }),
         settings: {
           mergeSimilarItems: ledger.mergeSimilarItems,
           autoRecognizeDate: ledger.autoRecognizeDate,
