@@ -50,6 +50,11 @@ async function executeTask(task: GptTask): Promise<void> {
     // Create execution context
     const context: TaskExecutionContext = {
         updateProgress: async (progress: TaskProgress) => {
+            // Re-verify task still exists and is not cancelled before updating progress
+            const currentTask = await getTask(task.id);
+            if (!currentTask || currentTask.status === "cancelled") {
+                throw new Error("Task was cancelled or deleted");
+            }
             await updateTaskProgress(task.id, progress);
         },
         getProgress: () => task.progress,
@@ -59,6 +64,13 @@ async function executeTask(task: GptTask): Promise<void> {
         console.log(`Task ${task.id} (${task.type}): Starting execution`);
 
         const output = await handler.execute(task, context);
+
+        // FINAL CHECK: Re-verify task status BEFORE calling onComplete/markTaskCompleted
+        const finalTaskCheck = await getTask(task.id);
+        if (!finalTaskCheck || finalTaskCheck.status === "cancelled") {
+            console.log(`Task ${task.id} (${task.type}): Cancelled or deleted during execution, skipping completion.`);
+            return;
+        }
 
         // Call completion handler if defined
         if (handler.onComplete) {

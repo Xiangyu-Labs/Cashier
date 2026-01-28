@@ -27,6 +27,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             .delete(transactions)
             .where(eq(transactions.receiptId, receiptId));
 
+        // Delete associated tasks first (avoid zombie GPT processing)
+        const { gptTasks } = await import("@/lib/db/schema");
+        await db
+            .delete(gptTasks)
+            .where(and(
+                eq(gptTasks.entityId, receiptId),
+                eq(gptTasks.entityType, "receipt")
+            ));
+
         // Delete the receipt
         await db
             .delete(receipts)

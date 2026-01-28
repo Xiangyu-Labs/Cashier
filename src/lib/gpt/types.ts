@@ -2,7 +2,7 @@
 // Best-effort execution: GPT infra runs tasks and records results
 // Business layer is responsible for recovery/retry decisions
 
-export type TaskStatus = "queued" | "running" | "completed" | "failed";
+export type TaskStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 // Progress tracking structure (stored in JSONB)
 export interface TaskProgress {
@@ -19,7 +19,7 @@ export interface GptTask {
     title: string;
     ledgerId: string | null;
     entityId: string | null;   // Generic entity reference
-    entityType: string | null; // Type of entity (e.g., "receipt")
+    entityType: string | null; // Type of entity (e.g., "receipt", "transaction")
     status: TaskStatus;
     error: string | null;
     input: unknown;
@@ -55,7 +55,7 @@ export interface TaskHandler<TInput = unknown, TOutput = unknown> {
 
     /**
      * Called after successful execution.
-     * Use this to update related entities (e.g., update receipt status).
+     * Use this to update related business entities.
      */
     onComplete?: (output: TOutput, task: GptTask) => Promise<void>;
 
