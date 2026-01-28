@@ -9,6 +9,11 @@ vi.mock("next-intl", () => ({
     useLocale: () => "en",
 }));
 
+// Mock currencies config
+vi.mock("@/config/currencies", () => ({
+    SUPPORTED_CURRENCIES: ["USD", "EUR", "CNY", "HKD", "JPY"]
+}));
+
 // Mock child components
 vi.mock("./SourceDocumentOriginalContent", () => ({
     SourceDocumentOriginalContent: () => <div data-testid="original-content">Original</div>,
@@ -30,11 +35,11 @@ describe("LedgerEntryViewDetails", () => {
         entryDate: "2023-01-28T10:00:00Z",
         createdAt: "2023-01-28T10:00:00Z",
         itemName: "Test Item",
-        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
+        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "" }
     };
 
     const mockCategories: EntryCategory[] = [
-        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
+        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "" }
     ];
 
     const mockEditData: LedgerEntryEditFormData = {
@@ -95,5 +100,56 @@ describe("LedgerEntryViewDetails", () => {
         fireEvent.click(saveButton);
 
         expect(defaultProps.onEditSave).toHaveBeenCalled();
+    });
+
+    it("shows preferred currencies first in the selector", () => {
+        const preferredCurrencies = ["HKD", "JPY"];
+        const { container } = render(
+            <LedgerEntryViewDetails
+                {...defaultProps}
+                isEditing={true}
+                preferredCurrencies={preferredCurrencies}
+            />
+        );
+
+        const select = container.querySelector("select") as HTMLSelectElement;
+        const options = Array.from(select.options).map(opt => opt.value);
+
+        // HKD, JPY should be first (after unknown since mockLedgerEntry status is not confirmed)
+        // Default mockLedgerEntry doesn't have status, let's assume it's pending if status is undefined in component logic?
+        // Wait, LedgerEntry status is optional. Let's check component logic.
+        // const showUnknown = ledgerEntry.status === "pending"; (from my implementation)
+        // If status is undefined, showUnknown is false.
+
+        expect(options[0]).toBe("HKD");
+        expect(options[1]).toBe("JPY");
+    });
+
+    it("shows 'unknown' option only for pending entries", () => {
+        // Pending status
+        const pendingEntry = { ...mockLedgerEntry, status: "pending" as const };
+        const { rerender, container } = render(
+            <LedgerEntryViewDetails
+                {...defaultProps}
+                ledgerEntry={pendingEntry}
+                isEditing={true}
+            />
+        );
+
+        let select = container.querySelector("select") as HTMLSelectElement;
+        expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(true);
+
+        // Confirmed status
+        const confirmedEntry = { ...mockLedgerEntry, status: "confirmed" as const };
+        rerender(
+            <LedgerEntryViewDetails
+                {...defaultProps}
+                ledgerEntry={confirmedEntry}
+                isEditing={true}
+            />
+        );
+
+        select = container.querySelector("select") as HTMLSelectElement;
+        expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(false);
     });
 });

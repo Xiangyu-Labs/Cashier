@@ -135,7 +135,7 @@ export function LedgerEntryViewDetails({
                                         className="w-full h-10 rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     >
                                         {showUnknown && (
-                                            <option value="unknown">???</option>
+                                            <option value="unknown">unknown</option>
                                         )}
                                         {sortedCurrencies.map(curr => (
                                             <option key={curr} value={curr}>{curr}</option>
