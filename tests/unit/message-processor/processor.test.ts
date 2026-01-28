@@ -22,6 +22,8 @@ describe("OpenAIMessageProcessor", () => {
       { id: "cat-2", name: "交通", description: "公交、地铁" },
       { id: "cat-3", name: "日用品", description: "生活必需品" },
       { id: "cat-4", name: "饮料", description: "咖啡、奶茶" },
+      { id: "cat-5", name: "水果", description: "各类水果" },
+      { id: "cat-6", name: "日用", description: "日用品" },
     ],
   };
 
@@ -369,6 +371,25 @@ ${MOCK_RESPONSES.singleEntry}
       const result = await processor.process(input, defaultContext);
 
       expect(result.ledgerEntries).toHaveLength(1);
+    });
+
+    it("should throw error if category is not in allowed categories", async () => {
+      const input: SourceDocumentInput = { text: "午餐花费25元" };
+      const response = JSON.stringify({
+        ledger_entries: [
+          {
+            item_name: "午餐",
+            amount: 25,
+            currency: "CNY",
+            category: "不存在的分类",
+            entry_date: "2025-01-25",
+          },
+        ],
+      });
+
+      mockGenerateContent.mockResolvedValue(response);
+
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid category: 不存在的分类");
     });
   });
 });

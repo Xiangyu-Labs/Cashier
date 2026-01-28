@@ -57,7 +57,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
     ];
 
     const rawResponse = await client.generateContent(systemPrompt, messages);
-    const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse);
+    const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse, context.categories.map(c => c.name));
 
     let ledgerEntries = data;
 
@@ -87,7 +87,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   }
 
 
-  private parseResponse(response: string): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
+  private parseResponse(response: string, allowedCategories: string[]): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
     try {
       const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
       const parsed = JSON.parse(cleaned);
@@ -97,14 +97,19 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
         return { ledgerEntries: [], isValid: false };
       }
 
-      const ledgerEntries = validated.ledger_entries.map((t) => ({
-        itemName: t.item_name,
-        amount: t.amount,
-        currency: t.currency,
-        category: t.category,
-        entryDate: t.entry_date,
-        notes: t.notes || null,
-      }));
+      const ledgerEntries = validated.ledger_entries.map((t) => {
+        if (t.category && !allowedCategories.includes(t.category)) {
+          throw new Error(`Invalid category: ${t.category}. Must be one of: ${allowedCategories.join(", ")}`);
+        }
+        return {
+          itemName: t.item_name,
+          amount: t.amount,
+          currency: t.currency,
+          category: t.category,
+          entryDate: t.entry_date,
+          notes: t.notes || null,
+        };
+      });
 
       return { ledgerEntries, isValid: true, title: validated.title };
     } catch (error) {

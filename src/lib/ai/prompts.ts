@@ -43,7 +43,7 @@ Structure:
 3. **Currency Identification**: Prioritize currency from content (e.g., $ -> USD, ¥ -> CNY or JPY). In a Chinese context without symbols, default to CNY.
    - Supported codes: CNY, USD, EUR, JPY, HKD, TWD, GBP.
    - Use null if unable to determine.
-4. **Category Matching**: You MUST select the most appropriate name from the "Available Categories" list for the \`category\` field. Use null if no suitable category is found.
+4. **Category Matching**: You MUST select the most appropriate name from the "Available Categories" list for the 'category' field. Since there is an "Other" category (or similar), ALL entries must be classified. Do NOT return a category that is not in the list.
 5. **Date Handling**:
    - Prioritize explicit dates (YYYY-MM-DD).
    - Resolve relative dates: "yesterday" -> ${today} minus 1 day.
