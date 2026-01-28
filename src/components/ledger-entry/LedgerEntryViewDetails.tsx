@@ -185,8 +185,8 @@ export function LedgerEntryViewDetails({
                             </select>
                         ) : (
                             ledgerEntry.category ? (
-                                <Badge variant="default" className="font-normal bg-muted/50 text-muted-foreground border-none">
-                                    <Tag className="h-3 w-3 mr-1 opacity-70" />
+                                <Badge variant="default" className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-none transition-colors">
+                                    <CategoryIcon iconName={ledgerEntry.category.icon} className="h-3 w-3 mr-1.5" />
                                     {ledgerEntry.category.name}
                                 </Badge>
                             ) : (
@@ -197,10 +197,8 @@ export function LedgerEntryViewDetails({
                 </div>
 
                 {/* Description / Remark */}
-                <div className="border-t border-border/50 pt-3 mt-1">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm text-muted">{t("description")}</span>
-                    </div>
+                <div className="border-t border-border/50 pt-4 mt-2">
+                    {/* Label removed as per design request */}
 
                     {isEditing ? (
                         <Textarea
