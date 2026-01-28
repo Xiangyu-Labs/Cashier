@@ -169,10 +169,11 @@ function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: nu
         const msgInput = inputObj as Record<string, unknown>;
 
         // 1. Count images before scrubbing
-        const countImagesRecursive = (obj: unknown): number => {
+        function countImagesRecursive(obj: unknown): number {
             if (Array.isArray(obj)) {
                 return obj.reduce((sum, item) => sum + countImagesRecursive(item), 0);
-            } else if (obj !== null && typeof obj === 'object') {
+            }
+            if (obj !== null && typeof obj === 'object') {
                 const typedObj = obj as Record<string, unknown>;
                 let count = 0;
                 if (Array.isArray(typedObj.images)) count += typedObj.images.length;
@@ -185,7 +186,7 @@ function calculateTokenUsage(input: unknown, output: unknown): { inputTokens: nu
                 return count;
             }
             return 0;
-        };
+        }
         imageCount = countImagesRecursive(msgInput);
 
         // 2. Scrub and tokenize text

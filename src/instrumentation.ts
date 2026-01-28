@@ -9,10 +9,6 @@ export async function register() {
             // Register task handlers (side-effect imports)
             await import("@/lib/tasks");
 
-            // Handle legacy receipt queue recovery
-            const { recoverProcessingReceipts } = await import("@/lib/queue");
-            await recoverProcessingReceipts();
-
             // Handle GPT task recovery (mark running as failed)
             const { handleTasksOnStartup } = await import("@/lib/gpt/recovery");
             await handleTasksOnStartup();

@@ -5,7 +5,6 @@ import { receipts, apiKeys } from "@/lib/db/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
-import { processReceiptQueue } from "@/lib/queue";
 import { eq } from "drizzle-orm";
 
 const transactionSchema = z.object({
@@ -81,10 +80,37 @@ export async function POST(request: NextRequest) {
             logger.error({ error, apiKeyId: apiKey.id }, "Failed to update api key usage");
         }
 
-        // Trigger background processing (Fire and Forget)
-        processReceiptQueue().catch((err) => {
-            logger.error({ err }, "Background processing failed to start");
+        // Trigger processing using the GPT task system
+        const { createTask } = await import("@/lib/gpt");
+        const { TASK_TYPE_PARSE_RECEIPT } = await import("@/lib/tasks");
+        const { ledgers: ledgerTable } = await import("@/lib/db/schema");
+
+        const ledger = await db.query.ledgers.findFirst({
+            where: eq(ledgerTable.id, apiKey.ledgerId),
         });
+
+        if (ledger) {
+            await createTask({
+                type: TASK_TYPE_PARSE_RECEIPT,
+                title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
+                ledgerId: apiKey.ledgerId,
+                entityId: savedReceipt.id,
+                entityType: "receipt",
+                input: {
+                    receiptId: savedReceipt.id,
+                    text: text || undefined,
+                    imageUrls: imageUrls,
+                    categories: await db.query.categories.findMany({
+                        where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, apiKey.ledgerId), isNull(c.ledgerId))
+                    }),
+                    settings: {
+                        mergeSimilarItems: ledger.mergeSimilarItems,
+                        autoRecognizeDate: ledger.autoRecognizeDate,
+                        autoConfirm: ledger.autoConfirm,
+                    },
+                },
+            });
+        }
 
         return NextResponse.json({
             receiptId: savedReceipt.id,
@@ -96,3 +122,4 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
+

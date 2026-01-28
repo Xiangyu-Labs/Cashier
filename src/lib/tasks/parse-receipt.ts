@@ -7,9 +7,7 @@ import { receipts, transactions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getMessageProcessor } from "@/lib/message-processor/processor";
 import { CategoryInfo, ParsedTransaction } from "@/lib/message-processor/types";
-import { buildSummarizationPrompt } from "@/lib/ai/prompts";
-import { getOpenAIClient } from "@/lib/ai/openai";
-import { z } from "zod";
+import { summarizeTransactions } from "@/lib/message-processor/utils";
 
 // Task type constant
 export const TASK_TYPE_PARSE_RECEIPT = "parse_receipt";
@@ -26,10 +24,6 @@ export interface ParseReceiptInput {
     };
 }
 
-const summarizationSchema = z.object({
-    item_name: z.string(),
-    notes: z.string().nullable().optional(),
-});
 
 interface ParseReceiptOutput {
     transactions: ParsedTransaction[];
@@ -100,14 +94,13 @@ const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
         const validTransactions = parsedTransactions.filter(tx => tx.amount > 0);
 
         if (input.settings.autoConfirm && validTransactions.length > 0 && task.ledgerId) {
-            // Direct insertion of transactions
-            for (const tx of validTransactions) {
+            const transactionsToInsert = validTransactions.map(tx => {
                 const categoryId = tx.category
                     ? input.categories.find((c) => c.name === tx.category)?.id ?? null
                     : null;
 
-                await db.insert(transactions).values({
-                    ledgerId: task.ledgerId,
+                return {
+                    ledgerId: task.ledgerId!,
                     categoryId,
                     receiptId: input.receiptId,
                     amount: tx.amount.toString(),
@@ -115,7 +108,11 @@ const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
                     itemName: tx.itemName || "未分类",
                     description: tx.notes || null,
                     transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date(),
-                });
+                };
+            });
+
+            if (transactionsToInsert.length > 0) {
+                await db.insert(transactions).values(transactionsToInsert);
             }
 
             // Mark receipt as completed
@@ -145,69 +142,6 @@ const parseReceiptHandler: TaskHandler<ParseReceiptOutput> = {
     },
 };
 
-// Helper: Summarize transactions by category and date
-async function summarizeTransactions(
-    transactions: ParsedTransaction[],
-    originalText?: string
-): Promise<ParsedTransaction[]> {
-    const finalTransactions: ParsedTransaction[] = [];
-    const groups: { [key: string]: ParsedTransaction[] } = {};
-
-    // Group by category and date
-    for (const t of transactions) {
-        if (!t.transactionDate || !t.category) {
-            finalTransactions.push(t);
-            continue;
-        }
-        const key = `${t.transactionDate}|${t.category}`;
-        if (!groups[key]) {
-            groups[key] = [];
-        }
-        groups[key].push(t);
-    }
-
-    const client = getOpenAIClient();
-
-    for (const key in groups) {
-        const group = groups[key];
-        if (group.length <= 1) {
-            finalTransactions.push(...group);
-            continue;
-        }
-
-        const itemsToSummarize = group.map(t => ({
-            itemName: t.itemName,
-            amount: t.amount,
-            notes: t.notes
-        }));
-
-        const prompt = buildSummarizationPrompt(itemsToSummarize, originalText);
-
-        try {
-            const response = await client.generateContent(prompt, []);
-            const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
-            const parsed = JSON.parse(cleaned);
-            const { item_name, notes } = summarizationSchema.parse(parsed);
-
-            const totalAmount = group.reduce((sum, t) => sum + t.amount, 0);
-            const representative = group[0];
-
-            finalTransactions.push({
-                itemName: item_name,
-                amount: totalAmount,
-                currency: representative.currency,
-                category: representative.category,
-                transactionDate: representative.transactionDate,
-                notes: notes || null
-            });
-        } catch (error) {
-            console.error("Failed to summarize group:", error);
-            finalTransactions.push(...group);
-        }
-    }
-
-    return finalTransactions;
-}
 
 // Register the task handler
 registerTask(TASK_TYPE_PARSE_RECEIPT, parseReceiptHandler);

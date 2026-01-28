@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { receipts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { processReceiptQueue } from "@/lib/queue";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ id: string; receiptId: string }> };
 
@@ -37,20 +37,48 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             })
             .where(eq(receipts.id, receiptId));
 
-        // Trigger processing
-        processReceiptQueue().catch((err) => {
-            console.error("Background processing failed to start:", err);
+        // Trigger processing using the GPT task system
+        const { createTask } = await import("@/lib/gpt");
+        const { TASK_TYPE_PARSE_RECEIPT } = await import("@/lib/tasks");
+        const { ledgers: ledgerTable } = await import("@/lib/db/schema");
+
+        const ledger = await db.query.ledgers.findFirst({
+            where: eq(ledgerTable.id, ledgerId),
         });
+
+        if (ledger) {
+            await createTask({
+                type: TASK_TYPE_PARSE_RECEIPT,
+                title: receipt.text ? `重试解析: ${receipt.text.slice(0, 20)}...` : "重试解析图片账单",
+                ledgerId,
+                entityId: receiptId,
+                entityType: "receipt",
+                input: {
+                    receiptId,
+                    text: receipt.text || undefined,
+                    imageUrls: receipt.imageUrls as string[] || [],
+                    categories: await db.query.categories.findMany({
+                        where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, ledgerId), isNull(c.ledgerId))
+                    }),
+                    settings: {
+                        mergeSimilarItems: ledger.mergeSimilarItems,
+                        autoRecognizeDate: ledger.autoRecognizeDate,
+                        autoConfirm: ledger.autoConfirm,
+                    },
+                },
+            });
+        }
 
         return NextResponse.json({
             success: true,
             message: "Receipt requeued for processing",
         });
     } catch (error) {
-        console.error("Failed to retry receipt:", error);
+        logger.error({ error }, "Failed to retry receipt");
         return NextResponse.json(
             { error: "Failed to retry receipt" },
             { status: 500 }
         );
     }
 }
+

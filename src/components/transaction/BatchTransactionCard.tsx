@@ -127,7 +127,7 @@ export function BatchTransactionCard({
   }, [receipt]);
 
 
-  const toggleExpand = (key: string) => {
+  function toggleExpand(key: string) {
     const newSet = new Set(expandedKeys);
     if (newSet.has(key)) {
       newSet.delete(key);
@@ -135,9 +135,9 @@ export function BatchTransactionCard({
       newSet.add(key);
     }
     setExpandedKeys(newSet);
-  };
+  }
 
-  const handleConfirm = async () => {
+  async function handleConfirm() {
     if (!onConfirm) return;
     setIsConfirming(true);
     try {
@@ -145,7 +145,17 @@ export function BatchTransactionCard({
     } finally {
       setIsConfirming(false);
     }
-  };
+  }
+
+  async function handleRetry() {
+    if (!onRetry) return;
+    setIsRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setIsRetrying(false);
+    }
+  }
 
   return (
     <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
@@ -208,7 +218,7 @@ export function BatchTransactionCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={(e) => { e.stopPropagation(); async function runRetry() { if (onRetry) { setIsRetrying(true); try { await onRetry(); } finally { setIsRetrying(false); } } } runRetry(); }}
+                onClick={(e) => { e.stopPropagation(); handleRetry(); }}
                 disabled={isRetrying}
                 className="h-7 px-2 text-xs border-red-600/30 hover:bg-red-600/10 hover:text-red-700 text-red-600 dark:text-red-400 dark:border-red-400/30 dark:hover:text-red-300"
                 title="重试"

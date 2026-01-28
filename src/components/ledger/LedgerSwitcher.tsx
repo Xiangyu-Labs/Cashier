@@ -64,13 +64,13 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
         },
     });
 
-    const handleCreate = () => {
+    function handleCreate() {
         if (newLedgerName.trim()) {
             createMutation.mutate({
                 name: newLedgerName.trim(),
             });
         }
-    };
+    }
 
     return (
         <>

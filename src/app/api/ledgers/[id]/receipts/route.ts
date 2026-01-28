@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { receipts, ledgers, categories, transactions } from "@/lib/db/schema";
-import { eq, inArray, and, asc, desc, lte, gte } from "drizzle-orm";
+import { eq, inArray, and, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-
-import { processReceiptQueue } from "@/lib/queue";
 
 const messageSchema = z.object({
   text: z.string().optional(),

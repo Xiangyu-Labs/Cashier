@@ -54,7 +54,7 @@ export function TransactionCard({
 
   const needsAttention = !transaction.categoryId || !transaction.currency;
 
-  const handleSave = () => {
+  function handleSave() {
     onUpdate({
       itemName: editData.itemName,
       amount: editData.amount,
@@ -62,9 +62,9 @@ export function TransactionCard({
       categoryId: editData.categoryId || null,
     });
     setIsEditing(false);
-  };
+  }
 
-  const handleCancel = () => {
+  function handleCancel() {
     // Reset data on cancel
     setEditData({
       itemName: transaction.itemName,
@@ -73,11 +73,11 @@ export function TransactionCard({
       categoryId: transaction.categoryId || "",
     });
     setIsEditing(false);
-  };
+  }
 
-  const handleFieldChange = (field: keyof typeof editData, value: string | number) => {
+  function handleFieldChange(field: keyof typeof editData, value: string | number) {
     setEditData((prev) => ({ ...prev, [field]: value }));
-  };
+  }
 
   return (
     <Card
