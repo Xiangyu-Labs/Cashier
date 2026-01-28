@@ -16,16 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { TransactionInput } from "@/components/ledger/TransactionInput";
-import { TransactionQueueStatus } from "@/components/ledger/TransactionQueueStatus";
 import { useLedgerData } from "@/hooks/useLedgerData";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
+import { TaskCenter } from "@/components/TaskCenter";
 
 export default function LedgerPage() {
   const params = useParams();
@@ -40,7 +35,6 @@ export default function LedgerPage() {
     pendingGroups,
     confirmedGroups,
     queuedReceipts,
-    stats,
   } = useLedgerData(ledgerId);
 
   if (isLedgerLoading) {
@@ -59,10 +53,6 @@ export default function LedgerPage() {
     );
   }
 
-
-  const showTasksIndicator =
-    stats.queuedCount > 0 || stats.processingCount > 0 || stats.failedCount > 0;
-
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* Top Navigation */}
@@ -70,44 +60,7 @@ export default function LedgerPage() {
         <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
           <div className="flex items-center gap-3">
             <LedgerSwitcher currentLedgerId={ledgerId} />
-            {showTasksIndicator && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="text-xs flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    {stats.processingCount > 0 && (
-                      <span className="flex items-center gap-1 text-primary">
-                        <span className="animate-spin rounded-full h-2 w-2 border-b border-primary"></span>
-                        {stats.processingCount}
-                      </span>
-                    )}
-                    {stats.queuedCount > 0 && (
-                      <span className="text-muted">
-                        {stats.queuedCount}
-                      </span>
-                    )}
-                    {stats.failedCount > 0 && (
-                      <span className="flex items-center gap-1 text-danger font-medium">
-                        <span className="h-2 w-2 rounded-full bg-danger"></span>
-                        {stats.failedCount}
-                      </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start">
-                  <div className="p-3 border-b border-border bg-surface2/50 flex justify-between items-center">
-                    <h4 className="font-medium text-sm">任务队列</h4>
-                    <span className="text-xs text-muted">
-                      共 {queuedReceipts.length} 个任务
-                    </span>
-                  </div>
-                  <div className="p-2">
-                    <TransactionQueueStatus
-                      queuedReceipts={queuedReceipts}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
+            <TaskCenter ledgerId={ledgerId} />
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/ledger/${ledgerId}/settings`}>

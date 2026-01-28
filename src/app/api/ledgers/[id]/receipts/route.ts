@@ -115,9 +115,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .returning();
 
-    // Trigger background processing (Fire and Forget)
-    processReceiptQueue().catch((err) => {
-      console.error("Background processing failed to start:", err);
+    // NEW: Create a GPT task using the generalized infrastructure
+    const { createTask } = await import("@/lib/gpt");
+    const { TASK_TYPE_PARSE_RECEIPT } = await import("@/lib/tasks");
+
+    await createTask({
+      type: TASK_TYPE_PARSE_RECEIPT,
+      title: validated.text ? `解析: ${validated.text.slice(0, 20)}...` : "解析图片账单",
+      ledgerId: ledgerId,
+      entityId: savedReceipt.id,
+      entityType: "receipt",
+      input: {
+        receiptId: savedReceipt.id,
+        text: validated.text,
+        imageUrls: imageUrls,
+        categories: await db.query.categories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
+        settings: {
+          mergeSimilarItems: ledger.mergeSimilarItems,
+          autoRecognizeDate: ledger.autoRecognizeDate,
+          autoConfirm: ledger.autoConfirm,
+        },
+      },
     });
 
     return NextResponse.json({

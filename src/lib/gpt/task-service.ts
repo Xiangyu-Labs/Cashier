@@ -129,7 +129,39 @@ export async function updateTaskProgress(taskId: string, progress: TaskProgress)
 }
 
 /**
+ * Atomically claim the next queued task for processing.
+ * Uses 'FOR UPDATE SKIP LOCKED' to prevent multiple workers from picking the same task.
+ */
+export async function claimNextTask(): Promise<GptTask | null> {
+    return await db.transaction(async (tx) => {
+        // Find the next queued task and lock it
+        const [task] = await tx
+            .select()
+            .from(gptTasks)
+            .where(eq(gptTasks.status, "queued"))
+            .orderBy(gptTasks.createdAt)
+            .limit(1)
+            .for("update", { skipLocked: true });
+
+        if (!task) return null;
+
+        // Mark as running immediately within the same transaction
+        const [updated] = await tx
+            .update(gptTasks)
+            .set({
+                status: "running",
+                startedAt: new Date(),
+            })
+            .where(eq(gptTasks.id, task.id))
+            .returning();
+
+        return mapToGptTask(updated);
+    });
+}
+
+/**
  * Get the next queued task (FIFO).
+ * @deprecated Use claimNextTask() for multi-worker support.
  */
 export async function getNextQueuedTask(): Promise<GptTask | null> {
     const task = await db.query.gptTasks.findFirst({

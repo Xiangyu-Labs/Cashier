@@ -4,33 +4,45 @@
 import { GptTask, TaskProgress, TaskExecutionContext } from "./types";
 import { getTaskHandler } from "./task-registry";
 import {
-    getNextQueuedTask,
-    markTaskRunning,
+    claimNextTask,
     markTaskCompleted,
     markTaskFailed,
     updateTaskProgress,
     getTask,
 } from "./task-service";
 
-let isProcessing = false;
+const N_WORKERS = parseInt(process.env.N_GPT_WORKERS || "1", 10);
+let runningWorkers = 0;
 
 /**
  * Process the task queue. 
- * This is the main entry point for task execution.
- * Only one worker runs at a time (serial processing).
+ * Launches multiple worker loops according to N_GPT_WORKERS env variable.
  */
 export async function processTaskQueue(): Promise<void> {
-    if (isProcessing) return;
-    isProcessing = true;
+    // Fill up the worker pool to N_WORKERS
+    while (runningWorkers < N_WORKERS) {
+        spawnWorker();
+    }
+}
+
+/**
+ * Spawn a single persistent worker loop.
+ */
+async function spawnWorker(): Promise<void> {
+    runningWorkers++;
+    console.log(`[GPT Worker] Instance ${runningWorkers}/${N_WORKERS} started`);
 
     try {
-        let task = await getNextQueuedTask();
+        let task = await claimNextTask();
         while (task) {
             await executeTask(task);
-            task = await getNextQueuedTask();
+            task = await claimNextTask();
         }
+    } catch (err) {
+        console.error("[GPT Worker] Critical loop error:", err);
     } finally {
-        isProcessing = false;
+        runningWorkers--;
+        console.log(`[GPT Worker] Instance finished. Active workers: ${runningWorkers}`);
     }
 }
 
@@ -45,7 +57,7 @@ async function executeTask(task: GptTask): Promise<void> {
         return;
     }
 
-    await markTaskRunning(task.id);
+    // Status is already marked as 'running' by claimNextTask()
 
     // Create execution context
     const context: TaskExecutionContext = {
@@ -101,5 +113,5 @@ async function executeTask(task: GptTask): Promise<void> {
  * Check if the worker is currently processing tasks.
  */
 export function isWorkerProcessing(): boolean {
-    return isProcessing;
+    return runningWorkers > 0;
 }

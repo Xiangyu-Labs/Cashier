@@ -368,7 +368,7 @@ export interface GptTask {
   ledgerId: string | null;
   entityId: string | null;
   entityType: string | null;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
   createdAt: string;
   startedAt: string | null;
