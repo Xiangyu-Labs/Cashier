@@ -24,7 +24,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   beforeEach(async () => {
     // Reset mock to default
     vi.mocked(getOpenAIClient).mockReturnValue({
-      generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.singleTransaction),
+      generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.singleEntry),
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
     const db = getTestDb();
@@ -60,7 +60,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   it("should persist ledger entries with notes", async () => {
     // Override mock for this test
     vi.mocked(getOpenAIClient).mockReturnValue({
-      generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.transactionWithMetadata),
+      generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.entryWithMetadata),
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
     const request = new NextRequest(

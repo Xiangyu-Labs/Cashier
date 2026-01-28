@@ -18,7 +18,7 @@ export function mockOpenAIResponse(response: MockOpenAIResponse): string {
 
 // Common test responses
 export const MOCK_RESPONSES = {
-    singleTransaction: mockOpenAIResponse({
+    singleEntry: mockOpenAIResponse({
         ledger_entries: [
             {
                 item_name: "午餐",
@@ -31,7 +31,7 @@ export const MOCK_RESPONSES = {
         title: "午餐消费",
     }),
 
-    transactionWithMetadata: mockOpenAIResponse({
+    entryWithMetadata: mockOpenAIResponse({
         ledger_entries: [
             {
                 item_name: "苹果",
@@ -44,7 +44,7 @@ export const MOCK_RESPONSES = {
         ],
     }),
 
-    multipleTransactions: mockOpenAIResponse({
+    multipleEntries: mockOpenAIResponse({
         ledger_entries: [
             {
                 item_name: "牛奶",
@@ -64,7 +64,7 @@ export const MOCK_RESPONSES = {
         title: "超市购物",
     }),
 
-    emptyTransactions: mockOpenAIResponse({ ledger_entries: [] }),
+    emptyEntries: mockOpenAIResponse({ ledger_entries: [] }),
 
     foreignCurrency: mockOpenAIResponse({
         ledger_entries: [
@@ -92,14 +92,14 @@ export const MOCK_RESPONSES = {
 };
 
 // Create a mock OpenAI client
-export function createMockOpenAIClient(mockResponse: string = MOCK_RESPONSES.singleTransaction) {
+export function createMockOpenAIClient(mockResponse: string = MOCK_RESPONSES.singleEntry) {
     return {
         generateContent: vi.fn().mockResolvedValue(mockResponse),
     };
 }
 
 // Setup OpenAI mock for tests
-export function setupOpenAIMock(mockResponse: string = MOCK_RESPONSES.singleTransaction) {
+export function setupOpenAIMock(mockResponse: string = MOCK_RESPONSES.singleEntry) {
     const mockClient = createMockOpenAIClient(mockResponse);
 
     vi.doMock("@/lib/ai/openai", () => ({

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments as receipts } from "@/lib/db/schema";
+import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 
 describe("LedgerEntries Database Operations", () => {
   describe("CREATE", () => {
@@ -62,8 +62,8 @@ describe("LedgerEntries Database Operations", () => {
         .values({ name: "Test Ledger" })
         .returning();
 
-      const [receipt] = await db
-        .insert(receipts)
+      const [sourceDocument] = await db
+        .insert(sourceDocuments)
         .values({
           ledgerId: ledger.id,
           text: "午餐25.5元",
@@ -74,7 +74,7 @@ describe("LedgerEntries Database Operations", () => {
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
-          sourceDocumentId: receipt.id,
+          sourceDocumentId: sourceDocument.id,
           amount: "25.50",
           currency: "CNY",
           itemName: "午餐",
@@ -85,7 +85,7 @@ describe("LedgerEntries Database Operations", () => {
 
       expect(created.currency).toBe("CNY");
       expect(created.description).toBe("在公司附近吃的");
-      expect(created.sourceDocumentId).toBe(receipt.id);
+      expect(created.sourceDocumentId).toBe(sourceDocument.id);
       expect(created.entryDate).toEqual(new Date("2025-01-25"));
     });
   });
@@ -147,7 +147,7 @@ describe("LedgerEntries Database Operations", () => {
   });
 
   describe("UPDATE", () => {
-    // Status update test removed as status is removed from transactions
+    // Status update test removed as status is removed from ledger_entries
     // We can test updating other fields like description or amount
     it("should update ledger entry description", async () => {
       const db = getTestDb();

@@ -6,7 +6,7 @@ This guide provides a comprehensive overview of the GPT task infrastructure desi
 
 The infrastructure is split into two main parts:
 1. **Core Infrastructure (`src/lib/gpt/`)**: A pure, business-agnostic engine responsible for task queuing, execution coordination, and state management.
-2. **Task Implementations (`src/lib/tasks/`)**: Where business-specific logic resides (e.g., receipt parsing, summarization).
+2. **Task Implementations (`src/lib/tasks/`)**: Where business-specific logic resides (e.g., source document parsing, summarization).
 
 ### The Data Flow
 ```mermaid
@@ -113,7 +113,7 @@ The GPT infrastructure does **not** guarantee retries.
 For multi-step tasks, use `context.updateProgress` to save intermediate data in the `progress.data` field. This helps with debugging and provides rich UI feedback.
 
 ### 4. Purity
-Do **not** import business models (`receipts`, `transactions`, etc.) inside `src/lib/gpt`. Keep those imports strictly within `src/lib/tasks`.
+Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/gpt`. Keep those imports strictly within `src/lib/tasks`.
 
 ### 5. Concurrency Configuration
 The number of concurrent worker loops can be controlled via the environment variable:

@@ -34,10 +34,10 @@ describe("OpenAIMessageProcessor", () => {
   });
 
   describe("process()", () => {
-    it("should parse single transaction from text input", async () => {
+    it("should parse single ledger entry from text input", async () => {
       const input: SourceDocumentInput = { text: "午餐花了25.5元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       const result = await processor.process(input, defaultContext);
 
@@ -52,7 +52,7 @@ describe("OpenAIMessageProcessor", () => {
       });
     });
 
-    it("should parse transaction with notes (replaces metadata)", async () => {
+    it("should parse ledger entry with notes (replaces metadata)", async () => {
       const input: SourceDocumentInput = { text: "苹果2公斤，每公斤10元" };
 
       // Mock response that puts details in notes
@@ -74,13 +74,13 @@ describe("OpenAIMessageProcessor", () => {
       const result = await processor.process(input, defaultContext);
 
       expect(result.ledgerEntries).toHaveLength(1);
-      const tx = result.ledgerEntries[0];
-      expect(tx.itemName).toBe("苹果");
-      expect(tx.notes).toContain("2kg");
-      expect(tx.notes).toContain("10元");
+      const entry = result.ledgerEntries[0];
+      expect(entry.itemName).toBe("苹果");
+      expect(entry.notes).toContain("2kg");
+      expect(entry.notes).toContain("10元");
     });
 
-    it("should parse transaction with explicit notes", async () => {
+    it("should parse ledger entry with explicit notes", async () => {
       const input: SourceDocumentInput = { text: "买了一箱牛奶，每盒5元，一共24盒，大家平分" };
 
       const responseWithNotes = JSON.stringify({
@@ -101,16 +101,16 @@ describe("OpenAIMessageProcessor", () => {
       const result = await processor.process(input, defaultContext);
 
       expect(result.ledgerEntries).toHaveLength(1);
-      const tx = result.ledgerEntries[0];
-      expect(tx.itemName).toBe("牛奶");
-      expect(tx.notes).toContain("大家平分");
-      expect(tx.notes).toContain("24盒");
+      const entry = result.ledgerEntries[0];
+      expect(entry.itemName).toBe("牛奶");
+      expect(entry.notes).toContain("大家平分");
+      expect(entry.notes).toContain("24盒");
     });
 
     it("should parse multiple ledger entries", async () => {
       const input: SourceDocumentInput = { text: "超市购物：牛奶15元，面包8元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.multipleTransactions);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.multipleEntries);
 
       const result = await processor.process(input, defaultContext);
 
@@ -140,9 +140,9 @@ describe("OpenAIMessageProcessor", () => {
     });
 
     it("should return empty array on empty response", async () => {
-      const input: SourceDocumentInput = { text: "no transactions" };
+      const input: SourceDocumentInput = { text: "no records" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyTransactions);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyEntries);
 
       const result = await processor.process(input, defaultContext);
 
@@ -164,17 +164,17 @@ describe("OpenAIMessageProcessor", () => {
     it("should include rawResponse in result", async () => {
       const input: SourceDocumentInput = { text: "test" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.rawResponse).toBe(MOCK_RESPONSES.singleTransaction);
+      expect(result.rawResponse).toBe(MOCK_RESPONSES.singleEntry);
     });
 
     it("should call generateContent with system prompt and messages", async () => {
       const input: SourceDocumentInput = { text: "午餐25元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       await processor.process(input, defaultContext);
 
@@ -197,7 +197,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       const result = await processor.process(input, defaultContext);
 
@@ -225,7 +225,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       await processor.process(input, defaultContext);
 
@@ -243,7 +243,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should add placeholder text when no input provided", async () => {
       const input: SourceDocumentInput = {};
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyTransactions);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyEntries);
 
       await processor.process(input, defaultContext);
 
@@ -264,7 +264,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleTransaction);
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
 
       await processor.process(input, defaultContext);
 
@@ -354,7 +354,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle malformed JSON gracefully", async () => {
       const input: SourceDocumentInput = { text: "test" };
 
-      mockGenerateContent.mockResolvedValue('{"transactions": [');
+      mockGenerateContent.mockResolvedValue('{"ledger_entries": [');
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
@@ -363,7 +363,7 @@ describe("OpenAIMessageProcessor", () => {
       const input: SourceDocumentInput = { text: "test" };
 
       mockGenerateContent.mockResolvedValue(`\`\`\`
-${MOCK_RESPONSES.singleTransaction}
+${MOCK_RESPONSES.singleEntry}
 \`\`\``);
 
       const result = await processor.process(input, defaultContext);

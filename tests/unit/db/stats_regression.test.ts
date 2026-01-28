@@ -36,7 +36,7 @@ describe("Stats Regression Test", () => {
         expect(tx.createdAt).toBeDefined();
 
         // Simulate the API query logic
-        // We want to find this transaction if we query for today's date range
+        // We want to find this entry if we query for today's date range
         const today = new Date();
         const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);

@@ -3,24 +3,24 @@ import { NextRequest } from "next/server";
 import { POST as createLedger, GET as getLedgers } from "@/app/api/ledgers/route";
 import { GET as getLedger, DELETE as deleteLedger, PATCH as updateLedger } from "@/app/api/ledgers/[id]/route";
 import { POST as sendMessage } from "@/app/api/ledgers/[id]/source-documents/route";
-import { GET as getTransactions } from "@/app/api/ledgers/[id]/ledger-entries/route";
+import { GET as getLedgerEntries } from "@/app/api/ledgers/[id]/ledger-entries/route";
 import { GET as getCategories } from "@/app/api/ledgers/[id]/entry-categories/route";
 import { getTestDb } from "../../setup";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 import { processAllPendingTasks } from "../../helpers/processing";
-import { EntryCategory as Category, LedgerEntry as Transaction } from "@/types/api";
+import { EntryCategory as Category, LedgerEntry } from "@/types/api";
 
 // Mock OpenAI for all E2E tests
 vi.mock("@/lib/ai/openai", () => ({
   getOpenAIClient: () => ({
-    generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.multipleTransactions),
+    generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.multipleEntries),
   }),
 }));
 
-describe("Full Transaction Flow", () => {
-  it("should complete: create ledger -> verify categories -> send message -> verify transactions", async () => {
+describe("Full Ledger Entry Flow", () => {
+  it("should complete: create ledger -> verify categories -> send message -> verify ledger entries", async () => {
     // Step 1: Create a new ledger
     const createRequest = new NextRequest("http://localhost/api/ledgers", {
       method: "POST",
@@ -34,7 +34,7 @@ describe("Full Transaction Flow", () => {
     expect(ledger.id).toBeDefined();
     expect(ledger.name).toBe("E2E Test Ledger");
 
-    // Enable auto-confirm for testing transaction creation flow
+    // Enable auto-confirm for testing ledger entry creation flow
     const updateRequest = new NextRequest(
       `http://localhost/api/ledgers/${ledger.id}`,
       {
@@ -65,7 +65,7 @@ describe("Full Transaction Flow", () => {
     expect(fetchedCategories.length).toBeGreaterThanOrEqual(2);
     expect(fetchedCategories.map((c) => c.name)).toContain("餐饮");
 
-    // Step 3: Send a message to create transactions
+    // Step 3: Send a message to create ledger entries
     const messageRequest = new NextRequest(
       `http://localhost/api/ledgers/${ledger.id}/source-documents`,
       {
@@ -98,21 +98,21 @@ describe("Full Transaction Flow", () => {
       retries++;
     }
 
-    // Step 4: Verify transactions are persisted
-    // Fetch transactions directly from API or DB
-    const transactionsRequest = new NextRequest(
+    // Step 4: Verify ledger entries are persisted
+    // Fetch ledger entries directly from API or DB
+    const ledgerEntriesRequest = new NextRequest(
       `http://localhost/api/ledgers/${ledger.id}/ledger-entries`
     );
 
-    const transactionsResponse = await getTransactions(transactionsRequest, {
+    const ledgerEntriesResponse = await getLedgerEntries(ledgerEntriesRequest, {
       params: Promise.resolve({ id: ledger.id }),
     });
-    const responseBody = await transactionsResponse.json();
-    const allTransactions = responseBody.items as Transaction[];
+    const responseBody = await ledgerEntriesResponse.json();
+    const allLedgerEntries = responseBody.items as LedgerEntry[];
 
-    expect(allTransactions).toHaveLength(2);
-    expect(allTransactions.map((t) => t.itemName)).toContain("牛奶");
-    expect(allTransactions.map((t) => t.itemName)).toContain("面包");
+    expect(allLedgerEntries).toHaveLength(2);
+    expect(allLedgerEntries.map((t) => t.itemName)).toContain("牛奶");
+    expect(allLedgerEntries.map((t) => t.itemName)).toContain("面包");
 
     // Step 5: Verify input message was saved with AI response
     const savedMessage = await db.query.sourceDocuments.findFirst({
@@ -144,7 +144,7 @@ describe("Full Transaction Flow", () => {
       { params: Promise.resolve({ id: ledger.id }) }
     );
 
-    // Create transactions via message
+    // Create ledger entries via message
     const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/source-documents`, {
         method: "POST",
@@ -170,10 +170,10 @@ describe("Full Transaction Flow", () => {
     }
 
     // Verify data exists
-    let txCount = await db.query.ledgerEntries.findMany({
+    let entriesCount = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.ledgerId, ledger.id),
     });
-    expect(txCount.length).toBeGreaterThan(0);
+    expect(entriesCount.length).toBeGreaterThan(0);
 
     // Delete ledger
     const deleteResponse = await deleteLedger(
@@ -183,10 +183,10 @@ describe("Full Transaction Flow", () => {
     expect(deleteResponse.status).toBe(200);
 
     // Verify all related data is deleted
-    txCount = await db.query.ledgerEntries.findMany({
+    entriesCount = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.ledgerId, ledger.id),
     });
-    expect(txCount).toHaveLength(0);
+    expect(entriesCount).toHaveLength(0);
 
     const messages = await db.query.sourceDocuments.findMany({
       where: eq(sourceDocuments.ledgerId, ledger.id),
@@ -223,7 +223,7 @@ describe("Full Transaction Flow", () => {
     expect(allLedgers[0].name).toBe("Ledger 2");
   });
 
-  it("should correctly associate transactions with categories", async () => {
+  it("should correctly associate ledger entries with categories", async () => {
     // Create ledger with default categories
     const createRequest = new NextRequest("http://localhost/api/ledgers", {
       method: "POST",
@@ -293,27 +293,26 @@ describe("Full Transaction Flow", () => {
     }
     expect(finalMessage?.status).toBe("completed");
 
-    // Get transactions and verify category associations
-    const transactionsResponse = await getTransactions(
+    // Get ledger entries and verify category associations
+    const ledgerEntriesResponse = await getLedgerEntries(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/ledger-entries`),
       { params: Promise.resolve({ id: ledger.id }) }
     );
-    const responseBody = await transactionsResponse.json();
-    const allTransactions = responseBody.items as Transaction[];
+    const responseBody = await ledgerEntriesResponse.json();
+    const allLedgerEntries = responseBody.items as LedgerEntry[];
 
-    const milkTx = allTransactions.find((t) => t.itemName === "牛奶");
-    const breadTx = allTransactions.find((t) => t.itemName === "面包");
+    const milkEntry = allLedgerEntries.find((t) => t.itemName === "牛奶");
+    const breadEntry = allLedgerEntries.find((t) => t.itemName === "面包");
 
-    expect(milkTx).toBeDefined();
-    expect(milkTx).toBeDefined();
-    expect(breadTx).toBeDefined();
+    expect(milkEntry).toBeDefined();
+    expect(breadEntry).toBeDefined();
 
     // 牛奶 should be associated with 日用
-    expect(milkTx!.categoryId).toBe(dailyCategory!.id);
-    expect(milkTx!.category?.name).toBe("日用");
+    expect(milkEntry!.categoryId).toBe(dailyCategory!.id);
+    expect(milkEntry!.category?.name).toBe("日用");
 
     // 面包 should be associated with 餐饮
-    expect(breadTx!.categoryId).toBe(foodCategory!.id);
-    expect(breadTx!.category?.name).toBe("餐饮");
+    expect(breadEntry!.categoryId).toBe(foodCategory!.id);
+    expect(breadEntry!.category?.name).toBe("餐饮");
   });
 });
