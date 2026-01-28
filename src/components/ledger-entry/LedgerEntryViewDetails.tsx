@@ -1,10 +1,8 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { Calendar, Edit2, Tag, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
-import { SourceDocumentOriginalContent } from "./SourceDocumentOriginalContent";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { type ReactNode, useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -249,62 +247,48 @@ export function LedgerEntryViewDetails({
                 </div>
             </div>
 
-            {/* Original Input */}
-            <div>
-                <h4 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                    {t("originalInput")}
-                </h4>
-                <div className="p-4 bg-surface2 rounded-lg border border-border">
-                    {ledgerEntry.sourceDocument ? (
-                        <SourceDocumentOriginalContent
-                            text={ledgerEntry.sourceDocument.text}
-                            images={ledgerEntry.sourceDocument.imageUrls}
-                        />
-                    ) : (
-                        <p className="text-muted text-sm italic">{t("noOriginal")}</p>
-                    )}
-                </div>
-            </div>
+            {/* Original Input removed */}
 
-            {/* Actions */}
-            <DialogFooter>
+            {/* Actions Bottom */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                 {isEditing ? (
-                    <div className="flex w-full justify-between">
+                    <>
                         <Button
-                            variant="destructive"
-                            onClick={onDelete}
-                            size="icon"
-                            title={tCommon("delete")}
+                            variant="ghost"
+                            onClick={onEditCancel}
+                            className="h-10 px-4"
                         >
-                            <Trash2 className="h-4 w-4" />
+                            <X className="h-4 w-4 mr-2" />
+                            {tCommon("cancel")}
                         </Button>
-                        <div className="flex gap-2">
-                            <Button variant="ghost" onClick={onEditCancel}>
-                                <X className="h-4 w-4 mr-2" />
-                                {tCommon("cancel")}
-                            </Button>
-                            <Button onClick={onEditSave}>
-                                <Check className="h-4 w-4 mr-2" />
-                                {tCommon("save")}
-                            </Button>
-                        </div>
-                    </div>
+                        <Button
+                            onClick={onEditSave}
+                            className="h-10 px-6"
+                        >
+                            <Check className="h-4 w-4 mr-2" />
+                            {tCommon("save")}
+                        </Button>
+                    </>
                 ) : (
-                    <div className="flex w-full justify-between">
+                    <>
                         <Button
                             variant="destructive"
                             onClick={onDelete}
+                            className="h-10 px-6"
                         >
                             <Trash2 className="h-4 w-4 mr-2" />
                             {tCommon("delete")}
                         </Button>
-                        <Button onClick={onEditStart}>
+                        <Button
+                            onClick={onEditStart}
+                            className="h-10 px-6"
+                        >
                             <Edit2 className="h-4 w-4 mr-2" />
                             {t("edit")}
                         </Button>
-                    </div>
+                    </>
                 )}
-            </DialogFooter>
+            </div>
         </div>
     );
 }

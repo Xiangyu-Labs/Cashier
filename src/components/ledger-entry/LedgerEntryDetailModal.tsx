@@ -100,33 +100,31 @@ export function LedgerEntryDetailModal({
         <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg pr-4">
 
 
-          <div className="py-2">
-            <LedgerEntryViewDetails
-              ledgerEntry={ledgerEntry}
-              isEditing={isEditing}
-              editData={editData}
-              categories={categories}
-              onEditStart={() => setIsEditing(true)}
-              onEditChange={setEditData}
-              onEditSave={handleSave}
-              onEditCancel={() => {
-                setIsEditing(false);
-                if (ledgerEntry) {
-                  setEditData({
-                    itemName: ledgerEntry.itemName,
-                    amount: parseFloat(ledgerEntry.amount),
-                    currency: ledgerEntry.currency || "",
-                    categoryId: ledgerEntry.categoryId || "",
-                    entryDate: ledgerEntry.entryDate || "",
-                    description: ledgerEntry.description || "",
-                  });
-                }
-              }}
-              onDelete={() => setShowDeleteConfirm(true)}
-            />
-          </div>
+          <LedgerEntryViewDetails
+            ledgerEntry={ledgerEntry}
+            isEditing={isEditing}
+            editData={editData}
+            categories={categories}
+            onEditStart={() => setIsEditing(true)}
+            onEditChange={setEditData}
+            onEditSave={handleSave}
+            onEditCancel={() => {
+              setIsEditing(false);
+              if (ledgerEntry) {
+                setEditData({
+                  itemName: ledgerEntry.itemName,
+                  amount: parseFloat(ledgerEntry.amount),
+                  currency: ledgerEntry.currency || "",
+                  categoryId: ledgerEntry.categoryId || "",
+                  entryDate: ledgerEntry.entryDate || "",
+                  description: ledgerEntry.description || "",
+                });
+              }
+            }}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       <ConfirmDialog
         open={showDeleteConfirm}
