@@ -21,7 +21,7 @@ let runningWorkers = 0;
  * Launches multiple worker loops according to PROCESSING_WORKER_COUNT env variable.
  */
 export async function processTaskQueue(): Promise<void> {
-    const N_WORKERS = parseInt(process.env.PROCESSING_WORKER_COUNT || process.env.GPT_WORKER_COUNT || "1", 10);
+    const N_WORKERS = parseInt(process.env.PROCESSING_WORKER_COUNT || "1", 10);
     // Fill up the worker pool to N_WORKERS
     while (runningWorkers < N_WORKERS) {
         spawnWorker(N_WORKERS);

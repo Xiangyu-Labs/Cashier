@@ -1,17 +1,17 @@
-# GPT Task Infrastructure Development Guide
+# Processing Task Infrastructure Development Guide
 
-This guide provides a comprehensive overview of the GPT task infrastructure designed for decoupled, robust, and asynchronous task management.
+This guide provides a comprehensive overview of the processing task infrastructure designed for decoupled, robust, and asynchronous task management.
 
 ## 🏗 Architecture Overview
 
 The infrastructure is split into two main parts:
-1. **Core Infrastructure (`src/lib/gpt/`)**: A pure, business-agnostic engine responsible for task queuing, execution coordination, and state management.
+1. **Core Infrastructure (`src/lib/processing/`)**: A pure, business-agnostic engine responsible for task queuing, execution coordination, and state management.
 2. **Task Implementations (`src/lib/tasks/`)**: Where business-specific logic resides (e.g., source document parsing, summarization).
 
 ### The Data Flow
 ```mermaid
 graph LR
-    A[Business Layer] -- createTask --> B[gpt_tasks DB]
+    A[Business Layer] -- createProcessingTask --> B[processing_tasks DB]
     B -- trigger --> C[Task Worker]
     C -- load handler --> D[Task Handler]
     D -- execute steps --> E[GPT / External Service]
@@ -24,7 +24,7 @@ graph LR
 
 ## 🛠 Implementing a New Task
 
-To add a new GPT-powered feature, follow these steps:
+To add a new feature powered by processing tasks, follow these steps:
 
 ### 1. Define Input/Output Types
 Create a file in `src/lib/tasks/` (e.g., `my-feature.ts`).
@@ -36,13 +36,13 @@ export interface MyFeatureInput {
 }
 ```
 
-### 2. Implement `TaskHandler`
-Implement the `TaskHandler` interface.
+### 2. Implement `ProcessingTaskHandler`
+Implement the `ProcessingTaskHandler` interface.
 
 ```typescript
-import { registerTask, TaskHandler } from "@/lib/gpt";
+import { registerProcessingTask, ProcessingTaskHandler } from "@/lib/processing";
 
-const myFeatureHandler: TaskHandler<MyFeatureInput, string> = {
+const myFeatureHandler: ProcessingTaskHandler<string> = {
   // 1. Core Logic
   async execute(task, context) {
     const input = task.input as MyFeatureInput;
@@ -50,8 +50,8 @@ const myFeatureHandler: TaskHandler<MyFeatureInput, string> = {
     // Use context to track progress
     await context.updateProgress({ currentStep: "analyzing" });
     
-    // Call GPT...
-    const result = "GPT output";
+    // Call GPT or perform logic...
+    const result = "Task output";
     
     return result;
   },
@@ -59,7 +59,7 @@ const myFeatureHandler: TaskHandler<MyFeatureInput, string> = {
   // 2. Business Write-back
   async onComplete(output, task) {
     // Final validation: entityId exists?
-    // Update business table...
+    // Update business table (e.g., ledger_entries, source_documents)...
   },
 
   // 3. Error Cleanup
@@ -69,7 +69,7 @@ const myFeatureHandler: TaskHandler<MyFeatureInput, string> = {
 };
 
 // 3. Register IT
-registerTask("my_feature_type", myFeatureHandler);
+registerProcessingTask("my_feature_type", myFeatureHandler);
 ```
 
 ### 3. Register in Tasks Index
@@ -81,9 +81,9 @@ Import your file in `src/lib/tasks/index.ts` to ensure it registers at startup.
 
 ### Create a Task
 ```typescript
-import { createTask } from "@/lib/gpt";
+import { createProcessingTask } from "@/lib/processing";
 
-const { taskId } = await createTask({
+const { taskId } = await createProcessingTask({
   type: "my_feature_type",
   title: "Analyzing something...",
   ledgerId: ledgerId,
@@ -94,7 +94,7 @@ const { taskId } = await createTask({
 ```
 
 ### Track Progress (Frontend)
-Use `fetchGptTasks(ledgerId)` to get the latest status. The `TaskCenter` component already displays this information for any task type.
+Use `getRecentProcessingTasks(ledgerId)` to get the latest status. The `TaskCenter` component already displays this information for any task type.
 
 ---
 
@@ -102,10 +102,10 @@ Use `fetchGptTasks(ledgerId)` to get the latest status. The `TaskCenter` compone
 
 ### 1. Final Commit Validation
 **Always** re-verify the existence and status of your business entity in `onComplete` or at the end of `execute`.
-> GPT execution is slow; the world might have changed while GPT was "thinking" (e.g., user deleted the record).
+> Processing execution (especially with LLMs) is slow; the world might have changed while the task was running (e.g., user deleted the record).
 
 ### 2. Best-Effort Semantics
-The GPT infrastructure does **not** guarantee retries.
+The processing infrastructure does **not** guarantee retries.
 - If it fails, it marks the task as `failed`.
 - The UI should detect `failed` state and offer a "Retry" button that creates a **new** task.
 
@@ -113,8 +113,8 @@ The GPT infrastructure does **not** guarantee retries.
 For multi-step tasks, use `context.updateProgress` to save intermediate data in the `progress.data` field. This helps with debugging and provides rich UI feedback.
 
 ### 4. Purity
-Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/gpt`. Keep those imports strictly within `src/lib/tasks`.
+Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/processing`. Keep those imports strictly within `src/lib/tasks`.
 
 ### 5. Concurrency Configuration
 The number of concurrent worker loops can be controlled via the environment variable:
-- `GPT_WORKER_COUNT`: Set this in your `.env` files (default is 1).
+- `PROCESSING_WORKER_COUNT`: Set this in your `.env` files (default is 1).
