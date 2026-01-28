@@ -97,7 +97,7 @@ export function LedgerEntryDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg pr-4">
 
 
           <div className="py-2">

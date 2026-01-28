@@ -103,3 +103,37 @@ body {
 .input-error:focus {
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
+
+/* Custom Scrollbar */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted), transparent 50%);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+
+  /* Hide scrollbar when not hovering for a cleaner look on some containers if desired */
+  /* This is a common premium pattern */
+  .subtle-scrollbar {
+    scrollbar-gutter: stable;
+  }
+}
