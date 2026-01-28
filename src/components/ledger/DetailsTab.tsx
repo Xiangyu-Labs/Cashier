@@ -41,7 +41,8 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
         data,
         fetchNextPage,
         hasNextPage,
-        isFetchingNextPage
+        isFetchingNextPage,
+        isLoading,
     } = useInfiniteQuery({
         queryKey: ["transactions", ledgerId, "confirmed", startDateStr, endDateStr],
         queryFn: ({ pageParam }) => fetchTransactions(ledgerId, {
@@ -160,7 +161,6 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                     {groupedItems.map((group) => (
                         <motion.div
                             key={group.title}
-                            layout
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -176,10 +176,10 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                                 {group.items.map((tx) => (
                                     <motion.div
                                         key={tx.id}
-                                        layout
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
                                     >
                                         <TransactionCard
                                             transaction={tx}
@@ -212,7 +212,12 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                     </div>
                 )}
 
-                {monthTransactions.length === 0 && (
+                {isLoading ? (
+                    <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                        <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
+                        <span>加载中...</span>
+                    </div>
+                ) : monthTransactions.length === 0 && (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">📭</span>
                         <span>本月暂无支出</span>

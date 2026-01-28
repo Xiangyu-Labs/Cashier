@@ -9,6 +9,7 @@ import {
   date,
   jsonb,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -94,7 +95,10 @@ export const receipts = pgTable("receipts", {
   proposedTransactions: jsonb("proposed_transactions").$type<unknown[]>(),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_receipts_ledger_status").on(table.ledgerId, table.status),
+  index("idx_receipts_ledger_created").on(table.ledgerId, table.createdAt),
+]);
 
 export const receiptsRelations = relations(
   receipts,
@@ -125,7 +129,11 @@ export const transactions = pgTable("transactions", {
   description: text("description"), // Stores the consolidated notes
   transactionDate: date("transaction_date", { mode: "date" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_transactions_ledger_date").on(table.ledgerId, table.transactionDate),
+  index("idx_transactions_receipt").on(table.receiptId),
+  index("idx_transactions_created_at").on(table.createdAt),
+]);
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   ledger: one(ledgers, {
@@ -191,7 +199,10 @@ export const gptTasks = pgTable("gpt_tasks", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => [
+  index("idx_gpt_tasks_ledger_status").on(table.ledgerId, table.status),
+  index("idx_gpt_tasks_created_at").on(table.createdAt),
+]);
 
 // Type for progress tracking (flexible structure)
 export interface TaskProgress {

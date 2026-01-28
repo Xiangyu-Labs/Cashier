@@ -84,6 +84,7 @@ export function TransactionsTab({
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
+        isLoading,
     } = useInfiniteQuery({
         queryKey: ["receipts", ledgerId, "all", dateRange.start?.toISOString(), dateRange.end?.toISOString()],
         queryFn: ({ pageParam }) => fetchReceipts(ledgerId, {
@@ -439,7 +440,12 @@ export function TransactionsTab({
 
             {/* Main Receipt List (Chronological) */}
             <div className="space-y-6 px-2">
-                {allReceipts.length === 0 ? (
+                {isLoading ? (
+                    <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                        <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
+                        <span>加载中...</span>
+                    </div>
+                ) : allReceipts.length === 0 ? (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">🧾</span>
                         <span>暂无记录</span>
