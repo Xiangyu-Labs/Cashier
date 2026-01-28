@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
                     sourceDocumentId: savedDoc.id,
                     text: text || undefined,
                     imageUrls: imageUrls,
+                    preferredCurrencies: ledger.currencies || undefined,
                     categories: await db.query.entryCategories.findMany({
                         where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId))
                     }),

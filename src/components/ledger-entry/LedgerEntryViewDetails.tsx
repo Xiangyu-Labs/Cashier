@@ -189,9 +189,7 @@ export function LedgerEntryViewDetails({
                                     <CategoryIcon iconName={ledgerEntry.category.icon} className="h-3 w-3 mr-1.5" />
                                     {ledgerEntry.category.name}
                                 </Badge>
-                            ) : (
-                                <Badge variant="warning">{tCommon("unclassified")}</Badge>
-                            )
+                            ) : null
                         )}
                     </div>
                 </div>

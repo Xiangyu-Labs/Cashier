@@ -23,6 +23,7 @@ export interface ParseSourceDocumentInput {
         autoRecognizeDate: boolean;
         autoConfirm: boolean;
     };
+    preferredCurrencies?: string[];
 }
 
 
@@ -54,7 +55,8 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
             {
                 categories: input.categories,
                 mergeSimilarItems: false, // Handle merge in step 2
-                language: input.language
+                language: input.language,
+                preferredCurrencies: input.preferredCurrencies
             }
         );
 

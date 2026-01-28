@@ -189,6 +189,26 @@ describe("OpenAIMessageProcessor", () => {
       expect(messages[0].content[0]).toEqual({ type: "text", text: "午餐25元" });
     });
 
+    it("should pass preferredCurrencies from context to buildLedgerEntryPrompt", async () => {
+      const input: SourceDocumentInput = { text: "午餐25元" };
+      const contextWithCurrencies: ProcessorContext = {
+        ...defaultContext,
+        preferredCurrencies: ["USD", "HKD"],
+      };
+
+      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+
+      await processor.process(input, contextWithCurrencies);
+
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const [systemPrompt] = mockGenerateContent.mock.calls[0];
+
+      // Verify the prompt contains the preferred currencies
+      expect(systemPrompt).toContain("**User Preferred Currencies**: USD, HKD");
+      // Verify the prompt contains the common currency list
+      expect(systemPrompt).toContain("- **Common Currency Reference**: USD, AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, ZAR");
+    });
+
     it("should handle image input", async () => {
       const input: SourceDocumentInput = {
         images: [
@@ -297,7 +317,7 @@ describe("OpenAIMessageProcessor", () => {
               item_name: "Unknown Item",
               amount: 50,
               currency: null,
-              category: null,
+              category: "餐饮",
               entry_date: null,
             },
           ],
@@ -307,7 +327,7 @@ describe("OpenAIMessageProcessor", () => {
       const result = await processor.process(input, defaultContext);
 
       expect(result.ledgerEntries[0].currency).toBeNull();
-      expect(result.ledgerEntries[0].category).toBeNull();
+      expect(result.ledgerEntries[0].category).toBe("餐饮");
       expect(result.ledgerEntries[0].entryDate).toBeNull();
     });
 
@@ -321,7 +341,7 @@ describe("OpenAIMessageProcessor", () => {
               item_name: "Refund",
               amount: -50,
               currency: "CNY",
-              category: null,
+              category: "餐饮",
               entry_date: null,
             },
           ],
@@ -342,7 +362,7 @@ describe("OpenAIMessageProcessor", () => {
               item_name: "Free Item",
               amount: 0,
               currency: "CNY",
-              category: null,
+              category: "餐饮",
               entry_date: null,
             },
           ],
@@ -389,7 +409,7 @@ ${MOCK_RESPONSES.singleEntry}
 
       mockGenerateContent.mockResolvedValue(response);
 
-      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid category: 不存在的分类");
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid or missing category: 不存在的分类");
     });
   });
 });

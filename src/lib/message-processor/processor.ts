@@ -17,7 +17,7 @@ const ledgerEntrySchema = z.object({
   item_name: z.string(),
   amount: z.number().min(0),
   currency: z.string().nullable(),
-  category: z.string().nullable(),
+  category: z.string(),
   entry_date: z.string().nullable(),
   notes: z.string().nullable().optional(),
 });
@@ -36,7 +36,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   ): Promise<ProcessingResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate);
+    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate, context.preferredCurrencies);
 
     const contentParts: ChatCompletionContentPart[] = [];
 
@@ -98,8 +98,8 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
       }
 
       const ledgerEntries = validated.ledger_entries.map((t) => {
-        if (t.category && !allowedCategories.includes(t.category)) {
-          throw new Error(`Invalid category: ${t.category}. Must be one of: ${allowedCategories.join(", ")}`);
+        if (!t.category || !allowedCategories.includes(t.category)) {
+          throw new Error(`Invalid or missing category: ${t.category}. Must be one of: ${allowedCategories.join(", ")}`);
         }
         return {
           itemName: t.item_name,

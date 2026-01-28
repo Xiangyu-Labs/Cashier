@@ -3,7 +3,8 @@ import { CategoryInfo } from "../message-processor/types";
 export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],
   targetLanguage: string = "zh-CN",
-  currentDate?: string
+  currentDate?: string,
+  preferredCurrencies: string[] = []
 ): string {
   const categoryList = categories
     .map((c, i) => `${i + 1}. ${c.name}${c.description ? ` - ${c.description}` : ""}`)
@@ -18,6 +19,8 @@ export function buildLedgerEntryPrompt(
 - **Available Categories**:
 ${categoryList}
 - **Target Language**: ${targetLanguage} (ALL user-visible fields like title, item_name, and notes MUST be translated into this language.)
+- **Common Currency Reference**: USD, AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, ZAR
+- **User Preferred Currencies**: ${preferredCurrencies.length > 0 ? preferredCurrencies.join(", ") : "None specified"} (Most inputs will be in these currencies.)
 
 ### Output Requirements
 Return STRICT JSON format. Do NOT include markdown code blocks (\`\`\`json ... \`\`\`). Return the JSON object directly.
@@ -40,9 +43,12 @@ Structure:
 ### Core Rules
 1. **Title**: Generate a meaningful title for the source document, preferably including the merchant name and main consumption content, for quick identification.
 2. **Splitting Principle**: If it's a shopping receipt or contains multiple different items, split them into multiple ledger entries. Identify "Total" or "Subtotal" lines for reference, but do not include them as separate items.
-3. **Currency Identification**: Prioritize currency from content (e.g., $ -> USD, ¥ -> CNY or JPY). In a Chinese context without symbols, default to CNY.
-   - Supported codes: CNY, USD, EUR, JPY, HKD, TWD, GBP.
-   - Use null if unable to determine.
+3. **Currency Identification**: 
+   - Reference common currency codes for identification.
+   - **Preference Logic**: In most cases, the input will be in one of the "User Preferred Currencies". Prioritize inferring these currencies (e.g., if multiple currencies use the same symbol like $, prefer the one in the preferred list).
+   - Only choose a currency outside the preferred list if you are VERY certain (e.g., explicit currency code or unique symbol like €).
+   - If unable to determine with high confidence, use \`null\`.
+   - Default to CNY only if it's in a Chinese context and no other information is available.
 4. **Category Matching**: You MUST select the most appropriate name from the "Available Categories" list for the 'category' field. Since there is an "Other" category (or similar), ALL entries must be classified. Do NOT return a category that is not in the list.
 5. **Date Handling**:
    - Prioritize explicit dates (YYYY-MM-DD).

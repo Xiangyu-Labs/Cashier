@@ -34,6 +34,7 @@ export interface ProcessorContext {
     categories: CategoryInfo[];
     mergeSimilarItems?: boolean;
     language?: string;
+    preferredCurrencies?: string[];
 }
 
 export interface SourceDocumentProcessor {

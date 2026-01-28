@@ -5,7 +5,7 @@ export interface MockOpenAIResponse {
         item_name: string;
         amount: number;
         currency: string | null;
-        category: string | null;
+        category: string;
         entry_date: string | null;
         notes?: string;
     }>;
