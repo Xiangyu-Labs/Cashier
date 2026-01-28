@@ -87,16 +87,17 @@ export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInput
             />
 
             {images.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-4 gap-2">
                     {images.map((img, idx) => (
                         <div key={idx} className="relative group">
-                            <Image
-                                src={img.data}
-                                alt={`Uploaded ${idx + 1}`}
-                                width={80}
-                                height={80}
-                                className="object-cover rounded-md border border-border"
-                            />
+                            <div className="aspect-square relative w-full overflow-hidden rounded-md border border-border">
+                                <Image
+                                    src={img.data}
+                                    alt={`Uploaded ${idx + 1}`}
+                                    fill
+                                    className="object-cover"
+                                />
+                            </div>
                             <button
                                 onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
                                 className="absolute -top-2 -right-2 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
