@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ParsedTransaction } from "./types";
+import { ParsedLedgerEntry } from "./types";
 import { getOpenAIClient } from "../ai/openai";
 import { buildSummarizationPrompt } from "../ai/prompts";
 import { logger } from "@/lib/logger";
@@ -10,40 +10,40 @@ const summarizationSchema = z.object({
 });
 
 /**
- * Groups and summarizes transactions using AI.
+ * Groups and summarizes ledger entries using AI.
  */
-export async function summarizeTransactions(
-    transactions: ParsedTransaction[],
+export async function summarizeLedgerEntries(
+    ledgerEntries: ParsedLedgerEntry[],
     targetLanguage: string = "zh-CN",
     originalText?: string
-): Promise<ParsedTransaction[]> {
-    const finalTransactions: ParsedTransaction[] = [];
-    const groups = new Map<string, ParsedTransaction[]>();
+): Promise<ParsedLedgerEntry[]> {
+    const finalEntries: ParsedLedgerEntry[] = [];
+    const groups = new Map<string, ParsedLedgerEntry[]>();
 
-    for (const t of transactions) {
-        if (!t.transactionDate || !t.category) {
-            finalTransactions.push(t);
+    for (const entry of ledgerEntries) {
+        if (!entry.transactionDate || !entry.category) {
+            finalEntries.push(entry);
             continue;
         }
-        const key = `${t.transactionDate}|${t.category}`;
+        const key = `${entry.transactionDate}|${entry.category}`;
         if (!groups.has(key)) {
             groups.set(key, []);
         }
-        groups.get(key)!.push(t);
+        groups.get(key)!.push(entry);
     }
 
     const client = getOpenAIClient();
 
     for (const [key, group] of groups.entries()) {
         if (group.length <= 1) {
-            finalTransactions.push(...group);
+            finalEntries.push(...group);
             continue;
         }
 
-        const itemsToSummarize = group.map(t => ({
-            itemName: t.itemName,
-            amount: t.amount,
-            notes: t.notes
+        const itemsToSummarize = group.map(entry => ({
+            itemName: entry.itemName,
+            amount: entry.amount,
+            notes: entry.notes
         }));
 
         const prompt = buildSummarizationPrompt(itemsToSummarize, targetLanguage, originalText);
@@ -54,10 +54,10 @@ export async function summarizeTransactions(
             const parsed = JSON.parse(cleaned);
             const { item_name, notes } = summarizationSchema.parse(parsed);
 
-            const totalAmount = group.reduce((sum, t) => sum + t.amount, 0);
+            const totalAmount = group.reduce((sum, entry) => sum + entry.amount, 0);
             const representative = group[0];
 
-            finalTransactions.push({
+            finalEntries.push({
                 itemName: item_name,
                 amount: totalAmount,
                 currency: representative.currency,
@@ -67,9 +67,9 @@ export async function summarizeTransactions(
             });
         } catch (error) {
             logger.error({ error, key }, "Failed to summarize group");
-            finalTransactions.push(...group);
+            finalEntries.push(...group);
         }
     }
 
-    return finalTransactions;
+    return finalEntries;
 }

@@ -15,13 +15,13 @@ import { relations } from "drizzle-orm";
 import defaultLedger from "@/config/default-ledger.json";
 
 // Enums
-export const transactionStatusEnum = pgEnum("transaction_status", [
+export const ledgerEntryStatusEnum = pgEnum("ledger_entry_status", [
   "pending",
   "confirmed",
 ]);
 
 
-export const messageStatusEnum = pgEnum("message_status", [
+export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "queued",
   "processing",
   "to_confirm",
@@ -47,17 +47,17 @@ export const ledgers = pgTable("ledgers", {
 });
 
 export const ledgersRelations = relations(ledgers, ({ many }) => ({
-  transactions: many(transactions),
-  receipts: many(receipts),
+  ledgerEntries: many(ledgerEntries),
+  sourceDocuments: many(sourceDocuments),
 }));
 
 
 
-// Category（全局分类 -> 账本分类）
-export const categories = pgTable("categories", {
+// EntryCategory（分录分类）
+export const entryCategories = pgTable("entry_categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   ledgerId: uuid("ledger_id")
-    .references(() => ledgers.id, { onDelete: "cascade" }), // Nullable for compatibility/global, specific for ledger
+    .references(() => ledgers.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   icon: text("icon"),
@@ -66,97 +66,95 @@ export const categories = pgTable("categories", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const categoriesRelations = relations(categories, ({ one, many }) => ({
+export const entryCategoriesRelations = relations(entryCategories, ({ one, many }) => ({
   ledger: one(ledgers, {
-    fields: [categories.ledgerId],
+    fields: [entryCategories.ledgerId],
     references: [ledgers.id],
   }),
-  transactions: many(transactions),
+  ledgerEntries: many(ledgerEntries),
 }));
 
-// Receipts (Input Messages / Queue)
-export const receipts = pgTable("receipts", {
+// SourceDocuments (原始凭证)
+export const sourceDocuments = pgTable("source_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   ledgerId: uuid("ledger_id")
     .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
 
-  // New flattened structure
   title: text("title"),
-  text: text("text"), // Nullable, for text content
+  text: text("text"),
   imageUrls: jsonb("image_urls")
     .$type<string[]>()
-    .default([]), // For image URLs/Base64, default empty array
+    .default([]),
 
-  status: messageStatusEnum("status").notNull().default("queued"),
+  status: sourceDocumentStatusEnum("status").notNull().default("queued"),
   error: text("error"),
   aiResponse: text("ai_response"),
 
-  // Proposed transactions awaiting confirmation
-  proposedTransactions: jsonb("proposed_transactions").$type<unknown[]>(),
+  proposedLedgerEntries: jsonb("proposed_ledger_entries").$type<unknown[]>(),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_receipts_ledger_status").on(table.ledgerId, table.status),
-  index("idx_receipts_ledger_created").on(table.ledgerId, table.createdAt),
+  index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
+  index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),
 ]);
 
-export const receiptsRelations = relations(
-  receipts,
+export const sourceDocumentsRelations = relations(
+  sourceDocuments,
   ({ one, many }) => ({
     ledger: one(ledgers, {
-      fields: [receipts.ledgerId],
+      fields: [sourceDocuments.ledgerId],
       references: [ledgers.id],
     }),
-    transactions: many(transactions),
+    ledgerEntries: many(ledgerEntries),
   })
 );
 
-// Transaction（交易记录）
-export const transactions = pgTable("transactions", {
+// LedgerEntry（账目分录）
+export const ledgerEntries = pgTable("ledger_entries", {
   id: uuid("id").primaryKey().defaultRandom(),
   ledgerId: uuid("ledger_id")
     .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
-  categoryId: uuid("category_id").references(() => categories.id, {
+  categoryId: uuid("category_id").references(() => entryCategories.id, {
     onDelete: "set null",
   }),
-  receiptId: uuid("receipt_id").references(() => receipts.id, {
+  sourceDocumentId: uuid("source_document_id").references(() => sourceDocuments.id, {
     onDelete: "set null",
   }),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
   itemName: text("item_name").notNull(),
-  description: text("description"), // Stores the consolidated notes
+  description: text("description"),
   transactionDate: date("transaction_date", { mode: "date" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_transactions_ledger_date").on(table.ledgerId, table.transactionDate),
-  index("idx_transactions_receipt").on(table.receiptId),
-  index("idx_transactions_created_at").on(table.createdAt),
+  index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.transactionDate),
+  index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
+  index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
 
-export const transactionsRelations = relations(transactions, ({ one }) => ({
+export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
   ledger: one(ledgers, {
-    fields: [transactions.ledgerId],
+    fields: [ledgerEntries.ledgerId],
     references: [ledgers.id],
   }),
-  category: one(categories, {
-    fields: [transactions.categoryId],
-    references: [categories.id],
+  category: one(entryCategories, {
+    fields: [ledgerEntries.categoryId],
+    references: [entryCategories.id],
   }),
-  receipt: one(receipts, {
-    fields: [transactions.receiptId],
-    references: [receipts.id],
+  sourceDocument: one(sourceDocuments, {
+    fields: [ledgerEntries.sourceDocumentId],
+    references: [sourceDocuments.id],
   }),
 }));
 
 // 预设分类
 
-// API Keys
-export const apiKeys = pgTable("api_keys", {
+// ServiceCredentials (服务凭据)
+export const serviceCredentials = pgTable("service_credentials", {
   id: uuid("id").primaryKey().defaultRandom(),
-  key: text("key").notNull().unique(), // Store raw key for simplicity (sk_...)
+  key: text("key").notNull().unique(),
   ledgerId: uuid("ledger_id")
     .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
@@ -165,44 +163,38 @@ export const apiKeys = pgTable("api_keys", {
   lastUsedAt: timestamp("last_used_at"),
 });
 
-export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+export const serviceCredentialsRelations = relations(serviceCredentials, ({ one }) => ({
   ledger: one(ledgers, {
-    fields: [apiKeys.ledgerId],
+    fields: [serviceCredentials.ledgerId],
     references: [ledgers.id],
   }),
 }));
 
-// GPT Tasks (Unified task queue for all GPT operations)
-// Uses text fields instead of enums for flexibility - new task types don't require schema changes
-export const gptTasks = pgTable("gpt_tasks", {
+// ProcessingTasks (处理任务)
+export const processingTasks = pgTable("processing_tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
 
-  // Task metadata (flexible text fields)
-  type: text("type").notNull(),              // e.g. "parse_receipt", "summarize", "chat_query"
-  title: text("title").notNull(),            // User-visible task description
+  type: text("type").notNull(),
+  title: text("title").notNull(),
   ledgerId: uuid("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
 
-  // Associated entity (generic reference - can be receiptId or other entity)
-  entityId: uuid("entity_id"),               // Generic reference, type determines meaning
-  entityType: text("entity_type"),           // e.g. "receipt", "transaction", null
+  entityId: uuid("entity_id"),
+  entityType: text("entity_type"),
 
-  // Status (GPT infra is best-effort: failed tasks stay failed, business layer handles recovery)
-  status: text("status").notNull().default("queued"), // queued, running, completed, failed
+  status: text("status").notNull().default("queued"),
   error: text("error"),
 
-  // Input/Output/Progress (all JSONB for flexibility)
   input: jsonb("input").$type<unknown>(),
   output: jsonb("output").$type<unknown>(),
-  progress: jsonb("progress").$type<TaskProgress>(), // Generic progress tracking
-  metadata: jsonb("metadata").$type<Record<string, unknown>>(), // Additional task-specific data
+  progress: jsonb("progress").$type<TaskProgress>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 
-  // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
 }, (table) => [
-  index("idx_gpt_tasks_ledger_status").on(table.ledgerId, table.status),
-  index("idx_gpt_tasks_created_at").on(table.createdAt),
+  index("idx_processing_tasks_ledger_status").on(table.ledgerId, table.status),
+  index("idx_processing_tasks_created_at").on(table.createdAt),
 ]);
 
 // Type for progress tracking (flexible structure)
@@ -213,10 +205,9 @@ export interface TaskProgress {
   data?: unknown;            // Step-specific intermediate data
 }
 
-export const gptTasksRelations = relations(gptTasks, ({ one }) => ({
+export const processingTasksRelations = relations(processingTasks, ({ one }) => ({
   ledger: one(ledgers, {
-    fields: [gptTasks.ledgerId],
+    fields: [processingTasks.ledgerId],
     references: [ledgers.id],
   }),
-  // Note: entityId is generic - relations are handled by entityType at application level
 }));

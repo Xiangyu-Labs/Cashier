@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTransactionSummary } from "@/lib/api";
+import { fetchLedgerEntrySummary } from "@/lib/api";
 import {
     DateRangeType,
     getDateRange,
@@ -36,7 +36,7 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
             formatDateForApi(endDate),
         ],
         queryFn: () =>
-            fetchTransactionSummary(
+            fetchLedgerEntrySummary(
                 ledgerId || "",
                 "confirmed",
                 formatDateForApi(startDate),
@@ -45,7 +45,6 @@ export function StatsTab({ ledgerId }: StatsTabProps) {
         enabled: !!ledgerId,
     });
 
-    // Find the currency with the highest total expense
     const primaryCurrencyTotal = summary?.totals.reduce((max, current) => {
         return (current.total > (max?.total || 0)) ? current : max;
     }, summary?.totals[0]);

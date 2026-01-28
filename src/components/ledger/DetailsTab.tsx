@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { fetchTransactions, updateTransaction, deleteTransaction, fetchTransactionSummary } from "@/lib/api";
-import { Transaction, Category } from "@/types/api";
-import { TransactionCard } from "@/components/transaction/TransactionCard";
-import { TransactionDetailModal } from "@/components/TransactionDetailModal";
+import { fetchLedgerEntries, updateLedgerEntry, deleteLedgerEntry, fetchLedgerEntrySummary } from "@/lib/api";
+import { LedgerEntry, EntryCategory } from "@/types/api";
+import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
+import { LedgerEntryDetailModal } from "@/components/LedgerEntryDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -12,18 +12,17 @@ import { useTranslations, useLocale } from "next-intl";
 
 interface DetailsTabProps {
     ledgerId: string;
-    categories: Category[];
+    categories: EntryCategory[];
 }
 
 export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
-    const tTransactions = useTranslations("TransactionsTab");
+    const tLedger = useTranslations("TransactionsTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    // Date Range Filter State (Default: Current Month)
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
         const now = new Date();
         return {
@@ -35,14 +34,12 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     const startDateStr = dateRange.start?.toISOString();
     const endDateStr = dateRange.end?.toISOString();
 
-    // Fetch Summary for the Month (Total)
     const { data: summaryData } = useQuery({
-        queryKey: ["transactions", ledgerId, "summary", startDateStr, endDateStr],
-        queryFn: () => fetchTransactionSummary(ledgerId, "confirmed", startDateStr, endDateStr),
+        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr],
+        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed", startDateStr, endDateStr),
         enabled: !!startDateStr && !!endDateStr
     });
 
-    // Fetch confirmed transactions for the selected range (Infinite Scroll)
     const {
         data,
         fetchNextPage,
@@ -50,8 +47,8 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
         isFetchingNextPage,
         isLoading,
     } = useInfiniteQuery({
-        queryKey: ["transactions", ledgerId, "confirmed", startDateStr, endDateStr],
-        queryFn: ({ pageParam }) => fetchTransactions(ledgerId, {
+        queryKey: ["ledgerEntries", ledgerId, "confirmed", startDateStr, endDateStr],
+        queryFn: ({ pageParam }) => fetchLedgerEntries(ledgerId, {
             status: "confirmed",
             limit: 20,
             startDate: startDateStr,
@@ -63,11 +60,10 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
         enabled: !!startDateStr && !!endDateStr
     });
 
-    const monthTransactions = useMemo(() => {
+    const monthEntries = useMemo(() => {
         return data?.pages.flatMap(p => p.items) || [];
     }, [data]);
 
-    // Calculate Summary Stats
     const monthStats = useMemo(() => {
         const total = summaryData?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
         const currency = summaryData?.totals[0]?.currency || "CNY";
@@ -75,39 +71,38 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     }, [summaryData]);
 
     const updateMutation = useMutation({
-        mutationFn: ({ transactionId, data }: { transactionId: string; data: Parameters<typeof updateTransaction>[2] }) =>
-            updateTransaction(ledgerId, transactionId, data),
+        mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
+            updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (transactionId: string) => deleteTransaction(ledgerId, transactionId),
+        mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-            toast({ variant: "success", title: tTransactions("deleteSuccess"), description: "" });
+            toast({ variant: "success", title: tLedger("deleteSuccess"), description: "" });
         },
     });
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
-    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-    // Group items by date - Refactored to ensure strict sorting
     const groupedItems = useMemo(() => {
-        const sortedTransactions = [...monthTransactions].sort((a, b) => {
+        const sortedEntries = [...monthEntries].sort((a, b) => {
             const dateA = new Date(a.transactionDate || a.createdAt).getTime();
             const dateB = new Date(b.transactionDate || b.createdAt).getTime();
             return dateB - dateA;
         });
 
-        const groups: Record<string, { timestamp: number; title: string; items: Transaction[] }> = {};
+        const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[] }> = {};
 
-        sortedTransactions.forEach(tx => {
-            const date = new Date(tx.transactionDate || tx.createdAt);
+        sortedEntries.forEach(entry => {
+            const date = new Date(entry.transactionDate || entry.createdAt);
             const today = new Date();
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -133,15 +128,14 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                     items: []
                 };
             }
-            groups[dateKey].items.push(tx);
+            groups[dateKey].items.push(entry);
         });
 
         return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [monthTransactions, t, locale]);
+    }, [monthEntries, t, locale]);
 
     return (
         <div className="space-y-0">
-            {/* Header: Month Picker and Summary */}
             <div className="sticky top-[3.5rem] z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3 sm:py-4 mb-2 border-b border-border/40">
                 <div className="flex justify-between items-center px-2">
                     <div className="flex items-center gap-2">
@@ -176,21 +170,21 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                                 </h3>
                             </div>
                             <div className="space-y-4 px-2">
-                                {group.items.map((tx) => (
+                                {group.items.map((entry) => (
                                     <motion.div
-                                        key={tx.id}
+                                        key={entry.id}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0 }}
                                         transition={{ duration: 0.15 }}
                                     >
-                                        <TransactionCard
-                                            transaction={tx}
+                                        <LedgerEntryCard
+                                            ledgerEntry={entry}
                                             categories={categories}
-                                            onUpdate={(data) => updateMutation.mutate({ transactionId: tx.id, data })}
-                                            onDelete={() => setDeleteConfirm({ open: true, id: tx.id })}
+                                            onUpdate={(data) => updateMutation.mutate({ ledgerEntryId: entry.id, data })}
+                                            onDelete={() => setDeleteConfirm({ open: true, id: entry.id })}
                                             onView={() => {
-                                                setSelectedTransaction(tx);
+                                                setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);
                                             }}
                                         />
@@ -201,8 +195,7 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                     ))}
                 </AnimatePresence>
 
-                {/* Sentinel for Infinite Scroll */}
-                {monthTransactions.length > 0 && (
+                {monthEntries.length > 0 && (
                     <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
                         {isFetchingNextPage ? (
                             <div className="flex items-center gap-2">
@@ -211,10 +204,10 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                             </div>
                         ) : hasNextPage ? (
                             <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                <span>{tTransactions("loadMore")}</span>
+                                <span>{tLedger("loadMore")}</span>
                             </motion.div>
                         ) : (
-                            <span className="opacity-50 text-xs">{tTransactions("noMore")}</span>
+                            <span className="opacity-50 text-xs">{tLedger("noMore")}</span>
                         )}
                     </div>
                 )}
@@ -224,7 +217,7 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                         <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
                         <span>{tCommon("loading")}</span>
                     </div>
-                ) : monthTransactions.length === 0 && (
+                ) : monthEntries.length === 0 && (
                     <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">📭</span>
                         <span>{t("noExpenses")}</span>
@@ -235,8 +228,8 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             <ConfirmDialog
                 open={deleteConfirm.open}
                 onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title={tTransactions("deleteConfirmTitle")}
-                description={tTransactions("deleteConfirmDesc")}
+                title={tLedger("deleteConfirmTitle")}
+                description={tLedger("deleteConfirmDesc")}
                 onConfirm={() => {
                     if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id);
                     setDeleteConfirm({ open: false, id: null });
@@ -245,25 +238,25 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                 confirmLabel={tCommon("delete")}
             />
 
-            <TransactionDetailModal
-                transaction={selectedTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={selectedLedgerEntry}
                 categories={categories}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);
-                    setSelectedTransaction(null);
+                    setSelectedLedgerEntry(null);
                 }}
                 onUpdate={(data) => {
-                    if (selectedTransaction) {
+                    if (selectedLedgerEntry) {
                         updateMutation.mutate({
-                            transactionId: selectedTransaction.id,
+                            ledgerEntryId: selectedLedgerEntry.id,
                             data,
                         });
                     }
                 }}
                 onDelete={() => {
-                    if (selectedTransaction) {
-                        deleteMutation.mutate(selectedTransaction.id);
+                    if (selectedLedgerEntry) {
+                        deleteMutation.mutate(selectedLedgerEntry.id);
                     }
                 }}
             />

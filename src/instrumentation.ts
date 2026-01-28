@@ -9,8 +9,8 @@ export async function register() {
             // Register task handlers (side-effect imports)
             await import("@/lib/tasks");
 
-            // Handle GPT task recovery (mark running as failed)
-            const { handleTasksOnStartup } = await import("@/lib/gpt/recovery");
+            // Handle processing task recovery (mark running as failed)
+            const { handleTasksOnStartup } = await import("@/lib/processing/recovery");
             await handleTasksOnStartup();
         } catch (error) {
             logger.error({ error }, "Failed during startup recovery");

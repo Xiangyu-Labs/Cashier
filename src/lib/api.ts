@@ -1,10 +1,10 @@
 import {
   Ledger,
-  Category,
-  Transaction,
-  TransactionSummary,
-  ReceiptResponse,
-  Receipt,
+  EntryCategory,
+  LedgerEntry,
+  LedgerEntrySummary,
+  SourceDocumentResponse,
+  SourceDocument,
 } from "@/types/api";
 
 const API_BASE = "/api";
@@ -16,8 +16,6 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(url, options);
   if (!res.ok) throw new Error(errorMessage);
-  // Handle 204 No Content or empty responses if needed, but current API seems to always return JSON or void
-  // If void/no content is possible, we might need to check content-length or status text
   if (res.status === 204) return {} as T;
   return res.json();
 }
@@ -70,24 +68,23 @@ export function deleteLedger(id: string): Promise<void> {
   );
 }
 
-// Category API
-// We use "global" as the ID since the backend logic ignores it now.
+// EntryCategory API
 const GLOBAL_ID = "global";
 
-export function fetchCategories(ledgerId: string = GLOBAL_ID): Promise<Category[]> {
+export function fetchEntryCategories(ledgerId: string = GLOBAL_ID): Promise<EntryCategory[]> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/categories`,
+    `${API_BASE}/ledgers/${ledgerId}/entry-categories`,
     undefined,
     "Failed to fetch categories"
   );
 }
 
-export function createCategory(
+export function createEntryCategory(
   ledgerId: string = GLOBAL_ID,
   data: { name: string; description?: string; icon?: string }
-): Promise<Category> {
+): Promise<EntryCategory> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/categories`,
+    `${API_BASE}/ledgers/${ledgerId}/entry-categories`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,7 +94,7 @@ export function createCategory(
   );
 }
 
-export function updateCategory(
+export function updateEntryCategory(
   ledgerId: string = GLOBAL_ID,
   categoryId: string,
   data: {
@@ -106,9 +103,9 @@ export function updateCategory(
     icon?: string;
     sortOrder?: number;
   }
-): Promise<Category> {
+): Promise<EntryCategory> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/categories/${categoryId}`,
+    `${API_BASE}/ledgers/${ledgerId}/entry-categories/${categoryId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -118,12 +115,12 @@ export function updateCategory(
   );
 }
 
-export function deleteCategory(
+export function deleteEntryCategory(
   ledgerId: string = GLOBAL_ID,
   categoryId: string
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/categories/${categoryId}`,
+    `${API_BASE}/ledgers/${ledgerId}/entry-categories/${categoryId}`,
     {
       method: "DELETE",
     },
@@ -131,12 +128,12 @@ export function deleteCategory(
   );
 }
 
-export function reorderCategories(
+export function reorderEntryCategories(
   ledgerId: string = GLOBAL_ID,
   categoryIds: string[]
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/categories/reorder`,
+    `${API_BASE}/ledgers/${ledgerId}/entry-categories/reorder`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -146,14 +143,13 @@ export function reorderCategories(
   );
 }
 
-// Transaction API
+// LedgerEntry API
 export interface PaginatedResponse<T> {
   items: T[];
   nextCursor?: string | null;
 }
 
-// Transaction API
-export function fetchTransactions(
+export function fetchLedgerEntries(
   ledgerId: string,
   params?: {
     status?: "pending" | "confirmed";
@@ -163,7 +159,7 @@ export function fetchTransactions(
     startDate?: string;
     endDate?: string;
   }
-): Promise<PaginatedResponse<Transaction>> {
+): Promise<PaginatedResponse<LedgerEntry>> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.limit) searchParams.set("limit", params.limit.toString());
@@ -173,15 +169,15 @@ export function fetchTransactions(
   if (params?.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/transactions?${searchParams}`,
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries?${searchParams}`,
     undefined,
-    "Failed to fetch transactions"
+    "Failed to fetch ledger entries"
   );
 }
 
-export function updateTransaction(
+export function updateLedgerEntry(
   ledgerId: string,
-  transactionId: string,
+  ledgerEntryId: string,
   data: {
     categoryId?: string | null;
     amount?: number;
@@ -190,85 +186,85 @@ export function updateTransaction(
     description?: string | null;
     status?: "pending" | "confirmed";
   }
-): Promise<Transaction> {
+): Promise<LedgerEntry> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/transactions/${transactionId}`,
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/${ledgerEntryId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
-    "Failed to update transaction"
+    "Failed to update ledger entry"
   );
 }
 
-export function deleteTransaction(
+export function deleteLedgerEntry(
   ledgerId: string,
-  transactionId: string
+  ledgerEntryId: string
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/transactions/${transactionId}`,
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/${ledgerEntryId}`,
     {
       method: "DELETE",
     },
-    "Failed to delete transaction"
+    "Failed to delete ledger entry"
   );
 }
 
-export function confirmTransactions(
+export function confirmLedgerEntries(
   ledgerId: string,
-  data: { transactionIds?: string[]; confirmAll?: boolean }
+  data: { ledgerEntryIds?: string[]; confirmAll?: boolean }
 ): Promise<{ success: boolean; updatedCount: number }> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/transactions/confirm`,
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/confirm`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
-    "Failed to confirm transactions"
+    "Failed to confirm ledger entries"
   );
 }
 
-export function fetchTransactionSummary(
+export function fetchLedgerEntrySummary(
   ledgerId: string,
   status?: "pending" | "confirmed",
   startDate?: string,
   endDate?: string
-): Promise<TransactionSummary> {
+): Promise<LedgerEntrySummary> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status);
   if (startDate) searchParams.set("startDate", startDate);
   if (endDate) searchParams.set("endDate", endDate);
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/transactions/summary?${searchParams}`,
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/summary?${searchParams}`,
     undefined,
     "Failed to fetch summary"
   );
 }
 
-// Receipt API
-export function createReceipt(
+// SourceDocument API
+export function createSourceDocument(
   ledgerId: string,
   data: {
     text?: string;
     images?: { data: string; mimeType: string }[];
     audio?: { data: string; mimeType: string };
   }
-): Promise<ReceiptResponse> {
+): Promise<SourceDocumentResponse> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/receipts`,
+    `${API_BASE}/ledgers/${ledgerId}/source-documents`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
-    "Failed to send receipt"
+    "Failed to send source document"
   );
 }
 
-export function fetchReceipts(
+export function fetchSourceDocuments(
   ledgerId: string,
   params: {
     status?: string[];
@@ -277,7 +273,7 @@ export function fetchReceipts(
     startDate?: string;
     endDate?: string;
   } = {}
-): Promise<PaginatedResponse<Receipt>> {
+): Promise<PaginatedResponse<SourceDocument>> {
   const searchParams = new URLSearchParams();
   if (params.status) searchParams.set("status", params.status.join(","));
   if (params.limit) searchParams.set("limit", params.limit.toString());
@@ -286,82 +282,75 @@ export function fetchReceipts(
   if (params.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/receipts?${searchParams}`,
+    `${API_BASE}/ledgers/${ledgerId}/source-documents?${searchParams}`,
     undefined,
-    "Failed to fetch receipts"
+    "Failed to fetch source documents"
   );
 }
 
-export function retryReceipt(
+export function retrySourceDocument(
   ledgerId: string,
-  receiptId: string
+  sourceDocumentId: string
 ): Promise<{ success: boolean; message: string }> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/receipts/${receiptId}/retry`,
+    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/retry`,
     {
       method: "POST",
     },
-    "Failed to retry receipt"
+    "Failed to retry source document"
   );
 }
 
-export function deleteReceipt(
+export function deleteSourceDocument(
   ledgerId: string,
-  receiptId: string
+  sourceDocumentId: string
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/receipts/${receiptId}`,
+    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}`,
     {
       method: "DELETE",
     },
-    "Failed to delete receipt"
+    "Failed to delete source document"
   );
 }
 
-// API Keys
-export interface ApiKey {
+// ServiceCredentials API
+export interface ServiceCredential {
   id: string;
   name: string;
-  key?: string; // Only present on creation usually, but our list might not return it? Checking backend.
-  // Actually, backend 'list' returns all fields including key if we simply use findMany. 
-  // Ideally we mask it, but for this MVP user said "show once" or "manage". 
-  // Let's assume list returns masked or full? 
-  // My backend logic `db.query.apiKeys.findMany` returns everything including the `key`. 
-  // The user requirement said: "create... POST... key... create/delete in settings".
-  // Usually we show key only on creation. 
-  // Let's stick to the plan: List keys (id, name, created_at, last_used), Create -> returns key.
+  key?: string;
   createdAt: string;
   lastUsedAt?: string;
 }
 
-export function fetchApiKeys(ledgerId: string): Promise<ApiKey[]> {
-  return request(`${API_BASE}/ledgers/${ledgerId}/api-keys`, undefined, "Failed to fetch API keys");
+export function fetchServiceCredentials(ledgerId: string): Promise<ServiceCredential[]> {
+  return request(`${API_BASE}/ledgers/${ledgerId}/service-credentials`, undefined, "Failed to fetch service credentials");
 }
 
-export function createApiKey(ledgerId: string, name: string): Promise<ApiKey> {
+export function createServiceCredential(ledgerId: string, name: string): Promise<ServiceCredential> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/api-keys`,
+    `${API_BASE}/ledgers/${ledgerId}/service-credentials`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     },
-    "Failed to create API key"
+    "Failed to create service credential"
   );
 }
 
-export function deleteApiKey(ledgerId: string, keyId: string): Promise<void> {
+export function deleteServiceCredential(ledgerId: string, credentialId: string): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/api-keys/${keyId}`,
+    `${API_BASE}/ledgers/${ledgerId}/service-credentials/${credentialId}`,
     {
       method: "DELETE",
     },
-    "Failed to delete API key"
+    "Failed to delete service credential"
   );
 }
 
-// GPT Tasks
-export interface GptTask {
+// ProcessingTasks API
+export interface ProcessingTask {
   id: string;
   type: string;
   title: string;
@@ -376,19 +365,19 @@ export interface GptTask {
   completedAt: string | null;
 }
 
-export function fetchGptTasks(
+export function fetchProcessingTasks(
   ledgerId: string,
   params: { activeOnly?: boolean; limit?: number } = {}
-): Promise<GptTask[]> {
+): Promise<ProcessingTask[]> {
   const searchParams = new URLSearchParams();
   searchParams.set("ledgerId", ledgerId);
   if (params.activeOnly) searchParams.set("activeOnly", "true");
   if (params.limit) searchParams.set("limit", params.limit.toString());
 
   return request(
-    `${API_BASE}/gpt/tasks?${searchParams}`,
+    `${API_BASE}/processing-tasks?${searchParams}`,
     undefined,
-    "Failed to fetch GPT tasks"
+    "Failed to fetch processing tasks"
   );
 }
 

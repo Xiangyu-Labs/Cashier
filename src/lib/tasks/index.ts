@@ -2,7 +2,7 @@
 // Import all task handlers here to register them
 
 // Import task handlers (side effect: registers them)
-import "./parse-receipt";
+import "./parse-source-document";
 
 // Export for direct access if needed
-export { TASK_TYPE_PARSE_RECEIPT, parseReceiptHandler, type ParseReceiptInput } from "./parse-receipt";
+export { TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler, type ParseSourceDocumentInput } from "./parse-source-document";

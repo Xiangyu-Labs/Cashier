@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ledgers, categories } from "@/lib/db/schema";
+import { ledgers, entryCategories } from "@/lib/db/schema";
 import defaultLedger from "@/config/default-ledger.json";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Seed categories for the new ledger
     if (defaultLedger.categories.length > 0) {
-      await db.insert(categories).values(
+      await db.insert(entryCategories).values(
         defaultLedger.categories.map((cat) => ({
           ...cat,
           ledgerId: newLedger.id,

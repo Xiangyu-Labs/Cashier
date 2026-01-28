@@ -1,6 +1,6 @@
 import { CategoryInfo } from "../message-processor/types";
 
-export function buildTransactionPrompt(
+export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],
   targetLanguage: string = "zh-CN",
   currentDate?: string
@@ -11,7 +11,7 @@ export function buildTransactionPrompt(
 
   const today = currentDate || new Date().toISOString().split('T')[0];
 
-  return `You are a professional bookkeeping assistant. Your task is to accurately identify spending information from user input (which may include text, images, or voice transcripts) and return a list of records in a standard JSON format.
+  return `You are a professional bookkeeping assistant. Your task is to accurately identify spending information from user input (which may include text, images, or voice transcripts) and return a list of ledger entries in a standard JSON format.
 
 ### Context Information
 - **Current Date**: ${today} (Use this as the base for relative dates like "yesterday" or "today". If unclear, prioritize this date.)
@@ -24,8 +24,8 @@ Return STRICT JSON format. Do NOT include markdown code blocks (\`\`\`json ... \
 Structure:
 {
   "is_valid": true,
-  "title": "Short and descriptive bill title (Format: Merchant - Core item, e.g., 7-11 - Breakfast Set)",
-  "transactions": [
+  "title": "Short and descriptive source document title (Format: Merchant - Core item, e.g., 7-11 - Breakfast Set)",
+  "ledger_entries": [
     {
       "item_name": "Item Name",
       "amount": 38.00,
@@ -38,8 +38,8 @@ Structure:
 }
 
 ### Core Rules
-1. **Title**: Generate a meaningful title, preferably including the merchant name and main consumption content, for quick identification.
-2. **Splitting Principle**: If it's a shopping receipt or contains multiple different items, split them into multiple records. Identify "Total" or "Subtotal" lines for reference, but do not include them as separate items.
+1. **Title**: Generate a meaningful title for the source document, preferably including the merchant name and main consumption content, for quick identification.
+2. **Splitting Principle**: If it's a shopping receipt or contains multiple different items, split them into multiple ledger entries. Identify "Total" or "Subtotal" lines for reference, but do not include them as separate items.
 3. **Currency Identification**: Prioritize currency from content (e.g., $ -> USD, ¥ -> CNY or JPY). In a Chinese context without symbols, default to CNY.
    - Supported codes: CNY, USD, EUR, JPY, HKD, TWD, GBP.
    - Use null if unable to determine.
@@ -53,7 +53,7 @@ Structure:
 8. **TRANSLATION**: Ensure "title", "item_name", and "notes" are translated into ${targetLanguage}.
 
 ### Validation
-- If the input is NOT a bill, receipt, invoice, or any consumption record, set "is_valid" to false and return no transactions.
+- If the input is NOT a bill, receipt, invoice, or any consumption record, set "is_valid" to false and return no ledger entries.
 - If it is a valid record, set "is_valid" to true.
 
 ### Examples
@@ -65,7 +65,7 @@ Structure:
 {
   "is_valid": true,
   "title": "7-11 - 可乐与三明治",
-  "transactions": [
+  "ledger_entries": [
     {
       "item_name": "可乐",
       "amount": 6.00,
@@ -92,7 +92,7 @@ Structure:
 {
   "is_valid": true,
   "title": "Taxi - Airport Trip",
-  "transactions": [
+  "ledger_entries": [
     {
       "item_name": "Taxi to airport",
       "amount": 50.00,
@@ -112,7 +112,7 @@ export function buildSummarizationPrompt(
 ): string {
   const itemsJson = JSON.stringify(items, null, 2);
 
-  return `You are a professional bookkeeping assistant. Your task is to merge multiple consumption records from the same day and category into a single summary record.
+  return `You are a professional bookkeeping assistant. Your task is to merge multiple consumption records from the same day and category into a single summary ledger entry.
 
 ### Original User Input (for context)
 ${originalText || "(No original text provided)"}

@@ -1,6 +1,6 @@
-// MessageProcessor 类型定义
+// SourceDocumentProcessor 类型定义
 
-export interface MessageInput {
+export interface SourceDocumentInput {
     text?: string;
     images?: Array<{
         data: string; // Base64 或 URL
@@ -8,18 +8,17 @@ export interface MessageInput {
     }>;
 }
 
-export interface ParsedTransaction {
+export interface ParsedLedgerEntry {
     itemName: string;
     amount: number;
     currency: string | null;
-    category: string | null; // 分类名称，需要匹配到 categoryId
+    category: string | null; // 分类名称
     transactionDate: string | null; // YYYY-MM-DD 格式
     notes?: string | null; // Consolidated notes
-    // Status is determined by the queue logic, not AI return usually
 }
 
-export interface ProcessResult {
-    transactions: ParsedTransaction[];
+export interface ProcessingResult {
+    ledgerEntries: ParsedLedgerEntry[];
     isValid?: boolean;
     title?: string;
     rawResponse: string; // AI 原始返回，用于调试
@@ -37,13 +36,13 @@ export interface ProcessorContext {
     language?: string;
 }
 
-export interface MessageProcessor {
-    process(input: MessageInput, context: ProcessorContext): Promise<ProcessResult>;
+export interface SourceDocumentProcessor {
+    process(input: SourceDocumentInput, context: ProcessorContext): Promise<ProcessingResult>;
 }
 
 export type SourceType = "text" | "image" | "mixed";
 
-export function determineSourceType(input: MessageInput): SourceType {
+export function determineSourceType(input: SourceDocumentInput): SourceType {
     const hasText = !!input.text;
     const hasImages = !!(input.images && input.images.length > 0);
 

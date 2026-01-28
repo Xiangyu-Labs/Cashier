@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TransactionsTab } from "@/components/ledger/TransactionsTab";
+import { LedgerEntriesTab } from "@/components/ledger/LedgerEntriesTab";
 import { DetailsTab } from "@/components/ledger/DetailsTab";
 import { StatsTab } from "@/components/ledger/StatsTab";
 import {
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TransactionInput } from "@/components/ledger/TransactionInput";
+import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
 import { useLedgerData } from "@/hooks/useLedgerData";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
@@ -36,7 +36,7 @@ export default function LedgerPage() {
     categories,
     pendingGroups,
     confirmedGroups,
-    queuedReceipts,
+    queuedSourceDocuments,
   } = useLedgerData(ledgerId);
 
   if (isLedgerLoading) {
@@ -100,11 +100,11 @@ export default function LedgerPage() {
           </TabsList>
 
           <TabsContent value="history" className="mt-0">
-            <TransactionsTab
+            <LedgerEntriesTab
               ledgerId={ledgerId}
               pendingGroups={pendingGroups}
               confirmedGroups={confirmedGroups}
-              queuedReceipts={queuedReceipts}
+              queuedSourceDocuments={queuedSourceDocuments}
               categories={categories}
               defaultCollapsed={ledger.collapsePendingDefault}
             />
@@ -128,7 +128,7 @@ export default function LedgerPage() {
           <DialogHeader>
             <DialogTitle>{t("newRecord")}</DialogTitle>
           </DialogHeader>
-          <TransactionInput
+          <SourceDocumentInput
             ledgerId={ledgerId}
             onSuccess={() => setIsInputOpen(false)}
           />

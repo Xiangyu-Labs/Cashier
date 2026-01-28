@@ -2,45 +2,45 @@ import { useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     fetchLedger,
-    fetchTransactions,
-    fetchTransactionSummary,
-    fetchCategories,
-    fetchReceipts,
+    fetchLedgerEntries,
+    fetchLedgerEntrySummary,
+    fetchEntryCategories,
+    fetchSourceDocuments,
 } from "@/lib/api";
-import { Receipt, Transaction } from "@/types/api";
+import { SourceDocument, LedgerEntry } from "@/types/api";
 
-type TransactionBatch = {
-    receipt: Receipt;
-    transactions: Transaction[];
+type LedgerEntryBatch = {
+    sourceDocument: SourceDocument;
+    ledgerEntries: LedgerEntry[];
 };
 
-type GroupedTransactions = {
-    batches: TransactionBatch[];
-    others: Transaction[];
+type GroupedLedgerEntries = {
+    batches: LedgerEntryBatch[];
+    others: LedgerEntry[];
 };
 
-function groupTransactions(transactions?: Transaction[]): GroupedTransactions {
-    if (!transactions) return { batches: [], others: [] };
+function groupLedgerEntries(ledgerEntries?: LedgerEntry[]): GroupedLedgerEntries {
+    if (!ledgerEntries) return { batches: [], others: [] };
 
-    const batches: Record<string, TransactionBatch> = {};
-    const others: Transaction[] = [];
+    const batches: Record<string, LedgerEntryBatch> = {};
+    const others: LedgerEntry[] = [];
 
-    for (const tx of transactions) {
-        if (tx.receipt && tx.receiptId) {
-            if (!batches[tx.receiptId]) {
-                batches[tx.receiptId] = {
-                    receipt: tx.receipt,
-                    transactions: [],
+    for (const entry of ledgerEntries) {
+        if (entry.sourceDocument && entry.sourceDocumentId) {
+            if (!batches[entry.sourceDocumentId]) {
+                batches[entry.sourceDocumentId] = {
+                    sourceDocument: entry.sourceDocument,
+                    ledgerEntries: [],
                 };
             }
-            batches[tx.receiptId].transactions.push(tx);
+            batches[entry.sourceDocumentId].ledgerEntries.push(entry);
         } else {
-            others.push(tx);
+            others.push(entry);
         }
     }
 
     const sortedBatches = Object.values(batches).sort((a, b) =>
-        new Date(b.receipt.createdAt).getTime() - new Date(a.receipt.createdAt).getTime()
+        new Date(b.sourceDocument.createdAt).getTime() - new Date(a.sourceDocument.createdAt).getTime()
     );
 
     return {
@@ -52,11 +52,11 @@ function groupTransactions(transactions?: Transaction[]): GroupedTransactions {
 export function useLedgerData(ledgerId: string) {
     const queryClient = useQueryClient();
 
-    // Poll for queued/processing receipts first to determine if we need to poll others
-    const { data: queuedReceipts = [] } = useQuery({
-        queryKey: ["receipts", ledgerId, "queued"],
+    // Poll for queued/processing source documents first to determine if we need to poll others
+    const { data: queuedSourceDocuments = [] } = useQuery({
+        queryKey: ["sourceDocuments", ledgerId, "queued"],
         queryFn: async () => {
-            const res = await fetchReceipts(ledgerId, { status: ["queued", "processing", "failed", "invalid"] });
+            const res = await fetchSourceDocuments(ledgerId, { status: ["queued", "processing", "failed", "invalid"] });
             return res.items;
         },
         refetchInterval: (query) => {
@@ -65,22 +65,22 @@ export function useLedgerData(ledgerId: string) {
         },
     });
 
-    const isProcessing = queuedReceipts?.some(m => m.status === 'queued' || m.status === 'processing');
+    const isProcessing = queuedSourceDocuments?.some(m => m.status === 'queued' || m.status === 'processing');
     const refetchInterval = isProcessing ? 1000 : false;
 
     // Track previous queue length to detect completion
-    const prevQueueLengthRef = useRef(queuedReceipts?.length || 0);
+    const prevQueueLengthRef = useRef(queuedSourceDocuments?.length || 0);
 
     useEffect(() => {
-        const currentLength = queuedReceipts?.length || 0;
+        const currentLength = queuedSourceDocuments?.length || 0;
         // If queue size decreased, something finished processing (or was deleted)
-        // In either case, we should refresh transactions to show the result
+        // In either case, we should refresh ledger entries to show the result
         if (currentLength < prevQueueLengthRef.current) {
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         }
         prevQueueLengthRef.current = currentLength;
-    }, [queuedReceipts?.length, queryClient, ledgerId]);
+    }, [queuedSourceDocuments?.length, queryClient, ledgerId]);
 
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
         queryKey: ["ledger", ledgerId],
@@ -88,23 +88,23 @@ export function useLedgerData(ledgerId: string) {
     });
 
     const { data: categories } = useQuery({
-        queryKey: ["categories", ledgerId],
-        queryFn: () => fetchCategories(ledgerId),
+        queryKey: ["entryCategories", ledgerId],
+        queryFn: () => fetchEntryCategories(ledgerId),
     });
 
-    const { data: pendingTxs } = useQuery({
-        queryKey: ["transactions", ledgerId, "pending"],
+    const { data: pendingEntries } = useQuery({
+        queryKey: ["ledgerEntries", ledgerId, "pending"],
         queryFn: async () => {
-            const res = await fetchTransactions(ledgerId, { status: "pending" });
+            const res = await fetchLedgerEntries(ledgerId, { status: "pending" });
             return res.items;
         },
         refetchInterval,
     });
 
-    const { data: confirmedTxs } = useQuery({
-        queryKey: ["transactions", ledgerId, "confirmed"],
+    const { data: confirmedEntries } = useQuery({
+        queryKey: ["ledgerEntries", ledgerId, "confirmed"],
         queryFn: async () => {
-            const res = await fetchTransactions(ledgerId, { status: "confirmed", limit: 100 });
+            const res = await fetchLedgerEntries(ledgerId, { status: "confirmed", limit: 100 });
             return res.items;
         },
         refetchInterval,
@@ -112,30 +112,30 @@ export function useLedgerData(ledgerId: string) {
 
     const { data: summary } = useQuery({
         queryKey: ["summary", ledgerId],
-        queryFn: () => fetchTransactionSummary(ledgerId, "confirmed"),
+        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed"),
         refetchInterval,
     });
 
-    const pendingGroups = useMemo(() => groupTransactions(pendingTxs), [pendingTxs]);
-    const confirmedGroups = useMemo(() => groupTransactions(confirmedTxs), [confirmedTxs]);
+    const pendingGroups = useMemo(() => groupLedgerEntries(pendingEntries), [pendingEntries]);
+    const confirmedGroups = useMemo(() => groupLedgerEntries(confirmedEntries), [confirmedEntries]);
 
-    const processingReceipts = queuedReceipts?.filter((m) => m.status === "processing") || [];
-    const queuedOnlyReceipts = queuedReceipts?.filter((m) => m.status === "queued") || [];
-    const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
+    const processingDocs = queuedSourceDocuments?.filter((m) => m.status === "processing") || [];
+    const queuedOnlyDocs = queuedSourceDocuments?.filter((m) => m.status === "queued") || [];
+    const failedDocs = queuedSourceDocuments?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
 
     return {
         ledger,
         isLedgerLoading,
         categories: categories || [],
-        confirmedTxs,
+        confirmedEntries,
         summary,
-        queuedReceipts: queuedReceipts || [],
+        queuedSourceDocuments: queuedSourceDocuments || [],
         pendingGroups,
         confirmedGroups,
         stats: {
-            processingCount: processingReceipts.length,
-            queuedCount: queuedOnlyReceipts.length,
-            failedCount: failedReceipts.length,
+            processingCount: processingDocs.length,
+            queuedCount: queuedOnlyDocs.length,
+            failedCount: failedDocs.length,
         },
     };
 }

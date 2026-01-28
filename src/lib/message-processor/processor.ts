@@ -2,41 +2,41 @@ import { ChatCompletionContentPart, ChatCompletionMessageParam } from "openai/re
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { getOpenAIClient } from "../ai/openai";
-import { buildTransactionPrompt } from "../ai/prompts";
-import { summarizeTransactions } from "./utils";
+import { buildLedgerEntryPrompt } from "../ai/prompts";
+import { summarizeLedgerEntries } from "./utils";
 import {
-  MessageInput,
-  MessageProcessor,
-  ParsedTransaction,
+  SourceDocumentInput,
+  SourceDocumentProcessor,
+  ParsedLedgerEntry,
   ProcessorContext,
-  ProcessResult,
+  ProcessingResult,
 } from "./types";
 
 
-const transactionSchema = z.object({
+const ledgerEntrySchema = z.object({
   item_name: z.string(),
   amount: z.number().min(0),
   currency: z.string().nullable(),
   category: z.string().nullable(),
   transaction_date: z.string().nullable(),
-  notes: z.string().nullable().optional(), // Consolidated notes
+  notes: z.string().nullable().optional(),
 });
 
 const aiResponseSchema = z.object({
-  transactions: z.array(transactionSchema).optional().default([]),
+  ledger_entries: z.array(ledgerEntrySchema).optional().default([]),
   title: z.string().optional(),
   is_valid: z.boolean().optional().default(true),
 });
 
 
-export class OpenAIMessageProcessor implements MessageProcessor {
+export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   async process(
-    input: MessageInput,
+    input: SourceDocumentInput,
     context: ProcessorContext
-  ): Promise<ProcessResult> {
+  ): Promise<ProcessingResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildTransactionPrompt(context.categories, context.language, currentDate);
+    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate);
 
     const contentParts: ChatCompletionContentPart[] = [];
 
@@ -57,16 +57,16 @@ export class OpenAIMessageProcessor implements MessageProcessor {
     ];
 
     const rawResponse = await client.generateContent(systemPrompt, messages);
-    const { transactions: data, isValid, title } = this.parseResponse(rawResponse);
+    const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse);
 
-    let transactions = data;
+    let ledgerEntries = data;
 
-    if (context.mergeSimilarItems && transactions.length > 0) {
-      transactions = await summarizeTransactions(transactions, context.language, input.text || undefined);
+    if (context.mergeSimilarItems && ledgerEntries.length > 0) {
+      ledgerEntries = await summarizeLedgerEntries(ledgerEntries, context.language, input.text || undefined);
     }
 
     return {
-      transactions,
+      ledgerEntries,
       isValid,
       title,
       rawResponse,
@@ -87,19 +87,17 @@ export class OpenAIMessageProcessor implements MessageProcessor {
   }
 
 
-
-
-  private parseResponse(response: string): { transactions: ParsedTransaction[], isValid: boolean, title?: string } {
+  private parseResponse(response: string): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
     try {
       const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
       const parsed = JSON.parse(cleaned);
       const validated = aiResponseSchema.parse(parsed);
 
       if (validated.is_valid === false) {
-        return { transactions: [], isValid: false };
+        return { ledgerEntries: [], isValid: false };
       }
 
-      const transactions = validated.transactions.map((t) => ({
+      const ledgerEntries = validated.ledger_entries.map((t) => ({
         itemName: t.item_name,
         amount: t.amount,
         currency: t.currency,
@@ -108,7 +106,7 @@ export class OpenAIMessageProcessor implements MessageProcessor {
         notes: t.notes || null,
       }));
 
-      return { transactions, isValid: true, title: validated.title };
+      return { ledgerEntries, isValid: true, title: validated.title };
     } catch (error) {
       logger.error({ error, response }, "Failed to parse AI response");
       throw new Error(`Failed to parse AI response: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -118,11 +116,11 @@ export class OpenAIMessageProcessor implements MessageProcessor {
 }
 
 // Singleton instance
-let processor: OpenAIMessageProcessor | null = null;
+let processor: OpenAISourceDocumentProcessor | null = null;
 
-export function getMessageProcessor(): MessageProcessor {
+export function getSourceDocumentProcessor(): SourceDocumentProcessor {
   if (!processor) {
-    processor = new OpenAIMessageProcessor();
+    processor = new OpenAISourceDocumentProcessor();
   }
   return processor;
 }

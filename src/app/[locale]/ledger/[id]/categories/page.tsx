@@ -6,12 +6,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Plus, Pencil, Trash2, Info } from "lucide-react";
 import {
-  fetchCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
+  fetchEntryCategories,
+  createEntryCategory,
+  updateEntryCategory,
+  deleteEntryCategory,
 } from "@/lib/api";
-import { Category } from "@/types/api";
+import { EntryCategory } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +45,7 @@ export default function CategoriesPage(): React.ReactElement {
   const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<EntryCategory | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -64,12 +64,12 @@ export default function CategoriesPage(): React.ReactElement {
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ["categories", ledgerId],
-    queryFn: () => fetchCategories(ledgerId),
+    queryFn: () => fetchEntryCategories(ledgerId),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateCategoryData) =>
-      createCategory(ledgerId, data),
+      createEntryCategory(ledgerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
@@ -89,7 +89,7 @@ export default function CategoriesPage(): React.ReactElement {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ categoryId, data }: UpdateCategoryPayload) => updateCategory(ledgerId, categoryId, data),
+    mutationFn: ({ categoryId, data }: UpdateCategoryPayload) => updateEntryCategory(ledgerId, categoryId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
@@ -109,7 +109,7 @@ export default function CategoriesPage(): React.ReactElement {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (categoryId: string) => deleteCategory(ledgerId, categoryId),
+    mutationFn: (categoryId: string) => deleteEntryCategory(ledgerId, categoryId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       setDeleteConfirm({ ...deleteConfirm, open: false });
@@ -157,7 +157,7 @@ export default function CategoriesPage(): React.ReactElement {
     }
   };
 
-  const handleDelete = (category: Category) => {
+  const handleDelete = (category: EntryCategory) => {
     setDeleteConfirm({
       open: true,
       id: category.id,
@@ -177,7 +177,7 @@ export default function CategoriesPage(): React.ReactElement {
     setIsOpen(true);
   };
 
-  const openEditModal = (category: Category) => {
+  const openEditModal = (category: EntryCategory) => {
     setEditingCategory(category);
     setFormData({
       name: category.name,

@@ -11,7 +11,7 @@ interface TokenStats {
 }
 
 async function fetchTokenStats(ledgerId: string): Promise<TokenStats> {
-    const res = await fetch(`/api/ledgers/${ledgerId}/stats/tokens`);
+    const res = await fetch(`/api/ledgers/${ledgerId}/processing-stats/token-usage`);
     if (!res.ok) throw new Error("Failed to fetch token stats");
     return res.json();
 }
@@ -71,7 +71,7 @@ export function TokenUsageSection({ ledgerId }: { ledgerId: string }) {
                 </div>
             </div>
             <div className="mt-6 text-xs text-[var(--muted)] border-t border-[var(--border)] pt-4">
-                * 统计范围仅包含通过新 GPT 任务系统处理的请求。采用成熟的 `gpt-tokenizer` 精确计算。
+                * 统计范围仅包含通过新处理任务系统处理的请求。采用成熟的 `gpt-tokenizer` 精确计算。
             </div>
         </section>
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchGptTasks, GptTask } from "@/lib/api";
+import { fetchProcessingTasks, ProcessingTask } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Activity, Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
@@ -11,7 +11,7 @@ interface TaskCenterProps {
     ledgerId: string;
 }
 
-function TaskStatusIcon({ status }: { status: GptTask["status"] }) {
+function TaskStatusIcon({ status }: { status: ProcessingTask["status"] }) {
     switch (status) {
         case "queued":
             return <Clock className="w-4 h-4 text-muted" />;
@@ -26,7 +26,7 @@ function TaskStatusIcon({ status }: { status: GptTask["status"] }) {
     }
 }
 
-function TaskStatusBadge({ status }: { status: GptTask["status"] }) {
+function TaskStatusBadge({ status }: { status: ProcessingTask["status"] }) {
     const t = useTranslations("TaskCenter");
     const statusConfig = {
         queued: { label: t("statusQueued"), className: "bg-muted/10 text-muted" },
@@ -49,16 +49,16 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
     const tCommon = useTranslations("Common");
 
     const { data: tasks = [], isLoading } = useQuery({
-        queryKey: ["gpt-tasks", ledgerId],
-        queryFn: () => fetchGptTasks(ledgerId, { limit: 50 }),
+        queryKey: ["processing-tasks", ledgerId],
+        queryFn: () => fetchProcessingTasks(ledgerId, { limit: 50 }),
         refetchInterval: 3000,
         enabled: !!ledgerId,
     });
 
-    const activeTasks = tasks.filter((t: GptTask) => t.status === "queued" || t.status === "running");
-    const visibleTasks = tasks.filter((t: GptTask) => t.status !== "completed" && t.status !== "failed");
+    const activeTasks = tasks.filter((t: ProcessingTask) => t.status === "queued" || t.status === "running");
+    const visibleTasks = tasks.filter((t: ProcessingTask) => t.status !== "completed" && t.status !== "failed");
 
-    const { input: sessionInput, output: sessionOutput } = tasks.reduce((acc: { input: number, output: number }, t: GptTask) => {
+    const { input: sessionInput, output: sessionOutput } = tasks.reduce((acc: { input: number, output: number }, t: ProcessingTask) => {
         const usage = t.metadata?.usage as { inputTokens?: number, outputTokens?: number } | undefined;
         acc.input += (usage?.inputTokens || 0);
         acc.output += (usage?.outputTokens || 0);
@@ -97,7 +97,6 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                 align="start"
                 sideOffset={8}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface2/30">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold tracking-tight">{t("taskQueue")}</span>
@@ -121,7 +120,6 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                     )}
                 </div>
 
-                {/* Content */}
                 <div className="max-h-[400px] overflow-y-auto">
                     <div className="p-1">
                         {isLoading ? (

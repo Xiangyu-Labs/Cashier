@@ -21,7 +21,7 @@ export interface Settings {
   autoRecognizeDate?: boolean;
 }
 
-export interface Category {
+export interface EntryCategory {
   id: string;
   name: string;
   description: string | null;
@@ -31,7 +31,7 @@ export interface Category {
   updatedAt: string;
 }
 
-export interface Receipt {
+export interface SourceDocument {
   id: string;
   ledgerId: string;
   title: string | null;
@@ -39,28 +39,28 @@ export interface Receipt {
   imageUrls: string[];
   aiResponse: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  proposedTransactions?: any[] | null;
+  proposedLedgerEntries?: any[] | null;
   createdAt: string;
   status?: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
   error?: string | null;
 }
 
-export interface Transaction {
+export interface LedgerEntry {
   id: string;
   ledgerId: string;
   categoryId: string | null;
-  receiptId: string | null;
+  sourceDocumentId: string | null;
   amount: string;
   currency: string | null;
   itemName: string;
   description: string | null;
   transactionDate: string | null;
   createdAt: string;
-  category?: Category | null;
-  receipt?: Receipt | null;
+  category?: EntryCategory | null;
+  sourceDocument?: SourceDocument | null;
 }
 
-export interface TransactionSummary {
+export interface LedgerEntrySummary {
   byCategory: {
     categoryId: string | null;
     categoryName: string;
@@ -80,7 +80,7 @@ export interface TransactionSummary {
   }[];
 }
 
-export interface ReceiptResponse {
-  receiptId: string;
-  transactions: Transaction[];
+export interface SourceDocumentResponse {
+  sourceDocumentId: string;
+  ledgerEntries: LedgerEntry[];
 }

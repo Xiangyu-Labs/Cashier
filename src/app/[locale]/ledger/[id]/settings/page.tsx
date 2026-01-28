@@ -6,19 +6,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     fetchLedger,
     updateLedger,
-    fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-    fetchApiKeys,
-    createApiKey,
-    deleteApiKey
+    fetchEntryCategories,
+    createEntryCategory,
+    updateEntryCategory,
+    deleteEntryCategory,
+    fetchServiceCredentials,
+    createServiceCredential,
+    deleteServiceCredential
 } from "@/lib/api";
 import { CurrencySection } from "./components/CurrencySection";
 import { CategorySection } from "./components/CategorySection";
-import { ApiKeySection } from "./components/ApiKeySection";
+import { ServiceCredentialSection } from "./components/ServiceCredentialSection";
 import { TokenUsageSection } from "./components/TokenUsageSection";
-import { Category, Ledger } from "@/types/api";
+import { EntryCategory, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function LedgerSettingsPage() {
     // Categories Query
     const { data: categories, isLoading: isCategoriesLoading } = useQuery({
         queryKey: ["categories", ledgerId],
-        queryFn: () => fetchCategories(ledgerId),
+        queryFn: () => fetchEntryCategories(ledgerId),
     });
 
     // Mutations
@@ -57,15 +57,15 @@ export default function LedgerSettingsPage() {
     });
 
     const createCategoryMutation = useMutation({
-        mutationFn: (data: { name: string }) => createCategory(ledgerId, data),
+        mutationFn: (data: { name: string }) => createEntryCategory(ledgerId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
         },
     });
 
     const updateCategoryMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: Partial<Category> }) =>
-            updateCategory(ledgerId, id, {
+        mutationFn: ({ id, data }: { id: string; data: Partial<EntryCategory> }) =>
+            updateEntryCategory(ledgerId, id, {
                 ...data,
                 description: data.description ?? undefined,
                 icon: data.icon ?? undefined,
@@ -76,29 +76,29 @@ export default function LedgerSettingsPage() {
     });
 
     const deleteCategoryMutation = useMutation({
-        mutationFn: (id: string) => deleteCategory(ledgerId, id),
+        mutationFn: (id: string) => deleteEntryCategory(ledgerId, id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
         },
     });
 
-    // API Keys Query
-    const { data: apiKeys } = useQuery({
-        queryKey: ["apiKeys", ledgerId],
-        queryFn: () => fetchApiKeys(ledgerId),
+    // Service Credentials Query
+    const { data: credentials } = useQuery({
+        queryKey: ["serviceCredentials", ledgerId],
+        queryFn: () => fetchServiceCredentials(ledgerId),
     });
 
-    const createApiKeyMutation = useMutation({
-        mutationFn: (name: string) => createApiKey(ledgerId, name),
+    const createCredentialMutation = useMutation({
+        mutationFn: (name: string) => createServiceCredential(ledgerId, name),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["serviceCredentials", ledgerId] });
         },
     });
 
-    const deleteApiKeyMutation = useMutation({
-        mutationFn: (id: string) => deleteApiKey(ledgerId, id),
+    const deleteCredentialMutation = useMutation({
+        mutationFn: (id: string) => deleteServiceCredential(ledgerId, id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["apiKeys", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["serviceCredentials", ledgerId] });
         },
     });
 
@@ -278,12 +278,12 @@ export default function LedgerSettingsPage() {
             {/* Token Usage Stats */}
             <TokenUsageSection ledgerId={ledgerId} />
 
-            {/* API Keys Settings */}
+            {/* Service Credentials Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
-                <ApiKeySection
-                    apiKeys={apiKeys || []}
-                    onCreateApiKey={(name) => createApiKeyMutation.mutateAsync(name)}
-                    onDeleteApiKey={(id) => deleteApiKeyMutation.mutate(id)}
+                <ServiceCredentialSection
+                    credentials={credentials || []}
+                    onCreateCredential={(name) => createCredentialMutation.mutateAsync(name)}
+                    onDeleteCredential={(id) => deleteCredentialMutation.mutate(id)}
                 />
             </section>
         </div>

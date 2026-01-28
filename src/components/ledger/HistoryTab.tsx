@@ -1,22 +1,22 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateTransaction, deleteTransaction } from "@/lib/api";
-import { Transaction, Category, Receipt } from "@/types/api";
-import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
+import { updateLedgerEntry, deleteLedgerEntry } from "@/lib/api";
+import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
+import { BatchLedgerEntryCard } from "@/components/ledger-entry/BatchLedgerEntryCard";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Card, CardContent } from "@/components/ui/card";
-import { TransactionDetailModal } from "@/components/TransactionDetailModal";
+import { LedgerEntryDetailModal } from "@/components/LedgerEntryDetailModal";
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
 interface HistoryTabProps {
     ledgerId: string;
     confirmedGroups: {
-        batches: { receipt: Receipt; transactions: Transaction[] }[];
-        others: Transaction[];
+        batches: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }[];
+        others: LedgerEntry[];
     };
-    categories: Category[];
+    categories: EntryCategory[];
 }
 
 export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTabProps) {
@@ -24,22 +24,22 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
-    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     const updateMutation = useMutation({
-        mutationFn: ({ transactionId, data }: { transactionId: string; data: Parameters<typeof updateTransaction>[2] }) =>
-            updateTransaction(ledgerId, transactionId, data),
+        mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
+            updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (transactionId: string) => deleteTransaction(ledgerId, transactionId),
+        mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["transactions", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
         },
     });
@@ -57,16 +57,16 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
     return (
         <div className="space-y-4">
             {confirmedGroups.batches.map((batch) => (
-                <BatchTransactionCard
-                    key={batch.receipt.id}
-                    receipt={batch.receipt}
-                    transactions={batch.transactions}
+                <BatchLedgerEntryCard
+                    key={batch.sourceDocument.id}
+                    sourceDocument={batch.sourceDocument}
+                    ledgerEntries={batch.ledgerEntries}
                     categories={categories}
                     isConfirmed={true}
-                    onUpdateTransaction={(id, data) =>
-                        updateMutation.mutate({ transactionId: id, data })
+                    onUpdateLedgerEntry={(id, data) =>
+                        updateMutation.mutate({ ledgerEntryId: id, data })
                     }
-                    onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                    onDeleteLedgerEntry={(id) => deleteMutation.mutate(id)}
                     status="completed"
                 />
             ))}
@@ -77,33 +77,33 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
                         <h3 className="font-medium text-text">{t("otherHistory")}</h3>
                     </div>
                     <CardContent className="p-4 space-y-2">
-                        {confirmedGroups.others.map((tx) => (
+                        {confirmedGroups.others.map((entry) => (
                             <div
-                                key={tx.id}
+                                key={entry.id}
                                 onClick={() => {
-                                    setSelectedTransaction(tx);
+                                    setSelectedLedgerEntry(entry);
                                     setIsDetailModalOpen(true);
                                 }}
                                 className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-surface2 rounded px-2 -mx-2 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="text-xl w-8 h-8 flex items-center justify-center bg-surface2 rounded-full">
-                                        <CategoryIcon iconName={tx.category?.icon} className="w-5 h-5" />
+                                        <CategoryIcon iconName={entry.category?.icon} className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-text">{tx.itemName}</p>
+                                        <p className="font-medium text-text">{entry.itemName}</p>
                                         <p className="text-xs text-muted">
-                                            {tx.category?.name || tCommon("unclassified")}
-                                            {tx.transactionDate && (
+                                            {entry.category?.name || tCommon("unclassified")}
+                                            {entry.transactionDate && (
                                                 <span className="ml-2">
-                                                    · {new Date(tx.transactionDate).toLocaleDateString(locale)}
+                                                    · {new Date(entry.transactionDate).toLocaleDateString(locale)}
                                                 </span>
                                             )}
                                         </p>
                                     </div>
                                 </div>
-                                <p className={`font-semibold ${tx.amount.startsWith("-") ? 'text-text' : 'text-danger'}`}>
-                                    {tx.currency || ""} {parseFloat(tx.amount).toFixed(2)}
+                                <p className={`font-semibold ${entry.amount.startsWith("-") ? 'text-text' : 'text-danger'}`}>
+                                    {entry.currency || ""} {parseFloat(entry.amount).toFixed(2)}
                                 </p>
                             </div>
                         ))}
@@ -111,25 +111,25 @@ export function HistoryTab({ ledgerId, confirmedGroups, categories }: HistoryTab
                 </Card>
             )}
 
-            <TransactionDetailModal
-                transaction={selectedTransaction}
+            <LedgerEntryDetailModal
+                ledgerEntry={selectedLedgerEntry}
                 categories={categories}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);
-                    setSelectedTransaction(null);
+                    setSelectedLedgerEntry(null);
                 }}
                 onUpdate={(data) => {
-                    if (selectedTransaction) {
+                    if (selectedLedgerEntry) {
                         updateMutation.mutate({
-                            transactionId: selectedTransaction.id,
+                            ledgerEntryId: selectedLedgerEntry.id,
                             data,
                         });
                     }
                 }}
                 onDelete={() => {
-                    if (selectedTransaction) {
-                        deleteMutation.mutate(selectedTransaction.id);
+                    if (selectedLedgerEntry) {
+                        deleteMutation.mutate(selectedLedgerEntry.id);
                     }
                 }}
             />

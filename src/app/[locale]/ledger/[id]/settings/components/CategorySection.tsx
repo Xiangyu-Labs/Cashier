@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
-import { Category } from "@/types/api";
+import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface CategorySectionProps {
-    categories: Category[];
+    categories: EntryCategory[];
     onCreateCategory: (name: string) => void;
-    onUpdateCategory: (id: string, data: Partial<Category>) => void;
+    onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
     onDeleteCategory: (id: string) => void;
 }
 
