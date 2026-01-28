@@ -326,7 +326,7 @@ describe("OpenAIMessageProcessor", () => {
 
       const result = await processor.process(input, defaultContext);
 
-      expect(result.ledgerEntries[0].currency).toBeNull();
+      expect(result.ledgerEntries[0].currency).toBe("unknown");
       expect(result.ledgerEntries[0].category).toBe("餐饮");
       expect(result.ledgerEntries[0].entryDate).toBeNull();
     });

@@ -312,7 +312,7 @@ export function SourceDocumentCard({
         {groupedEntries.map((group) => {
           const isExpanded = expandedKeys.has(group.key);
           const hasIssues = group.items.some(
-            (entry) => !entry.currency
+            (entry) => !entry.currency || entry.currency === "unknown"
           );
 
           return (

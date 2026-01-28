@@ -139,7 +139,7 @@ export function LedgerEntryViewDetails({
                             </h3>
                             <p className="text-3xl font-bold text-primary mt-1">
                                 <span className="text-lg font-normal text-muted mr-1">
-                                    {ledgerEntry.currency || "?"}
+                                    {(!ledgerEntry.currency || ledgerEntry.currency === "unknown") ? "?" : ledgerEntry.currency}
                                 </span>
                                 {parseFloat(ledgerEntry.amount).toFixed(2)}
                             </p>

@@ -47,7 +47,7 @@ Structure:
    - Reference common currency codes for identification.
    - **Preference Logic**: In most cases, the input will be in one of the "User Preferred Currencies". Prioritize inferring these currencies (e.g., if multiple currencies use the same symbol like $, prefer the one in the preferred list).
    - Only choose a currency outside the preferred list if you are VERY certain (e.g., explicit currency code or unique symbol like €).
-   - If unable to determine with high confidence, use \`null\`.
+   - If unable to determine with high confidence, use \`"unknown"\`.
    - Default to CNY only if it's in a Chinese context and no other information is available.
 4. **Category Matching**: You MUST select the most appropriate name from the "Available Categories" list for the 'category' field. Since there is an "Other" category (or similar), ALL entries must be classified. Do NOT return a category that is not in the list.
 5. **Date Handling**:

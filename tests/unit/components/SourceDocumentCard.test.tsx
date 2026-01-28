@@ -175,4 +175,14 @@ describe("SourceDocumentCard", () => {
         const processingText = screen.queryByText("statusProcessing");
         expect(processingText).toBeNull();
     });
+
+    it("renders '(待修正)' hint when currency is 'unknown'", () => {
+        const entryWithNullCurrency = { ...mockLedgerEntry, currency: "unknown" };
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} />);
+
+        // Use a more flexible matcher in case of translation mocking differences
+        // It might be rendering the key "requireEdit" instead of the value
+        const hint = screen.queryByText(/待修正/) || screen.queryByText(/requireEdit/);
+        expect(hint).toBeTruthy();
+    });
 });

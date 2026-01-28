@@ -104,7 +104,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
         return {
           itemName: t.item_name,
           amount: t.amount,
-          currency: t.currency,
+          currency: t.currency || "unknown",
           category: t.category,
           entryDate: t.entry_date,
           notes: t.notes || null,

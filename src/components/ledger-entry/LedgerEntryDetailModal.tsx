@@ -68,7 +68,7 @@ export function LedgerEntryDetailModal({
     onUpdate({
       itemName: editData.itemName,
       amount: editData.amount,
-      currency: editData.currency || null,
+      currency: (editData.currency === "" || editData.currency === "unknown") ? "unknown" : editData.currency,
       categoryId: editData.categoryId || null,
       entryDate: editData.entryDate || null,
       description: editData.description || null,
