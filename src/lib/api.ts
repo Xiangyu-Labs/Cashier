@@ -184,6 +184,7 @@ export function updateLedgerEntry(
     currency?: string | null;
     itemName?: string;
     description?: string | null;
+    entryDate?: string | null;
     status?: "pending" | "confirmed";
   }
 ): Promise<LedgerEntry> {

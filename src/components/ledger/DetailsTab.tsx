@@ -73,9 +73,23 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     const updateMutation = useMutation({
         mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
             updateLedgerEntry(ledgerId, ledgerEntryId, data),
-        onSuccess: () => {
+        onSuccess: (updatedEntry) => {
             queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
             queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            toast({
+                variant: "success",
+                title: tCommon("saveSuccess"),
+            });
+            // Update selected entry if it's the one being edited to reflect changes in modal
+            if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
+                setSelectedLedgerEntry(updatedEntry);
+            }
+        },
+        onError: () => {
+            toast({
+                variant: "destructive",
+                title: tCommon("saveFailed"),
+            });
         },
     });
 

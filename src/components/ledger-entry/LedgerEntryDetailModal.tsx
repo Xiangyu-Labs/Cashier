@@ -57,7 +57,7 @@ export function LedgerEntryDetailModal({
         amount: parseFloat(ledgerEntry.amount),
         currency: ledgerEntry.currency || "",
         categoryId: ledgerEntry.categoryId || "",
-        entryDate: ledgerEntry.entryDate || "",
+        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
         description: ledgerEntry.description || "",
       });
       setIsEditing(false); // Default to view mode
