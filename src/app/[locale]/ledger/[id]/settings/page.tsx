@@ -17,7 +17,7 @@ import {
 import { CurrencySection } from "./components/CurrencySection";
 import { CategorySection } from "./components/CategorySection";
 import { ServiceCredentialSection } from "./components/ServiceCredentialSection";
-import { TokenUsageSection } from "./components/TokenUsageSection";
+import { ProcessingSystemSection } from "./components/ProcessingSystemSection";
 import { EntryCategory, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -275,8 +275,8 @@ export default function LedgerSettingsPage() {
                 </div>
             </section>
 
-            {/* Token Usage Stats */}
-            <TokenUsageSection ledgerId={ledgerId} />
+            {/* Processing System Stats & Tasks */}
+            <ProcessingSystemSection ledgerId={ledgerId} />
 
             {/* Service Credentials Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">

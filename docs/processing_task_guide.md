@@ -115,6 +115,12 @@ For multi-step tasks, use `context.updateProgress` to save intermediate data in 
 ### 4. Purity
 Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/processing`. Keep those imports strictly within `src/lib/tasks`.
 
-### 5. Concurrency Configuration
+### 5. Defensive AI Interaction
+**Never** trust the response from an AI model. Always assume it could be untrustworthy, hallucinated, or malformed.
+- **Explicit Verification**: Always validate the AI's content (schema, values, logic) before performing any business write-back.
+- **Handle Illegal Content**: Design a clear failure path for when AI output is invalid. Do not let the system enter an inconsistent state.
+- **Defensive Parsing**: Use robust parsing (e.g., `try-catch` around JSON parsing, schema validation like Zod) and handle errors gracefully.
+
+### 6. Concurrency Configuration
 The number of concurrent worker loops can be controlled via the environment variable:
 - `PROCESSING_WORKER_COUNT`: Set this in your `.env` files (default is 1).

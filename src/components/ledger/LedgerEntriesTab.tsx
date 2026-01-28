@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import {
     confirmLedgerEntries,
@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations } from "next-intl";
 
@@ -254,6 +255,18 @@ export function LedgerEntriesTab({
         ...processingSourceDocuments.map(doc => ({ type: "queue", date: doc.createdAt, data: doc } as const)),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    const hasAnyUnknownCurrency = useMemo(() => {
+        return pendingConfirmationItems.some(item => {
+            if (item.type === "batch") {
+                return item.data.ledgerEntries.some(e => !e.currency || e.currency === "unknown");
+            }
+            if (item.type === "single") {
+                return !item.data.currency || item.data.currency === "unknown";
+            }
+            return false;
+        });
+    }, [pendingConfirmationItems]);
+
     async function handleRetrySourceDocument(docId: string) {
         await retrySourceDocument(ledgerId, docId);
         queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
@@ -410,7 +423,19 @@ export function LedgerEntriesTab({
                                 </motion.div>
                             </button>
                             <div className="flex gap-2">
-                                <Button variant="default" onClick={handleConfirmAll} disabled={confirmAllMutation.isPending || confirmingAll} size="sm" className="h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95">{confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}</Button>
+                                <Button
+                                    variant="default"
+                                    onClick={handleConfirmAll}
+                                    disabled={confirmAllMutation.isPending || confirmingAll || hasAnyUnknownCurrency}
+                                    size="sm"
+                                    className={cn(
+                                        "h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95",
+                                        hasAnyUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
+                                    )}
+                                    title={hasAnyUnknownCurrency ? "待修正货币后可开始确认" : undefined}
+                                >
+                                    {confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}
+                                </Button>
                             </div>
                         </div>
                         <AnimatePresence>

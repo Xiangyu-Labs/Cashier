@@ -19,7 +19,7 @@ import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
 import { useLedgerData } from "@/hooks/useLedgerData";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
-import { TaskCenter } from "@/components/TaskCenter";
+// import { TaskCenter } from "@/components/TaskCenter"; // Removed as requested
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
 
@@ -62,7 +62,6 @@ export default function LedgerPage() {
         <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
           <div className="flex items-center gap-3">
             <LedgerSwitcher currentLedgerId={ledgerId} />
-            <TaskCenter ledgerId={ledgerId} />
           </div>
           <div className="flex items-center gap-2">
             <I18nLink href={`/ledger/${ledgerId}/settings`}>

@@ -98,7 +98,8 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         const validEntries = parsedEntries.filter(entry => entry.amount > 0);
 
         if (validEntries.length > 0 && task.ledgerId) {
-            const status = (input.settings.autoConfirm ? "confirmed" : "pending") as "confirmed" | "pending";
+            const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
+            const status = (input.settings.autoConfirm && !hasUnknownCurrency ? "confirmed" : "pending") as "confirmed" | "pending";
             const entriesToInsert = validEntries.map(entry => {
                 const categoryId = entry.category
                     ? input.categories.find((c) => c.name === entry.category)?.id ?? null
@@ -121,7 +122,7 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
 
             // Mark source document as completed or to_confirm
             await db.update(sourceDocuments).set({
-                status: input.settings.autoConfirm ? "completed" : "to_confirm",
+                status: (input.settings.autoConfirm && !hasUnknownCurrency) ? "completed" : "to_confirm",
                 title: title || null,
             }).where(eq(sourceDocuments.id, input.sourceDocumentId));
         } else {
@@ -138,8 +139,12 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         const input = task.input as ParseSourceDocumentInput;
 
         // Determine error code
-        let errorCode: "internal_error" | "parse_failed" = "internal_error";
-        if (error.message.includes("AI response") || error.message.includes("JSON") || error.message.includes("parse")) {
+        let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
+
+        const message = error.message.toLowerCase();
+        if (message.includes("schema validation") || message.includes("zod")) {
+            errorCode = "invalid_content"; // Schema mismatch often means it's not a valid bill or has illegal fields
+        } else if (message.includes("ai response") || message.includes("json") || message.includes("parse")) {
             errorCode = "parse_failed";
         }
 

@@ -1,9 +1,8 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { useState, useMemo } from "react";
-import { ChevronDown, Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
+import { Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
@@ -17,7 +16,6 @@ function getSafeImageSrc(data: string): string {
   }
   return `data:image/jpeg;base64,${data}`;
 }
-
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument;
@@ -68,20 +66,12 @@ export function SourceDocumentCard({
   const [isRetrying, setIsRetrying] = useState(false);
   const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  // Sort ledger entries directly
   const { sortedEntries, totalAmounts } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
-      // 1. Sort by category priority (sortOrder)
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
-
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder;
-      }
-
-      // 2. Sort by amount (descending)
+      if (aOrder !== bOrder) return aOrder - bOrder;
       return parseFloat(b.amount) - parseFloat(a.amount);
     });
 
@@ -96,23 +86,13 @@ export function SourceDocumentCard({
     return { sortedEntries: sorted, totalAmounts: totals };
   }, [ledgerEntries]);
 
-  const { text, images } = useMemo(() => {
+  const { text, images, hasUnknownCurrency } = useMemo(() => {
     return {
       text: sourceDocument.text,
-      images: sourceDocument.imageUrls || []
+      images: sourceDocument.imageUrls || [],
+      hasUnknownCurrency: ledgerEntries.some(e => !e.currency || e.currency === "unknown"),
     };
-  }, [sourceDocument]);
-
-
-  function toggleExpand(key: string) {
-    const newSet = new Set(expandedKeys);
-    if (newSet.has(key)) {
-      newSet.delete(key);
-    } else {
-      newSet.add(key);
-    }
-    setExpandedKeys(newSet);
-  }
+  }, [sourceDocument, ledgerEntries]);
 
   async function handleConfirm() {
     if (!onConfirm) return;
@@ -136,7 +116,6 @@ export function SourceDocumentCard({
 
   return (
     <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
-      {/* 1. Date Header */}
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
         <span className="text-sm font-medium text-muted">
           {new Date(sourceDocument.createdAt).toLocaleString(locale, {
@@ -195,7 +174,6 @@ export function SourceDocumentCard({
             )}
           </Button>
 
-          {/* Retry Action */}
           {status === "error" && onRetry && (
             <>
               <div className="h-4 w-px bg-border mx-1" />
@@ -217,7 +195,6 @@ export function SourceDocumentCard({
             </>
           )}
 
-          {/* Confirm Action */}
           {!isConfirmed && onConfirm && (
             <>
               <div className="h-4 w-px bg-border mx-1" />
@@ -225,9 +202,12 @@ export function SourceDocumentCard({
                 variant="outline"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
-                disabled={isConfirming}
-                className="h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
-                title={t("confirmDoc")}
+                disabled={isConfirming || hasUnknownCurrency}
+                className={cn(
+                  "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300",
+                  hasUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
+                )}
+                title={hasUnknownCurrency ? "待修正货币后可确认" : t("confirmDoc")}
               >
                 {isConfirming ? (
                   <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -241,7 +221,6 @@ export function SourceDocumentCard({
         </div>
       </div>
 
-      {/* 2. User Content Section */}
       <AnimatePresence>
         {isContentExpanded && (
           <motion.div
@@ -280,8 +259,6 @@ export function SourceDocumentCard({
         )}
       </AnimatePresence>
 
-
-      {/* 3. Ledger Entry Details */}
       <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
         {sortedEntries.map((entry) => (
           <LedgerEntryCard
@@ -302,6 +279,6 @@ export function SourceDocumentCard({
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
-    </div >
+    </div>
   );
 }

@@ -35,7 +35,8 @@ export function LedgerEntryCard({
   showStatusHint = false,
   className,
 }: LedgerEntryCardProps) {
-  const needsAttention = !ledgerEntry.categoryId || !ledgerEntry.currency;
+  const isUnknownCurrency = !ledgerEntry.currency || ledgerEntry.currency === "unknown";
+  const needsAttention = !ledgerEntry.categoryId || isUnknownCurrency;
 
   return (
     <Card

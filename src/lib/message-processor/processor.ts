@@ -14,18 +14,18 @@ import {
 
 
 const ledgerEntrySchema = z.object({
-  item_name: z.string(),
-  amount: z.number().min(0),
+  item_name: z.string().min(1, "Item name cannot be empty"),
+  amount: z.number().min(0, "Amount must be non-negative"),
   currency: z.string().nullable(),
-  category: z.string(),
+  category: z.string().min(1, "Category cannot be empty"),
   entry_date: z.string().nullable(),
   notes: z.string().nullable().optional(),
 });
 
 const aiResponseSchema = z.object({
-  ledger_entries: z.array(ledgerEntrySchema).optional().default([]),
-  title: z.string().optional(),
-  is_valid: z.boolean().optional().default(true),
+  ledger_entries: z.array(ledgerEntrySchema).describe("List of parsed ledger entries"),
+  title: z.string().optional().describe("A brief title for the document"),
+  is_valid: z.boolean().describe("Whether the content is a valid financial document (source document)"),
 });
 
 
@@ -96,21 +96,27 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   private parseResponse(response: string, allowedCategories: string[]): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
     try {
       const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
-      const parsed = JSON.parse(cleaned);
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        throw new Error(`Invalid JSON format: ${e instanceof Error ? e.message : "Unknown error"}`);
+      }
+
       const validated = aiResponseSchema.parse(parsed);
 
       if (validated.is_valid === false) {
         return { ledgerEntries: [], isValid: false };
       }
 
-      const ledgerEntries = validated.ledger_entries.map((t) => {
+      const ledgerEntries = validated.ledger_entries.map((t, index) => {
         if (!t.category || !allowedCategories.includes(t.category)) {
-          throw new Error(`Invalid or missing category: ${t.category}. Must be one of: ${allowedCategories.join(", ")}`);
+          throw new Error(`Entry #${index + 1}: Invalid or missing category "${t.category}". Must be one of: ${allowedCategories.join(", ")}`);
         }
 
         const currency = t.currency || "unknown";
         if (currency !== "unknown" && !VALID_CURRENCIES.has(currency.toUpperCase())) {
-          throw new Error("parse error");
+          throw new Error(`Entry #${index + 1}: Invalid currency code "${currency}"`);
         }
 
         return {
@@ -126,6 +132,10 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
       return { ledgerEntries, isValid: true, title: validated.title };
     } catch (error) {
       logger.error({ error, response }, "Failed to parse AI response");
+      if (error instanceof z.ZodError) {
+        const issues = error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
+        throw new Error(`AI response schema validation failed: ${issues}`);
+      }
       throw new Error(`Failed to parse AI response: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
