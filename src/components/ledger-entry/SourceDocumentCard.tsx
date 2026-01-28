@@ -70,57 +70,31 @@ export function SourceDocumentCard({
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  // Group ledger entries by Category ID + Currency
-  const { groupedEntries, totalAmounts } = useMemo(() => {
-    const groups: Record<
-      string,
-      {
-        key: string;
-        categoryId: string | null;
-        categoryName: string;
-        categoryIcon: string;
-        currency: string;
-        total: number;
-        items: LedgerEntry[];
+  // Sort ledger entries directly
+  const { sortedEntries, totalAmounts } = useMemo(() => {
+    const sorted = [...ledgerEntries].sort((a, b) => {
+      // 1. Sort by category priority (sortOrder)
+      const aOrder = a.category?.sortOrder ?? 999999;
+      const bOrder = b.category?.sortOrder ?? 999999;
+
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
       }
-    > = {};
+
+      // 2. Sort by amount (descending)
+      return parseFloat(b.amount) - parseFloat(a.amount);
+    });
 
     const totals: Record<string, number> = {};
-
     ledgerEntries.forEach((entry) => {
-      const catId = entry.categoryId || "unclassified";
-      const currency = entry.currency || "unknown";
-      const key = `${catId}-${currency}`;
-      const amount = parseFloat(entry.amount);
-
-      if (!groups[key]) {
-        groups[key] = {
-          key,
-          categoryId: entry.categoryId,
-          categoryName: entry.category?.name || tCommon("unclassified"),
-          categoryIcon: entry.category?.icon || "📝",
-          currency: entry.currency || "",
-          total: 0,
-          items: [],
-        };
-      }
-
-      groups[key].total += amount;
-      groups[key].items.push(entry);
-
       if (entry.currency) {
+        const amount = parseFloat(entry.amount);
         totals[entry.currency] = (totals[entry.currency] || 0) + amount;
       }
     });
 
-    const sortedGroups = Object.values(groups).sort((a, b) => {
-      if (a.categoryId === null) return -1;
-      if (b.categoryId === null) return 1;
-      return b.total - a.total;
-    });
-
-    return { groupedEntries: sortedGroups, totalAmounts: totals };
-  }, [ledgerEntries, tCommon]);
+    return { sortedEntries: sorted, totalAmounts: totals };
+  }, [ledgerEntries]);
 
   const { text, images } = useMemo(() => {
     return {
@@ -308,76 +282,18 @@ export function SourceDocumentCard({
 
 
       {/* 3. Ledger Entry Details */}
-      <div className="border-t border-border divide-y divide-border">
-        {groupedEntries.map((group) => {
-          const isExpanded = expandedKeys.has(group.key);
-          const hasIssues = group.items.some(
-            (entry) => !entry.currency || entry.currency === "unknown"
-          );
-
-          return (
-            <div key={group.key} className="bg-surface">
-              <div
-                onClick={() => toggleExpand(group.key)}
-                className={`w-full flex items-center justify-between p-4 cursor-pointer hover:bg-surface2 transition-colors ${isExpanded ? "bg-surface2/80" : ""
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-lg border border-border/50">
-                    <CategoryIcon iconName={group.categoryIcon} className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-text">{group.categoryName}</p>
-                    <p className="text-xs text-muted">
-                      {t("records", { count: group.items.length })}
-                      {hasIssues && !isConfirmed && (
-                        <span className="ml-2 text-warning">{t("requireEdit")}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="font-mono font-semibold text-text">
-                    <span className="text-xs text-muted mr-1">
-                      {group.currency || ""}
-                    </span>
-                    {group.total.toFixed(2)}
-                  </span>
-                  <motion.div
-                    animate={{ rotate: isExpanded ? 0 : -90 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ChevronDown className="h-4 w-4 text-muted" />
-                  </motion.div>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-3 space-y-3 bg-surface2/30 border-t border-border/50 inner-shadow">
-                      {group.items.map((entry) => (
-                        <LedgerEntryCard
-                          key={entry.id}
-                          ledgerEntry={entry}
-                          categories={categories}
-                          onView={() => onViewLedgerEntry?.(entry)}
-                          hideCategory={true}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
+      <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
+        {sortedEntries.map((entry) => (
+          <LedgerEntryCard
+            key={entry.id}
+            ledgerEntry={entry}
+            categories={categories}
+            onView={() => onViewLedgerEntry?.(entry)}
+            hideCategory={false}
+            showStatusHint={!isConfirmed}
+            className="inner-shadow"
+          />
+        ))}
       </div>
 
       <ImageViewer

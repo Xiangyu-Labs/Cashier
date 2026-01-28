@@ -23,6 +23,7 @@ interface LedgerEntryCardProps {
   categories: EntryCategory[];
   onView?: () => void;
   hideCategory?: boolean;
+  showStatusHint?: boolean;
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export function LedgerEntryCard({
   categories,
   onView,
   hideCategory = false,
+  showStatusHint = false,
   className,
 }: LedgerEntryCardProps) {
   const needsAttention = !ledgerEntry.categoryId || !ledgerEntry.currency;
@@ -97,6 +99,12 @@ export function LedgerEntryCard({
                     <Badge variant="warning" className="text-[10px] px-1 h-5">
                       需货币
                     </Badge>
+                  )}
+
+                  {showStatusHint && needsAttention && (
+                    <span className="ml-auto text-[11px] font-medium text-warning animate-pulse">
+                      (待修正)
+                    </span>
                   )}
                 </div>
               </div>

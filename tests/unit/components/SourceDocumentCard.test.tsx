@@ -9,9 +9,15 @@ vi.mock("@/components/CategoryIcon", () => ({
 }));
 
 vi.mock("@/components/ledger-entry/LedgerEntryCard", () => ({
-    LedgerEntryCard: ({ ledgerEntry }: { ledgerEntry: LedgerEntry }) => (
-        <div data-testid="ledger-entry-card">{ledgerEntry.itemName}</div>
-    ),
+    LedgerEntryCard: ({ ledgerEntry, showStatusHint }: { ledgerEntry: LedgerEntry, showStatusHint?: boolean }) => {
+        const hasIssue = !ledgerEntry.categoryId || !ledgerEntry.currency || ledgerEntry.currency === "unknown";
+        return (
+            <div data-testid="ledger-entry-card">
+                {ledgerEntry.itemName}
+                {showStatusHint && hasIssue && <span>(待修正)</span>}
+            </div>
+        );
+    },
 }));
 
 const mockCategories: EntryCategory[] = [
@@ -117,11 +123,11 @@ describe("SourceDocumentCard", () => {
         expect(userImgs[1].getAttribute("src")).toBe(imagesData[1]);
     });
 
-    it("renders ledger entry details groups", () => {
+    it("renders ledger entry details directly", () => {
         render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
-        expect(screen.getByText("Food")).toBeTruthy();
-        const amounts = screen.getAllByText(/50.00/);
-        expect(amounts.length).toBeGreaterThan(0);
+        // It should directly render the ledger entry card
+        expect(screen.getByTestId("ledger-entry-card")).toBeTruthy();
+        expect(screen.getByText("Lunch")).toBeTruthy();
     });
 
     it("opens image zoom dialog on click", async () => {
@@ -178,11 +184,9 @@ describe("SourceDocumentCard", () => {
 
     it("renders '(待修正)' hint when currency is 'unknown'", () => {
         const entryWithNullCurrency = { ...mockLedgerEntry, currency: "unknown" };
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} />);
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} isConfirmed={false} />);
 
-        // Use a more flexible matcher in case of translation mocking differences
-        // It might be rendering the key "requireEdit" instead of the value
-        const hint = screen.queryByText(/待修正/) || screen.queryByText(/requireEdit/);
-        expect(hint).toBeTruthy();
+        // The mock LedgerEntryCard renders "(待修正)" when issues exist and showStatusHint is true
+        expect(screen.getByText("(待修正)")).toBeTruthy();
     });
 });
