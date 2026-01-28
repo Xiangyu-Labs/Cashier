@@ -80,7 +80,7 @@ export function TaskCenter({ ledgerId }: TaskCenterProps) {
                     ) : (
                         <>
                             <Activity className="w-4 h-4 opacity-70" />
-                            <span className="hidden sm:inline">任务中心</span>
+                            <span className="hidden md:inline">任务中心</span>
                         </>
                     )}
                 </Button>

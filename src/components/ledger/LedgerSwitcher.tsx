@@ -82,11 +82,11 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
                         aria-expanded={open}
                         className="w-auto px-2 hover:bg-transparent text-lg font-bold hover:text-primary transition-colors hover:bg-accent/10"
                     >
-                        <span className="truncate text-left max-w-[150px]">{currentLedger?.name || "选择账本"}</span>
+                        <span className="truncate text-left max-w-[100px] sm:max-w-[150px]">{currentLedger?.name || "选择账本"}</span>
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0" align="start">
+                <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[200px] p-0" align="start">
                     <div className="max-h-[300px] overflow-y-auto p-1">
                         {ledgers?.map((ledger) => (
                             <div

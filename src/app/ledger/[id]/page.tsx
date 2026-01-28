@@ -67,7 +67,7 @@ export default function LedgerPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted hover:text-text"
+                className="text-muted hover:text-text h-8 w-8 sm:h-9 sm:w-9"
                 title="设置"
               >
                 <Settings className="h-5 w-5" />
@@ -77,7 +77,7 @@ export default function LedgerPage() {
             <Button
               size="sm"
               onClick={() => setIsInputOpen(true)}
-              className="rounded-full h-8 w-8 p-0"
+              className="hidden md:flex rounded-full h-8 w-8 p-0"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -122,7 +122,7 @@ export default function LedgerPage() {
       </main>
 
       <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
-        <DialogContent className="sm:max-w-md top-[20%] translate-y-0">
+        <DialogContent className="sm:max-w-md top-[20%] translate-y-0 w-[calc(100%-2rem)] mx-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>记一笔</DialogTitle>
           </DialogHeader>
@@ -132,6 +132,17 @@ export default function LedgerPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Floating Action Button (FAB) */}
+      <div className="fixed bottom-6 right-6 z-50 md:hidden">
+        <Button
+          size="lg"
+          onClick={() => setIsInputOpen(true)}
+          className="rounded-full h-14 w-14 p-0 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </div>
     </div >
   );
 }

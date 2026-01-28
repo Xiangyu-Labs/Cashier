@@ -93,50 +93,52 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className }
                     <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-                <div className="flex">
-                    <div className="border-r p-4 space-y-2 w-[140px]">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-auto p-0" align="start">
+                <div className="flex flex-col sm:flex-row">
+                    <div className="border-b sm:border-b-0 sm:border-r p-4 space-y-2 w-full sm:w-[140px]">
                         <div className="text-xs font-medium text-muted-foreground mb-2">常用区间</div>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={handleThisMonth}>
-                            本月
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("week")}>
-                            过去7天
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("month")}>
-                            过去1个月
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(3)}>
-                            过去3个月
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(6)}>
-                            过去半年
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("year")}>
-                            过去1年
-                        </Button>
+                        <div className="grid grid-cols-2 sm:grid-cols-1 gap-1">
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={handleThisMonth}>
+                                本月
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("week")}>
+                                过去7天
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("month")}>
+                                过去1个月
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(3)}>
+                                过去3个月
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(6)}>
+                                过去半年
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("year")}>
+                                过去1年
+                            </Button>
+                        </div>
                     </div>
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 space-y-4 w-full">
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-muted-foreground">自定义区间</div>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                                 <Input
                                     type="date"
                                     value={tempStart}
                                     onChange={(e) => setTempStart(e.target.value)}
-                                    className="w-[140px]"
+                                    className="w-full sm:w-[140px]"
                                 />
-                                <span className="text-muted-foreground">-</span>
+                                <span className="hidden sm:inline text-muted-foreground">-</span>
                                 <Input
                                     type="date"
                                     value={tempEnd}
                                     onChange={(e) => setTempEnd(e.target.value)}
-                                    className="w-[140px]"
+                                    className="w-full sm:w-[140px]"
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end pt-2">
-                            <Button size="sm" onClick={handleManualApply}>应用</Button>
+                            <Button size="sm" className="w-full sm:w-auto" onClick={handleManualApply}>应用</Button>
                         </div>
                     </div>
                 </div>

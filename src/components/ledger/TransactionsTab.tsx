@@ -336,7 +336,7 @@ export function TransactionsTab({
 
     return (
         <div className="space-y-4">
-            <div className="px-2">
+            <div className="px-2 mb-2 sm:mb-4">
                 <DateRangeFilter
                     startDate={dateRange.start}
                     endDate={dateRange.end}
@@ -348,8 +348,8 @@ export function TransactionsTab({
             {/* Processing/Queued Section (Blue) */}
             <AnimatePresence mode="popLayout">
                 {processingItems.length > 0 && (
-                    <motion.div layout className="space-y-4 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex justify-between items-center py-2">
+                    <motion.div layout className="space-y-3 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center py-1 sm:py-2">
                             <button onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-blue-500 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -377,8 +377,8 @@ export function TransactionsTab({
             {/* Pending Confirmation Section (Yellow) */}
             <AnimatePresence mode="popLayout">
                 {pendingConfirmationItems.length > 0 && (
-                    <motion.div layout className="space-y-4 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex justify-between items-center py-2">
+                    <motion.div layout className="space-y-3 px-2 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center py-1 sm:py-2">
                             <button onClick={() => setIsPendingConfirmationCollapsed(!isPendingConfirmationCollapsed)} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-sm font-medium text-warning flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
@@ -463,7 +463,7 @@ export function TransactionsTab({
                                 // Check if we have confirmed transactions for this receipt
                                 const transactions = confirmedTransactionsMap.get(receipt.id) || [];
                                 return (
-                                    <div key={receipt.id}>
+                                    <div key={receipt.id} className="mb-4 sm:mb-6">
                                         <BatchTransactionCard
                                             receipt={receipt}
                                             transactions={transactions}

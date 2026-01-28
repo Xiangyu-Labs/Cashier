@@ -124,6 +124,7 @@ export function TransactionInput({ ledgerId, onSuccess }: TransactionInputProps)
                 <Button
                     onClick={handleSend}
                     disabled={sendMutation.isPending || (!text && images.length === 0)}
+                    className="flex-1 sm:flex-initial"
                 >
                     {sendMutation.isPending ? "发送中..." : (
                         <>
