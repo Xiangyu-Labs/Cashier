@@ -223,7 +223,7 @@ export function LedgerEntryCard({
               </div>
             </div>
             {ledgerEntry.description && (
-              <p className="text-xs text-muted bg-surface2 p-2 rounded truncate max-h-[3em]">
+              <p className="text-xs text-muted bg-surface2 p-2 rounded truncate max-h-[3em] w-fit max-w-full">
                 {ledgerEntry.description}
               </p>
             )}
