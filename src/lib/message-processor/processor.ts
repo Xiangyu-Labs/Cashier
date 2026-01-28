@@ -29,6 +29,12 @@ const aiResponseSchema = z.object({
 });
 
 
+const VALID_CURRENCIES = new Set([
+  "USD", "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
+  "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
+  "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR"
+]);
+
 export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   async process(
     input: SourceDocumentInput,
@@ -101,10 +107,16 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
         if (!t.category || !allowedCategories.includes(t.category)) {
           throw new Error(`Invalid or missing category: ${t.category}. Must be one of: ${allowedCategories.join(", ")}`);
         }
+
+        const currency = t.currency || "unknown";
+        if (currency !== "unknown" && !VALID_CURRENCIES.has(currency.toUpperCase())) {
+          throw new Error("parse error");
+        }
+
         return {
           itemName: t.item_name,
           amount: t.amount,
-          currency: t.currency || "unknown",
+          currency: currency,
           category: t.category,
           entryDate: t.entry_date,
           notes: t.notes || null,

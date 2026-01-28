@@ -411,5 +411,24 @@ ${MOCK_RESPONSES.singleEntry}
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid or missing category: 不存在的分类");
     });
+
+    it("should throw 'parse error' if currency is neither 'unknown' nor a valid code", async () => {
+      const input: SourceDocumentInput = { text: "some expense" };
+      const response = JSON.stringify({
+        ledger_entries: [
+          {
+            item_name: "Test Item",
+            amount: 50,
+            currency: "INVALID_CODE",
+            category: "餐饮",
+            entry_date: null,
+          },
+        ],
+      });
+
+      mockGenerateContent.mockResolvedValue(response);
+
+      await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response: parse error");
+    });
   });
 });
