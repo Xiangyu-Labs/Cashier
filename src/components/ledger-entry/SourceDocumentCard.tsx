@@ -268,7 +268,7 @@ export function SourceDocumentCard({
           >
             <div className="p-4 space-y-3">
               {images.length > 0 && (
-                <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+                <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
                   {images.map((img, idx) => (
                     <div
                       key={idx}

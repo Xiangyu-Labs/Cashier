@@ -24,11 +24,11 @@ export function SourceDocumentOriginalContent({
             {/* Image Content */}
             {hasImages && (
                 <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
                         {images.map((imgSrc, idx) => (
                             <div
                                 key={idx}
-                                className="relative h-24 w-24 rounded-lg border border-border overflow-hidden cursor-pointer hover:opacity-90 bg-surface2"
+                                className="relative aspect-square rounded-lg border border-border overflow-hidden cursor-pointer hover:opacity-90 bg-surface2"
                                 onClick={() => setSelectedImageIndex(idx)}
                             >
                                 <Image
