@@ -274,12 +274,16 @@ export function fetchReceipts(
     status?: string[];
     limit?: number;
     cursor?: string;
+    startDate?: string;
+    endDate?: string;
   } = {}
 ): Promise<PaginatedResponse<Receipt>> {
   const searchParams = new URLSearchParams();
   if (params.status) searchParams.set("status", params.status.join(","));
   if (params.limit) searchParams.set("limit", params.limit.toString());
   if (params.cursor) searchParams.set("cursor", params.cursor);
+  if (params.startDate) searchParams.set("startDate", params.startDate);
+  if (params.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
     `${API_BASE}/ledgers/${ledgerId}/receipts?${searchParams}`,

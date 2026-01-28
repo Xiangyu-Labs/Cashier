@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { fetchTransactions, updateTransaction, deleteTransaction, fetchTransactionSummary } from "@/lib/api";
 import { Transaction, Category } from "@/types/api";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
-import { MonthPicker } from "@/components/ui/month-picker";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,40 +14,46 @@ interface DetailsTabProps {
 }
 
 export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
-    const [currentDate, setCurrentDate] = useState(new Date());
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    // Calculate start and end of the selected month
-    const { startDate, endDate } = useMemo(() => {
-        const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
-        return { startDate: start, endDate: end };
-    }, [currentDate]);
+    // Date Range Filter State (Default: Current Month)
+    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
+        const now = new Date();
+        return {
+            start: new Date(now.getFullYear(), now.getMonth(), 1),
+            end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+        };
+    });
+
+    const startDateStr = dateRange.start?.toISOString();
+    const endDateStr = dateRange.end?.toISOString();
 
     // Fetch Summary for the Month (Total)
     const { data: summaryData } = useQuery({
-        queryKey: ["transactions", ledgerId, "summary", startDate.toISOString(), endDate.toISOString()],
-        queryFn: () => fetchTransactionSummary(ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()),
+        queryKey: ["transactions", ledgerId, "summary", startDateStr, endDateStr],
+        queryFn: () => fetchTransactionSummary(ledgerId, "confirmed", startDateStr, endDateStr),
+        enabled: !!startDateStr && !!endDateStr
     });
 
-    // Fetch confirmed transactions for the selected month (Infinite Scroll)
+    // Fetch confirmed transactions for the selected range (Infinite Scroll)
     const {
         data,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
     } = useInfiniteQuery({
-        queryKey: ["transactions", ledgerId, "confirmed", startDate.toISOString(), endDate.toISOString()],
+        queryKey: ["transactions", ledgerId, "confirmed", startDateStr, endDateStr],
         queryFn: ({ pageParam }) => fetchTransactions(ledgerId, {
             status: "confirmed",
             limit: 20,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
+            startDate: startDateStr,
+            endDate: endDateStr,
             cursor: pageParam
         }),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
+        enabled: !!startDateStr && !!endDateStr
     });
 
     const monthTransactions = useMemo(() => {
@@ -135,11 +141,15 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
             <div className="sticky top-14 z-[1] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4 mb-2 border-b border-border/40">
                 <div className="flex justify-between items-center px-2">
                     <div className="flex items-center gap-2">
-                        <MonthPicker date={currentDate} onDateChange={setCurrentDate} />
+                        <DateRangeFilter
+                            startDate={dateRange.start}
+                            endDate={dateRange.end}
+                            onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                        />
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <div className="text-muted-foreground text-[10px] mb-0.5">本月支出 ({monthStats.currency})</div>
+                        <div className="text-muted-foreground text-[10px] mb-0.5">支出统计 ({monthStats.currency})</div>
                         <div className="text-xl font-bold font-mono tracking-tight">{monthStats.total.toFixed(2)}</div>
                     </div>
                 </div>

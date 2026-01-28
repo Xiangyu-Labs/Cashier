@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 
 interface TransactionsTabProps {
     ledgerId: string;
@@ -62,6 +63,15 @@ export function TransactionsTab({
     // Error section defaults to expanded as well
     const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed);
 
+    // Date Range Filter State (Default: Current Month)
+    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
+        const now = new Date();
+        return {
+            start: new Date(now.getFullYear(), now.getMonth(), 1),
+            end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+        };
+    });
+
     useEffect(() => {
         setIsPendingConfirmationCollapsed(defaultCollapsed);
         setIsQueuedCollapsed(defaultCollapsed);
@@ -75,8 +85,12 @@ export function TransactionsTab({
         hasNextPage,
         isFetchingNextPage,
     } = useInfiniteQuery({
-        queryKey: ["receipts", ledgerId, "all"],
-        queryFn: ({ pageParam }) => fetchReceipts(ledgerId, { cursor: pageParam }),
+        queryKey: ["receipts", ledgerId, "all", dateRange.start?.toISOString(), dateRange.end?.toISOString()],
+        queryFn: ({ pageParam }) => fetchReceipts(ledgerId, {
+            cursor: pageParam,
+            startDate: dateRange.start?.toISOString(),
+            endDate: dateRange.end?.toISOString(),
+        }),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
@@ -165,14 +179,23 @@ export function TransactionsTab({
         onError: () => toast({ variant: "error", title: "确认失败", description: "无法确认交易，请稍后重试" })
     });
 
-    const failedReceipts = queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
-    const processingReceipts = queuedReceipts?.filter((m) => m.status === "queued" || m.status === "processing") || [];
+    // Helper to check if date is in range
+    const isDateInRange = (dateStr: string) => {
+        if (!dateRange.start || !dateRange.end) return true;
+        const d = new Date(dateStr).getTime();
+        return d >= dateRange.start.getTime() && d <= dateRange.end.getTime();
+    };
+
+    const failedReceipts = (queuedReceipts?.filter((m) => m.status === "failed" || m.status === "invalid") || [])
+        .filter(r => isDateInRange(r.createdAt));
+    const processingReceipts = (queuedReceipts?.filter((m) => m.status === "queued" || m.status === "processing") || [])
+        .filter(r => isDateInRange(r.createdAt));
 
     // Pinned set logic
     const pinnedReceiptIds = new Set([
         ...failedReceipts.map(r => r.id),
         ...processingReceipts.map(r => r.id),
-        ...pendingGroups.batches.map(b => b.receipt.id)
+        ...pendingGroups.batches.filter(b => isDateInRange(b.receipt.createdAt)).map(b => b.receipt.id)
     ]);
 
     const handleConfirmAll = () => {
@@ -182,6 +205,7 @@ export function TransactionsTab({
 
     const handleRetryAll = async () => {
         setConfirmingAll(true);
+        // Retry all displayed failed receipts
         await Promise.all(failedReceipts.map((receipt) => retryReceipt(ledgerId, receipt.id)));
         queryClient.invalidateQueries({ queryKey: ["receipts", ledgerId] });
         setConfirmingAll(false);
@@ -189,8 +213,12 @@ export function TransactionsTab({
     };
 
     const pendingConfirmationItems: PinnedItem[] = [
-        ...pendingGroups.batches.map(batch => ({ type: "batch", status: "pending", date: batch.receipt.createdAt, data: batch } as const)),
-        ...pendingGroups.others.map(tx => ({ type: "single", status: "pending", date: tx.createdAt, data: tx } as const)),
+        ...pendingGroups.batches
+            .filter(batch => isDateInRange(batch.receipt.createdAt))
+            .map(batch => ({ type: "batch", status: "pending", date: batch.receipt.createdAt, data: batch } as const)),
+        ...pendingGroups.others
+            .filter(tx => isDateInRange(tx.createdAt))
+            .map(tx => ({ type: "single", status: "pending", date: tx.createdAt, data: tx } as const)),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const abnormalItems: PinnedItem[] = [
@@ -308,6 +336,15 @@ export function TransactionsTab({
 
     return (
         <div className="space-y-4">
+            <div className="px-2">
+                <DateRangeFilter
+                    startDate={dateRange.start}
+                    endDate={dateRange.end}
+                    onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                    className="w-full sm:w-auto"
+                />
+            </div>
+
             {/* Processing/Queued Section (Blue) */}
             <AnimatePresence mode="popLayout">
                 {processingItems.length > 0 && (

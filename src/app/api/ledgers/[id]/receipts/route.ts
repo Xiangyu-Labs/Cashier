@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { receipts, ledgers, categories, transactions } from "@/lib/db/schema";
-import { eq, inArray, and, asc, desc, lte } from "drizzle-orm";
+import { eq, inArray, and, asc, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 
 import { processReceiptQueue } from "@/lib/queue";
@@ -38,6 +38,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (cursor) {
     conditions.push(lte(receipts.createdAt, new Date(cursor)));
+  }
+
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+
+  if (startDate) {
+    conditions.push(gte(receipts.createdAt, new Date(startDate)));
+  }
+  if (endDate) {
+    conditions.push(lte(receipts.createdAt, new Date(endDate)));
   }
 
   const result = await db.query.receipts.findMany({
