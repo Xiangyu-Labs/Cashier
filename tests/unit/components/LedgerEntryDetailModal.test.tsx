@@ -90,7 +90,8 @@ describe("LedgerEntryDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.queryByText("title")).toBeNull();
+        // No title to check
+
 
         rerender(
             <LedgerEntryDetailModal
@@ -102,7 +103,8 @@ describe("LedgerEntryDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.queryByText("分录详情")).toBeNull();
+        // No title to check
+
     });
 
     it("renders details by default", () => {
@@ -116,7 +118,8 @@ describe("LedgerEntryDetailModal", () => {
                 onDelete={mockOnDelete}
             />
         );
-        expect(screen.getByText("title")).toBeDefined();
+        // Removed title expectation
+
         // Since we mocked ViewDetails, we check for Edit/Delete buttons
         expect(screen.getByText("Edit")).toBeDefined();
         expect(screen.getByText("Delete")).toBeDefined();

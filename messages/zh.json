@@ -112,7 +112,6 @@
         "send": "发送"
     },
     "LedgerEntryDetail": {
-        "title": "分录详情",
         "category": "分类",
         "entryDate": "日期",
         "status": "状态",

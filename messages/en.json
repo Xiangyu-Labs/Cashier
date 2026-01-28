@@ -112,7 +112,6 @@
         "send": "Send"
     },
     "LedgerEntryDetail": {
-        "title": "Entry Details",
         "category": "Category",
         "entryDate": "Date",
         "status": "Status",

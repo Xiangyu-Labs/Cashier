@@ -98,9 +98,7 @@ export function LedgerEntryDetailModal({
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{isEditing ? t("edit") : t("title")}</DialogTitle>
-          </DialogHeader>
+
 
           <div className="py-2">
             <LedgerEntryViewDetails
