@@ -26,8 +26,14 @@ export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "processing",
   "to_confirm",
   "completed",
-  "failed",
-  "invalid",
+  "error",
+]);
+
+export const errorCodeEnum = pgEnum("error_code", [
+  "ai_service_error",
+  "parse_failed",
+  "invalid_content",
+  "unknown",
 ]);
 
 
@@ -89,7 +95,7 @@ export const sourceDocuments = pgTable("source_documents", {
     .default([]),
 
   status: sourceDocumentStatusEnum("status").notNull().default("queued"),
-  error: text("error"),
+  errorCode: errorCodeEnum("error_code"),
   aiResponse: text("ai_response"),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),

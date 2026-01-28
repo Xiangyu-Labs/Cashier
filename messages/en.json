@@ -1,4 +1,10 @@
 {
+    "ErrorCode": {
+        "ai_service_error": "AI service unavailable",
+        "parse_failed": "Unable to parse content",
+        "invalid_content": "Invalid receipt",
+        "unknown": "Unknown error"
+    },
     "HomePage": {
         "loading": "Loading...",
         "creating": "Creating default ledger...",

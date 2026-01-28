@@ -1,4 +1,10 @@
 {
+    "ErrorCode": {
+        "ai_service_error": "AI 服务暂时不可用",
+        "parse_failed": "无法识别内容格式",
+        "invalid_content": "非有效账单",
+        "unknown": "未知错误"
+    },
     "HomePage": {
         "loading": "加载中...",
         "creating": "正在创建默认账本...",

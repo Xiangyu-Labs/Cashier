@@ -39,7 +39,8 @@ interface SourceDocumentCardProps {
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid" | "pending";
+  status: "queued" | "processing" | "to_confirm" | "completed" | "error" | "pending";
+  errorCode?: string | null;
   className?: string;
 }
 
@@ -56,6 +57,7 @@ export function SourceDocumentCard({
   defaultExpanded = false,
   onRetry,
   status,
+  errorCode,
   className,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
@@ -175,7 +177,16 @@ export function SourceDocumentCard({
           )}
         </span>
         <div className="flex items-center gap-3">
-          {ledgerEntries.length === 0 && <ProcessingStatus status={status} />}
+          {ledgerEntries.length === 0 && (
+            <div className="flex items-center gap-2">
+              <ProcessingStatus status={status} />
+              {status === "error" && errorCode && (
+                <span className="text-xs text-danger/80">
+                  {t(`ErrorCode.${errorCode}`)}
+                </span>
+              )}
+            </div>
+          )}
 
           {Object.entries(totalAmounts).map(([currency, total]) => (
             <span key={currency} className="text-sm font-bold text-text">
@@ -212,7 +223,7 @@ export function SourceDocumentCard({
           </Button>
 
           {/* Retry Action */}
-          {(status === "failed" || status === "invalid") && onRetry && (
+          {status === "error" && onRetry && (
             <>
               <div className="h-4 w-px bg-border mx-1" />
               <Button

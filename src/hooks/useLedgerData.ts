@@ -56,7 +56,7 @@ export function useLedgerData(ledgerId: string) {
     const { data: queuedSourceDocuments = [] } = useQuery({
         queryKey: ["sourceDocuments", ledgerId, "queued"],
         queryFn: async () => {
-            const res = await fetchSourceDocuments(ledgerId, { status: ["queued", "processing", "failed", "invalid"] });
+            const res = await fetchSourceDocuments(ledgerId, { status: ["queued", "processing", "error"] });
             return res.items;
         },
         refetchInterval: (query) => {
@@ -121,7 +121,7 @@ export function useLedgerData(ledgerId: string) {
 
     const processingDocs = queuedSourceDocuments?.filter((m) => m.status === "processing") || [];
     const queuedOnlyDocs = queuedSourceDocuments?.filter((m) => m.status === "queued") || [];
-    const failedDocs = queuedSourceDocuments?.filter((m) => m.status === "failed" || m.status === "invalid") || [];
+    const failedDocs = queuedSourceDocuments?.filter((m) => m.status === "error") || [];
 
     return {
         ledger,

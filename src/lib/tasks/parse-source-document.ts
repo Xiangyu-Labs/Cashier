@@ -123,9 +123,10 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
                 title: title || null,
             }).where(eq(sourceDocuments.id, input.sourceDocumentId));
         } else {
-            // Mark source document as completed if no valid entries
+            // Mark source document as error if no valid entries (invalid content)
             await db.update(sourceDocuments).set({
-                status: "completed",
+                status: "error",
+                errorCode: "invalid_content",
                 title: title || null,
             }).where(eq(sourceDocuments.id, input.sourceDocumentId));
         }
@@ -134,10 +135,18 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
     async onError(error: Error, task: ProcessingTask): Promise<void> {
         const input = task.input as ParseSourceDocumentInput;
 
-        // Update source document status to failed
+        // Determine error code
+        let errorCode: "ai_service_error" | "parse_failed" | "unknown" = "unknown";
+        if (error.message.includes("AI response") || error.message.includes("JSON") || error.message.includes("parse")) {
+            errorCode = "parse_failed";
+        } else if (error.message.includes("AI") || error.message.includes("OpenAI") || error.message.includes("service")) {
+            errorCode = "ai_service_error";
+        }
+
+        // Update source document status to error
         await db.update(sourceDocuments).set({
-            status: "failed",
-            error: error.message,
+            status: "error",
+            errorCode: errorCode,
         }).where(eq(sourceDocuments.id, input.sourceDocumentId));
     },
 };

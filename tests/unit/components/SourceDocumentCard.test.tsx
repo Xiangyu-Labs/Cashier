@@ -21,6 +21,7 @@ const mockCategories: EntryCategory[] = [
         description: null,
         icon: "food",
         sortOrder: 1,
+        isEditable: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     },
@@ -156,6 +157,12 @@ describe("SourceDocumentCard", () => {
     it("renders status when no ledger entries", () => {
         render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="queued" />);
         expect(screen.getByText("处理中")).toBeTruthy();
+    });
+
+    it("renders error status and message when errorCode is provided", () => {
+        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="error" errorCode="parse_failed" />);
+        expect(screen.getByText("处理异常")).toBeTruthy();
+        expect(screen.getByText("ErrorCode.parse_failed")).toBeTruthy();
     });
 
     it("renders total amount and hides status when ledger entries exist", () => {

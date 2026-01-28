@@ -22,11 +22,17 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
 
   await db.execute(sql`DROP TYPE IF EXISTS source_document_status CASCADE`);
   await db.execute(sql`DROP TYPE IF EXISTS ledger_entry_status CASCADE`);
+  await db.execute(sql`DROP TYPE IF EXISTS error_code CASCADE`);
 
   // Create enums
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'failed', 'invalid');
+      CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'error');
+    EXCEPTION WHEN duplicate_object THEN null;
+    END $$;
+
+    DO $$ BEGIN
+      CREATE TYPE error_code AS ENUM ('ai_service_error', 'parse_failed', 'invalid_content', 'unknown');
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
 
@@ -75,7 +81,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       text TEXT,
       image_urls JSONB DEFAULT '[]'::jsonb,
       status source_document_status NOT NULL DEFAULT 'queued',
-      error TEXT,
+      error_code error_code,
       ai_response TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );

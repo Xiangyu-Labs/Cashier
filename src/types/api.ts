@@ -40,8 +40,8 @@ export interface SourceDocument {
   imageUrls: string[];
   aiResponse: string | null;
   createdAt: string;
-  status?: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid";
-  error?: string | null;
+  status?: "queued" | "processing" | "to_confirm" | "completed" | "error";
+  errorCode?: "ai_service_error" | "parse_failed" | "invalid_content" | "unknown" | null;
 }
 
 export interface LedgerEntry {

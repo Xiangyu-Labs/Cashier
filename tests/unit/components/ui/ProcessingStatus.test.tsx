@@ -19,9 +19,9 @@ describe("ProcessingStatus", () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it("renders failed status correctly", () => {
-        render(<ProcessingStatus status="failed" />);
-        expect(screen.getByText("处理失败")).toBeTruthy();
+    it("renders error status correctly", () => {
+        render(<ProcessingStatus status="error" />);
+        expect(screen.getByText("处理异常")).toBeTruthy();
     });
 
     it("applies custom className", () => {

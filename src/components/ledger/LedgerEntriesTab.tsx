@@ -211,7 +211,7 @@ export function LedgerEntriesTab({
         return d >= dateRange.start.getTime() && d <= dateRange.end.getTime();
     }
 
-    const failedSourceDocuments = (queuedSourceDocuments?.filter((m) => m.status === "failed" || m.status === "invalid") || [])
+    const failedSourceDocuments = (queuedSourceDocuments?.filter((m) => m.status === "error") || [])
         .filter(r => isDateInRange(r.createdAt));
     const processingSourceDocuments = (queuedSourceDocuments?.filter((m) => m.status === "queued" || m.status === "processing") || [])
         .filter(r => isDateInRange(r.createdAt));
@@ -292,7 +292,7 @@ export function LedgerEntriesTab({
         let className = "";
         let onRetryProp = undefined;
 
-        if (item.type === "queue" && (item.data.status === "failed" || item.data.status === "invalid")) {
+        if (item.type === "queue" && item.data.status === "error") {
             className = "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800";
             onRetryProp = () => handleRetrySourceDocument(item.data.id);
         } else if (item.type === "queue" && (item.data.status === "queued" || item.data.status === "processing")) {
@@ -308,6 +308,7 @@ export function LedgerEntriesTab({
                     ledgerEntries={[]}
                     categories={categories}
                     status={item.data.status || 'processing'}
+                    errorCode={item.data.errorCode}
                     className={className}
                     defaultExpanded={true}
                     onRetry={onRetryProp}
