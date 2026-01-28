@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { fetchTransactions, updateTransaction, deleteTransaction, fetchTransactionSummary } from "@/lib/api";
 import { Transaction, Category } from "@/types/api";
 import { TransactionCard } from "@/components/transaction/TransactionCard";
+import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,8 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
     });
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     // Group items by date - Refactored to ensure strict sorting
     const groupedItems = useMemo(() => {
@@ -186,6 +189,10 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                                             categories={categories}
                                             onUpdate={(data) => updateMutation.mutate({ transactionId: tx.id, data })}
                                             onDelete={() => setDeleteConfirm({ open: true, id: tx.id })}
+                                            onView={() => {
+                                                setSelectedTransaction(tx);
+                                                setIsDetailModalOpen(true);
+                                            }}
                                         />
                                     </motion.div>
                                 ))}
@@ -236,6 +243,29 @@ export function DetailsTab({ ledgerId, categories }: DetailsTabProps) {
                 }}
                 variant="destructive"
                 confirmLabel={tCommon("delete")}
+            />
+
+            <TransactionDetailModal
+                transaction={selectedTransaction}
+                categories={categories}
+                open={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedTransaction(null);
+                }}
+                onUpdate={(data) => {
+                    if (selectedTransaction) {
+                        updateMutation.mutate({
+                            transactionId: selectedTransaction.id,
+                            data,
+                        });
+                    }
+                }}
+                onDelete={() => {
+                    if (selectedTransaction) {
+                        deleteMutation.mutate(selectedTransaction.id);
+                    }
+                }}
             />
         </div>
     );

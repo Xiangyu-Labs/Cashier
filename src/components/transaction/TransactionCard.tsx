@@ -32,6 +32,7 @@ interface TransactionCardProps {
     currency?: string | null;
   }) => void;
   onDelete: () => void;
+  onView?: () => void;
   hideCategory?: boolean;
   className?: string;
 }
@@ -41,6 +42,7 @@ export function TransactionCard({
   categories,
   onUpdate,
   onDelete,
+  onView,
   hideCategory = false,
   className,
 }: TransactionCardProps) {
@@ -140,19 +142,30 @@ export function TransactionCard({
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div
+            className={cn("space-y-2", onView && "cursor-pointer hover:opacity-80 transition-opacity")}
+            onClick={(e) => {
+              if (onView) {
+                // Prevent detail view when clicking buttons
+                const target = e.target as HTMLElement;
+                if (!target.closest("button") && !target.closest("select") && !target.closest("input")) {
+                  onView();
+                }
+              }
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {!hideCategory && (
-                  <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl">
+                  <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl text-text">
                     <CategoryIcon
                       iconName={transaction.category?.icon}
                       className="w-6 h-6"
                     />
                   </div>
                 )}
-                <div>
-                  <p className="font-medium text-text">{transaction.itemName}</p>
+                <div className="min-w-0">
+                  <p className="font-medium text-text truncate">{transaction.itemName}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {transaction.category ? (
                       !hideCategory && (
@@ -175,7 +188,7 @@ export function TransactionCard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 shrink-0">
                 <p className="font-mono font-semibold text-text">
                   <span className="text-xs text-muted mr-1">
                     {transaction.currency || "?"}
@@ -187,7 +200,10 @@ export function TransactionCard({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => setIsEditing(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
                     className="text-muted hover:text-primary"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -195,7 +211,10 @@ export function TransactionCard({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={onDelete}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
                     className="text-muted hover:text-danger"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -204,7 +223,7 @@ export function TransactionCard({
               </div>
             </div>
             {transaction.description && (
-              <p className="text-xs text-muted bg-surface2 p-2 rounded">
+              <p className="text-xs text-muted bg-surface2 p-2 rounded truncate max-h-[3em]">
                 {transaction.description}
               </p>
             )}

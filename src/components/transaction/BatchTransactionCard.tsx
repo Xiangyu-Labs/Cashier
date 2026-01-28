@@ -36,6 +36,7 @@ interface BatchTransactionCardProps {
   ) => void;
   onDeleteTransaction?: (transactionId: string) => void;
   onDelete?: () => void;
+  onViewTransaction?: (transaction: Transaction) => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
   status: "queued" | "processing" | "to_confirm" | "completed" | "failed" | "invalid" | "pending";
@@ -51,6 +52,7 @@ export function BatchTransactionCard({
   onUpdateTransaction,
   onDeleteTransaction,
   onDelete,
+  onViewTransaction,
   defaultExpanded = false,
   onRetry,
   status,
@@ -364,6 +366,7 @@ export function BatchTransactionCard({
                           categories={categories}
                           onUpdate={(data) => onUpdateTransaction?.(tx.id, data)}
                           onDelete={() => onDeleteTransaction?.(tx.id)}
+                          onView={() => onViewTransaction?.(tx)}
                           hideCategory={true}
                         />
                       ))}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { Transaction, Category, Receipt } from "@/types/api";
 import { BatchTransactionCard } from "@/components/transaction/BatchTransactionCard";
+import { TransactionDetailModal } from "@/components/TransactionDetailModal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -149,6 +150,9 @@ export function TransactionsTab({
         title: string;
         description: string;
     }>({ open: false, type: null, id: null, title: "", description: "" });
+
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     function handleDeleteConfirm() {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
@@ -311,6 +315,10 @@ export function TransactionsTab({
                     onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })}
                     onDeleteTransaction={(id) => setDeleteConfirm({ open: true, type: "transaction", id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                     onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: item.data.receipt.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                    onViewTransaction={(tx) => {
+                        setSelectedTransaction(tx);
+                        setIsDetailModalOpen(true);
+                    }}
                 />;
             }
             if (item.type === "single") {
@@ -471,6 +479,10 @@ export function TransactionsTab({
                                             onDelete={() => setDeleteConfirm({ open: true, type: "receipt", id: receipt.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                             onUpdateTransaction={(id, data) => updateMutation.mutate({ transactionId: id, data })}
                                             onDeleteTransaction={(id) => deleteMutation.mutate(id)}
+                                            onViewTransaction={(tx) => {
+                                                setSelectedTransaction(tx);
+                                                setIsDetailModalOpen(true);
+                                            }}
                                         />
                                     </div>
                                 );
@@ -495,6 +507,29 @@ export function TransactionsTab({
             </div>
 
             <ConfirmDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })} title={deleteConfirm.title} description={deleteConfirm.description} onConfirm={handleDeleteConfirmAction} variant="destructive" confirmLabel={tCommon("delete")} />
+
+            <TransactionDetailModal
+                transaction={selectedTransaction}
+                categories={categories}
+                open={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedTransaction(null);
+                }}
+                onUpdate={(data) => {
+                    if (selectedTransaction) {
+                        updateMutation.mutate({
+                            transactionId: selectedTransaction.id,
+                            data,
+                        });
+                    }
+                }}
+                onDelete={() => {
+                    if (selectedTransaction) {
+                        deleteMutation.mutate(selectedTransaction.id);
+                    }
+                }}
+            />
         </div>
     );
 }
