@@ -64,7 +64,7 @@ export async function processJob(job: Job): Promise<unknown> {
                 const childrenDef = (result.children || []).map(child => ({
                     name: child.name,
                     queueName: child.queueName,
-                    data: { ...child.data, __taskRunId: job.data.__taskRunId, __ledgerId: job.data.__ledgerId },
+                    data: { ...(child.data as Record<string, unknown>), __taskRunId: job.data.__taskRunId, __ledgerId: job.data.__ledgerId },
                     opts: { ...child.opts, parent: { id: job.id!, queue: job.queueQualifiedName } }
                 }));
 

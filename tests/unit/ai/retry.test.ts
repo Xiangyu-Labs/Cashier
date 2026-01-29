@@ -100,8 +100,7 @@ describe("OpenAIClient Retry Logic", () => {
     });
 
     it("should NOT retry on 400 Bad Request", async () => {
-        // @ts-expect-error Testing invalid error construction
-        const error = new mockOpenAI.APIError(400, "Bad Request");
+        const error = new (mockOpenAI as unknown as { APIError: new (status: number, message: string) => Error }).APIError(400, "Bad Request");
         mockCreate.mockRejectedValueOnce(error);
 
         await expect(client.generateContent("prompt", [])).rejects.toThrow("Bad Request");
