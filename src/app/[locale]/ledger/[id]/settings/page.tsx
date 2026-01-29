@@ -34,7 +34,6 @@ export default function LedgerSettingsPage() {
     const t = useTranslations('Settings');
     const ledgerId = params.id as string;
     const queryClient = useQueryClient();
-    const [showAutoConfirmWarning, setShowAutoConfirmWarning] = useState(false);
 
     // Ledger Query
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
@@ -177,14 +176,16 @@ export default function LedgerSettingsPage() {
                         <Switch
                             checked={ledger.autoConfirm || false}
                             onCheckedChange={(checked: boolean) => {
-                                if (checked) {
-                                    setShowAutoConfirmWarning(true);
-                                } else {
-                                    updateLedgerMutation.mutate({ autoConfirm: false });
-                                }
+                                updateLedgerMutation.mutate({ autoConfirm: checked });
                             }}
                         />
                     </div>
+
+                    {ledger.autoConfirm && (
+                        <div className="bg-danger/10 p-3 rounded-md text-xs text-danger leading-normal animate-in fade-in slide-in-from-top-1 duration-200">
+                            ⚠️ {t('riskDesc1')} {t('riskDesc2')} {t('riskDesc3')}
+                        </div>
+                    )}
 
                     <div className="h-px bg-[var(--border)]" />
 
@@ -218,34 +219,6 @@ export default function LedgerSettingsPage() {
                 </div>
             </section>
 
-            <Dialog open={showAutoConfirmWarning} onOpenChange={setShowAutoConfirmWarning}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="text-danger flex items-center gap-2">
-                            ⚠️ {t('riskTitle')}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4 text-sm text-[var(--muted)] space-y-3">
-                        <p>{t('riskDesc1')}</p>
-                        <p>{t('riskDesc2')}</p>
-                        <p>{t('riskDesc3')}</p>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-4">
-                        <Button variant="ghost" onClick={() => setShowAutoConfirmWarning(false)}>
-                            {t('cancel')}
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={() => {
-                                updateLedgerMutation.mutate({ autoConfirm: true });
-                                setShowAutoConfirmWarning(false);
-                            }}
-                        >
-                            {t('confirmEnable')}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             {/* Data Configuration */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">

@@ -13,6 +13,10 @@ vi.mock("@tanstack/react-query", () => ({
         mutate: mockMutate,
         isPending: false,
     }),
+    useQuery: () => ({
+        data: [], // Return empty array to support .some() and other array operations in useLedgerData
+        isLoading: false,
+    }),
 }));
 
 vi.mock("@/lib/api", () => ({

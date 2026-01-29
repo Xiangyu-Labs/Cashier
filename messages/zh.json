@@ -122,7 +122,8 @@
     "SourceDocumentInput": {
         "placeholder": "输入消费记录，例如：午饭35元... (支持粘贴图片)",
         "image": "图片",
-        "send": "发送"
+        "send": "发送",
+        "advancedFeatures": "高级功能"
     },
     "LedgerEntryDetail": {
         "category": "交易类别",

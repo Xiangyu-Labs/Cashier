@@ -122,7 +122,8 @@
     "SourceDocumentInput": {
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars... (supports pasting images)",
         "image": "Image",
-        "send": "Send"
+        "send": "Send",
+        "advancedFeatures": "Advanced Features"
     },
     "LedgerEntryDetail": {
         "category": "Transaction Category",
