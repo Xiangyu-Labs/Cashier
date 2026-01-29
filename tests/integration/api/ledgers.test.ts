@@ -84,7 +84,7 @@ describe("POST /api/ledgers", () => {
 });
 
 describe("PATCH /api/ledgers/[id]", () => {
-  it("should update ledger settings", async () => {
+  it("should update ledger settings including all configuration flags", async () => {
     const db = getTestDb();
     const [ledger] = await db.insert(ledgers).values({ name: "Old Name" }).returning();
 
@@ -92,7 +92,12 @@ describe("PATCH /api/ledgers/[id]", () => {
       method: "PATCH",
       body: JSON.stringify({
         language: "en",
-        currencies: ["USD"]
+        currencies: ["USD", "EUR"],
+        mainCurrency: "USD",
+        autoConfirm: true,
+        autoRecognizeDate: true,
+        collapsePendingDefault: true,
+        mergeSimilarItems: true
       }),
     });
 
@@ -104,11 +109,21 @@ describe("PATCH /api/ledgers/[id]", () => {
     const data = await response.json();
 
     expect(data.language).toBe("en");
-    expect(data.currencies).toEqual(["USD"]);
+    expect(data.currencies).toEqual(["USD", "EUR"]);
+    expect(data.mainCurrency).toBe("USD");
+    expect(data.autoConfirm).toBe(true);
+    expect(data.autoRecognizeDate).toBe(true);
+    expect(data.collapsePendingDefault).toBe(true);
+    expect(data.mergeSimilarItems).toBe(true);
 
     // Verify db persistence
     const updated = await db.query.ledgers.findFirst({ where: eq(ledgers.id, ledger.id) });
     expect(updated?.language).toBe("en");
-    expect(updated?.currencies).toEqual(["USD"]);
+    expect(updated?.currencies).toEqual(["USD", "EUR"]);
+    expect(updated?.mainCurrency).toBe("USD");
+    expect(updated?.autoConfirm).toBe(true);
+    expect(updated?.autoRecognizeDate).toBe(true);
+    expect(updated?.collapsePendingDefault).toBe(true);
+    expect(updated?.mergeSimilarItems).toBe(true);
   });
 });

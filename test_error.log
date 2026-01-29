@@ -1,0 +1,132 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/xiangyu/Projects/Cashier[39m
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39mStarting createTestSchema...
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "settings" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "transactions" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "receipts" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "categories" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "api_keys" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39m{
+  severity_local: [32m'NOTICE'[39m,
+  severity: [32m'NOTICE'[39m,
+  code: [32m'00000'[39m,
+  message: [32m'table "gpt_tasks" does not exist, skipping'[39m,
+  file: [32m'tablecmds.c'[39m,
+  line: [32m'1317'[39m,
+  routine: [32m'DropErrorMsgNonExistent'[39m
+}
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39mFinished createTestSchema.
+
+[90mstdout[2m | tests/integration/api/source-documents.test.ts
+[22m[39mTables in DB: [
+  [32m'ledger_entries'[39m,
+  [32m'ledgers'[39m,
+  [32m'entry_categories'[39m,
+  [32m'source_documents'[39m,
+  [32m'service_credentials'[39m,
+  [32m'processing_tasks'[39m
+]
+
+ [31m❯[39m tests/integration/api/source-documents.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m8 failed[39m[2m)[22m[32m 121[2mms[22m[39m
+[31m     [31m×[31m should persist ledger entries with notes[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m should process text message and create pending ledger entry[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m should match category by name[39m[32m 5[2mms[22m[39m
+[31m     [31m×[31m should save input message with AI response[39m[32m 5[2mms[22m[39m
+[31m     [31m×[31m should return 400 when no input provided[39m[32m 5[2mms[22m[39m
+[31m     [31m×[31m should return 404 for non-existent ledger[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m should handle image input[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m should delete source document and associated ledger entries[39m[32m 7[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 8 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould persist ledger entries with notes
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould process text message and create pending ledger entry
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould match category by name
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould save input message with AI response
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould return 400 when no input provided
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould return 404 for non-existent ledger
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould handle image input
+[41m[1m FAIL [22m[49m tests/integration/api/source-documents.test.ts[2m > [22mPOST /api/ledgers/[id]/source-documents[2m > [22mshould delete source document and associated ledger entries
+[31m[1mError[22m: Failed query: insert into "ledgers" ("id", "name", "language", "currencies", "main_currency", "created_at", "updated_at", "auto_confirm", "auto_recognize_date", "collapse_pending_default", "merge_similar_items") values (default, $1, default, default, default, default, default, $2, default, default, default) returning "id", "name", "language", "currencies", "main_currency", "created_at", "updated_at", "auto_confirm", "auto_recognize_date", "collapse_pending_default", "merge_similar_items"
+params: Test Ledger,true[39m
+[90m [2m❯[22m PostgresJsPreparedQuery.queryWithCache node_modules/drizzle-orm/pg-core/session.js:[2m41:15[22m[39m
+[90m [2m❯[22m node_modules/drizzle-orm/postgres-js/session.js:[2m37:20[22m[39m
+[36m [2m❯[22m tests/integration/api/source-documents.test.ts:[2m32:22[22m[39m
+    [90m 30| [39m    [35mconst[39m db [33m=[39m [34mgetTestDb[39m()[33m;[39m
+    [90m 31| [39m
+    [90m 32| [39m    [35mconst[39m [ledger] [33m=[39m [35mawait[39m db
+    [90m   | [39m                     [31m^[39m
+    [90m 33| [39m      [33m.[39m[34minsert[39m(ledgers)
+    [90m 34| [39m      [33m.[39m[34mvalues[39m({ name[33m:[39m [32m"Test Ledger"[39m[33m,[39m autoConfirm[33m:[39m [35mtrue[39m })
+
+[31m[1mCaused by: PostgresError[22m: column "main_currency" of relation "ledgers" does not exist[39m
+[90m [2m❯[22m ErrorResponse node_modules/postgres/src/connection.js:[2m815:30[22m[39m
+[90m [2m❯[22m handle node_modules/postgres/src/connection.js:[2m489:6[22m[39m
+[90m [2m❯[22m Socket.data node_modules/postgres/src/connection.js:[2m324:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ severity_local: 'ERROR', severity: 'ERROR', code: '42703', position: '64', file: 'parse_target.c', routine: 'checkInsertTargets', query: 'insert into "ledgers" ("id", "name", "language", "currencies", "main_currency", "created_at", "updated_at", "auto_confirm", "auto_recognize_date", "collapse_pending_default", "merge_similar_items") values (default, $1, default, default, default, default, default, $2, default, default, default) returning "id", "name", "language", "currencies", "main_currency", "created_at", "updated_at", "auto_confirm", "auto_recognize_date", "collapse_pending_default", "merge_similar_items"', parameters: [ 'Test Ledger', true ], args: [ 'Test Ledger', true ], types: [ +0, 16 ] }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m8 failed[39m[22m[90m (8)[39m
+[2m   Start at [22m 09:26:42
+[2m   Duration [22m 866ms[2m (transform 88ms, setup 310ms, import 106ms, tests 121ms, environment 127ms)[22m
+

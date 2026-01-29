@@ -53,6 +53,18 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
         .returning();
       testCategoryId = newCat.id;
     }
+
+    // Ensure '水果' category exists for the notes test
+    const fruitCategory = await db.query.entryCategories.findFirst({
+      where: eq(categories.name, "水果"),
+    });
+    if (!fruitCategory) {
+      await db.insert(categories).values({
+        name: "水果",
+        description: "Fresh Fruit",
+        sortOrder: 2,
+      });
+    }
   });
 
   // ...

@@ -50,6 +50,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       name TEXT NOT NULL,
       language TEXT NOT NULL DEFAULT 'zh-CN',
       currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
+      main_currency TEXT DEFAULT 'CNY',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
       auto_confirm BOOLEAN DEFAULT FALSE,
@@ -82,7 +83,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       image_urls JSONB DEFAULT '[]'::jsonb,
       status source_document_status NOT NULL DEFAULT 'queued',
       error_code error_code,
-      ai_response TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
