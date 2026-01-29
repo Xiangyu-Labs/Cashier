@@ -351,6 +351,29 @@ describe("OpenAIMessageProcessor", () => {
       expect(result.ledgerEntries[0].entryDate).toBeNull();
     });
 
+    it("should handle missing currency field in response", async () => {
+      const input: SourceDocumentInput = { text: "some expense" };
+
+      mockGenerateContent.mockResolvedValue(
+        JSON.stringify({
+          is_valid: true,
+          ledger_entries: [
+            {
+              item_name: "Unknown Item",
+              amount: 50,
+              // currency field missing
+              category: "餐饮",
+              entry_date: null,
+            },
+          ],
+        })
+      );
+
+      const result = await processor.process(input, defaultContext);
+
+      expect(result.ledgerEntries[0].currency).toBe("unknown");
+    });
+
     it("should reject negative amounts via Zod validation", async () => {
       const input: SourceDocumentInput = { text: "refund" };
 

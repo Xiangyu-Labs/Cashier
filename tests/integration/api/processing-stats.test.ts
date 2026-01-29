@@ -1,0 +1,101 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NextRequest } from "next/server";
+import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
+import { getTestDb } from "../../setup";
+import { ledgers, processingTasks } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+
+describe("Processing Stats: Token Usage API", () => {
+    let testLedgerId: string;
+
+    beforeEach(async () => {
+        const db = getTestDb();
+        const [ledger] = await db
+            .insert(ledgers)
+            .values({ name: "Stats Test Ledger" })
+            .returning();
+        testLedgerId = ledger.id;
+    });
+
+    it("should return zero stats when no tasks exist", async () => {
+        const req = new NextRequest(
+            `http://localhost/api/ledgers/${testLedgerId}/processing-stats/token-usage`
+        );
+        const res = await tokenUsageGET(req, {
+            params: Promise.resolve({ id: testLedgerId }),
+        });
+
+        expect(res.status).toBe(200);
+        const stats = await res.json();
+        expect(stats).toEqual({
+            totalInputTokens: 0,
+            totalOutputTokens: 0,
+            totalTokens: 0,
+            taskCount: 0,
+            averageTokensPerTask: 0,
+        });
+    });
+
+    it("should aggregate token usage from completed tasks", async () => {
+        const db = getTestDb();
+
+        const [otherLedger] = await db
+            .insert(ledgers)
+            .values({ name: "Other Ledger" })
+            .returning();
+
+        await db.insert(processingTasks).values([
+            {
+                ledgerId: testLedgerId,
+                type: "parse_source_document",
+                title: "Task 1",
+                status: "completed",
+                metadata: { usage: { inputTokens: 100, outputTokens: 50 } },
+                createdAt: new Date(),
+            },
+            {
+                ledgerId: testLedgerId,
+                type: "parse_source_document",
+                title: "Task 2",
+                status: "completed",
+                metadata: { usage: { inputTokens: 200, outputTokens: 100 } },
+                createdAt: new Date(),
+            },
+            // This task should be ignored because it's not completed
+            {
+                ledgerId: testLedgerId,
+                type: "parse_source_document",
+                title: "Task 3",
+                status: "running",
+                metadata: { usage: { inputTokens: 500, outputTokens: 500 } },
+                createdAt: new Date(),
+            },
+            // This task should be ignored because it belongs to another ledger
+            {
+                ledgerId: otherLedger.id,
+                type: "parse_source_document",
+                title: "Other Ledger Task",
+                status: "completed",
+                metadata: { usage: { inputTokens: 1000, outputTokens: 1000 } },
+                createdAt: new Date(),
+            }
+        ]);
+
+        const req = new NextRequest(
+            `http://localhost/api/ledgers/${testLedgerId}/processing-stats/token-usage`
+        );
+        const res = await tokenUsageGET(req, {
+            params: Promise.resolve({ id: testLedgerId }),
+        });
+
+        expect(res.status).toBe(200);
+        const stats = await res.json();
+        expect(stats).toEqual({
+            totalInputTokens: 300,
+            totalOutputTokens: 150,
+            totalTokens: 450,
+            taskCount: 2,
+            averageTokensPerTask: 225,
+        });
+    });
+});

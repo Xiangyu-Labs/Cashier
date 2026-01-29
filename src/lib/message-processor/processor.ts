@@ -16,7 +16,7 @@ import {
 const ledgerEntrySchema = z.object({
   item_name: z.string().min(1, "Item name cannot be empty"),
   amount: z.number().min(0, "Amount must be non-negative"),
-  currency: z.string().nullable(),
+  currency: z.string().nullable().optional(),
   category: z.string().min(1, "Category cannot be empty"),
   entry_date: z.string().nullable(),
   notes: z.string().nullable().optional(),
