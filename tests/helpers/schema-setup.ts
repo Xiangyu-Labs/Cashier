@@ -57,8 +57,10 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       auto_confirm BOOLEAN DEFAULT FALSE,
       auto_recognize_date BOOLEAN DEFAULT FALSE,
       collapse_pending_default BOOLEAN DEFAULT FALSE,
-      merge_similar_items BOOLEAN DEFAULT FALSE
+      merge_similar_items BOOLEAN DEFAULT FALSE,
+      ai_custom_prompt TEXT
     );
+
   `);
 
   await db.execute(sql`
@@ -140,6 +142,25 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       base TEXT NOT NULL DEFAULT 'EUR',
       rates JSONB NOT NULL,
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS task_runs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      bull_flow_id TEXT,
+      status TEXT NOT NULL DEFAULT 'running',
+      output JSONB,
+      error TEXT,
+      total_jobs INTEGER DEFAULT 1,
+      completed_jobs INTEGER DEFAULT 0,
+      failed_jobs INTEGER DEFAULT 0,
+      usage JSONB,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      started_at TIMESTAMP,
+      completed_at TIMESTAMP
     );
   `);
   console.log("Finished createTestSchema.");

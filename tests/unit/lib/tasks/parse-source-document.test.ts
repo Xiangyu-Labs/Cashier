@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
+import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -29,7 +29,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should pass settings and preferredCurrencies correctly to the processor", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "doc-1",
+            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
             categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
             language: "en-US",
             preferredCurrencies: ["USD"],
@@ -52,7 +52,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
         } as any;
 
-        const result = await parseSourceDocumentHandler.execute({ input } as any, context);
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
         expect(mockProcessor.process).toHaveBeenCalledWith(
             expect.anything(),
@@ -68,7 +68,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should override entryDate if autoRecognizeDate is false", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "doc-1",
+            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
             categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
@@ -88,7 +88,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
         } as any;
 
-        const result = await parseSourceDocumentHandler.execute({ input } as any, context);
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
         const today = new Date().toISOString().split("T")[0];
         expect(result.ledgerEntries[0].entryDate).toBe(today);
@@ -96,7 +96,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should call summarizeLedgerEntries if mergeSimilarItems is true", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "doc-1",
+            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
             categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
@@ -121,7 +121,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
         } as any;
 
-        const result = await parseSourceDocumentHandler.execute({ input } as any, context);
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
         expect(summarizeLedgerEntries).toHaveBeenCalled();
         expect(result.ledgerEntries).toHaveLength(1);
@@ -130,7 +130,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should return empty ledgerEntries if isValid is false", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "doc-1",
+            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
             categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
@@ -148,7 +148,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
         } as any;
 
-        const result = await parseSourceDocumentHandler.execute({ input } as any, context);
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
         expect(result.ledgerEntries).toHaveLength(0);
     });
@@ -212,7 +212,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         } as any;
 
         // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, task);
+        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
 
         // 3. Verify ledger entries status
         const entries = await db.query.ledgerEntries.findMany({
@@ -279,7 +279,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         } as any;
 
         // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, task);
+        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
 
         // 3. Verify ledger entries status
         const entries = await db.query.ledgerEntries.findMany({
@@ -294,5 +294,49 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
         expect(updatedSourceDoc?.status).toBe("completed");
+    });
+    it("should be idempotent (not create duplicates) if called multiple times", async () => {
+        const db = getTestDb();
+
+        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
+
+        const output = {
+            ledgerEntries: [
+                {
+                    itemName: "Item 1",
+                    amount: 100,
+                    currency: "CNY",
+                    category: null,
+                    entryDate: "2024-01-01",
+                    notes: null
+                }
+            ]
+        };
+
+        const task = {
+            id: "task-idempotent",
+            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            ledgerId: ledger.id,
+            input: {
+                sourceDocumentId: sourceDoc.id,
+                categories: [],
+                settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
+            },
+        } as any;
+
+        // 1. First call
+        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+
+        // 2. Second call
+        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+
+        // 3. Verify
+        const entries = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, sourceDoc.id)
+        });
+
+        expect(entries).toHaveLength(1);
+        expect(entries[0].itemName).toBe("Item 1");
     });
 });

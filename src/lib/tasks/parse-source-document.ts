@@ -29,7 +29,7 @@ export interface ParseSourceDocumentInput {
 }
 
 
-interface ParseSourceDocumentOutput {
+export interface ParseSourceDocumentOutput {
     ledgerEntries: ParsedLedgerEntry[];
     title?: string;
 }

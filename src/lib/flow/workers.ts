@@ -5,8 +5,8 @@ import { processJob } from './processor';
 const connection = getRedisConnection();
 
 // Configuration from environment
-const mainConcurrency = parseInt(process.env.FLOW_MAIN_QUEUE_CONCURRENCY || '2', 10);
-const apiConcurrency = parseInt(process.env.FLOW_API_QUEUE_CONCURRENCY || '2', 10);
+const mainConcurrency = parseInt(process.env.FLOW_MAIN_QUEUE_CONCURRENCY || '2', 10) || 2;
+const apiConcurrency = parseInt(process.env.FLOW_API_QUEUE_CONCURRENCY || '2', 10) || 2;
 const apiRateMax = parseInt(process.env.FLOW_API_QUEUE_RATE_MAX || '10', 10);
 const apiRateDuration = parseInt(process.env.FLOW_API_QUEUE_RATE_DURATION || '60000', 10);
 
