@@ -15,6 +15,9 @@ export default defineConfig({
     },
     fileParallelism: false,
     testTimeout: 30000,
+    env: {
+      REDIS_URL: "redis://127.0.0.1:6380",
+    },
   },
   resolve: {
     alias: {

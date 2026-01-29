@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { processingTasks } from "@/lib/db/schema";
+import { taskRuns } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export async function GET(
@@ -12,14 +12,14 @@ export async function GET(
     const stats = await db
         .select({
             totalTasks: sql<number>`count(*)`,
-            totalInputTokens: sql<number>`sum(cast(metadata->'usage'->>'inputTokens' as integer))`,
-            totalOutputTokens: sql<number>`sum(cast(metadata->'usage'->>'outputTokens' as integer))`,
+            totalInputTokens: sql<number>`sum(cast(usage->>'inputTokens' as integer))`,
+            totalOutputTokens: sql<number>`sum(cast(usage->>'outputTokens' as integer))`,
         })
-        .from(processingTasks)
+        .from(taskRuns)
         .where(
             and(
-                eq(processingTasks.ledgerId, ledgerId),
-                eq(processingTasks.status, "completed")
+                eq(taskRuns.ledgerId, ledgerId),
+                eq(taskRuns.status, "completed")
             )
         );
 

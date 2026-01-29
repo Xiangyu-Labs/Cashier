@@ -1,150 +1,139 @@
-# Processing Task Infrastructure Development Guide
+# Processing Task Infrastructure Development Guide (v2.0 - BullMQ Flow)
 
-This guide provides a comprehensive overview of the processing task infrastructure designed for decoupled, robust, and asynchronous task management.
+This guide provides a comprehensive overview of the new **async recursive flow task system** powered by BullMQ and Redis.
 
 ## 🏗 Architecture Overview
 
-The infrastructure is split into two main parts:
-1. **Core Infrastructure (`src/lib/processing/`)**: A pure, business-agnostic engine responsible for task queuing, execution coordination, and state management.
-2. **Task Implementations (`src/lib/tasks/`)**: Where business-specific logic resides (e.g., source document parsing, summarization).
+The system replaces the legacy database-polling model with a robust message queue architecture:
+
+1.  **Core Engine (`src/lib/flow/`)**: Manages task queuing, execution, recursion, and state persistence.
+2.  **Task Implementations (`src/lib/tasks/`)**: Pure business logic implementing the `FlowTaskHandler` interface.
+3.  **Redis**: Handles job storage, sophisticated rate limiting, and stall prevention.
 
 ### The Data Flow
+
 ```mermaid
-graph LR
-    A[Business Layer] -- createProcessingTask --> B[processing_tasks DB]
-    B -- trigger --> C[Task Worker]
-    C -- load handler --> D[Task Handler]
-    D -- execute steps --> E[GPT / External Service]
-    E -- return --> D
-    D -- write back --> F[Business Entity]
-    D -- update status --> B
+graph TD
+    A[Business Layer] -- submitFlowTask --> B[Redis (BullMQ)]
+    A -- creates --> C[task_runs DB]
+    B -- trigger --> D[Worker (Main/API)]
+    D -- execute --> E[Task Handler]
+    E -- returns Result --> F[Complete Task]
+    E -- returns FlowDefinition --> G[Spawn Children (Recursion)]
+    F -- update --> C
 ```
 
 ---
 
 ## 🛠 Implementing a New Task
 
-To add a new feature powered by processing tasks, follow these steps:
+To add a new feature, implement the `FlowTaskHandler` interface.
 
-### 1. Define Input/Output Types
+### 1. Define Types
+
 Create a file in `src/lib/tasks/` (e.g., `my-feature.ts`).
 
 ```typescript
-export interface MyFeatureInput {
-  entityId: string;
-  options: Record<string, any>;
+export const TASK_TYPE = 'my_feature';
+
+export interface MyInput {
+    entityId: string;
+    shouldRecurse?: boolean;
+}
+
+export interface MyOutput {
+    result: string;
 }
 ```
 
-### 2. Implement `ProcessingTaskHandler`
-Implement the `ProcessingTaskHandler` interface.
+### 2. Implement Handler
 
 ```typescript
-import { registerProcessingTask, ProcessingTaskHandler } from "@/lib/processing";
+import { registerFlowTask, FlowTaskHandler, FlowContext, FlowDefinition } from "@/lib/flow";
 
-const myFeatureHandler: ProcessingTaskHandler<string> = {
-  // 1. Core Logic
-  async execute(task, context) {
-    const input = task.input as MyFeatureInput;
-    
-    // Use context to track progress
-    await context.updateProgress({ currentStep: "analyzing" });
-    
-    // Call GPT or perform logic...
-    const result = "Task output";
-    
-    return result;
-  },
+const handler: FlowTaskHandler<MyInput, MyOutput> = {
+    // 0. Pre-validation (Optional)
+    async validate(input, context) {
+        // Check if entity exists
+        if (!input.entityId) throw new Error("Missing ID");
+    },
 
-  // 2. Business Write-back
-  async onComplete(output, task) {
-    // Final validation: entityId exists?
-    // Update business table (e.g., ledger_entries, source_documents)...
-  },
+    // 1. Main Execution
+    async execute(input, context) {
+        await context.updateProgress({ currentStep: "processing" });
 
-  // 3. Error Cleanup
-  async onError(error, task) {
-    // Mark business entity as failed...
-  }
+        // Example: Recursion
+        if (input.shouldRecurse) {
+            return {
+                name: TASK_TYPE,
+                title: "Child Task",
+                queueName: 'main',
+                data: { entityId: input.entityId, shouldRecurse: false }
+            } as FlowDefinition;
+        }
+
+        return { result: "Success" };
+    },
+
+    // 2. Lifecycle Hooks
+    async onComplete(output, input, context) {
+        // Write result to DB (MUST BE IDEMPOTENT)
+        console.log("Task Completed:", output);
+    },
+
+    async onError(error, input, context) {
+        // Handle failure (cleanup)
+        console.error("Task Failed:", error);
+    }
 };
 
 // 3. Register IT
-// NOTE: Each task type can have ONLY ONE registered handler. 
-// Re-registering will overwrite the existing one.
-registerProcessingTask("my_feature_type", myFeatureHandler);
+registerFlowTask(TASK_TYPE, handler);
 ```
 
-### 3. Register in Tasks Index
-Import your file in `src/lib/tasks/index.ts` to ensure it registers at startup.
+### 3. Register in Index
+
+Import your file in `src/lib/tasks/index.ts`.
 
 ---
 
-## ⚙️ Error Propagation & Lifecycle
+## 📡 Using Tasks
 
-Understanding how errors move through the system is critical for robust implementation:
+### Submit a Task
 
-### The Safe-Net (Try-Catch)
-The **Task Worker** wraps the entire execution in a `try-catch` block. This ensures that any error—whether from network, logic, or manual `throw`—is caught and handled.
-
-### How to trigger failure
-If your business logic (in `execute` or `onComplete`) determines that the AI result is unuseable, simply **throw an Error**.
-- **Action**: `throw new Error("Invalid data")`
-- **Result**: 
-    1. The Worker catches it.
-    2. The Worker triggers your `onError` hook.
-    3. The Worker marks the database task status as `failed`.
-
-### Hook Execution Timing
-1. **`execute`**: The "Workshop". Main logic, progress updates, and AI calls happen here.
-2. **`onComplete`**: The "Final Inspector". Called ONLY if `execute` finishes successfully. If you `throw` here, the task still fails.
-3. **`onError`**: The "Cleanup Crew". Called ONLY if an error occurs.
-
----
-
-## 📡 Using Tasks in Business Logic
-
-### Create a Task
 ```typescript
-import { createProcessingTask } from "@/lib/processing";
+import { submitFlowTask } from "@/lib/flow/producer";
+import { TASK_TYPE } from "@/lib/tasks/my-feature";
 
-const { taskId } = await createProcessingTask({
-  type: "my_feature_type",
-  title: "Analyzing something...",
-  ledgerId: ledgerId,
-  entityId: recordId,
-  entityType: "my_entity", // Optional metadata
-  input: { ... },
+await submitFlowTask({
+    type: TASK_TYPE,
+    title: "My Feature Task",
+    ledgerId: "...",
+    data: { entityId: "123", shouldRecurse: true },
+    queueName: 'main' // or 'api'
 });
 ```
 
-### Track Progress (Frontend)
-Use `getRecentProcessingTasks(ledgerId)` to get the latest status. The `TaskCenter` component already displays this information for any task type.
-
 ---
+
+## ⚙️ Key Concepts
+
+### Recursion & Flow Definitions
+Instead of linear steps, a task can return a `FlowDefinition` (or array of them). The system will:
+1.  Pause the parent task.
+2.  Spawn child tasks in BullMQ.
+3.  Wait for all children to complete.
+4.  Resume the parent task (triggering `onChildrenCompleted` if defined, or returning children results to `execute` logic if handled there).
+
+### Dual Queues
+-   **Main Queue**: For CPU-intensive or general business logic. High concurrency.
+-   **API Queue**: For external API calls (OpenAI, etc.). Rate-limited to prevent 429 errors.
+
+### Idempotency
+`onComplete` may be called multiple times in rare network partition cases. Ensure your database writes safely handle duplicates (e.g., check before insert).
 
 ## 🛡 Best Practices
 
-### 1. Final Commit Validation
-**Always** re-verify the existence and status of your business entity in `onComplete` or at the end of `execute`.
-> Processing execution (especially with LLMs) is slow; the world might have changed while the task was running (e.g., user deleted the record).
-
-### 2. Best-Effort Semantics
-The processing infrastructure does **not** guarantee retries.
-- If it fails, it marks the task as `failed`.
-- The UI should detect `failed` state and offer a "Retry" button that creates a **new** task.
-
-### 3. Progress Tracking
-Use `context.updateProgress` to report current step for monitoring and debugging. This is **informational only** and does **not** support resumption from failure.
-
-### 4. Purity
-Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/processing`. Keep those imports strictly within `src/lib/tasks`.
-
-### 5. Defensive AI Interaction
-**Never** trust the response from an AI model. Always assume it could be untrustworthy, hallucinated, or malformed.
-- **Explicit Verification**: Always validate the AI's content (schema, values, logic) before performing any business write-back.
-- **Handle Illegal Content**: Design a clear failure path for when AI output is invalid. Do not let the system enter an inconsistent state.
-- **Defensive Parsing**: Use robust parsing (e.g., `try-catch` around JSON parsing, schema validation like Zod) and handle errors gracefully.
-
-### 6. Concurrency Configuration
-The number of concurrent worker loops can be controlled via the environment variable:
-- `PROCESSING_WORKER_COUNT`: Set this in your `.env` files (default is 1).
+1.  **Strict Typing**: Always define Input/Output interfaces.
+2.  **Graceful Cancellation**: Implement `onCancel` to clean up resources if a user cancels a long-running task.
+3.  **Defensive AI**: Never trust AI output. Validate schema in `execute` before returning.

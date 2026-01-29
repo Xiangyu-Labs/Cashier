@@ -6,14 +6,11 @@ export async function register() {
     // Only run on server-side runtime (not edge or browser)
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         try {
-            // Register task handlers (side-effect imports)
+            // Register task handlers and start workers
             await import("@/lib/tasks");
-
-            // Handle processing task recovery (mark running as failed)
-            const { handleTasksOnStartup } = await import("@/lib/processing/recovery");
-            await handleTasksOnStartup();
+            await import("@/lib/flow/workers");
         } catch (error) {
-            logger.error({ error }, "Failed during startup recovery");
+            logger.error({ error }, "Failed during startup initialization");
         }
     }
 }

@@ -177,44 +177,41 @@ export const serviceCredentialsRelations = relations(serviceCredentials, ({ one 
   }),
 }));
 
-// ProcessingTasks (处理任务)
-export const processingTasks = pgTable("processing_tasks", {
+// TaskRuns (任务运行记录 - 仅用于审计和前端展示)
+export const taskRuns = pgTable("task_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
-
-  type: text("type").notNull(),
-  title: text("title").notNull(),
   ledgerId: uuid("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
 
-  entityId: uuid("entity_id"),
-  entityType: text("entity_type"),
+  // Task identification
+  type: text("type").notNull(),               // System Name: 'parse_source_document'
+  title: text("title").notNull(),             // Display Title: '解析：星巴克小票'
+  bullFlowId: text("bull_flow_id"),           // BullMQ Flow ID (Root Job)
 
-  status: text("status").notNull().default("queued"),
+  // Result
+  status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
+  output: jsonb("output").$type<unknown>(),
   error: text("error"),
 
-  input: jsonb("input").$type<unknown>(),
-  output: jsonb("output").$type<unknown>(),
-  progress: jsonb("progress").$type<TaskProgress>(),
-  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  // Statistics
+  totalJobs: integer("total_jobs").default(1),        // Total task count (including children)
+  completedJobs: integer("completed_jobs").default(0),
+  failedJobs: integer("failed_jobs").default(0),
 
+  // Token usage (aggregated)
+  usage: jsonb("usage").$type<{ inputTokens: number; outputTokens: number; totalTokens: number }>(),
+
+  // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
 }, (table) => [
-  index("idx_processing_tasks_ledger_status").on(table.ledgerId, table.status),
-  index("idx_processing_tasks_created_at").on(table.createdAt),
+  index("idx_task_runs_ledger_status").on(table.ledgerId, table.status),
+  index("idx_task_runs_created_at").on(table.createdAt),
 ]);
 
-// Type for progress tracking (flexible structure)
-export interface TaskProgress {
-  currentStep?: string;      // Current step name
-  completedSteps?: string[]; // List of completed steps
-  totalSteps?: number;       // Optional: total steps count
-  data?: unknown;            // Step-specific intermediate data
-}
-
-export const processingTasksRelations = relations(processingTasks, ({ one }) => ({
+export const taskRunsRelations = relations(taskRuns, ({ one }) => ({
   ledger: one(ledgers, {
-    fields: [processingTasks.ledgerId],
+    fields: [taskRuns.ledgerId],
     references: [ledgers.id],
   }),
 }));

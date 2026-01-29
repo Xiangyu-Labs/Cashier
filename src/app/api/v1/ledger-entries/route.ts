@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Trigger processing using the processing task system
-        const { createProcessingTask } = await import("@/lib/processing");
-        const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks");
+        const { submitFlowTask } = await import("@/lib/flow/producer");
+        const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks/parse-source-document");
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
         const ledger = await db.query.ledgers.findFirst({
@@ -89,16 +89,15 @@ export async function POST(request: NextRequest) {
         });
 
         if (ledger) {
-            await createProcessingTask({
+            await submitFlowTask({
                 type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
                 title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
                 ledgerId: credential.ledgerId,
-                entityId: savedDoc.id,
-                entityType: "source_document",
-                input: {
+                data: {
                     sourceDocumentId: savedDoc.id,
                     text: text || undefined,
                     imageUrls: imageUrls,
+                    language: ledger.language,
                     preferredCurrencies: ledger.currencies || undefined,
                     categories: await db.query.entryCategories.findMany({
                         where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId))
@@ -107,6 +106,7 @@ export async function POST(request: NextRequest) {
                         mergeSimilarItems: ledger.mergeSimilarItems,
                         autoRecognizeDate: ledger.autoRecognizeDate,
                         autoConfirm: ledger.autoConfirm,
+                        aiCustomPrompt: ledger.aiCustomPrompt,
                     },
                 },
             });

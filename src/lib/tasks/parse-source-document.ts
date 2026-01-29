@@ -1,13 +1,14 @@
 // Parse Source Document Task
 // Handles parsing source document images/text into ledger entries via AI
 
-import { registerProcessingTask, ProcessingTaskHandler, ProcessingTask, ProcessingTaskExecutionContext } from "@/lib/processing";
+import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/lib/message-processor/types";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
+import { logger } from "@/lib/logger";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -36,9 +37,24 @@ interface ParseSourceDocumentOutput {
 /**
  * Parse Source Document Task Handler
  */
-export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocumentOutput> = {
-    async execute(task: ProcessingTask, context: ProcessingTaskExecutionContext): Promise<ParseSourceDocumentOutput> {
-        const input = task.input as ParseSourceDocumentInput;
+export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
+    // 0. Pre-validations
+    async validate(input: ParseSourceDocumentInput) {
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, input.sourceDocumentId),
+        });
+        if (!doc) {
+            throw new Error(`Source document not found: ${input.sourceDocumentId}`);
+        }
+        // Optional: Check status?
+    },
+
+    // 1. Main execution
+    async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
+        // Update status to processing
+        await db.update(sourceDocuments)
+            .set({ status: 'processing' })
+            .where(eq(sourceDocuments.id, input.sourceDocumentId));
 
         // Step 1: Parse with AI
         await context.updateProgress({
@@ -94,12 +110,23 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         };
     },
 
-    async onComplete(output: ParseSourceDocumentOutput, task: ProcessingTask): Promise<void> {
-        const input = task.input as ParseSourceDocumentInput;
+    // 3. Final completion (IDEMPOTENT)
+    async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         const { ledgerEntries: parsedEntries, title } = output;
+
+        // Idempotency check
+        const existingEntries = await db.query.ledgerEntries.findFirst({
+            where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
+        });
+
+        if (existingEntries) {
+            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping write-back");
+            return;
+        }
+
         const validEntries = parsedEntries.filter(entry => entry.amount > 0);
 
-        if (validEntries.length > 0 && task.ledgerId) {
+        if (validEntries.length > 0 && context.ledgerId) {
             const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
             const status = (input.settings.autoConfirm && !hasUnknownCurrency ? "confirmed" : "pending") as "confirmed" | "pending";
             const entriesToInsert = validEntries.map(entry => {
@@ -108,7 +135,7 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
                     : null;
 
                 return {
-                    ledgerId: task.ledgerId!,
+                    ledgerId: context.ledgerId!,
                     categoryId,
                     sourceDocumentId: input.sourceDocumentId,
                     amount: entry.amount.toString(),
@@ -137,9 +164,7 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
         }
     },
 
-    async onError(error: Error, task: ProcessingTask): Promise<void> {
-        const input = task.input as ParseSourceDocumentInput;
-
+    async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         // Determine error code
         let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
 
@@ -160,4 +185,4 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
 
 
 // Register the task handler
-registerProcessingTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler);
+registerFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler);

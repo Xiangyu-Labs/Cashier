@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, processingTasks } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> };
@@ -26,13 +26,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             .delete(ledgerEntries)
             .where(eq(ledgerEntries.sourceDocumentId, sourceDocumentId));
 
-        // Delete associated tasks first (avoid zombie processing)
-        await db
-            .delete(processingTasks)
-            .where(and(
-                eq(processingTasks.entityId, sourceDocumentId),
-                eq(processingTasks.entityType, "source_document")
-            ));
+
 
         // Delete the source document
         await db

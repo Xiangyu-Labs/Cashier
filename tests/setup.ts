@@ -1,3 +1,7 @@
+// Set Redis URL for tests
+process.env.REDIS_URL = "redis://127.0.0.1:6380";
+process.env.FLOW_MAIN_QUEUE_CONCURRENCY = "0";
+
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -20,6 +24,9 @@ export function getTestDb() {
 import { createTestSchema } from "./helpers/schema-setup";
 
 beforeAll(async () => {
+  // Set Redis URL explicitly before anything else
+  process.env.REDIS_URL = "redis://localhost:6380";
+
   if (process.env.NO_DB) return;
 
   // Disable background workers in tests to ensure deterministic execution
@@ -42,7 +49,7 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, processing_tasks, currency_rates CASCADE`
+      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, task_runs, currency_rates CASCADE`
     );
   }
 });

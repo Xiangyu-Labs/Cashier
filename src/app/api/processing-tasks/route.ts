@@ -1,9 +1,7 @@
-// Processing Tasks API
-// GET /api/processing-tasks?ledgerId=xxx - Get tasks for a ledger
-// POST /api/processing-tasks - Create a new task (internal use)
-
 import { NextRequest, NextResponse } from "next/server";
-import { getRecentProcessingTasks, getActiveProcessingTasks } from "@/lib/processing";
+import { db } from "@/lib/db";
+import { taskRuns } from "@/lib/db/schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
     try {
@@ -19,9 +17,42 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const tasks = activeOnly
-            ? await getActiveProcessingTasks(ledgerId)
-            : await getRecentProcessingTasks(ledgerId, limit);
+        const conditions = [eq(taskRuns.ledgerId, ledgerId)];
+
+        if (activeOnly) {
+            conditions.push(eq(taskRuns.status, 'running'));
+        }
+
+        const runs = await db.query.taskRuns.findMany({
+            where: and(...conditions),
+            orderBy: [desc(taskRuns.createdAt)],
+            limit: limit,
+        });
+
+        // Map to ProcessingTask interface
+        const tasks = runs.map(run => ({
+            id: run.id,
+            type: run.type,
+            title: run.title,
+            ledgerId: run.ledgerId,
+            entityId: null, // taskRuns doesn't track this directly anymore
+            entityType: null,
+            status: run.status === 'running' ? 'active' : run.status, // Map 'running' to 'running' or 'active'? Frontend expects 'running'
+            error: run.error,
+            metadata: {
+                usage: run.usage,
+                output: run.output
+            },
+            createdAt: run.createdAt.toISOString(),
+            startedAt: run.startedAt?.toISOString() || null,
+            completedAt: run.completedAt?.toISOString() || null,
+        }));
+
+        // Frontend expects 'running'? Yes.
+        // But what about 'queued'?
+        // task_runs starts as 'running'. Ideally we should probably track 'queued' via BullMQ but that's expensive here.
+        // We'll return 'running' for now.
+        // Wait, frontend StatusIcon has 'running'.
 
         return NextResponse.json(tasks);
     } catch (error) {

@@ -113,17 +113,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .returning();
 
-    // Create a processing task
-    const { createProcessingTask } = await import("@/lib/processing");
-    const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks");
+    // Create a flow task
+    const { submitFlowTask } = await import("@/lib/flow/producer");
+    const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks/parse-source-document");
 
-    await createProcessingTask({
+    await submitFlowTask({
       type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
       title: validated.text ? `解析: ${validated.text.slice(0, 20)}...` : "解析图片账单",
       ledgerId: ledgerId,
-      entityId: savedDoc.id,
-      entityType: "source_document",
-      input: {
+      data: {
         sourceDocumentId: savedDoc.id,
         text: validated.text,
         imageUrls: imageUrls,
@@ -136,6 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           mergeSimilarItems: ledger.mergeSimilarItems,
           autoRecognizeDate: ledger.autoRecognizeDate,
           autoConfirm: ledger.autoConfirm,
+          aiCustomPrompt: ledger.aiCustomPrompt,
         },
       },
     });
