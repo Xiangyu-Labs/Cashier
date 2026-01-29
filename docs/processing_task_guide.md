@@ -109,8 +109,8 @@ The processing infrastructure does **not** guarantee retries.
 - If it fails, it marks the task as `failed`.
 - The UI should detect `failed` state and offer a "Retry" button that creates a **new** task.
 
-### 3. Progressive Checkpoints
-For multi-step tasks, use `context.updateProgress` to save intermediate data in the `progress.data` field. This helps with debugging and provides rich UI feedback.
+### 3. Progress Tracking
+Use `context.updateProgress` to report current step for monitoring and debugging. This is **informational only** and does **not** support resumption from failure.
 
 ### 4. Purity
 Do **not** import business models (`source_documents`, `ledger_entries`, etc.) inside `src/lib/processing`. Keep those imports strictly within `src/lib/tasks`.
