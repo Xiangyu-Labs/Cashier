@@ -42,7 +42,7 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, processing_tasks CASCADE`
+      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, processing_tasks, currency_rates CASCADE`
     );
   }
 });

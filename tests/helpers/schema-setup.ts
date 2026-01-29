@@ -12,6 +12,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.execute(sql`DROP TABLE IF EXISTS service_credentials CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS processing_tasks CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS ledgers CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS currency_rates CASCADE`);
 
   // Drop old names if they exist
   await db.execute(sql`DROP TABLE IF EXISTS transactions CASCADE`);
@@ -131,6 +132,14 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       started_at TIMESTAMP,
       completed_at TIMESTAMP
+    );
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS currency_rates (
+      date DATE PRIMARY KEY,
+      base TEXT NOT NULL DEFAULT 'EUR',
+      rates JSONB NOT NULL,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
   console.log("Finished createTestSchema.");

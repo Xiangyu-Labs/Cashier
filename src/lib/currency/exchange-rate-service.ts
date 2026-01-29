@@ -12,6 +12,8 @@ export interface ExchangeRates {
 export class ExchangeRateService {
     private static readonly API_BASE_URL = "https://api.frankfurter.dev/v1";
 
+    private static pendingRequests = new Map<string, Promise<ExchangeRates>>();
+
     /**
      * Get rates for a specific date (defaults to today).
      * Uses "Daily Snapshot" strategy:
@@ -35,47 +37,43 @@ export class ExchangeRateService {
             };
         }
 
-        // 2. Fetch from API
-        // We always fetch base=EUR to ensure consistency and minimize permutations.
-        // Frankfurter returns historical rates for ALL supported currencies when no symbols specified.
-        const response = await fetch(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
+        // 2. Check for pending request (Request Collapsing)
+        if (this.pendingRequests.has(targetDateStr)) {
+            return this.pendingRequests.get(targetDateStr)!;
+        }
 
-        if (!response.ok) {
-            if (response.status === 404) {
-                // Handle future dates or invalid dates gracefully if needed, 
-                // but Frankfurter usually handles dates well (maps to latest available working day).
-                // However, strict 404 means data unavailable.
-                throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
+        // 3. Fetch from API
+        const fetchPromise = (async () => {
+            try {
+                const response = await fetch(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
+                    }
+                    throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
+                }
+
+                const data: ExchangeRates = await response.json();
+
+                // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
+                await db.insert(currencyRates)
+                    .values({
+                        date: data.date,
+                        base: data.base,
+                        rates: data.rates,
+                    })
+                    .onConflictDoNothing();
+
+                return data;
+            } finally {
+                // Remove from pending map once finished (success or failure)
+                this.pendingRequests.delete(targetDateStr);
             }
-            throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
-        }
+        })();
 
-        const data: ExchangeRates = await response.json();
-
-        // 3. Store in DB
-        // Note: Frankfurter might return a different date if the requested date is a holiday/weekend using 'latest' logic,
-        // BUT specific date queries usually return that date or error? 
-        // Actually Frankfurter 'latest' returns the last working day. 
-        // Historical queries like '2023-01-01' (Sunday) usually return the closest previous working day (2022-12-30) inside the response 'date' field.
-        // We should save it under the *response* date to maintain data integrity, 
-        // but we might also want to map the *requested* date to this data to avoid re-fetching?
-        // User Requirement: "if this day's data is missing... get other currency rates".
-        // Let's stick to saving the date returned by Frankfurter to be safe.
-
-        // Check if we already have this date (race condition check / duplicate check)
-        const existing = await db.query.currencyRates.findFirst({
-            where: eq(currencyRates.date, data.date),
-        });
-
-        if (!existing) {
-            await db.insert(currencyRates).values({
-                date: data.date,
-                base: data.base,
-                rates: data.rates,
-            });
-        }
-
-        return data;
+        this.pendingRequests.set(targetDateStr, fetchPromise);
+        return fetchPromise;
     }
 
     /**
