@@ -25,7 +25,7 @@ export async function summarizeLedgerEntries(
             finalEntries.push(entry);
             continue;
         }
-        const key = `${entry.entryDate}|${entry.category}`;
+        const key = `${entry.entryDate}|${entry.category}|${entry.currency}`;
         if (!groups.has(key)) {
             groups.set(key, []);
         }
