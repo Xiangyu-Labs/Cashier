@@ -28,12 +28,11 @@ interface LedgerEntryCardProps {
 
 export function LedgerEntryCard({
   ledgerEntry,
-  categories,
   onView,
   className,
   mainCurrency = "CNY",
 }: LedgerEntryCardProps) {
-  const { converted, isLoading } = useConvertedAmount(
+  const { converted } = useConvertedAmount(
     parseFloat(ledgerEntry.amount),
     ledgerEntry.currency,
     mainCurrency,

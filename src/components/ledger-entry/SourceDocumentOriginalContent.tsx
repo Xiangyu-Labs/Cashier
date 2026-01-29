@@ -1,4 +1,3 @@
-import { FileText, Image as ImageIcon } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import { ImageViewer } from "@/components/ui/image-viewer";

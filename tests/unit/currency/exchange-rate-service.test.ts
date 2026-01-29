@@ -2,7 +2,7 @@ process.env.NO_DB = "true";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ExchangeRateService } from "@/lib/currency/exchange-rate-service";
 import { db } from "@/lib/db";
-import { currencyRates } from "@/lib/db/schema";
+
 
 // Mock the DB
 vi.mock("@/lib/db", () => ({
@@ -36,7 +36,7 @@ describe("ExchangeRateService", () => {
                 rates: { USD: 1.1, CNY: 7.8 },
             };
 
-            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockResult as any);
+            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockResult as unknown as never);
 
             const result = await ExchangeRateService.getRates("2024-02-01");
 
@@ -56,7 +56,7 @@ describe("ExchangeRateService", () => {
             vi.mocked(fetch).mockResolvedValue({
                 ok: true,
                 json: async () => apiResponse,
-            } as any);
+            } as unknown as Response);
 
             const result = await ExchangeRateService.getRates("2024-02-01");
 
@@ -68,12 +68,12 @@ describe("ExchangeRateService", () => {
         it("should consolidate concurrent requests for the same date (Request Collapsing)", async () => {
             vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(undefined);
 
-            let resolveFetch: (value: any) => void;
+            let resolveFetch: (value: unknown) => void;
             const fetchPromise = new Promise((resolve) => {
                 resolveFetch = resolve;
             });
 
-            vi.mocked(fetch).mockImplementation(() => fetchPromise as any);
+            vi.mocked(fetch).mockImplementation(() => fetchPromise as Promise<Response>);
 
             // Trigger multiple concurrent calls
             const call1 = ExchangeRateService.getRates("2024-02-02");
@@ -104,7 +104,7 @@ describe("ExchangeRateService", () => {
                 rates: { USD: 1.1, CNY: 7.7 },
             };
 
-            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockRates as any);
+            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockRates as unknown as never);
 
             // 100 USD -> CNY
             // 100 * (7.7 / 1.1) = 700
@@ -120,7 +120,7 @@ describe("ExchangeRateService", () => {
                 rates: { USD: 1.1 },
             };
 
-            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockRates as any);
+            vi.mocked(db.query.currencyRates.findFirst).mockResolvedValue(mockRates as unknown as never);
 
             // 100 EUR -> USD
             // 100 * (1.1 / 1.0) = 110

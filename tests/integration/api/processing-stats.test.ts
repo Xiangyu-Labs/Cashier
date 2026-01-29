@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+
 
 describe("Processing Stats: Token Usage API", () => {
     let testLedgerId: string;

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments } from "@/lib/db/schema";
-import { eq, or, inArray } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 /**
  * Polls for all pending task runs to complete.

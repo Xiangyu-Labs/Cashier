@@ -60,7 +60,7 @@ describe("OpenAIClient Retry Logic", () => {
         });
 
         const result = await client.generateContent("prompt", []);
-        expect(result).toBe("Success");
+        expect(result.content).toBe("Success");
         expect(mockCreate).toHaveBeenCalledTimes(1);
     });
 
@@ -75,7 +75,7 @@ describe("OpenAIClient Retry Logic", () => {
             }); // Success 2
 
         const result = await client.generateContent("prompt", []);
-        expect(result).toBe("Success after retry");
+        expect(result.content).toBe("Success after retry");
         expect(mockCreate).toHaveBeenCalledTimes(2);
     });
 
@@ -95,7 +95,7 @@ describe("OpenAIClient Retry Logic", () => {
         });
 
         const result = await client.generateContent("prompt", []);
-        expect(result).toBe("Recovered");
+        expect(result.content).toBe("Recovered");
         expect(mockCreate).toHaveBeenCalledTimes(2);
     });
 

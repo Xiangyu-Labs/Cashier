@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { Calendar, Edit2, Tag, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Edit2, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { type ReactNode, useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";

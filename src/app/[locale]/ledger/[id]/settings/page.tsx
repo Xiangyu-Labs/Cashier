@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,7 +20,7 @@ import { ServiceCredentialSection } from "./components/ServiceCredentialSection"
 import { ProcessingSystemSection } from "./components/ProcessingSystemSection";
 import { EntryCategory, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
@@ -226,12 +226,8 @@ export default function LedgerSettingsPage() {
                         </div>
                         <textarea
                             value={ledger.aiCustomPrompt || ""}
-                            onChange={(e) => {
-                                // We use a local state or just wait for blur if we want to avoid too many mutations
-                                // But for simplicity and consistency with other fields, let's use the mutation
-                                // To avoid lag, we could debounce, but other fields don't seem to.
-                                // Actually, for text areas, it's better to update on blur or have a save button.
-                                // However, most settings here update immediately.
+                            onChange={(_e) => {
+                                // Handled onBlur for performance
                             }}
                             onBlur={(e) => {
                                 if (e.target.value !== (ledger.aiCustomPrompt || "")) {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { registerFlowTask, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { mainWorker, apiWorker } from "@/lib/flow/workers";
@@ -31,9 +31,9 @@ const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
         return { result: input.value * 2 };
     },
 
-    async onComplete(output, input, context) {
-        // Validation verification
-    }
+    async onComplete(_output, _input, _context: FlowContext) {
+        // Root verification
+    },
 };
 
 registerFlowTask(TEST_TASK_TYPE, testHandler);
@@ -57,6 +57,11 @@ describe("Flow System Integration", () => {
         await apiWorker.close();
         await mainQueue.close();
         await apiQueue.close();
+    });
+
+    // Mock fetch for API calls if needed by tasks
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn());
     });
 
     it("should execute a basic task successfully", async () => {

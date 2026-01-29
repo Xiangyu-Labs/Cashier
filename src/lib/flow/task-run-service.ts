@@ -6,7 +6,7 @@ import { FlowProgress } from "./types";
 /**
  * Update task run progress in database
  */
-export async function updateTaskRunProgress(taskRunId: string, progress: FlowProgress): Promise<void> {
+export async function updateTaskRunProgress(_taskRunId: string, _progress: FlowProgress): Promise<void> {
     // Use a transaction or simpler update if specific fields need to be updated
     // For now, we don't have a progress column in taskRuns based on previous schema definition.
     // Wait, let me check schema again. The schema definition in schema.ts DOES NOT have a progress column.
@@ -82,7 +82,7 @@ export async function recordTaskRunUsage(taskRunId: string, usage: { inputTokens
         .where(eq(taskRuns.id, taskRunId));
 }
 
-export async function incrementTaskRunStats(taskRunId: string, type: 'completed' | 'failed'): Promise<void> {
+export async function incrementTaskRunStats(_taskRunId: string, _type: 'completed' | 'failed'): Promise<void> {
     // Atomic increment would be ideal, but for now just basic update
     // Drizzle doesn't support easy `increment` without raw SQL
     // leaving placeholder

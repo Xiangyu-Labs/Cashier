@@ -191,7 +191,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         });
     },
 
-    async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+    async onError(error: Error, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         // Determine error code
         let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
         let isUnrecoverable = false;

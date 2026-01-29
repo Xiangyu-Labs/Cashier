@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { registerFlowTask, FlowTaskHandler, FlowDefinition } from "@/lib/flow";
+import { registerFlowTask, FlowTaskHandler, FlowDefinition, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { mainWorker, apiWorker } from "@/lib/flow/workers";
 import { db } from "@/lib/db";
@@ -22,7 +22,7 @@ interface RecursiveOutput {
 }
 
 const recursiveHandler: FlowTaskHandler<RecursiveInput, RecursiveOutput> = {
-    async execute(input, context): Promise<RecursiveOutput | FlowDefinition> {
+    async execute(input, _context): Promise<RecursiveOutput | FlowDefinition> {
         if (input.depth <= 0) {
             // Leaf: return value
             return { sum: input.value, isLeaf: true };
@@ -54,13 +54,13 @@ const recursiveHandler: FlowTaskHandler<RecursiveInput, RecursiveOutput> = {
         };
     },
 
-    async onChildrenCompleted(results: any[], context) {
+    async onChildrenCompleted(results: unknown[], _context: FlowContext): Promise<RecursiveOutput> {
         // Aggregate results
-        const totalSum = results.reduce((acc, r: RecursiveOutput) => acc + r.sum, 0);
+        const totalSum = (results as RecursiveOutput[]).reduce((acc: number, r: RecursiveOutput) => acc + r.sum, 0);
         return { sum: totalSum, isLeaf: false };
     },
 
-    async onComplete(output, input, context) {
+    async onComplete(_output, _input, _context) {
         // Root verification
     }
 };

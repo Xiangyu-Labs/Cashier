@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     ];
 
     if (status) {
-      conditions.push(eq(ledgerEntries.status, status as any));
+      conditions.push(eq(ledgerEntries.status, status as "confirmed" | "pending"));
     }
 
     // Use entryDate if available, otherwise fallback to createdAt

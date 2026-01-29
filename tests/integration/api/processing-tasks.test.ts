@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as tasksGET } from "@/app/api/processing-tasks/route";
 import { getTestDb } from "../../setup";
@@ -67,8 +67,8 @@ describe("Processing Tasks API", () => {
         // Expect order? usually recent first
         // Need to check implementation of getRecentProcessingTasks, but assuming desc order
         // if not we can just check containment
-        expect(tasks.map((t: any) => t.status)).toContain("completed");
-        expect(tasks.map((t: any) => t.status)).toContain("failed");
+        expect(tasks.map((t: { status: string }) => t.status)).toContain("completed");
+        expect(tasks.map((t: { status: string }) => t.status)).toContain("failed");
     });
 
     it("should filter active tasks", async () => {
@@ -104,7 +104,7 @@ describe("Processing Tasks API", () => {
         expect(res.status).toBe(200);
         const tasks = await res.json();
         expect(tasks).toHaveLength(2);
-        expect(tasks.every((t: any) => ["running", "active"].includes(t.status))).toBe(true);
+        expect(tasks.every((t: { status: string }) => ["running", "active"].includes(t.status))).toBe(true);
     });
 
     it("should require ledgerId", async () => {

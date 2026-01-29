@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ledgerEntries, sourceDocuments, entryCategories } from "@/lib/db/schema";
+import { ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { z } from "zod";
 
@@ -11,14 +11,6 @@ const confirmSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-interface ProposedLedgerEntry {
-    category?: string;
-    amount?: number | string;
-    currency?: string;
-    itemName?: string;
-    notes?: string;
-    entryDate?: string;
-}
 
 // POST /api/ledgers/[id]/ledger-entries/confirm - 确认账目
 export async function POST(

@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import { getFlowTaskHandler } from './registry';
 import { FlowContext, FlowDefinition } from './types';
 import { completeTaskRun, failTaskRun } from './task-run-service';
-import { logger } from '@/lib/logger';
+import { logger as _logger } from '@/lib/logger';
 import { flowProducer } from './workers';
 
 import { withAIContext } from '@/lib/ai/ai-context';

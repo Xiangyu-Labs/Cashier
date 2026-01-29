@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProcessingTasks, ProcessingTask } from "@/lib/api";
-import { Activity, Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 interface TokenStats {
@@ -15,7 +15,7 @@ interface TokenStats {
 }
 
 async function fetchTokenStats(ledgerId: string): Promise<TokenStats> {
-    const res = await fetch(`/api/ledgers/${ledgerId}/processing-stats/token-usage`);
+    const res = await fetch(`/ api / ledgers / ${ledgerId} /processing-stats/token - usage`);
     if (!res.ok) throw new Error("Failed to fetch token stats");
     return res.json();
 }
@@ -43,7 +43,7 @@ function TaskStatusBadge({ status }: { status: ProcessingTask["status"] }) {
 
     const config = statusConfig[status] || { label: status, className: "bg-muted/10 text-muted" };
     return (
-        <span className={`text-[10px] px-1.5 py-0.5 font-medium rounded-sm ${config.className}`}>
+        <span className={`text - [10px] px - 1.5 py - 0.5 font - medium rounded - sm ${config.className} `}>
             {config.label}
         </span>
     );
@@ -61,7 +61,7 @@ function ElapsedTime({ startedAt }: { startedAt: string | null }) {
             const diff = Math.max(0, Math.floor((now - start) / 1000));
             const mins = Math.floor(diff / 60);
             const secs = diff % 60;
-            setElapsed(`${mins}m ${secs}s`);
+            setElapsed(`${mins}m ${secs} s`);
         };
 
         update();
@@ -182,7 +182,7 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                                 return (
                                     <div
                                         key={task.id}
-                                        className={`group flex items-start gap-3 p-3 rounded-md transition-all bg-surface2/20 hover:bg-surface2/50 border-l-4 ${statusColors[task.status] || "border-l-transparent"}`}
+                                        className={`group flex items - start gap - 3 p - 3 rounded - md transition - all bg - surface2 / 20 hover: bg - surface2 / 50 border - l - 4 ${statusColors[task.status] || "border-l-transparent"} `}
                                     >
                                         <div className="mt-0.5 bg-surface rounded-full p-1.5 border border-border/50 shadow-sm">
                                             <TaskStatusIcon status={task.status} />

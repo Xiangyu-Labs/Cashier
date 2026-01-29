@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,6 @@ import {
     Check,
     X,
     Trash2,
-    Save,
     AlertCircle,
     FileText
 } from "lucide-react"
@@ -44,7 +43,7 @@ export function SourceDocumentDetailModal({
     ledgerEntries,
     categories,
     preferredCurrencies = [],
-    mainCurrency = "CNY",
+    mainCurrency: _mainCurrency = "CNY",
     open,
     onClose,
     onUpdateTitle,
@@ -54,7 +53,7 @@ export function SourceDocumentDetailModal({
 }: SourceDocumentDetailModalProps) {
     const t = useTranslations("SourceDocumentDetail")
     const tCommon = useTranslations("Common")
-    const tEntry = useTranslations("LedgerEntryDetail")
+    const _tEntry = useTranslations("LedgerEntryDetail")
 
     const [isEditingTitle, setIsEditingTitle] = useState(false)
     const [title, setTitle] = useState(sourceDocument?.title || "")

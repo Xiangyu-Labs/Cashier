@@ -25,7 +25,7 @@ export async function PATCH(
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        const updateData: any = {};
+        const updateData: Record<string, string> = {};
         if (categoryId) updateData.categoryId = categoryId;
         if (currency) updateData.currency = currency;
 
@@ -33,7 +33,7 @@ export async function PATCH(
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        const result = await db
+        await db
             .update(ledgerEntries)
             .set(updateData)
             .where(

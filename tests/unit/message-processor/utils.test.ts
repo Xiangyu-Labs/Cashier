@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
 import { ParsedLedgerEntry } from "@/lib/message-processor/types";
 import { getOpenAIClient } from "@/lib/ai/openai";
@@ -8,13 +8,14 @@ vi.mock("@/lib/ai/openai", () => ({
 }));
 
 describe("summarizeLedgerEntries", () => {
-    let mockGenerateContent: any;
+    let mockGenerateContent: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
         mockGenerateContent = vi.fn();
-        (getOpenAIClient as any).mockReturnValue({
+        // The mock structure for OpenAI client has changed to accommodate the new API structure
+        vi.mocked(getOpenAIClient).mockReturnValue({
             generateContent: mockGenerateContent,
-        });
+        } as unknown as never);
     });
 
     it("should group and summarize entries with same date, category, and currency", async () => {

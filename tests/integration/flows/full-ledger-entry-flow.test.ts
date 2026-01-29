@@ -15,7 +15,7 @@ import { EntryCategory as Category, LedgerEntry } from "@/types/api";
 // Mock OpenAI for all E2E tests
 vi.mock("@/lib/ai/openai", () => ({
   getOpenAIClient: () => ({
-    generateContent: vi.fn().mockResolvedValue(MOCK_RESPONSES.multipleEntries),
+    generateContent: vi.fn().mockResolvedValue({ content: MOCK_RESPONSES.multipleEntries }),
   }),
 }));
 

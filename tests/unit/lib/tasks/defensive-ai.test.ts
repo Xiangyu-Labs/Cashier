@@ -3,6 +3,7 @@ import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_S
 import { getTestDb } from "../../../setup";
 import { ledgers, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { FlowContext } from "@/lib/flow";
 
 describe("parseSourceDocumentHandler.onError", () => {
     it("should map schema validation errors (zod) to 'invalid_content'", async () => {
@@ -16,16 +17,16 @@ describe("parseSourceDocumentHandler.onError", () => {
             settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
         };
 
-        const task = {
+        const context = {
             id: "task-error-1",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
             ledgerId: ledger.id,
             input,
-        } as any;
+        } as unknown as FlowContext;
 
         const error = new Error("AI response schema validation failed: ledger_entries: Required");
 
-        await expect(parseSourceDocumentHandler.onError!(error, input, task)).rejects.toThrow();
+        await expect(parseSourceDocumentHandler.onError!(error, input, context)).rejects.toThrow();
 
         const updatedDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
@@ -46,16 +47,16 @@ describe("parseSourceDocumentHandler.onError", () => {
             settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
         };
 
-        const task = {
+        const context = {
             id: "task-error-2",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
             ledgerId: ledger.id,
             input,
-        } as any;
+        } as unknown as FlowContext;
 
         const error = new Error("Invalid JSON format: Unexpected token");
 
-        await parseSourceDocumentHandler.onError!(error, input, task);
+        await parseSourceDocumentHandler.onError!(error, input, context);
 
         const updatedDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)

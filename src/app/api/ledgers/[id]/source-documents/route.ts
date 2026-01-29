@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, ledgers } from "@/lib/db/schema";
 import { eq, inArray, and, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       validated.images.forEach((img) => {
         let data = img.data;
         if (!data.startsWith("data:") && !data.startsWith("http")) {
-          data = `data:image/jpeg;base64,${data}`;
+          data = `data: image / jpeg; base64, ${data} `;
         }
         imageUrls.push(data);
       });

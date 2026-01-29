@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, type ReactNode } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useCallback, type ReactNode } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { LedgerEntry, EntryCategory } from "@/types/api";
@@ -36,7 +36,7 @@ export function LedgerEntryDetailModal({
   onUpdate,
   onDelete,
 }: LedgerEntryDetailModalProps): ReactNode | null {
-  const t = useTranslations("LedgerEntryDetail");
+  const _t = useTranslations("LedgerEntryDetail");
   const tTab = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
 
@@ -54,7 +54,9 @@ export function LedgerEntryDetailModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Initialize edit data when ledgerEntry changes or modal opens
-  useEffect(() => {
+  const [prevLedgerEntry, setPrevLedgerEntry] = useState(ledgerEntry);
+  if (ledgerEntry !== prevLedgerEntry) {
+    setPrevLedgerEntry(ledgerEntry);
     if (ledgerEntry && open) {
       setEditData({
         itemName: ledgerEntry.itemName,
@@ -66,7 +68,7 @@ export function LedgerEntryDetailModal({
       });
       setIsEditing(false); // Default to view mode
     }
-  }, [ledgerEntry, open]);
+  }
 
   const handleSave = useCallback(() => {
     onUpdate({

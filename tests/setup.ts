@@ -69,10 +69,11 @@ vi.mock("@/lib/db", () => ({
 }));
 
 // Mock i18n globally
-vi.mock("next-intl", () => {
-  const React = require("react");
+vi.mock("next-intl", async () => {
+  const actual = await vi.importActual("react");
+  const React = actual as typeof import("react");
   return {
-    useTranslations: () => (key: string) => key,
+    useTranslations: () => (_key: string) => _key,
     useLocale: () => "zh",
     useMessages: () => ({}),
     useTimeZone: () => "UTC",

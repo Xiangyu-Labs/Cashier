@@ -6,7 +6,7 @@ import { LedgerEntry, EntryCategory } from "@/types/api";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
-    useTranslations: (key: string) => (s: string) => s,
+    useTranslations: (_key: string) => (s: string) => s,
     useLocale: () => "en",
 }));
 

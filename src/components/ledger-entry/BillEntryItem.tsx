@@ -1,4 +1,4 @@
-import { LedgerEntry, EntryCategory } from "@/types/api";
+import { LedgerEntry } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";

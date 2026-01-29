@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ledgerEntries, sourceDocuments, entryCategories } from "@/lib/db/schema";
+import { ledgerEntries } from "@/lib/db/schema";
 import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";

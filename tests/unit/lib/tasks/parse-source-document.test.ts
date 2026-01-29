@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
+import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/lib/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { FlowContext } from "@/lib/flow";
 
 // Mock the processor and utils
 vi.mock("@/lib/message-processor/processor", () => ({
@@ -17,14 +18,14 @@ import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
 
 describe("parseSourceDocumentHandler.execute", () => {
-    let mockProcessor: any;
+    let mockProcessor: { process: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
         vi.clearAllMocks();
         mockProcessor = {
             process: vi.fn(),
         };
-        vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor);
+        vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as never);
     });
 
     it("should pass settings and preferredCurrencies correctly to the processor", async () => {
@@ -50,7 +51,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-        } as any;
+        } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
@@ -86,7 +87,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-        } as any;
+        } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
@@ -119,7 +120,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-        } as any;
+        } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
@@ -146,7 +147,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-        } as any;
+        } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
@@ -194,9 +195,9 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             ]
         };
 
-        const task = {
+        const context = {
             id: "task-1",
-            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            type: "parse_source_document",
             ledgerId: ledger.id,
             input,
             status: "running" as const,
@@ -209,10 +210,10 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             entityType: null,
             progress: null,
             title: "Task 1",
-        } as any;
+        };
 
         // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
 
         // 3. Verify ledger entries status
         const entries = await db.query.ledgerEntries.findMany({
@@ -261,9 +262,9 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             ]
         };
 
-        const task = {
+        const context = {
             id: "task-2",
-            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            type: "parse_source_document",
             ledgerId: ledger.id,
             input,
             status: "running" as const,
@@ -276,10 +277,10 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             entityType: null,
             progress: null,
             title: "Task 2",
-        } as any;
+        };
 
         // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
 
         // 3. Verify ledger entries status
         const entries = await db.query.ledgerEntries.findMany({
@@ -295,6 +296,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         });
         expect(updatedSourceDoc?.status).toBe("completed");
     });
+
     it("should be idempotent (not create duplicates) if called multiple times", async () => {
         const db = getTestDb();
 
@@ -314,22 +316,22 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             ]
         };
 
-        const task = {
+        const context = {
             id: "task-idempotent",
-            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            type: "parse_source_document",
             ledgerId: ledger.id,
             input: {
                 sourceDocumentId: sourceDoc.id,
                 categories: [],
                 settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
             },
-        } as any;
+        };
 
         // 1. First call
-        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
 
         // 2. Second call
-        await parseSourceDocumentHandler.onComplete!(output, task.input, task);
+        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
 
         // 3. Verify
         const entries = await db.query.ledgerEntries.findMany({

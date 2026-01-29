@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitForElementToBeRemoved } from "@testing-library/react";
 import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
 import { NextIntlClientProvider } from "next-intl";
-import zh from "messages/zh.json";
+import zh from "../../../messages/zh.json";
 
 const mockSourceDocument = {
     id: "sd-1",
@@ -191,7 +191,7 @@ describe("SourceDocumentDetailModal", () => {
 
     it("triggers entry deletion", () => {
         renderModal();
-        const deleteButtons = screen.getAllByRole("button").filter(b => b.className.includes("text-muted-foreground"));
+        const _deleteButtons = screen.getAllByRole("button").filter(b => b.className.includes("text-muted-foreground"));
         // This is a bit fragile due to styling, but let's try to find the trash icon buttons
         const firstTrashBtn = screen.getAllByRole("button").find(b => b.querySelector("svg.lucide-trash2"));
         if (firstTrashBtn) {

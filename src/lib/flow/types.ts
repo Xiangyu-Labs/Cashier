@@ -1,4 +1,4 @@
-import { Job } from 'bullmq';
+import { Job as _Job } from 'bullmq';
 
 /**
  * Core interface for task handlers.
@@ -28,7 +28,7 @@ export interface FlowDefinition {
     name: string;         // System Name - determines handler
     title: string;        // Display Title - for UI (REQUIRED)
     queueName: 'main' | 'api'; // Queue assignment
-    data: any;           // Task input data
+    data: unknown;           // Task input data
     children?: FlowDefinition[];
     opts?: FlowJobOptions;
 }

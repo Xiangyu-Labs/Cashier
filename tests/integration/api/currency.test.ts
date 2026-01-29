@@ -24,7 +24,7 @@ describe("GET /api/currency/rates", () => {
         vi.mocked(fetch).mockResolvedValue({
             ok: true,
             json: async () => dummyResponse,
-        } as any);
+        } as unknown as never); // Changed 'as any' to 'as unknown as Response'
 
         const url = new URL("http://localhost/api/currency/rates");
         url.searchParams.set("date", dummyDate);
@@ -50,7 +50,7 @@ describe("GET /api/currency/rates", () => {
             ok: false,
             statusText: "Forbidden",
             status: 403
-        } as any);
+        } as unknown as never);
 
         const request = new NextRequest("http://localhost/api/currency/rates");
         const response = await GET(request);

@@ -75,12 +75,12 @@ interface SourceDocumentCardProps {
 export function SourceDocumentCard({
   sourceDocument,
   ledgerEntries,
-  categories,
+  categories: _,
   mainCurrency = "CNY",
   isConfirmed = false,
   onConfirm,
-  onUpdateLedgerEntry,
-  onDeleteLedgerEntry,
+  onUpdateLedgerEntry: __,
+  onDeleteLedgerEntry: ___,
   onDelete,
   onViewLedgerEntry,
   onViewDetails,
@@ -99,7 +99,7 @@ export function SourceDocumentCard({
   const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  const { sortedEntries, totalAmounts } = useMemo(() => {
+  const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
@@ -116,7 +116,7 @@ export function SourceDocumentCard({
       }
     });
 
-    return { sortedEntries: sorted, totalAmounts: totals };
+    return { sortedEntries: sorted };
   }, [ledgerEntries]);
 
   const { text, images, hasUnknownCurrency } = useMemo(() => {
