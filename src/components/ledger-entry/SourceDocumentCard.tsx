@@ -1,5 +1,5 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryCard } from "./LedgerEntryCard";
+import { BillEntryItem } from "./BillEntryItem";
 import { useState, useMemo } from "react";
 import { Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -306,15 +306,20 @@ export function SourceDocumentCard({
 
       <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
         {sortedEntries.map((entry) => (
-          <LedgerEntryCard
+          <BillEntryItem
             key={entry.id}
             ledgerEntry={entry}
-            categories={categories}
             onView={() => onViewLedgerEntry?.(entry)}
-            hideCategory={false}
-            showStatusHint={!isConfirmed}
-            className="inner-shadow"
             mainCurrency={mainCurrency}
+            variant={
+              status === "error"
+                ? "error"
+                : status === "to_confirm" || status === "pending"
+                  ? "warning"
+                  : status === "processing" || status === "queued"
+                    ? "info"
+                    : "default"
+            }
           />
         ))}
       </div>

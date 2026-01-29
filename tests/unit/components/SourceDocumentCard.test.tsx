@@ -9,13 +9,13 @@ vi.mock("@/components/CategoryIcon", () => ({
     CategoryIcon: () => <div data-testid="category-icon" />,
 }));
 
-vi.mock("@/components/ledger-entry/LedgerEntryCard", () => ({
-    LedgerEntryCard: ({ ledgerEntry, showStatusHint }: { ledgerEntry: LedgerEntry, showStatusHint?: boolean }) => {
-        const hasIssue = !ledgerEntry.categoryId || !ledgerEntry.currency || ledgerEntry.currency === "unknown";
+vi.mock("@/components/ledger-entry/BillEntryItem", () => ({
+    BillEntryItem: ({ ledgerEntry, variant }: { ledgerEntry: LedgerEntry, variant?: string }) => {
         return (
-            <div data-testid="ledger-entry-card">
+            <div data-testid="bill-entry-item" data-variant={variant}>
                 {ledgerEntry.itemName}
-                {showStatusHint && hasIssue && <span>(待修正)</span>}
+                {/* Mock behavior for badges if needed, or just keep simple */}
+                {!ledgerEntry.currency && <span>(需货币)</span>}
             </div>
         );
     },
@@ -142,11 +142,29 @@ describe("SourceDocumentCard", () => {
         expect(userImgs[1].getAttribute("src")).toBe(imagesData[1]);
     });
 
-    it("renders ledger entry details directly", () => {
+    it("renders bill entry items directly", () => {
         renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
-        // It should directly render the ledger entry card
-        expect(screen.getByTestId("ledger-entry-card")).toBeTruthy();
+        // It should directly render the bill entry item
+        expect(screen.getByTestId("bill-entry-item")).toBeTruthy();
         expect(screen.getByText("Lunch")).toBeTruthy();
+    });
+
+    it("passes correct variant for error status", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="error" />);
+        const item = screen.getByTestId("bill-entry-item");
+        expect(item.getAttribute("data-variant")).toBe("error");
+    });
+
+    it("passes correct variant for to_confirm status", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="to_confirm" />);
+        const item = screen.getByTestId("bill-entry-item");
+        expect(item.getAttribute("data-variant")).toBe("warning");
+    });
+
+    it("passes correct variant for processing status", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
+        const item = screen.getByTestId("bill-entry-item");
+        expect(item.getAttribute("data-variant")).toBe("info");
     });
 
     it("opens image zoom dialog on click", async () => {
@@ -199,13 +217,5 @@ describe("SourceDocumentCard", () => {
         // Should NOT show status "Processing..."
         const processingText = screen.queryByText("statusProcessing");
         expect(processingText).toBeNull();
-    });
-
-    it("renders '(待修正)' hint when currency is 'unknown'", () => {
-        const entryWithNullCurrency = { ...mockLedgerEntry, currency: "unknown" };
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} isConfirmed={false} />);
-
-        // The mock LedgerEntryCard renders "(待修正)" when issues exist and showStatusHint is true
-        expect(screen.getByText("(待修正)")).toBeTruthy();
     });
 });

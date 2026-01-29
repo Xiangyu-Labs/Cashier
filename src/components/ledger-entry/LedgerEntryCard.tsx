@@ -11,7 +11,6 @@ const cardVariants = cva("transition-all", {
   variants: {
     status: {
       default: "hover:border-primary/50",
-      attention: "border-warning/50 bg-warning/5",
     },
   },
   defaultVariants: {
@@ -23,8 +22,6 @@ interface LedgerEntryCardProps {
   ledgerEntry: LedgerEntry;
   categories: EntryCategory[];
   onView?: () => void;
-  hideCategory?: boolean;
-  showStatusHint?: boolean;
   className?: string;
   mainCurrency?: string;
 }
@@ -33,14 +30,9 @@ export function LedgerEntryCard({
   ledgerEntry,
   categories,
   onView,
-  hideCategory = false,
-  showStatusHint = false,
   className,
   mainCurrency = "CNY",
 }: LedgerEntryCardProps) {
-  const isUnknownCurrency = !ledgerEntry.currency || ledgerEntry.currency === "unknown";
-  const needsAttention = !ledgerEntry.categoryId || isUnknownCurrency;
-
   const { converted, isLoading } = useConvertedAmount(
     parseFloat(ledgerEntry.amount),
     ledgerEntry.currency,
@@ -53,7 +45,7 @@ export function LedgerEntryCard({
   return (
     <Card
       className={cn(
-        cardVariants({ status: needsAttention ? "attention" : "default" }),
+        cardVariants({ status: "default" }),
         className
       )}
     >
@@ -72,31 +64,27 @@ export function LedgerEntryCard({
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
-              {!hideCategory && (
-                <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl text-text">
-                  <CategoryIcon
-                    iconName={ledgerEntry.category?.icon}
-                    className="w-6 h-6"
-                  />
-                </div>
-              )}
+              <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl text-text">
+                <CategoryIcon
+                  iconName={ledgerEntry.category?.icon}
+                  className="w-6 h-6"
+                />
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-text truncate">{ledgerEntry.itemName}</p>
                 <div className="flex items-center gap-2 mt-1">
                   {ledgerEntry.category ? (
-                    !hideCategory && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted min-w-0 flex-1">
-                        <span className="shrink-0">{ledgerEntry.category.name}</span>
-                        {ledgerEntry.description && (
-                          <>
-                            <span className="text-muted/30 ml-0.5 shrink-0">·</span>
-                            <span className="truncate text-muted/50 text-[11px] italic flex-1">
-                              {ledgerEntry.description}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    )
+                    <div className="flex items-center gap-1.5 text-xs text-muted min-w-0 flex-1">
+                      <span className="shrink-0">{ledgerEntry.category.name}</span>
+                      {ledgerEntry.description && (
+                        <>
+                          <span className="text-muted/30 ml-0.5 shrink-0">·</span>
+                          <span className="truncate text-muted/50 text-[11px] italic flex-1">
+                            {ledgerEntry.description}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <Badge variant="warning" className="text-[10px] px-1 h-5">
@@ -112,12 +100,6 @@ export function LedgerEntryCard({
                     <Badge variant="warning" className="text-[10px] px-1 h-5">
                       需货币
                     </Badge>
-                  )}
-
-                  {showStatusHint && needsAttention && (
-                    <span className="ml-auto text-[11px] font-medium text-warning animate-pulse">
-                      (待修正)
-                    </span>
                   )}
                 </div>
               </div>
@@ -139,7 +121,6 @@ export function LedgerEntryCard({
               </div>
             </div>
           </div>
-          {/* Description is now inline with category above */}
         </div>
       </CardContent>
     </Card>
