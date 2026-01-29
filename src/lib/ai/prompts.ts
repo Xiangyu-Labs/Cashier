@@ -32,9 +32,9 @@ ${aiCustomPrompt ? `- **Custom Rules**: ${aiCustomPrompt}` : ""}
    - \`category\`: STRICTLY match a provided Category name.
    - \`date\`: Resolve relative to Ref Date.
 4. **Translation**: Translate 'title', 'item_name', 'notes' to Target Lang.
+5. **Format**: Output raw JSON ONLY. DO NOT wrap with markdown backticks or \` \` \` json.
 
 ### Output Schema (strict JSON)
-\`\`\`typescript
 interface Output {
   is_valid: boolean;
   title: string; // e.g. "7-11 - Breakfast"
@@ -47,7 +47,6 @@ interface Output {
     notes: string; // Combined specs, quantity, merchant info
   }[];
 }
-\`\`\`
 
 ### Example
 Input: "Yesterday 7-11 cafe latte 3.5 and sandwich 4.5 usd" (Ref: 2025-05-20)
@@ -59,7 +58,8 @@ Output:
     { "item_name": "Latte", "amount": 3.5, "currency": "USD", "category": "Dining", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" },
     { "item_name": "Sandwich", "amount": 4.5, "currency": "USD", "category": "Dining", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" }
   ]
-}`;
+}
+`;
 }
 
 export function buildSummarizationPrompt(
@@ -79,12 +79,12 @@ ${JSON.stringify(items)}
 1. **Summary Name**: Concise (<10 chars) summary (e.g. "Taxi", "Breakfast Set").
 2. **Notes**: Combine original notes/names. Deduplicate. Keep merchant/quantity.
 3. **Translation**: All text to Target Lang.
+4. **Format**: Output raw JSON ONLY. DO NOT wrap with markdown backticks or \` \` \` json.
 
 ### Output Schema (strict JSON)
-\`\`\`typescript
 interface Output {
   item_name: string;
   notes: string;
 }
-\`\`\``;
+`;
 }

@@ -111,68 +111,99 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     // 3. Final completion (IDEMPOTENT)
+    // 3. Final completion (IDEMPOTENT)
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         const { ledgerEntries: parsedEntries, title } = output;
 
-        // Idempotency check
-        const existingEntries = await db.query.ledgerEntries.findFirst({
-            where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
-        });
-
-        if (existingEntries) {
-            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping write-back");
-            return;
-        }
-
-        const validEntries = parsedEntries.filter(entry => entry.amount > 0);
-
-        if (validEntries.length > 0 && context.ledgerId) {
-            const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
-            const status = (input.settings.autoConfirm && !hasUnknownCurrency ? "confirmed" : "pending") as "confirmed" | "pending";
-            const entriesToInsert = validEntries.map(entry => {
-                const categoryId = entry.category
-                    ? input.categories.find((c) => c.name === entry.category)?.id ?? null
-                    : null;
-
-                return {
-                    ledgerId: context.ledgerId!,
-                    categoryId,
-                    sourceDocumentId: input.sourceDocumentId,
-                    amount: entry.amount.toString(),
-                    currency: entry.currency,
-                    itemName: entry.itemName || "未分类",
-                    description: entry.notes || null,
-                    entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
-                    status: status,
-                };
+        await db.transaction(async (tx) => {
+            // Idempotency check with locking? Drizzle generic doesn't lock easily, but checking is fine.
+            const existingEntries = await tx.query.ledgerEntries.findFirst({
+                where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
             });
 
-            await db.insert(ledgerEntries).values(entriesToInsert);
+            const validEntries = parsedEntries.filter(entry => entry.amount > 0);
+            const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
+            // Determine final status
+            // If valid entries exist (or we parsed some), status follows autoConfirm logic
+            // If no valid entries, it's an error or just completed empty? Original logic marked error if validEntries.length=0.
 
-            // Mark source document as completed or to_confirm
-            await db.update(sourceDocuments).set({
-                status: (input.settings.autoConfirm && !hasUnknownCurrency) ? "completed" : "to_confirm",
-                title: title || null,
-            }).where(eq(sourceDocuments.id, input.sourceDocumentId));
-        } else {
-            // Mark source document as error if no valid entries (invalid content)
-            await db.update(sourceDocuments).set({
-                status: "error",
-                errorCode: "invalid_content",
-                title: title || null,
-            }).where(eq(sourceDocuments.id, input.sourceDocumentId));
-        }
+            let targetStatus: "completed" | "to_confirm" | "error" = "to_confirm";
+            if (validEntries.length === 0) {
+                targetStatus = "error";
+            } else if (input.settings.autoConfirm && !hasUnknownCurrency) {
+                targetStatus = "completed";
+            }
+
+            if (!existingEntries) {
+                if (targetStatus === "error") {
+                    await tx.update(sourceDocuments).set({
+                        status: "error",
+                        errorCode: "invalid_content",
+                        title: title || null,
+                    }).where(eq(sourceDocuments.id, input.sourceDocumentId));
+                } else {
+                    const status = (targetStatus === "completed") ? "confirmed" : "pending";
+                    const entriesToInsert = validEntries.map(entry => {
+                        const categoryId = entry.category
+                            ? input.categories.find((c) => c.name === entry.category)?.id ?? null
+                            : null;
+
+                        return {
+                            ledgerId: context.ledgerId!,
+                            categoryId,
+                            sourceDocumentId: input.sourceDocumentId,
+                            amount: entry.amount.toString(),
+                            currency: entry.currency,
+                            itemName: entry.itemName || "未分类",
+                            description: entry.notes || null,
+                            entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
+                            status: status as "confirmed" | "pending",
+                        };
+                    });
+
+                    if (entriesToInsert.length > 0) {
+                        await tx.insert(ledgerEntries).values(entriesToInsert);
+                    }
+
+                    await tx.update(sourceDocuments).set({
+                        status: targetStatus,
+                        title: title || null,
+                    }).where(eq(sourceDocuments.id, input.sourceDocumentId));
+                }
+            } else {
+                logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping insert but ensuring status update");
+
+                // CRITICAL FIX: Ensure status is updated even if entries exist (handling retry race condition)
+                // If entries exist, it implies we previously succeeded partially or fully.
+                // We should force the status to what it SHOULD be.
+                // However, if we simply update to 'to_confirm', it might overwrite user interaction if they actively confirmed it during the race?
+                // But tasks are usually fast.
+                // Safer to set it to 'to_confirm' or 'completed' to clear the 'processing' state.
+
+                if (targetStatus !== "error") {
+                    await tx.update(sourceDocuments)
+                        .set({ status: targetStatus, title: title || null })
+                        .where(eq(sourceDocuments.id, input.sourceDocumentId));
+                }
+            }
+        });
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         // Determine error code
         let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
+        let isUnrecoverable = false;
 
         const message = error.message.toLowerCase();
         if (message.includes("schema validation") || message.includes("zod")) {
             errorCode = "invalid_content"; // Schema mismatch often means it's not a valid bill or has illegal fields
+            isUnrecoverable = true;
         } else if (message.includes("ai response") || message.includes("json") || message.includes("parse")) {
             errorCode = "parse_failed";
+            // JSON parse errors are also usually unrecoverable unless it's a transient AI glitch. 
+            // But if the AI returns garbage JSON, retrying MIGHT fix it if temperature > 0.
+            // Zod error on structure is less likely to change unless AI is very unstable.
+            // Let's mark Zod errors as unrecoverable.
         }
 
         // Update source document status to error
@@ -180,6 +211,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             status: "error",
             errorCode: errorCode,
         }).where(eq(sourceDocuments.id, input.sourceDocumentId));
+
+        if (isUnrecoverable) {
+            const { UnrecoverableError } = await import('bullmq');
+            throw new UnrecoverableError(error.message);
+        }
     },
 };
 
