@@ -78,10 +78,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             }
         );
 
-        // Record usage if available
-        if (result.usage) {
-            await context.recordUsage(result.usage);
-        }
+
 
         // Apply date override if autoRecognizeDate is disabled
         let entries = result.ledgerEntries;

@@ -5,6 +5,8 @@ import { completeTaskRun, failTaskRun } from './task-run-service';
 import { logger } from '@/lib/logger';
 import { flowProducer } from './workers';
 
+import { withAIContext } from '@/lib/ai/ai-context';
+
 export async function processJob(job: Job): Promise<unknown> {
     const handler = getFlowTaskHandler(job.name);
     if (!handler) {
@@ -19,12 +21,6 @@ export async function processJob(job: Job): Promise<unknown> {
             await job.updateProgress(progress);
             if (job.data.__taskRunId) {
                 // Optional: update DB if column exists
-            }
-        },
-        recordUsage: async (usage) => {
-            if (job.data.__taskRunId) {
-                const { recordTaskRunUsage } = await import('./task-run-service');
-                await recordTaskRunUsage(job.data.__taskRunId, usage);
             }
         },
         isCancelled: async () => {
@@ -42,7 +38,11 @@ export async function processJob(job: Job): Promise<unknown> {
             const results = Object.values(childrenValues);
 
             if (handler.onChildrenCompleted) {
-                result = await handler.onChildrenCompleted(results, context);
+                // Wrap in context just in case (though resuming usually doesn't call AI immediately without new execute)
+                // But safer to wrap
+                result = await withAIContext(job.data.__taskRunId || 'unknown', async () => {
+                    return handler.onChildrenCompleted!(results, context);
+                });
             } else {
                 result = results; // Default: return array of children results
             }
@@ -53,7 +53,10 @@ export async function processJob(job: Job): Promise<unknown> {
             }
 
             // 2. Execute (Fan-out / Exploration)
-            result = await handler.execute(job.data, context);
+            // Wrap in AI Context
+            result = await withAIContext(job.data.__taskRunId || 'unknown', async () => {
+                return handler.execute(job.data, context);
+            });
 
             // 3. Check for Recursion
             if (isFlowDefinition(result)) {

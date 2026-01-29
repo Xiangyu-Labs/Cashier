@@ -22,7 +22,6 @@ export interface ProcessingResult {
     isValid?: boolean;
     title?: string;
     rawResponse: string; // AI 原始返回，用于调试
-    usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
 }
 
 export interface CategoryInfo {

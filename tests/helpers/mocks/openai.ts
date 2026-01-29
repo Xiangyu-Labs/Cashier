@@ -99,7 +99,7 @@ export const MOCK_RESPONSES = {
 // Create a mock OpenAI client
 export function createMockOpenAIClient(mockResponse: string = MOCK_RESPONSES.singleEntry) {
     return {
-        generateContent: vi.fn().mockResolvedValue(mockResponse),
+        generateContent: vi.fn().mockResolvedValue({ content: mockResponse }),
     };
 }
 

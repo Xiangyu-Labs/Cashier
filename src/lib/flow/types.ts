@@ -44,14 +44,7 @@ export interface FlowContext {
     taskRunId?: string;      // DB task_runs.id for Root task
     ledgerId?: string;
     updateProgress: (progress: FlowProgress) => Promise<void>;
-    recordUsage: (usage: FlowUsage) => Promise<void>;
     isCancelled: () => Promise<boolean>;
-}
-
-export interface FlowUsage {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
 }
 
 export interface FlowProgress {

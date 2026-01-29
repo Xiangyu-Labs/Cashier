@@ -37,7 +37,7 @@ async function processGroupForSummarization(
         const response = await client.generateContent(prompt, []);
 
         // Defensive parsing: clean markdown code blocks
-        const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
+        const cleaned = response.content.replace(/^```(?:json)?|```$/g, "").trim();
 
         // Defensive parsing: try-catch around JSON
         let parsed: unknown;

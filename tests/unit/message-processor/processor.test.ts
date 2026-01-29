@@ -39,7 +39,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should parse single ledger entry from text input", async () => {
       const input: SourceDocumentInput = { text: "午餐花了25.5元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       const result = await processor.process(input, defaultContext);
 
@@ -72,7 +72,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       });
 
-      mockGenerateContent.mockResolvedValue(response);
+      mockGenerateContent.mockResolvedValue({ content: response });
 
       const result = await processor.process(input, defaultContext);
 
@@ -100,7 +100,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       });
 
-      mockGenerateContent.mockResolvedValue(responseWithNotes);
+      mockGenerateContent.mockResolvedValue({ content: responseWithNotes });
 
       const result = await processor.process(input, defaultContext);
 
@@ -114,7 +114,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should parse multiple ledger entries", async () => {
       const input: SourceDocumentInput = { text: "超市购物：牛奶15元，面包8元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.multipleEntries);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.multipleEntries });
 
       const result = await processor.process(input, defaultContext);
 
@@ -126,7 +126,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle markdown-wrapped JSON response", async () => {
       const input: SourceDocumentInput = { text: "咖啡30元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.markdownWrapped);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.markdownWrapped });
 
       const result = await processor.process(input, defaultContext);
 
@@ -138,7 +138,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should throw error on invalid JSON response", async () => {
       const input: SourceDocumentInput = { text: "invalid input" };
 
-      mockGenerateContent.mockResolvedValue("Sorry, I cannot parse this.");
+      mockGenerateContent.mockResolvedValue({ content: "Sorry, I cannot parse this." });
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
@@ -146,7 +146,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should return empty array on empty response", async () => {
       const input: SourceDocumentInput = { text: "no records" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyEntries);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.emptyEntries });
 
       const result = await processor.process(input, defaultContext);
 
@@ -156,7 +156,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle foreign currency", async () => {
       const input: SourceDocumentInput = { text: "Coffee .50" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.foreignCurrency);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.foreignCurrency });
 
       const result = await processor.process(input, defaultContext);
 
@@ -168,7 +168,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should include rawResponse in result", async () => {
       const input: SourceDocumentInput = { text: "test" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       const result = await processor.process(input, defaultContext);
 
@@ -178,7 +178,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should call generateContent with system prompt and messages", async () => {
       const input: SourceDocumentInput = { text: "午餐25元" };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       await processor.process(input, defaultContext);
 
@@ -198,7 +198,7 @@ describe("OpenAIMessageProcessor", () => {
         preferredCurrencies: ["USD", "HKD"],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       await processor.process(input, contextWithCurrencies);
 
@@ -217,7 +217,7 @@ describe("OpenAIMessageProcessor", () => {
         language: "en-US",
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       await processor.process(input, contextWithLanguage);
 
@@ -237,7 +237,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       const result = await processor.process(input, defaultContext);
 
@@ -265,7 +265,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       await processor.process(input, defaultContext);
 
@@ -283,7 +283,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should add placeholder text when no input provided", async () => {
       const input: SourceDocumentInput = {};
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.emptyEntries);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.emptyEntries });
 
       await processor.process(input, defaultContext);
 
@@ -304,7 +304,7 @@ describe("OpenAIMessageProcessor", () => {
         ],
       };
 
-      mockGenerateContent.mockResolvedValue(MOCK_RESPONSES.singleEntry);
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
 
       await processor.process(input, defaultContext);
 
@@ -328,8 +328,8 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle null currency in response", async () => {
       const input: SourceDocumentInput = { text: "some expense" };
 
-      mockGenerateContent.mockResolvedValue(
-        JSON.stringify({
+      mockGenerateContent.mockResolvedValue({
+        content: JSON.stringify({
           is_valid: true,
           ledger_entries: [
             {
@@ -341,7 +341,7 @@ describe("OpenAIMessageProcessor", () => {
             },
           ],
         })
-      );
+      });
 
       const result = await processor.process(input, defaultContext);
 
@@ -353,8 +353,8 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle missing currency field in response", async () => {
       const input: SourceDocumentInput = { text: "some expense" };
 
-      mockGenerateContent.mockResolvedValue(
-        JSON.stringify({
+      mockGenerateContent.mockResolvedValue({
+        content: JSON.stringify({
           is_valid: true,
           ledger_entries: [
             {
@@ -366,7 +366,7 @@ describe("OpenAIMessageProcessor", () => {
             },
           ],
         })
-      );
+      });
 
       const result = await processor.process(input, defaultContext);
 
@@ -376,8 +376,8 @@ describe("OpenAIMessageProcessor", () => {
     it("should reject negative amounts via Zod validation", async () => {
       const input: SourceDocumentInput = { text: "refund" };
 
-      mockGenerateContent.mockResolvedValue(
-        JSON.stringify({
+      mockGenerateContent.mockResolvedValue({
+        content: JSON.stringify({
           is_valid: true,
           ledger_entries: [
             {
@@ -389,7 +389,7 @@ describe("OpenAIMessageProcessor", () => {
             },
           ],
         })
-      );
+      });
 
       // Should throw due to validation failure
       await expect(processor.process(input, defaultContext)).rejects.toThrow("AI response schema validation failed");
@@ -398,8 +398,8 @@ describe("OpenAIMessageProcessor", () => {
     it("should accept zero amount via Zod validation", async () => {
       const input: SourceDocumentInput = { text: "free item" };
 
-      mockGenerateContent.mockResolvedValue(
-        JSON.stringify({
+      mockGenerateContent.mockResolvedValue({
+        content: JSON.stringify({
           is_valid: true,
           ledger_entries: [
             {
@@ -411,7 +411,7 @@ describe("OpenAIMessageProcessor", () => {
             },
           ],
         })
-      );
+      });
 
       const result = await processor.process(input, defaultContext);
       expect(result.ledgerEntries[0].amount).toBe(0);
@@ -420,7 +420,7 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle malformed JSON gracefully", async () => {
       const input: SourceDocumentInput = { text: "test" };
 
-      mockGenerateContent.mockResolvedValue('{"ledger_entries": [');
+      mockGenerateContent.mockResolvedValue({ content: '{"ledger_entries": [' });
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Failed to parse AI response");
     });
@@ -428,9 +428,11 @@ describe("OpenAIMessageProcessor", () => {
     it("should handle response with only ``` markers", async () => {
       const input: SourceDocumentInput = { text: "test" };
 
-      mockGenerateContent.mockResolvedValue(`\`\`\`
+      mockGenerateContent.mockResolvedValue({
+        content: `\`\`\`
 ${MOCK_RESPONSES.singleEntry}
-\`\`\``);
+\`\`\``
+      });
 
       const result = await processor.process(input, defaultContext);
 
@@ -452,7 +454,7 @@ ${MOCK_RESPONSES.singleEntry}
         ],
       });
 
-      mockGenerateContent.mockResolvedValue(response);
+      mockGenerateContent.mockResolvedValue({ content: response });
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid or missing category");
     });
@@ -472,7 +474,7 @@ ${MOCK_RESPONSES.singleEntry}
         ],
       });
 
-      mockGenerateContent.mockResolvedValue(response);
+      mockGenerateContent.mockResolvedValue({ content: response });
 
       await expect(processor.process(input, defaultContext)).rejects.toThrow("Invalid currency code");
     });

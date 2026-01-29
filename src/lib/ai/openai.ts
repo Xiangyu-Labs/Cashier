@@ -2,6 +2,9 @@ import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logger } from "@/lib/logger";
 
+import { getCurrentTaskRunId } from "./ai-context";
+import { recordTaskRunUsage } from "@/lib/flow/task-run-service";
+
 export class OpenAIClient {
     private client: OpenAI;
 
@@ -22,7 +25,7 @@ export class OpenAIClient {
     async generateContent(
         systemPrompt: string,
         messages: ChatCompletionMessageParam[]
-    ): Promise<{ content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } }> {
+    ): Promise<{ content: string }> {
         const model = process.env.OPENAI_MODEL;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
@@ -45,14 +48,23 @@ export class OpenAIClient {
                 });
 
                 const content = response.choices[0]?.message?.content || "";
-                const usageRaw = response.usage;
-                const usage = usageRaw ? {
-                    inputTokens: usageRaw.prompt_tokens,
-                    outputTokens: usageRaw.completion_tokens,
-                    totalTokens: usageRaw.total_tokens
-                } : undefined;
 
-                return { content, usage };
+                // Automatic usage recording via AsyncLocalStorage context
+                if (response.usage) {
+                    const taskRunId = getCurrentTaskRunId();
+                    if (taskRunId) {
+                        // Fire and forget - don't block the response
+                        recordTaskRunUsage(taskRunId, {
+                            inputTokens: response.usage.prompt_tokens,
+                            outputTokens: response.usage.completion_tokens,
+                            totalTokens: response.usage.total_tokens
+                        }).catch(err => {
+                            logger.error({ err, taskRunId }, "Failed to record token usage");
+                        });
+                    }
+                }
+
+                return { content };
             } catch (error) {
                 lastError = error;
                 const isRetryable =

@@ -23,10 +23,12 @@ describe("summarizeLedgerEntries", () => {
             { itemName: "Item 2", amount: 20, currency: "CNY", category: "Food", entryDate: "2025-01-25", notes: "Note 2" },
         ];
 
-        mockGenerateContent.mockResolvedValue(JSON.stringify({
-            item_name: "Summarized Food",
-            notes: "Combined notes"
-        }));
+        mockGenerateContent.mockResolvedValue({
+            content: JSON.stringify({
+                item_name: "Summarized Food",
+                notes: "Combined notes"
+            })
+        });
 
         const result = await summarizeLedgerEntries(entries, "zh-CN");
 
