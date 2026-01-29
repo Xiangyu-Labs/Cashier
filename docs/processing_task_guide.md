@@ -69,11 +69,35 @@ const myFeatureHandler: ProcessingTaskHandler<string> = {
 };
 
 // 3. Register IT
+// NOTE: Each task type can have ONLY ONE registered handler. 
+// Re-registering will overwrite the existing one.
 registerProcessingTask("my_feature_type", myFeatureHandler);
 ```
 
 ### 3. Register in Tasks Index
 Import your file in `src/lib/tasks/index.ts` to ensure it registers at startup.
+
+---
+
+## ⚙️ Error Propagation & Lifecycle
+
+Understanding how errors move through the system is critical for robust implementation:
+
+### The Safe-Net (Try-Catch)
+The **Task Worker** wraps the entire execution in a `try-catch` block. This ensures that any error—whether from network, logic, or manual `throw`—is caught and handled.
+
+### How to trigger failure
+If your business logic (in `execute` or `onComplete`) determines that the AI result is unuseable, simply **throw an Error**.
+- **Action**: `throw new Error("Invalid data")`
+- **Result**: 
+    1. The Worker catches it.
+    2. The Worker triggers your `onError` hook.
+    3. The Worker marks the database task status as `failed`.
+
+### Hook Execution Timing
+1. **`execute`**: The "Workshop". Main logic, progress updates, and AI calls happen here.
+2. **`onComplete`**: The "Final Inspector". Called ONLY if `execute` finishes successfully. If you `throw` here, the task still fails.
+3. **`onError`**: The "Cleanup Crew". Called ONLY if an error occurs.
 
 ---
 
