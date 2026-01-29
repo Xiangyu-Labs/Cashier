@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useMemo } from "react";
 
+import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+
 export interface LedgerEntryEditFormData {
     itemName: string;
     amount: number;
@@ -28,6 +30,7 @@ interface LedgerEntryViewDetailsProps {
     editData: LedgerEntryEditFormData;
     categories: EntryCategory[];
     preferredCurrencies?: string[];
+    mainCurrency?: string;
     onEditStart: () => void;
     onEditChange: (data: LedgerEntryEditFormData) => void;
     onEditSave: () => void;
@@ -41,6 +44,7 @@ export function LedgerEntryViewDetails({
     editData,
     categories,
     preferredCurrencies = [],
+    mainCurrency = "CNY",
     onEditStart,
     onEditChange,
     onEditSave,
@@ -50,6 +54,15 @@ export function LedgerEntryViewDetails({
     const t = useTranslations("LedgerEntryDetail");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
+
+    const { converted } = useConvertedAmount(
+        parseFloat(ledgerEntry.amount),
+        ledgerEntry.currency,
+        mainCurrency,
+        ledgerEntry.entryDate || ledgerEntry.createdAt
+    );
+
+    const isDifferentCurrency = ledgerEntry.currency && ledgerEntry.currency !== mainCurrency && ledgerEntry.currency !== "unknown";
 
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [needsFolding, setNeedsFolding] = useState(false);
@@ -157,12 +170,19 @@ export function LedgerEntryViewDetails({
                             <h3 className="text-xl font-semibold text-text break-words">
                                 {ledgerEntry.itemName}
                             </h3>
-                            <p className="text-3xl font-bold text-primary mt-1">
-                                <span className="text-lg font-normal text-muted mr-1">
-                                    {(!ledgerEntry.currency || ledgerEntry.currency === "unknown") ? "?" : ledgerEntry.currency}
-                                </span>
-                                {parseFloat(ledgerEntry.amount).toFixed(2)}
-                            </p>
+                            <div className="mt-1">
+                                <p className="text-3xl font-bold text-primary">
+                                    <span className="text-lg font-normal text-muted mr-1">
+                                        {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency === "unknown" ? "?" : ledgerEntry.currency)}
+                                    </span>
+                                    {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
+                                </p>
+                                {isDifferentCurrency && (
+                                    <p className="text-sm font-medium text-muted mt-0.5 opacity-80">
+                                        ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
+                                    </p>
+                                )}
+                            </div>
                         </>
                     )}
                 </div>

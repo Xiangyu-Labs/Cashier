@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { useConvertedAmount } from "@/hooks/useConvertedAmount";
 
 // Card styling variants
 const cardVariants = cva("transition-all", {
@@ -25,6 +26,7 @@ interface LedgerEntryCardProps {
   hideCategory?: boolean;
   showStatusHint?: boolean;
   className?: string;
+  mainCurrency?: string;
 }
 
 export function LedgerEntryCard({
@@ -34,9 +36,19 @@ export function LedgerEntryCard({
   hideCategory = false,
   showStatusHint = false,
   className,
+  mainCurrency = "CNY",
 }: LedgerEntryCardProps) {
   const isUnknownCurrency = !ledgerEntry.currency || ledgerEntry.currency === "unknown";
   const needsAttention = !ledgerEntry.categoryId || isUnknownCurrency;
+
+  const { converted, isLoading } = useConvertedAmount(
+    parseFloat(ledgerEntry.amount),
+    ledgerEntry.currency,
+    mainCurrency,
+    ledgerEntry.entryDate || ledgerEntry.createdAt
+  );
+
+  const isDifferentCurrency = ledgerEntry.currency && ledgerEntry.currency !== mainCurrency && ledgerEntry.currency !== "unknown";
 
   return (
     <Card
@@ -112,12 +124,19 @@ export function LedgerEntryCard({
             </div>
 
             <div className="flex items-center gap-4 shrink-0">
-              <p className="font-mono font-semibold text-text">
-                <span className="text-xs text-muted mr-1">
-                  {ledgerEntry.currency || "?"}
-                </span>
-                {parseFloat(ledgerEntry.amount).toFixed(2)}
-              </p>
+              <div className="flex flex-col items-end">
+                <p className="font-mono font-semibold text-text">
+                  <span className="text-xs text-muted mr-1">
+                    {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency || "?")}
+                  </span>
+                  {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
+                </p>
+                {isDifferentCurrency && (
+                  <p className="text-[10px] text-muted-foreground font-mono opacity-60">
+                    ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           {/* Description is now inline with category above */}

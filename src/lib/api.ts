@@ -231,12 +231,14 @@ export function fetchLedgerEntrySummary(
   ledgerId: string,
   status?: "pending" | "confirmed",
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mainCurrency?: string
 ): Promise<LedgerEntrySummary> {
   const searchParams = new URLSearchParams();
   if (status) searchParams.set("status", status);
   if (startDate) searchParams.set("startDate", startDate);
   if (endDate) searchParams.set("endDate", endDate);
+  if (mainCurrency) searchParams.set("mainCurrency", mainCurrency);
 
   return request(
     `${API_BASE}/ledgers/${ledgerId}/ledger-entries/summary?${searchParams}`,

@@ -22,7 +22,7 @@
         "totalExpense": "Total Expense ({count} entries)"
     },
     "DetailsTab": {
-        "expenseSummary": "Expense Summary ({currency})",
+        "expenseSummary": "Expense Summary",
         "today": "Today",
         "yesterday": "Yesterday",
         "noExpenses": "No expenses in this period"
@@ -159,7 +159,7 @@
         "chinese": "Chinese",
         "english": "English",
         "mainCurrency": "Main Currency",
-        "mainCurrencyDesc": "The base currency used for statistics and totals (currently summed 1:1).",
+        "mainCurrencyDesc": "The base currency used for statistics and totals (converted using historical rates based on transaction date).",
         "preferredCurrencies": "Preferred Currencies",
         "preferredCurrenciesDesc": "List of currencies used in this ledger.",
         "categories": "Categories",

@@ -79,6 +79,16 @@ export interface LedgerEntrySummary {
     date: string;
     total: number;
   }[];
+  convertedTotal?: {
+    currency: string;
+    total: number;
+    conversions: {
+      fromCurrency: string | null;
+      originalTotal: number;
+      convertedTotal: number;
+      count: number;
+    }[];
+  };
 }
 
 export interface SourceDocumentResponse {

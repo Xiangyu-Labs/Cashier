@@ -36,8 +36,8 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const endDateStr = dateRange.end?.toISOString();
 
     const { data: summaryData } = useQuery({
-        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr],
-        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed", startDateStr, endDateStr),
+        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.mainCurrency],
+        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed", startDateStr, endDateStr, ledger?.mainCurrency),
         enabled: !!startDateStr && !!endDateStr
     });
 
@@ -66,9 +66,19 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [data]);
 
     const monthStats = useMemo(() => {
-        const total = summaryData?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
-        const currency = ledger?.mainCurrency || "CNY";
-        return { total, currency };
+        const convertedTotal = summaryData?.convertedTotal;
+        const totals = summaryData?.totals || [];
+
+        const mainTotal = convertedTotal?.total ?? totals.reduce((sum, t) => sum + t.total, 0);
+        const mainCurrency = convertedTotal?.currency || ledger?.mainCurrency || "CNY";
+        const hasMultipleCurrencies = totals.length > 1;
+
+        return {
+            mainTotal,
+            mainCurrency,
+            hasMultipleCurrencies,
+            breakdown: totals
+        };
     }, [summaryData, ledger]);
 
     const updateMutation = useMutation({
@@ -166,8 +176,26 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <div className="text-muted-foreground text-[10px] mb-0.5">{t("expenseSummary", { currency: monthStats.currency })}</div>
-                        <div className="text-xl font-bold font-mono tracking-tight">{monthStats.total.toFixed(2)}</div>
+                        <div className="text-muted-foreground text-[10px] mb-0.5">{t("expenseSummary")}</div>
+                        <div className="flex flex-col items-end">
+                            <div className="text-xl font-bold font-mono tracking-tight leading-none">
+                                {monthStats.hasMultipleCurrencies && (
+                                    <span className="text-sm font-normal text-muted-foreground mr-1">≈</span>
+                                )}
+                                <span className="text-xs text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
+                                {monthStats.mainTotal.toFixed(2)}
+                            </div>
+                            {monthStats.hasMultipleCurrencies && (
+                                <div className="text-[10px] text-muted-foreground font-mono mt-1 opacity-80">
+                                    {monthStats.breakdown.map((b, idx) => (
+                                        <span key={b.currency}>
+                                            {idx > 0 && <span className="mx-1 opacity-50">·</span>}
+                                            {b.currency || "?"} {b.total.toFixed(0)}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -200,6 +228,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                         <LedgerEntryCard
                                             ledgerEntry={entry}
                                             categories={categories}
+                                            mainCurrency={ledger?.mainCurrency}
                                             onView={() => {
                                                 setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);
@@ -259,6 +288,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
                 preferredCurrencies={ledger?.currencies}
+                mainCurrency={ledger?.mainCurrency}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);

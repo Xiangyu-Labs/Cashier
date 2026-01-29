@@ -12,6 +12,7 @@ interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
   categories: EntryCategory[];
   preferredCurrencies?: string[];
+  mainCurrency?: string;
   open: boolean;
   onClose: () => void;
   onUpdate: (data: {
@@ -29,6 +30,7 @@ export function LedgerEntryDetailModal({
   ledgerEntry,
   categories,
   preferredCurrencies,
+  mainCurrency = "CNY",
   open,
   onClose,
   onUpdate,
@@ -108,6 +110,7 @@ export function LedgerEntryDetailModal({
             editData={editData}
             categories={categories}
             preferredCurrencies={preferredCurrencies}
+            mainCurrency={mainCurrency}
             onEditStart={() => setIsEditing(true)}
             onEditChange={setEditData}
             onEditSave={handleSave}

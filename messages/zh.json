@@ -22,7 +22,7 @@
         "totalExpense": "总支出 ({count} 笔)"
     },
     "DetailsTab": {
-        "expenseSummary": "支出统计 ({currency})",
+        "expenseSummary": "支出统计",
         "today": "今天",
         "yesterday": "昨天",
         "noExpenses": "该时间段暂无支出"
@@ -159,7 +159,7 @@
         "chinese": "中文",
         "english": "英文",
         "mainCurrency": "主货币",
-        "mainCurrencyDesc": "统计与详情页展示所使用的基准货币（目前按 1:1 直接求和）",
+        "mainCurrencyDesc": "统计与详情页展示所使用的基准货币（非主货币统计时按交易时汇率折算）",
         "preferredCurrencies": "偏好货币",
         "preferredCurrenciesDesc": "此账本中常用的货币列表。",
         "categories": "分类",

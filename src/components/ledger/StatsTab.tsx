@@ -42,19 +42,23 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             "confirmed",
             formatDateForApi(startDate),
             formatDateForApi(endDate),
+            ledger?.mainCurrency,
         ],
         queryFn: () =>
             fetchLedgerEntrySummary(
                 ledgerId || "",
                 "confirmed",
                 formatDateForApi(startDate),
-                formatDateForApi(endDate)
+                formatDateForApi(endDate),
+                ledger?.mainCurrency
             ),
         enabled: !!ledgerId,
     });
 
     // Sum all totals for the main currency view
-    const totalExpense = summary?.totals.reduce((sum, t) => sum + t.total, 0) || 0;
+    const totalExpense = summary?.convertedTotal?.total
+        || summary?.totals.reduce((sum, t) => sum + t.total, 0)
+        || 0;
     const currencySymbol = ledger?.mainCurrency || "CNY";
 
     const daysInPeriod = Math.max(

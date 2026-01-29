@@ -549,6 +549,7 @@ export function LedgerEntriesTab({
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
                 preferredCurrencies={ledger?.currencies}
+                mainCurrency={ledger?.mainCurrency}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);
