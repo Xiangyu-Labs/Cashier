@@ -33,6 +33,7 @@ ${aiCustomPrompt ? `- **Custom Rules**: ${aiCustomPrompt}` : ""}
    - \`date\`: Resolve relative to Ref Date.
 4. **Translation**: Translate 'title', 'item_name', 'notes' to Target Lang.
 5. **Format**: Output raw JSON ONLY. DO NOT wrap with markdown backticks or \` \` \` json.
+6. **Structure**: ALWAYS return a SINGLE object. NEVER return an array (e.g., [{}, {}]), even if there are multiple receipts. All entries must be inside the \`ledger_entries\` array of the root object.
 
 ### Output Schema (strict JSON)
 interface Output {

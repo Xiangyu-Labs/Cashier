@@ -84,11 +84,9 @@ export async function processJob(job: Job): Promise<unknown> {
     } catch (error) {
         if (isRootJob(job)) {
             if (handler.onError) {
-                try {
-                    await handler.onError(error as Error, job.data, context);
-                } catch (e) {
-                    logger.error({ err: e }, "Error in onError handler");
-                }
+                // If onError throws (e.g., UnrecoverableError), we want THAT error to propagate
+                // to BullMQ instead of the original error.
+                await handler.onError(error as Error, job.data, context);
             }
             await failTaskRun(job.data.__taskRunId, (error as Error).message);
         }
