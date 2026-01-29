@@ -86,17 +86,12 @@ describe("Full Ledger Entry Flow", () => {
     // Process the tasks
     await processAllPendingTasks();
 
-    // Wait for processing
+    // Verify processing completion
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 20) {
-      const message = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
-      });
-      if (message?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    const message = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
+    });
+    expect(message?.status).toBe("completed");
 
     // Step 4: Verify ledger entries are persisted
     // Fetch ledger entries directly from API or DB
@@ -156,17 +151,12 @@ describe("Full Ledger Entry Flow", () => {
     // Process the tasks
     await processAllPendingTasks();
 
-    // Wait for processing
+    // Verify processing completion
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 20) {
-      const message = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
-      });
-      if (message?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    const message = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
+    });
+    expect(message?.status).toBe("completed");
 
     // Verify data exists
     let entriesCount = await db.query.ledgerEntries.findMany({
@@ -266,17 +256,12 @@ describe("Full Ledger Entry Flow", () => {
     // Process the tasks
     await processAllPendingTasks();
 
-    // Wait for processing
+    // Verify processing completion
     const db = getTestDb();
-    let retries = 0;
-    while (retries < 20) {
-      const message = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
-      });
-      if (message?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    const message = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, messageResult.sourceDocumentId),
+    });
+    expect(message?.status).toBe("completed");
 
     // Verify processing completion
     const finalMessage = await db.query.sourceDocuments.findFirst({

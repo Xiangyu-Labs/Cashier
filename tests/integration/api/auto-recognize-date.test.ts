@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
-import { processAllPendingTasks } from "../../helpers/processing";
-import { createProcessingTask } from "@/lib/processing";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks";
+import { submitFlowTask } from "@/lib/flow/producer";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
 import * as processorModule from "@/lib/message-processor/processor";
 
@@ -76,14 +75,12 @@ describe("Auto-recognize Ledger Entry Time", () => {
             status: "queued"
         }).returning();
 
-        // Create Processing Task
-        await createProcessingTask({
+        // Submit Flow Task
+        await submitFlowTask({
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
             title: "Test Task",
             ledgerId,
-            entityId: sourceDocument.id,
-            entityType: "source_document",
-            input: {
+            data: {
                 sourceDocumentId: sourceDocument.id,
                 text: sourceDocument.text || undefined,
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
@@ -96,6 +93,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
         });
 
         // Process
+        const { processAllPendingTasks } = await import("../../helpers/processing");
         await processAllPendingTasks();
 
         // Verify
@@ -138,14 +136,12 @@ describe("Auto-recognize Ledger Entry Time", () => {
             status: "queued"
         }).returning();
 
-        // Create Processing Task
-        await createProcessingTask({
+        // Submit Flow Task
+        await submitFlowTask({
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
             title: "Test Task 2",
             ledgerId,
-            entityId: sourceDocument2.id,
-            entityType: "source_document",
-            input: {
+            data: {
                 sourceDocumentId: sourceDocument2.id,
                 text: sourceDocument2.text || undefined,
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
@@ -158,6 +154,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
         });
 
         // Process
+        const { processAllPendingTasks } = await import("../../helpers/processing");
         await processAllPendingTasks();
 
         // Verify

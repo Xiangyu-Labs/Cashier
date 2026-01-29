@@ -295,18 +295,10 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     await processAllPendingTasks();
 
     // Wait for processing to ensure ledger entries are created
-    const db = getTestDb();
-    let retries = 0;
-    while (retries < 10) {
-      const doc = await db.query.sourceDocuments.findFirst({
-        where: eq(sourceDocuments.id, sourceDocumentId),
-      });
-      if (doc?.status === "completed") break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      retries++;
-    }
+    await processAllPendingTasks();
 
     // Verify ledger entry exists
+    const db = getTestDb();
     const entriesBefore = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
     });

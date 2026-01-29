@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "@/components/ledger-entry/LedgerEntryViewDetails";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 
@@ -24,6 +25,24 @@ vi.mock("@/components/CategoryIcon", () => ({
 }));
 
 describe("LedgerEntryViewDetails", () => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+
+    const renderWithQuery = (ui: React.ReactElement) => {
+        return render(ui, {
+            wrapper: ({ children }) => (
+                <QueryClientProvider client={queryClient}>
+                    {children}
+                </QueryClientProvider>
+            ),
+        });
+    };
+
     const mockLedgerEntry: LedgerEntry = {
         id: "1",
         ledgerId: "l1",
@@ -64,14 +83,14 @@ describe("LedgerEntryViewDetails", () => {
     };
 
     it("renders item details in view mode", () => {
-        render(<LedgerEntryViewDetails {...defaultProps} />);
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
         expect(screen.getByText("Test Item")).toBeDefined();
         expect(screen.getByText("100.50")).toBeDefined();
         expect(screen.getByText("Test description")).toBeDefined();
     });
 
     it("renders input fields in edit mode with correct data", () => {
-        render(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
 
         const itemNameInput = screen.getByPlaceholderText("itemName") as HTMLInputElement;
         expect(itemNameInput.value).toBe("Test Item");
@@ -82,7 +101,7 @@ describe("LedgerEntryViewDetails", () => {
     });
 
     it("triggers onEditChange when fields are updated", () => {
-        render(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
 
         const itemNameInput = screen.getByPlaceholderText("itemName");
         fireEvent.change(itemNameInput, { target: { value: "New Item Name" } });
@@ -94,7 +113,7 @@ describe("LedgerEntryViewDetails", () => {
     });
 
     it("triggers onEditSave when save button is clicked", () => {
-        render(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
 
         const saveButton = screen.getByText("save");
         fireEvent.click(saveButton);
@@ -104,7 +123,7 @@ describe("LedgerEntryViewDetails", () => {
 
     it("shows preferred currencies first in the selector", () => {
         const preferredCurrencies = ["HKD", "JPY"];
-        const { container } = render(
+        const { container } = renderWithQuery(
             <LedgerEntryViewDetails
                 {...defaultProps}
                 isEditing={true}
@@ -128,7 +147,7 @@ describe("LedgerEntryViewDetails", () => {
     it("shows 'unknown' option only for pending entries", () => {
         // Pending status
         const pendingEntry = { ...mockLedgerEntry, status: "pending" as const };
-        const { rerender, container } = render(
+        const { rerender, container } = renderWithQuery(
             <LedgerEntryViewDetails
                 {...defaultProps}
                 ledgerEntry={pendingEntry}

@@ -1,6 +1,6 @@
 // Set Redis URL for tests
 process.env.REDIS_URL = "redis://127.0.0.1:6380";
-process.env.FLOW_MAIN_QUEUE_CONCURRENCY = "0";
+
 
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -29,8 +29,10 @@ beforeAll(async () => {
 
   if (process.env.NO_DB) return;
 
-  // Disable background workers in tests to ensure deterministic execution
-  process.env.PROCESSING_WORKER_COUNT = "0";
+  // Enable background workers in tests with low concurrency
+  process.env.FLOW_MAIN_QUEUE_CONCURRENCY = "1";
+  process.env.FLOW_API_QUEUE_CONCURRENCY = "1";
+  process.env.PROCESSING_WORKER_COUNT = "1";
 
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });

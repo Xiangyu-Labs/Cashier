@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
 import { getTestDb } from "../../setup";
-import { ledgers, processingTasks } from "@/lib/db/schema";
+import { ledgers, taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("Processing Stats: Token Usage API", () => {
@@ -44,13 +44,13 @@ describe("Processing Stats: Token Usage API", () => {
             .values({ name: "Other Ledger" })
             .returning();
 
-        await db.insert(processingTasks).values([
+        await db.insert(taskRuns).values([
             {
                 ledgerId: testLedgerId,
                 type: "parse_source_document",
                 title: "Task 1",
                 status: "completed",
-                metadata: { usage: { inputTokens: 100, outputTokens: 50 } },
+                usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
                 createdAt: new Date(),
             },
             {
@@ -58,7 +58,7 @@ describe("Processing Stats: Token Usage API", () => {
                 type: "parse_source_document",
                 title: "Task 2",
                 status: "completed",
-                metadata: { usage: { inputTokens: 200, outputTokens: 100 } },
+                usage: { inputTokens: 200, outputTokens: 100, totalTokens: 300 },
                 createdAt: new Date(),
             },
             // This task should be ignored because it's not completed
@@ -67,7 +67,7 @@ describe("Processing Stats: Token Usage API", () => {
                 type: "parse_source_document",
                 title: "Task 3",
                 status: "running",
-                metadata: { usage: { inputTokens: 500, outputTokens: 500 } },
+                usage: { inputTokens: 500, outputTokens: 500, totalTokens: 1000 },
                 createdAt: new Date(),
             },
             // This task should be ignored because it belongs to another ledger
@@ -76,7 +76,7 @@ describe("Processing Stats: Token Usage API", () => {
                 type: "parse_source_document",
                 title: "Other Ledger Task",
                 status: "completed",
-                metadata: { usage: { inputTokens: 1000, outputTokens: 1000 } },
+                usage: { inputTokens: 1000, outputTokens: 1000, totalTokens: 2000 },
                 createdAt: new Date(),
             }
         ]);

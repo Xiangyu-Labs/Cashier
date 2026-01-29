@@ -25,7 +25,7 @@ describe("parseSourceDocumentHandler.onError", () => {
 
         const error = new Error("AI response schema validation failed: ledger_entries: Required");
 
-        await parseSourceDocumentHandler.onError!(error, task);
+        await expect(parseSourceDocumentHandler.onError!(error, input, task)).rejects.toThrow();
 
         const updatedDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
@@ -55,7 +55,7 @@ describe("parseSourceDocumentHandler.onError", () => {
 
         const error = new Error("Invalid JSON format: Unexpected token");
 
-        await parseSourceDocumentHandler.onError!(error, task);
+        await parseSourceDocumentHandler.onError!(error, input, task);
 
         const updatedDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)

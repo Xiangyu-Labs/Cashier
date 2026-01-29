@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { vi, describe, it, expect } from "vitest";
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
@@ -58,6 +59,24 @@ const baseSourceDocument: SourceDocument = {
 };
 
 describe("SourceDocumentCard", () => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+
+    const renderWithQuery = (ui: React.ReactElement) => {
+        return render(ui, {
+            wrapper: ({ children }) => (
+                <QueryClientProvider client={queryClient}>
+                    {children}
+                </QueryClientProvider>
+            ),
+        });
+    };
+
     const mockUpdateLedgerEntry = vi.fn();
     const mockDeleteLedgerEntry = vi.fn();
 
@@ -70,12 +89,12 @@ describe("SourceDocumentCard", () => {
     };
 
     it("renders date header", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
         expect(screen.getByText(/1月1日/)).toBeTruthy();
     });
 
     it("renders text content", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -90,7 +109,7 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -109,7 +128,7 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: imagesData,
         };
-        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -124,7 +143,7 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders ledger entry details directly", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
         // It should directly render the ledger entry card
         expect(screen.getByTestId("ledger-entry-card")).toBeTruthy();
         expect(screen.getByText("Lunch")).toBeTruthy();
@@ -136,7 +155,7 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        render(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
 
         // Expand content
         const expandButton = screen.getByTitle("viewContent");
@@ -160,17 +179,17 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders status when no ledger entries", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="queued" />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="queued" />);
         expect(screen.getByText("处理中")).toBeTruthy();
     });
 
     it("renders error status and message when errorCode is provided", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="error" errorCode="parse_failed" />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="error" errorCode="parse_failed" />);
         expect(screen.getByText("parse_failed")).toBeTruthy();
     });
 
     it("renders total amount and hides status when ledger entries exist", () => {
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
         // Should show total amount (50.00 CNY)
         const currencies = screen.getAllByText("CNY");
         expect(currencies.length).toBeGreaterThan(0);
@@ -184,7 +203,7 @@ describe("SourceDocumentCard", () => {
 
     it("renders '(待修正)' hint when currency is 'unknown'", () => {
         const entryWithNullCurrency = { ...mockLedgerEntry, currency: "unknown" };
-        render(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} isConfirmed={false} />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[entryWithNullCurrency]} isConfirmed={false} />);
 
         // The mock LedgerEntryCard renders "(待修正)" when issues exist and showStatusHint is true
         expect(screen.getByText("(待修正)")).toBeTruthy();

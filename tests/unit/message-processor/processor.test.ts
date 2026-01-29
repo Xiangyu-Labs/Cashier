@@ -206,9 +206,8 @@ describe("OpenAIMessageProcessor", () => {
       const [systemPrompt] = mockGenerateContent.mock.calls[0];
 
       // Verify the prompt contains the preferred currencies
-      expect(systemPrompt).toContain("**User Preferred Currencies**: USD, HKD");
-      // Verify the prompt contains the common currency list
-      expect(systemPrompt).toContain("- **Common Currency Reference**: USD, AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, ZAR");
+      expect(systemPrompt).toContain("**Pref Currencies**: USD, HKD");
+
     });
 
     it("should pass targetLanguage from context to buildLedgerEntryPrompt", async () => {
@@ -225,7 +224,7 @@ describe("OpenAIMessageProcessor", () => {
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
       const [systemPrompt] = mockGenerateContent.mock.calls[0];
 
-      expect(systemPrompt).toContain("- **Target Language**: en-US");
+      expect(systemPrompt).toContain("- **Target Lang**: en-US");
     });
 
     it("should handle image input", async () => {

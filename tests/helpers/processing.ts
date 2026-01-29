@@ -1,40 +1,35 @@
-
-import { claimNextProcessingTask } from "@/lib/processing/task-service";
-import { getProcessingTaskHandler } from "@/lib/processing/task-registry";
-import { ProcessingTaskExecutionContext, ProcessingTaskProgress } from "@/lib/processing/types";
-import { markProcessingTaskCompleted, markProcessingTaskFailed, updateProcessingTaskProgress } from "@/lib/processing/task-service";
+import { db } from "@/lib/db";
+import { taskRuns, sourceDocuments } from "@/lib/db/schema";
+import { eq, or, inArray } from "drizzle-orm";
 
 /**
- * Synchronously processes all currently queued tasks.
- * Useful for integration tests where we want to wait for processing to finish.
+ * Polls for all pending task runs to complete.
+ * In a real BullMQ environment, the workers are running separately.
+ * In integration tests, we wait for the database to reflect completion.
  */
-export async function processAllPendingTasks() {
-    let task = await claimNextProcessingTask();
-    while (task) {
-        const handler = getProcessingTaskHandler(task.type);
-        if (!handler) {
-            await markProcessingTaskFailed(task.id, `No handler for ${task.type}`);
-        } else {
-            try {
-                const context: ProcessingTaskExecutionContext = {
-                    updateProgress: async (p: ProcessingTaskProgress) => {
-                        await updateProcessingTaskProgress(task!.id, p);
-                    },
-                    getProgress: () => task!.progress,
-                };
-                const output = await handler.execute(task, context);
-                if (handler.onComplete) {
-                    await handler.onComplete(output, task);
-                }
-                await markProcessingTaskCompleted(task.id, output);
-            } catch (error) {
-                const msg = error instanceof Error ? error.message : String(error);
-                if (handler.onError) {
-                    await handler.onError(error instanceof Error ? error : new Error(msg), task);
-                }
-                await markProcessingTaskFailed(task.id, msg);
-            }
+export async function processAllPendingTasks(timeoutMs: number = 10000) {
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+        // Check for any task_runs that are still 'running'
+        const pendingRuns = await db.query.taskRuns.findMany({
+            where: eq(taskRuns.status, 'running')
+        });
+
+        // Also check source_documents if they are in transient states
+        const pendingDocs = await db.query.sourceDocuments.findMany({
+            where: or(
+                eq(sourceDocuments.status, 'queued'),
+                eq(sourceDocuments.status, 'processing')
+            )
+        });
+
+        if (pendingRuns.length === 0 && pendingDocs.length === 0) {
+            return;
         }
-        task = await claimNextProcessingTask();
+
+        await new Promise(r => setTimeout(r, 200));
     }
+
+    console.warn(`processAllPendingTasks timed out after ${timeoutMs}ms`);
 }

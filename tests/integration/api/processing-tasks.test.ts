@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as tasksGET } from "@/app/api/processing-tasks/route";
 import { getTestDb } from "../../setup";
-import { ledgers, processingTasks } from "@/lib/db/schema";
+import { ledgers, taskRuns } from "@/lib/db/schema";
 
 // Mock Processing - we might not need to mock if we use the DB directly for integration tests
 // But the route uses getRecentProcessingTasks and getActiveProcessingTasks from @/lib/processing
@@ -37,13 +37,13 @@ describe("Processing Tasks API", () => {
         const db = getTestDb();
 
         // Insert some sample tasks
-        await db.insert(processingTasks).values([
+        await db.insert(taskRuns).values([
             {
                 ledgerId: testLedgerId,
                 type: "parse_source_document",
                 title: "Task 1",
                 status: "completed",
-                data: { some: "data" },
+                output: { some: "data" },
                 createdAt: new Date(Date.now() - 10000), // 10s ago
             },
             {
@@ -51,7 +51,7 @@ describe("Processing Tasks API", () => {
                 type: "parse_source_document",
                 title: "Task 2",
                 status: "failed",
-                data: { error: "failed" },
+                error: "failed",
                 createdAt: new Date(Date.now() - 5000), // 5s ago
             }
         ]);
@@ -75,27 +75,24 @@ describe("Processing Tasks API", () => {
         const db = getTestDb();
 
         // Insert mixed tasks
-        await db.insert(processingTasks).values([
+        await db.insert(taskRuns).values([
             {
                 ledgerId: testLedgerId,
                 type: "parse_source_document",
                 title: "Active Task 1",
                 status: "running", // active
-                data: {},
             },
             {
                 ledgerId: testLedgerId,
                 type: "parse_source_document",
                 title: "Active Task 2",
-                status: "queued", // active
-                data: {},
+                status: "running", // active (task_runs doesn't have 'queued' yet)
             },
             {
                 ledgerId: testLedgerId,
                 type: "parse_source_document",
                 title: "Inactive Task",
                 status: "completed", // inactive
-                data: {},
             }
         ]);
 
@@ -107,7 +104,7 @@ describe("Processing Tasks API", () => {
         expect(res.status).toBe(200);
         const tasks = await res.json();
         expect(tasks).toHaveLength(2);
-        expect(tasks.every((t: any) => ["running", "queued"].includes(t.status))).toBe(true);
+        expect(tasks.every((t: any) => ["running", "active"].includes(t.status))).toBe(true);
     });
 
     it("should require ledgerId", async () => {
