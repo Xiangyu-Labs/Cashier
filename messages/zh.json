@@ -78,6 +78,8 @@
         "confirmAll": "全部确认",
         "confirming": "确认中...",
         "abnormal": "异常凭证",
+        "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
+        "batchDeleteSuccessCount": "已成功删除 {count} 项流水",
         "deleteAll": "全部删除",
         "retryAll": "全部重试",
         "noRecords": "暂无记录",
@@ -100,7 +102,9 @@
         "viewContent": "查看内容",
         "confirmDoc": "确认入账",
         "records": "{count} 笔记录",
-        "requireEdit": "(待修正)"
+        "requireEdit": "(待修正)",
+        "viewDetails": "查看详情",
+        "retryProcessing": "重新处理"
     },
     "Common": {
         "confirm": "确认",
@@ -142,6 +146,18 @@
         "unknown": "未知",
         "expand": "展开",
         "collapse": "收起"
+    },
+    "SourceDocumentDetail": {
+        "title": "账单详情",
+        "editTitle": "编辑标题",
+        "titlePlaceholder": "输入账单标题",
+        "entries": "明细项目",
+        "selectAll": "全选",
+        "deselectAll": "取消全选",
+        "batchCategory": "批量修改类别",
+        "batchCurrency": "批量修改货币",
+        "selectedCount": "已选 {count} 项",
+        "noEntries": "暂无明细项目"
     },
     "Settings": {
         "title": "设置",

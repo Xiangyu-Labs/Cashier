@@ -1,10 +1,17 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "./BillEntryItem";
 import { useState, useMemo } from "react";
-import { Trash2, Eye, EyeOff, Check, RotateCcw } from "lucide-react";
+import { Trash2, Eye, EyeOff, Check, RotateCcw, MoreVertical, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,18 +27,6 @@ function getSafeImageSrc(data: string): string {
 }
 
 function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
-  // We need to sum multiple currencies.
-  // Each currency-date pair needs a conversion.
-  // To avoid hook issues, we'll use a simplified approach since batch size is small.
-  // We can't use hooks in loops.
-
-  // Strategy: Calculate the sum by mapping each entry to a converted amount component.
-  // For the batch total, we can use a small component per entry and sum them? 
-  // No, that's not good for a single string.
-
-  // Better: Create a component that fetches all rates needed.
-  // But let's keep it simple: just sum them if same currency, or use a "total" component.
-
   return (
     <span className="text-sm font-bold text-text">
       <span className="text-xs text-muted mr-1">{mainCurrency}</span>
@@ -41,23 +36,12 @@ function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[]
 }
 
 function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
-  // Summing up multiple entries with might-be-different currencies.
-  // We use a simple reduce here, but we need to handle the fact that we can't use hooks in reduce.
-
-  // If we want a truly accurate batch total in the header, we might need a separate API or 
-  // just accept that header total is an approximation using the latest rates if we don't want complexity.
-
-  // For now, let's just sum the already-calculated converted amounts if we can?
-  // Actually, let's just use the first entry's date as a reference for the whole batch to simplify.
-
   const totalAmount = entries.reduce((sum, entry) => sum + parseFloat(entry.amount), 0);
   const firstCurrency = entries[0]?.currency || mainCurrency;
   const firstDate = entries[0]?.entryDate || entries[0]?.createdAt;
 
   const { converted } = useConvertedAmount(totalAmount, firstCurrency, mainCurrency, firstDate);
 
-  // Note: This is an approximation if the batch has multiple currencies OR multiple dates.
-  // But usually a batch (SourceDocument) is from ONE receipt -> ONE date -> ONE primary currency.
   return converted.toFixed(2);
 }
 
@@ -80,6 +64,7 @@ interface SourceDocumentCardProps {
   onDeleteLedgerEntry?: (ledgerEntryId: string) => void;
   onDelete?: () => void;
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
+  onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
   status: "queued" | "processing" | "to_confirm" | "completed" | "error" | "pending";
@@ -98,6 +83,7 @@ export function SourceDocumentCard({
   onDeleteLedgerEntry,
   onDelete,
   onViewLedgerEntry,
+  onViewDetails,
   defaultExpanded = false,
   onRetry,
   status,
@@ -177,7 +163,7 @@ export function SourceDocumentCard({
             </span>
           )}
         </span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {ledgerEntries.length === 0 && (
             <div className="flex items-center gap-2">
               <ProcessingStatus
@@ -194,53 +180,67 @@ export function SourceDocumentCard({
             />
           )}
 
-          {onDelete && (
+          <div className="flex items-center gap-1.5 ml-2">
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={onDelete}
-              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+              onClick={() => setIsContentExpanded(!isContentExpanded)}
+              className="h-7 w-7 text-muted-foreground hover:text-primary"
+              title={isContentExpanded ? t("collapseContent") : t("viewContent")}
             >
-              <Trash2 className="h-4 w-4" />
+              {isContentExpanded ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
             </Button>
-          )}
 
-          <div className="h-4 w-px bg-border mx-1" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-muted-foreground hover:text-text"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={onViewDetails} className="cursor-pointer">
+                  <FileText className="h-4 w-4 mr-2" />
+                  {t("viewDetails")}
+                </DropdownMenuItem>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setIsContentExpanded(!isContentExpanded)}
-            className="h-6 w-6 text-muted-foreground hover:text-primary"
-            title={isContentExpanded ? t("collapseContent") : t("viewContent")}
-          >
-            {isContentExpanded ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
-          </Button>
-
-          {status === "error" && onRetry && (
-            <>
-              <div className="h-4 w-px bg-border mx-1" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); handleRetry(); }}
-                disabled={isRetrying}
-                className="h-7 px-2 text-xs border-red-600/30 hover:bg-red-600/10 hover:text-red-700 text-red-600 dark:text-red-400 dark:border-red-400/30 dark:hover:text-red-300"
-                title={tCommon("retry")}
-              >
-                {isRetrying ? (
-                  <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                ) : (
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                {onRetry && (
+                  <DropdownMenuItem
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="cursor-pointer"
+                  >
+                    {isRetrying ? (
+                      <span className="w-4 h-4 mr-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                    )}
+                    {t("retryProcessing")}
+                  </DropdownMenuItem>
                 )}
-                {tCommon("retry")}
-              </Button>
-            </>
-          )}
+
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {tCommon("delete")}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {!isConfirmed && onConfirm && (
             <>
@@ -267,6 +267,7 @@ export function SourceDocumentCard({
           )}
         </div>
       </div>
+
 
       <AnimatePresence>
         {isContentExpanded && (
@@ -332,6 +333,6 @@ export function SourceDocumentCard({
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
-    </div>
+    </div >
   );
 }

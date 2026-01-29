@@ -78,6 +78,8 @@
         "confirmAll": "Confirm All",
         "confirming": "Confirming...",
         "abnormal": "Abnormal Entries",
+        "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
+        "batchDeleteSuccessCount": "Successfully deleted {count} items",
         "deleteAll": "Delete All",
         "retryAll": "Retry All",
         "noRecords": "No Records",
@@ -100,7 +102,9 @@
         "viewContent": "View Content",
         "confirmDoc": "Confirm Entry",
         "records": "{count} {count, plural, one {entry} other {entries}}",
-        "requireEdit": "(Correction Required)"
+        "requireEdit": "(Correction Required)",
+        "viewDetails": "View Details",
+        "retryProcessing": "Retry Processing"
     },
     "Common": {
         "confirm": "Confirm",
@@ -142,6 +146,18 @@
         "unknown": "Unknown",
         "expand": "Expand",
         "collapse": "Collapse"
+    },
+    "SourceDocumentDetail": {
+        "title": "Bill Details",
+        "editTitle": "Edit Title",
+        "titlePlaceholder": "Enter bill title",
+        "entries": "Detail Items",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "batchCategory": "Batch Edit Category",
+        "batchCurrency": "Batch Edit Currency",
+        "selectedCount": "{count} {count, plural, one {item} other {items}} selected",
+        "noEntries": "No detail items"
     },
     "Settings": {
         "title": "Settings",

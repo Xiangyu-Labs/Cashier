@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
@@ -22,7 +22,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: "Source document not found" }, { status: 404 });
         }
 
-        // Update source document status to queued
+        // 1. Delete existing ledger entries
+        await db
+            .delete(ledgerEntries)
+            .where(eq(ledgerEntries.sourceDocumentId, sourceDocumentId));
+
+        // 2. Update source document status to queued
         await db
             .update(sourceDocuments)
             .set({

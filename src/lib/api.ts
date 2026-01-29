@@ -317,6 +317,56 @@ export function deleteSourceDocument(
   );
 }
 
+export function updateSourceDocument(
+  ledgerId: string,
+  sourceDocumentId: string,
+  data: { title: string }
+): Promise<{ success: boolean }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to update source document"
+  );
+}
+
+export function batchUpdateLedgerEntries(
+  ledgerId: string,
+  data: {
+    ledgerEntryIds: string[];
+    categoryId?: string;
+    currency?: string;
+  }
+): Promise<{ success: boolean; updatedCount: number }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/batch-update`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    "Failed to batch update ledger entries"
+  );
+}
+
+export function batchDeleteLedgerEntries(
+  ledgerId: string,
+  ledgerEntryIds: string[]
+): Promise<{ success: boolean; deletedCount: number }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/batch-delete`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ledgerEntryIds }),
+    },
+    "Failed to batch delete ledger entries"
+  );
+}
+
 // ServiceCredentials API
 export interface ServiceCredential {
   id: string;

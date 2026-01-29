@@ -69,10 +69,15 @@ vi.mock("@/lib/db", () => ({
 }));
 
 // Mock i18n globally
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "zh",
-  useMessages: () => ({}),
-  useTimeZone: () => "UTC",
-  useNow: () => new Date(),
-}));
+vi.mock("next-intl", () => {
+  const React = require("react");
+  return {
+    useTranslations: () => (key: string) => key,
+    useLocale: () => "zh",
+    useMessages: () => ({}),
+    useTimeZone: () => "UTC",
+    useNow: () => new Date(),
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});

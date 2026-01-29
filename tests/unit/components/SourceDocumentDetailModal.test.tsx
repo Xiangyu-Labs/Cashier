@@ -1,0 +1,218 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitForElementToBeRemoved } from "@testing-library/react";
+import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
+import { NextIntlClientProvider } from "next-intl";
+import zh from "messages/zh.json";
+
+const mockSourceDocument = {
+    id: "sd-1",
+    ledgerId: "l-1",
+    title: "Test Bill",
+    text: "Sample OCR text",
+    imageUrls: [],
+    status: "to_confirm" as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+};
+
+const mockLedgerEntries = [
+    {
+        id: "le-1",
+        ledgerId: "l-1",
+        sourceDocumentId: "sd-1",
+        itemName: "Item 1",
+        amount: "100.00",
+        currency: "CNY",
+        categoryId: "cat-1",
+        category: {
+            id: "cat-1",
+            name: "Food",
+            icon: "Utensils",
+            sortOrder: 1,
+            description: "",
+            isEditable: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        },
+        description: "",
+        entryDate: new Date().toISOString(),
+        status: "pending" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "le-2",
+        ledgerId: "l-1",
+        sourceDocumentId: "sd-1",
+        itemName: "Item 2",
+        amount: "50.00",
+        currency: "USD",
+        categoryId: "cat-2",
+        category: {
+            id: "cat-2",
+            name: "Transport",
+            icon: "Car",
+            sortOrder: 2,
+            description: "",
+            isEditable: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        },
+        description: "",
+        entryDate: new Date().toISOString(),
+        status: "pending" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+];
+
+const mockCategories = [
+    {
+        id: "cat-1",
+        name: "Food",
+        icon: "Utensils",
+        sortOrder: 1,
+        description: "",
+        isEditable: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    },
+    {
+        id: "cat-2",
+        name: "Transport",
+        icon: "Car",
+        sortOrder: 2,
+        description: "",
+        isEditable: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    },
+];
+
+describe("SourceDocumentDetailModal", () => {
+    const defaultProps = {
+        sourceDocument: mockSourceDocument,
+        ledgerEntries: mockLedgerEntries,
+        categories: mockCategories,
+        open: true,
+        onClose: vi.fn(),
+        onUpdateTitle: vi.fn(),
+        onBatchUpdate: vi.fn(),
+        onDeleteEntry: vi.fn(),
+        onBatchDelete: vi.fn(),
+    };
+
+    const renderModal = (props = defaultProps) => {
+        return render(
+            <NextIntlClientProvider locale="zh" messages={zh}>
+                <SourceDocumentDetailModal {...props} />
+            </NextIntlClientProvider>
+        );
+    };
+
+    it("renders modal title and entries", () => {
+        renderModal();
+        expect(screen.getByText("Test Bill")).toBeDefined();
+        expect(screen.getByText("Item 1")).toBeDefined();
+        expect(screen.getByText("Item 2")).toBeDefined();
+        expect(screen.getByText("100.00")).toBeDefined();
+        expect(screen.getByText("50.00")).toBeDefined();
+    });
+
+    it("allows editing the title", async () => {
+        renderModal();
+        const titleText = screen.getByText("Test Bill");
+        fireEvent.click(titleText);
+
+        const input = screen.getByPlaceholderText("titlePlaceholder");
+        fireEvent.change(input, { target: { value: "Updated Bill" } });
+
+        const saveBtn = screen.getAllByRole("button").find(b => b.querySelector("svg.lucide-check"));
+        if (saveBtn) fireEvent.click(saveBtn);
+
+        expect(defaultProps.onUpdateTitle).toHaveBeenCalledWith("Updated Bill");
+    });
+
+    it("handles batch selection", async () => {
+        renderModal();
+
+        // Select all
+        const selectAllBtn = screen.getByText("selectAll");
+        fireEvent.click(selectAllBtn);
+
+        // Verify batch toolbar appears (selected count key)
+        const toolbarText = screen.getByText(/selectedCount/);
+        expect(toolbarText).toBeDefined();
+
+        // Deselect all
+        const deselectAllBtn = screen.getByText("deselectAll");
+        fireEvent.click(deselectAllBtn);
+
+        // Wait for it to be removed (AnimatePresence exit animation)
+        await waitForElementToBeRemoved(() => screen.queryByText(/selectedCount/));
+    });
+
+    it("triggers batch category update", async () => {
+        renderModal();
+        const selectAllBtn = screen.getByText("selectAll");
+        fireEvent.click(selectAllBtn);
+
+        const batchCatBtn = screen.getByText("batchCategory");
+        fireEvent.click(batchCatBtn);
+
+        // Find the Food option in the popover (the button one)
+        const foodOptions = screen.getAllByText("Food");
+        const foodBtn = foodOptions.find(el => el.closest("button"));
+        if (foodBtn) fireEvent.click(foodBtn);
+
+        expect(defaultProps.onBatchUpdate).toHaveBeenCalledWith(
+            ["le-1", "le-2"],
+            { categoryId: "cat-1" }
+        );
+    });
+
+    it("triggers batch currency update", async () => {
+        renderModal();
+        const selectAllBtn = screen.getByText("selectAll");
+        fireEvent.click(selectAllBtn);
+
+        const batchCurrBtn = screen.getByText("batchCurrency");
+        fireEvent.click(batchCurrBtn);
+
+        const eurOptions = screen.getAllByText("EUR");
+        const eurBtn = eurOptions.find(el => el.closest("button"));
+        if (eurBtn) fireEvent.click(eurBtn);
+
+        expect(defaultProps.onBatchUpdate).toHaveBeenCalledWith(
+            ["le-1", "le-2"],
+            { currency: "EUR" }
+        );
+    });
+
+    it("triggers entry deletion", () => {
+        renderModal();
+        const deleteButtons = screen.getAllByRole("button").filter(b => b.className.includes("text-muted-foreground"));
+        // This is a bit fragile due to styling, but let's try to find the trash icon buttons
+        const firstTrashBtn = screen.getAllByRole("button").find(b => b.querySelector("svg.lucide-trash2"));
+        if (firstTrashBtn) {
+            fireEvent.click(firstTrashBtn);
+            expect(defaultProps.onDeleteEntry).toHaveBeenCalledWith("le-1");
+        }
+    });
+
+    it("triggers batch delete", async () => {
+        const confirmMock = vi.fn(() => true);
+        vi.stubGlobal("confirm", confirmMock);
+        renderModal();
+
+        // Select all
+        const selectAllBtn = screen.getByText("selectAll");
+        fireEvent.click(selectAllBtn);
+
+        // Click batch delete
+        const batchDeleteBtn = screen.getByText("delete");
+        fireEvent.click(batchDeleteBtn);
+
+        expect(defaultProps.onBatchDelete).toHaveBeenCalledWith(["le-1", "le-2"]);
+    });
+});

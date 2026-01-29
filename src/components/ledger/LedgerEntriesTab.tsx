@@ -7,10 +7,14 @@ import {
     retrySourceDocument,
     deleteSourceDocument,
     fetchSourceDocuments,
+    updateSourceDocument,
+    batchUpdateLedgerEntries,
+    batchDeleteLedgerEntries,
 } from "@/lib/api";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
+import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -171,6 +175,12 @@ export function LedgerEntriesTab({
     const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+    const [selectedSourceDocument, setSelectedSourceDocument] = useState<{
+        sourceDocument: SourceDocument;
+        ledgerEntries: LedgerEntry[];
+    } | null>(null);
+    const [isSourceDetailModalOpen, setIsSourceDetailModalOpen] = useState(false);
+
     function handleDeleteConfirm() {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
         if (deleteConfirm.type === "sourceDocument" || deleteConfirm.type === "batch") {
@@ -206,6 +216,43 @@ export function LedgerEntriesTab({
             toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },
         onError: () => toast({ variant: "error", title: t("confirmFailed"), description: tCommon("error") })
+    });
+    const updateSourceDocumentMutation = useMutation({
+        mutationFn: ({ sourceDocumentId, title }: { sourceDocumentId: string; title: string }) =>
+            updateSourceDocument(ledgerId, sourceDocumentId, { title }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
+            toast({ variant: "success", title: tCommon("saveSuccess") });
+        },
+    });
+
+    const batchUpdateMutation = useMutation({
+        mutationFn: (data: Parameters<typeof batchUpdateLedgerEntries>[1]) =>
+            batchUpdateLedgerEntries(ledgerId, data),
+        onSuccess: (res) => {
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            toast({
+                variant: "success",
+                title: tCommon("saveSuccess"),
+                description: t("batchUpdateSuccessCount", { count: res.updatedCount })
+            });
+        },
+    });
+
+    const batchDeleteMutation = useMutation({
+        mutationFn: (ledgerEntryIds: string[]) => batchDeleteLedgerEntries(ledgerId, ledgerEntryIds),
+        onSuccess: (res: { deletedCount: number }) => {
+            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            toast({
+                variant: "success",
+                title: t("deleteSuccess"),
+                description: t("batchDeleteSuccessCount", { count: res.deletedCount })
+            });
+        },
     });
 
     function isDateInRange(dateStr: string) {
@@ -344,6 +391,13 @@ export function LedgerEntriesTab({
                     onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
                     onDeleteLedgerEntry={(id) => setDeleteConfirm({ open: true, type: "ledgerEntry", id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                     onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: item.data.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                    onViewDetails={() => {
+                        setSelectedSourceDocument({
+                            sourceDocument: item.data.sourceDocument,
+                            ledgerEntries: item.data.ledgerEntries
+                        });
+                        setIsSourceDetailModalOpen(true);
+                    }}
                     onViewLedgerEntry={(entry) => {
                         setSelectedLedgerEntry(entry);
                         setIsDetailModalOpen(true);
@@ -516,6 +570,10 @@ export function LedgerEntriesTab({
                                             onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: doc.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                             onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
                                             onDeleteLedgerEntry={(id) => deleteMutation.mutate(id)}
+                                            onViewDetails={() => {
+                                                setSelectedSourceDocument({ sourceDocument: doc, ledgerEntries: entries });
+                                                setIsSourceDetailModalOpen(true);
+                                            }}
                                             onViewLedgerEntry={(entry) => {
                                                 setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);
@@ -567,6 +625,36 @@ export function LedgerEntriesTab({
                     if (selectedLedgerEntry) {
                         deleteMutation.mutate(selectedLedgerEntry.id);
                     }
+                }}
+            />
+            <SourceDocumentDetailModal
+                sourceDocument={selectedSourceDocument?.sourceDocument || null}
+                ledgerEntries={selectedSourceDocument?.ledgerEntries || []}
+                categories={categories}
+                preferredCurrencies={ledger?.currencies}
+                mainCurrency={ledger?.mainCurrency}
+                open={isSourceDetailModalOpen}
+                onClose={() => {
+                    setIsSourceDetailModalOpen(false);
+                    setSelectedSourceDocument(null);
+                }}
+                onUpdateTitle={async (title) => {
+                    await updateSourceDocumentMutation.mutateAsync({
+                        sourceDocumentId: selectedSourceDocument!.sourceDocument.id,
+                        title
+                    });
+                }}
+                onBatchUpdate={async (ids, data) => {
+                    await batchUpdateMutation.mutateAsync({
+                        ledgerEntryIds: ids,
+                        ...data
+                    });
+                }}
+                onDeleteEntry={async (id) => {
+                    await deleteMutation.mutateAsync(id);
+                }}
+                onBatchDelete={async (ids) => {
+                    await batchDeleteMutation.mutateAsync(ids);
                 }}
             />
         </div>

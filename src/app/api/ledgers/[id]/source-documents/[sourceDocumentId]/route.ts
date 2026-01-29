@@ -42,3 +42,37 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         );
     }
 }
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+    try {
+        const { id: ledgerId, sourceDocumentId } = await params;
+        const body = await request.json();
+        const { title } = body;
+
+        // Verify source document exists and belongs to ledger
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: and(
+                eq(sourceDocuments.id, sourceDocumentId),
+                eq(sourceDocuments.ledgerId, ledgerId)
+            )
+        });
+
+        if (!doc) {
+            return NextResponse.json({ error: "Source document not found" }, { status: 404 });
+        }
+
+        // Update title
+        await db
+            .update(sourceDocuments)
+            .set({ title })
+            .where(eq(sourceDocuments.id, sourceDocumentId));
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Failed to update source document:", error);
+        return NextResponse.json(
+            { error: "Failed to update source document" },
+            { status: 500 }
+        );
+    }
+}
