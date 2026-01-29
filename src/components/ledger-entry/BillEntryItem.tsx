@@ -81,11 +81,19 @@ export function BillEntryItem({
                         {ledgerEntry.itemName}
                     </p>
 
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                         {ledgerEntry.category && (
-                            <span className="text-xs text-muted truncate">
-                                {ledgerEntry.category.name}
-                            </span>
+                            <div className="flex items-center gap-1 text-xs text-muted truncate min-w-0 flex-1">
+                                <span className="shrink-0">{ledgerEntry.category.name}</span>
+                                {ledgerEntry.description && (
+                                    <>
+                                        <span className="text-muted/30 shrink-0">·</span>
+                                        <span className="truncate text-muted/60 text-[11px] italic">
+                                            {ledgerEntry.description}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         )}
 
                         {/* Warning badges for missing data */}

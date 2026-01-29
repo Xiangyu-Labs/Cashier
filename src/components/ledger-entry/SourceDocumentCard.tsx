@@ -187,10 +187,12 @@ export function SourceDocumentCard({
             </div>
           )}
 
-          <SourceDocumentTotal
-            entries={ledgerEntries}
-            mainCurrency={mainCurrency}
-          />
+          {!["queued", "processing", "error"].includes(status) && (
+            <SourceDocumentTotal
+              entries={ledgerEntries}
+              mainCurrency={mainCurrency}
+            />
+          )}
 
           {onDelete && (
             <Button

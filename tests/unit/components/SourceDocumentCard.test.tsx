@@ -206,16 +206,27 @@ describe("SourceDocumentCard", () => {
         expect(screen.getByText("parse_failed")).toBeTruthy();
     });
 
-    it("renders total amount and hides status when ledger entries exist", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
+    it("renders total amount when status is completed", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="completed" />);
         // Should show total amount (50.00 CNY)
         const currencies = screen.getAllByText("CNY");
         expect(currencies.length).toBeGreaterThan(0);
         const amounts = screen.getAllByText(/50.00/);
         expect(amounts.length).toBeGreaterThan(0);
+    });
 
-        // Should NOT show status "Processing..."
-        const processingText = screen.queryByText("statusProcessing");
-        expect(processingText).toBeNull();
+    it("hides total amount when status is processing", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
+        // Header total is hidden
+        // Mock BillEntryItem doesn't render currency or amount
+        // So we expect NO "CNY" or "50.00" on screen
+        expect(screen.queryByText("CNY")).toBeNull();
+        expect(screen.queryByText(/50.00/)).toBeNull();
+    });
+
+    it("hides total amount when status is error", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="error" />);
+        expect(screen.queryByText("CNY")).toBeNull();
+        expect(screen.queryByText(/50.00/)).toBeNull();
     });
 });
