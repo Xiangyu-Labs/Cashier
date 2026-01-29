@@ -22,7 +22,7 @@ export class OpenAIClient {
     async generateContent(
         systemPrompt: string,
         messages: ChatCompletionMessageParam[]
-    ): Promise<string> {
+    ): Promise<{ content: string; usage?: { inputTokens: number; outputTokens: number; totalTokens: number } }> {
         const model = process.env.OPENAI_MODEL;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
@@ -44,7 +44,15 @@ export class OpenAIClient {
                     max_tokens: 4096,
                 });
 
-                return response.choices[0]?.message?.content || "";
+                const content = response.choices[0]?.message?.content || "";
+                const usageRaw = response.usage;
+                const usage = usageRaw ? {
+                    inputTokens: usageRaw.prompt_tokens,
+                    outputTokens: usageRaw.completion_tokens,
+                    totalTokens: usageRaw.total_tokens
+                } : undefined;
+
+                return { content, usage };
             } catch (error) {
                 lastError = error;
                 const isRetryable =

@@ -408,11 +408,10 @@ export interface ProcessingTask {
   type: string;
   title: string;
   ledgerId: string | null;
-  entityId: string | null;
-  entityType: string | null;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+
+  status: "running" | "completed" | "failed";
   error: string | null;
-  metadata: Record<string, unknown> | null;
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;

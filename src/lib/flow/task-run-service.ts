@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { FlowProgress } from "./types";
 
 /**
@@ -65,6 +65,19 @@ export async function failTaskRun(taskRunId: string, error: string): Promise<voi
             status: "failed",
             error,
             completedAt: new Date(),
+        })
+        .where(eq(taskRuns.id, taskRunId));
+}
+
+export async function recordTaskRunUsage(taskRunId: string, usage: { inputTokens: number; outputTokens: number; totalTokens: number }): Promise<void> {
+    // Atomic increment of usage JSONB fields
+    await db.update(taskRuns)
+        .set({
+            usage: sql`jsonb_build_object(
+                'inputTokens', COALESCE((usage->>'inputTokens')::int, 0) + ${usage.inputTokens},
+                'outputTokens', COALESCE((usage->>'outputTokens')::int, 0) + ${usage.outputTokens},
+                'totalTokens', COALESCE((usage->>'totalTokens')::int, 0) + ${usage.totalTokens}
+            )`
         })
         .where(eq(taskRuns.id, taskRunId));
 }

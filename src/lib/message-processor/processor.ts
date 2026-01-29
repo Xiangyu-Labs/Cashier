@@ -62,7 +62,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
       { role: "user", content: contentParts },
     ];
 
-    const rawResponse = await client.generateContent(systemPrompt, messages);
+    const { content: rawResponse, usage } = await client.generateContent(systemPrompt, messages);
     const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse, context.categories.map(c => c.name));
 
     let ledgerEntries = data;
@@ -76,6 +76,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
       isValid,
       title,
       rawResponse,
+      usage,
     };
   }
 

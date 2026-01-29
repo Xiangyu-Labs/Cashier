@@ -28,7 +28,7 @@ export interface FlowDefinition {
     name: string;         // System Name - determines handler
     title: string;        // Display Title - for UI (REQUIRED)
     queueName: 'main' | 'api'; // Queue assignment
-    data: unknown;        // Task input data
+    data: any;           // Task input data
     children?: FlowDefinition[];
     opts?: FlowJobOptions;
 }
@@ -44,7 +44,14 @@ export interface FlowContext {
     taskRunId?: string;      // DB task_runs.id for Root task
     ledgerId?: string;
     updateProgress: (progress: FlowProgress) => Promise<void>;
+    recordUsage: (usage: FlowUsage) => Promise<void>;
     isCancelled: () => Promise<boolean>;
+}
+
+export interface FlowUsage {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
 }
 
 export interface FlowProgress {

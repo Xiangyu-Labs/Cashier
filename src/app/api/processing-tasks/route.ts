@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
             ledgerId: run.ledgerId,
             entityId: null, // taskRuns doesn't track this directly anymore
             entityType: null,
-            status: run.status === 'running' ? 'active' : run.status, // Map 'running' to 'running' or 'active'? Frontend expects 'running'
+            status: run.status as "running" | "completed" | "failed",
             error: run.error,
             metadata: {
                 usage: run.usage,

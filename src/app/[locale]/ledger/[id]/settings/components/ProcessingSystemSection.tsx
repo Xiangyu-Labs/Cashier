@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProcessingTasks, ProcessingTask } from "@/lib/api";
 import { Activity, Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
@@ -21,8 +22,6 @@ async function fetchTokenStats(ledgerId: string): Promise<TokenStats> {
 
 function TaskStatusIcon({ status }: { status: ProcessingTask["status"] }) {
     switch (status) {
-        case "queued":
-            return <Clock className="w-4 h-4 text-muted" />;
         case "running":
             return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
         case "completed":
@@ -37,19 +36,41 @@ function TaskStatusIcon({ status }: { status: ProcessingTask["status"] }) {
 function TaskStatusBadge({ status }: { status: ProcessingTask["status"] }) {
     const t = useTranslations("TaskCenter");
     const statusConfig = {
-        queued: { label: t("statusQueued"), className: "bg-muted/10 text-muted" },
         running: { label: t("statusRunning"), className: "bg-primary/10 text-primary" },
         completed: { label: t("statusCompleted"), className: "bg-primary/10 text-primary" },
         failed: { label: t("statusFailed"), className: "bg-danger/10 text-danger" },
-        cancelled: { label: t("statusCancelled"), className: "bg-surface2 text-muted" },
     };
 
-    const config = statusConfig[status];
+    const config = statusConfig[status] || { label: status, className: "bg-muted/10 text-muted" };
     return (
         <span className={`text-[10px] px-1.5 py-0.5 font-medium rounded-sm ${config.className}`}>
             {config.label}
         </span>
     );
+}
+
+function ElapsedTime({ startedAt }: { startedAt: string | null }) {
+    const [elapsed, setElapsed] = useState<string>("");
+
+    useEffect(() => {
+        if (!startedAt) return;
+        const start = new Date(startedAt).getTime();
+
+        const update = () => {
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((now - start) / 1000));
+            const mins = Math.floor(diff / 60);
+            const secs = diff % 60;
+            setElapsed(`${mins}m ${secs}s`);
+        };
+
+        update();
+        const timer = setInterval(update, 1000);
+        return () => clearInterval(timer);
+    }, [startedAt]);
+
+    if (!startedAt) return null;
+    return <span>{elapsed}</span>;
 }
 
 export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
@@ -69,8 +90,8 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
         enabled: !!ledgerId,
     });
 
-    // Only show queued or running tasks as "active" in the list below stats
-    const activeTasks = tasks.filter((t: ProcessingTask) => t.status === "queued" || t.status === "running");
+    // Only show running tasks as "active" in the list below stats
+    const activeTasks = tasks.filter((t: ProcessingTask) => t.status === "running");
 
     if (isStatsLoading && !stats) {
         return (
@@ -176,7 +197,11 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                                             <div className="flex items-center gap-2 mt-1">
                                                 <Clock className="w-3 h-3 text-muted/50" />
                                                 <span className="text-[10px] text-muted font-medium uppercase tracking-wider">
-                                                    {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {task.status === 'running' && task.startedAt ? (
+                                                        <ElapsedTime startedAt={task.startedAt} />
+                                                    ) : (
+                                                        new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>

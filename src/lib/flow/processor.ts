@@ -21,6 +21,12 @@ export async function processJob(job: Job): Promise<unknown> {
                 // Optional: update DB if column exists
             }
         },
+        recordUsage: async (usage) => {
+            if (job.data.__taskRunId) {
+                const { recordTaskRunUsage } = await import('./task-run-service');
+                await recordTaskRunUsage(job.data.__taskRunId, usage);
+            }
+        },
         isCancelled: async () => {
             const state = await job.getState();
             return state === 'failed' || state === 'unknown';
