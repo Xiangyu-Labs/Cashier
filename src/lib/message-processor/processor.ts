@@ -42,7 +42,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   ): Promise<ProcessingResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate, context.preferredCurrencies);
+    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate, context.preferredCurrencies, context.aiCustomPrompt);
 
     const contentParts: ChatCompletionContentPart[] = [];
 

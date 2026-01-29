@@ -171,7 +171,10 @@
         "riskDesc3": "It is recommended that you check the entry list regularly (e.g., weekly) for abnormal records.",
         "cancel": "Cancel",
         "confirmEnable": "Confirm Enable",
-        "taskCenter": "Task Center"
+        "taskCenter": "Task Center",
+        "aiPrompt": "Ledger Prompt",
+        "aiPromptDesc": "Customize AI recognition with specific preferences (e.g., add more emojis to titles)",
+        "aiPromptPlaceholder": "Enter your custom preferences, e.g., I want the bill summaries to be more casual and include relevant emojis."
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

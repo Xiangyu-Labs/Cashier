@@ -42,6 +42,12 @@ describe("GPT Prompts", () => {
             expect(prompt).toContain("- **User Preferred Currencies**: None specified");
         });
 
+        it("should include custom prompt when provided", () => {
+            const customPrompt = "Include more emojis in titles";
+            const prompt = buildLedgerEntryPrompt(categories, "zh-CN", "2025-01-28", [], customPrompt);
+            expect(prompt).toContain("- **User Custom Preferences**: Include more emojis in titles");
+        });
+
         it("should include target language instructions", () => {
             const prompt = buildLedgerEntryPrompt(categories, "en-US");
             expect(prompt).toContain("- **Target Language**: en-US");

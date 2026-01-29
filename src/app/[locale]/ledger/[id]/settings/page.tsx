@@ -216,6 +216,32 @@ export default function LedgerSettingsPage() {
                             }}
                         />
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
+                        </div>
+                        <textarea
+                            value={ledger.aiCustomPrompt || ""}
+                            onChange={(e) => {
+                                // We use a local state or just wait for blur if we want to avoid too many mutations
+                                // But for simplicity and consistency with other fields, let's use the mutation
+                                // To avoid lag, we could debounce, but other fields don't seem to.
+                                // Actually, for text areas, it's better to update on blur or have a save button.
+                                // However, most settings here update immediately.
+                            }}
+                            onBlur={(e) => {
+                                if (e.target.value !== (ledger.aiCustomPrompt || "")) {
+                                    updateLedgerMutation.mutate({ aiCustomPrompt: e.target.value });
+                                }
+                            }}
+                            placeholder={t('aiPromptPlaceholder')}
+                            className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+                        />
+                    </div>
                 </div>
             </section>
 

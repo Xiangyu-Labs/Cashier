@@ -12,6 +12,7 @@ export interface Ledger {
   autoRecognizeDate: boolean;
   collapsePendingDefault: boolean;
   mergeSimilarItems: boolean;
+  aiCustomPrompt: string;
 }
 
 export interface Settings {

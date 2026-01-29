@@ -4,7 +4,8 @@ export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],
   targetLanguage: string = "zh-CN",
   currentDate?: string,
-  preferredCurrencies: string[] = []
+  preferredCurrencies: string[] = [],
+  aiCustomPrompt: string = ""
 ): string {
   const categoryList = categories
     .map((c, i) => `${i + 1}. ${c.name}${c.description ? ` - ${c.description}` : ""}`)
@@ -20,7 +21,7 @@ export function buildLedgerEntryPrompt(
 ${categoryList}
 - **Target Language**: ${targetLanguage} (ALL user-visible fields like title, item_name, and notes MUST be translated into this language.)
 - **Common Currency Reference**: USD, AUD, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, ZAR
-- **User Preferred Currencies**: ${preferredCurrencies.length > 0 ? preferredCurrencies.join(", ") : "None specified"} (Most inputs will be in these currencies.)
+- **User Preferred Currencies**: ${preferredCurrencies.length > 0 ? preferredCurrencies.join(", ") : "None specified"} (Most inputs will be in these currencies.)${aiCustomPrompt ? `\n- **User Custom Preferences**: ${aiCustomPrompt}` : ""}
 
 ### Output Requirements
 Return STRICT JSON format. Do NOT include markdown code blocks (\`\`\`json ... \`\`\`). Return the JSON object directly.

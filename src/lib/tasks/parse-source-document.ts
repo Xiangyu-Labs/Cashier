@@ -22,6 +22,7 @@ export interface ParseSourceDocumentInput {
         mergeSimilarItems: boolean;
         autoRecognizeDate: boolean;
         autoConfirm: boolean;
+        aiCustomPrompt?: string;
     };
     preferredCurrencies?: string[];
 }
@@ -56,7 +57,8 @@ export const parseSourceDocumentHandler: ProcessingTaskHandler<ParseSourceDocume
                 categories: input.categories,
                 mergeSimilarItems: false, // Handle merge in step 2
                 language: input.language,
-                preferredCurrencies: input.preferredCurrencies
+                preferredCurrencies: input.preferredCurrencies,
+                aiCustomPrompt: input.settings.aiCustomPrompt
             }
         );
 

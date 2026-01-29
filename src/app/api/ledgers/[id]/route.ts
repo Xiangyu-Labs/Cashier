@@ -13,6 +13,7 @@ const updateLedgerSchema = z.object({
   autoRecognizeDate: z.boolean().optional(),
   collapsePendingDefault: z.boolean().optional(),
   mergeSimilarItems: z.boolean().optional(),
+  aiCustomPrompt: z.string().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

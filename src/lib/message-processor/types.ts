@@ -35,6 +35,7 @@ export interface ProcessorContext {
     mergeSimilarItems?: boolean;
     language?: string;
     preferredCurrencies?: string[];
+    aiCustomPrompt?: string;
 }
 
 export interface SourceDocumentProcessor {
