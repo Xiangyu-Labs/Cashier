@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ShareReceipt } from "./components/ShareReceipt";
 
-type RouteParams = { params: Promise<{ shareId: string }> };
+type RouteParams = { params: Promise<{ shareId: string; locale: string }> };
 
 export default async function SharePage({ params }: RouteParams) {
     const { shareId } = await params;

@@ -57,12 +57,37 @@ export function ShareDialog({
 
     const handleCopy = async () => {
         if (!shareUrl) return;
+
+        // Fallback copy function
+        const fallbackCopy = (text: string) => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                return document.execCommand('copy');
+            } catch (err) {
+                return false;
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        };
+
         try {
-            await navigator.clipboard.writeText(shareUrl);
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(shareUrl);
+            } else {
+                if (!fallbackCopy(shareUrl)) throw new Error('Fallback failed');
+            }
             setHasCopied(true);
             toast.success(t("copied"));
             setTimeout(() => setHasCopied(false), 2000);
-        } catch (err) {
+        } catch (error) {
+            console.error('Copy failed:', error);
             toast.error(t("copyFailed"));
         }
     };
@@ -129,20 +154,21 @@ export function ShareDialog({
                             exit={{ opacity: 0, x: 20 }}
                             className="space-y-4 py-4"
                         >
-                            <div className="flex items-center space-x-2">
-                                <div className="grid flex-1 gap-2">
+                            <div className="flex items-center space-x-2 w-full">
+                                <div className="grid flex-1 gap-2 w-full">
                                     <Label htmlFor="link" className="sr-only">
                                         Link
                                     </Label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                    <div className="relative w-full">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
                                             <LinkIcon className="h-4 w-4" />
                                         </div>
                                         <input
                                             id="link"
-                                            className="flex h-10 w-full rounded-md border border-input bg-surface pl-9 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-24 font-mono truncate"
+                                            className="flex h-10 w-full rounded-md border border-input bg-surface pl-9 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
                                             value={shareUrl}
                                             readOnly
+                                            onClick={(e) => (e.target as HTMLInputElement).select()}
                                         />
                                     </div>
                                 </div>
@@ -151,7 +177,7 @@ export function ShareDialog({
                                 <Button
                                     type="button"
                                     onClick={handleCopy}
-                                    className="w-full sm:w-auto min-w-[120px]"
+                                    className="w-full"
                                     variant={hasCopied ? "outline" : "default"}
                                 >
                                     {hasCopied ? (
