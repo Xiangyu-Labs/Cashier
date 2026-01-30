@@ -116,16 +116,16 @@ export default function LedgerSettingsPage() {
     if (!ledger) return <div>Ledger not found</div>;
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
             <div className="flex items-center gap-4 mb-6">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="text-2xl font-semibold">{t('title')} - {ledger.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold truncate">{t('title')} - {ledger.name}</h1>
             </div>
 
             {/* Appearance Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -169,7 +169,7 @@ export default function LedgerSettingsPage() {
             </section>
 
             {/* AI Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('assistant')}</h2>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -226,7 +226,7 @@ export default function LedgerSettingsPage() {
 
 
             {/* Data Configuration */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('dataConfig')}</h2>
 
                 <div className="space-y-8">
@@ -255,7 +255,7 @@ export default function LedgerSettingsPage() {
             <ProcessingSystemSection ledgerId={ledgerId} />
 
             {/* Service Credentials Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-6">
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <ServiceCredentialSection
                     credentials={credentials || []}
                     onCreateCredential={(name) => createCredentialMutation.mutateAsync(name)}

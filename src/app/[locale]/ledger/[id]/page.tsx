@@ -128,7 +128,7 @@ export default function LedgerPage() {
       </main>
 
       <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
-        <DialogContent className="sm:max-w-md top-[20%] translate-y-0 w-[calc(100%-2rem)] mx-auto rounded-xl">
+        <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>{t("newRecord")}</DialogTitle>
           </DialogHeader>

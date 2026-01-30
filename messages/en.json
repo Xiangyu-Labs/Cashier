@@ -206,5 +206,17 @@
         "deleteDesc": "Are you sure you want to delete this credential? External apps using this credential will no longer be able to access it. This action cannot be undone.",
         "createFailed": "Failed to create credential",
         "copied": "Credential copied to clipboard"
+    },
+    "DateRangeFilter": {
+        "selectRange": "Select date range",
+        "commonRanges": "Common Ranges",
+        "thisMonth": "This Month",
+        "pastWeek": "Past 7 Days",
+        "pastMonth": "Past 1 Month",
+        "past3Months": "Past 3 Months",
+        "past6Months": "Past 6 Months",
+        "pastYear": "Past 1 Year",
+        "customRange": "Custom Range",
+        "apply": "Apply"
     }
 }

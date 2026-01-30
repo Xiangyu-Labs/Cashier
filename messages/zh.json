@@ -206,5 +206,17 @@
         "deleteDesc": "确定要删除这个凭证吗？删除后使用此凭证的外部应用将无法访问。此操作无法撤销。",
         "createFailed": "创建凭证失败",
         "copied": "凭证已复制到剪贴板"
+    },
+    "DateRangeFilter": {
+        "selectRange": "选择日期范围",
+        "commonRanges": "常用区间",
+        "thisMonth": "本月",
+        "pastWeek": "过去7天",
+        "pastMonth": "过去1个月",
+        "past3Months": "过去3个月",
+        "past6Months": "过去半年",
+        "pastYear": "过去1年",
+        "customRange": "自定义区间",
+        "apply": "应用"
     }
 }

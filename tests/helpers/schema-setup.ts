@@ -145,6 +145,11 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
 
   });
 
-
+  // This query might be acting as a synchronization point for tests
+  await db.execute(sql`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public'
+  `);
 
 }

@@ -138,7 +138,7 @@ export function SourceDocumentDetailModal({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl sm:rounded-lg">
                 <DialogHeader className="px-6 py-4 border-b">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
