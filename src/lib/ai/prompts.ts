@@ -34,7 +34,7 @@ ${aiCustomPrompt ? `- **Custom Rules**: ${aiCustomPrompt}` : ""}
 ${processingStrategy}
 3. **Fields**:
    - \`title\`: "Merchant - Core Item" (Translated).
-   - \`currency\`: Infer from context. Priority: Pref Currencies > Common Symbols. Default "unknown" if ambiguous.
+   - \`currency\`: ONLY infer if obvious (e.g. explicit symbol $, £, €, or code USD). DO NOT guess based on locale/language. If not explicitly clear, perform no reasoning and return "unknown".
    - \`category\`: STRICTLY match a provided Category name.
    - \`date\`: Resolve relative to Ref Date.
 4. **Translation**: Translate 'title', 'item_name', 'notes' to Target Lang.
