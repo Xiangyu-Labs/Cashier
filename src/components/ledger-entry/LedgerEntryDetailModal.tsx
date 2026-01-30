@@ -108,7 +108,19 @@ export function LedgerEntryDetailModal({
             categories={categories}
             preferredCurrencies={preferredCurrencies}
             mainCurrency={mainCurrency}
-            onEditStart={() => setIsEditing(true)}
+            onEditStart={() => {
+              if (ledgerEntry) {
+                setEditData({
+                  itemName: ledgerEntry.itemName,
+                  amount: parseFloat(ledgerEntry.amount),
+                  currency: ledgerEntry.currency || "",
+                  categoryId: ledgerEntry.categoryId || "",
+                  entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
+                  description: ledgerEntry.description || "",
+                });
+              }
+              setIsEditing(true);
+            }}
             onEditChange={setEditData}
             onEditSave={handleSave}
             onEditCancel={() => {
