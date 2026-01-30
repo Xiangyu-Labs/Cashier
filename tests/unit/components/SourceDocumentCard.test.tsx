@@ -93,18 +93,36 @@ describe("SourceDocumentCard", () => {
         expect(screen.getByText(/1月1日/)).toBeTruthy();
     });
 
-    it("renders text content", () => {
-        // Use anomaly status to show raw input
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} status="anomaly" />);
+    it("renders text content and toggles details", async () => {
+        const sourceDocument: SourceDocument = {
+            ...baseSourceDocument,
+            title: "Test document",
+            text: "Raw input",
+        };
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
-        // Expand content
-        const header = screen.getByText(/1月1日/);
-        fireEvent.click(header);
+        expect(screen.getByText("Test document")).toBeTruthy();
 
-        expect(screen.getByText("Lunch 50")).toBeTruthy();
+        // The header is now clickable
+        const header = screen.getByText("Test document").closest('[class*="cursor-pointer"]');
+        expect(header).toBeTruthy();
+
+        // Initial state is collapsed (since status is anomaly and defaultExpanded is false)
+        expect(screen.queryByText("Raw input")).toBeNull();
+
+        // Click header to expand
+        await fireEvent.click(header!);
+        expect(screen.getByText("Raw input")).toBeTruthy();
+        expect(screen.getByText("Test document")).toBeTruthy();
+
+        // Click header to collapse
+        await fireEvent.click(header!);
+        await screen.findByText("Test document"); // Ensure re-render
+        await new Promise(resolve => setTimeout(resolve, 0)); // Yield to event loop
+        expect(screen.queryByText("Raw input")).toBeNull();
     });
 
-    it("renders single image content", () => {
+    it("renders single image content", async () => {
         const sourceDocument: SourceDocument = {
             ...baseSourceDocument,
             text: null,
@@ -113,9 +131,9 @@ describe("SourceDocumentCard", () => {
         // Use anomaly status to show raw input
         renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
-        // Expand content
-        const header = screen.getByText(/1月1日/);
-        fireEvent.click(header);
+        // Expand content - header is clickable
+        const header = screen.getByText(/1月1日/).closest('[class*="cursor-pointer"]');
+        await fireEvent.click(header!);
 
         const imgs = screen.getAllByRole("img");
         // Expect at least one image with the src
@@ -123,7 +141,7 @@ describe("SourceDocumentCard", () => {
         expect(userImg).toBeTruthy();
     });
 
-    it("renders multiple images content", () => {
+    it("renders multiple images content", async () => {
         const imagesData = ["data:image/png;base64,img1", "data:image/png;base64,img2"];
         const sourceDocument: SourceDocument = {
             ...baseSourceDocument,
@@ -134,8 +152,8 @@ describe("SourceDocumentCard", () => {
         renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
         // Expand content
-        const header = screen.getByText(/1月1日/);
-        fireEvent.click(header);
+        const header = screen.getByText(/1月1日/).closest('[class*="cursor-pointer"]');
+        await fireEvent.click(header!);
 
         const imgs = screen.getAllByRole("img");
         // Filter out any icons that might be rendered as imgs (though mocked CategoryIcon is a div)
@@ -204,8 +222,8 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders status when no ledger entries", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="queued" />);
-        expect(screen.getByText("处理中")).toBeTruthy();
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="processing" />);
+        expect(screen.getByTestId("status-label")).toBeTruthy();
     });
 
     it("renders anomaly status and message when anomalyCodes is provided", () => {

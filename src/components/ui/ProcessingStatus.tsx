@@ -66,7 +66,7 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
                     <div className={cn("w-2 h-2 rounded-full", bgClass)} />
                 )}
             </div>
-            <span className={cn("text-xs font-medium", colorClass)}>
+            <span className={cn("text-xs font-medium", colorClass)} data-testid="status-label">
                 {displayLabel}
             </span>
         </div>

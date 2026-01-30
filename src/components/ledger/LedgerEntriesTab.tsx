@@ -227,11 +227,15 @@ export function LedgerEntriesTab({
         actions?: React.ReactNode
     ) {
         return (
-            <div className={cn(
-                "flex justify-between items-center min-h-[44px] px-3 border rounded-xl transition-all group/header",
-                colorClass
-            )}>
-                <button onClick={onToggle} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
+            <div
+                onClick={onToggle}
+                className={cn(
+                    "flex justify-between items-center min-h-[44px] px-3 border rounded-xl transition-all cursor-pointer select-none",
+                    colorClass,
+                    "hover:brightness-95 dark:hover:brightness-110 active:scale-[0.99]"
+                )}
+            >
+                <div className="flex items-center gap-2">
                     <h3 className={cn("text-sm font-medium flex items-center gap-2", iconColorClass)}>
                         <span className={cn("w-2 h-2 rounded-full animate-pulse", iconColorClass.replace("text-", "bg-"))}></span>
                         {title} ({count})
@@ -239,8 +243,12 @@ export function LedgerEntriesTab({
                     <motion.div animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
                         <ChevronDown className={cn("w-4 h-4", iconColorClass)} />
                     </motion.div>
-                </button>
-                {actions && <div className="flex gap-2">{actions}</div>}
+                </div>
+                {actions && (
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        {actions}
+                    </div>
+                )}
             </div>
         );
     }
@@ -280,8 +288,8 @@ export function LedgerEntriesTab({
                                         groups.processing.length,
                                         isProcessingCollapsed,
                                         () => setIsProcessingCollapsed(!isProcessingCollapsed),
-                                        "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100/50 dark:border-blue-900/20 hover:bg-blue-50/60 dark:hover:bg-blue-900/20",
-                                        "text-blue-500"
+                                        "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/20",
+                                        "text-primary"
                                     )}
                                     <AnimatePresence>
                                         {!isProcessingCollapsed && (
@@ -294,7 +302,7 @@ export function LedgerEntriesTab({
                                                                 ledgerEntries={group.ledgerEntries}
                                                                 categories={categories}
                                                                 status={group.sourceDocument.status || 'processing'}
-                                                                className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+                                                                className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                 defaultExpanded={true}
                                                                 mainCurrency={ledger?.mainCurrency}
                                                             />

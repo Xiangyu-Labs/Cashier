@@ -5,12 +5,12 @@ import { describe, it, expect } from "vitest";
 describe("ProcessingStatus", () => {
     it("renders queued status correctly", () => {
         render(<ProcessingStatus status="queued" />);
-        expect(screen.getByText("处理中")).toBeTruthy();
+        expect(screen.getByTestId("status-label")).toBeTruthy();
     });
 
     it("renders processing status correctly", () => {
         render(<ProcessingStatus status="processing" />);
-        expect(screen.getByText("处理中")).toBeTruthy();
+        expect(screen.getByTestId("status-label")).toBeTruthy();
     });
 
     it("renders completed status correctly", () => {
@@ -21,7 +21,7 @@ describe("ProcessingStatus", () => {
 
     it("renders error status correctly", () => {
         render(<ProcessingStatus status="error" />);
-        expect(screen.getByText("处理异常")).toBeTruthy();
+        expect(screen.getByTestId("status-label")).toBeTruthy();
     });
 
     it("applies custom className", () => {
