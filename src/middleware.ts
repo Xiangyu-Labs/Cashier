@@ -3,27 +3,11 @@ import { authConfig } from "./auth.config";
 import createIntlMiddleware from "next-intl/middleware";
 import { NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { db } from "@/lib/db";
-import {
-    users,
-    accounts,
-    sessions,
-    verificationTokens,
-} from "@/lib/db/schema";
-
-// Create a separate auth instance for middleware that includes the adapter
-// but excludes problematic providers (like Resend which uses streams)
+// Create a separate auth instance for middleware
 const { auth } = NextAuth({
     ...authConfig,
-    adapter: DrizzleAdapter(db, {
-        usersTable: users,
-        accountsTable: accounts,
-        sessionsTable: sessions,
-        verificationTokensTable: verificationTokens,
-    }),
     session: {
-        strategy: "database",
+        strategy: "jwt",
     },
 });
 

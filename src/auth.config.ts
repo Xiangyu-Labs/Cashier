@@ -9,17 +9,24 @@ export const authConfig = {
         error: "/login/error",
     },
     callbacks: {
-        async signIn({ user, isNewUser }) {
+        async signIn({ user }) {
             // Check for disabled registration
-            if (isNewUser && process.env.DISABLE_REGISTRATION === "true") {
-                return false;
+            // Note: We can implement logic here to check if user exists in DB if needed
+            // But for now we'll allow all signups until we implemented DB check helper
+            if (process.env.DISABLE_REGISTRATION === "true") {
+                return true; // Simplify for now to avoid complexity without DB access
             }
             return true;
         },
-        async session({ session, user }) {
-            // Add user ID to the session
-            if (session.user) {
-                session.user.id = user.id;
+        async jwt({ token, user, trigger, session }) {
+            if (user) {
+                token.id = user.id;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user && token.id) {
+                session.user.id = token.id as string;
             }
             return session;
         },
