@@ -26,6 +26,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS categories CASCADE;
       DROP TABLE IF EXISTS api_keys CASCADE;
       DROP TABLE IF EXISTS gpt_tasks CASCADE;
+      DROP TABLE IF EXISTS shares CASCADE;
 
       DROP TYPE IF EXISTS source_document_status CASCADE;
       DROP TYPE IF EXISTS error_code CASCADE;
@@ -141,6 +142,17 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         started_at TIMESTAMP,
         completed_at TIMESTAMP
       );
+
+      CREATE TABLE shares (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_document_id UUID NOT NULL REFERENCES source_documents(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMP,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        access_count INTEGER NOT NULL DEFAULT 0
+      );
+      
+      CREATE INDEX idx_shares_source_doc ON shares(source_document_id);
     `);
 
   });

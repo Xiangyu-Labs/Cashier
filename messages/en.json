@@ -237,5 +237,33 @@
         "title": "Page Not Found",
         "description": "Sorry, the page you are looking for does not exist or has been removed.",
         "backToHome": "Back to Home"
+    },
+    "Share": {
+        "title": "Share Bill",
+        "description": "Create a secure share link to send this bill to others.",
+        "expiration": "Link Expiration",
+        "selectExpiration": "Select expiration period",
+        "1day": "1 Day",
+        "7days": "7 Days",
+        "30days": "30 Days",
+        "never": "Never",
+        "neverExpiresDesc": "This link will be valid indefinitely unless manually deleted.",
+        "expiresDesc": "This link will expire in {count} days.",
+        "createLink": "Create Share Link",
+        "createFailed": "Failed to create share link",
+        "copyLink": "Copy Link",
+        "copyFailed": "Failed to copy link",
+        "copied": "Copied!",
+        "shareSuccess": "Share link created",
+        "expired": "This share link has expired",
+        "notFound": "Share not found",
+        "close": "Close"
+    },
+    "SharePage": {
+        "receipt": "Receipt",
+        "total": "Total",
+        "poweredBy": "Shared via Cashier",
+        "details": "Details",
+        "items": "{count} items"
     }
 }

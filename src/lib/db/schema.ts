@@ -104,8 +104,30 @@ export const sourceDocumentsRelations = relations(
       references: [ledgers.id],
     }),
     ledgerEntries: many(ledgerEntries),
+    shares: many(shares),
   })
 );
+
+// Shares (分享链接)
+export const shares = pgTable("shares", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sourceDocumentId: uuid("source_document_id")
+    .notNull()
+    .references(() => sourceDocuments.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),  // null = never expires
+  isActive: boolean("is_active").notNull().default(true),
+  accessCount: integer("access_count").notNull().default(0),
+}, (table) => [
+  index("idx_shares_source_doc").on(table.sourceDocumentId),
+]);
+
+export const sharesRelations = relations(shares, ({ one }) => ({
+  sourceDocument: one(sourceDocuments, {
+    fields: [shares.sourceDocumentId],
+    references: [sourceDocuments.id],
+  }),
+}));
 
 // LedgerEntry（账目分录）
 export const ledgerEntries = pgTable("ledger_entries", {

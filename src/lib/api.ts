@@ -427,3 +427,62 @@ export function fetchProcessingTasks(
   );
 }
 
+
+// Share API
+export interface ShareData {
+  sourceDocument: {
+    id: string;
+    title: string | null;
+    text: string | null;
+    imageUrls: string[];
+    createdAt: string;
+  };
+  entries: {
+    id: string;
+    amount: string;
+    currency: string | null;
+    itemName: string;
+    description: string | null;
+    entryDate: string | null;
+    category: {
+      id: string;
+      name: string;
+      icon: string | null;
+    } | null;
+  }[];
+  ledgerId: string;
+}
+
+export function createShare(
+  ledgerId: string,
+  sourceDocumentId: string,
+  expiresIn: "1d" | "7d" | "30d" | "never" = "7d"
+): Promise<{ id: string; shareUrl: string; expiresAt: string | null }> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expiresIn }),
+    },
+    "Failed to create share link"
+  );
+}
+
+export function deleteShare(
+  ledgerId: string,
+  sourceDocumentId: string,
+  shareId: string
+): Promise<void> {
+  return request(
+    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares/${shareId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete share link"
+  );
+}
+
+export function fetchShareData(shareId: string): Promise<ShareData> {
+  return request(`${API_BASE}/s/${shareId}`, undefined, "Failed to fetch share data");
+}

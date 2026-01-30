@@ -1,4 +1,4 @@
-export type EntityType = 'ledger_entry' | 'source_document' | 'task_run' | 'category' | 'ledger' | 'service_credential';
+export type EntityType = 'ledger_entry' | 'source_document' | 'task_run' | 'category' | 'ledger' | 'service_credential' | 'share';
 export type EntityAction = 'created' | 'updated' | 'deleted';
 
 export type EntityChangeEvent = {

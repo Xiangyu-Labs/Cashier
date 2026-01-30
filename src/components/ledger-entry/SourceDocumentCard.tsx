@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { ShareDialog } from "@/components/share/ShareDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -91,6 +92,7 @@ export function SourceDocumentCard({
   const locale = useLocale();
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
 
@@ -200,11 +202,10 @@ export function SourceDocumentCard({
                       {t("editRetry")}
                     </DropdownMenuItem>
                   )}
+
                   {status === "completed" && (
                     <DropdownMenuItem
-                      disabled
-                      title={t("shareComingSoon")}
-                      className="opacity-50"
+                      onClick={() => setIsShareDialogOpen(true)}
                     >
                       <Share2 className="mr-2 h-4 w-4" />
                       {t("share")}
@@ -228,6 +229,12 @@ export function SourceDocumentCard({
         </div>
       </div>
 
+      <ShareDialog
+        isOpen={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        ledgerId={sourceDocument.ledgerId}
+        sourceDocumentId={sourceDocument.id}
+      />
 
       <AnimatePresence initial={false}>
         {isItemsExpanded && (
