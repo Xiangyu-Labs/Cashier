@@ -1,10 +1,9 @@
 {
     "AnomalyCode": {
         "internal_error": "Internal error",
-        "parse_failed": "Parsing failed",
         "invalid_content": "Invalid content",
         "rate_limit_exceeded": "Rate limit exceeded",
-        "flow_anomaly": "AI verification mismatch",
+        "evidence_anomaly": "Evidence anomaly",
         "unknown_currency": "Unknown currency"
     },
     "HomePage": {

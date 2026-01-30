@@ -284,9 +284,13 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
+        let anomalyCode = "internal_error";
+        if (error.message.includes("schema validation failed") || error.message.includes("Invalid content")) {
+            anomalyCode = "invalid_content";
+        }
+
         // Update source document status to anomaly via Repo
-        // Always mark as internal_error for unhandled exceptions in the task flow
-        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, ["internal_error"], context.ledgerId);
+        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
     },
 };
 

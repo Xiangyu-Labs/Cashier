@@ -29,7 +29,7 @@ const mockEntries = {
     pendingForDocError1: {
         id: "entry_2",
         sourceDocumentId: "doc_e1",
-        anomalyCodes: ["flow_anomaly"],
+        anomalyCodes: ["evidence_anomaly"],
         sourceDocument: mockSourceDocs.error
     },
     confirmedForDocCompleted1: {

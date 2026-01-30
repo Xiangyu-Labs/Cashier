@@ -284,7 +284,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
         currency: "CNY",
         categoryId: testCategoryId,
         description: "Lunch with team",
-        anomalyCodes: ["flow_anomaly"]
+        anomalyCodes: ["evidence_anomaly"]
       },
       {
         ledgerId: testLedgerId,

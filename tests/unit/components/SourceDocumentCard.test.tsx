@@ -202,8 +202,8 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders anomaly status and message when anomalyCodes is provided", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="anomaly" anomalyCodes={["parse_failed"]} />);
-        expect(screen.getByText("parse_failed")).toBeTruthy();
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="anomaly" anomalyCodes={["internal_error"]} />);
+        expect(screen.getByText("internal_error")).toBeTruthy();
     });
 
     it("renders total amount when status is completed", () => {

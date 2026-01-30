@@ -6,9 +6,7 @@
 
 来源文档共有 `queued`, `processing`, `completed`, `error` 四种基本状态。当状态为 `error` 时，我们通过 `errorCode` 枚举来提供更细粒度的错误原因。
 
-目前已有的错误代码：
-- `internal_error`: 系统内部错误（AI 服务超时、数据库异常等）
-- `parse_failed`: 内容解析失败（AI 返回格式错误、JSON 解析失败等）
+- `internal_error`: 系统内部错误（AI 服务超时、数据库异常、内容解析失败等）
 - `invalid_content`: 非有效流水（输入不含财务信息）
 
 ## 增加步骤
@@ -22,8 +20,8 @@
 // src/lib/db/schema.ts
 export const errorCodeEnum = pgEnum("error_code", [
   "internal_error",
-  "parse_failed",
   "invalid_content",
+  "evidence_anomaly",
   "rate_limit_exceeded", // 新增
 ]);
 ```
@@ -38,7 +36,7 @@ export const errorCodeEnum = pgEnum("error_code", [
 // src/types/api.ts
 export interface SourceDocument {
   // ...
-  errorCode?: "internal_error" | "parse_failed" | "invalid_content" | "rate_limit_exceeded" | null;
+  errorCode?: "internal_error" | "invalid_content" | "evidence_anomaly" | "rate_limit_exceeded" | null;
 }
 ```
 
@@ -48,7 +46,7 @@ export interface SourceDocument {
 ```typescript
 // src/lib/tasks/parse-source-document.ts
 async onError(error: Error, task: ProcessingTask) {
-    let errorCode: "internal_error" | "parse_failed" | "rate_limit_exceeded" = "internal_error";
+    let errorCode: "internal_error" | "evidence_anomaly" | "rate_limit_exceeded" = "internal_error";
     
     if (error.message.includes("rate limit")) {
         errorCode = "rate_limit_exceeded";

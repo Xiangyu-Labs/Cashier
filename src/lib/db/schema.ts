@@ -24,9 +24,8 @@ export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
 
 export const anomalyCodeEnum = pgEnum("anomaly_code", [
   "internal_error",
-  "parse_failed",
   "invalid_content",
-  "flow_anomaly",
+  "evidence_anomaly",
   "unknown_currency",
 ]);
 
