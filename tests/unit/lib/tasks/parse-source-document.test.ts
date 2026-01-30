@@ -205,7 +205,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
-        expect(arbitrate).toHaveBeenCalledWith("total_mismatch", expect.anything(), expect.anything(), undefined);
+        expect(arbitrate).toHaveBeenCalledWith("total_mismatch", expect.anything(), expect.anything(), undefined, undefined);
         expect(result.verificationStatus).toBe("passed");
         expect(result.ledgerEntries[0].amount).toBe(10); // First result chosen
     });

@@ -228,5 +228,10 @@
         "pastYear": "过去1年",
         "customRange": "自定义区间",
         "apply": "应用"
+    },
+    "NotFound": {
+        "title": "页面未找到",
+        "description": "抱歉，您访问的页面不存在或已被移除。",
+        "backToHome": "返回主账本"
     }
 }
