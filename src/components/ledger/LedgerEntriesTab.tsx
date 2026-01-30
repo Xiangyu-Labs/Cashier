@@ -176,8 +176,8 @@ export function LedgerEntriesTab({
         onError: (err, id, ctx) => {
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(t("deleteFailed"));
-        },
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
+        }
+        // Note: Removed onSettled invalidateQueries - SSE events handle cache updates
     });
 
     const retryMutation = useMutation({
@@ -196,8 +196,8 @@ export function LedgerEntriesTab({
         onError: (err, id, ctx) => {
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(tCommon("error"));
-        },
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
+        }
+        // Note: Removed onSettled invalidateQueries - SSE events handle cache updates
     });
 
     // Helper Action Handlers
