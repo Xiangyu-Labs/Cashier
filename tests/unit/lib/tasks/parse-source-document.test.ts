@@ -19,19 +19,37 @@ import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
 
 describe("parseSourceDocumentHandler.execute", () => {
     let mockProcessor: { process: ReturnType<typeof vi.fn> };
+    let sourceDocId: string;
+    let categoryId: string;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
         mockProcessor = {
             process: vi.fn(),
         };
         vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as never);
+
+        // Setup real DB data
+        const db = getTestDb();
+        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const [sourceDoc] = await db.insert(sourceDocuments).values({
+            ledgerId: ledger.id,
+            status: "processing"
+        }).returning();
+        const [category] = await db.insert(entryCategories).values({
+            ledgerId: ledger.id,
+            name: "Food",
+            description: "Food stuff"
+        }).returning();
+
+        sourceDocId = sourceDoc.id;
+        categoryId = category.id;
     });
 
     it("should pass settings and preferredCurrencies correctly to the processor", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
-            categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             language: "en-US",
             preferredCurrencies: ["USD"],
             settings: {
@@ -69,8 +87,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should override entryDate if autoRecognizeDate is false", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
-            categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
                 mergeSimilarItems: false,
@@ -97,8 +115,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should call summarizeLedgerEntries if mergeSimilarItems is true", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
-            categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
                 mergeSimilarItems: true,
@@ -131,8 +149,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should return empty ledgerEntries if isValid is false", async () => {
         const input: ParseSourceDocumentInput = {
-            sourceDocumentId: "11111111-1111-1111-1111-111111111111",
-            categories: [{ id: "c1", name: "Food", description: "Food stuff" }],
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
                 autoConfirm: false,
                 mergeSimilarItems: false,
