@@ -36,7 +36,6 @@ export function LedgerEntryDetailModal({
   onUpdate,
   onDelete,
 }: LedgerEntryDetailModalProps): ReactNode | null {
-  const _t = useTranslations("LedgerEntryDetail");
   const tTab = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
 
@@ -87,7 +86,7 @@ export function LedgerEntryDetailModal({
     setShowDeleteConfirm(false);
     onClose();
     toast.success(tTab("deleteSuccess"));
-  }, [onDelete, onClose, toast, tTab]);
+  }, [onDelete, onClose, tTab]);
 
   const handleClose = useCallback(() => {
     setIsEditing(false);

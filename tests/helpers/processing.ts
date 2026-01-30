@@ -31,5 +31,5 @@ export async function processAllPendingTasks(timeoutMs: number = 10000) {
         await new Promise(r => setTimeout(r, 200));
     }
 
-    console.warn(`processAllPendingTasks timed out after ${timeoutMs}ms`);
+
 }

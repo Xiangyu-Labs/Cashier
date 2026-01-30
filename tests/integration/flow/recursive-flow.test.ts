@@ -110,10 +110,10 @@ describe("Recursive Flow Integration", () => {
 
         expect(taskRunId).toBeDefined();
 
-        const immediateCheck = await db.query.taskRuns.findFirst({
+        await db.query.taskRuns.findFirst({
             where: eq(taskRuns.id, taskRunId)
         });
-        console.log("Immediate DB Check:", immediateCheck);
+
 
         // 2. Poll for Completion
         // Recursive tasks take longer due to multiple queue roundtrips

@@ -11,11 +11,11 @@ export function useLedgerEvents(ledgerId: string) {
 
     useEffect(() => {
         if (!ledgerId) {
-            console.log('[SSE] No ledgerId provided, skipping connection');
+
             return;
         }
 
-        console.log('[SSE] Creating EventSource connection for ledger:', ledgerId);
+
 
         // Create SSE connection
         // Note: EventSource is a browser API
@@ -23,15 +23,15 @@ export function useLedgerEvents(ledgerId: string) {
         eventSourceRef.current = es;
 
         es.onopen = () => {
-            console.log('[SSE] Connection opened');
+
         };
 
 
         es.onmessage = (event) => {
-            console.log('[SSE] Received message:', event.data);
+
             try {
                 const data = JSON.parse(event.data) as LedgerEvent;
-                console.log('[SSE] Parsed event:', data);
+
                 handleEvent(queryClient, data);
             } catch (err) {
                 console.error('Failed to parse SSE event:', err);

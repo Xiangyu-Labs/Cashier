@@ -10,7 +10,7 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
 
     const { ledgerId, entity } = event;
 
-    console.log('[SSE Invalidation] Handling event:', event);
+
 
     // Define invalidation rules using centralized queryKeys
     // Map entity types to query keys that should be invalidated

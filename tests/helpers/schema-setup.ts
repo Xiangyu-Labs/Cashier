@@ -7,7 +7,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     // Advisory lock for the duration of the transaction
     await tx.execute(sql`SELECT pg_advisory_xact_lock(1234567)`);
 
-    console.log("Starting createTestSchema in transaction...");
+
 
     // Drop tables if they exist to start fresh
     await tx.execute(sql`
@@ -142,13 +142,9 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         completed_at TIMESTAMP
       );
     `);
-    console.log("Finished createTestSchema.");
+
   });
 
-  const tables = await db.execute(sql`
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public'
-  `);
-  console.log("Tables in DB:", tables.map(t => t.table_name));
+
+
 }
