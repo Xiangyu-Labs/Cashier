@@ -18,6 +18,8 @@ const cardVariants = cva("transition-all", {
   },
 });
 
+import { useTranslations } from "next-intl";
+
 interface LedgerEntryCardProps {
   ledgerEntry: LedgerEntry;
   categories: EntryCategory[];
@@ -32,6 +34,7 @@ export function LedgerEntryCard({
   className,
   mainCurrency = "CNY",
 }: LedgerEntryCardProps) {
+  const t = useTranslations("Common");
   const { converted } = useConvertedAmount(
     parseFloat(ledgerEntry.amount),
     ledgerEntry.currency,
@@ -87,7 +90,7 @@ export function LedgerEntryCard({
                   ) : (
                     <div className="flex items-center gap-2">
                       <Badge variant="warning" className="text-[10px] px-1 h-5">
-                        需分类
+                        {t("needsCategory")}
                       </Badge>
                       {ledgerEntry.description && (
                         <span className="text-xs text-muted truncate">{ledgerEntry.description}</span>
@@ -97,7 +100,7 @@ export function LedgerEntryCard({
 
                   {!ledgerEntry.currency && (
                     <Badge variant="warning" className="text-[10px] px-1 h-5">
-                      需货币
+                      {t("needsCurrency")}
                     </Badge>
                   )}
                 </div>

@@ -90,7 +90,7 @@ export function SourceDocumentCard({
   className,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
-  const tError = useTranslations("ErrorCode");
+  const tError = useTranslations("AnomalyCode");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [isConfirming, setIsConfirming] = useState(false);

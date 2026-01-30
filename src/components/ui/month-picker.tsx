@@ -15,7 +15,10 @@ interface MonthPickerProps {
     onDateChange: (date: Date) => void;
 }
 
+import { useTranslations } from "next-intl";
+
 export function MonthPicker({ date, onDateChange }: MonthPickerProps) {
+    const t = useTranslations("MonthPicker");
     const [year, setYear] = React.useState(date.getFullYear());
     const [open, setOpen] = React.useState(false);
 
@@ -24,11 +27,7 @@ export function MonthPicker({ date, onDateChange }: MonthPickerProps) {
         setYear(date.getFullYear());
     }, [date]);
 
-    const months = [
-        "1月", "2月", "3月", "4月",
-        "5月", "6月", "7月", "8月",
-        "9月", "10月", "11月", "12月"
-    ];
+    const months = t.raw("months") as string[];
 
     const handleMonthSelect = (monthIndex: number) => {
         const newDate = new Date(year, monthIndex, 1);
@@ -47,7 +46,7 @@ export function MonthPicker({ date, onDateChange }: MonthPickerProps) {
                     size="sm"
                     className="h-8 font-semibold text-lg hover:bg-transparent px-1 gap-1"
                 >
-                    {date.getFullYear()}年{date.getMonth() + 1}月
+                    {t("yearFormat", { year: date.getFullYear() })}{t("monthFormat", { month: date.getMonth() + 1 })}
                     <span className="text-muted-foreground scale-75">▼</span>
                 </Button>
             </PopoverTrigger>
@@ -56,7 +55,7 @@ export function MonthPicker({ date, onDateChange }: MonthPickerProps) {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrevYear}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="font-semibold">{year}年</div>
+                    <div className="font-semibold">{t("yearFormat", { year })}</div>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNextYear}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -75,7 +74,7 @@ export function MonthPicker({ date, onDateChange }: MonthPickerProps) {
                                     : "hover:bg-muted"
                             )}
                         >
-                            {index + 1}月
+                            {month}
                         </Button>
                     ))}
                 </div>

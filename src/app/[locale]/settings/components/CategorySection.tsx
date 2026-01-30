@@ -12,7 +12,10 @@ interface CategorySectionProps {
     onDeleteCategory: (id: string) => void;
 }
 
+import { useTranslations } from "next-intl";
+
 export function CategorySection({ categories, onCreateCategory, onUpdateCategory, onDeleteCategory }: CategorySectionProps) {
+    const t = useTranslations("Settings");
     const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
     const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
@@ -25,7 +28,7 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
 
     return (
         <div>
-            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">分类</h3>
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">{t("categories")}</h3>
 
             <div className="space-y-2 mb-4">
                 {categories.map(category => (
@@ -44,7 +47,7 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
                                     type="text"
                                     value={editingCategoryData.description || ""}
                                     onChange={e => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
-                                    placeholder="描述"
+                                    placeholder={t("categoryDescription")}
                                     className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)]"
                                 />
                                 <button
@@ -103,7 +106,7 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
             <div className="flex gap-2">
                 <input
                     type="text"
-                    placeholder="新分类名称"
+                    placeholder={t("newCategoryPlaceholder")}
                     value={newCategoryName}
                     onChange={e => setNewCategoryName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
@@ -113,7 +116,7 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
                     onClick={handleCreate}
                     className="px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--radius)] text-sm font-medium hover:opacity-90"
                 >
-                    添加分类
+                    {t("addCategory")}
                 </button>
             </div>
         </div>

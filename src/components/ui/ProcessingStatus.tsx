@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export type ProcessingStatusType = "queued" | "processing" | "completed" | "error" | "pending";
 
@@ -10,34 +11,38 @@ interface ProcessingStatusProps {
 }
 
 export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
+    const t = useTranslations("TaskCenter");
+    const tEntries = useTranslations("LedgerEntriesTab");
+    const tCommon = useTranslations("Common");
+
     const config = {
         queued: {
-            label: "处理中",
+            label: t("statusQueued"),
             icon: Loader2,
             colorClass: "text-primary/70",
             bgClass: "bg-primary/70",
         },
         processing: {
-            label: "处理中",
+            label: t("statusRunning"),
             icon: Loader2,
             colorClass: "text-primary/70",
             bgClass: "bg-primary/70",
         },
 
         completed: {
-            label: "已完成",
+            label: t("statusCompleted"),
             icon: CheckCircle2,
             colorClass: "text-primary",
             bgClass: "bg-primary",
         },
         error: {
-            label: "处理异常",
+            label: tCommon("error"),
             icon: AlertCircle,
             colorClass: "text-danger",
             bgClass: "bg-danger",
         },
         pending: {
-            label: "待确认",
+            label: tEntries("pending"),
             icon: AlertCircle,
             colorClass: "text-warning",
             bgClass: "bg-warning",

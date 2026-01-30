@@ -53,6 +53,7 @@ function SortableItem({
     onUpdate,
     onDelete
 }: SortableItemProps) {
+    const t = useTranslations("Settings");
     const {
         attributes,
         listeners,
@@ -89,7 +90,7 @@ function SortableItem({
                         type="text"
                         value={editingData.description}
                         onChange={e => onEditChange({ ...editingData, description: e.target.value })}
-                        placeholder="描述"
+                        placeholder={t("categoryDescription")}
                         className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                     />
                     <button onClick={onUpdate} className="text-[var(--primary)] p-1 hover:bg-surface rounded transition-colors">
@@ -213,17 +214,17 @@ export function CategorySection({
             <div className="flex gap-2">
                 <input
                     type="text"
-                    placeholder="新分类名称"
+                    placeholder={t("newCategoryPlaceholder")}
                     value={newCategoryName}
                     onChange={e => setNewCategoryName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                    className="flex-1 p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    className="flex-1 p-2 text-sm bg-[var(--surface)] border border(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 />
                 <button
                     onClick={handleCreate}
                     className="px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--radius)] text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                    添加分类
+                    {t("addCategory")}
                 </button>
             </div>
         </div>

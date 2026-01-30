@@ -33,6 +33,8 @@ export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
     className?: string;
 }
 
+import { useTranslations } from "next-intl";
+
 /**
  * A simplified entry display component designed for embedding within bill cards.
  * Unlike LedgerEntryCard, this component:
@@ -47,6 +49,7 @@ export function BillEntryItem({
     variant = "default",
     className,
 }: BillEntryItemProps) {
+    const t = useTranslations("Common");
     const anomalyCodes = ledgerEntry.anomalyCodes || [];
     const isUnknownCurrency = anomalyCodes.includes("unknown_currency") || ledgerEntry.currency === "unknown";
     // Keeping currency check for backward compat or direct value check
@@ -102,17 +105,17 @@ export function BillEntryItem({
                         {/* Warning badges for missing data */}
                         {needsCategory && (
                             <Badge variant="warning" className="text-[9px] px-1 h-4">
-                                需分类
+                                {t("needsCategory")}
                             </Badge>
                         )}
                         {isUnknownCurrency && (
                             <Badge variant="warning" className="text-[9px] px-1 h-4">
-                                需货币
+                                {t("needsCurrency")}
                             </Badge>
                         )}
                         {isSuspicious && (
                             <Badge variant="error" className="text-[9px] px-1 h-4">
-                                异常
+                                {t("anomaly")}
                             </Badge>
                         )}
                     </div>

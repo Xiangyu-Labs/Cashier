@@ -1,5 +1,6 @@
 "use client"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 
 import * as React from "react"
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
@@ -21,6 +22,7 @@ export function ImageViewer({
     open,
     onOpenChange,
 }: ImageViewerProps) {
+    const t = useTranslations("ImageViewer");
     const [index, setIndex] = React.useState(initialIndex)
     const [scale, setScale] = React.useState(1)
     const [rotation, setRotation] = React.useState(0)
@@ -107,28 +109,28 @@ export function ImageViewer({
                 style={{ borderRadius: 0 }}
                 onPointerDownOutside={() => onOpenChange(false)}
             >
-                <DialogTitle className="sr-only">图片查看</DialogTitle>
+                <DialogTitle className="sr-only">{t("imageAlt", { index: index + 1 })}</DialogTitle>
                 <DialogDescription className="sr-only">Image Viewer</DialogDescription>
 
                 {/* Toolbar */}
                 <div className="absolute top-4 right-4 z-50 flex items-center gap-2 pointer-events-auto">
                     <div className="flex bg-black/50 rounded-lg p-1 mr-2 sm:mr-4 backdrop-blur-sm border border-white/10 hidden sm:flex">
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomOut} disabled={scale <= 0.5}>
+                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomOut} disabled={scale <= 0.5} title={t("zoomOut")}>
                             <ZoomOut className="h-4 w-4" />
                         </Button>
                         <span className="flex items-center justify-center text-white text-xs w-10">
                             {Math.round(scale * 100)}%
                         </span>
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomIn} disabled={scale >= 5}>
+                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomIn} disabled={scale >= 5} title={t("zoomIn")}>
                             <ZoomIn className="h-4 w-4" />
                         </Button>
                         <div className="w-px h-6 bg-white/20 mx-1" />
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleRotate}>
+                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleRotate} title={t("rotate")}>
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                         <div className="w-px h-6 bg-white/20 mx-1" />
                         <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-8 w-8" onClick={resetView}>
-                            <span className="text-xs">Reset</span>
+                            <span className="text-xs">{t("reset")}</span>
                         </Button>
                     </div>
                     <Button
@@ -136,6 +138,7 @@ export function ImageViewer({
                         size="icon"
                         className="text-white/70 hover:text-white hover:bg-white/20 rounded-full h-10 w-10 bg-black/20 backdrop-blur-sm"
                         onClick={() => onOpenChange(false)}
+                        title={t("close")}
                     >
                         <X className="h-6 w-6" />
                     </Button>

@@ -24,6 +24,8 @@ interface ConfirmDialogProps {
     variant?: "default" | "destructive";
 }
 
+import { useTranslations } from "next-intl";
+
 export function ConfirmDialog({
     title,
     description,
@@ -31,10 +33,14 @@ export function ConfirmDialog({
     trigger,
     open,
     onOpenChange,
-    confirmLabel = "确认",
-    cancelLabel = "取消",
+    confirmLabel,
+    cancelLabel,
     variant = "default",
 }: ConfirmDialogProps) {
+    const t = useTranslations("Common");
+    const displayConfirmLabel = confirmLabel || t("confirm");
+    const displayCancelLabel = cancelLabel || t("cancel");
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
@@ -45,7 +51,7 @@ export function ConfirmDialog({
                 </DialogHeader>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">{cancelLabel}</Button>
+                        <Button variant="outline">{displayCancelLabel}</Button>
                     </DialogClose>
                     <Button
                         variant={variant}
@@ -57,7 +63,7 @@ export function ConfirmDialog({
                             }
                         }}
                     >
-                        {confirmLabel}
+                        {displayConfirmLabel}
                     </Button>
                 </DialogFooter>
             </DialogContent>

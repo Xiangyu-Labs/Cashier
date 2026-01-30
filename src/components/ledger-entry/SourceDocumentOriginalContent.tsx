@@ -7,15 +7,19 @@ interface SourceDocumentOriginalContentProps {
     images?: string[];
 }
 
+import { useTranslations } from "next-intl";
+
 export function SourceDocumentOriginalContent({
     text,
     images = [],
 }: SourceDocumentOriginalContentProps) {
+    const t = useTranslations("Common");
+    const tViewer = useTranslations("ImageViewer");
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const hasImages = images && images.length > 0;
 
     if (!text && !hasImages) {
-        return <p className="text-muted text-sm border border-dashed border-border p-2 rounded">无原始内容</p>;
+        return <p className="text-muted text-sm border border-dashed border-border p-2 rounded">{t("noContent")}</p>;
     }
 
     return (
@@ -32,7 +36,7 @@ export function SourceDocumentOriginalContent({
                             >
                                 <Image
                                     src={imgSrc}
-                                    alt={`来源图片 ${idx + 1}`}
+                                    alt={tViewer("imageAlt", { index: idx + 1 })}
                                     fill
                                     className="object-cover"
                                 />

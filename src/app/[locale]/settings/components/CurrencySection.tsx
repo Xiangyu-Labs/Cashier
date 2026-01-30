@@ -9,7 +9,10 @@ interface CurrencySectionProps {
     onUpdateSettings: (data: Partial<Settings>) => void;
 }
 
+import { useTranslations } from "next-intl";
+
 export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+    const t = useTranslations("Settings");
     const [newCurrency, setNewCurrency] = useState("");
 
     const handleAddCurrency = () => {
@@ -28,7 +31,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
 
     return (
         <div>
-            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">货币</h3>
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">{t("preferredCurrencies")}</h3>
             <div className="flex flex-wrap gap-2 mb-3">
                 {settings.currencies?.map(currency => (
                     <div key={currency} className="flex items-center gap-1 bg-[var(--surface2)] px-3 py-1 rounded-[var(--radius-sm)] text-sm">
@@ -45,7 +48,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
             <div className="flex gap-2 max-w-xs">
                 <input
                     type="text"
-                    placeholder="输入货币代码 (如 USD)"
+                    placeholder={t("currencyPlaceholder")}
                     value={newCurrency}
                     onChange={e => setNewCurrency(e.target.value)}
                     className="flex-1 p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] uppercase"
