@@ -103,6 +103,7 @@
         "requireEdit": "(Correction Required)",
         "viewDetails": "View Details",
         "retryProcessing": "Retry Processing",
+        "editRetry": "Edit and Retry",
         "share": "Share",
         "shareComingSoon": "Share feature coming soon",
         "moreActions": "More Actions"

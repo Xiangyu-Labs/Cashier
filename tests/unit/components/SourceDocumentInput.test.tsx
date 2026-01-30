@@ -102,8 +102,8 @@ describe("SourceDocumentInput", () => {
         expect(screen.queryByText("send")).toBeNull();
         expect(screen.getByText("retry")).toBeTruthy();
 
-        // Should hide advanced features
-        expect(screen.queryByText("advancedFeatures")).toBeNull();
+        // Should show advanced features (now visible in both modes)
+        expect(screen.getByText("advancedFeatures")).toBeTruthy();
     });
 
     it("calls retry mutation in retry mode", async () => {

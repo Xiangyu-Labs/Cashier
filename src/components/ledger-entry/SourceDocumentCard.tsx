@@ -197,7 +197,7 @@ export function SourceDocumentCard({
                   {(status === "anomaly" || status === "completed") && onRetry && (
                     <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                       <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                      {tCommon("retry")}
+                      {t("editRetry")}
                     </DropdownMenuItem>
                   )}
                   {status === "completed" && (
