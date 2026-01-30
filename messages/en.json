@@ -106,7 +106,10 @@
         "records": "{count} {count, plural, one {entry} other {entries}}",
         "requireEdit": "(Correction Required)",
         "viewDetails": "View Details",
-        "retryProcessing": "Retry Processing"
+        "retryProcessing": "Retry Processing",
+        "share": "Share",
+        "shareComingSoon": "Share feature coming soon",
+        "moreActions": "More Actions"
     },
     "Common": {
         "confirm": "Confirm",

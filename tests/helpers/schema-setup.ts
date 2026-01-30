@@ -50,6 +50,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         auto_recognize_date BOOLEAN DEFAULT FALSE,
         collapse_pending_default BOOLEAN DEFAULT FALSE,
         merge_similar_items BOOLEAN DEFAULT FALSE,
+        collapse_bills_default BOOLEAN DEFAULT FALSE,
         ai_custom_prompt TEXT
       );
 

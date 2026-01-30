@@ -1,11 +1,16 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "./BillEntryItem";
 import { useState, useMemo } from "react";
-import { Trash2, Check, ChevronDown, RefreshCw } from "lucide-react";
+import { Trash2, Check, ChevronDown, RefreshCw, MoreVertical, FileText, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
-// Removed DropdownMenu imports as they are unused
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -93,7 +98,8 @@ export function SourceDocumentCard({
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  const showRawInput = status !== "completed" && (status === "processing" || isItemsExpanded);
+  const showRawInput = status !== "completed" && isItemsExpanded;
+  const showEntries = status !== "processing" && isItemsExpanded;
 
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
@@ -144,21 +150,31 @@ export function SourceDocumentCard({
 
   return (
     <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
-      <div className="px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center">
-        <span className="text-sm font-medium text-muted">
-          {new Date(sourceDocument.createdAt).toLocaleString(locale, {
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-          {sourceDocument.title && (
-            <span className="ml-3 font-medium text-text">
-              {sourceDocument.title}
-            </span>
-          )}
-        </span>
-        <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          "px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center transition-colors group",
+          "cursor-pointer hover:bg-surface2"
+        )}
+        onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+      >
+        <div className="flex items-center gap-2 overflow-hidden flex-1">
+          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted group-hover:text-text", isItemsExpanded && "rotate-180")} />
+          <span className="text-sm font-medium text-muted truncate">
+            {new Date(sourceDocument.createdAt).toLocaleString(locale, {
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {sourceDocument.title && (
+              <span className="ml-3 font-medium text-text">
+                {sourceDocument.title}
+              </span>
+            )}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
           {(ledgerEntries.length === 0 || status === "anomaly") && (
             <ProcessingStatus
               status={status === "anomaly" ? "error" : status}
@@ -173,54 +189,61 @@ export function SourceDocumentCard({
             />
           )}
 
-          <div className="flex items-center gap-1.5 ml-2">
-            {status !== "processing" && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setIsItemsExpanded(!isItemsExpanded)}
-                className={cn("h-7 w-7", isItemsExpanded && "bg-surface2")}
-                title={isItemsExpanded ? t("collapseContent") : t("viewContent")}
-              >
-                <ChevronDown className={cn("h-4 w-4 transition-transform", isItemsExpanded && "rotate-180")} />
-              </Button>
-            )}
-
-            {status === "anomaly" && (
-              <>
-                {onRetry && (
+          <div className="flex items-center gap-1.5 ml-1">
+            {/* Context Menu for Anomaly and Completed */}
+            {(status === "anomaly" || status === "completed") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={handleRetry}
-                    disabled={isRetrying}
-                    className="h-7 px-2 text-xs hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
-                    title={tCommon("retry")}
+                    size="icon-sm"
+                    className="h-7 w-7 text-muted hover:text-text"
                   >
-                    <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isRetrying && "animate-spin")} />
-                    {tCommon("retry")}
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                )}
-                {onDelete && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onDelete}
-                    className="h-7 px-2 text-xs hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
-                    title={tCommon("delete")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    {tCommon("delete")}
-                  </Button>
-                )}
-              </>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  {_onViewDetails && (
+                    <DropdownMenuItem onClick={_onViewDetails}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {t("viewDetails")}
+                    </DropdownMenuItem>
+                  )}
+                  {status === "anomaly" && onRetry && (
+                    <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
+                      <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
+                      {tCommon("retry")}
+                    </DropdownMenuItem>
+                  )}
+                  {status === "completed" && (
+                    <DropdownMenuItem
+                      disabled
+                      title={t("shareComingSoon")}
+                      className="opacity-50"
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {t("share")}
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="text-danger focus:text-danger"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {tCommon("delete")}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
+            {/* Confirm Button for Batch Confirmation - Keep here for visibility */}
             {(status === "completed" || status === "pending") && onConfirm && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
+                onClick={handleConfirm}
                 disabled={isConfirming}
                 className={cn(
                   "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
@@ -279,7 +302,7 @@ export function SourceDocumentCard({
       </AnimatePresence>
 
       <AnimatePresence>
-        {isItemsExpanded && status !== "processing" && (
+        {isItemsExpanded && showEntries && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -297,7 +320,7 @@ export function SourceDocumentCard({
                     ? "error"
                     : status === "pending"
                       ? "warning"
-                      : (status === "processing" || status === "queued")
+                      : status === "queued"
                         ? "info"
                         : "default"
                 }

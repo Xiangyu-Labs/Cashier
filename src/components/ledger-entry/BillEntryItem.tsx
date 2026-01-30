@@ -17,7 +17,7 @@ const itemVariants = cva(
                 default: "bg-surface hover:bg-surface2/50",
                 warning: "bg-warning/5 border border-warning/20",
                 error: "bg-destructive/5 border border-destructive/20",
-                info: "bg-info/5 border border-info/20",
+                info: "bg-primary/5 border border-primary/20",
             },
         },
         defaultVariants: {

@@ -14,14 +14,14 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
         queued: {
             label: "处理中",
             icon: Loader2,
-            colorClass: "text-info",
-            bgClass: "bg-info",
+            colorClass: "text-primary/70",
+            bgClass: "bg-primary/70",
         },
         processing: {
             label: "处理中",
             icon: Loader2,
-            colorClass: "text-info",
-            bgClass: "bg-info",
+            colorClass: "text-primary/70",
+            bgClass: "bg-primary/70",
         },
 
         completed: {

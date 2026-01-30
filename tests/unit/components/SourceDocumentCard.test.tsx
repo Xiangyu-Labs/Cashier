@@ -94,11 +94,12 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders text content", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} />);
+        // Use anomaly status to show raw input
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} status="anomaly" />);
 
         // Expand content
-        const expandButton = screen.getByTitle("viewContent");
-        fireEvent.click(expandButton);
+        const header = screen.getByText(/1月1日/);
+        fireEvent.click(header);
 
         expect(screen.getByText("Lunch 50")).toBeTruthy();
     });
@@ -109,11 +110,12 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        // Use anomaly status to show raw input
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
         // Expand content
-        const expandButton = screen.getByTitle("viewContent");
-        fireEvent.click(expandButton);
+        const header = screen.getByText(/1月1日/);
+        fireEvent.click(header);
 
         const imgs = screen.getAllByRole("img");
         // Expect at least one image with the src
@@ -128,11 +130,12 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: imagesData,
         };
-        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        // Use anomaly status to show raw input
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
         // Expand content
-        const expandButton = screen.getByTitle("viewContent");
-        fireEvent.click(expandButton);
+        const header = screen.getByText(/1月1日/);
+        fireEvent.click(header);
 
         const imgs = screen.getAllByRole("img");
         // Filter out any icons that might be rendered as imgs (though mocked CategoryIcon is a div)
@@ -143,28 +146,31 @@ describe("SourceDocumentCard", () => {
     });
 
     it("renders bill entry items directly", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} />);
-        // It should directly render the bill entry item
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} defaultExpanded={true} status="completed" />);
+        // It should render the bill entry item when expanded
         expect(screen.getByTestId("bill-entry-item")).toBeTruthy();
         expect(screen.getByText("Lunch")).toBeTruthy();
     });
 
     it("passes correct variant for anomaly status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="anomaly" />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="anomaly" defaultExpanded={true} />);
         const item = screen.getByTestId("bill-entry-item");
         expect(item.getAttribute("data-variant")).toBe("error");
     });
 
     it("passes correct variant for pending status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="pending" />);
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="pending" defaultExpanded={true} />);
         const item = screen.getByTestId("bill-entry-item");
         expect(item.getAttribute("data-variant")).toBe("warning");
     });
 
     it("passes correct variant for processing status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" />);
-        const item = screen.getByTestId("bill-entry-item");
-        expect(item.getAttribute("data-variant")).toBe("info");
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" defaultExpanded={true} />);
+        // Wait, for processing, isItemsExpanded=true should still NOT show entries according to new logic? 
+        // No, current logic: showEntries = status !== "processing" && isItemsExpanded;
+        // So Processing cards never show entries.
+        const item = screen.queryByTestId("bill-entry-item");
+        expect(item).toBeNull();
     });
 
     it("opens image zoom dialog on click", async () => {
@@ -173,11 +179,12 @@ describe("SourceDocumentCard", () => {
             text: null,
             imageUrls: ["data:image/png;base64,fake-image-data"],
         };
-        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} />);
+        // Use anomaly status to show raw input
+        renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
         // Expand content
-        const expandButton = screen.getByTitle("viewContent");
-        fireEvent.click(expandButton);
+        const header = screen.getByText(/1月1日/);
+        fireEvent.click(header);
 
         // Find the thumbnail image
         const imgs = screen.getAllByRole("img");
