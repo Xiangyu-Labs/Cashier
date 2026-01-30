@@ -22,11 +22,12 @@ import { ServiceCredentialSection } from "./components/ServiceCredentialSection"
 import { ProcessingSystemSection } from "./components/ProcessingSystemSection";
 import { EntryCategory, Ledger } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
-
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Monitor, Sun, Moon } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { usePathname, useRouter } from "@/i18n/routing";
+import { useTheme } from "next-themes";
+import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 
 export default function LedgerSettingsPage() {
     const params = useParams();
@@ -36,6 +37,7 @@ export default function LedgerSettingsPage() {
     const t = useTranslations('Settings');
     const ledgerId = params.id as string;
     const queryClient = useQueryClient();
+    const { theme, setTheme } = useTheme();
 
     // Enable real-time updates
     useLedgerEvents(ledgerId);
@@ -136,26 +138,61 @@ export default function LedgerSettingsPage() {
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
                 <div className="space-y-6">
+                    {/* Theme Setting */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">{t('language')}</h3>
-                            <p className="text-sm text-[var(--muted)]">设置当前账本使用的 UI 语言和 AI 识别语言</p>
+                            <h3 className="text-base font-medium">{t('theme')}</h3>
+                            <p className="text-sm text-[var(--muted)]">设置当前界面的色彩模式</p>
+                        </div>
+                        <div className="flex bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
+                            <button
+                                onClick={() => setTheme("system")}
+                                className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                title={t('themeAuto')}
+                            >
+                                <Monitor className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => setTheme("light")}
+                                className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                title={t('themeLight')}
+                            >
+                                <Sun className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => setTheme("dark")}
+                                className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                title={t('themeDark')}
+                            >
+                                <Moon className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* UI Language Setting */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('uiLanguage')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('uiLanguageDesc')}</p>
                         </div>
                         <select
-                            value={ledger.language || 'zh'}
+                            value={locale}
                             onChange={(e) => {
-                                const newLang = e.target.value;
-                                updateLedgerMutation.mutate({ language: newLang });
-                                if (newLang !== locale) {
-                                    // Redirect to the new locale
-                                    router.push(pathname, { locale: newLang });
+                                const newLocale = e.target.value;
+                                if (newLocale !== locale) {
+                                    router.push(pathname, { locale: newLocale });
                                     router.refresh();
                                 }
                             }}
                             className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                         >
-                            <option value="zh">简体中文</option>
-                            <option value="en">English</option>
+                            {UI_LANGUAGES.map(lang => (
+                                <option key={lang.value} value={lang.value}>
+                                    {lang.value === 'auto' ? t('uiLanguageAuto') : lang.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
@@ -180,6 +217,26 @@ export default function LedgerSettingsPage() {
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('assistant')}</h2>
                 <div className="space-y-6">
+                    {/* AI Language Setting */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
+                        </div>
+                        <select
+                            value={ledger.aiLanguage || 'zh-CN'}
+                            onChange={(e) => {
+                                updateLedgerMutation.mutate({ aiLanguage: e.target.value });
+                            }}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px]"
+                        >
+                            {AI_LANGUAGES.map(lang => (
+                                <option key={lang.value} value={lang.value}>{lang.label}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="h-px bg-[var(--border)]" />
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('autoRecognizeDate')}</h3>

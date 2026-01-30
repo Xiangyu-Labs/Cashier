@@ -42,7 +42,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   ): Promise<ProcessingResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.language, currentDate, context.preferredCurrencies, context.aiCustomPrompt);
+    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.aiLanguage, currentDate, context.preferredCurrencies, context.aiCustomPrompt);
 
     const contentParts: ChatCompletionContentPart[] = [];
 
@@ -68,7 +68,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
     let ledgerEntries = data;
 
     if (context.mergeSimilarItems && ledgerEntries.length > 0) {
-      ledgerEntries = await summarizeLedgerEntries(ledgerEntries, context.language, input.text || undefined);
+      ledgerEntries = await summarizeLedgerEntries(ledgerEntries, context.aiLanguage, input.text || undefined);
     }
 
     return {

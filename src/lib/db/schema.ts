@@ -33,7 +33,7 @@ export const anomalyCodeEnum = pgEnum("anomaly_code", [
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  language: text("language").notNull().default(defaultLedger.settings.language),
+  aiLanguage: text("ai_language").notNull().default(defaultLedger.settings.aiLanguage),
   currencies: jsonb("currencies").$type<string[]>().default(defaultLedger.settings.currencies),
   mainCurrency: text("main_currency").default(defaultLedger.settings.mainCurrency),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "@/components/ledger/LedgerEntriesTab";
@@ -80,7 +79,6 @@ export default function LedgerPage() {
                 <Settings className="h-5 w-5" />
               </Button>
             </I18nLink>
-            <ThemeToggle />
             <Button
               size="sm"
               onClick={() => setIsInputOpen(true)}

@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger";
 
 const createLedgerSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  language: z.string().optional(),
+  aiLanguage: z.string().optional(),
 });
 
 // GET /api/ledgers - 获取所有账本
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .insert(ledgers)
       .values({
         name: validated.name,
-        language: validated.language || defaultLedger.settings.language,
+        aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
         currencies: defaultLedger.settings.currencies,
         autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
         collapsePendingDefault: defaultLedger.settings.collapsePendingDefault,

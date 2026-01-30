@@ -4,7 +4,7 @@ export function createLedgerData(
   overrides: Partial<{
     id: string;
     name: string;
-    language: string;
+    aiLanguage: string;
     createdAt: Date;
     updatedAt: Date;
   }> = {}
@@ -12,7 +12,7 @@ export function createLedgerData(
   return {
     id: uuidv4(),
     name: `Test Ledger ${Date.now()}`,
-    language: "zh-CN",
+    aiLanguage: "zh-CN",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

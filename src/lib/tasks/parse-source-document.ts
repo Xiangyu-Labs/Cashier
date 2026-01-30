@@ -16,7 +16,7 @@ export interface ParseSourceDocumentInput {
     text?: string;
     imageUrls?: string[];
     categories: CategoryInfo[];
-    language?: string;
+    aiLanguage?: string;
     settings: {
         mergeSimilarItems: boolean;
         autoRecognizeDate: boolean;
@@ -95,7 +95,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const processOptions = {
             categories: input.categories,
             mergeSimilarItems: false, // Handle merge manually
-            language: input.language,
+            aiLanguage: input.aiLanguage,
             preferredCurrencies: input.preferredCurrencies,
             aiCustomPrompt: input.settings.aiCustomPrompt
         };
@@ -156,7 +156,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             // Save pre-merge entries for verification
             const preMergeEntries = finalEntries;
 
-            finalEntries = await summarizeLedgerEntries(finalEntries, input.language, input.text);
+            finalEntries = await summarizeLedgerEntries(finalEntries, input.aiLanguage, input.text);
 
             // 5. Merge Verification
             // Note: Summarization might change structure but total amount per currency/date should match

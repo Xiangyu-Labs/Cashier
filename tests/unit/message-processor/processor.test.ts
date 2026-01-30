@@ -214,7 +214,7 @@ describe("OpenAIMessageProcessor", () => {
       const input: SourceDocumentInput = { text: "午餐25元" };
       const contextWithLanguage: ProcessorContext = {
         ...defaultContext,
-        language: "en-US",
+        aiLanguage: "en-US",
       };
 
       mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });

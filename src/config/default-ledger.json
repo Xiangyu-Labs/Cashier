@@ -1,6 +1,6 @@
 {
     "settings": {
-        "language": "zh-CN",
+        "aiLanguage": "zh-CN",
         "currencies": [
             "AUD",
             "BRL",

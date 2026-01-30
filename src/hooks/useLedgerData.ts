@@ -97,7 +97,7 @@ export function useLedgerData(ledgerId: string) {
 
     const processingDocs = queuedSourceDocuments?.filter((m) => m.status === "processing") || [];
     const queuedOnlyDocs = queuedSourceDocuments?.filter((m) => m.status === "queued") || [];
-    const failedDocs = queuedSourceDocuments?.filter((m) => m.status === "error") || [];
+    const failedDocs = queuedSourceDocuments?.filter((m) => m.status === "anomaly") || [];
 
     return {
         ledger,

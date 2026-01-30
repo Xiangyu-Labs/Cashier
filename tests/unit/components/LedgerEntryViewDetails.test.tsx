@@ -145,8 +145,8 @@ describe("LedgerEntryViewDetails", () => {
     });
 
     it("shows 'unknown' option only for pending entries", () => {
-        // Pending status
-        const pendingEntry = { ...mockLedgerEntry, status: "pending" as const };
+        // Pending status (has anomaly)
+        const pendingEntry = { ...mockLedgerEntry, anomalyCodes: ["unknown_currency"] };
         const { rerender, container } = renderWithQuery(
             <LedgerEntryViewDetails
                 {...defaultProps}
@@ -158,8 +158,8 @@ describe("LedgerEntryViewDetails", () => {
         let select = container.querySelector("select") as HTMLSelectElement;
         expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(true);
 
-        // Confirmed status
-        const confirmedEntry = { ...mockLedgerEntry, status: "confirmed" as const };
+        // Confirmed status (no anomaly)
+        const confirmedEntry = { ...mockLedgerEntry, anomalyCodes: [] };
         rerender(
             <LedgerEntryViewDetails
                 {...defaultProps}

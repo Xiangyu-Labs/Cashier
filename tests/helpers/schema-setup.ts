@@ -42,7 +42,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       CREATE TABLE ledgers (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
-        language TEXT NOT NULL DEFAULT 'zh-CN',
+        ai_language TEXT NOT NULL DEFAULT 'zh-CN',
         currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
         main_currency TEXT DEFAULT 'CNY',
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),

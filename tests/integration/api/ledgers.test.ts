@@ -46,7 +46,7 @@ describe("POST /api/ledgers", () => {
     expect(response.status).toBe(201);
     expect(data.name).toBe("New Ledger");
     expect(data.id).toBeDefined();
-    expect(data.language).toBe("zh-CN");
+    expect(data.aiLanguage).toBe("zh-CN");
     expect(data.currencies).toEqual(["AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"]);
 
     // Verify default categories are seeded
@@ -91,7 +91,7 @@ describe("PATCH /api/ledgers/[id]", () => {
     const request = new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
       method: "PATCH",
       body: JSON.stringify({
-        language: "en",
+        aiLanguage: "en",
         currencies: ["USD", "EUR"],
         mainCurrency: "USD",
         autoRecognizeDate: true,
@@ -107,7 +107,7 @@ describe("PATCH /api/ledgers/[id]", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    expect(data.language).toBe("en");
+    expect(data.aiLanguage).toBe("en");
     expect(data.currencies).toEqual(["USD", "EUR"]);
     expect(data.mainCurrency).toBe("USD");
     expect(data.autoRecognizeDate).toBe(true);
@@ -116,7 +116,7 @@ describe("PATCH /api/ledgers/[id]", () => {
 
     // Verify db persistence
     const updated = await db.query.ledgers.findFirst({ where: eq(ledgers.id, ledger.id) });
-    expect(updated?.language).toBe("en");
+    expect(updated?.aiLanguage).toBe("en");
     expect(updated?.currencies).toEqual(["USD", "EUR"]);
     expect(updated?.mainCurrency).toBe("USD");
     expect(updated?.autoRecognizeDate).toBe(true);

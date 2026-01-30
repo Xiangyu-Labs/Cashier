@@ -44,7 +44,7 @@ export default function HomePage(): ReactNode {
       try {
         const newLedger = await createLedger({
           name: t("defaultLedgerName"),
-          language: locale
+          aiLanguage: locale
         });
         await queryClient.invalidateQueries({ queryKey: ["ledgers"] });
         router.replace(`/ledger/${newLedger.id}`);

@@ -51,7 +51,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            language: "en-US",
+            aiLanguage: "en-US",
             preferredCurrencies: ["USD"],
             settings: {
                 mergeSimilarItems: false,
@@ -77,7 +77,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             expect.anything(),
             expect.objectContaining({
                 categories: input.categories,
-                language: "en-US",
+                aiLanguage: "en-US",
                 preferredCurrencies: ["USD"],
             })
         );

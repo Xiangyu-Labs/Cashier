@@ -30,12 +30,9 @@ describe("SSE Event Flow Integration", () => {
 
         await sourceDocumentRepo.create({
             ledgerId,
-            fileName: "test.pdf",
+            text: "test bill",
             status: "processing",
-            fileSize: 1024,
-            s3Key: "test/key",
-            contentType: "application/pdf"
-        });
+        }, ledgerId);
 
         const event = await eventPromise;
         expect(event).toMatchObject({

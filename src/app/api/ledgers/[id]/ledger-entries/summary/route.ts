@@ -22,7 +22,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     ];
 
     if (status) {
-      conditions.push(eq(ledgerEntries.status, status as "confirmed" | "pending"));
+      if (status === "pending") {
+        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) > 0`);
+      } else if (status === "confirmed") {
+        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) = 0`);
+      }
     }
 
     // Use entryDate if available, otherwise fallback to createdAt

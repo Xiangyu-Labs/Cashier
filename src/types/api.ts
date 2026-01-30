@@ -3,7 +3,7 @@
 export interface Ledger {
   id: string;
   name: string;
-  language: string;
+  aiLanguage: string;
   currencies: string[];
   mainCurrency: string;
   createdAt: string;
@@ -16,7 +16,7 @@ export interface Ledger {
 
 export interface Settings {
   id: string;
-  language: string;
+  aiLanguage: string;
   currencies: string[];
   mainCurrency?: string;
   autoRecognizeDate?: boolean;
