@@ -207,8 +207,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             case 'first_batch_mismatch':
             case 'merge_mismatch':
                 status = "anomaly";
-                docAnomalyCodes.push("flow_anomaly");
-                globalEntryAnomalyCodes.push("flow_anomaly"); // Mark all entries as anomalous so they are not "confirmed"
+                docAnomalyCodes.push("evidence_anomaly");
+                globalEntryAnomalyCodes.push("evidence_anomaly"); // Mark all entries as anomalous so they are not "confirmed"
                 break;
             case 'unknown_currency':
                 status = "anomaly";
@@ -282,25 +282,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        // Determine anomaly code
-        let anomalyCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
-        let isUnrecoverable = false;
-
-        const message = error.message.toLowerCase();
-        if (message.includes("schema validation") || message.includes("zod")) {
-            anomalyCode = "invalid_content";
-            isUnrecoverable = true;
-        } else if (message.includes("ai response") || message.includes("json") || message.includes("parse")) {
-            anomalyCode = "parse_failed";
-        }
+        logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
         // Update source document status to anomaly via Repo
-        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
-
-        if (isUnrecoverable) {
-            const { UnrecoverableError } = await import('bullmq');
-            throw new UnrecoverableError(error.message);
-        }
+        // Always mark as internal_error for unhandled exceptions in the task flow
+        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, ["internal_error"], context.ledgerId);
     },
 };
 

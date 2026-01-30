@@ -35,7 +35,7 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
 
         const job = await queue.add(type, jobData, {
             // Job options
-            attempts: 3,
+            attempts: 1,
             removeOnComplete: 100,
             removeOnFail: 500,
         });
