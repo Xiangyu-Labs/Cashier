@@ -3,7 +3,6 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { getOpenAIClient } from "../ai/openai";
 import { buildLedgerEntryPrompt } from "../ai/prompts";
-import { summarizeLedgerEntries } from "./utils";
 import {
   SourceDocumentInput,
   SourceDocumentProcessor,
@@ -42,7 +41,14 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
   ): Promise<ProcessingResult> {
     const client = getOpenAIClient();
     const currentDate = new Date().toISOString().split("T")[0];
-    const systemPrompt = buildLedgerEntryPrompt(context.categories, context.aiLanguage, currentDate, context.preferredCurrencies, context.aiCustomPrompt);
+    const systemPrompt = buildLedgerEntryPrompt(
+      context.categories,
+      context.aiLanguage,
+      currentDate,
+      context.preferredCurrencies,
+      context.aiCustomPrompt,
+      context.mergeSimilarItems
+    );
 
     const contentParts: ChatCompletionContentPart[] = [];
 
@@ -65,11 +71,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
     const { content: rawResponse } = await client.generateContent(systemPrompt, messages);
     const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse, context.categories.map(c => c.name));
 
-    let ledgerEntries = data;
-
-    if (context.mergeSimilarItems && ledgerEntries.length > 0) {
-      ledgerEntries = await summarizeLedgerEntries(ledgerEntries, context.aiLanguage, input.text || undefined);
-    }
+    const ledgerEntries = data;
 
     return {
       ledgerEntries,

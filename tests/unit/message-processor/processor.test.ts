@@ -227,6 +227,36 @@ describe("OpenAIMessageProcessor", () => {
       expect(systemPrompt).toContain("- **Target Lang**: en-US");
     });
 
+    it("should pass mergeSimilarItems from context to buildLedgerEntryPrompt", async () => {
+      const input: SourceDocumentInput = { text: "taxi data" };
+      const contextWithMerge: ProcessorContext = {
+        ...defaultContext,
+        mergeSimilarItems: true,
+      };
+
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
+
+      await processor.process(input, contextWithMerge);
+
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const [systemPrompt] = mockGenerateContent.mock.calls[0];
+
+      expect(systemPrompt).toContain("Merge similar items");
+    });
+
+    it("should pass mergeSimilarItems=false (default) to buildLedgerEntryPrompt", async () => {
+      const input: SourceDocumentInput = { text: "taxi data" };
+
+      mockGenerateContent.mockResolvedValue({ content: MOCK_RESPONSES.singleEntry });
+
+      await processor.process(input, defaultContext);
+
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const [systemPrompt] = mockGenerateContent.mock.calls[0];
+
+      expect(systemPrompt).toContain("Split individual items");
+    });
+
     it("should handle image input", async () => {
       const input: SourceDocumentInput = {
         images: [
