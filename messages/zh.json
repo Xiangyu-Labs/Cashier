@@ -178,6 +178,8 @@
         "autoRecognizeDateDesc": "如果开启，AI 将尝试从凭证中识别日期。如果关闭或未识别到，则使用上传时间。",
         "collapsePending": "默认折叠待处理事项",
         "collapsePendingDesc": "如果开启，待处理事项列表默认收起，只显示标题和数量。",
+        "collapseBills": "默认折叠账单",
+        "collapseBillsDesc": "如果开启，已入账的账单默认收起明细项目。",
         "mergeSimilar": "合并同类项",
         "mergeSimilarDesc": "开启后，同一天同一类别的多条消费将合并为一条摘要记录。",
         "dataConfig": "数据配置",

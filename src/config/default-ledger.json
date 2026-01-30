@@ -17,6 +17,7 @@
         "autoRecognizeDate": false,
         "collapsePendingDefault": false,
         "mergeSimilarItems": false,
+        "collapseBillsDefault": false,
         "aiCustomPrompt": ""
     },
     "categories": [

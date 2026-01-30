@@ -178,6 +178,8 @@
         "autoRecognizeDateDesc": "If enabled, AI will try to identify the date from the document. If disabled or not identified, the upload time will be used.",
         "collapsePending": "Collapse Pending Items by Default",
         "collapsePendingDesc": "If enabled, the pending items list is collapsed by default, showing only the title and quantity.",
+        "collapseBills": "Collapse Bills by Default",
+        "collapseBillsDesc": "If enabled, confirmed bills will have their detail items collapsed by default.",
         "mergeSimilar": "Merge Similar Entries",
         "mergeSimilarDesc": "When enabled, multiple entries of the same category on the same day will be merged into a single summary record.",
         "dataConfig": "Data Configuration",

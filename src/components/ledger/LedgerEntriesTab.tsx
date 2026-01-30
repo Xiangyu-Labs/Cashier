@@ -373,6 +373,7 @@ export function LedgerEntriesTab({
                                                 status="completed"
                                                 isConfirmed={true}
                                                 mainCurrency={ledger?.mainCurrency}
+                                                defaultExpanded={!ledger?.collapseBillsDefault}
                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                 onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
                                                 onViewDetails={() => {

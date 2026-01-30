@@ -210,6 +210,21 @@ export default function LedgerSettingsPage() {
                             }}
                         />
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('collapseBills')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
+                        </div>
+                        <Switch
+                            checked={ledger.collapseBillsDefault || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ collapseBillsDefault: checked });
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 
