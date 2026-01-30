@@ -21,7 +21,7 @@ class TaskRunRepository extends BaseRepository<TaskRun, typeof taskRuns> {
     async complete(id: string, output: unknown, ledgerId?: string) {
         return this.update(id, {
             status: 'completed',
-            output: output as any, // jsonb casting
+            output: output as unknown, // safe casting for jsonb
             completedAt: new Date()
         }, ledgerId);
     }

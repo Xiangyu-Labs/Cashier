@@ -45,11 +45,6 @@ describe("Flow System Integration", () => {
         // Ensure workers are ready (they start on import, but we can wait for ready)
         await mainWorker.waitUntilReady();
         await apiWorker.waitUntilReady();
-
-        // Setup Ledger
-        const ledgerData = createLedgerData();
-        const [ledger] = await db.insert(ledgers).values(ledgerData).returning();
-        ledgerId = ledger.id;
     });
 
     afterAll(async () => {
@@ -60,8 +55,13 @@ describe("Flow System Integration", () => {
     });
 
     // Mock fetch for API calls if needed by tasks
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.stubGlobal('fetch', vi.fn());
+
+        // Setup Ledger here because global setup truncates before each test
+        const ledgerData = createLedgerData();
+        const [ledger] = await db.insert(ledgers).values(ledgerData).returning();
+        ledgerId = ledger.id;
     });
 
     it("should execute a basic task successfully", async () => {

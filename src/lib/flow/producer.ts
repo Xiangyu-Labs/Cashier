@@ -1,9 +1,5 @@
-import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
 import { mainQueue, apiQueue } from "./queues";
-import { } from "./types";
 import { logger } from "@/lib/logger";
-import { eq } from "drizzle-orm";
 import { taskRunRepo } from "@/lib/repositories";
 
 interface SubmitTaskOptions {

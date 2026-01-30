@@ -150,7 +150,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    logger.error({ error }, "Failed to queue source document");
+    logger.error(error, "Failed to queue source document");
     return NextResponse.json(
       { error: "Failed to queue source document" },
       { status: 500 }

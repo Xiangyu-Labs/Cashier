@@ -1,5 +1,5 @@
 import { BaseRepository } from "./base-repository";
-import { sourceDocuments, errorCodeEnum } from "@/lib/db/schema";
+import { sourceDocuments } from "@/lib/db/schema";
 import { InferSelectModel } from "drizzle-orm";
 
 export type SourceDocument = InferSelectModel<typeof sourceDocuments>;
@@ -31,7 +31,7 @@ class SourceDocumentRepository extends BaseRepository<SourceDocument, typeof sou
                 ledgerId,
                 entity: this.entityType,
                 action: 'updated',
-                ids: results.map(r => r.id)
+                ids: (results as SourceDocument[]).map(r => r.id)
             });
         }
         return results;

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { registerFlowTask, FlowTaskHandler, FlowDefinition, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { mainWorker, apiWorker } from "@/lib/flow/workers";
@@ -74,8 +74,10 @@ describe("Recursive Flow Integration", () => {
         // Ensure workers are ready
         await mainWorker.waitUntilReady();
         await apiWorker.waitUntilReady();
+    });
 
-        // Setup Ledger
+    beforeEach(async () => {
+        // Setup Ledger here because global setup truncates before each test
         const ledgerData = createLedgerData();
         const [ledger] = await db.insert(ledgers).values(ledgerData).returning();
         ledgerId = ledger.id;

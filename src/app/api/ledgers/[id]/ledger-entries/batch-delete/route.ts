@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
-import { eq, inArray, and } from "drizzle-orm";
 import { z } from "zod";
 
 const batchDeleteSchema = z.object({

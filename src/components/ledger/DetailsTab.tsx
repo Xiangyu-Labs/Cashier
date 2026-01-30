@@ -21,7 +21,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const tLedger = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
-    const queryClient = useQueryClient();
+    useQueryClient();
     const { toast } = useToast();
 
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
