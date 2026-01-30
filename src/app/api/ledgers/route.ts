@@ -40,7 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
         currencies: defaultLedger.settings.currencies,
         autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
-        collapsePendingDefault: defaultLedger.settings.collapsePendingDefault,
+        collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
         mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,
       })
       .returning();

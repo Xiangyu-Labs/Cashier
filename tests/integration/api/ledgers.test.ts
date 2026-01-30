@@ -47,7 +47,7 @@ describe("POST /api/ledgers", () => {
     expect(data.name).toBe("New Ledger");
     expect(data.id).toBeDefined();
     expect(data.aiLanguage).toBe("zh-CN");
-    expect(data.currencies).toEqual(["AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"]);
+    expect(data.currencies).toEqual(["USD", "AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"]);
 
     // Verify default categories are seeded
     const db = getTestDb();
@@ -95,7 +95,7 @@ describe("PATCH /api/ledgers/[id]", () => {
         currencies: ["USD", "EUR"],
         mainCurrency: "USD",
         autoRecognizeDate: true,
-        collapsePendingDefault: true,
+        collapseProcessingDefault: true,
         mergeSimilarItems: true
       }),
     });
@@ -111,7 +111,7 @@ describe("PATCH /api/ledgers/[id]", () => {
     expect(data.currencies).toEqual(["USD", "EUR"]);
     expect(data.mainCurrency).toBe("USD");
     expect(data.autoRecognizeDate).toBe(true);
-    expect(data.collapsePendingDefault).toBe(true);
+    expect(data.collapseProcessingDefault).toBe(true);
     expect(data.mergeSimilarItems).toBe(true);
 
     // Verify db persistence
@@ -120,7 +120,7 @@ describe("PATCH /api/ledgers/[id]", () => {
     expect(updated?.currencies).toEqual(["USD", "EUR"]);
     expect(updated?.mainCurrency).toBe("USD");
     expect(updated?.autoRecognizeDate).toBe(true);
-    expect(updated?.collapsePendingDefault).toBe(true);
+    expect(updated?.collapseProcessingDefault).toBe(true);
     expect(updated?.mergeSimilarItems).toBe(true);
   });
 });

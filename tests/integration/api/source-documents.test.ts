@@ -104,7 +104,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(savedEntry?.description).toContain("10元");
   });
 
-  it("should process text message and create pending ledger entry", async () => {
+  it("should process text message and create ledger entry", async () => {
     const request = new NextRequest(
       `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
       {

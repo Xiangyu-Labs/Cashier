@@ -76,9 +76,6 @@
     },
     "LedgerEntriesTab": {
         "processing": "处理中",
-        "pending": "待确认流水",
-        "confirmAll": "全部确认",
-        "confirming": "确认中...",
         "abnormal": "异常凭证",
         "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
         "batchDeleteSuccessCount": "已成功删除 {count} 项流水",
@@ -102,7 +99,6 @@
     "SourceDocumentCard": {
         "collapseContent": "折叠内容",
         "viewContent": "查看内容",
-        "confirmDoc": "确认入账",
         "records": "{count} 笔记录",
         "requireEdit": "(待修正)",
         "viewDetails": "查看详情",
@@ -179,8 +175,8 @@
         "aiLanguageDesc": "设置此账本内 AI 识别和摘要所使用的语言偏好",
         "autoRecognizeDate": "自动识别日期",
         "autoRecognizeDateDesc": "如果开启，AI 将尝试从凭证中识别日期。如果关闭或未识别到，则使用上传时间。",
-        "collapsePending": "默认折叠待处理事项",
-        "collapsePendingDesc": "如果开启，待处理事项列表默认收起，只显示标题和数量。",
+        "collapseProcessing": "默认折叠处理中事项",
+        "collapseProcessingDesc": "如果开启，处理中和异常事项列表默认收起。",
         "collapseBills": "默认折叠账单",
         "collapseBillsDesc": "如果开启，已入账的账单默认收起明细项目。",
         "mergeSimilar": "合并同类项",

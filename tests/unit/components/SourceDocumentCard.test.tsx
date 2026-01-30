@@ -176,12 +176,6 @@ describe("SourceDocumentCard", () => {
         expect(item).toBeNull();
     });
 
-    it("passes correct variant for pending status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="pending" defaultExpanded={true} />);
-        const item = screen.getByTestId("bill-entry-item");
-        expect(item.getAttribute("data-variant")).toBe("warning");
-    });
-
     it("passes correct variant for processing status", () => {
         renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="processing" defaultExpanded={true} />);
         // Wait, for processing, isItemsExpanded=true should still NOT show entries according to new logic? 

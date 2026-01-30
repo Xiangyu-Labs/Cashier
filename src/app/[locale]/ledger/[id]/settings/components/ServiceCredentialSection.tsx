@@ -44,9 +44,48 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
         }
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success(t("copied"));
+    const copyToClipboard = async (text: string) => {
+        if (!text) return;
+
+        try {
+            // Priority 1: Modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                toast.success(t("copied"));
+                return;
+            }
+
+            // Priority 2: Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+
+            // Prevent scrolling to bottom
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    toast.success(t("copied"));
+                } else {
+                    throw new Error('Fallback copy failed');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                toast.error(tCommon("error"));
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            toast.error(tCommon("error"));
+        }
     };
 
     return (

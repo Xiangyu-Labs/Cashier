@@ -71,28 +71,22 @@ export function useLedgerData(ledgerId: string) {
         queryFn: () => fetchEntryCategories(ledgerId),
     });
 
-    const { data: pendingEntries } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, "pending"),
-        queryFn: async () => {
-            const res = await fetchLedgerEntries(ledgerId, { status: "pending" });
-            return res.items;
-        },
-    });
+
 
     const { data: confirmedEntries } = useQuery({
         queryKey: queryKeys.ledgerEntries(ledgerId, "confirmed"),
         queryFn: async () => {
-            const res = await fetchLedgerEntries(ledgerId, { status: "confirmed", limit: 100 });
+            const res = await fetchLedgerEntries(ledgerId, { limit: 100 });
             return res.items;
         },
     });
 
     const { data: summary } = useQuery({
         queryKey: queryKeys.summary(ledgerId),
-        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed"),
+        queryFn: () => fetchLedgerEntrySummary(ledgerId),
     });
 
-    const pendingGroups = useMemo(() => groupLedgerEntries(pendingEntries), [pendingEntries]);
+
     const confirmedGroups = useMemo(() => groupLedgerEntries(confirmedEntries), [confirmedEntries]);
 
     const processingDocs = queuedSourceDocuments?.filter((m) => m.status === "processing") || [];
@@ -106,7 +100,6 @@ export function useLedgerData(ledgerId: string) {
         confirmedEntries,
         summary,
         queuedSourceDocuments: queuedSourceDocuments || [],
-        pendingGroups,
         confirmedGroups,
         stats: {
             processingCount: processingDocs.length,

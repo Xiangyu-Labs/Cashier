@@ -11,7 +11,6 @@ const updateLedgerEntrySchema = z.object({
   itemName: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   entryDate: z.string().nullable().optional(),
-  status: z.enum(["pending", "confirmed"]).optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string; ledgerEntryId: string }> };
@@ -34,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ? new Date(validated.entryDate)
         : null;
     }
-    if (validated.status !== undefined) updateData.status = validated.status;
+
 
     const [updated] = await db
       .update(ledgerEntries)

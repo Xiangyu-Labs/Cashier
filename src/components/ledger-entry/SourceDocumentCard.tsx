@@ -1,7 +1,7 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "./BillEntryItem";
 import { useState, useMemo } from "react";
-import { Trash2, Check, ChevronDown, RefreshCw, MoreVertical, FileText, Share2 } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -49,8 +49,6 @@ interface SourceDocumentCardProps {
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
   mainCurrency?: string;
-  isConfirmed?: boolean;
-  onConfirm?: (ids: string[]) => Promise<void>;
   onUpdateLedgerEntry?: (
     ledgerEntryId: string,
     data: {
@@ -66,7 +64,7 @@ interface SourceDocumentCardProps {
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "completed" | "anomaly" | "pending"; // 'pending' legacy/fallback?
+  status: "queued" | "processing" | "completed" | "anomaly";
   anomalyCodes?: string[] | null;
   className?: string;
 }
@@ -76,8 +74,6 @@ export function SourceDocumentCard({
   ledgerEntries,
   categories: _,
   mainCurrency = "CNY",
-  isConfirmed: _isConfirmed = false,
-  onConfirm,
   onUpdateLedgerEntry: __,
   onDeleteLedgerEntry: ___,
   onDelete,
@@ -93,7 +89,6 @@ export function SourceDocumentCard({
   const tError = useTranslations("AnomalyCode");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
-  const [isConfirming, setIsConfirming] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -126,15 +121,7 @@ export function SourceDocumentCard({
     };
   }, [sourceDocument]);
 
-  async function handleConfirm() {
-    if (!onConfirm) return;
-    setIsConfirming(true);
-    try {
-      await onConfirm(ledgerEntries.map((e) => e.id));
-    } finally {
-      setIsConfirming(false);
-    }
-  }
+
 
   async function handleRetry() {
     if (!onRetry) return;
@@ -236,26 +223,7 @@ export function SourceDocumentCard({
               </DropdownMenu>
             )}
 
-            {/* Confirm Button for Batch Confirmation - Keep here for visibility */}
-            {(status === "completed" || status === "pending") && onConfirm && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleConfirm}
-                disabled={isConfirming}
-                className={cn(
-                  "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
-                )}
-                title={tCommon("confirm")}
-              >
-                {isConfirming ? (
-                  <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4 mr-1" />
-                )}
-                {tCommon("confirm")}
-              </Button>
-            )}
+
           </div>
         </div>
       </div>
@@ -311,13 +279,7 @@ export function SourceDocumentCard({
                     ledgerEntry={entry}
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
-                    variant={
-                      status === "pending"
-                        ? "warning"
-                        : status === "queued"
-                          ? "info"
-                          : "default"
-                    }
+                    variant={status === "queued" ? "info" : "default"}
                   />
                 ))}
               </div>

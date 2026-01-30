@@ -13,7 +13,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const status = searchParams.get("status");
     const mainCurrency = searchParams.get("mainCurrency");
 
     // 构建过滤条件
@@ -21,13 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       eq(ledgerEntries.ledgerId, ledgerId),
     ];
 
-    if (status) {
-      if (status === "pending") {
-        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) > 0`);
-      } else if (status === "confirmed") {
-        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) = 0`);
-      }
-    }
+
 
     // Use entryDate if available, otherwise fallback to createdAt
     const dateCol = sql<string>`COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}::date)`;

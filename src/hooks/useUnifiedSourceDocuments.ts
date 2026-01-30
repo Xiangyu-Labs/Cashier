@@ -6,7 +6,7 @@ import { fetchSourceDocuments, fetchLedgerEntries } from '@/lib/api';
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';
 
-export type SourceDocumentStatus = 'processing' | 'pending' | 'anomaly' | 'completed';
+export type SourceDocumentStatus = 'processing' | 'anomaly' | 'completed';
 
 export interface SourceDocumentGroup {
     sourceDocument: SourceDocument;
@@ -57,30 +57,7 @@ export function useUnifiedSourceDocuments(
         },
     });
 
-    // Query 2: Fetch pending ledger entries (for documents that have unconfirmed entries)
-    // Note: status 'pending' usage in fetchLedgerEntries is technically removed from schema,
-    // but the API might still support filtering by checking anomalies logic or legacy field.
-    // However, we removed the status field from schema.
-    // We should rely on Active Documents to bring their entries (via join or similar).
-    // Or, we need an API that returns entries with anomalies. 
-    // BUT wait, `fetchLedgerEntries` uses `status` param which maps to `anomalyCodes` length > 0 if we updated it?
-    // I haven't updated `fetchLedgerEntries` API route to map status='pending' to anomalies.
-    // I missed `src/app/api/ledgers/[id]/ledger-entries/route.ts`? Or `src/app/api/v1...`?
-    // FetchLedgerEntries on client calls `/api/ledgers/${ledgerId}/ledger-entries` ?
-    // I need to check `fetchLedgerEntries` implementation in `src/lib/api.ts` and the corresponding route.
 
-    // Assuming for now `fetchLedgerEntries` filters correctly or I need to fix it.
-    // Actually, the previous implementation relied on `status` column. 
-    // I need to check `src/app/api/ledgers/[id]/ledger-entries/route.ts`.
-
-    const { data: pendingEntries = [], isLoading: isPendingLoading } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'pending'),
-        queryFn: async () => {
-            // We request "pending" which now means "has anomalies"
-            const res = await fetchLedgerEntries(ledgerId, { status: 'pending' });
-            return res.items;
-        },
-    });
 
     // Query 3: Infinite scroll for completed documents (paginated)
     const {
@@ -111,7 +88,7 @@ export function useUnifiedSourceDocuments(
     const { data: confirmedEntries = [] } = useQuery({
         queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed'),
         queryFn: async () => {
-            const res = await fetchLedgerEntries(ledgerId, { status: 'confirmed', limit: 500 });
+            const res = await fetchLedgerEntries(ledgerId, { limit: 500 });
             return res.items;
         },
     });
@@ -123,16 +100,6 @@ export function useUnifiedSourceDocuments(
             anomaly: [],
             completed: [],
         };
-
-        // Build a map of sourceDocumentId -> pending entries
-        const pendingEntriesByDoc = new Map<string, LedgerEntry[]>();
-        for (const entry of pendingEntries) {
-            if (entry.sourceDocumentId) {
-                const existing = pendingEntriesByDoc.get(entry.sourceDocumentId) || [];
-                existing.push(entry);
-                pendingEntriesByDoc.set(entry.sourceDocumentId, existing);
-            }
-        }
 
         // Build a map of sourceDocumentId -> confirmed entries
         const confirmedEntriesByDoc = new Map<string, LedgerEntry[]>();
@@ -150,13 +117,7 @@ export function useUnifiedSourceDocuments(
         // 1. Process active documents (queued/processing/anomaly)
         for (const doc of activeDocuments) {
             categorizedIds.add(doc.id);
-            // An active document might have "pending" (anomalous) entries
-            // AND "confirmed" (normal) entries?
-            // Usually we show all entries for the document.
-            // So we should merge entries.
-            const pEntries = pendingEntriesByDoc.get(doc.id) || [];
-            const cEntries = confirmedEntriesByDoc.get(doc.id) || [];
-            const entries = [...pEntries, ...cEntries];
+            const entries = confirmedEntriesByDoc.get(doc.id) || [];
 
             if (doc.status === 'anomaly') {
                 result.anomaly.push({ sourceDocument: doc, ledgerEntries: entries });
@@ -166,22 +127,7 @@ export function useUnifiedSourceDocuments(
             }
         }
 
-        // 2. Find documents with pending entries (that are not already in active)
-        // If they are not in active, they might be 'completed' but somehow got a 'pending' entry?
-        // Should treat as anomaly if found.
-        for (const [docId, entries] of pendingEntriesByDoc) {
-            if (!categorizedIds.has(docId) && entries.length > 0) {
-                const sourceDoc = entries[0].sourceDocument;
-                if (sourceDoc && sourceDoc.status !== 'completed') {
-                    // logic preserved from before, largely skipped if active catches everything
-                } else if (sourceDoc && sourceDoc.status === 'completed') {
-                    // Document is marked completed but has anomalous entry?
-                    // This is an anomaly case!
-                    result.anomaly.push({ sourceDocument: sourceDoc, ledgerEntries: entries });
-                    categorizedIds.add(docId);
-                }
-            }
-        }
+
 
         // 3. All documents from infinite scroll that are not categorized go to completed
         const allCompletedDocs = completedData?.pages.flatMap((page) => page.items) || [];
@@ -204,7 +150,7 @@ export function useUnifiedSourceDocuments(
         result.completed.sort(sortByDate);
 
         return result;
-    }, [activeDocuments, pendingEntries, confirmedEntries, completedData]); // Removed isDateInRange from here as it is not used in grouped
+    }, [activeDocuments, confirmedEntries, completedData]); // Removed isDateInRange from here as it is not used in grouped
 
     // Helper to check if date is in range (for filtering)
     const isDateInRange = useCallback((dateStr: string) => {
@@ -227,17 +173,13 @@ export function useUnifiedSourceDocuments(
 
     return {
         groups: filteredGroups,
-        isLoading: isActiveLoading || isPendingLoading || isCompletedLoading,
-
-        // Infinite scroll helpers
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-
-        // Stats for quick access
         stats: {
             processingCount: filteredGroups.processing.length,
             anomalyCount: filteredGroups.anomaly.length,
         },
+        isLoading: isActiveLoading || isCompletedLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
     };
 }

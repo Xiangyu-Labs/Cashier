@@ -29,7 +29,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
 
       DROP TYPE IF EXISTS source_document_status CASCADE;
       DROP TYPE IF EXISTS error_code CASCADE;
-      DROP TYPE IF EXISTS ledger_entry_status CASCADE;
     `);
 
     // Create enums
@@ -48,7 +47,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         auto_recognize_date BOOLEAN DEFAULT FALSE,
-        collapse_pending_default BOOLEAN DEFAULT FALSE,
+        collapse_processing_default BOOLEAN DEFAULT FALSE,
         merge_similar_items BOOLEAN DEFAULT FALSE,
         collapse_bills_default BOOLEAN DEFAULT FALSE,
         ai_custom_prompt TEXT

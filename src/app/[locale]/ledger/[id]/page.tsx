@@ -106,7 +106,7 @@ export default function LedgerPage() {
             <LedgerEntriesTab
               ledgerId={ledgerId}
               categories={categories || []}
-              defaultCollapsed={ledger.collapsePendingDefault}
+              defaultCollapsed={ledger.collapseProcessingDefault}
               ledger={ledger}
             />
           </TabsContent>

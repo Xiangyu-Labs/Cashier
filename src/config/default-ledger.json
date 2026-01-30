@@ -2,6 +2,7 @@
     "settings": {
         "aiLanguage": "zh-CN",
         "currencies": [
+            "USD",
             "AUD",
             "BRL",
             "CAD",
@@ -15,7 +16,7 @@
         ],
         "mainCurrency": "CNY",
         "autoRecognizeDate": false,
-        "collapsePendingDefault": false,
+        "collapseProcessingDefault": false,
         "mergeSimilarItems": false,
         "collapseBillsDefault": false,
         "aiCustomPrompt": ""

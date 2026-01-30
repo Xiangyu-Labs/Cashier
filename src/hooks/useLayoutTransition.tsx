@@ -22,7 +22,7 @@ export function useLayoutTransition() {
             exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
             transition: {
                 duration: 0.2,
-                ease: "easeOut"
+                ease: [0.32, 0.72, 0, 1] as const // Standard easeOut expo curve
             }
         }),
 

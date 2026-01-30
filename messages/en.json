@@ -76,9 +76,6 @@
     },
     "LedgerEntriesTab": {
         "processing": "Processing",
-        "pending": "Pending Stream",
-        "confirmAll": "Confirm All",
-        "confirming": "Confirming...",
         "abnormal": "Abnormal Entries",
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDeleteSuccessCount": "Successfully deleted {count} items",
@@ -102,7 +99,6 @@
     "SourceDocumentCard": {
         "collapseContent": "Collapse Content",
         "viewContent": "View Content",
-        "confirmDoc": "Confirm Entry",
         "records": "{count} {count, plural, one {entry} other {entries}}",
         "requireEdit": "(Correction Required)",
         "viewDetails": "View Details",
@@ -179,8 +175,8 @@
         "aiLanguageDesc": "Set the language preference for AI recognition and summaries in this ledger",
         "autoRecognizeDate": "Auto-recognize Date",
         "autoRecognizeDateDesc": "If enabled, AI will try to identify the date from the document. If disabled or not identified, the upload time will be used.",
-        "collapsePending": "Collapse Pending Items by Default",
-        "collapsePendingDesc": "If enabled, the pending items list is collapsed by default, showing only the title and quantity.",
+        "collapseProcessing": "Collapse Processing Items by Default",
+        "collapseProcessingDesc": "If enabled, processing and abnormal items lists are collapsed by default.",
         "collapseBills": "Collapse Bills by Default",
         "collapseBillsDesc": "If enabled, confirmed bills will have their detail items collapsed by default.",
         "mergeSimilar": "Merge Similar Entries",

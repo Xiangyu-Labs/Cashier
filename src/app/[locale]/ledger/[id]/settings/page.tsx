@@ -1,6 +1,7 @@
 "use client";
 
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -47,6 +48,9 @@ export default function LedgerSettingsPage() {
         queryKey: ["ledger", ledgerId],
         queryFn: () => fetchLedger(ledgerId),
     });
+
+    // Local state for AI Prompt to allow typing, initialized from ledger data
+    const [localAiPrompt, setLocalAiPrompt] = useState(ledger?.aiCustomPrompt || "");
 
     // Categories Query
     const { data: categories, isLoading: isCategoriesLoading } = useQuery({
@@ -200,13 +204,13 @@ export default function LedgerSettingsPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">{t('collapsePending')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('collapsePendingDesc')}</p>
+                            <h3 className="text-base font-medium">{t('collapseProcessing')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('collapseProcessingDesc')}</p>
                         </div>
                         <Switch
-                            checked={ledger.collapsePendingDefault || false}
+                            checked={ledger.collapseProcessingDefault || false}
                             onCheckedChange={(checked: boolean) => {
-                                updateLedgerMutation.mutate({ collapsePendingDefault: checked });
+                                updateLedgerMutation.mutate({ collapseProcessingDefault: checked });
                             }}
                         />
                     </div>
@@ -288,13 +292,14 @@ export default function LedgerSettingsPage() {
                             <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
                         </div>
                         <textarea
-                            value={ledger.aiCustomPrompt || ""}
-                            onChange={(_e) => {
-                                // Handled onBlur for performance
+                            key={ledger.aiCustomPrompt || "default"}
+                            defaultValue={ledger.aiCustomPrompt || ""}
+                            onChange={(e) => {
+                                setLocalAiPrompt(e.target.value);
                             }}
-                            onBlur={(e) => {
-                                if (e.target.value !== (ledger.aiCustomPrompt || "")) {
-                                    updateLedgerMutation.mutate({ aiCustomPrompt: e.target.value });
+                            onBlur={(_e) => {
+                                if (localAiPrompt !== (ledger.aiCustomPrompt || "")) {
+                                    updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
                                 }
                             }}
                             placeholder={t('aiPromptPlaceholder')}

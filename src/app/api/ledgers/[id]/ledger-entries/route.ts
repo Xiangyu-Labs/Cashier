@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
-import { eq, and, gte, lte, or, isNull, lt, sql } from "drizzle-orm";
+import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -12,7 +12,6 @@ const querySchema = z.object({
   cursor: z.string().optional(), // entryDate or createdAt timestamp
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  status: z.enum(["pending", "confirmed"]).optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -33,19 +32,9 @@ export async function GET(
       cursor: searchParams.get("cursor") || undefined,
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
-      status: searchParams.get("status") || undefined,
     });
 
     const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
-
-    if (query.status) {
-      if (query.status === "pending") {
-        // Pending/Anomaly entries are no longer stored in ledgerEntries table
-        // They are only tracked via sourceDocuments status='anomaly'
-        conditions.push(sql`1 = 0`); // Always false
-      }
-      // If confirmed, we don't need to filter because all entries in DB are valid/confirmed
-    }
 
     if (query.categoryId) {
       conditions.push(eq(ledgerEntries.categoryId, query.categoryId));

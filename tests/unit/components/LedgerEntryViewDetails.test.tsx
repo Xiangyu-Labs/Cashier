@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "@/components/ledger-entry/LedgerEntryViewDetails";
-import { LedgerEntry, EntryCategory } from "@/types/api";
+import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
@@ -146,7 +146,7 @@ describe("LedgerEntryViewDetails", () => {
 
     it("shows 'unknown' option only for anomaly entries", () => {
         // Pending status (has anomaly)
-        const anomalyDoc = { status: "anomaly" } as any;
+        const anomalyDoc = { status: "anomaly" } as unknown as SourceDocument;
         const pendingEntry = { ...mockLedgerEntry, sourceDocument: anomalyDoc };
 
         const { rerender, container } = renderWithQuery(
@@ -161,7 +161,7 @@ describe("LedgerEntryViewDetails", () => {
         expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(true);
 
         // Confirmed status (no anomaly)
-        const confirmedDoc = { status: "completed" } as any;
+        const confirmedDoc = { status: "completed" } as unknown as SourceDocument;
         const confirmedEntry = { ...mockLedgerEntry, sourceDocument: confirmedDoc };
         rerender(
             <LedgerEntryViewDetails

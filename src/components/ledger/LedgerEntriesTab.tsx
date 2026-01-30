@@ -49,8 +49,8 @@ export function LedgerEntriesTab({
 
     // Local State
 
-    const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed);
-    const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed);
+    const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed || (ledger?.collapseProcessingDefault ?? false));
+    const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed || (ledger?.collapseProcessingDefault ?? false));
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
         const now = new Date();
         return {
@@ -296,7 +296,7 @@ export function LedgerEntriesTab({
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                 <AnimatePresence mode="wait">
                                                     {groups.processing.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
+                                                        <motion.div key={group.sourceDocument.id} layout {...getItemProps()}>
                                                             <SourceDocumentCard
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
@@ -339,7 +339,7 @@ export function LedgerEntriesTab({
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                 <AnimatePresence mode="wait">
                                                     {groups.anomaly.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
+                                                        <motion.div key={group.sourceDocument.id} layout {...getItemProps()}>
                                                             <SourceDocumentCard
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
@@ -373,13 +373,12 @@ export function LedgerEntriesTab({
                             ) : (
                                 <AnimatePresence mode="wait">
                                     {groups.completed.map(group => (
-                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" {...getItemProps(group.sourceDocument.id)}>
+                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout {...getItemProps()}>
                                             <SourceDocumentCard
                                                 sourceDocument={group.sourceDocument}
                                                 ledgerEntries={group.ledgerEntries}
                                                 categories={categories}
                                                 status="completed"
-                                                isConfirmed={true}
                                                 mainCurrency={ledger?.mainCurrency}
                                                 defaultExpanded={!ledger?.collapseBillsDefault}
                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}

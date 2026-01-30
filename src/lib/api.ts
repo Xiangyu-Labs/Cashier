@@ -51,7 +51,7 @@ export function updateLedger(
     currencies?: string[];
     mainCurrency?: string;
     autoRecognizeDate?: boolean;
-    collapsePendingDefault?: boolean;
+    collapseProcessingDefault?: boolean;
     mergeSimilarItems?: boolean;
     collapseBillsDefault?: boolean;
     aiCustomPrompt?: string;
@@ -162,7 +162,6 @@ export interface PaginatedResponse<T> {
 export function fetchLedgerEntries(
   ledgerId: string,
   params?: {
-    status?: "pending" | "confirmed";
     limit?: number;
     offset?: number;
     cursor?: string;
@@ -171,7 +170,6 @@ export function fetchLedgerEntries(
   }
 ): Promise<PaginatedResponse<LedgerEntry>> {
   const searchParams = new URLSearchParams();
-  if (params?.status) searchParams.set("status", params.status);
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
   if (params?.cursor) searchParams.set("cursor", params.cursor);
@@ -195,7 +193,6 @@ export function updateLedgerEntry(
     itemName?: string;
     description?: string | null;
     entryDate?: string | null;
-    status?: "pending" | "confirmed";
   }
 ): Promise<LedgerEntry> {
   return request(
@@ -222,30 +219,15 @@ export function deleteLedgerEntry(
   );
 }
 
-export function confirmLedgerEntries(
-  ledgerId: string,
-  data: { ledgerEntryIds?: string[]; confirmAll?: boolean }
-): Promise<{ success: boolean; updatedCount: number }> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/confirm`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to confirm ledger entries"
-  );
-}
+
 
 export function fetchLedgerEntrySummary(
   ledgerId: string,
-  status?: "pending" | "confirmed",
   startDate?: string,
   endDate?: string,
   mainCurrency?: string
 ): Promise<LedgerEntrySummary> {
   const searchParams = new URLSearchParams();
-  if (status) searchParams.set("status", status);
   if (startDate) searchParams.set("startDate", startDate);
   if (endDate) searchParams.set("endDate", endDate);
   if (mainCurrency) searchParams.set("mainCurrency", mainCurrency);

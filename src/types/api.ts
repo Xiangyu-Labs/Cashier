@@ -9,7 +9,7 @@ export interface Ledger {
   createdAt: string;
   updatedAt: string;
   autoRecognizeDate: boolean;
-  collapsePendingDefault: boolean;
+  collapseProcessingDefault: boolean;
   mergeSimilarItems: boolean;
   collapseBillsDefault: boolean;
   aiCustomPrompt: string;

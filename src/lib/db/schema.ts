@@ -39,7 +39,7 @@ export const ledgers = pgTable("ledgers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   autoRecognizeDate: boolean("auto_recognize_date").default(defaultLedger.settings.autoRecognizeDate),
-  collapsePendingDefault: boolean("collapse_pending_default").default(defaultLedger.settings.collapsePendingDefault),
+  collapseProcessingDefault: boolean("collapse_processing_default").default(defaultLedger.settings.collapseProcessingDefault),
   mergeSimilarItems: boolean("merge_similar_items").default(defaultLedger.settings.mergeSimilarItems),
   collapseBillsDefault: boolean("collapse_bills_default").default(defaultLedger.settings.collapseBillsDefault),
   aiCustomPrompt: text("ai_custom_prompt").default(defaultLedger.settings.aiCustomPrompt),

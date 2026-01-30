@@ -7,5 +7,5 @@ export const SUPPORTED_CURRENCIES = [
 export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
 
 export const DEFAULT_CURRENCIES: string[] = [
-    "AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"
+    "USD", "AUD", "BRL", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "JPY", "SGD"
 ];

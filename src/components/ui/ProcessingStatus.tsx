@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-export type ProcessingStatusType = "queued" | "processing" | "completed" | "error" | "pending";
+export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
 
 interface ProcessingStatusProps {
     status: ProcessingStatusType;
@@ -12,7 +12,6 @@ interface ProcessingStatusProps {
 
 export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
     const t = useTranslations("TaskCenter");
-    const tEntries = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
 
     const config = {
@@ -40,12 +39,6 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
             icon: AlertCircle,
             colorClass: "text-danger",
             bgClass: "bg-danger",
-        },
-        pending: {
-            label: tEntries("pending"),
-            icon: AlertCircle,
-            colorClass: "text-warning",
-            bgClass: "bg-warning",
         },
     };
 

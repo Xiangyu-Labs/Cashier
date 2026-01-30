@@ -261,56 +261,5 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     expect(data.items[0].itemName).toBe("Today Created");
   });
 
-  it("should return empty list for pending status as anomalies are not stored", async () => {
-    const db = getTestDb();
 
-    // Create a source document
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Purchase data",
-        status: "completed"
-      })
-      .returning();
-
-    // Create standard ledger entries (technically confirmed)
-    await db.insert(ledgerEntries).values([
-      {
-        ledgerId: testLedgerId,
-        sourceDocumentId: doc.id,
-        itemName: "Item 1",
-        amount: "50.00",
-        currency: "CNY",
-        categoryId: testCategoryId,
-        description: "Lunch with team",
-      },
-      {
-        ledgerId: testLedgerId,
-        sourceDocumentId: doc.id,
-        itemName: "Item 2",
-        amount: "100.00",
-        currency: "USD",
-        categoryId: null,
-      }
-    ]);
-
-    // Requesting pending should return empty
-    const responsePending = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?status=pending`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const dataPending = await responsePending.json();
-    expect(responsePending.status).toBe(200);
-    expect(dataPending.items).toHaveLength(0);
-
-    // Requesting confirmed should return all
-    const responseConfirmed = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?status=confirmed`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const dataConfirmed = await responseConfirmed.json();
-    expect(responseConfirmed.status).toBe(200);
-    expect(dataConfirmed.items).toHaveLength(2);
-  });
 });
