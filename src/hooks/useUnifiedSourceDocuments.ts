@@ -118,8 +118,8 @@ export function useUnifiedSourceDocuments(
             if (doc.status === 'anomaly') {
                 result.anomaly.push({ sourceDocument: doc, ledgerEntries: entries });
             } else {
-                // queued or processing - skip according to requirement
-                // result.processing.push({ sourceDocument: doc, ledgerEntries: entries });
+                // queued or processing
+                result.processing.push({ sourceDocument: doc, ledgerEntries: entries });
             }
         }
 
