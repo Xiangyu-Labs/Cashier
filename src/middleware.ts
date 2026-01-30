@@ -51,7 +51,7 @@ export default auth((request) => {
         pathname.startsWith("/api/auth") ||
         pathname.includes(".")
     ) {
-        return intlMiddleware(request);
+        return NextResponse.next();
     }
 
     // Skip auth for public routes
