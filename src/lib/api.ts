@@ -45,7 +45,17 @@ export function createLedger(data: { name: string; aiLanguage?: string }): Promi
 
 export function updateLedger(
   id: string,
-  data: { name?: string; aiLanguage?: string; currencies?: string[]; mainCurrency?: string; autoRecognizeDate?: boolean; collapsePendingDefault?: boolean; mergeSimilarItems?: boolean; aiCustomPrompt?: string }
+  data: {
+    name?: string;
+    aiLanguage?: string;
+    currencies?: string[];
+    mainCurrency?: string;
+    autoRecognizeDate?: boolean;
+    collapsePendingDefault?: boolean;
+    mergeSimilarItems?: boolean;
+    collapseBillsDefault?: boolean;
+    aiCustomPrompt?: string;
+  }
 ): Promise<Ledger> {
   return request(
     `${API_BASE}/ledgers/${id}`,

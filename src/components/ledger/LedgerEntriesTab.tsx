@@ -339,7 +339,7 @@ export function LedgerEntriesTab({
                                                                 status="anomaly"
                                                                 anomalyCodes={group.sourceDocument.anomalyCodes}
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                                                                defaultExpanded={true}
+                                                                defaultExpanded={!ledger?.collapseBillsDefault}
                                                                 mainCurrency={ledger?.mainCurrency}
                                                                 onRetry={async () => { await retryMutation.mutateAsync(group.sourceDocument.id); }}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}

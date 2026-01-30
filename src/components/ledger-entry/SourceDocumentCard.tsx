@@ -93,7 +93,7 @@ export function SourceDocumentCard({
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  const showRawInput = status !== "completed";
+  const showRawInput = status !== "completed" && (status === "processing" || isItemsExpanded);
 
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
@@ -174,15 +174,17 @@ export function SourceDocumentCard({
           )}
 
           <div className="flex items-center gap-1.5 ml-2">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setIsItemsExpanded(!isItemsExpanded)}
-              className={cn("h-7 w-7", isItemsExpanded && "bg-surface2")}
-              title={isItemsExpanded ? t("collapseContent") : t("viewContent")}
-            >
-              <ChevronDown className={cn("h-4 w-4 transition-transform", isItemsExpanded && "rotate-180")} />
-            </Button>
+            {status !== "processing" && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+                className={cn("h-7 w-7", isItemsExpanded && "bg-surface2")}
+                title={isItemsExpanded ? t("collapseContent") : t("viewContent")}
+              >
+                <ChevronDown className={cn("h-4 w-4 transition-transform", isItemsExpanded && "rotate-180")} />
+              </Button>
+            )}
 
             {status === "anomaly" && (
               <>
@@ -277,7 +279,7 @@ export function SourceDocumentCard({
       </AnimatePresence>
 
       <AnimatePresence>
-        {isItemsExpanded && (
+        {isItemsExpanded && status !== "processing" && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -295,7 +297,7 @@ export function SourceDocumentCard({
                     ? "error"
                     : status === "pending"
                       ? "warning"
-                      : status === "processing" || status === "queued"
+                      : (status === "processing" || status === "queued")
                         ? "info"
                         : "default"
                 }
