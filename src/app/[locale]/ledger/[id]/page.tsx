@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
 import { useLedgerData } from "@/hooks/useLedgerData";
+import { useLedgerEvents } from "@/lib/events/use-ledger-events";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
-// import { TaskCenter } from "@/components/TaskCenter"; // Removed as requested
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
 
@@ -40,7 +40,6 @@ export default function LedgerPage() {
   } = useLedgerData(ledgerId);
 
   // Enable real-time updates
-  const { useLedgerEvents } = require("@/lib/events/use-ledger-events");
   useLedgerEvents(ledgerId);
 
 

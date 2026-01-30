@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logger } from "@/lib/logger";
 
-import { getCurrentTaskRunId } from "./ai-context";
+import { getCurrentTaskRunId, getCurrentLedgerId } from "./ai-context";
 import { recordTaskRunUsage } from "@/lib/flow/task-run-service";
 
 export class OpenAIClient {
@@ -49,16 +49,16 @@ export class OpenAIClient {
 
                 const content = response.choices[0]?.message?.content || "";
 
-                // Automatic usage recording via AsyncLocalStorage context
                 if (response.usage) {
                     const taskRunId = getCurrentTaskRunId();
+                    const ledgerId = getCurrentLedgerId();
                     if (taskRunId) {
                         // Fire and forget - don't block the response
                         recordTaskRunUsage(taskRunId, {
                             inputTokens: response.usage.prompt_tokens,
                             outputTokens: response.usage.completion_tokens,
                             totalTokens: response.usage.total_tokens
-                        }).catch(err => {
+                        }, ledgerId).catch(err => {
                             logger.error({ err, taskRunId }, "Failed to record token usage");
                         });
                     }

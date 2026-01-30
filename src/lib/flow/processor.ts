@@ -40,7 +40,7 @@ export async function processJob(job: Job): Promise<unknown> {
             if (handler.onChildrenCompleted) {
                 // Wrap in context just in case (though resuming usually doesn't call AI immediately without new execute)
                 // But safer to wrap
-                result = await withAIContext(job.data.__taskRunId || 'unknown', async () => {
+                result = await withAIContext(job.data.__taskRunId || 'unknown', job.data.__ledgerId || '', async () => {
                     return handler.onChildrenCompleted!(results, context);
                 });
             } else {
@@ -54,7 +54,7 @@ export async function processJob(job: Job): Promise<unknown> {
 
             // 2. Execute (Fan-out / Exploration)
             // Wrap in AI Context
-            result = await withAIContext(job.data.__taskRunId || 'unknown', async () => {
+            result = await withAIContext(job.data.__taskRunId || 'unknown', job.data.__ledgerId || '', async () => {
                 return handler.execute(job.data, context);
             });
 
@@ -85,7 +85,7 @@ export async function processJob(job: Job): Promise<unknown> {
         // 4. Final Completion (Root Task)
         if (isRootJob(job) && handler.onComplete) {
             await handler.onComplete(result, job.data, context); // Pass input (job.data)
-            await completeTaskRun(job.data.__taskRunId, result);
+            await completeTaskRun(job.data.__taskRunId, result, job.data.__ledgerId);
         }
 
         return result;
@@ -97,7 +97,7 @@ export async function processJob(job: Job): Promise<unknown> {
                 // to BullMQ instead of the original error.
                 await handler.onError(error as Error, job.data, context);
             }
-            await failTaskRun(job.data.__taskRunId, (error as Error).message);
+            await failTaskRun(job.data.__taskRunId, (error as Error).message, job.data.__ledgerId);
         }
         throw error;
     }
