@@ -11,10 +11,12 @@ import {
 
 import MagicLinkEmail from "@/emails/magic-link";
 import { Resend as ResendClient } from "resend";
+import { authConfig } from "./auth.config";
 
 const resendClient = new ResendClient(process.env.AUTH_RESEND_KEY);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    ...authConfig,
     adapter: DrizzleAdapter(db, {
         usersTable: users,
         accountsTable: accounts,
