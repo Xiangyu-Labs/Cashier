@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchLedgers, createLedger } from "@/lib/api";
 import { useTranslations, useLocale } from "next-intl";
+import { useSession } from "next-auth/react";
 
 export default function HomePage(): ReactNode {
   const router = useRouter();
@@ -14,14 +15,29 @@ export default function HomePage(): ReactNode {
   const creatingRef = useRef(false);
   const [statusText, setStatusText] = useState(t("loading"));
 
+  // Get the current session
+  const { status: sessionStatus } = useSession();
+
   const { data: ledgers, isLoading } = useQuery({
     queryKey: ["ledgers"],
     queryFn: fetchLedgers,
+    // Only fetch when authenticated
+    enabled: sessionStatus === "authenticated",
   });
 
   useEffect(() => {
     const handleInit = async () => {
-      // Wait for loading to finish
+      // Wait for session to be determined
+      if (sessionStatus === "loading") {
+        return;
+      }
+
+      // If not authenticated, middleware will redirect to login
+      if (sessionStatus === "unauthenticated") {
+        return;
+      }
+
+      // Wait for ledgers loading to finish
       if (isLoading || !ledgers) {
         return;
       }
@@ -56,7 +72,7 @@ export default function HomePage(): ReactNode {
     };
 
     handleInit();
-  }, [ledgers, isLoading, router, queryClient, t, locale]);
+  }, [ledgers, isLoading, router, queryClient, t, locale, sessionStatus]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">

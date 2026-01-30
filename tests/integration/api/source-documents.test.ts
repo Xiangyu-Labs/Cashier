@@ -5,6 +5,7 @@ import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentI
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
@@ -27,11 +28,8 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
 
     const db = getTestDb();
 
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    testLedgerId = ledgerId;
 
     const category = await db.query.entryCategories.findFirst({
       where: eq(categories.name, "餐饮"),

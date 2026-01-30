@@ -4,6 +4,8 @@ import { ledgers, entryCategories } from "@/lib/db/schema";
 import defaultLedger from "@/config/default-ledger.json";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { auth } from "@/auth";
+import { eq } from "drizzle-orm";
 
 const createLedgerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -11,9 +13,14 @@ const createLedgerSchema = z.object({
 });
 
 // GET /api/ledgers - 获取所有账本
-export async function GET(): Promise<NextResponse> {
+export const GET = auth(async function GET(req): Promise<NextResponse> {
   try {
+    if (!req.auth?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const allLedgers = await db.query.ledgers.findMany({
+      where: eq(ledgers.userId, req.auth.user.id),
       orderBy: (ledgers, { desc }) => [desc(ledgers.createdAt)],
     });
     return NextResponse.json(allLedgers);
@@ -24,11 +31,15 @@ export async function GET(): Promise<NextResponse> {
       { status: 500 }
     );
   }
-}
+});
 
 // POST /api/ledgers - 创建新账本
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export const POST = auth(async function POST(request): Promise<NextResponse> {
   try {
+    if (!request.auth?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const validated = createLedgerSchema.parse(body);
 
@@ -36,6 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const [newLedger] = await db
       .insert(ledgers)
       .values({
+        userId: request.auth.user.id,
         name: validated.name,
         aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
         currencies: defaultLedger.settings.currencies,
@@ -69,4 +81,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 500 }
     );
   }
-}
+});

@@ -3,18 +3,17 @@ import { GET, POST } from "@/app/api/ledgers/[id]/entry-categories/route";
 import { POST as REORDER } from "@/app/api/ledgers/[id]/entry-categories/reorder/route";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories as categories } from "@/lib/db/schema";
+
 import { EntryCategory as Category } from "@/types/api";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("GET /api/ledgers/[id]/categories", () => {
   let testLedgerId: string;
 
   beforeEach(async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    testLedgerId = ledgerId;
   });
 
   it("should return empty list when no custom ones exist", async () => {
@@ -60,11 +59,8 @@ describe("POST /api/ledgers/[id]/categories", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    testLedgerId = ledgerId;
   });
 
   it("should create a new category", async () => {
@@ -181,11 +177,8 @@ describe("POST /api/ledgers/[id]/categories/reorder", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Reorder Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Reorder Test Ledger");
+    testLedgerId = ledgerId;
 
     // Create 3 categories
     const [c1] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 1", sortOrder: 0 }).returning();

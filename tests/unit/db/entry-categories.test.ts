@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgers } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("Categories Database Operations", () => {
   let testLedgerId: string;
@@ -22,11 +23,8 @@ describe("Categories Database Operations", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    testLedgerId = ledgerId;
   });
 
   describe("CREATE", () => {

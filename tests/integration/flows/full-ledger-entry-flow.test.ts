@@ -27,8 +27,17 @@ describe("Full Ledger Entry Flow", () => {
       body: JSON.stringify({ name: "E2E Test Ledger" }),
     });
 
-    const createResponse = await createLedger(createRequest);
+    const createResponse = await createLedger(createRequest, {
+      params: Promise.resolve({}),
+    });
     const ledger = await createResponse.json();
+
+    if (createResponse.status !== 201) {
+      console.error("Create Ledger Failed:", {
+        status: createResponse.status,
+        body: ledger,
+      });
+    }
 
     expect(createResponse.status).toBe(201);
     expect(ledger.id).toBeDefined();
@@ -120,7 +129,9 @@ describe("Full Ledger Entry Flow", () => {
       method: "POST",
       body: JSON.stringify({ name: "Delete Test Ledger" }),
     });
-    const ledger = await (await createLedger(createRequest)).json();
+    const ledger = await (await createLedger(createRequest, {
+      params: Promise.resolve({}),
+    })).json();
 
     // Enable auto-confirm
 
@@ -176,7 +187,8 @@ describe("Full Ledger Entry Flow", () => {
       new NextRequest("http://localhost/api/ledgers", {
         method: "POST",
         body: JSON.stringify({ name: "Ledger 1" }),
-      })
+      }),
+      { params: Promise.resolve({}) }
     );
 
     // Small delay to ensure different timestamps
@@ -187,11 +199,15 @@ describe("Full Ledger Entry Flow", () => {
       new NextRequest("http://localhost/api/ledgers", {
         method: "POST",
         body: JSON.stringify({ name: "Ledger 2" }),
-      })
+      }),
+      { params: Promise.resolve({}) }
     );
 
     // Get all ledgers
-    const response = await getLedgers();
+    const response = await getLedgers(
+      new NextRequest("http://localhost/api/ledgers"),
+      { params: Promise.resolve({}) }
+    );
     const allLedgers = await response.json();
 
     expect(allLedgers.length).toBeGreaterThanOrEqual(2);
@@ -205,7 +221,9 @@ describe("Full Ledger Entry Flow", () => {
       method: "POST",
       body: JSON.stringify({ name: "Category Association Test" }),
     });
-    const ledger = await (await createLedger(createRequest)).json();
+    const ledger = await (await createLedger(createRequest, {
+      params: Promise.resolve({}),
+    })).json();
 
 
 

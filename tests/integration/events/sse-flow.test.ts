@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
 import { eventBus } from "@/lib/events/event-bus";
 import { sourceDocumentRepo } from "@/lib/repositories";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { LedgerEvent } from "@/lib/events/types";
 import { completeTaskRun, failTaskRun, recordTaskRunUsage } from "@/lib/flow/task-run-service";
 
@@ -11,11 +13,9 @@ describe("SSE Event Flow Integration", () => {
 
     beforeEach(async () => {
         // Create a test ledger
-        const [ledger] = await getTestDb().insert(ledgers).values({
-            name: "Test Ledger",
-            mainCurrency: "USD",
-        }).returning();
-        ledgerId = ledger.id;
+        const { ledgerId: id } = await createTestUserWithLedger(getTestDb(), "test@example.com", "Test Ledger");
+        await getTestDb().update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, id));
+        ledgerId = id;
     });
 
     it("should emit event when creating a source document via repository", async () => {

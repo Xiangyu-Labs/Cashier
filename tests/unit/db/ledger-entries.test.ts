@@ -2,15 +2,14 @@ import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("LedgerEntries Database Operations", () => {
   describe("CREATE", () => {
     it("should create a ledger entry with required fields", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [created] = await db
         .insert(ledgerEntries)
@@ -28,10 +27,8 @@ describe("LedgerEntries Database Operations", () => {
 
     it("should create a ledger entry with category", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test2@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [category] = await db
         .insert(categories)
@@ -57,10 +54,8 @@ describe("LedgerEntries Database Operations", () => {
 
     it("should create a ledger entry with all fields", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test3@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [sourceDocument] = await db
         .insert(sourceDocuments)
@@ -93,10 +88,8 @@ describe("LedgerEntries Database Operations", () => {
   describe("READ", () => {
     it("should find ledger entries by ledger id", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test4@example.com", "Test Ledger");
+      const ledger = { id };
 
       await db.insert(ledgerEntries).values([
         { ledgerId: ledger.id, amount: "10.00", itemName: "Item 1" },
@@ -112,10 +105,8 @@ describe("LedgerEntries Database Operations", () => {
 
     it("should find ledger entry with category relation", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test5@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [category] = await db
         .insert(categories)
@@ -151,10 +142,8 @@ describe("LedgerEntries Database Operations", () => {
     // We can test updating other fields like description or amount
     it("should update ledger entry description", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test6@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [created] = await db
         .insert(ledgerEntries)
@@ -178,10 +167,8 @@ describe("LedgerEntries Database Operations", () => {
   describe("DELETE", () => {
     it("should delete ledger entry", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test7@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [created] = await db
         .insert(ledgerEntries)
@@ -203,10 +190,8 @@ describe("LedgerEntries Database Operations", () => {
 
     it("should cascade delete ledger entries when ledger is deleted", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test8@example.com", "Test Ledger");
+      const ledger = { id };
 
       await db.insert(ledgerEntries).values({
         ledgerId: ledger.id,
@@ -225,10 +210,8 @@ describe("LedgerEntries Database Operations", () => {
 
     it("should set categoryId to null when category is deleted", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test9@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [category] = await db
         .insert(categories)

@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET, PATCH, DELETE } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
 import { ledgers } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 
 describe("GET /api/ledgers/[id]", () => {
@@ -21,18 +22,15 @@ describe("GET /api/ledgers/[id]", () => {
 describe("PATCH /api/ledgers/[id]", () => {
   it("should update ledger name", async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Original Name" })
-      .returning();
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Original Name");
 
-    const request = new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
+    const request = new NextRequest(`http://localhost/api/ledgers/${ledgerId}`, {
       method: "PATCH",
       body: JSON.stringify({ name: "Updated Name" }),
     });
 
     const response = await PATCH(request, {
-      params: Promise.resolve({ id: ledger.id }),
+      params: Promise.resolve({ id: ledgerId }),
     });
     const data = await response.json();
 
@@ -57,14 +55,11 @@ describe("PATCH /api/ledgers/[id]", () => {
 describe("DELETE /api/ledgers/[id]", () => {
   it("should delete ledger", async () => {
     const db = getTestDb();
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "To Delete" })
-      .returning();
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "To Delete");
 
     const response = await DELETE(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}`),
-      { params: Promise.resolve({ id: ledger.id }) }
+      new NextRequest(`http://localhost/api/ledgers/${ledgerId}`),
+      { params: Promise.resolve({ id: ledgerId }) }
     );
 
     expect(response.status).toBe(200);
@@ -73,7 +68,7 @@ describe("DELETE /api/ledgers/[id]", () => {
 
     // Verify deletion
     const found = await db.query.ledgers.findFirst({
-      where: eq(ledgers.id, ledger.id),
+      where: eq(ledgers.id, ledgerId),
     });
     expect(found).toBeUndefined();
   });

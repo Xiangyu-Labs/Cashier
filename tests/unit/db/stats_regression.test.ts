@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { sql, eq, and } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, ledgerEntries } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 /**
  * Regression Test for Statistics Data Issue
@@ -15,10 +16,8 @@ import { ledgers, ledgerEntries } from "@/lib/db/schema";
 describe("Stats Regression Test", () => {
     it("should include ledger entries with null entryDate in date-filtered queries using createdAt fallback", async () => {
         const db = getTestDb();
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({ name: "Stats Regression Ledger" })
-            .returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Stats Regression Ledger");
+        const ledger = { id: ledgerId };
 
         // Create a ledger entry with NO entryDate (it defaults to null)
         // But it has a createdAt (defaults to now)

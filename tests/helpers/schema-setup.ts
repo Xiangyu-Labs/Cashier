@@ -2,12 +2,12 @@ import { sql } from "drizzle-orm";
 import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/lib/db/schema";
 
+export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   await db.transaction(async (tx) => {
     // Advisory lock for the duration of the transaction
     await tx.execute(sql`SELECT pg_advisory_xact_lock(1234567)`);
-
-
 
     // Drop tables if they exist to start fresh
     await tx.execute(sql`
@@ -17,8 +17,13 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS service_credentials CASCADE;
       DROP TABLE IF EXISTS processing_tasks CASCADE;
       DROP TABLE IF EXISTS task_runs CASCADE;
+      DROP TABLE IF EXISTS shares CASCADE;
       DROP TABLE IF EXISTS ledgers CASCADE;
       DROP TABLE IF EXISTS currency_rates CASCADE;
+      DROP TABLE IF EXISTS sessions CASCADE;
+      DROP TABLE IF EXISTS accounts CASCADE;
+      DROP TABLE IF EXISTS verification_tokens CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
       
       DROP TABLE IF EXISTS settings CASCADE;
       DROP TABLE IF EXISTS transactions CASCADE;
@@ -26,7 +31,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS categories CASCADE;
       DROP TABLE IF EXISTS api_keys CASCADE;
       DROP TABLE IF EXISTS gpt_tasks CASCADE;
-      DROP TABLE IF EXISTS shares CASCADE;
 
       DROP TYPE IF EXISTS source_document_status CASCADE;
       DROP TYPE IF EXISTS error_code CASCADE;
@@ -37,10 +41,60 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'completed', 'anomaly');
     `);
 
-    // Create tables
+    // Create auth tables first (users is referenced by ledgers)
+    await tx.execute(sql`
+      CREATE TABLE users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT,
+        email TEXT NOT NULL UNIQUE,
+        email_verified TIMESTAMP,
+        image TEXT,
+        default_ledger_id UUID,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE accounts (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL,
+        refresh_token TEXT,
+        access_token TEXT,
+        expires_at TIMESTAMP,
+        token_type TEXT,
+        scope TEXT,
+        id_token TEXT,
+        session_state TEXT,
+        PRIMARY KEY (provider, provider_account_id)
+      );
+
+      CREATE TABLE sessions (
+        session_token TEXT PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires TIMESTAMP NOT NULL,
+        user_agent TEXT,
+        ip_address TEXT,
+        device_name TEXT,
+        last_active_at TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE verification_tokens (
+        identifier TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires TIMESTAMP NOT NULL,
+        PRIMARY KEY (identifier, token)
+      );
+
+      CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+    `);
+
+    // Create business tables
     await tx.execute(sql`
       CREATE TABLE ledgers (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         ai_language TEXT NOT NULL DEFAULT 'zh-CN',
         currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
@@ -53,6 +107,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         collapse_bills_default BOOLEAN DEFAULT FALSE,
         ai_custom_prompt TEXT
       );
+
+      CREATE INDEX idx_ledgers_user_id ON ledgers(user_id);
 
       CREATE TABLE entry_categories (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -164,4 +220,38 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     WHERE table_schema = 'public'
   `);
 
+}
+
+// Helper to create a test user and return the user ID
+export async function createTestUser(
+  db: PostgresJsDatabase<typeof schema>,
+  email = "test@example.com",
+  id = TEST_USER_ID
+): Promise<string> {
+  const result = await db.execute(sql`
+    INSERT INTO users (id, email, name, email_verified) 
+    VALUES (${id}, ${email}, 'Test User', NOW())
+    ON CONFLICT (id) DO UPDATE SET email = ${email}
+    RETURNING id
+  `);
+  return (result as unknown as { id: string }[])[0].id;
+}
+
+// Helper to create a test user and ledger together
+export async function createTestUserWithLedger(
+  db: PostgresJsDatabase<typeof schema>,
+  email = "test@example.com",
+  ledgerName = "Test Ledger",
+  userId = TEST_USER_ID
+): Promise<{ userId: string; ledgerId: string }> {
+  const finalUserId = await createTestUser(db, email, userId);
+
+  const ledgerResult = await db.execute(sql`
+    INSERT INTO ledgers (user_id, name) 
+    VALUES (${finalUserId}, ${ledgerName})
+    RETURNING id
+  `);
+  const ledgerId = (ledgerResult as unknown as { id: string }[])[0].id;
+
+  return { userId: finalUserId, ledgerId };
 }

@@ -2,15 +2,14 @@ import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, sourceDocuments } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("SourceDocuments Database Operations", () => {
   describe("CREATE", () => {
     it("should create a text input message", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [created] = await db
         .insert(sourceDocuments)
@@ -27,10 +26,8 @@ describe("SourceDocuments Database Operations", () => {
 
     it("should create an image input message", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test2@example.com", "Test Ledger");
+      const ledger = { id };
 
       const imageUrl = "data:image/jpeg;base64,fake...";
 
@@ -51,10 +48,8 @@ describe("SourceDocuments Database Operations", () => {
   describe("READ", () => {
     it("should find source documents by ledger id", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test3@example.com", "Test Ledger");
+      const ledger = { id };
 
       await db.insert(sourceDocuments).values([
         { ledgerId: ledger.id, text: "Message 1" },
@@ -70,10 +65,8 @@ describe("SourceDocuments Database Operations", () => {
 
     it("should find source document with ledger relation", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Parent Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "parent@example.com", "Parent Ledger");
+      const ledger = { id };
 
       const [message] = await db
         .insert(sourceDocuments)
@@ -96,10 +89,8 @@ describe("SourceDocuments Database Operations", () => {
   describe("DELETE", () => {
     it("should delete source document", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test4@example.com", "Test Ledger");
+      const ledger = { id };
 
       const [created] = await db
         .insert(sourceDocuments)
@@ -120,10 +111,8 @@ describe("SourceDocuments Database Operations", () => {
 
     it("should cascade delete source documents when ledger is deleted", async () => {
       const db = getTestDb();
-      const [ledger] = await db
-        .insert(ledgers)
-        .values({ name: "Test Ledger" })
-        .returning();
+      const { ledgerId: id } = await createTestUserWithLedger(db, "test5@example.com", "Test Ledger");
+      const ledger = { id };
 
       await db.insert(sourceDocuments).values({
         ledgerId: ledger.id,

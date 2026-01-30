@@ -10,11 +10,15 @@ import {
   jsonb,
   boolean,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import defaultLedger from "@/config/default-ledger.json";
 
+// ==========================================
 // Enums
+// ==========================================
+
 export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "queued",
   "processing",
@@ -29,9 +33,78 @@ export const anomalyCodeEnum = pgEnum("anomaly_code", [
   "unknown_currency",
 ]);
 
-// Ledger（账本）
+// ==========================================
+// Auth.js Tables (必须先定义，因为其他表依赖它们)
+// ==========================================
+
+// Users - 用户表
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  emailVerified: timestamp("email_verified"),
+  image: text("image"),
+  // Default ledger will be set after ledger is created (no FK to avoid ordering issues)
+  defaultLedgerId: uuid("default_ledger_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Accounts - OAuth 账户关联（为未来 OAuth 扩展预留）
+export const accounts = pgTable("accounts", {
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  provider: text("provider").notNull(),
+  providerAccountId: text("provider_account_id").notNull(),
+  refresh_token: text("refresh_token"),
+  access_token: text("access_token"),
+  expires_at: timestamp("expires_at"),
+  token_type: text("token_type"),
+  scope: text("scope"),
+  id_token: text("id_token"),
+  session_state: text("session_state"),
+}, (table) => [
+  primaryKey({ columns: [table.provider, table.providerAccountId] }),
+]);
+
+// Sessions - 数据库 Session（含设备信息）
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires").notNull(),
+  // Extended fields for device management
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  deviceName: text("device_name"),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_sessions_user_id").on(table.userId),
+]);
+
+// Verification Tokens - Magic Link 验证令牌
+export const verificationTokens = pgTable("verification_tokens", {
+  identifier: text("identifier").notNull(),
+  token: text("token").notNull().unique(),
+  expires: timestamp("expires").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.identifier, table.token] }),
+]);
+
+// ==========================================
+// Business Tables
+// ==========================================
+
+// Ledger（账本）- 依赖 users
 export const ledgers = pgTable("ledgers", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   aiLanguage: text("ai_language").notNull().default(defaultLedger.settings.aiLanguage),
   currencies: jsonb("currencies").$type<string[]>().default(defaultLedger.settings.currencies),
@@ -43,14 +116,9 @@ export const ledgers = pgTable("ledgers", {
   mergeSimilarItems: boolean("merge_similar_items").default(defaultLedger.settings.mergeSimilarItems),
   collapseBillsDefault: boolean("collapse_bills_default").default(defaultLedger.settings.collapseBillsDefault),
   aiCustomPrompt: text("ai_custom_prompt").default(defaultLedger.settings.aiCustomPrompt),
-});
-
-export const ledgersRelations = relations(ledgers, ({ many }) => ({
-  ledgerEntries: many(ledgerEntries),
-  sourceDocuments: many(sourceDocuments),
-}));
-
-
+}, (table) => [
+  index("idx_ledgers_user_id").on(table.userId),
+]);
 
 // EntryCategory（分录分类）
 export const entryCategories = pgTable("entry_categories", {
@@ -65,14 +133,6 @@ export const entryCategories = pgTable("entry_categories", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
-
-export const entryCategoriesRelations = relations(entryCategories, ({ one, many }) => ({
-  ledger: one(ledgers, {
-    fields: [entryCategories.ledgerId],
-    references: [ledgers.id],
-  }),
-  ledgerEntries: many(ledgerEntries),
-}));
 
 // SourceDocuments (原始凭证)
 export const sourceDocuments = pgTable("source_documents", {
@@ -96,18 +156,6 @@ export const sourceDocuments = pgTable("source_documents", {
   index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),
 ]);
 
-export const sourceDocumentsRelations = relations(
-  sourceDocuments,
-  ({ one, many }) => ({
-    ledger: one(ledgers, {
-      fields: [sourceDocuments.ledgerId],
-      references: [ledgers.id],
-    }),
-    ledgerEntries: many(ledgerEntries),
-    shares: many(shares),
-  })
-);
-
 // Shares (分享链接)
 export const shares = pgTable("shares", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -121,13 +169,6 @@ export const shares = pgTable("shares", {
 }, (table) => [
   index("idx_shares_source_doc").on(table.sourceDocumentId),
 ]);
-
-export const sharesRelations = relations(shares, ({ one }) => ({
-  sourceDocument: one(sourceDocuments, {
-    fields: [shares.sourceDocumentId],
-    references: [sourceDocuments.id],
-  }),
-}));
 
 // LedgerEntry（账目分录）
 export const ledgerEntries = pgTable("ledger_entries", {
@@ -153,24 +194,6 @@ export const ledgerEntries = pgTable("ledger_entries", {
   index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
 
-
-export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
-  ledger: one(ledgers, {
-    fields: [ledgerEntries.ledgerId],
-    references: [ledgers.id],
-  }),
-  category: one(entryCategories, {
-    fields: [ledgerEntries.categoryId],
-    references: [entryCategories.id],
-  }),
-  sourceDocument: one(sourceDocuments, {
-    fields: [ledgerEntries.sourceDocumentId],
-    references: [sourceDocuments.id],
-  }),
-}));
-
-// 预设分类
-
 // ServiceCredentials (服务凭据)
 export const serviceCredentials = pgTable("service_credentials", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -182,13 +205,6 @@ export const serviceCredentials = pgTable("service_credentials", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at"),
 });
-
-export const serviceCredentialsRelations = relations(serviceCredentials, ({ one }) => ({
-  ledger: one(ledgers, {
-    fields: [serviceCredentials.ledgerId],
-    references: [ledgers.id],
-  }),
-}));
 
 // TaskRuns (任务运行记录 - 仅用于审计和前端展示)
 export const taskRuns = pgTable("task_runs", {
@@ -222,20 +238,101 @@ export const taskRuns = pgTable("task_runs", {
   index("idx_task_runs_created_at").on(table.createdAt),
 ]);
 
-export const taskRunsRelations = relations(taskRuns, ({ one }) => ({
-  ledger: one(ledgers, {
-    fields: [taskRuns.ledgerId],
-    references: [ledgers.id],
-  }),
-}));
-
 // CurrencyRates (汇率缓存 - Daily Snapshot)
-// Strategy: Store the entire rate list (base EUR) for a specific date.
-// This allows offline calculation of ANY currency pair for that date using Cross-Rate:
-// Rate(A->B) = Rate(EUR->B) / Rate(EUR->A)
 export const currencyRates = pgTable("currency_rates", {
   date: date("date", { mode: "string" }).primaryKey(), // YYYY-MM-DD
   base: text("base").notNull().default("EUR"), // Always EUR from Frankfurter
   rates: jsonb("rates").$type<Record<string, number>>().notNull(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// ==========================================
+// Relations (定义在所有表之后)
+// ==========================================
+
+// Auth relations
+export const usersRelations = relations(users, ({ many }) => ({
+  accounts: many(accounts),
+  sessions: many(sessions),
+  ledgers: many(ledgers),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+// Business relations
+export const ledgersRelations = relations(ledgers, ({ one, many }) => ({
+  user: one(users, {
+    fields: [ledgers.userId],
+    references: [users.id],
+  }),
+  ledgerEntries: many(ledgerEntries),
+  sourceDocuments: many(sourceDocuments),
+}));
+
+export const entryCategoriesRelations = relations(entryCategories, ({ one, many }) => ({
+  ledger: one(ledgers, {
+    fields: [entryCategories.ledgerId],
+    references: [ledgers.id],
+  }),
+  ledgerEntries: many(ledgerEntries),
+}));
+
+export const sourceDocumentsRelations = relations(
+  sourceDocuments,
+  ({ one, many }) => ({
+    ledger: one(ledgers, {
+      fields: [sourceDocuments.ledgerId],
+      references: [ledgers.id],
+    }),
+    ledgerEntries: many(ledgerEntries),
+    shares: many(shares),
+  })
+);
+
+export const sharesRelations = relations(shares, ({ one }) => ({
+  sourceDocument: one(sourceDocuments, {
+    fields: [shares.sourceDocumentId],
+    references: [sourceDocuments.id],
+  }),
+}));
+
+export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
+  ledger: one(ledgers, {
+    fields: [ledgerEntries.ledgerId],
+    references: [ledgers.id],
+  }),
+  category: one(entryCategories, {
+    fields: [ledgerEntries.categoryId],
+    references: [entryCategories.id],
+  }),
+  sourceDocument: one(sourceDocuments, {
+    fields: [ledgerEntries.sourceDocumentId],
+    references: [sourceDocuments.id],
+  }),
+}));
+
+export const serviceCredentialsRelations = relations(serviceCredentials, ({ one }) => ({
+  ledger: one(ledgers, {
+    fields: [serviceCredentials.ledgerId],
+    references: [ledgers.id],
+  }),
+}));
+
+export const taskRunsRelations = relations(taskRuns, ({ one }) => ({
+  ledger: one(ledgers, {
+    fields: [taskRuns.ledgerId],
+    references: [ledgers.id],
+  }),
+}));

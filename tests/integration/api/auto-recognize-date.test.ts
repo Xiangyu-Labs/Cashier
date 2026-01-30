@@ -5,6 +5,7 @@ import { submitFlowTask } from "@/lib/flow/producer";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
 import * as processorModule from "@/lib/message-processor/processor";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // Mock the processor
 const mockProcess = vi.fn();
@@ -23,17 +24,15 @@ describe("Auto-recognize Ledger Entry Time", () => {
         await db.delete(categories);
         await db.delete(ledgers);
 
-        // Create Ledger
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({
-                name: "Test Ledger",
-                autoRecognizeDate: false // Default to false
-            })
-            .returning();
-        ledgerId = ledger.id;
+        // Create Ledger using helper
+        const result = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        ledgerId = result.ledgerId;
 
-        // Create Category
+        // Ensure settings are correct for the test
+        await db.update(ledgers)
+            .set({ autoRecognizeDate: false })
+            .where(eq(ledgers.id, ledgerId));
+
         // Create Category
         await db
             .insert(categories)
@@ -43,7 +42,6 @@ describe("Auto-recognize Ledger Entry Time", () => {
                 sortOrder: 1
             })
             .returning();
-
     });
 
     afterEach(() => {
@@ -101,9 +99,6 @@ describe("Auto-recognize Ledger Entry Time", () => {
 
         expect(txs).toHaveLength(1);
         // Should NOT be the past date, should be today (or effectively not the past date)
-        // Since we can't easily check "today" exactly due to timezones in test env sometimes,
-        // checking it is NOT the pastDate is a strong signal if the logic works.
-        // But better: check if it matches "today"
         const txDate = txs[0].entryDate ? new Date(txs[0].entryDate).toISOString().split('T')[0] : "";
         expect(txDate).not.toBe(pastDate);
         expect(txDate).toBe(today);

@@ -265,5 +265,50 @@
         "poweredBy": "Shared via Cashier",
         "details": "Details",
         "items": "{count} items"
+    },
+    "Auth": {
+        "login": "Log In",
+        "signIn": "Sign In",
+        "signOut": "Sign Out",
+        "email": "Email Address",
+        "emailPlaceholder": "Enter your email",
+        "sendMagicLink": "Send Magic Link",
+        "sending": "Sending...",
+        "register": "Register",
+        "registrationDisabled": "Registration Disabled",
+        "registrationDisabledDesc": "New user registration is currently disabled. Please contact the administrator for an account.",
+        "welcomeBack": "Welcome Back",
+        "welcomeBackDesc": "Enter your email and we'll send you a secure login link.",
+        "checkEmail": "Check Your Email",
+        "checkEmailDesc": "We've sent a login link to {email}. Click the link in the email to sign in.",
+        "linkExpires": "Link expires in {minutes} minutes",
+        "didNotReceive": "Didn't receive the email?",
+        "resend": "Resend",
+        "error": "Sign In Error",
+        "errorDesc": "An error occurred during sign in. Please try again.",
+        "tryAgain": "Try Again",
+        "rateLimited": "Too Many Requests",
+        "rateLimitedDesc": "Please wait a minute before trying again."
+    },
+    "Devices": {
+        "title": "Device Management",
+        "description": "Manage devices that are signed in to your account",
+        "currentDevice": "Current Device",
+        "otherDevices": "Other Devices",
+        "noOtherDevices": "No other devices signed in",
+        "lastActive": "Last active: {time}",
+        "signOutDevice": "Sign Out Device",
+        "signOutAll": "Sign Out All Other Devices",
+        "signOutSuccess": "Device signed out successfully",
+        "signOutAllSuccess": "All other devices signed out successfully"
+    },
+    "Account": {
+        "title": "Account Management",
+        "deleteAccount": "Delete Account",
+        "deleteAccountDesc": "Permanently delete your account and all data. This action cannot be undone.",
+        "deleteConfirmTitle": "Confirm Account Deletion",
+        "deleteConfirmDesc": "You are about to permanently delete your account, including all ledgers, records, and settings. This cannot be undone. Enter your email to confirm:",
+        "deleteConfirmPlaceholder": "Enter your email to confirm",
+        "deleteSuccess": "Account deleted successfully"
     }
 }

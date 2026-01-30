@@ -53,8 +53,14 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, task_runs, currency_rates, shares CASCADE`
+      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, task_runs, currency_rates, shares, sessions, accounts, verification_tokens, users CASCADE`
     );
+
+    // Insert default test user for Auth Mock (TEST_USER_ID)
+    await testDb.execute(sql`
+        INSERT INTO users (id, email, name, email_verified) 
+        VALUES ('00000000-0000-0000-0000-000000000000', 'test@example.com', 'Test User', NOW())
+    `);
   }
 });
 
@@ -67,6 +73,32 @@ afterEach(() => {
 vi.mock("@/lib/db", () => ({
   get db() {
     return getTestDb();
+  },
+}));
+
+// Global Auth Mock
+vi.mock("@/auth", () => ({
+  auth: (...args: any[]) => {
+    // Case 1: Called as a wrapper function auth((req) => {...})
+    if (args.length === 1 && typeof args[0] === "function") {
+      const handler = args[0];
+      return async (req: any, ctx: any) => {
+        req.auth = req.auth || {
+          user: {
+            id: "00000000-0000-0000-0000-000000000000",
+            email: "test@example.com",
+          },
+        };
+        return handler(req, ctx);
+      };
+    }
+    // Case 2: Called to get session const session = await auth()
+    return Promise.resolve({
+      user: {
+        id: "00000000-0000-0000-0000-000000000000",
+        email: "test@example.com",
+      },
+    });
   },
 }));
 

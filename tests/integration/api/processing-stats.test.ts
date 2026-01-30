@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 
 describe("Processing Stats: Token Usage API", () => {
@@ -10,11 +11,8 @@ describe("Processing Stats: Token Usage API", () => {
 
     beforeEach(async () => {
         const db = getTestDb();
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({ name: "Stats Test Ledger" })
-            .returning();
-        testLedgerId = ledger.id;
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Stats Test Ledger");
+        testLedgerId = ledgerId;
     });
 
     it("should return zero stats when no tasks exist", async () => {
@@ -39,10 +37,7 @@ describe("Processing Stats: Token Usage API", () => {
     it("should aggregate token usage from completed tasks", async () => {
         const db = getTestDb();
 
-        const [otherLedger] = await db
-            .insert(ledgers)
-            .values({ name: "Other Ledger" })
-            .returning();
+        const { ledgerId: otherLedgerId } = await createTestUserWithLedger(db, "other@example.com", "Other Ledger");
 
         await db.insert(taskRuns).values([
             {
@@ -72,7 +67,7 @@ describe("Processing Stats: Token Usage API", () => {
             },
             // This task should be ignored because it belongs to another ledger
             {
-                ledgerId: otherLedger.id,
+                ledgerId: otherLedgerId,
                 type: "parse_source_document",
                 title: "Other Ledger Task",
                 status: "completed",

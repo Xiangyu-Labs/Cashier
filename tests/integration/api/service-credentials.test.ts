@@ -6,6 +6,7 @@ import { POST as ledgerEntryPOST } from "@/app/api/v1/ledger-entries/route";
 import { getTestDb } from "../../setup";
 import { ledgers, serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
@@ -24,11 +25,8 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     beforeEach(async () => {
         const db = getTestDb();
 
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({ name: "API Test Ledger" })
-            .returning();
-        testLedgerId = ledger.id;
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "API Test Ledger");
+        testLedgerId = ledgerId;
     });
 
     it("should create and list service credentials", async () => {

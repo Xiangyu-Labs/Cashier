@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET as tasksGET } from "@/app/api/processing-tasks/route";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // Mock Processing - we might not need to mock if we use the DB directly for integration tests
 // But the route uses getRecentProcessingTasks and getActiveProcessingTasks from @/lib/processing
@@ -15,11 +16,8 @@ describe("Processing Tasks API", () => {
 
     beforeEach(async () => {
         const db = getTestDb();
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({ name: "Processing Task Test Ledger" })
-            .returning();
-        testLedgerId = ledger.id;
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Processing Task Test Ledger");
+        testLedgerId = ledgerId;
     });
 
     it("should fetch empty tasks list initially", async () => {

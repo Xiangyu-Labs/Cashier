@@ -265,5 +265,50 @@
         "poweredBy": "Shared via Cashier",
         "details": "明细",
         "items": "共 {count} 项"
+    },
+    "Auth": {
+        "login": "登录",
+        "signIn": "登录",
+        "signOut": "退出登录",
+        "email": "邮箱地址",
+        "emailPlaceholder": "输入您的邮箱",
+        "sendMagicLink": "发送登录链接",
+        "sending": "发送中...",
+        "register": "注册",
+        "registrationDisabled": "注册功能已关闭",
+        "registrationDisabledDesc": "当前系统不允许新用户注册，请联系管理员获取账号。",
+        "welcomeBack": "欢迎回来",
+        "welcomeBackDesc": "输入您的邮箱，我们将发送一个安全链接到您的邮箱。",
+        "checkEmail": "检查您的邮箱",
+        "checkEmailDesc": "我们已发送登录链接到 {email}，请点击邮件中的链接完成登录。",
+        "linkExpires": "链接有效期 {minutes} 分钟",
+        "didNotReceive": "没有收到邮件？",
+        "resend": "重新发送",
+        "error": "登录出错",
+        "errorDesc": "登录过程中发生错误，请重试。",
+        "tryAgain": "重试",
+        "rateLimited": "请求过于频繁",
+        "rateLimitedDesc": "请等待一分钟后再试。"
+    },
+    "Devices": {
+        "title": "设备管理",
+        "description": "管理已登录此账户的设备",
+        "currentDevice": "当前设备",
+        "otherDevices": "其他设备",
+        "noOtherDevices": "没有其他设备登录",
+        "lastActive": "最后活跃: {time}",
+        "signOutDevice": "退出此设备",
+        "signOutAll": "退出所有其他设备",
+        "signOutSuccess": "已成功退出设备",
+        "signOutAllSuccess": "已成功退出所有其他设备"
+    },
+    "Account": {
+        "title": "账户管理",
+        "deleteAccount": "删除账户",
+        "deleteAccountDesc": "永久删除您的账户和所有数据。此操作无法撤销。",
+        "deleteConfirmTitle": "确认删除账户",
+        "deleteConfirmDesc": "您即将永久删除您的账户，包括所有账本、记录和设置。此操作无法撤销。请输入您的邮箱确认：",
+        "deleteConfirmPlaceholder": "输入您的邮箱确认",
+        "deleteSuccess": "账户已删除"
     }
 }

@@ -7,6 +7,7 @@ import { taskRuns, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createLedgerData } from "../../helpers/factories";
 import { mainQueue, apiQueue } from "@/lib/flow/queues";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // 1. Define Test Task
 const TEST_TASK_TYPE = "integration_test_task";
@@ -60,8 +61,8 @@ describe("Flow System Integration", () => {
 
         // Setup Ledger here because global setup truncates before each test
         const ledgerData = createLedgerData();
-        const [ledger] = await db.insert(ledgers).values(ledgerData).returning();
-        ledgerId = ledger.id;
+        const { ledgerId: id } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        ledgerId = id;
     });
 
     it("should execute a basic task successfully", async () => {

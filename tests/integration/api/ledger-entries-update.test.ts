@@ -5,6 +5,7 @@ import { PATCH } from "@/app/api/ledgers/[id]/ledger-entries/[ledgerEntryId]/rou
 import { getTestDb } from "../../setup";
 import { ledgers, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("PATCH /api/ledgers/[id]/ledger-entries/[ledgerEntryId]", () => {
     let testLedgerId: string;
@@ -14,11 +15,8 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/[ledgerEntryId]", () => {
     beforeEach(async () => {
         const db = getTestDb();
 
-        const [ledger] = await db
-            .insert(ledgers)
-            .values({ name: "Test Ledger" })
-            .returning();
-        testLedgerId = ledger.id;
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        testLedgerId = ledgerId;
 
         const [category] = await db
             .insert(entryCategories)

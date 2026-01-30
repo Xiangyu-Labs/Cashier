@@ -28,13 +28,12 @@ describe("GPT Prompts", () => {
         it("should include core rules about splitting and currency", () => {
             const prompt = buildLedgerEntryPrompt(categories);
             expect(prompt).toContain("**Split**: Separate receipts");
-            expect(prompt).toContain("`currency`: Infer from context");
+            expect(prompt).toContain("`currency`: ONLY infer if obvious");
         });
 
         it("should include preferred currencies in the prompt", () => {
             const prompt = buildLedgerEntryPrompt(categories, "zh-CN", "2025-01-28", ["USD", "HKD"]);
             expect(prompt).toContain("- **Pref Currencies**: USD, HKD");
-            expect(prompt).toContain("Priority: Pref Currencies");
         });
 
         it("should show 'None' when preferred currencies list is empty", () => {

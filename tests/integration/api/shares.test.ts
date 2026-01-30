@@ -6,6 +6,7 @@ import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentI
 import { getTestDb } from "../../setup";
 import { ledgers, sourceDocuments, shares, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // Mock API route for DELETE since it wasn't requested?
 // Wait, I didn't create the DELETE route file yet! I missed it in the plan/execution.
@@ -17,7 +18,8 @@ describe("Share API", () => {
 
     it("should create a share link", async () => {
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger 1" }).returning();
+        const { ledgerId, userId: _userId } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger 1");
+        const ledger = { id: ledgerId }; // Mock ledger object wrapper
         const [doc] = await db.insert(sourceDocuments).values({
             ledgerId: ledger.id,
             title: "Test Receipt 1",
@@ -42,7 +44,8 @@ describe("Share API", () => {
 
     it("should fetch active share data", async () => {
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger 2" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test2@example.com", "Test Ledger 2");
+        const ledger = { id: ledgerId };
         const [doc] = await db.insert(sourceDocuments).values({
             ledgerId: ledger.id,
             title: "Test Receipt 2",
@@ -83,7 +86,8 @@ describe("Share API", () => {
 
     it("should return 410 for expired share", async () => {
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger 3" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test3@example.com", "Test Ledger 3");
+        const ledger = { id: ledgerId };
         const [doc] = await db.insert(sourceDocuments).values({
             ledgerId: ledger.id,
             title: "Test Receipt 3",

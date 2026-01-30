@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET } from "@/app/api/ledgers/[id]/ledger-entries/route";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("GET /api/ledgers/[id]/ledger-entries", () => {
   let testLedgerId: string;
@@ -11,11 +12,8 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
   beforeEach(async () => {
     const db = getTestDb();
 
-    const [ledger] = await db
-      .insert(ledgers)
-      .values({ name: "Test Ledger" })
-      .returning();
-    testLedgerId = ledger.id;
+    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    testLedgerId = ledgerId;
 
     const [category] = await db
       .insert(entryCategories)

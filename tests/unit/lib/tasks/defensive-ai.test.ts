@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
-import { ledgers, sourceDocuments } from "@/lib/db/schema";
+import { sourceDocuments } from "@/lib/db/schema";
+import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 import { FlowContext } from "@/lib/flow";
 
 describe("parseSourceDocumentHandler.onError", () => {
     it("should map schema validation errors (zod) to 'invalid_content'", async () => {
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
-        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db);
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
@@ -20,7 +21,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const context = {
             id: "task-error-1",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            ledgerId: ledger.id,
+            ledgerId,
             input,
         } as unknown as FlowContext;
 
@@ -38,8 +39,8 @@ describe("parseSourceDocumentHandler.onError", () => {
 
     it("should map JSON parsing errors to 'internal_error'", async () => {
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
-        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db);
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
@@ -50,7 +51,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const context = {
             id: "task-error-2",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            ledgerId: ledger.id,
+            ledgerId,
             input,
         } as unknown as FlowContext;
 

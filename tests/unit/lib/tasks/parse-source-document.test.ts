@@ -4,6 +4,7 @@ import { getTestDb } from "../../../setup";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { FlowContext } from "@/lib/flow";
+import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
 // Mock the processor and utils
 vi.mock("@/lib/message-processor/processor", () => ({
@@ -37,7 +38,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         // Setup real DB data
         const db = getTestDb();
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({
             ledgerId: ledger.id,
             status: "processing"
@@ -249,7 +251,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     it("should NOT save entries when status is anomaly", async () => {
         const db = getTestDb();
 
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger");
+        const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
@@ -293,7 +296,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     it("should save entries and use 'completed' status if verification passed", async () => {
         const db = getTestDb();
 
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test2@example.com", "Test Ledger");
+        const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
         const [category] = await db.insert(entryCategories).values({ ledgerId: ledger.id, name: "餐饮", description: "餐饮" }).returning();
 
@@ -346,7 +350,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     it("should be idempotent (not create duplicates) if called multiple times", async () => {
         const db = getTestDb();
 
-        const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
+        const { ledgerId } = await createTestUserWithLedger(db, "test3@example.com", "Test Ledger");
+        const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
 
         const output: ParseSourceDocumentOutput = {
