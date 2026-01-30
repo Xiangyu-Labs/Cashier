@@ -6,7 +6,7 @@ import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -22,7 +22,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     useQueryClient();
-    const { toast } = useToast();
+
 
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
         const now = new Date();
@@ -86,10 +86,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: (updatedEntry) => {
             // Invalidation handled by SSE
-            toast({
-                variant: "success",
-                title: tCommon("saveSuccess"),
-            });
+            toast.success(tCommon("saveSuccess"));
             // Update selected entry if it's the one being edited to reflect changes in modal
             if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
                 setSelectedLedgerEntry({
@@ -100,10 +97,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             }
         },
         onError: () => {
-            toast({
-                variant: "destructive",
-                title: tCommon("saveFailed"),
-            });
+            toast.error(tCommon("saveFailed"));
         },
     });
 
@@ -111,7 +105,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
             // Invalidation handled by SSE
-            toast({ variant: "success", title: tLedger("deleteSuccess"), description: "" });
+            toast.success(tLedger("deleteSuccess"));
         },
     });
 

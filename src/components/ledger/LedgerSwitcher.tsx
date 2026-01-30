@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { fetchLedgers, createLedger } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 interface LedgerSwitcherProps {
@@ -32,7 +32,7 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
     const tCommon = useTranslations("Common");
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { toast } = useToast();
+
     const [open, setOpen] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newLedgerName, setNewLedgerName] = useState("");
@@ -51,18 +51,14 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
             setShowCreateModal(false);
             setNewLedgerName("");
             setOpen(false);
-            toast({
-                title: t("createSuccess"),
+            toast.success(t("createSuccess"), {
                 description: t("createSuccessDesc"),
-                variant: "success",
             });
             router.push(`/ledger/${newLedger.id}`);
         },
         onError: () => {
-            toast({
-                title: t("createFailed"),
+            toast.error(t("createFailed"), {
                 description: t("createFailedDesc"),
-                variant: "error",
             });
         },
     });

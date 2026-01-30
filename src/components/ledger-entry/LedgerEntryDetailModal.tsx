@@ -3,7 +3,7 @@
 import { useState, useCallback, type ReactNode } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
@@ -50,7 +50,7 @@ export function LedgerEntryDetailModal({
     description: "",
   });
 
-  const { toast } = useToast();
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Initialize edit data when ledgerEntry changes or modal opens
@@ -86,11 +86,7 @@ export function LedgerEntryDetailModal({
     onDelete();
     setShowDeleteConfirm(false);
     onClose();
-    toast({
-      variant: "success",
-      title: tTab("deleteSuccess"),
-      description: "",
-    });
+    toast.success(tTab("deleteSuccess"));
   }, [onDelete, onClose, toast, tTab]);
 
   const handleClose = useCallback(() => {

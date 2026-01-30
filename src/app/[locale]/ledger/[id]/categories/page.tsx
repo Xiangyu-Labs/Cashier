@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CreateCategoryData {
@@ -42,7 +42,7 @@ export default function CategoriesPage(): React.ReactElement {
   const params = useParams();
   const queryClient = useQueryClient();
   const ledgerId = params.id as string;
-  const { toast } = useToast();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EntryCategory | null>(null);
@@ -73,16 +73,12 @@ export default function CategoriesPage(): React.ReactElement {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
-      toast({
-        variant: "success",
-        title: "创建成功",
+      toast.success("创建成功", {
         description: "分类已创建",
       });
     },
     onError: () => {
-      toast({
-        variant: "error",
-        title: "创建失败",
+      toast.error("创建失败", {
         description: "无法创建分类，请稍后重试",
       });
     }
@@ -93,16 +89,12 @@ export default function CategoriesPage(): React.ReactElement {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       handleClose();
-      toast({
-        variant: "success",
-        title: "更新成功",
+      toast.success("更新成功", {
         description: "分类已更新",
       });
     },
     onError: () => {
-      toast({
-        variant: "error",
-        title: "更新失败",
+      toast.error("更新失败", {
         description: "无法更新分类，请稍后重试",
       });
     }
@@ -113,16 +105,12 @@ export default function CategoriesPage(): React.ReactElement {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
       setDeleteConfirm({ ...deleteConfirm, open: false });
-      toast({
-        variant: "success",
-        title: "删除成功",
+      toast.success("删除成功", {
         description: "分类已删除",
       });
     },
     onError: () => {
-      toast({
-        variant: "error",
-        title: "删除失败",
+      toast.error("删除失败", {
         description: "无法删除分类，请稍后重试",
       });
     }

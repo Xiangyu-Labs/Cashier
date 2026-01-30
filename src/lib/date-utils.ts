@@ -1,3 +1,16 @@
+import {
+    startOfWeek,
+    endOfWeek,
+    startOfMonth,
+    endOfMonth,
+    startOfYear,
+    endOfYear,
+    addWeeks,
+    addMonths,
+    addYears,
+    format,
+} from "date-fns";
+
 export type DateRangeType = "week" | "month" | "year";
 
 export interface DateRange {
@@ -7,48 +20,27 @@ export interface DateRange {
 }
 
 export function getStartOfWeek(date: Date): Date {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return startOfWeek(date, { weekStartsOn: 1 });
 }
 
 export function getEndOfWeek(date: Date): Date {
-    const d = getStartOfWeek(date);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    return endOfWeek(date, { weekStartsOn: 1 });
 }
 
 export function getStartOfMonth(date: Date): Date {
-    const d = new Date(date);
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return startOfMonth(date);
 }
 
 export function getEndOfMonth(date: Date): Date {
-    const d = new Date(date);
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(0);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    return endOfMonth(date);
 }
 
 export function getStartOfYear(date: Date): Date {
-    const d = new Date(date);
-    d.setMonth(0, 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return startOfYear(date);
 }
 
 export function getEndOfYear(date: Date): Date {
-    const d = new Date(date);
-    d.setMonth(11, 31);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    return endOfYear(date);
 }
 
 export function getDateRange(date: Date, type: DateRangeType): DateRange {
@@ -60,19 +52,17 @@ export function getDateRange(date: Date, type: DateRangeType): DateRange {
         case "week":
             start = getStartOfWeek(date);
             end = getEndOfWeek(date);
-            const startStr = `${start.getMonth() + 1}.${start.getDate()}`;
-            const endStr = `${end.getMonth() + 1}.${end.getDate()}`;
-            label = `${startStr}-${endStr}`;
+            label = `${format(start, "M.d")}-${format(end, "M.d")}`;
             break;
         case "month":
             start = getStartOfMonth(date);
             end = getEndOfMonth(date);
-            label = `${start.getFullYear()}年${start.getMonth() + 1}月`;
+            label = format(start, "yyyy年M月");
             break;
         case "year":
             start = getStartOfYear(date);
             end = getEndOfYear(date);
-            label = `${start.getFullYear()}年`;
+            label = format(start, "yyyy年");
             break;
     }
 
@@ -80,24 +70,16 @@ export function getDateRange(date: Date, type: DateRangeType): DateRange {
 }
 
 export function addPeriod(date: Date, type: DateRangeType, amount: number): Date {
-    const newDate = new Date(date);
     switch (type) {
         case "week":
-            newDate.setDate(newDate.getDate() + amount * 7);
-            break;
+            return addWeeks(date, amount);
         case "month":
-            newDate.setMonth(newDate.getMonth() + amount);
-            break;
+            return addMonths(date, amount);
         case "year":
-            newDate.setFullYear(newDate.getFullYear() + amount);
-            break;
+            return addYears(date, amount);
     }
-    return newDate;
 }
 
 export function formatDateForApi(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return format(date, "yyyy-MM-dd");
 }

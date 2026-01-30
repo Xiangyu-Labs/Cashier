@@ -16,7 +16,7 @@ import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDet
 import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export function LedgerEntriesTab({
     const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
-    const { toast } = useToast();
+
 
     // Layout Transitions
     const { containerProps, getItemProps, LayoutGroup } = useLayoutTransition();
@@ -93,7 +93,7 @@ export function LedgerEntriesTab({
         mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
             updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: (updatedEntry) => {
-            toast({ variant: "success", title: tCommon("saveSuccess") });
+            toast.success(tCommon("saveSuccess"));
             if (selectedLedgerEntry?.id === updatedEntry.id) {
                 setSelectedLedgerEntry({
                     ...updatedEntry,
@@ -111,14 +111,14 @@ export function LedgerEntriesTab({
                 });
             }
         },
-        onError: () => toast({ variant: "destructive", title: tCommon("saveFailed") }),
+        onError: () => toast.error(tCommon("saveFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
     const deleteLedgerEntryMutation = useMutation({
         mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
-            toast({ variant: "success", title: tCommon("deleteSuccess") });
+            toast.success(tCommon("deleteSuccess"));
             setIsDetailModalOpen(false);
             if (selectedSourceDocument && deleteConfirm.id) {
                 const updatedEntries = selectedSourceDocument.ledgerEntries.filter(e => e.id !== deleteConfirm.id);
@@ -129,34 +129,34 @@ export function LedgerEntriesTab({
             }
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
-        onError: () => toast({ variant: "destructive", title: tCommon("deleteFailed") }),
+        onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
     const batchDeleteLedgerEntriesMutation = useMutation({
         mutationFn: (ledgerEntryIds: string[]) => batchDeleteLedgerEntries(ledgerId, ledgerEntryIds),
         onSuccess: () => {
-            toast({ variant: "success", title: tCommon("deleteSuccess") });
+            toast.success(tCommon("deleteSuccess"));
         },
-        onError: () => toast({ variant: "destructive", title: tCommon("deleteFailed") }),
+        onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
     const batchUpdateLedgerEntriesMutation = useMutation({
         mutationFn: ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: any }) => batchUpdateLedgerEntries(ledgerId, { ledgerEntryIds, ...data }),
         onSuccess: () => {
-            toast({ variant: "success", title: tCommon("saveSuccess") });
+            toast.success(tCommon("saveSuccess"));
         },
-        onError: () => toast({ variant: "destructive", title: tCommon("saveFailed") }),
+        onError: () => toast.error(tCommon("saveFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
     const updateSourceDocumentMutation = useMutation({
         mutationFn: ({ id, title }: { id: string, title: string }) => updateSourceDocument(ledgerId, id, { title }),
         onSuccess: () => {
-            toast({ variant: "success", title: tCommon("saveSuccess") });
+            toast.success(tCommon("saveSuccess"));
         },
-        onError: () => toast({ variant: "destructive", title: tCommon("saveFailed") }),
+        onError: () => toast.error(tCommon("saveFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
@@ -177,7 +177,7 @@ export function LedgerEntriesTab({
         onError: (err, ids, ctx) => {
             queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "pending"), ctx?.prevPending);
             queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "confirmed"), ctx?.prevConfirmed);
-            toast({ variant: "error", title: t("confirmFailed"), description: tCommon("error") });
+            toast.error(t("confirmFailed"), { description: tCommon("error") });
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
@@ -198,12 +198,12 @@ export function LedgerEntriesTab({
         },
         onSuccess: () => {
             setConfirmingAll(false);
-            toast({ variant: "success", title: t("confirmSuccess") });
+            toast.success(t("confirmSuccess"));
         },
         onError: (err, _, ctx) => {
             setConfirmingAll(false);
             queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "pending"), ctx?.prevPending);
-            toast({ variant: "error", title: t("confirmFailed") });
+            toast.error(t("confirmFailed"));
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
@@ -224,7 +224,7 @@ export function LedgerEntriesTab({
         },
         onError: (err, id, ctx) => {
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
-            toast({ variant: "error", title: t("deleteFailed") });
+            toast.error(t("deleteFailed"));
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
@@ -241,10 +241,10 @@ export function LedgerEntriesTab({
 
             return { prevActive };
         },
-        onSuccess: () => toast({ variant: "success", title: t("retrySubmitted") }),
+        onSuccess: () => toast.success(t("retrySubmitted")),
         onError: (err, id, ctx) => {
-            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
-            toast({ variant: "error", title: tCommon("error") });
+            queryClient.setQueryData(queryKeys.ledgerEvents(ledgerId), ctx?.prevActive);
+            toast.error(tCommon("error"));
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
