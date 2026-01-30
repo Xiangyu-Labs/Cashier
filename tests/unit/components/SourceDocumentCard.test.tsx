@@ -101,10 +101,10 @@ describe("SourceDocumentCard", () => {
         };
         renderWithQuery(<SourceDocumentCard sourceDocument={sourceDocument} {...defaultProps} status="anomaly" />);
 
-        expect(screen.getByText("Test document")).toBeTruthy();
+        // expect(screen.getByText("Test document")).toBeTruthy(); // Title is hidden
 
         // The header is now clickable
-        const header = screen.getByText("Test document").closest('[class*="cursor-pointer"]');
+        const header = screen.getByText(/1月1日/).closest('[class*="cursor-pointer"]');
         expect(header).toBeTruthy();
 
         // Initial state is collapsed (since status is anomaly and defaultExpanded is false)
@@ -113,11 +113,11 @@ describe("SourceDocumentCard", () => {
         // Click header to expand
         await fireEvent.click(header!);
         expect(screen.getByText("Raw input")).toBeTruthy();
-        expect(screen.getByText("Test document")).toBeTruthy();
+        // expect(screen.getByText("Test document")).toBeTruthy(); // Title is hidden
 
         // Click header to collapse
         await fireEvent.click(header!);
-        await screen.findByText("Test document"); // Ensure re-render
+        await screen.findByText(/1月1日/); // Ensure re-render
         await new Promise(resolve => setTimeout(resolve, 0)); // Yield to event loop
         expect(screen.queryByText("Raw input")).toBeNull();
     });

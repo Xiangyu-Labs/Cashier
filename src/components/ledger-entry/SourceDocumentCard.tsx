@@ -153,11 +153,7 @@ export function SourceDocumentCard({
               hour: "2-digit",
               minute: "2-digit",
             })}
-            {sourceDocument.title && (
-              <span className="ml-3 font-medium text-text">
-                {sourceDocument.title}
-              </span>
-            )}
+
           </span>
         </div>
 
