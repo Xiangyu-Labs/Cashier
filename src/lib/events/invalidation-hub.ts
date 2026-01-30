@@ -14,7 +14,7 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
 
     // Define invalidation rules using centralized queryKeys
     // Map entity types to query keys that should be invalidated
-    const invalidationMap: Record<string, readonly (readonly string[])[]> = {
+    const invalidationMap: Record<string, readonly (readonly unknown[])[]> = {
         ledger_entry: [
             queryKeys.ledgerEntries(ledgerId),
             queryKeys.summary(ledgerId),

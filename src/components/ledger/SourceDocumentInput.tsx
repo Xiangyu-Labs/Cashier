@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSourceDocument, updateLedger } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { useLedgerData } from "@/hooks/useLedgerData";
+
 import { Ledger } from "@/types/api";
 
 import { useTranslations } from "next-intl";
@@ -28,7 +28,11 @@ export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInput
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { ledger } = useLedgerData(ledgerId);
+    const { data: ledger } = useQuery({
+        queryKey: ["ledger", ledgerId],
+        queryFn: () => import("@/lib/api").then(mod => mod.fetchLedger(ledgerId)),
+    });
+
 
     const updateLedgerMutation = useMutation({
         mutationFn: (data: Partial<Ledger>) => updateLedger(ledgerId, data),

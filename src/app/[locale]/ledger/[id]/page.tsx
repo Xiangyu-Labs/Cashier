@@ -16,12 +16,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
-import { useLedgerData } from "@/hooks/useLedgerData";
 import { useLedgerEvents } from "@/lib/events/use-ledger-events";
 
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
+import { useQuery } from "@tanstack/react-query";
+import { fetchEntryCategories, fetchLedger } from "@/lib/api";
 
 export default function LedgerPage() {
   const params = useParams();
@@ -30,14 +31,15 @@ export default function LedgerPage() {
   const [activeTab, setActiveTab] = useState("history");
   const [isInputOpen, setIsInputOpen] = useState(false);
 
-  const {
-    ledger,
-    isLedgerLoading,
-    categories,
-    pendingGroups,
-    confirmedGroups,
-    queuedSourceDocuments,
-  } = useLedgerData(ledgerId);
+  const { data: ledger, isLoading: isLedgerLoading } = useQuery({
+    queryKey: ["ledger", ledgerId],
+    queryFn: () => fetchLedger(ledgerId),
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ["entryCategories", ledgerId],
+    queryFn: () => fetchEntryCategories(ledgerId),
+  });
 
   // Enable real-time updates
   useLedgerEvents(ledgerId);
@@ -105,10 +107,7 @@ export default function LedgerPage() {
           <TabsContent value="history" className="mt-0">
             <LedgerEntriesTab
               ledgerId={ledgerId}
-              pendingGroups={pendingGroups}
-              confirmedGroups={confirmedGroups}
-              queuedSourceDocuments={queuedSourceDocuments}
-              categories={categories}
+              categories={categories || []}
               defaultCollapsed={ledger.collapsePendingDefault}
               ledger={ledger}
             />
@@ -117,7 +116,7 @@ export default function LedgerPage() {
           <TabsContent value="details" className="mt-0">
             <DetailsTab
               ledgerId={ledgerId}
-              categories={categories}
+              categories={categories || []}
               ledger={ledger}
             />
           </TabsContent>
