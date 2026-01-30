@@ -10,6 +10,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: ledgerId, sourceDocumentId } = await params;
 
+        // Parse optional body for edit-retry
+        const body = await request.json().catch(() => ({}));
+        const { text: newText, images: newImages } = body;
+
         // Verify source document exists and belongs to ledger
         const doc = await db.query.sourceDocuments.findFirst({
             where: and(
@@ -27,14 +31,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             .delete(ledgerEntries)
             .where(eq(ledgerEntries.sourceDocumentId, sourceDocumentId));
 
-        // 2. Update source document status to queued
+        // Prepare update fields
+        const updateFields: Record<string, unknown> = {
+            status: "queued",
+            anomalyCodes: [],
+        };
+
+        // If new text/images provided, update them
+        if (newText !== undefined) {
+            updateFields.text = newText || null;
+        }
+        if (newImages !== undefined && Array.isArray(newImages)) {
+            // newImages is array of { data: string, mimeType: string }
+            // Store as imageUrls (just the data field which is a data URI)
+            updateFields.imageUrls = newImages.map((img: { data: string; mimeType: string }) => img.data);
+        }
+
+        // 2. Update source document
         await db
             .update(sourceDocuments)
-            .set({
-                status: "queued",
-                anomalyCodes: [],
-            })
+            .set(updateFields)
             .where(eq(sourceDocuments.id, sourceDocumentId));
+
+        // Fetch updated doc for task submission
+        const updatedDoc = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, sourceDocumentId)
+        });
 
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
@@ -48,12 +70,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
             await submitFlowTask({
                 type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-                title: doc.text ? `重试解析: ${doc.text.slice(0, 20)}...` : "重试解析图片账单",
+                title: updatedDoc?.text ? `重试解析: ${updatedDoc.text.slice(0, 20)}...` : "重试解析图片账单",
                 ledgerId,
                 data: {
                     sourceDocumentId,
-                    text: doc.text || undefined,
-                    imageUrls: doc.imageUrls as string[] || [],
+                    text: updatedDoc?.text || undefined,
+                    imageUrls: updatedDoc?.imageUrls as string[] || [],
                     aiLanguage: ledger.aiLanguage,
                     preferredCurrencies: ledger.currencies || undefined,
                     categories: await db.query.entryCategories.findMany({

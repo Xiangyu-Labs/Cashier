@@ -285,12 +285,14 @@ export function fetchSourceDocuments(
 
 export function retrySourceDocument(
   ledgerId: string,
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  data?: { text?: string; images?: { data: string; mimeType: string }[] }
 ): Promise<{ success: boolean; message: string }> {
   return request(
     `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/retry`,
     {
       method: "POST",
+      ...(data && { body: JSON.stringify(data) }),
     },
     "Failed to retry source document"
   );

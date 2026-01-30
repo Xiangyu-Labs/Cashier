@@ -130,6 +130,9 @@
         "send": "发送",
         "advancedFeatures": "高级功能"
     },
+    "SourceDocumentEditRetryDialog": {
+        "title": "编辑重试"
+    },
     "LedgerEntryDetail": {
         "category": "交易类别",
         "entryDate": "交易时间",

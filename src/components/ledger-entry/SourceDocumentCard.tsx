@@ -63,7 +63,7 @@ interface SourceDocumentCardProps {
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
-  onRetry?: () => Promise<void>;
+  onRetry?: () => void | Promise<void>;
   status: "queued" | "processing" | "completed" | "anomaly";
   anomalyCodes?: string[] | null;
   className?: string;

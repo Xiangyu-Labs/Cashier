@@ -14,6 +14,7 @@ import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api"
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
 import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
+import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
@@ -76,6 +77,9 @@ export function LedgerEntriesTab({
         ledgerEntries: LedgerEntry[];
     } | null>(null);
     const [isSourceDetailModalOpen, setIsSourceDetailModalOpen] = useState(false);
+
+    // Edit-Retry Dialog State
+    const [editRetryDocument, setEditRetryDocument] = useState<SourceDocument | null>(null);
 
     // Unified Data Hook
     const {
@@ -349,7 +353,7 @@ export function LedgerEntriesTab({
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                                                                 defaultExpanded={!ledger?.collapseBillsDefault}
                                                                 mainCurrency={ledger?.mainCurrency}
-                                                                onRetry={async () => { await retryMutation.mutateAsync(group.sourceDocument.id); }}
+                                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
                                                         </motion.div>
@@ -383,7 +387,7 @@ export function LedgerEntriesTab({
                                                 defaultExpanded={!ledger?.collapseBillsDefault}
                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                 onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
-                                                onRetry={async () => { await retryMutation.mutateAsync(group.sourceDocument.id); }}
+                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
                                                 onViewDetails={() => {
                                                     setSelectedSourceDocument(group);
                                                     setIsSourceDetailModalOpen(true);
@@ -481,6 +485,19 @@ export function LedgerEntriesTab({
                     await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
                 }}
             />
+
+            {/* Edit-Retry Dialog */}
+            {editRetryDocument && (
+                <SourceDocumentEditRetryDialog
+                    ledgerId={ledgerId}
+                    sourceDocument={editRetryDocument}
+                    open={!!editRetryDocument}
+                    onOpenChange={(open) => !open && setEditRetryDocument(null)}
+                    onSuccess={() => {
+                        toast.success(t("retrySubmitted"));
+                    }}
+                />
+            )}
         </LayoutGroup>
     );
 }

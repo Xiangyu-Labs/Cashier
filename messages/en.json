@@ -130,6 +130,9 @@
         "send": "Send",
         "advancedFeatures": "Advanced Features"
     },
+    "SourceDocumentEditRetryDialog": {
+        "title": "Edit and Retry"
+    },
     "LedgerEntryDetail": {
         "category": "Transaction Category",
         "entryDate": "Transaction Time",

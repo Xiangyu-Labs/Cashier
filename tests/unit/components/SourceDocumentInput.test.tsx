@@ -21,6 +21,8 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@/lib/api", () => ({
     createSourceDocument: vi.fn(),
+    retrySourceDocument: vi.fn(),
+    updateLedger: vi.fn(),
 }));
 
 describe("SourceDocumentInput", () => {
@@ -73,6 +75,56 @@ describe("SourceDocumentInput", () => {
                     mimeType: "image/png"
                 })
             ]),
+        });
+    });
+
+    it("renders initial data and shows retry button in retry mode", () => {
+        const initialData = {
+            text: "Initial text",
+            images: [{ data: "data:image/png;base64,abc", mimeType: "image/png" }]
+        };
+
+        render(
+            <SourceDocumentInput
+                ledgerId="test-ledger"
+                mode="retry"
+                sourceDocumentId="doc-123"
+                initialData={initialData}
+            />
+        );
+
+        expect(screen.getByDisplayValue("Initial text")).toBeTruthy();
+        // Check for preview image
+        const img = screen.getByRole("img");
+        expect(img.getAttribute("src")).toBe("data:image/png;base64,abc");
+
+        // Should show retry button instead of send
+        expect(screen.queryByText("send")).toBeNull();
+        expect(screen.getByText("retry")).toBeTruthy();
+
+        // Should hide advanced features
+        expect(screen.queryByText("advancedFeatures")).toBeNull();
+    });
+
+    it("calls retry mutation in retry mode", async () => {
+        const user = userEvent.setup();
+        const initialData = { text: "Fixing this" };
+
+        render(
+            <SourceDocumentInput
+                ledgerId="test-ledger"
+                mode="retry"
+                sourceDocumentId="doc-123"
+                initialData={initialData}
+            />
+        );
+
+        const retryButton = screen.getByText("retry");
+        await user.click(retryButton);
+
+        expect(mockMutate).toHaveBeenCalledWith({
+            text: "Fixing this",
+            images: undefined
         });
     });
 });
