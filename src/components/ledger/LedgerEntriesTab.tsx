@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-    confirmLedgerEntries,
+
     updateLedgerEntry,
     deleteLedgerEntry,
     retrySourceDocument,
@@ -48,8 +48,7 @@ export function LedgerEntriesTab({
     const { containerProps, getItemProps, LayoutGroup } = useLayoutTransition();
 
     // Local State
-    const [confirmingAll, setConfirmingAll] = useState(false);
-    const [isPendingCollapsed, setIsPendingCollapsed] = useState(defaultCollapsed);
+
     const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed);
     const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed);
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
@@ -160,55 +159,7 @@ export function LedgerEntriesTab({
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
-    const confirmBatchMutation = useMutation({
-        mutationFn: (ledgerEntryIds: string[]) => confirmLedgerEntries(ledgerId, { ledgerEntryIds }),
-        onMutate: async (ids) => {
-            await queryClient.cancelQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
 
-            const prevPending = queryClient.getQueryData(queryKeys.ledgerEntries(ledgerId, "pending"));
-            const prevConfirmed = queryClient.getQueryData(queryKeys.ledgerEntries(ledgerId, "confirmed"));
-
-            queryClient.setQueryData<LedgerEntry[]>(queryKeys.ledgerEntries(ledgerId, "pending"), (old) =>
-                old?.filter(e => !ids.includes(e.id)) || []
-            );
-
-            return { prevPending, prevConfirmed };
-        },
-        onError: (err, ids, ctx) => {
-            queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "pending"), ctx?.prevPending);
-            queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "confirmed"), ctx?.prevConfirmed);
-            toast.error(t("confirmFailed"), { description: tCommon("error") });
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-        }
-    });
-
-    const confirmAllMutation = useMutation({
-        mutationFn: () => confirmLedgerEntries(ledgerId, { confirmAll: true }),
-        onMutate: async () => {
-            setConfirmingAll(true);
-            await queryClient.cancelQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            const prevPending = queryClient.getQueryData(queryKeys.ledgerEntries(ledgerId, "pending"));
-
-            queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "pending"), []);
-
-            return { prevPending };
-        },
-        onSuccess: () => {
-            setConfirmingAll(false);
-            toast.success(t("confirmSuccess"));
-        },
-        onError: (err, _, ctx) => {
-            setConfirmingAll(false);
-            queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId, "pending"), ctx?.prevPending);
-            toast.error(t("confirmFailed"));
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-        }
-    });
 
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => deleteSourceDocument(ledgerId, sourceDocumentId),
@@ -296,7 +247,7 @@ export function LedgerEntriesTab({
 
     // --- Main Render ---
 
-    const hasAnyUnknownCurrency = false;
+
 
     return (
         <LayoutGroup>
@@ -358,69 +309,6 @@ export function LedgerEntriesTab({
                             )}
                         </AnimatePresence>
 
-                        {/* Pending Confirmation Section */}
-                        <AnimatePresence mode="popLayout">
-                            {groups.pending.length > 0 && (
-                                <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                    {renderSectionHeader(
-                                        t("pending"),
-                                        groups.pending.length,
-                                        isPendingCollapsed,
-                                        () => setIsPendingCollapsed(!isPendingCollapsed),
-                                        "bg-yellow-50/40 dark:bg-yellow-900/10 border-yellow-100/50 dark:border-yellow-900/20 hover:bg-yellow-50/60 dark:hover:bg-yellow-900/20",
-                                        "text-warning",
-                                        <Button
-                                            variant="default"
-                                            onClick={() => confirmAllMutation.mutate()}
-                                            disabled={confirmAllMutation.isPending || confirmingAll || hasAnyUnknownCurrency}
-                                            size="sm"
-                                            className={cn(
-                                                "h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95",
-                                                hasAnyUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
-                                            )}
-                                        >
-                                            {confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}
-                                        </Button>
-                                    )}
-                                    <AnimatePresence>
-                                        {!isPendingCollapsed && (
-                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                <AnimatePresence mode="popLayout">
-                                                    {groups.pending.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
-                                                            <SourceDocumentCard
-                                                                sourceDocument={group.sourceDocument}
-                                                                ledgerEntries={group.ledgerEntries}
-                                                                categories={categories}
-                                                                status="pending"
-                                                                className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800"
-                                                                defaultExpanded={true}
-                                                                mainCurrency={ledger?.mainCurrency}
-                                                                onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
-                                                                onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
-                                                                onDeleteLedgerEntry={(id) => {
-                                                                    setDeleteConfirm({ open: true, type: "ledgerEntry", id: id, title: t("deleteEntryConfirmTitle"), description: t("deleteEntryConfirmDesc") });
-                                                                }}
-                                                                onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                                onViewDetails={() => {
-                                                                    setSelectedSourceDocument(group);
-                                                                    setIsSourceDetailModalOpen(true);
-                                                                }}
-                                                                onViewLedgerEntry={(entry) => {
-                                                                    setSelectedLedgerEntry(entry);
-                                                                    setIsDetailModalOpen(true);
-                                                                }}
-                                                            />
-                                                        </motion.div>
-                                                    ))}
-                                                </AnimatePresence>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                    <div className="h-px bg-border/50 mt-4 mx-2" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
 
                         {/* Error Section */}
                         <AnimatePresence mode="popLayout">
@@ -435,7 +323,7 @@ export function LedgerEntriesTab({
                                         "text-red-500",
                                         <>
                                             <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" disabled={confirmingAll} onClick={() => { groups.error.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
+                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => { groups.error.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
                                         </>
                                     )}
                                     <AnimatePresence>

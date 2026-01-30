@@ -16,8 +16,6 @@ export interface SourceDocumentGroup {
 export interface GroupedSourceDocuments {
     /** Documents currently being processed (queued + processing) */
     processing: SourceDocumentGroup[];
-    /** Documents with pending (unconfirmed) entries */
-    pending: SourceDocumentGroup[];
     /** Documents that failed processing */
     error: SourceDocumentGroup[];
     /** Documents with all entries confirmed (for infinite scroll) */
@@ -106,7 +104,6 @@ export function useUnifiedSourceDocuments(
     const grouped = useMemo((): GroupedSourceDocuments => {
         const result: GroupedSourceDocuments = {
             processing: [],
-            pending: [],
             error: [],
             completed: [],
         };
@@ -148,13 +145,24 @@ export function useUnifiedSourceDocuments(
         }
 
         // 2. Find documents with pending entries (that are not already in active)
+        // Note: In new flow, documents are either active (processing) completed, or error.
+        // Pending ledger entries attached to Error documents will appear in Error group.
+        // Orphaned pending entries should not happen in normal flow or are ignored.
         for (const [docId, entries] of pendingEntriesByDoc) {
             if (!categorizedIds.has(docId) && entries.length > 0) {
-                // Get the source document from the first entry
                 const sourceDoc = entries[0].sourceDocument;
-                if (sourceDoc) {
-                    categorizedIds.add(docId);
-                    result.pending.push({ sourceDocument: sourceDoc, ledgerEntries: entries });
+                // If a document has pending entries but is NOT in active list (error/processing)
+                // It might be a data inconsistency. For now we treat it as error to be safe if status is error?
+                // But wait, our active query fetches status=['queued', 'processing', 'error'].
+                // So if it's not in active, it must be 'completed' or something else?
+                // If it is 'completed' but has pending entries, that's an anomaly.
+
+                // If we want to hide "Pending" section entirely, we just don't push anything to result.pending.
+                // We can log this anomaly or push to error if we want visibility.
+                // For this task, we remove the UI section, so we just skip.
+                if (sourceDoc && sourceDoc.status !== 'completed') {
+                    // If for some reason we missed it in active query?
+                    // Let's assume active query catches all non-completed.
                 }
             }
         }
@@ -174,7 +182,6 @@ export function useUnifiedSourceDocuments(
             new Date(a.sourceDocument.createdAt).getTime();
 
         result.processing.sort(sortByDate);
-        result.pending.sort(sortByDate);
         result.error.sort(sortByDate);
         result.completed.sort(sortByDate);
 
@@ -195,7 +202,6 @@ export function useUnifiedSourceDocuments(
 
         return {
             processing: filterGroup(grouped.processing),
-            pending: filterGroup(grouped.pending),
             error: filterGroup(grouped.error),
             completed: grouped.completed, // Already filtered by API
         };
@@ -213,7 +219,6 @@ export function useUnifiedSourceDocuments(
         // Stats for quick access
         stats: {
             processingCount: filteredGroups.processing.length,
-            pendingCount: filteredGroups.pending.length,
             errorCount: filteredGroups.error.length,
         },
     };

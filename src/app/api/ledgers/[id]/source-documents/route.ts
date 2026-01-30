@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const conditions = [eq(sourceDocuments.ledgerId, ledgerId)];
 
   if (status) {
-    const statuses = status.split(",") as ("queued" | "processing" | "to_confirm" | "completed" | "error")[];
+    const statuses = status.split(",") as ("queued" | "processing" | "completed" | "error")[];
     conditions.push(inArray(sourceDocuments.status, statuses));
   }
 

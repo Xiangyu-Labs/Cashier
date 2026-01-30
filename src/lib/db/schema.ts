@@ -19,12 +19,9 @@ export const ledgerEntryStatusEnum = pgEnum("ledger_entry_status", [
   "pending",
   "confirmed",
 ]);
-
-
 export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "queued",
   "processing",
-  "to_confirm",
   "completed",
   "error",
 ]);

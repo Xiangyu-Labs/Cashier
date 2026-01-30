@@ -163,7 +163,7 @@ export function SourceDocumentCard({
           )}
         </span>
         <div className="flex items-center gap-2">
-          {ledgerEntries.length === 0 && (
+          {(ledgerEntries.length === 0 || status === "error") && (
             <div className="flex items-center gap-2">
               <ProcessingStatus
                 status={status}

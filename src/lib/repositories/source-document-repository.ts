@@ -17,25 +17,7 @@ class SourceDocumentRepository extends BaseRepository<SourceDocument, typeof sou
         return this.update(id, { status: 'processing' }, ledgerId);
     }
 
-    async completeAllToConfirm(ledgerId: string) {
-        const { and, eq } = await import("drizzle-orm");
-        const results = await this.db.update(this.table)
-            .set({ status: "completed" })
-            .where(and(eq(this.table.ledgerId, ledgerId), eq(this.table.status, "to_confirm")))
-            .returning();
 
-        if (results.length > 0) {
-            const { eventBus } = await import("@/lib/events/event-bus");
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId,
-                entity: this.entityType,
-                action: 'updated',
-                ids: (results as SourceDocument[]).map(r => r.id)
-            });
-        }
-        return results;
-    }
 
     async batchComplete(ids: string[], ledgerId: string) {
         return this.batchUpdate(ids, { status: "completed" }, ledgerId);
