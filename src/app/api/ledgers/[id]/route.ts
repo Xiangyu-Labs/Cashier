@@ -9,7 +9,6 @@ const updateLedgerSchema = z.object({
   language: z.string().optional(),
   currencies: z.array(z.string()).optional(),
   mainCurrency: z.string().optional(),
-  autoConfirm: z.boolean().optional(),
   autoRecognizeDate: z.boolean().optional(),
   collapsePendingDefault: z.boolean().optional(),
   mergeSimilarItems: z.boolean().optional(),

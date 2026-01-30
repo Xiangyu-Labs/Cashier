@@ -8,7 +8,6 @@ export interface Ledger {
   mainCurrency: string;
   createdAt: string;
   updatedAt: string;
-  autoConfirm: boolean;
   autoRecognizeDate: boolean;
   collapsePendingDefault: boolean;
   mergeSimilarItems: boolean;
@@ -20,7 +19,6 @@ export interface Settings {
   language: string;
   currencies: string[];
   mainCurrency?: string;
-  autoConfirm?: boolean;
   autoRecognizeDate?: boolean;
 }
 
@@ -43,7 +41,7 @@ export interface SourceDocument {
   imageUrls: string[];
   createdAt: string;
   status?: "queued" | "processing" | "to_confirm" | "completed" | "error";
-  errorCode?: "internal_error" | "parse_failed" | "invalid_content" | null;
+  errorCode?: "internal_error" | "parse_failed" | "invalid_content" | "flow_anomaly" | "unknown_currency" | null;
 }
 
 export interface LedgerEntry {

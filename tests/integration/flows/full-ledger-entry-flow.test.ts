@@ -34,18 +34,22 @@ describe("Full Ledger Entry Flow", () => {
     expect(ledger.id).toBeDefined();
     expect(ledger.name).toBe("E2E Test Ledger");
 
+    expect(createResponse.status).toBe(201);
+    expect(ledger.id).toBeDefined();
+    expect(ledger.name).toBe("E2E Test Ledger");
+
     // Enable auto-confirm for testing ledger entry creation flow
-    const updateRequest = new NextRequest(
-      `http://localhost/api/ledgers/${ledger.id}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ autoConfirm: true }),
-      }
-    );
-    const updateResponse = await updateLedger(updateRequest, {
-      params: Promise.resolve({ id: ledger.id }),
-    });
-    expect(updateResponse.status).toBe(200);
+    /* 
+    Auto confirm removed. Default flow requires manual confirmation or verified logic.
+    Since we mock the AI response to be valid, and we now default to dual verification,
+    if the AI response is consistent (mocked once), it might pass verification.
+    However, our E2E environment doesn't use the mocked processor from unit tests easily.
+    But looking at the test file, it vi.mock("@/lib/ai/openai") at the top.
+    Wait, the processor uses OpenAI client.
+    Processor calls OpenAI twice.
+    If we mock OpenAI to return same content both times, verification passes.
+    So we just need to remove the "enable autoConfirm" step because it's no longer a setting.
+    */
 
     // Step 2: Verify ledger was created (and categories exist globally)
     const getResponse = await getLedger(
@@ -220,14 +224,7 @@ describe("Full Ledger Entry Flow", () => {
     });
     const ledger = await (await createLedger(createRequest)).json();
 
-    // Enable auto-confirm
-    await updateLedger(
-      new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ autoConfirm: true }),
-      }),
-      { params: Promise.resolve({ id: ledger.id }) }
-    );
+    // Auto-confirm removed. Proceeding with default flow.
 
     // Get categories to find 餐饮 and 日用品
     const categoriesResponse = await getCategories(
@@ -242,7 +239,6 @@ describe("Full Ledger Entry Flow", () => {
     expect(foodCategory).toBeDefined();
     expect(dailyCategory).toBeDefined();
 
-    // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     // Send message (mock returns 牛奶 -> 日用, 面包 -> 餐饮)
     const messageResponse = await sendMessage(
       new NextRequest(`http://localhost/api/ledgers/${ledger.id}/source-documents`, {

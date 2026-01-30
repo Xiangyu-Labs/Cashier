@@ -9,7 +9,7 @@ class SourceDocumentRepository extends BaseRepository<SourceDocument, typeof sou
         super(sourceDocuments, 'source_document');
     }
 
-    async setError(id: string, errorCode: "internal_error" | "parse_failed" | "invalid_content", ledgerId?: string) {
+    async setError(id: string, errorCode: "internal_error" | "parse_failed" | "invalid_content" | "flow_anomaly" | "unknown_currency", ledgerId?: string) {
         return this.update(id, { status: 'error', errorCode }, ledgerId);
     }
 

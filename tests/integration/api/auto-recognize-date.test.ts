@@ -28,7 +28,6 @@ describe("Auto-recognize Ledger Entry Time", () => {
             .insert(ledgers)
             .values({
                 name: "Test Ledger",
-                autoConfirm: true, // Auto-confirm enabled to simplify test
                 autoRecognizeDate: false // Default to false
             })
             .returning();
@@ -86,7 +85,6 @@ describe("Auto-recognize Ledger Entry Time", () => {
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: false,
-                    autoConfirm: true,
                     mergeSimilarItems: false
                 }
             }
@@ -147,7 +145,6 @@ describe("Auto-recognize Ledger Entry Time", () => {
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: true,
-                    autoConfirm: true,
                     mergeSimilarItems: false
                 }
             }

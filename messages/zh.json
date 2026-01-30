@@ -2,7 +2,9 @@
     "ErrorCode": {
         "internal_error": "系统内部错误",
         "parse_failed": "无法识别内容格式",
-        "invalid_content": "非有效流水"
+        "invalid_content": "非有效流水",
+        "flow_anomaly": "AI 识别结果不一致",
+        "unknown_currency": "货币未能识别"
     },
     "HomePage": {
         "loading": "加载中...",
@@ -163,8 +165,6 @@
         "title": "设置",
         "appearance": "外观",
         "assistant": "智能助理",
-        "autoConfirm": "跳过核对",
-        "autoConfirmDesc": "AI 识别的凭证直接入账，不再需要手动确认",
         "autoRecognizeDate": "自动识别日期",
         "autoRecognizeDateDesc": "如果开启，AI 将尝试从凭证中识别日期。如果关闭或未识别到，则使用上传时间。",
         "collapsePending": "默认折叠待处理事项",
@@ -181,10 +181,6 @@
         "preferredCurrenciesDesc": "此账本中常用的货币列表。",
         "categories": "分类",
         "categoriesDesc": "管理账本支出分类及其优先级",
-        "riskTitle": "风险提示",
-        "riskDesc1": "开启「跳过核对」后，AI 识别的所有记录将直接计入账本。",
-        "riskDesc2": "虽然 AI 准确率很高，但仍可能出现识别错误（如金额、分类错误）。开启此功能意味着您接受可能存在的记账误差。",
-        "riskDesc3": "建议您定期（如每周）查看流水列表，检查是否有异常记录。",
         "cancel": "取消",
         "confirmEnable": "确认开启",
         "taskCenter": "任务中心",

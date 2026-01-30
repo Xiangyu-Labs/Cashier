@@ -33,9 +33,9 @@ export const errorCodeEnum = pgEnum("error_code", [
   "internal_error",
   "parse_failed",
   "invalid_content",
+  "flow_anomaly",
+  "unknown_currency",
 ]);
-
-
 
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
@@ -46,7 +46,6 @@ export const ledgers = pgTable("ledgers", {
   mainCurrency: text("main_currency").default(defaultLedger.settings.mainCurrency),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  autoConfirm: boolean("auto_confirm").default(defaultLedger.settings.autoConfirm),
   autoRecognizeDate: boolean("auto_recognize_date").default(defaultLedger.settings.autoRecognizeDate),
   collapsePendingDefault: boolean("collapse_pending_default").default(defaultLedger.settings.collapsePendingDefault),
   mergeSimilarItems: boolean("merge_similar_items").default(defaultLedger.settings.mergeSimilarItems),

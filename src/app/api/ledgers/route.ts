@@ -39,7 +39,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         name: validated.name,
         language: validated.language || defaultLedger.settings.language,
         currencies: defaultLedger.settings.currencies,
-        autoConfirm: defaultLedger.settings.autoConfirm,
         autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
         collapsePendingDefault: defaultLedger.settings.collapsePendingDefault,
         mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,

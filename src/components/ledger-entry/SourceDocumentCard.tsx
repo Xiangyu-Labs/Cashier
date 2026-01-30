@@ -119,13 +119,12 @@ export function SourceDocumentCard({
     return { sortedEntries: sorted };
   }, [ledgerEntries]);
 
-  const { text, images, hasUnknownCurrency } = useMemo(() => {
+  const { text, images } = useMemo(() => {
     return {
       text: sourceDocument.text,
       images: sourceDocument.imageUrls || [],
-      hasUnknownCurrency: ledgerEntries.some(e => !e.currency || e.currency === "unknown"),
     };
-  }, [sourceDocument, ledgerEntries]);
+  }, [sourceDocument]);
 
   async function handleConfirm() {
     if (!onConfirm) return;
@@ -249,12 +248,11 @@ export function SourceDocumentCard({
                 variant="outline"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
-                disabled={isConfirming || hasUnknownCurrency}
+                disabled={isConfirming}
                 className={cn(
-                  "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300",
-                  hasUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
+                  "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
                 )}
-                title={hasUnknownCurrency ? "待修正货币后可确认" : t("confirmDoc")}
+                title={t("confirmDoc")}
               >
                 {isConfirming ? (
                   <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />

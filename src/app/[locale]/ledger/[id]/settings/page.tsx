@@ -174,27 +174,6 @@ export default function LedgerSettingsPage() {
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-base font-medium">{t('autoConfirm')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('autoConfirmDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={ledger.autoConfirm || false}
-                            onCheckedChange={(checked: boolean) => {
-                                updateLedgerMutation.mutate({ autoConfirm: checked });
-                            }}
-                        />
-                    </div>
-
-                    {ledger.autoConfirm && (
-                        <div className="bg-danger/10 p-3 rounded-md text-xs text-danger leading-normal animate-in fade-in slide-in-from-top-1 duration-200">
-                            ⚠️ {t('riskDesc1')} {t('riskDesc2')} {t('riskDesc3')}
-                        </div>
-                    )}
-
-                    <div className="h-px bg-[var(--border)]" />
-
-                    <div className="flex items-center justify-between">
-                        <div>
                             <h3 className="text-base font-medium">{t('autoRecognizeDate')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('autoRecognizeDateDesc')}</p>
                         </div>

@@ -143,27 +143,6 @@ export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInput
                     <div className="p-3 space-y-4 bg-surface/30 border-t border-border animate-in slide-in-from-top-1 duration-200">
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <div className="text-sm font-medium">{tSettings("autoConfirm")}</div>
-                                <div className="text-xs text-muted leading-tight">{tSettings("autoConfirmDesc")}</div>
-                            </div>
-                            <Switch
-                                checked={ledger?.autoConfirm || false}
-                                onCheckedChange={(checked) => {
-                                    updateLedgerMutation.mutate({ autoConfirm: checked });
-                                }}
-                            />
-                        </div>
-
-                        {ledger?.autoConfirm && (
-                            <div className="bg-danger/10 p-2 rounded text-[10px] text-danger leading-normal animate-in fade-in slide-in-from-top-1 duration-200">
-                                ⚠️ {tSettings("riskDesc1")} {tSettings("riskDesc2")}
-                            </div>
-                        )}
-
-                        <div className="h-px bg-border" />
-
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
                                 <div className="text-sm font-medium">{tSettings("autoRecognizeDate")}</div>
                                 <div className="text-xs text-muted leading-tight">{tSettings("autoRecognizeDateDesc")}</div>
                             </div>

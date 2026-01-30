@@ -27,6 +27,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         mockProcessor = {
             process: vi.fn(),
         };
+        // Mock processor to return identical results for dual call by default
         vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as never);
 
         // Setup real DB data
@@ -53,7 +54,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             language: "en-US",
             preferredCurrencies: ["USD"],
             settings: {
-                autoConfirm: false,
                 mergeSimilarItems: false,
                 autoRecognizeDate: true,
             }
@@ -90,7 +90,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                autoConfirm: false,
                 mergeSimilarItems: false,
                 autoRecognizeDate: false,
             }
@@ -118,7 +117,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                autoConfirm: false,
                 mergeSimilarItems: true,
                 autoRecognizeDate: true,
             }
@@ -152,7 +150,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                autoConfirm: false,
                 mergeSimilarItems: false,
                 autoRecognizeDate: true,
             }
@@ -174,7 +171,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 });
 
 describe("parseSourceDocumentHandler.onComplete", () => {
-    it("should force 'pending' status if any entry has 'unknown' currency even if autoConfirm is true", async () => {
+    it("should force 'pending' status output has 'unknown_currency' status", async () => {
         const db = getTestDb();
 
         // 1. Setup ledger and source document
@@ -186,13 +183,12 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             sourceDocumentId: sourceDoc.id,
             categories: [{ id: category.id, name: "餐饮", description: "餐饮" }],
             settings: {
-                autoConfirm: true,
                 mergeSimilarItems: false,
                 autoRecognizeDate: true
             }
         };
 
-        const output = {
+        const output: ParseSourceDocumentOutput = {
             ledgerEntries: [
                 {
                     itemName: "Item 1",
@@ -210,7 +206,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
                     entryDate: "2024-01-01",
                     notes: null
                 }
-            ]
+            ],
+            verificationStatus: 'unknown_currency'
         };
 
         const context = {
@@ -246,10 +243,11 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const updatedSourceDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
-        expect(updatedSourceDoc?.status).toBe("to_confirm");
+        expect(updatedSourceDoc?.status).toBe("error");
+        expect(updatedSourceDoc?.errorCode).toBe("unknown_currency");
     });
 
-    it("should use 'confirmed' status if all entries have valid currency and autoConfirm is true", async () => {
+    it("should use 'confirmed' status if verification passed", async () => {
         const db = getTestDb();
 
         // 1. Setup ledger and source document
@@ -261,13 +259,12 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             sourceDocumentId: sourceDoc.id,
             categories: [{ id: category.id, name: "餐饮", description: "餐饮" }],
             settings: {
-                autoConfirm: true,
                 mergeSimilarItems: false,
                 autoRecognizeDate: true
             }
         };
 
-        const output = {
+        const output: ParseSourceDocumentOutput = {
             ledgerEntries: [
                 {
                     itemName: "Item 1",
@@ -277,7 +274,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
                     entryDate: "2024-01-01",
                     notes: null
                 }
-            ]
+            ],
+            verificationStatus: 'passed'
         };
 
         const context = {
@@ -321,7 +319,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
 
-        const output = {
+        const output: ParseSourceDocumentOutput = {
             ledgerEntries: [
                 {
                     itemName: "Item 1",
@@ -331,7 +329,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
                     entryDate: "2024-01-01",
                     notes: null
                 }
-            ]
+            ],
+            verificationStatus: 'passed'
         };
 
         const context = {
@@ -341,7 +340,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             input: {
                 sourceDocumentId: sourceDoc.id,
                 categories: [],
-                settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
+                settings: { mergeSimilarItems: false, autoRecognizeDate: true }
             },
         };
 

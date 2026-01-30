@@ -94,7 +94,6 @@ describe("PATCH /api/ledgers/[id]", () => {
         language: "en",
         currencies: ["USD", "EUR"],
         mainCurrency: "USD",
-        autoConfirm: true,
         autoRecognizeDate: true,
         collapsePendingDefault: true,
         mergeSimilarItems: true
@@ -111,7 +110,6 @@ describe("PATCH /api/ledgers/[id]", () => {
     expect(data.language).toBe("en");
     expect(data.currencies).toEqual(["USD", "EUR"]);
     expect(data.mainCurrency).toBe("USD");
-    expect(data.autoConfirm).toBe(true);
     expect(data.autoRecognizeDate).toBe(true);
     expect(data.collapsePendingDefault).toBe(true);
     expect(data.mergeSimilarItems).toBe(true);
@@ -121,7 +119,6 @@ describe("PATCH /api/ledgers/[id]", () => {
     expect(updated?.language).toBe("en");
     expect(updated?.currencies).toEqual(["USD", "EUR"]);
     expect(updated?.mainCurrency).toBe("USD");
-    expect(updated?.autoConfirm).toBe(true);
     expect(updated?.autoRecognizeDate).toBe(true);
     expect(updated?.collapsePendingDefault).toBe(true);
     expect(updated?.mergeSimilarItems).toBe(true);

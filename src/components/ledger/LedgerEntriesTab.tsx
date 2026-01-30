@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     confirmLedgerEntries,
@@ -143,7 +143,7 @@ export function LedgerEntriesTab({
     });
 
     const batchUpdateLedgerEntriesMutation = useMutation({
-        mutationFn: ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: any }) => batchUpdateLedgerEntries(ledgerId, { ledgerEntryIds, ...data }),
+        mutationFn: ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: Record<string, unknown> }) => batchUpdateLedgerEntries(ledgerId, { ledgerEntryIds, ...data }),
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
         },
@@ -243,7 +243,7 @@ export function LedgerEntriesTab({
         },
         onSuccess: () => toast.success(t("retrySubmitted")),
         onError: (err, id, ctx) => {
-            queryClient.setQueryData(queryKeys.ledgerEvents(ledgerId), ctx?.prevActive);
+            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(tCommon("error"));
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
@@ -296,9 +296,7 @@ export function LedgerEntriesTab({
 
     // --- Main Render ---
 
-    const hasAnyUnknownCurrency = useMemo(() => {
-        return groups.pending.some(g => g.ledgerEntries.some(e => !e.currency || e.currency === "unknown"));
-    }, [groups.pending]);
+    const hasAnyUnknownCurrency = false;
 
     return (
         <LayoutGroup>

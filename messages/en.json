@@ -2,7 +2,9 @@
     "ErrorCode": {
         "internal_error": "Internal error",
         "parse_failed": "Unable to parse content",
-        "invalid_content": "Invalid stream"
+        "invalid_content": "Invalid stream",
+        "flow_anomaly": "AI verification mismatch",
+        "unknown_currency": "Currency not recognized"
     },
     "HomePage": {
         "loading": "Loading...",
@@ -163,8 +165,6 @@
         "title": "Settings",
         "appearance": "Appearance",
         "assistant": "Smart Assistant",
-        "autoConfirm": "Auto-confirm",
-        "autoConfirmDesc": "AI-identified entries are processed automatically and no longer require manual confirmation",
         "autoRecognizeDate": "Auto-recognize Date",
         "autoRecognizeDateDesc": "If enabled, AI will try to identify the date from the document. If disabled or not identified, the upload time will be used.",
         "collapsePending": "Collapse Pending Items by Default",
@@ -181,10 +181,6 @@
         "preferredCurrenciesDesc": "List of currencies used in this ledger.",
         "categories": "Categories",
         "categoriesDesc": "Manage ledger expense categories and their priority",
-        "riskTitle": "Risk Warning",
-        "riskDesc1": "After enabling 'Auto-confirm', all records identified by AI will be directly recorded in the ledger.",
-        "riskDesc2": "While AI accuracy is high, identification errors (e.g., amount, category errors) may still occur. Enabling this feature means you accept potential bookkeeping errors.",
-        "riskDesc3": "It is recommended that you check the entry list regularly (e.g., weekly) for abnormal records.",
         "cancel": "Cancel",
         "confirmEnable": "Confirm Enable",
         "taskCenter": "Task Center",
