@@ -7,11 +7,11 @@ const createShareSchema = z.object({
     expiresIn: z.enum(["1d", "7d", "30d", "never"]).optional().default("7d"),
 });
 
-type RouteParams = { params: Promise<{ id: string; docId: string }> };
+type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
-        const { id: ledgerId, docId: sourceDocumentId } = await params;
+        const { id: ledgerId, sourceDocumentId } = await params;
         const body = await request.json();
         const validated = createShareSchema.parse(body);
 
@@ -31,17 +31,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             case "never":
                 expiresAt = null;
                 break;
-        }
-
-        // Check if there is already an active share
-        const existingShare = await shareRepo.findActiveBySourceDocumentId(sourceDocumentId);
-        if (existingShare) {
-            // Return existing share if it matches expiration policy essentially, or just create a new one?
-            // For simplicity, let's just return the existing active one if valid.
-            // But user might want to extend it.
-            // Let's create a NEW one always for now to support "refreshing" link, but maybe we should deactivate old ones?
-            // Actually, plan says "Create a share link".
-            // Let's create a new one.
         }
 
         const share = await shareRepo.create({

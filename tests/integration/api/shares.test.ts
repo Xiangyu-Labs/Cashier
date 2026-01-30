@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { POST } from "@/app/api/ledgers/[id]/source-documents/[docId]/shares/route";
+import { POST } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/shares/route";
 import { GET as GET_SHARE } from "@/app/api/s/[shareId]/route";
-import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[docId]/shares/[shareId]/route";
+import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/shares/[shareId]/route";
 import { getTestDb } from "../../setup";
 import { ledgers, sourceDocuments, shares, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -30,7 +30,7 @@ describe("Share API", () => {
             body: JSON.stringify({ expiresIn: "7d" }),
         });
 
-        const paramsPromise = Promise.resolve({ id: ledger.id, docId: doc.id });
+        const paramsPromise = Promise.resolve({ id: ledger.id, sourceDocumentId: doc.id });
         const response = await POST(request, { params: paramsPromise });
         const data = await response.json();
 
