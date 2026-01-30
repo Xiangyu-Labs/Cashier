@@ -8,7 +8,10 @@ export type EntityChangeEvent = {
     action: EntityAction;
     ids: string[];
     // Optional: include metadata for UI optimization (e.g. status)
-    metadata?: Record<string, unknown>;
+    metadata?: {
+        status?: string;
+        [key: string]: unknown;
+    };
 };
 
 export type LedgerEvent = EntityChangeEvent | {

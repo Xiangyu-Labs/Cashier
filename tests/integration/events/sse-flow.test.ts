@@ -132,4 +132,39 @@ describe("SSE Event Flow Integration", () => {
             action: 'updated'
         });
     });
+
+    it("should emit event with status metadata when updating source document status", async () => {
+        // Create source document
+        const srcDoc = await sourceDocumentRepo.create({
+            ledgerId,
+            text: "test retry",
+            status: "anomaly",
+        });
+
+        const eventPromise = new Promise<LedgerEvent>((resolve) => {
+            const unsubscribe = eventBus.subscribe(ledgerId, (event) => {
+                if (event.type === 'entity:changed' &&
+                    event.entity === 'source_document' &&
+                    event.action === 'updated' &&
+                    event.metadata?.status === 'processing') {
+                    resolve(event);
+                    unsubscribe();
+                }
+            });
+        });
+
+        // Update status (simulate retry)
+        await sourceDocumentRepo.setProcessing(srcDoc.id, ledgerId);
+
+        const event = await eventPromise;
+        if (event.type !== 'entity:changed') throw new Error('Expected entity:changed event');
+
+        expect(event).toMatchObject({
+            type: 'entity:changed',
+            ledgerId: ledgerId,
+            entity: 'source_document',
+            action: 'updated',
+        });
+        expect(event.metadata).toEqual({ status: 'processing' });
+    });
 });

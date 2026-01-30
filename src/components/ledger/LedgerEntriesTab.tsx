@@ -296,7 +296,7 @@ export function LedgerEntriesTab({
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                 <AnimatePresence mode="wait">
                                                     {groups.processing.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} layout {...getItemProps()}>
+                                                        <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                                             <SourceDocumentCard
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
@@ -339,7 +339,7 @@ export function LedgerEntriesTab({
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                 <AnimatePresence mode="wait">
                                                     {groups.anomaly.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} layout {...getItemProps()}>
+                                                        <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                                             <SourceDocumentCard
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
@@ -373,7 +373,7 @@ export function LedgerEntriesTab({
                             ) : (
                                 <AnimatePresence mode="wait">
                                     {groups.completed.map(group => (
-                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout {...getItemProps()}>
+                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                             <SourceDocumentCard
                                                 sourceDocument={group.sourceDocument}
                                                 ledgerEntries={group.ledgerEntries}
