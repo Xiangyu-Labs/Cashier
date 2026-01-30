@@ -8,8 +8,6 @@ class LedgerEntryRepository extends BaseRepository<LedgerEntry, typeof ledgerEnt
     constructor() {
         super(ledgerEntries, 'ledger_entry');
     }
-
-    // Note: confirmAllPending removed - no longer tracking anomaly states on entries
 }
 
 export const ledgerEntryRepo = new LedgerEntryRepository();

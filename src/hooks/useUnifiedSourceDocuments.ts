@@ -32,11 +32,6 @@ interface UseUnifiedSourceDocumentsOptions {
 /**
  * Unified hook for fetching and grouping all source documents by status.
  * 
- * This replaces the fragmented data fetching pattern where:
- * - useLedgerData fetched pending entries separately
- * - useInfiniteQuery fetched all documents
- * - Filtering relied on ID cross-referencing
- * 
  * Now all data comes from this single hook, grouped by status.
  */
 export function useUnifiedSourceDocuments(
