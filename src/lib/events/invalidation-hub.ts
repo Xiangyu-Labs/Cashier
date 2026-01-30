@@ -9,34 +9,34 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
 
     const { ledgerId, entity } = event;
 
+    console.log('[SSE Invalidation] Handling event:', event);
+
     // Define invalidation rules
     // Map entity types to query keys that should be invalidated
+    // IMPORTANT: Keys must match exactly what's used in useLedgerData.ts and other hooks
     const invalidationMap: Record<string, string[][]> = {
         ledger_entry: [
-            ['ledger-entries', ledgerId], // Main list
-            ['ledger-summary', ledgerId], // Summary/Stats
-            ['ledger', ledgerId], // Ledger details (maybe last updated time)
+            ['ledgerEntries', ledgerId],  // Matches useLedgerData: ["ledgerEntries", ledgerId, ...]
+            ['summary', ledgerId],        // Matches useLedgerData: ["summary", ledgerId]
+            ['ledger', ledgerId],         // Ledger details
         ],
         source_document: [
-            ['source-documents', ledgerId], // Document list
-            ['ledger-entries', ledgerId],  // Entries might change if doc status changes
-            ['processing-tasks', ledgerId], // Tasks often relate to docs
+            ['sourceDocuments', ledgerId],  // Matches useLedgerData: ["sourceDocuments", ledgerId, ...]
+            ['ledgerEntries', ledgerId],    // Entries might change if doc status changes
         ],
         task_run: [
-            ['processing-tasks', ledgerId], // Active tasks list
-            ['processing-stats', ledgerId], // Token usage stats
-            ['source-documents', ledgerId], // Documents status might be affected by task
+            ['processingTasks', ledgerId],  // If this key exists
+            ['sourceDocuments', ledgerId],  // Documents status might be affected by task
         ],
         category: [
-            ['entry-categories', ledgerId],
-            ['ledger-entries', ledgerId], // Entries verify category names
+            ['entryCategories', ledgerId],  // Matches useLedgerData: ["entryCategories", ledgerId]
+            ['ledgerEntries', ledgerId],
         ],
         ledger: [
             ['ledger', ledgerId],
-            ['service-credentials', ledgerId],
         ],
         service_credential: [
-            ['service-credentials', ledgerId],
+            ['serviceCredentials', ledgerId],
         ]
     };
 

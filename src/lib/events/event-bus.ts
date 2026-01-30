@@ -43,4 +43,15 @@ class LedgerEventBus extends EventEmitter {
     }
 }
 
-export const eventBus = LedgerEventBus.getInstance();
+// Global scope type definition to prevent TS errors
+const globalForEventBus = globalThis as unknown as {
+    ledgerEventBus: LedgerEventBus | undefined;
+};
+
+// Use existing instance if available (hot reload), otherwise create new
+export const eventBus = globalForEventBus.ledgerEventBus ?? LedgerEventBus.getInstance();
+
+// Save instance to global scope in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+    globalForEventBus.ledgerEventBus = eventBus;
+}
