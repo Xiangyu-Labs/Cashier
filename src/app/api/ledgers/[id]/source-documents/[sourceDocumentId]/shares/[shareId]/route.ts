@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shareRepo } from "@/lib/repositories";
 import { logger } from "@/lib/logger";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string; shareId: string }> };
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
-        const { shareId } = await params;
+        const { id: ledgerId, shareId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
 
         await shareRepo.update(shareId, { isActive: false });
 

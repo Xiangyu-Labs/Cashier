@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const updateLedgerSchema = z.object({
   name: z.string().min(1).optional(),
@@ -22,15 +23,10 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    // Categories are no longer a relation of ledger directly in the schema logic (global).
-    // The frontend should fetch categories separately if needed, or use the global categories API.
-    const ledger = await db.query.ledgers.findFirst({
-      where: eq(ledgers.id, id),
-    });
 
-    if (!ledger) {
-      return NextResponse.json({ error: "Ledger not found" }, { status: 404 });
-    }
+    // Verify user owns this ledger
+    const { ledger, error } = await requireLedgerAccess(id);
+    if (error) return error;
 
     return NextResponse.json(ledger);
   } catch (error) {
@@ -46,6 +42,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(id);
+    if (error) return error;
+
     const body = await request.json();
     const validated = updateLedgerSchema.parse(body);
 
@@ -82,6 +83,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(id);
+    if (error) return error;
+
     const [deleted] = await db
       .delete(ledgers)
       .where(eq(ledgers.id, id))

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const updateCategorySchema = z.object({
   name: z.string().min(1).optional(),
@@ -16,7 +17,12 @@ type RouteParams = { params: Promise<{ id: string; categoryId: string }> };
 // PATCH /api/ledgers/[id]/entry-categories/[categoryId] - 更新分类
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const { categoryId } = await params;
+    const { id: ledgerId, categoryId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
+
     const body = await request.json();
     const validated = updateCategorySchema.parse(body);
 
@@ -55,7 +61,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/ledgers/[id]/entry-categories/[categoryId] - 删除分类
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { categoryId } = await params;
+    const { id: ledgerId, categoryId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     // First check if the category exists and is editable
     const category = await db.query.entryCategories.findFirst({

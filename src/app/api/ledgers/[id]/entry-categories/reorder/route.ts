@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const reorderSchema = z.object({
     categoryIds: z.array(z.string().uuid()),
@@ -13,6 +14,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(id);
+        if (error) return error;
+
         const body = await request.json();
         const { categoryIds } = reorderSchema.parse(body);
 

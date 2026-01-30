@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgers } from "@/lib/db/schema";
+import { sourceDocuments } from "@/lib/db/schema";
 import { eq, inArray, and, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { sourceDocumentRepo } from "@/lib/repositories";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const sourceDocumentSchema = z.object({
   text: z.string().optional(),
@@ -23,6 +24,10 @@ type RouteParams = { params: Promise<{ id: string }> };
 // GET /api/ledgers/[id]/source-documents - 获取来源文档列表 (主要用于获取队列中的消息)
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id: ledgerId } = await params;
+
+  // Verify user owns this ledger
+  const { error } = await requireLedgerAccess(ledgerId);
+  if (error) return error;
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get("status"); // e.g. "queued,processing"
   const limit = parseInt(searchParams.get("limit") || "20");
@@ -87,13 +92,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const ledger = await db.query.ledgers.findFirst({
-      where: eq(ledgers.id, ledgerId),
-    });
-
-    if (!ledger) {
-      return NextResponse.json({ error: "Ledger not found" }, { status: 404 });
-    }
+    // Verify user owns this ledger
+    const { ledger, error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     // Normalize images
     const imageUrls: string[] = [];

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { eventBus } from '@/lib/events/event-bus';
+import { requireLedgerAccess } from '@/lib/auth/helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,10 @@ export async function GET(
     context: { params: Promise<{ id: string }> } // Use Promise for route params in Next.js 15+
 ) {
     const { id: ledgerId } = await context.params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     const stream = new ReadableStream({
         start(controller) {

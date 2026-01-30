@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> };
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: ledgerId, sourceDocumentId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
 
         // Verify source document exists and belongs to ledger
         const doc = await db.query.sourceDocuments.findFirst({
@@ -48,6 +53,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         const { id: ledgerId, sourceDocumentId } = await params;
         const body = await request.json();
         const { title } = body;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
 
         // Verify source document exists and belongs to ledger
         const doc = await db.query.sourceDocuments.findFirst({

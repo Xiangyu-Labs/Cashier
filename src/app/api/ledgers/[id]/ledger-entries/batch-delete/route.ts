@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const batchDeleteSchema = z.object({
     ledgerEntryIds: z.array(z.string()),
@@ -13,6 +14,11 @@ export async function POST(
 ) {
     try {
         const { id: ledgerId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
+
         const body = await request.json();
         const { ledgerEntryIds } = batchDeleteSchema.parse(body);
 

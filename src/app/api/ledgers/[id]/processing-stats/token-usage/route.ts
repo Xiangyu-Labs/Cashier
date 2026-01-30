@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id: ledgerId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     const stats = await db
         .select({

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceCredential, listServiceCredentials } from "@/lib/service-credentials";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id: ledgerId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     try {
         const credentials = await listServiceCredentials(ledgerId);
@@ -27,6 +32,11 @@ const createCredentialSchema = z.object({
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
     const { id: ledgerId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
+
     try {
         const body = await request.json();
         const validated = createCredentialSchema.parse(body);

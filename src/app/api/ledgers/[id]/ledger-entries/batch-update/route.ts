@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const batchUpdateSchema = z.object({
     ledgerEntryIds: z.array(z.string()),
@@ -15,6 +16,11 @@ export async function PATCH(
 ) {
     try {
         const { id: ledgerId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
+
         const body = await request.json();
         const { ledgerEntryIds, categoryId, currency } = batchUpdateSchema.parse(body);
 

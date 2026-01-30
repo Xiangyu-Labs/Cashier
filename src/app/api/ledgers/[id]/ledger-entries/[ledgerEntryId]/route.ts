@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const updateLedgerEntrySchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
@@ -19,6 +20,11 @@ type RouteParams = { params: Promise<{ id: string; ledgerEntryId: string }> };
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId, ledgerEntryId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
+
     const body = await request.json();
     const validated = updateLedgerEntrySchema.parse(body);
 
@@ -73,6 +79,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId, ledgerEntryId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
 
     const [deleted] = await db
       .delete(ledgerEntries)

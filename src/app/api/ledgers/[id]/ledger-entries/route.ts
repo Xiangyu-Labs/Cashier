@@ -4,6 +4,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const querySchema = z.object({
   categoryId: z.string().uuid().optional(),
@@ -23,6 +24,10 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id: ledgerId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
     const searchParams = request.nextUrl.searchParams;
 
     const query = querySchema.parse({

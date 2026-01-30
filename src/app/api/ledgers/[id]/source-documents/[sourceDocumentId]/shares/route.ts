@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { shareRepo } from "@/lib/repositories";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const createShareSchema = z.object({
     expiresIn: z.enum(["1d", "7d", "30d", "never"]).optional().default("7d"),
@@ -12,6 +13,11 @@ type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> }
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: ledgerId, sourceDocumentId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
+
         const body = await request.json();
         const validated = createShareSchema.parse(body);
 

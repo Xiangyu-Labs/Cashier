@@ -3,12 +3,17 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: ledgerId, sourceDocumentId } = await params;
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return error;
 
         // Parse optional body for edit-retry
         const body = await request.json().catch(() => ({}));

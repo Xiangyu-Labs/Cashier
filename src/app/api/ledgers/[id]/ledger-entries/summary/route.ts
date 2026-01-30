@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { ExchangeRateService } from "@/lib/currency/exchange-rate-service";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -10,6 +11,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
+
+    // Verify user owns this ledger
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) return error;
+
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
