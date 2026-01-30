@@ -10,9 +10,15 @@ const apiConcurrency = parseInt(process.env.FLOW_API_QUEUE_CONCURRENCY || '2', 1
 const apiRateMax = parseInt(process.env.FLOW_API_QUEUE_RATE_MAX || '10', 10);
 const apiRateDuration = parseInt(process.env.FLOW_API_QUEUE_RATE_DURATION || '60000', 10);
 
+// Stalled job detection - prevents zombie tasks after service restart
+const lockDuration = parseInt(process.env.BULLMQ_LOCK_DURATION || '120000', 10);     // 2 min default
+const stalledInterval = parseInt(process.env.BULLMQ_STALLED_INTERVAL || '30000', 10); // 30s default
+
 const workerOptions: WorkerOptions = {
     connection,
     concurrency: mainConcurrency,
+    lockDuration,
+    stalledInterval,
 };
 
 // Main Worker: CPU-intensive tasks
@@ -22,6 +28,8 @@ export const mainWorker = new Worker('main', processJob, workerOptions);
 export const apiWorker = new Worker('api', processJob, {
     connection,
     concurrency: apiConcurrency,
+    lockDuration,
+    stalledInterval,
     limiter: {
         max: apiRateMax,
         duration: apiRateDuration,
