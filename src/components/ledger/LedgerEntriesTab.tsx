@@ -209,7 +209,7 @@ export function LedgerEntriesTab({
         } else if (deleteConfirm.type === "ledgerEntry") {
             deleteLedgerEntryMutation.mutate(deleteConfirm.id);
         } else if (deleteConfirm.id === "ALL_ERRORS") {
-            groups.error.forEach(g => deleteSourceDocumentMutation.mutate(g.sourceDocument.id));
+            groups.anomaly.forEach(g => deleteSourceDocumentMutation.mutate(g.sourceDocument.id));
         }
 
         setDeleteConfirm({ ...deleteConfirm, open: false });
@@ -310,34 +310,34 @@ export function LedgerEntriesTab({
                         </AnimatePresence>
 
 
-                        {/* Error Section */}
+                        {/* Anomaly Section */}
                         <AnimatePresence mode="popLayout">
-                            {groups.error.length > 0 && (
+                            {groups.anomaly.length > 0 && (
                                 <motion.div layout className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                     {renderSectionHeader(
                                         t("abnormal"),
-                                        groups.error.length,
+                                        groups.anomaly.length,
                                         isErrorCollapsed,
                                         () => setIsErrorCollapsed(!isErrorCollapsed),
                                         "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
                                         "text-red-500",
                                         <>
                                             <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => { groups.error.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
+                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => { groups.anomaly.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
                                         </>
                                     )}
                                     <AnimatePresence>
                                         {!isErrorCollapsed && (
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                 <AnimatePresence mode="popLayout">
-                                                    {groups.error.map(group => (
+                                                    {groups.anomaly.map(group => (
                                                         <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
                                                             <SourceDocumentCard
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
                                                                 categories={categories}
-                                                                status="error"
-                                                                errorCode={group.sourceDocument.errorCode}
+                                                                status="anomaly"
+                                                                anomalyCodes={group.sourceDocument.anomalyCodes}
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                                                                 defaultExpanded={true}
                                                                 mainCurrency={ledger?.mainCurrency}

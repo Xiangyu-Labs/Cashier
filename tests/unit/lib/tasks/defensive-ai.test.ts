@@ -32,8 +32,8 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("error");
-        expect(updatedDoc?.errorCode).toBe("invalid_content");
+        expect(updatedDoc?.status).toBe("anomaly");
+        expect(updatedDoc?.anomalyCodes).toContain("invalid_content");
     });
 
     it("should map JSON parsing errors to 'parse_failed'", async () => {
@@ -62,7 +62,7 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("error");
-        expect(updatedDoc?.errorCode).toBe("parse_failed");
+        expect(updatedDoc?.status).toBe("anomaly");
+        expect(updatedDoc?.anomalyCodes).toContain("parse_failed");
     });
 });

@@ -1,10 +1,11 @@
 {
-    "ErrorCode": {
+    "AnomalyCode": {
         "internal_error": "系统内部错误",
-        "parse_failed": "无法识别内容格式",
+        "parse_failed": "解析失败",
         "invalid_content": "非有效流水",
+        "rate_limit_exceeded": "请求过于频繁",
         "flow_anomaly": "AI 识别结果不一致",
-        "unknown_currency": "货币未能识别"
+        "unknown_currency": "货币未知"
     },
     "HomePage": {
         "loading": "加载中...",

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnifiedSourceDocuments } from "@/hooks/useUnifiedSourceDocuments";
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
 import { fetchSourceDocuments, fetchLedgerEntries } from "@/lib/api";
 
 // Mock API modules
@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({
 const mockSourceDocs = {
     queued: { id: "doc_q1", status: "queued", createdAt: "2024-01-04T10:00:00Z" },
     processing: { id: "doc_p1", status: "processing", createdAt: "2024-01-04T11:00:00Z" },
-    error: { id: "doc_e1", status: "error", createdAt: "2024-01-04T12:00:00Z" },
+    error: { id: "doc_e1", status: "anomaly", createdAt: "2024-01-04T12:00:00Z" },
     pending: { id: "doc_pending1", status: "completed", createdAt: "2024-01-03T10:00:00Z" }, // Completed doc but has pending entries
     completed: { id: "doc_c1", status: "completed", createdAt: "2024-01-01T10:00:00Z" },
 };
@@ -23,19 +23,19 @@ const mockEntries = {
     pendingForDocPending1: {
         id: "entry_1",
         sourceDocumentId: "doc_pending1",
-        status: "pending",
+        anomalyCodes: ["unknown_currency"],
         sourceDocument: mockSourceDocs.pending
     },
     pendingForDocError1: {
         id: "entry_2",
         sourceDocumentId: "doc_e1",
-        status: "pending",
+        anomalyCodes: ["flow_anomaly"],
         sourceDocument: mockSourceDocs.error
     },
     confirmedForDocCompleted1: {
         id: "entry_3",
         sourceDocumentId: "doc_c1",
-        status: "confirmed",
+        anomalyCodes: [],
         sourceDocument: mockSourceDocs.completed
     }
 };
@@ -59,8 +59,9 @@ describe("useUnifiedSourceDocuments", () => {
     it("correctly groups documents into processing, error, and completed", async () => {
         // Setup Mocks
         // 1. activeDocuments (queued, processing, error)
-        (fetchSourceDocuments as any).mockImplementation((_id: string, params: any) => {
-            if (params?.status?.includes('queued')) {
+        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string[] };
+            if (p?.status?.includes('queued')) {
                 return Promise.resolve({
                     items: [mockSourceDocs.queued, mockSourceDocs.processing, mockSourceDocs.error]
                 });
@@ -73,8 +74,9 @@ describe("useUnifiedSourceDocuments", () => {
         });
 
         // 2. pendingEntries
-        (fetchLedgerEntries as any).mockImplementation((_id: string, params: any) => {
-            if (params?.status === 'pending') {
+        (fetchLedgerEntries as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string };
+            if (p?.status === 'pending') {
                 return Promise.resolve({
                     items: [mockEntries.pendingForDocPending1, mockEntries.pendingForDocError1]
                 });
@@ -95,25 +97,26 @@ describe("useUnifiedSourceDocuments", () => {
         expect(groups.processing).toHaveLength(2);
         expect(groups.processing.map(g => g.sourceDocument.id).sort()).toEqual(["doc_p1", "doc_q1"].sort());
 
-        // Verify Error Group
-        expect(groups.error).toHaveLength(1);
-        expect(groups.error[0].sourceDocument.id).toBe("doc_e1");
-        // Should include its pending entries if any
-        expect(groups.error[0].ledgerEntries).toHaveLength(1);
-        expect(groups.error[0].ledgerEntries[0].id).toBe("entry_2");
+        // Verify Anomaly Group
+        expect(groups.anomaly).toHaveLength(2);
+        const anomalyIds = groups.anomaly.map(g => g.sourceDocument.id).sort();
+        expect(anomalyIds).toEqual(["doc_e1", "doc_pending1"].sort());
 
-
+        // Find doc_e1 group to check its entries
+        const errorGroup = groups.anomaly.find(g => g.sourceDocument.id === "doc_e1");
+        expect(errorGroup?.ledgerEntries).toHaveLength(1);
+        expect(errorGroup?.ledgerEntries[0].id).toBe("entry_2");
 
         // Verify Completed Group
-        // Should contain doc_c1 and doc_pending1
-        expect(groups.completed).toHaveLength(2);
-        expect(groups.completed.map(g => g.sourceDocument.id).sort()).toEqual(["doc_c1", "doc_pending1"].sort());
+        // Should only contain doc_c1 as doc_pending1 moved to anomaly
+        expect(groups.completed).toHaveLength(1);
+        expect(groups.completed[0].sourceDocument.id).toBe("doc_c1");
     });
 
     it("filters groups by date range", async () => {
         // All mocks same as above
-        (fetchSourceDocuments as any).mockResolvedValue({ items: [], nextCursor: null });
-        (fetchLedgerEntries as any).mockResolvedValue({ items: [] });
+        (fetchSourceDocuments as unknown as Mock).mockResolvedValue({ items: [], nextCursor: null });
+        (fetchLedgerEntries as unknown as Mock).mockResolvedValue({ items: [] });
 
         // Mock specific returns for this test to control dates easier if needed, 
         // but existing mocks have dates:
@@ -121,8 +124,9 @@ describe("useUnifiedSourceDocuments", () => {
         // doc_q1: 2024-01-04 (Jan 4)
 
         // Let's reuse the mocks implementation pattern
-        (fetchSourceDocuments as any).mockImplementation((_id: string, params: any) => {
-            if (params?.status?.includes('queued')) {
+        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string[] };
+            if (p?.status?.includes('queued')) {
                 return Promise.resolve({ items: [mockSourceDocs.queued] });
             }
             return Promise.resolve({ items: [mockSourceDocs.completed] });
@@ -172,8 +176,9 @@ describe("useUnifiedSourceDocuments", () => {
         // Let's assume doc_out_range
         const docOutOfRange = { ...mockSourceDocs.queued, id: "doc_out", createdAt: "2024-01-01T10:00:00Z" };
 
-        (fetchSourceDocuments as any).mockImplementation((_id: string, params: any) => {
-            if (params?.status?.includes('queued')) {
+        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string[] };
+            if (p?.status?.includes('queued')) {
                 return Promise.resolve({ items: [mockSourceDocs.queued, docOutOfRange] });
             }
             return Promise.resolve({ items: [] });

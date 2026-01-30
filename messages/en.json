@@ -1,10 +1,11 @@
 {
-    "ErrorCode": {
+    "AnomalyCode": {
         "internal_error": "Internal error",
-        "parse_failed": "Unable to parse content",
-        "invalid_content": "Invalid stream",
+        "parse_failed": "Parsing failed",
+        "invalid_content": "Invalid content",
+        "rate_limit_exceeded": "Rate limit exceeded",
         "flow_anomaly": "AI verification mismatch",
-        "unknown_currency": "Currency not recognized"
+        "unknown_currency": "Unknown currency"
     },
     "HomePage": {
         "loading": "Loading...",

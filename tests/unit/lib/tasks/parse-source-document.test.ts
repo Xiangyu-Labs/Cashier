@@ -236,15 +236,15 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         });
 
         expect(entries).toHaveLength(2);
-        expect(entries[0].status).toBe("pending");
-        expect(entries[1].status).toBe("pending");
+        expect(entries[0].anomalyCodes).toEqual([]);
+        expect(entries[1].anomalyCodes).toEqual(["unknown_currency"]);
 
         // 4. Verify source document status
         const updatedSourceDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
-        expect(updatedSourceDoc?.status).toBe("error");
-        expect(updatedSourceDoc?.errorCode).toBe("unknown_currency");
+        expect(updatedSourceDoc?.status).toBe("anomaly");
+        expect(updatedSourceDoc?.anomalyCodes).toContain("unknown_currency");
     });
 
     it("should use 'confirmed' status if verification passed", async () => {
@@ -304,7 +304,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         });
 
         expect(entries).toHaveLength(1);
-        expect(entries[0].status).toBe("confirmed");
+        expect(entries[0].anomalyCodes).toEqual([]);
 
         // 4. Verify source document status
         const updatedSourceDoc = await db.query.sourceDocuments.findFirst({

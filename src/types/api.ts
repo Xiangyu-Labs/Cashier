@@ -40,8 +40,8 @@ export interface SourceDocument {
   text: string | null;
   imageUrls: string[];
   createdAt: string;
-  status?: "queued" | "processing" | "completed" | "error";
-  errorCode?: "internal_error" | "parse_failed" | "invalid_content" | "flow_anomaly" | "unknown_currency" | null;
+  status?: "queued" | "processing" | "completed" | "anomaly";
+  anomalyCodes?: string[] | null;
 }
 
 export interface LedgerEntry {
@@ -54,7 +54,7 @@ export interface LedgerEntry {
   itemName: string;
   description: string | null;
   entryDate: string | null;
-  status?: "pending" | "confirmed";
+  anomalyCodes?: string[] | null;
   createdAt: string;
   category?: EntryCategory | null;
   sourceDocument?: SourceDocument | null;

@@ -47,7 +47,10 @@ export function BillEntryItem({
     variant = "default",
     className,
 }: BillEntryItemProps) {
-    const isUnknownCurrency = !ledgerEntry.currency || ledgerEntry.currency === "unknown";
+    const anomalyCodes = ledgerEntry.anomalyCodes || [];
+    const isUnknownCurrency = anomalyCodes.includes("unknown_currency") || ledgerEntry.currency === "unknown";
+    // Keeping currency check for backward compat or direct value check
+    const isSuspicious = anomalyCodes.includes("suspicious_amount");
     const needsCategory = !ledgerEntry.categoryId;
 
     const { converted } = useConvertedAmount(
@@ -105,6 +108,11 @@ export function BillEntryItem({
                         {isUnknownCurrency && (
                             <Badge variant="warning" className="text-[9px] px-1 h-4">
                                 需货币
+                            </Badge>
+                        )}
+                        {isSuspicious && (
+                            <Badge variant="error" className="text-[9px] px-1 h-4">
+                                异常
                             </Badge>
                         )}
                     </div>

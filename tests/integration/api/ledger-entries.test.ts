@@ -274,7 +274,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       })
       .returning();
 
-    // Create real pending ledger entries
+    // Create real pending ledger entries (now defined by having anomalyCodes)
     const [entry1, entry2] = await db.insert(ledgerEntries).values([
       {
         ledgerId: testLedgerId,
@@ -284,7 +284,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
         currency: "CNY",
         categoryId: testCategoryId,
         description: "Lunch with team",
-        status: "pending"
+        anomalyCodes: ["flow_anomaly"]
       },
       {
         ledgerId: testLedgerId,
@@ -293,7 +293,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
         amount: "100.00",
         currency: "USD",
         categoryId: null,
-        status: "pending"
+        anomalyCodes: ["unknown_currency"]
       }
     ]).returning();
 

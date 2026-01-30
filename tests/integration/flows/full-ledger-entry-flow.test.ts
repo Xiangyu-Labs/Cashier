@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as createLedger, GET as getLedgers } from "@/app/api/ledgers/route";
-import { GET as getLedger, DELETE as deleteLedger, PATCH as updateLedger } from "@/app/api/ledgers/[id]/route";
+import { GET as getLedger, DELETE as deleteLedger } from "@/app/api/ledgers/[id]/route";
 import { POST as sendMessage } from "@/app/api/ledgers/[id]/source-documents/route";
 import { GET as getLedgerEntries } from "@/app/api/ledgers/[id]/ledger-entries/route";
 import { GET as getCategories } from "@/app/api/ledgers/[id]/entry-categories/route";
@@ -250,7 +250,7 @@ describe("Full Ledger Entry Flow", () => {
     if (finalMessage?.status !== "completed") {
       console.error("Message processing failed:", {
         status: finalMessage?.status,
-        errorCode: finalMessage?.errorCode,
+        anomalyCodes: finalMessage?.anomalyCodes,
       });
     }
     expect(finalMessage?.status).toBe("completed");

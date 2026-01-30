@@ -190,46 +190,50 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         if (existingEntries) {
             logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping insert");
-
-            // Update status if needed (e.g. if previous run crashed before updating status)
-            // But we can't easily know if the previous run was successful or what the intent was.
-            // Generally safer to leave be or ensure status matches what we found.
-            // For now, we just log.
             return;
         }
 
         const validEntries = parsedEntries.filter(entry => entry.amount > 0);
 
-        // Determine final DB status and Error Code
-        let status: "completed" | "error" = "error";
-        let errorCode: "flow_anomaly" | "unknown_currency" | "invalid_content" | null = null;
-        let entryStatus: "confirmed" | "pending" = "pending";
+        // Determine final DB status and Anomaly Codes
+        let status: "completed" | "anomaly" = "anomaly";
+        let docAnomalyCodes: string[] = [];
+        const globalEntryAnomalyCodes: string[] = [];
 
         switch (verificationStatus) {
             case 'passed':
                 status = "completed";
-                entryStatus = "confirmed";
                 break;
             case 'first_batch_mismatch':
             case 'merge_mismatch':
-                status = "error";
-                errorCode = "flow_anomaly";
-                entryStatus = "pending"; // Entries saved but pending/error
+                status = "anomaly";
+                docAnomalyCodes.push("flow_anomaly");
+                globalEntryAnomalyCodes.push("flow_anomaly"); // Mark all entries as anomalous so they are not "confirmed"
                 break;
             case 'unknown_currency':
-                status = "error";
-                errorCode = "unknown_currency";
-                entryStatus = "pending";
+                status = "anomaly";
+                docAnomalyCodes.push("unknown_currency"); // Good for filtering
+                // We don't add global entry anomaly, we check per entry below
                 break;
             case 'invalid':
-                status = "error";
-                errorCode = "invalid_content";
+                status = "anomaly";
+                docAnomalyCodes.push("invalid_content");
                 break;
         }
 
         // Handle invalid content (no entries to save)
         if (verificationStatus === 'invalid' || validEntries.length === 0) {
-            await sourceDocumentRepo.setError(input.sourceDocumentId, "invalid_content", context.ledgerId);
+            // If no valid entries and passed, it's weird, but technically invalid content if empty
+            if (status === 'completed' && validEntries.length === 0) {
+                status = "anomaly";
+                docAnomalyCodes = ["invalid_content"];
+            }
+
+            if (status === 'anomaly') {
+                if (docAnomalyCodes.length === 0) docAnomalyCodes.push("invalid_content");
+                await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, docAnomalyCodes, context.ledgerId);
+            }
+
             if (title) {
                 await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
             }
@@ -237,11 +241,15 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
 
         // Save entries
-        // Even for errors (anomaly/unknown currency), we save the entries so user can see/edit them
         const entriesToInsert = validEntries.map(entry => {
             const categoryId = entry.category
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
+
+            const entryAnomalies = [...globalEntryAnomalyCodes];
+            if (entry.currency === "unknown") {
+                entryAnomalies.push("unknown_currency");
+            }
 
             return {
                 ledgerId: context.ledgerId!,
@@ -252,7 +260,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
                 entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
-                status: entryStatus,
+                anomalyCodes: entryAnomalies,
             };
         });
 
@@ -261,35 +269,33 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
 
         // Update document status
-        if (status === 'error' && errorCode) {
-            await sourceDocumentRepo.setError(input.sourceDocumentId, errorCode, context.ledgerId);
-            // Also update title
-            if (title) {
-                await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
-            }
+        if (status === 'anomaly') {
+            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, docAnomalyCodes, context.ledgerId);
         } else {
-            await sourceDocumentRepo.update(input.sourceDocumentId, {
-                status,
-                title: title || null
-            }, context.ledgerId);
+            await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
+        }
+
+        // Always update title if present
+        if (title) {
+            await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
         }
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        // Determine error code
-        let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
+        // Determine anomaly code
+        let anomalyCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
         let isUnrecoverable = false;
 
         const message = error.message.toLowerCase();
         if (message.includes("schema validation") || message.includes("zod")) {
-            errorCode = "invalid_content";
+            anomalyCode = "invalid_content";
             isUnrecoverable = true;
         } else if (message.includes("ai response") || message.includes("json") || message.includes("parse")) {
-            errorCode = "parse_failed";
+            anomalyCode = "parse_failed";
         }
 
-        // Update source document status to error via Repo
-        await sourceDocumentRepo.setError(input.sourceDocumentId, errorCode, context.ledgerId);
+        // Update source document status to anomaly via Repo
+        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
 
         if (isUnrecoverable) {
             const { UnrecoverableError } = await import('bullmq');

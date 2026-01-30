@@ -1,17 +1,11 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "./BillEntryItem";
 import { useState, useMemo } from "react";
-import { Trash2, Eye, EyeOff, Check, RotateCcw, MoreVertical, FileText } from "lucide-react";
+import { Trash2, Check, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+// Removed DropdownMenu imports as they are unused
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -67,8 +61,8 @@ interface SourceDocumentCardProps {
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "completed" | "error" | "pending";
-  errorCode?: string | null;
+  status: "queued" | "processing" | "completed" | "anomaly" | "pending"; // 'pending' legacy/fallback?
+  anomalyCodes?: string[] | null;
   className?: string;
 }
 
@@ -77,17 +71,17 @@ export function SourceDocumentCard({
   ledgerEntries,
   categories: _,
   mainCurrency = "CNY",
-  isConfirmed = false,
+  isConfirmed: _isConfirmed = false,
   onConfirm,
   onUpdateLedgerEntry: __,
   onDeleteLedgerEntry: ___,
   onDelete,
   onViewLedgerEntry,
-  onViewDetails,
+  onViewDetails: _onViewDetails,
   defaultExpanded = false,
   onRetry,
   status,
-  errorCode,
+  anomalyCodes,
   className,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
@@ -163,16 +157,14 @@ export function SourceDocumentCard({
           )}
         </span>
         <div className="flex items-center gap-2">
-          {(ledgerEntries.length === 0 || status === "error") && (
-            <div className="flex items-center gap-2">
-              <ProcessingStatus
-                status={status}
-                label={status === "error" && errorCode ? tError(errorCode) : undefined}
-              />
-            </div>
+          {(ledgerEntries.length === 0 || status === "anomaly") && (
+            <ProcessingStatus
+              status={status === "anomaly" ? "error" : status}
+              label={status === "anomaly" && anomalyCodes?.length ? anomalyCodes.map(c => tError(c)).join(", ") : undefined}
+            />
           )}
 
-          {!["queued", "processing", "error"].includes(status) && (
+          {!["queued", "processing", "anomaly"].includes(status) && (
             <SourceDocumentTotal
               entries={ledgerEntries}
               mainCurrency={mainCurrency}
@@ -184,75 +176,52 @@ export function SourceDocumentCard({
               variant="ghost"
               size="icon-sm"
               onClick={() => setIsContentExpanded(!isContentExpanded)}
-              className="h-7 w-7 text-muted-foreground hover:text-primary"
+              className={cn("h-7 w-7", isContentExpanded && "bg-surface2")}
               title={isContentExpanded ? t("collapseContent") : t("viewContent")}
             >
-              {isContentExpanded ? (
-                <Eye className="h-4 w-4" />
-              ) : (
-                <EyeOff className="h-4 w-4" />
-              )}
+              <ChevronDown className={cn("h-4 w-4 transition-transform", isContentExpanded && "rotate-180")} />
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-7 w-7 text-muted-foreground hover:text-text"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={onViewDetails} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2" />
-                  {t("viewDetails")}
-                </DropdownMenuItem>
-
+            {status === "anomaly" && (
+              <>
                 {onRetry && (
-                  <DropdownMenuItem
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleRetry}
                     disabled={isRetrying}
-                    className="cursor-pointer"
+                    className="h-7 px-2 text-xs hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
+                    title={tCommon("retry")}
                   >
-                    {isRetrying ? (
-                      <span className="w-4 h-4 mr-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                    )}
-                    {t("retryProcessing")}
-                  </DropdownMenuItem>
+                    <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isRetrying && "animate-spin")} />
+                    {tCommon("retry")}
+                  </Button>
                 )}
-
                 {onDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={onDelete}
-                      className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {tCommon("delete")}
-                    </DropdownMenuItem>
-                  </>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onDelete}
+                    className="h-7 px-2 text-xs hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
+                    title={tCommon("delete")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    {tCommon("delete")}
+                  </Button>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              </>
+            )}
 
-          {!isConfirmed && onConfirm && (
-            <>
-              <div className="h-4 w-px bg-border mx-1" />
+            {(status === "completed" || status === "pending") && onConfirm && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
                 disabled={isConfirming}
                 className={cn(
                   "h-7 px-2 text-xs border-amber-600/30 hover:bg-amber-600/10 hover:text-amber-700 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:hover:text-amber-300"
                 )}
-                title={t("confirmDoc")}
+                title={tCommon("confirm")}
               >
                 {isConfirming ? (
                   <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -261,8 +230,8 @@ export function SourceDocumentCard({
                 )}
                 {tCommon("confirm")}
               </Button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -313,10 +282,10 @@ export function SourceDocumentCard({
             onView={() => onViewLedgerEntry?.(entry)}
             mainCurrency={mainCurrency}
             variant={
-              status === "error"
+              status === "anomaly"
                 ? "error"
                 : status === "pending"
-                  ? "warning"
+                  ? "warning" // Legacy or transient
                   : status === "processing" || status === "queued"
                     ? "info"
                     : "default"

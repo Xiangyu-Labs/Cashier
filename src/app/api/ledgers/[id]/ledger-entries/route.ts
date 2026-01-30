@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
-import { eq, and, gte, lte, or, isNull, lt } from "drizzle-orm";
+import { eq, and, gte, lte, or, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -39,7 +39,13 @@ export async function GET(
     const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
 
     if (query.status) {
-      conditions.push(eq(ledgerEntries.status, query.status));
+      if (query.status === "pending") {
+        // Pending = has anomalies
+        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) > 0`);
+      } else {
+        // Confirmed = no anomalies
+        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) = 0`);
+      }
     }
 
     if (query.categoryId) {

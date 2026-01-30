@@ -149,8 +149,8 @@ describe("SourceDocumentCard", () => {
         expect(screen.getByText("Lunch")).toBeTruthy();
     });
 
-    it("passes correct variant for error status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="error" />);
+    it("passes correct variant for anomaly status", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="anomaly" />);
         const item = screen.getByTestId("bill-entry-item");
         expect(item.getAttribute("data-variant")).toBe("error");
     });
@@ -201,8 +201,8 @@ describe("SourceDocumentCard", () => {
         expect(screen.getByText("处理中")).toBeTruthy();
     });
 
-    it("renders error status and message when errorCode is provided", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="error" errorCode="parse_failed" />);
+    it("renders anomaly status and message when anomalyCodes is provided", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="anomaly" anomalyCodes={["parse_failed"]} />);
         expect(screen.getByText("parse_failed")).toBeTruthy();
     });
 
@@ -224,8 +224,8 @@ describe("SourceDocumentCard", () => {
         expect(screen.queryByText(/50.00/)).toBeNull();
     });
 
-    it("hides total amount when status is error", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="error" />);
+    it("hides total amount when status is anomaly", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="anomaly" />);
         expect(screen.queryByText("CNY")).toBeNull();
         expect(screen.queryByText(/50.00/)).toBeNull();
     });

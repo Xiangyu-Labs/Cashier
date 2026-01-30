@@ -40,7 +40,7 @@ export async function POST(
         }
 
         // Confirm specific entries
-        const updatedEntries = await ledgerEntryRepo.batchUpdate(ledgerEntryIds, { status: "confirmed" }, ledgerId);
+        const updatedEntries = await ledgerEntryRepo.batchUpdate(ledgerEntryIds, { anomalyCodes: [] }, ledgerId);
 
         // Update corresponding source documents to 'completed'
         if (updatedEntries.length > 0) {

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const conditions = [eq(sourceDocuments.ledgerId, ledgerId)];
 
   if (status) {
-    const statuses = status.split(",") as ("queued" | "processing" | "completed" | "error")[];
+    const statuses = status.split(",") as ("queued" | "processing" | "completed" | "anomaly")[];
     conditions.push(inArray(sourceDocuments.status, statuses));
   }
 
@@ -53,6 +53,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     where: and(...conditions),
     orderBy: [desc(sourceDocuments.createdAt)],
     limit: limit + 1,
+    with: {
+      // We might need to join ledgerEntries to check for anomalies if we needed deep filtering,
+      // but for now we rely on sourceDocument.status = 'anomaly' which is set by the task.
+    }
   });
 
   let nextCursor = null;

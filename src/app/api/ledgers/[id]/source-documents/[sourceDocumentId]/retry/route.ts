@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             .update(sourceDocuments)
             .set({
                 status: "queued",
-                errorCode: null,
+                anomalyCodes: [],
             })
             .where(eq(sourceDocuments.id, sourceDocumentId));
 

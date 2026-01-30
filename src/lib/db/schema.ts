@@ -15,18 +15,14 @@ import { relations } from "drizzle-orm";
 import defaultLedger from "@/config/default-ledger.json";
 
 // Enums
-export const ledgerEntryStatusEnum = pgEnum("ledger_entry_status", [
-  "pending",
-  "confirmed",
-]);
 export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "queued",
   "processing",
   "completed",
-  "error",
+  "anomaly",
 ]);
 
-export const errorCodeEnum = pgEnum("error_code", [
+export const anomalyCodeEnum = pgEnum("anomaly_code", [
   "internal_error",
   "parse_failed",
   "invalid_content",
@@ -92,7 +88,7 @@ export const sourceDocuments = pgTable("source_documents", {
     .default([]),
 
   status: sourceDocumentStatusEnum("status").notNull().default("queued"),
-  errorCode: errorCodeEnum("error_code"),
+  anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -128,13 +124,13 @@ export const ledgerEntries = pgTable("ledger_entries", {
   itemName: text("item_name").notNull(),
   description: text("description"),
   entryDate: date("entry_date", { mode: "date" }),
-  status: ledgerEntryStatusEnum("status").notNull().default("confirmed"),
+  anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
   index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
   index("idx_ledger_entries_created_at").on(table.createdAt),
-  index("idx_ledger_entries_status").on(table.ledgerId, table.status),
+  index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
 
 export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
