@@ -48,13 +48,18 @@ Determine if the discrepancy is due to:
 2. **AI parsing error** where one result is clearly more accurate
 
 ### Rules
-- If the document itself is ambiguous or contains errors, return choice=0 with a brief reason
+- If the document itself is ambiguous or contains errors, return choice=0 with a reason
 - If one GPT result is clearly correct, return choice=1 or choice=2
 - Prefer the result that matches the document's stated total (if visible)
 - When in doubt about which is correct, return choice=0
 
 ### Output (raw JSON only, no markdown)
-{"choice": 0|1|2, "reason": "brief explanation if choice=0"}`;
+{"choice": 0|1|2, "reason": "..."}
+
+### Reason Field Requirements (IMPORTANT)
+- Maximum 20 characters
+- State the specific issue directly (e.g., "金额模糊不清", "缺少总价信息", "数据相互矛盾")
+- No generic phrases, be specific about what's wrong`;
     }
 
     // unknown_currency scenario
@@ -81,7 +86,12 @@ Determine if the currency truly cannot be identified:
 - Common patterns: Chinese merchants usually use CNY, US merchants use USD, etc.
 
 ### Output (raw JSON only, no markdown)
-{"choice": 0|1, "reason": "brief explanation if choice=0"}`;
+{"choice": 0|1, "reason": "..."}
+
+### Reason Field Requirements (IMPORTANT)
+- Maximum 20 characters
+- State the specific issue directly (e.g., "无货币符号", "商户地区未知", "多币种混合")
+- No generic phrases, be specific about what's missing`;
 }
 
 /**
