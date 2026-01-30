@@ -1,5 +1,5 @@
-import { useMemo, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
     fetchLedger,
     fetchLedgerEntries,
@@ -8,6 +8,7 @@ import {
     fetchSourceDocuments,
 } from "@/lib/api";
 import { SourceDocument, LedgerEntry } from "@/types/api";
+import { queryKeys } from "@/lib/query-keys";
 
 type LedgerEntryBatch = {
     sourceDocument: SourceDocument;
@@ -52,7 +53,7 @@ function groupLedgerEntries(ledgerEntries?: LedgerEntry[]): GroupedLedgerEntries
 export function useLedgerData(ledgerId: string) {
     // Poll for queued/processing source documents - Polling REMOVED in favor of SSE
     const { data: queuedSourceDocuments = [] } = useQuery({
-        queryKey: ["sourceDocuments", ledgerId, "queued"],
+        queryKey: queryKeys.sourceDocuments(ledgerId, "queued"),
         queryFn: async () => {
             // We fetch all non-completed ones to show status
             const res = await fetchSourceDocuments(ledgerId, { status: ["queued", "processing", "error"] });
@@ -61,17 +62,17 @@ export function useLedgerData(ledgerId: string) {
     });
 
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
-        queryKey: ["ledger", ledgerId],
+        queryKey: queryKeys.ledger(ledgerId),
         queryFn: () => fetchLedger(ledgerId),
     });
 
     const { data: categories } = useQuery({
-        queryKey: ["entryCategories", ledgerId],
+        queryKey: queryKeys.entryCategories(ledgerId),
         queryFn: () => fetchEntryCategories(ledgerId),
     });
 
     const { data: pendingEntries } = useQuery({
-        queryKey: ["ledgerEntries", ledgerId, "pending"],
+        queryKey: queryKeys.ledgerEntries(ledgerId, "pending"),
         queryFn: async () => {
             const res = await fetchLedgerEntries(ledgerId, { status: "pending" });
             return res.items;
@@ -79,7 +80,7 @@ export function useLedgerData(ledgerId: string) {
     });
 
     const { data: confirmedEntries } = useQuery({
-        queryKey: ["ledgerEntries", ledgerId, "confirmed"],
+        queryKey: queryKeys.ledgerEntries(ledgerId, "confirmed"),
         queryFn: async () => {
             const res = await fetchLedgerEntries(ledgerId, { status: "confirmed", limit: 100 });
             return res.items;
@@ -87,7 +88,7 @@ export function useLedgerData(ledgerId: string) {
     });
 
     const { data: summary } = useQuery({
-        queryKey: ["summary", ledgerId],
+        queryKey: queryKeys.summary(ledgerId),
         queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed"),
     });
 

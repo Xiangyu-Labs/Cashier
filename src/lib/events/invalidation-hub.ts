@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { LedgerEvent } from "./types";
+import { queryKeys } from "@/lib/query-keys";
 
 /**
  * Handles incoming ledger events and invalidates relevant queries
@@ -11,33 +12,32 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
 
     console.log('[SSE Invalidation] Handling event:', event);
 
-    // Define invalidation rules
+    // Define invalidation rules using centralized queryKeys
     // Map entity types to query keys that should be invalidated
-    // IMPORTANT: Keys must match exactly what's used in useLedgerData.ts and other hooks
-    const invalidationMap: Record<string, string[][]> = {
+    const invalidationMap: Record<string, readonly (readonly string[])[]> = {
         ledger_entry: [
-            ['ledgerEntries', ledgerId],  // Matches useLedgerData: ["ledgerEntries", ledgerId, ...]
-            ['summary', ledgerId],        // Matches useLedgerData: ["summary", ledgerId]
-            ['ledger', ledgerId],         // Ledger details
+            queryKeys.ledgerEntries(ledgerId),
+            queryKeys.summary(ledgerId),
+            queryKeys.ledger(ledgerId),
         ],
         source_document: [
-            ['sourceDocuments', ledgerId],  // Matches useLedgerData: ["sourceDocuments", ledgerId, ...]
-            ['ledgerEntries', ledgerId],    // Entries might change if doc status changes
+            queryKeys.sourceDocuments(ledgerId),
+            queryKeys.ledgerEntries(ledgerId),
         ],
         task_run: [
-            ['processingTasks', ledgerId],  // Active tasks list
-            ['token-stats', ledgerId],      // Token usage statistics
-            ['sourceDocuments', ledgerId],  // Documents status might be affected by task
+            queryKeys.processingTasks(ledgerId),
+            queryKeys.tokenStats(ledgerId),
+            queryKeys.sourceDocuments(ledgerId),
         ],
         category: [
-            ['entryCategories', ledgerId],  // Matches useLedgerData: ["entryCategories", ledgerId]
-            ['ledgerEntries', ledgerId],
+            queryKeys.entryCategories(ledgerId),
+            queryKeys.ledgerEntries(ledgerId),
         ],
         ledger: [
-            ['ledger', ledgerId],
+            queryKeys.ledger(ledgerId),
         ],
         service_credential: [
-            ['serviceCredentials', ledgerId],
+            queryKeys.serviceCredentials(ledgerId),
         ]
     };
 
@@ -46,11 +46,8 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
     if (keysToInvalidate) {
         // Invalidate all mapped keys
         keysToInvalidate.forEach(queryKey => {
-            queryClient.invalidateQueries({ queryKey });
+            queryClient.invalidateQueries({ queryKey: queryKey as string[] });
         });
     }
-
-    // Special handling for specific actions if needed
-    // e.g. if action is 'deleted', maybe remove from cache manually?
-    // For now, invalidation is sufficient and safer.
 }
+

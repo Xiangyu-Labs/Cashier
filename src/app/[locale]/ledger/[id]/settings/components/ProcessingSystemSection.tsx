@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchProcessingTasks, ProcessingTask } from "@/lib/api";
 import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { queryKeys } from "@/lib/query-keys";
 
 interface TokenStats {
     totalInputTokens: number;
@@ -79,12 +80,12 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
     const tSettings = useTranslations("Settings");
 
     const { data: stats, isLoading: isStatsLoading } = useQuery({
-        queryKey: ["token-stats", ledgerId],
+        queryKey: queryKeys.tokenStats(ledgerId),
         queryFn: () => fetchTokenStats(ledgerId),
     });
 
     const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
-        queryKey: ["processingTasks", ledgerId],
+        queryKey: queryKeys.processingTasks(ledgerId),
         queryFn: () => fetchProcessingTasks(ledgerId, { limit: 10 }), // Show last 10 tasks in settings
         enabled: !!ledgerId,
     });
