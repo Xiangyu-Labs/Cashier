@@ -129,7 +129,6 @@ export const ledgerEntries = pgTable("ledger_entries", {
   index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
   index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
   index("idx_ledger_entries_created_at").on(table.createdAt),
-  index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
 
 export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
