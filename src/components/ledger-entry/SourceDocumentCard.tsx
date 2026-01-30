@@ -98,8 +98,6 @@ export function SourceDocumentCard({
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  const showRawInput = status !== "completed" && isItemsExpanded;
-  const showEntries = status !== "processing" && isItemsExpanded;
 
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
@@ -263,69 +261,69 @@ export function SourceDocumentCard({
       </div>
 
 
-      <AnimatePresence>
-        {showRawInput && (
+      <AnimatePresence initial={false}>
+        {isItemsExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-surface2/30 border-b border-border"
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden"
           >
-            <div className="p-4 space-y-3">
-              {images.length > 0 && (
-                <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
-                  {images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setSelectedImageIndex(idx)}
-                    >
-                      <Image
-                        src={getSafeImageSrc(img)}
-                        alt={`Source image ${idx + 1}`}
-                        fill
-                        className="object-cover"
-                      />
+            {/* Raw Input Section - only for non-completed status */}
+            {status !== "completed" && (
+              <div className="bg-surface2/30 border-b border-border">
+                <div className="p-4 space-y-3">
+                  {images.length > 0 && (
+                    <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
+                      {images.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setSelectedImageIndex(idx)}
+                        >
+                          <Image
+                            src={getSafeImageSrc(img)}
+                            alt={`Source image ${idx + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
 
-              {text && (
-                <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-                  {text}
+                  {text && (
+                    <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+                      {text}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            )}
 
-      <AnimatePresence>
-        {isItemsExpanded && showEntries && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30 overflow-hidden"
-          >
-            {sortedEntries.map((entry) => (
-              <BillEntryItem
-                key={entry.id}
-                ledgerEntry={entry}
-                onView={() => onViewLedgerEntry?.(entry)}
-                mainCurrency={mainCurrency}
-                variant={
-                  status === "anomaly"
-                    ? "error"
-                    : status === "pending"
-                      ? "warning"
-                      : status === "queued"
-                        ? "info"
-                        : "default"
-                }
-              />
-            ))}
+            {/* Entries Section - only for non-processing status */}
+            {status !== "processing" && sortedEntries.length > 0 && (
+              <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
+                {sortedEntries.map((entry) => (
+                  <BillEntryItem
+                    key={entry.id}
+                    ledgerEntry={entry}
+                    onView={() => onViewLedgerEntry?.(entry)}
+                    mainCurrency={mainCurrency}
+                    variant={
+                      status === "anomaly"
+                        ? "error"
+                        : status === "pending"
+                          ? "warning"
+                          : status === "queued"
+                            ? "info"
+                            : "default"
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
