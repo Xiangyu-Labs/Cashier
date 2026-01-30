@@ -137,7 +137,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 "unknown_currency",
                 entries1,
                 entries2,
-                input.text
+                input.text,
+                input.aiLanguage
             );
 
             if (arbitrationResult.choice === 0) {
@@ -170,7 +171,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 "total_mismatch",
                 entries1,
                 entries2,
-                input.text
+                input.text,
+                input.aiLanguage
             );
 
             if (arbitrationResult.choice === 0) {
@@ -214,7 +216,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                     "total_mismatch",
                     preMergeEntries,
                     finalEntries,
-                    input.text
+                    input.text,
+                    input.aiLanguage
                 );
 
                 if (arbitrationResult.choice === 0) {

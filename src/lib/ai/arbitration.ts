@@ -22,8 +22,12 @@ function buildArbitrationPrompt(
     scenario: "total_mismatch" | "unknown_currency",
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[],
-    originalContent?: string
+    originalContent?: string,
+    aiLanguage?: string
 ): string {
+    const languageInstruction = aiLanguage === "en" || aiLanguage === "en-US"
+        ? "Respond in English."
+        : "请使用中文回复。";
     const formatEntries = (entries: ParsedLedgerEntry[]) =>
         entries.map(e => `- ${e.itemName}: ${e.currency} ${e.amount} (${e.category})`).join("\n");
 
@@ -58,6 +62,7 @@ Determine if the discrepancy is due to:
 
 ### Reason Field Requirements (IMPORTANT)
 - Maximum 20 characters
+- ${languageInstruction}
 - State the specific issue directly (e.g., "金额模糊不清", "缺少总价信息", "数据相互矛盾")
 - No generic phrases, be specific about what's wrong`;
     }
@@ -90,6 +95,7 @@ Determine if the currency truly cannot be identified:
 
 ### Reason Field Requirements (IMPORTANT)
 - Maximum 20 characters
+- ${languageInstruction}
 - State the specific issue directly (e.g., "无货币符号", "商户地区未知", "多币种混合")
 - No generic phrases, be specific about what's missing`;
 }
@@ -101,11 +107,12 @@ export async function arbitrate(
     scenario: "total_mismatch" | "unknown_currency",
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[],
-    originalContent?: string
+    originalContent?: string,
+    aiLanguage?: string
 ): Promise<ArbitrationResult> {
     const client = getOpenAIClient();
 
-    const systemPrompt = buildArbitrationPrompt(scenario, entries1, entries2, originalContent);
+    const systemPrompt = buildArbitrationPrompt(scenario, entries1, entries2, originalContent, aiLanguage);
 
     try {
         const { content } = await client.generateContent(systemPrompt, [
