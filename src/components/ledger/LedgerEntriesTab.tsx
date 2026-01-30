@@ -280,9 +280,9 @@ export function LedgerEntriesTab({
                 ) : (
                     <>
                         {/* Processing Section */}
-                        <AnimatePresence mode="popLayout">
+                        <AnimatePresence mode="wait">
                             {groups.processing.length > 0 && (
-                                <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <motion.div className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                     {renderSectionHeader(
                                         t("processing"),
                                         groups.processing.length,
@@ -294,7 +294,7 @@ export function LedgerEntriesTab({
                                     <AnimatePresence>
                                         {!isProcessingCollapsed && (
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                <AnimatePresence mode="popLayout">
+                                                <AnimatePresence mode="wait">
                                                     {groups.processing.map(group => (
                                                         <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
                                                             <SourceDocumentCard
@@ -319,9 +319,9 @@ export function LedgerEntriesTab({
 
 
                         {/* Anomaly Section */}
-                        <AnimatePresence mode="popLayout">
+                        <AnimatePresence mode="wait">
                             {groups.anomaly.length > 0 && (
-                                <motion.div layout className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <motion.div className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                     {renderSectionHeader(
                                         t("abnormal"),
                                         groups.anomaly.length,
@@ -337,7 +337,7 @@ export function LedgerEntriesTab({
                                     <AnimatePresence>
                                         {!isErrorCollapsed && (
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                <AnimatePresence mode="popLayout">
+                                                <AnimatePresence mode="wait">
                                                     {groups.anomaly.map(group => (
                                                         <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
                                                             <SourceDocumentCard
@@ -371,7 +371,7 @@ export function LedgerEntriesTab({
                                     <span>{t("noRecords")}</span>
                                 </div>
                             ) : (
-                                <AnimatePresence mode="popLayout">
+                                <AnimatePresence mode="wait">
                                     {groups.completed.map(group => (
                                         <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" {...getItemProps(group.sourceDocument.id)}>
                                             <SourceDocumentCard

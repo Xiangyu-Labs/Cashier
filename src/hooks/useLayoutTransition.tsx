@@ -11,22 +11,18 @@ export function useLayoutTransition() {
 
     return {
         // Properties to spread onto the container
-        containerProps: {
-            layout: true,
-            layoutRoot: true
-        },
+        // Note: Removed layout:true to prevent flickering on data updates
+        containerProps: {},
 
         // Helper to get motion props for an item
-        getItemProps: (id: string) => ({
-            layoutId: `${layoutGroupId}-${id}`,
-            initial: { opacity: 0, scale: 0.95 },
-            animate: { opacity: 1, scale: 1 },
-            exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
+        // Note: Removed layoutId to prevent cross-item layout animations that cause visual jumps
+        getItemProps: () => ({
+            initial: { opacity: 0, y: 10 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
             transition: {
-                type: "spring" as const,
-                stiffness: 500,
-                damping: 30,
-                mass: 1
+                duration: 0.2,
+                ease: "easeOut"
             }
         }),
 
