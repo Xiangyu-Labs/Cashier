@@ -4,26 +4,167 @@ import { useState } from "react";
 import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
-
 import { useTranslations } from "next-intl";
+
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CategorySectionProps {
     categories: EntryCategory[];
     onCreateCategory: (name: string) => void;
     onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
     onDeleteCategory: (id: string) => void;
+    onReorderCategories: (ids: string[]) => void;
 }
 
-export function CategorySection({ categories, onCreateCategory, onUpdateCategory, onDeleteCategory }: CategorySectionProps) {
+interface SortableItemProps {
+    category: EntryCategory;
+    isEditing: boolean;
+    editingData: { name: string, description: string };
+    onEditStart: () => void;
+    onEditCancel: () => void;
+    onEditChange: (data: { name: string, description: string }) => void;
+    onUpdate: () => void;
+    onDelete: () => void;
+}
+
+function SortableItem({
+    category,
+    isEditing,
+    editingData,
+    onEditStart,
+    onEditCancel,
+    onEditChange,
+    onUpdate,
+    onDelete
+}: SortableItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({ id: category.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-center gap-3 p-3 bg-[var(--surface2)] rounded-[var(--radius)] group"
+        >
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+                <GripVertical className="text-[var(--muted)]" size={16} />
+            </div>
+
+            {isEditing ? (
+                <div className="flex-1 flex gap-2">
+                    <input
+                        type="text"
+                        value={editingData.name}
+                        onChange={e => onEditChange({ ...editingData, name: e.target.value })}
+                        className="flex-1 px-2 py-1 text-sm rounded bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        autoFocus
+                    />
+                    <input
+                        type="text"
+                        value={editingData.description}
+                        onChange={e => onEditChange({ ...editingData, description: e.target.value })}
+                        placeholder="描述"
+                        className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                    />
+                    <button onClick={onUpdate} className="text-[var(--primary)] p-1 hover:bg-surface rounded transition-colors">
+                        <Check size={16} />
+                    </button>
+                    <button onClick={onEditCancel} className="text-[var(--danger)] p-1 hover:bg-surface rounded transition-colors">
+                        <X size={16} />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <div className="w-8 flex justify-center text-xl">
+                        <CategoryIcon iconName={category.icon} className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="font-medium text-sm">{category.name}</div>
+                        {category.description && <div className="text-xs text-[var(--muted)]">{category.description}</div>}
+                    </div>
+                    {category.isEditable !== false && (
+                        <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                            <button
+                                onClick={onEditStart}
+                                className="p-1.5 text-[var(--muted)] hover:text-[var(--primary)] hover:bg-surface rounded transition-colors"
+                            >
+                                <Pencil size={15} />
+                            </button>
+                            <button
+                                onClick={onDelete}
+                                className="p-1.5 text-[var(--muted)] hover:text-[var(--danger)] hover:bg-surface rounded transition-colors"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
+
+export function CategorySection({
+    categories,
+    onCreateCategory,
+    onUpdateCategory,
+    onDeleteCategory,
+    onReorderCategories
+}: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
     const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
 
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const handleCreate = () => {
         if (!newCategoryName.trim()) return;
         onCreateCategory(newCategoryName.trim());
         setNewCategoryName("");
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = categories.findIndex((c) => c.id === active.id);
+            const newIndex = categories.findIndex((c) => c.id === over.id);
+
+            const newOrderedCategories = arrayMove(categories, oldIndex, newIndex);
+            onReorderCategories(newOrderedCategories.map(c => c.id));
+        }
     };
 
     return (
@@ -34,76 +175,39 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
             </div>
 
             <div className="space-y-2 mb-4">
-                {categories.map(category => (
-                    <div key={category.id} className="flex items-center gap-3 p-3 bg-[var(--surface2)] rounded-[var(--radius)] group">
-                        <GripVertical className="text-[var(--muted)] cursor-move" size={16} />
-
-                        {isEditingCategory === category.id ? (
-                            <div className="flex-1 flex gap-2">
-                                <input
-                                    type="text"
-                                    value={editingCategoryData.name}
-                                    onChange={e => setEditingCategoryData({ ...editingCategoryData, name: e.target.value })}
-                                    className="flex-1 px-2 py-1 text-sm rounded bg-surface"
-                                />
-                                <input
-                                    type="text"
-                                    value={editingCategoryData.description || ""}
-                                    onChange={e => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
-                                    placeholder="描述"
-                                    className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)]"
-                                />
-                                <button
-                                    onClick={() => {
-                                        onUpdateCategory(category.id, {
-                                            name: editingCategoryData.name,
-                                            description: editingCategoryData.description
-                                        });
-                                        setIsEditingCategory(null);
-                                    }}
-                                    className="text-[var(--primary)]"
-                                >
-                                    <Check size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setIsEditingCategory(null)}
-                                    className="text-[var(--danger)]"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="w-8 flex justify-center text-xl">
-                                    <CategoryIcon iconName={category.icon} className="w-6 h-6" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="font-medium text-sm">{category.name}</div>
-                                    {category.description && <div className="text-xs text-[var(--muted)]">{category.description}</div>}
-                                </div>
-                                {category.isEditable !== false && (
-                                    <div className="opacity-0 group-hover:opacity-100 flex gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setIsEditingCategory(category.id);
-                                                setEditingCategoryData({ name: category.name, description: category.description || "" });
-                                            }}
-                                            className="p-1 text-[var(--muted)] hover:text-[var(--primary)]"
-                                        >
-                                            <Pencil size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => onDeleteCategory(category.id)}
-                                            className="p-1 text-[var(--muted)] hover:text-[var(--danger)]"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                ))}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={categories.map(c => c.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {categories.map(category => (
+                            <SortableItem
+                                key={category.id}
+                                category={category}
+                                isEditing={isEditingCategory === category.id}
+                                editingData={editingCategoryData}
+                                onEditStart={() => {
+                                    setIsEditingCategory(category.id);
+                                    setEditingCategoryData({ name: category.name, description: category.description || "" });
+                                }}
+                                onEditCancel={() => setIsEditingCategory(null)}
+                                onEditChange={setEditingCategoryData}
+                                onUpdate={() => {
+                                    onUpdateCategory(category.id, {
+                                        name: editingCategoryData.name,
+                                        description: editingCategoryData.description
+                                    });
+                                    setIsEditingCategory(null);
+                                }}
+                                onDelete={() => onDeleteCategory(category.id)}
+                            />
+                        ))}
+                    </SortableContext>
+                </DndContext>
             </div>
 
             <div className="flex gap-2">
@@ -117,7 +221,7 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
                 />
                 <button
                     onClick={handleCreate}
-                    className="px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--radius)] text-sm font-medium hover:opacity-90"
+                    className="px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--radius)] text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                     添加分类
                 </button>
@@ -125,3 +229,4 @@ export function CategorySection({ categories, onCreateCategory, onUpdateCategory
         </div>
     );
 }
+

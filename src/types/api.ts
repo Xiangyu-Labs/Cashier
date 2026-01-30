@@ -28,7 +28,7 @@ export interface EntryCategory {
   description: string | null;
   icon: string | null;
   sortOrder: number;
-  isEditable: boolean;
+  isEditable?: boolean;
   createdAt: string;
   updatedAt: string;
 }

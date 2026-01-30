@@ -10,6 +10,7 @@ import {
     createEntryCategory,
     updateEntryCategory,
     deleteEntryCategory,
+    reorderEntryCategories,
     fetchServiceCredentials,
     createServiceCredential,
     deleteServiceCredential
@@ -80,6 +81,13 @@ export default function LedgerSettingsPage() {
 
     const deleteCategoryMutation = useMutation({
         mutationFn: (id: string) => deleteEntryCategory(ledgerId, id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["entryCategories", ledgerId] });
+        },
+    });
+
+    const reorderCategoriesMutation = useMutation({
+        mutationFn: (categoryIds: string[]) => reorderEntryCategories(ledgerId, categoryIds),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["entryCategories", ledgerId] });
         },
@@ -246,6 +254,7 @@ export default function LedgerSettingsPage() {
                             onCreateCategory={(name) => createCategoryMutation.mutate({ name })}
                             onUpdateCategory={(id, data) => updateCategoryMutation.mutate({ id, data })}
                             onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
+                            onReorderCategories={(ids) => reorderCategoriesMutation.mutate(ids)}
                         />
                     )}
                 </div>
