@@ -39,6 +39,11 @@ export default function LedgerPage() {
     queuedSourceDocuments,
   } = useLedgerData(ledgerId);
 
+  // Enable real-time updates
+  const { useLedgerEvents } = require("@/lib/events/use-ledger-events");
+  useLedgerEvents(ledgerId);
+
+
   if (isLedgerLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">

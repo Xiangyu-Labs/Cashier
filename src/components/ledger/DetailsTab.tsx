@@ -85,8 +85,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
             updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: (updatedEntry) => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({
                 variant: "success",
                 title: tCommon("saveSuccess"),
@@ -111,8 +110,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const deleteMutation = useMutation({
         mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({ variant: "success", title: tLedger("deleteSuccess"), description: "" });
         },
     });

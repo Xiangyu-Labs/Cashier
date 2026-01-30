@@ -4,6 +4,7 @@ import { mainQueue, apiQueue } from "./queues";
 import { } from "./types";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
+import { taskRunRepo } from "@/lib/repositories";
 
 interface SubmitTaskOptions {
     type: string;
@@ -17,13 +18,13 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
     const { type, title, ledgerId, data, queueName = 'main' } = options;
 
     // 1. Create task_run record
-    const [run] = await db.insert(taskRuns).values({
+    const run = await taskRunRepo.create({
         type,
         title,
         ledgerId,
         status: 'running',
         usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-    }).returning();
+    }, ledgerId);
 
     try {
         // 2. Add to BullMQ
@@ -44,9 +45,7 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
         });
 
         // 3. Update task_run with BullMQ ID
-        await db.update(taskRuns)
-            .set({ bullFlowId: job.id })
-            .where(eq(taskRuns.id, run.id));
+        await taskRunRepo.update(run.id, { bullFlowId: job.id }, ledgerId);
 
         logger.info({ taskRunId: run.id, bullJobId: job.id, type }, "Task submitted successfully");
 
@@ -55,13 +54,7 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
         logger.error({ err: error, taskRunId: run.id }, "Failed to submit task to queue");
 
         // Mark as failed immediately
-        await db.update(taskRuns)
-            .set({
-                status: 'failed',
-                error: (error as Error).message,
-                completedAt: new Date()
-            })
-            .where(eq(taskRuns.id, run.id));
+        await taskRunRepo.fail(run.id, (error as Error).message, ledgerId);
 
         throw error;
     }

@@ -1,14 +1,13 @@
-// Parse Source Document Task
-// Handles parsing source document images/text into ledger entries via AI
-
 import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
-import { db } from "@/lib/db";
+import { db } from "@/lib/db"; // Still needed for query checking? Or use repo find? 
+// Actually repo doesn't have find yet. We can keep db.query for reads.
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/lib/message-processor/types";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
 import { logger } from "@/lib/logger";
+import { sourceDocumentRepo, ledgerEntryRepo } from "@/lib/repositories";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -52,9 +51,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     // 1. Main execution
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
         // Update status to processing
-        await db.update(sourceDocuments)
-            .set({ status: 'processing' })
-            .where(eq(sourceDocuments.id, input.sourceDocumentId));
+        await sourceDocumentRepo.setProcessing(input.sourceDocumentId, context.ledgerId);
 
         // Step 1: Parse with AI
         await context.updateProgress({
@@ -113,106 +110,94 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     // 3. Final completion (IDEMPOTENT)
-    // 3. Final completion (IDEMPOTENT)
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         const { ledgerEntries: parsedEntries, title } = output;
 
-        await db.transaction(async (tx) => {
-            // Idempotency check with locking? Drizzle generic doesn't lock easily, but checking is fine.
-            const existingEntries = await tx.query.ledgerEntries.findFirst({
-                where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
-            });
+        // Removed transaction transaction to ensure events are published correctly.
+        // We rely on sequential idempotent checks.
 
-            const validEntries = parsedEntries.filter(entry => entry.amount > 0);
-            const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
-            // Determine final status
-            // If valid entries exist (or we parsed some), status follows autoConfirm logic
-            // If no valid entries, it's an error or just completed empty? Original logic marked error if validEntries.length=0.
+        // 1. Check if entries already exist (Idempotency)
+        const existingEntries = await db.query.ledgerEntries.findFirst({
+            where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
+        });
 
-            let targetStatus: "completed" | "to_confirm" | "error" = "to_confirm";
-            if (validEntries.length === 0) {
-                targetStatus = "error";
-            } else if (input.settings.autoConfirm && !hasUnknownCurrency) {
-                targetStatus = "completed";
-            }
+        const validEntries = parsedEntries.filter(entry => entry.amount > 0);
+        const hasUnknownCurrency = validEntries.some(entry => entry.currency === "unknown");
 
-            if (!existingEntries) {
-                if (targetStatus === "error") {
-                    await tx.update(sourceDocuments).set({
-                        status: "error",
-                        errorCode: "invalid_content",
-                        title: title || null,
-                    }).where(eq(sourceDocuments.id, input.sourceDocumentId));
-                } else {
-                    const status = (targetStatus === "completed") ? "confirmed" : "pending";
-                    const entriesToInsert = validEntries.map(entry => {
-                        const categoryId = entry.category
-                            ? input.categories.find((c) => c.name === entry.category)?.id ?? null
-                            : null;
+        // Determine final status
+        let targetStatus: "completed" | "to_confirm" | "error" = "to_confirm";
+        if (validEntries.length === 0) {
+            targetStatus = "error";
+        } else if (input.settings.autoConfirm && !hasUnknownCurrency) {
+            targetStatus = "completed";
+        }
 
-                        return {
-                            ledgerId: context.ledgerId!,
-                            categoryId,
-                            sourceDocumentId: input.sourceDocumentId,
-                            amount: entry.amount.toString(),
-                            currency: entry.currency,
-                            itemName: entry.itemName || "未分类",
-                            description: entry.notes || null,
-                            entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
-                            status: status as "confirmed" | "pending",
-                        };
-                    });
-
-                    if (entriesToInsert.length > 0) {
-                        await tx.insert(ledgerEntries).values(entriesToInsert);
-                    }
-
-                    await tx.update(sourceDocuments).set({
-                        status: targetStatus,
-                        title: title || null,
-                    }).where(eq(sourceDocuments.id, input.sourceDocumentId));
+        if (!existingEntries) {
+            if (targetStatus === "error") {
+                await sourceDocumentRepo.setError(input.sourceDocumentId, "invalid_content", context.ledgerId);
+                // Also update title if needed, but Repo setError only takes error code. 
+                // We should probably allow general update in repo or add setTitle.
+                // For now, let's assume error doesn't need title update or we do a separate update if crucial.
+                // Wait, original code updated title on error.
+                if (title) {
+                    await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
                 }
             } else {
-                logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping insert but ensuring status update");
+                const status = (targetStatus === "completed") ? "confirmed" : "pending";
+                const entriesToInsert = validEntries.map(entry => {
+                    const categoryId = entry.category
+                        ? input.categories.find((c) => c.name === entry.category)?.id ?? null
+                        : null;
 
-                // CRITICAL FIX: Ensure status is updated even if entries exist (handling retry race condition)
-                // If entries exist, it implies we previously succeeded partially or fully.
-                // We should force the status to what it SHOULD be.
-                // However, if we simply update to 'to_confirm', it might overwrite user interaction if they actively confirmed it during the race?
-                // But tasks are usually fast.
-                // Safer to set it to 'to_confirm' or 'completed' to clear the 'processing' state.
+                    return {
+                        ledgerId: context.ledgerId!,
+                        categoryId,
+                        sourceDocumentId: input.sourceDocumentId,
+                        amount: entry.amount.toString(),
+                        currency: entry.currency,
+                        itemName: entry.itemName || "未分类",
+                        description: entry.notes || null,
+                        entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
+                        status: status as "confirmed" | "pending",
+                    };
+                });
 
-                if (targetStatus !== "error") {
-                    await tx.update(sourceDocuments)
-                        .set({ status: targetStatus, title: title || null })
-                        .where(eq(sourceDocuments.id, input.sourceDocumentId));
+                if (entriesToInsert.length > 0) {
+                    await ledgerEntryRepo.batchCreate(entriesToInsert, context.ledgerId);
                 }
+
+                await sourceDocumentRepo.update(input.sourceDocumentId, {
+                    status: targetStatus,
+                    title: title || null
+                }, context.ledgerId);
             }
-        });
+        } else {
+            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping insert but ensuring status update");
+
+            if (targetStatus !== "error") {
+                await sourceDocumentRepo.update(input.sourceDocumentId, {
+                    status: targetStatus,
+                    title: title || null
+                }, context.ledgerId);
+            }
+        }
     },
 
-    async onError(error: Error, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
+    async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         // Determine error code
         let errorCode: "internal_error" | "parse_failed" | "invalid_content" = "internal_error";
         let isUnrecoverable = false;
 
         const message = error.message.toLowerCase();
         if (message.includes("schema validation") || message.includes("zod")) {
-            errorCode = "invalid_content"; // Schema mismatch often means it's not a valid bill or has illegal fields
+            errorCode = "invalid_content";
             isUnrecoverable = true;
         } else if (message.includes("ai response") || message.includes("json") || message.includes("parse")) {
             errorCode = "parse_failed";
-            // JSON parse errors are also usually unrecoverable unless it's a transient AI glitch. 
-            // But if the AI returns garbage JSON, retrying MIGHT fix it if temperature > 0.
-            // Zod error on structure is less likely to change unless AI is very unstable.
-            // Let's mark Zod errors as unrecoverable.
         }
 
-        // Update source document status to error
-        await db.update(sourceDocuments).set({
-            status: "error",
-            errorCode: errorCode,
-        }).where(eq(sourceDocuments.id, input.sourceDocumentId));
+        // Update source document status to error via Repo
+        await sourceDocumentRepo.setError(input.sourceDocumentId, errorCode, context.ledgerId);
 
         if (isUnrecoverable) {
             const { UnrecoverableError } = await import('bullmq');

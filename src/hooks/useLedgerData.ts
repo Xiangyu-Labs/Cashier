@@ -50,37 +50,15 @@ function groupLedgerEntries(ledgerEntries?: LedgerEntry[]): GroupedLedgerEntries
 }
 
 export function useLedgerData(ledgerId: string) {
-    const queryClient = useQueryClient();
-
-    // Poll for queued/processing source documents first to determine if we need to poll others
+    // Poll for queued/processing source documents - Polling REMOVED in favor of SSE
     const { data: queuedSourceDocuments = [] } = useQuery({
         queryKey: ["sourceDocuments", ledgerId, "queued"],
         queryFn: async () => {
+            // We fetch all non-completed ones to show status
             const res = await fetchSourceDocuments(ledgerId, { status: ["queued", "processing", "error"] });
             return res.items;
         },
-        refetchInterval: (query) => {
-            const data = query.state.data;
-            return data && data.length > 0 ? 1000 : 5000;
-        },
     });
-
-    const isProcessing = queuedSourceDocuments?.some(m => m.status === 'queued' || m.status === 'processing');
-    const refetchInterval = isProcessing ? 1000 : false;
-
-    // Track previous queue length to detect completion
-    const prevQueueLengthRef = useRef(queuedSourceDocuments?.length || 0);
-
-    useEffect(() => {
-        const currentLength = queuedSourceDocuments?.length || 0;
-        // If queue size decreased, something finished processing (or was deleted)
-        // In either case, we should refresh ledger entries to show the result
-        if (currentLength < prevQueueLengthRef.current) {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
-        }
-        prevQueueLengthRef.current = currentLength;
-    }, [queuedSourceDocuments?.length, queryClient, ledgerId]);
 
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
         queryKey: ["ledger", ledgerId],
@@ -98,7 +76,6 @@ export function useLedgerData(ledgerId: string) {
             const res = await fetchLedgerEntries(ledgerId, { status: "pending" });
             return res.items;
         },
-        refetchInterval,
     });
 
     const { data: confirmedEntries } = useQuery({
@@ -107,13 +84,11 @@ export function useLedgerData(ledgerId: string) {
             const res = await fetchLedgerEntries(ledgerId, { status: "confirmed", limit: 100 });
             return res.items;
         },
-        refetchInterval,
     });
 
     const { data: summary } = useQuery({
         queryKey: ["summary", ledgerId],
         queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed"),
-        refetchInterval,
     });
 
     const pendingGroups = useMemo(() => groupLedgerEntries(pendingEntries), [pendingEntries]);

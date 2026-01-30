@@ -118,9 +118,7 @@ export function LedgerEntriesTab({
         mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
             updateLedgerEntry(ledgerId, ledgerEntryId, data),
         onSuccess: (updatedEntry) => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({
                 variant: "success",
                 title: tCommon("saveSuccess"),
@@ -145,18 +143,14 @@ export function LedgerEntriesTab({
     const deleteMutation = useMutation({
         mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
         },
     });
 
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => deleteSourceDocument(ledgerId, sourceDocumentId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
         },
         onError: () => {
             toast({ variant: "error", title: t("deleteFailed"), description: tCommon("error") });
@@ -189,15 +183,14 @@ export function LedgerEntriesTab({
             deleteMutation.mutate(deleteConfirm.id);
         }
         setDeleteConfirm({ ...deleteConfirm, open: false });
+        // Toast is enough, list update via SSE
         toast({ variant: "success", title: t("deleteSuccess"), description: "" });
     }
 
     const confirmAllMutation = useMutation({
         mutationFn: () => confirmLedgerEntries(ledgerId, { confirmAll: true }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             setConfirmingAll(false);
             toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },
@@ -210,9 +203,7 @@ export function LedgerEntriesTab({
     const confirmBatchMutation = useMutation({
         mutationFn: (ledgerEntryIds: string[]) => confirmLedgerEntries(ledgerId, { ledgerEntryIds }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({ variant: "success", title: t("confirmSuccess"), description: "" });
         },
         onError: () => toast({ variant: "error", title: t("confirmFailed"), description: tCommon("error") })
@@ -221,7 +212,7 @@ export function LedgerEntriesTab({
         mutationFn: ({ sourceDocumentId, title }: { sourceDocumentId: string; title: string }) =>
             updateSourceDocument(ledgerId, sourceDocumentId, { title }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
+            // Invalidation handled by SSE
             toast({ variant: "success", title: tCommon("saveSuccess") });
         },
     });
@@ -230,9 +221,7 @@ export function LedgerEntriesTab({
         mutationFn: (data: Parameters<typeof batchUpdateLedgerEntries>[1]) =>
             batchUpdateLedgerEntries(ledgerId, data),
         onSuccess: (res) => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({
                 variant: "success",
                 title: tCommon("saveSuccess"),
@@ -244,9 +233,7 @@ export function LedgerEntriesTab({
     const batchDeleteMutation = useMutation({
         mutationFn: (ledgerEntryIds: string[]) => batchDeleteLedgerEntries(ledgerId, ledgerEntryIds),
         onSuccess: (res: { deletedCount: number }) => {
-            queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
-            queryClient.invalidateQueries({ queryKey: ["summary", ledgerId] });
+            // Invalidation handled by SSE
             toast({
                 variant: "success",
                 title: t("deleteSuccess"),

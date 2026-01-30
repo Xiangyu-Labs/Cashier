@@ -22,33 +22,19 @@ export async function POST(
         const body = await request.json();
         const { ledgerEntryIds, confirmAll } = confirmSchema.parse(body);
 
+        // Import repositories dynamically or use static import if available at top
+        const { ledgerEntryRepo, sourceDocumentRepo } = await import("@/lib/repositories");
+
         if (confirmAll) {
             // Confirm all pending entries for this ledger
-            const [updatedEntries] = await db
-                .update(ledgerEntries)
-                .set({ status: "confirmed" })
-                .where(
-                    and(
-                        eq(ledgerEntries.ledgerId, ledgerId),
-                        eq(ledgerEntries.status, "pending")
-                    )
-                )
-                .returning({ id: ledgerEntries.id });
+            const updatedEntries = await ledgerEntryRepo.confirmAllPending(ledgerId);
 
             // Mark all 'to_confirm' source documents as 'completed'
-            await db
-                .update(sourceDocuments)
-                .set({ status: "completed" })
-                .where(
-                    and(
-                        eq(sourceDocuments.ledgerId, ledgerId),
-                        eq(sourceDocuments.status, "to_confirm")
-                    )
-                );
+            await sourceDocumentRepo.completeAllToConfirm(ledgerId);
 
             return NextResponse.json({
                 success: true,
-                updatedCount: updatedEntries ? 1 : 0 // returning array length would be better but returning count is fine
+                updatedCount: updatedEntries.length
             });
         }
 
@@ -57,30 +43,13 @@ export async function POST(
         }
 
         // Confirm specific entries
-        const updatedEntries = await db
-            .update(ledgerEntries)
-            .set({ status: "confirmed" })
-            .where(
-                and(
-                    inArray(ledgerEntries.id, ledgerEntryIds),
-                    eq(ledgerEntries.ledgerId, ledgerId)
-                )
-            )
-            .returning({ sourceDocumentId: ledgerEntries.sourceDocumentId });
+        const updatedEntries = await ledgerEntryRepo.batchUpdate(ledgerEntryIds, { status: "confirmed" }, ledgerId);
 
         // Update corresponding source documents to 'completed'
         if (updatedEntries.length > 0) {
             const docIds = [...new Set(updatedEntries.map(e => e.sourceDocumentId).filter(Boolean))] as string[];
             if (docIds.length > 0) {
-                await db
-                    .update(sourceDocuments)
-                    .set({ status: "completed" })
-                    .where(
-                        and(
-                            inArray(sourceDocuments.id, docIds),
-                            eq(sourceDocuments.status, "to_confirm")
-                        )
-                    );
+                await sourceDocumentRepo.batchComplete(docIds, ledgerId);
             }
         }
 

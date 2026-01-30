@@ -33,15 +33,8 @@ export async function PATCH(
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        await db
-            .update(ledgerEntries)
-            .set(updateData)
-            .where(
-                and(
-                    eq(ledgerEntries.ledgerId, ledgerId),
-                    inArray(ledgerEntries.id, ledgerEntryIds)
-                )
-            );
+        const { ledgerEntryRepo } = await import("@/lib/repositories");
+        await ledgerEntryRepo.batchUpdate(ledgerEntryIds, updateData, ledgerId);
 
         // Result handling for different DB adapters (Drizzle returns differ)
         // For Postgres/SQLite it might be returning().length, for others it might be a count object.

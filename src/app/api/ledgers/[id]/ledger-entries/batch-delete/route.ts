@@ -23,14 +23,8 @@ export async function POST(
             return NextResponse.json({ success: true, deletedCount: 0 });
         }
 
-        await db
-            .delete(ledgerEntries)
-            .where(
-                and(
-                    eq(ledgerEntries.ledgerId, ledgerId),
-                    inArray(ledgerEntries.id, ledgerEntryIds)
-                )
-            );
+        const { ledgerEntryRepo } = await import("@/lib/repositories");
+        await ledgerEntryRepo.batchDelete(ledgerEntryIds, ledgerId);
 
         return NextResponse.json({
             success: true,

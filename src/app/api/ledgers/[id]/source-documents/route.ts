@@ -4,6 +4,7 @@ import { sourceDocuments, ledgers } from "@/lib/db/schema";
 import { eq, inArray, and, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { sourceDocumentRepo } from "@/lib/repositories";
 
 const sourceDocumentSchema = z.object({
   text: z.string().optional(),
@@ -103,15 +104,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Save source document with 'queued' status
-    const [savedDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId,
-        text: validated.text || null,
-        imageUrls: imageUrls,
-        status: "queued",
-      })
-      .returning();
+    const savedDoc = await sourceDocumentRepo.create({
+      ledgerId,
+      text: validated.text || null,
+      imageUrls: imageUrls,
+      status: "queued",
+    }, ledgerId);
+
 
     // Create a flow task
     const { submitFlowTask } = await import("@/lib/flow/producer");
