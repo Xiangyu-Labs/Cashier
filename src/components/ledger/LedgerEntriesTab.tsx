@@ -314,208 +314,213 @@ export function LedgerEntriesTab({
                     />
                 </div>
 
-                {/* Processing Section */}
-                <AnimatePresence mode="popLayout">
-                    {groups.processing.length > 0 && (
-                        <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            {renderSectionHeader(
-                                t("processing"),
-                                groups.processing.length,
-                                isProcessingCollapsed,
-                                () => setIsProcessingCollapsed(!isProcessingCollapsed),
-                                "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100/50 dark:border-blue-900/20 hover:bg-blue-50/60 dark:hover:bg-blue-900/20",
-                                "text-blue-500"
-                            )}
-                            <AnimatePresence>
-                                {!isProcessingCollapsed && (
-                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                        <AnimatePresence mode="popLayout">
-                                            {groups.processing.map(group => (
-                                                <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
-                                                    <SourceDocumentCard
-                                                        sourceDocument={group.sourceDocument}
-                                                        ledgerEntries={group.ledgerEntries}
-                                                        categories={categories}
-                                                        status={group.sourceDocument.status || 'processing'}
-                                                        className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
-                                                        defaultExpanded={true}
-                                                        mainCurrency={ledger?.mainCurrency}
-                                                    />
-                                                </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <div className="h-px bg-border/50 mt-4 mx-2" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Pending Confirmation Section */}
-                <AnimatePresence mode="popLayout">
-                    {groups.pending.length > 0 && (
-                        <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            {renderSectionHeader(
-                                t("pending"),
-                                groups.pending.length,
-                                isPendingCollapsed,
-                                () => setIsPendingCollapsed(!isPendingCollapsed),
-                                "bg-yellow-50/40 dark:bg-yellow-900/10 border-yellow-100/50 dark:border-yellow-900/20 hover:bg-yellow-50/60 dark:hover:bg-yellow-900/20",
-                                "text-warning",
-                                <Button
-                                    variant="default"
-                                    onClick={() => confirmAllMutation.mutate()}
-                                    disabled={confirmAllMutation.isPending || confirmingAll || hasAnyUnknownCurrency}
-                                    size="sm"
-                                    className={cn(
-                                        "h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95",
-                                        hasAnyUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
-                                    )}
-                                >
-                                    {confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}
-                                </Button>
-                            )}
-                            <AnimatePresence>
-                                {!isPendingCollapsed && (
-                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                        <AnimatePresence mode="popLayout">
-                                            {groups.pending.map(group => (
-                                                <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
-                                                    <SourceDocumentCard
-                                                        sourceDocument={group.sourceDocument}
-                                                        ledgerEntries={group.ledgerEntries}
-                                                        categories={categories}
-                                                        status="pending"
-                                                        className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800"
-                                                        defaultExpanded={true}
-                                                        mainCurrency={ledger?.mainCurrency}
-                                                        onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
-                                                        onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
-                                                        onDeleteLedgerEntry={(id) => {
-                                                            setDeleteConfirm({ open: true, type: "ledgerEntry", id: id, title: t("deleteEntryConfirmTitle"), description: t("deleteEntryConfirmDesc") });
-                                                        }}
-                                                        onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                        onViewDetails={() => {
-                                                            setSelectedSourceDocument(group);
-                                                            setIsSourceDetailModalOpen(true);
-                                                        }}
-                                                        onViewLedgerEntry={(entry) => {
-                                                            setSelectedLedgerEntry(entry);
-                                                            setIsDetailModalOpen(true);
-                                                        }}
-                                                    />
-                                                </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <div className="h-px bg-border/50 mt-4 mx-2" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Error Section */}
-                <AnimatePresence mode="popLayout">
-                    {groups.error.length > 0 && (
-                        <motion.div layout className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            {renderSectionHeader(
-                                t("abnormal"),
-                                groups.error.length,
-                                isErrorCollapsed,
-                                () => setIsErrorCollapsed(!isErrorCollapsed),
-                                "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
-                                "text-red-500",
-                                <>
-                                    <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                    <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" disabled={confirmingAll} onClick={() => { groups.error.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
-                                </>
-                            )}
-                            <AnimatePresence>
-                                {!isErrorCollapsed && (
-                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                        <AnimatePresence mode="popLayout">
-                                            {groups.error.map(group => (
-                                                <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
-                                                    <SourceDocumentCard
-                                                        sourceDocument={group.sourceDocument}
-                                                        ledgerEntries={group.ledgerEntries}
-                                                        categories={categories}
-                                                        status="error"
-                                                        errorCode={group.sourceDocument.errorCode}
-                                                        className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                                                        defaultExpanded={true}
-                                                        mainCurrency={ledger?.mainCurrency}
-                                                        onRetry={async () => { await retryMutation.mutateAsync(group.sourceDocument.id); }}
-                                                        onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                    />
-                                                </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <div className="h-px bg-border/50 mt-4 mx-2" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Completed (Formal) Section */}
-                <div className="space-y-6 px-2">
-                    {isLoading ? (
-                        <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
-                            <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
-                            <span>{tCommon("loading")}</span>
-                        </div>
-                    ) : groups.completed.length === 0 ? (
-                        <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
-                            <span className="text-4xl opacity-20">🧾</span>
-                            <span>{t("noRecords")}</span>
-                        </div>
-                    ) : (
-                        <AnimatePresence mode="popLayout">
-                            {groups.completed.map(group => (
-                                <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" {...getItemProps(group.sourceDocument.id)}>
-                                    <SourceDocumentCard
-                                        sourceDocument={group.sourceDocument}
-                                        ledgerEntries={group.ledgerEntries}
-                                        categories={categories}
-                                        status="completed"
-                                        isConfirmed={true}
-                                        mainCurrency={ledger?.mainCurrency}
-                                        onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                        onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
-                                        onViewDetails={() => {
-                                            setSelectedSourceDocument(group);
-                                            setIsSourceDetailModalOpen(true);
-                                        }}
-                                        onViewLedgerEntry={(entry) => {
-                                            setSelectedLedgerEntry(entry);
-                                            setIsDetailModalOpen(true);
-                                        }}
-                                    />
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-                    )}
-
-                    {/* Infinite Scroll Sentinel */}
-                    <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
-                        {isFetchingNextPage ? (
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
-                                <span>{tCommon("loading")}</span>
-                            </div>
-                        ) : hasNextPage ? (
-                            <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                <span>{t("loadMore")}</span>
-                            </motion.div>
-                        ) : (
-                            <span className="opacity-50 text-xs">{t("noMore")}</span>
-                        )}
+                {/* Unified Loading State */}
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground animate-in fade-in duration-300">
+                        <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mb-4"></div>
+                        <p className="text-sm font-medium">{tCommon("loading")}</p>
                     </div>
-                </div>
+                ) : (
+                    <>
+                        {/* Processing Section */}
+                        <AnimatePresence mode="popLayout">
+                            {groups.processing.length > 0 && (
+                                <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                    {renderSectionHeader(
+                                        t("processing"),
+                                        groups.processing.length,
+                                        isProcessingCollapsed,
+                                        () => setIsProcessingCollapsed(!isProcessingCollapsed),
+                                        "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100/50 dark:border-blue-900/20 hover:bg-blue-50/60 dark:hover:bg-blue-900/20",
+                                        "text-blue-500"
+                                    )}
+                                    <AnimatePresence>
+                                        {!isProcessingCollapsed && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                                <AnimatePresence mode="popLayout">
+                                                    {groups.processing.map(group => (
+                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
+                                                            <SourceDocumentCard
+                                                                sourceDocument={group.sourceDocument}
+                                                                ledgerEntries={group.ledgerEntries}
+                                                                categories={categories}
+                                                                status={group.sourceDocument.status || 'processing'}
+                                                                className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+                                                                defaultExpanded={true}
+                                                                mainCurrency={ledger?.mainCurrency}
+                                                            />
+                                                        </motion.div>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <div className="h-px bg-border/50 mt-4 mx-2" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Pending Confirmation Section */}
+                        <AnimatePresence mode="popLayout">
+                            {groups.pending.length > 0 && (
+                                <motion.div layout className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                    {renderSectionHeader(
+                                        t("pending"),
+                                        groups.pending.length,
+                                        isPendingCollapsed,
+                                        () => setIsPendingCollapsed(!isPendingCollapsed),
+                                        "bg-yellow-50/40 dark:bg-yellow-900/10 border-yellow-100/50 dark:border-yellow-900/20 hover:bg-yellow-50/60 dark:hover:bg-yellow-900/20",
+                                        "text-warning",
+                                        <Button
+                                            variant="default"
+                                            onClick={() => confirmAllMutation.mutate()}
+                                            disabled={confirmAllMutation.isPending || confirmingAll || hasAnyUnknownCurrency}
+                                            size="sm"
+                                            className={cn(
+                                                "h-7 px-3 text-xs bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm transition-all active:scale-95",
+                                                hasAnyUnknownCurrency && "opacity-50 grayscale cursor-not-allowed"
+                                            )}
+                                        >
+                                            {confirmAllMutation.isPending ? t("confirming") : t("confirmAll")}
+                                        </Button>
+                                    )}
+                                    <AnimatePresence>
+                                        {!isPendingCollapsed && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                                <AnimatePresence mode="popLayout">
+                                                    {groups.pending.map(group => (
+                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
+                                                            <SourceDocumentCard
+                                                                sourceDocument={group.sourceDocument}
+                                                                ledgerEntries={group.ledgerEntries}
+                                                                categories={categories}
+                                                                status="pending"
+                                                                className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800"
+                                                                defaultExpanded={true}
+                                                                mainCurrency={ledger?.mainCurrency}
+                                                                onConfirm={async (ids) => { await confirmBatchMutation.mutateAsync(ids); }}
+                                                                onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
+                                                                onDeleteLedgerEntry={(id) => {
+                                                                    setDeleteConfirm({ open: true, type: "ledgerEntry", id: id, title: t("deleteEntryConfirmTitle"), description: t("deleteEntryConfirmDesc") });
+                                                                }}
+                                                                onDelete={() => setDeleteConfirm({ open: true, type: "batch", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                                                                onViewDetails={() => {
+                                                                    setSelectedSourceDocument(group);
+                                                                    setIsSourceDetailModalOpen(true);
+                                                                }}
+                                                                onViewLedgerEntry={(entry) => {
+                                                                    setSelectedLedgerEntry(entry);
+                                                                    setIsDetailModalOpen(true);
+                                                                }}
+                                                            />
+                                                        </motion.div>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <div className="h-px bg-border/50 mt-4 mx-2" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Error Section */}
+                        <AnimatePresence mode="popLayout">
+                            {groups.error.length > 0 && (
+                                <motion.div layout className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                    {renderSectionHeader(
+                                        t("abnormal"),
+                                        groups.error.length,
+                                        isErrorCollapsed,
+                                        () => setIsErrorCollapsed(!isErrorCollapsed),
+                                        "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
+                                        "text-red-500",
+                                        <>
+                                            <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
+                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" disabled={confirmingAll} onClick={() => { groups.error.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
+                                        </>
+                                    )}
+                                    <AnimatePresence>
+                                        {!isErrorCollapsed && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                                <AnimatePresence mode="popLayout">
+                                                    {groups.error.map(group => (
+                                                        <motion.div key={group.sourceDocument.id} {...getItemProps(group.sourceDocument.id)}>
+                                                            <SourceDocumentCard
+                                                                sourceDocument={group.sourceDocument}
+                                                                ledgerEntries={group.ledgerEntries}
+                                                                categories={categories}
+                                                                status="error"
+                                                                errorCode={group.sourceDocument.errorCode}
+                                                                className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+                                                                defaultExpanded={true}
+                                                                mainCurrency={ledger?.mainCurrency}
+                                                                onRetry={async () => { await retryMutation.mutateAsync(group.sourceDocument.id); }}
+                                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                                                            />
+                                                        </motion.div>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <div className="h-px bg-border/50 mt-4 mx-2" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Completed (Formal) Section */}
+                        <div className="space-y-6 px-2">
+                            {groups.completed.length === 0 ? (
+                                <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                                    <span className="text-4xl opacity-20">🧾</span>
+                                    <span>{t("noRecords")}</span>
+                                </div>
+                            ) : (
+                                <AnimatePresence mode="popLayout">
+                                    {groups.completed.map(group => (
+                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" {...getItemProps(group.sourceDocument.id)}>
+                                            <SourceDocumentCard
+                                                sourceDocument={group.sourceDocument}
+                                                ledgerEntries={group.ledgerEntries}
+                                                categories={categories}
+                                                status="completed"
+                                                isConfirmed={true}
+                                                mainCurrency={ledger?.mainCurrency}
+                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                                                onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
+                                                onViewDetails={() => {
+                                                    setSelectedSourceDocument(group);
+                                                    setIsSourceDetailModalOpen(true);
+                                                }}
+                                                onViewLedgerEntry={(entry) => {
+                                                    setSelectedLedgerEntry(entry);
+                                                    setIsDetailModalOpen(true);
+                                                }}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            )}
+
+                            {/* Infinite Scroll Sentinel */}
+                            <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                                {isFetchingNextPage ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
+                                        <span>{tCommon("loading")}</span>
+                                    </div>
+                                ) : hasNextPage ? (
+                                    <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
+                                        <span>{t("loadMore")}</span>
+                                    </motion.div>
+                                ) : (
+                                    <span className="opacity-50 text-xs">{t("noMore")}</span>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
 
             </div>
 
