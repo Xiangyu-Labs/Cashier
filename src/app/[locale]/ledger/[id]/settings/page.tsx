@@ -14,6 +14,7 @@ import {
     createServiceCredential,
     deleteServiceCredential
 } from "@/lib/api";
+import { useLedgerEvents } from "@/lib/events/use-ledger-events";
 import { CurrencySection } from "./components/CurrencySection";
 import { CategorySection } from "./components/CategorySection";
 import { ServiceCredentialSection } from "./components/ServiceCredentialSection";
@@ -35,6 +36,9 @@ export default function LedgerSettingsPage() {
     const ledgerId = params.id as string;
     const queryClient = useQueryClient();
 
+    // Enable real-time updates
+    useLedgerEvents(ledgerId);
+
     // Ledger Query
     const { data: ledger, isLoading: isLedgerLoading } = useQuery({
         queryKey: ["ledger", ledgerId],
@@ -43,7 +47,7 @@ export default function LedgerSettingsPage() {
 
     // Categories Query
     const { data: categories, isLoading: isCategoriesLoading } = useQuery({
-        queryKey: ["categories", ledgerId],
+        queryKey: ["entryCategories", ledgerId],
         queryFn: () => fetchEntryCategories(ledgerId),
     });
 
@@ -58,7 +62,7 @@ export default function LedgerSettingsPage() {
     const createCategoryMutation = useMutation({
         mutationFn: (data: { name: string }) => createEntryCategory(ledgerId, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["entryCategories", ledgerId] });
         },
     });
 
@@ -70,14 +74,14 @@ export default function LedgerSettingsPage() {
                 icon: data.icon ?? undefined,
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["entryCategories", ledgerId] });
         },
     });
 
     const deleteCategoryMutation = useMutation({
         mutationFn: (id: string) => deleteEntryCategory(ledgerId, id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["categories", ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ["entryCategories", ledgerId] });
         },
     });
 

@@ -25,7 +25,8 @@ export function handleEvent(queryClient: QueryClient, event: LedgerEvent) {
             ['ledgerEntries', ledgerId],    // Entries might change if doc status changes
         ],
         task_run: [
-            ['processingTasks', ledgerId],  // If this key exists
+            ['processingTasks', ledgerId],  // Active tasks list
+            ['token-stats', ledgerId],      // Token usage statistics
             ['sourceDocuments', ledgerId],  // Documents status might be affected by task
         ],
         category: [

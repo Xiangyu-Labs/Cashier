@@ -84,7 +84,7 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
     });
 
     const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
-        queryKey: ["processing-tasks", ledgerId],
+        queryKey: ["processingTasks", ledgerId],
         queryFn: () => fetchProcessingTasks(ledgerId, { limit: 10 }), // Show last 10 tasks in settings
         enabled: !!ledgerId,
     });
