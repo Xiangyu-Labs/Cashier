@@ -90,8 +90,10 @@ export function SourceDocumentCard({
   const locale = useLocale();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [isContentExpanded, setIsContentExpanded] = useState(defaultExpanded);
+  const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
+  const showRawInput = status !== "completed";
 
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
@@ -175,11 +177,11 @@ export function SourceDocumentCard({
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => setIsContentExpanded(!isContentExpanded)}
-              className={cn("h-7 w-7", isContentExpanded && "bg-surface2")}
-              title={isContentExpanded ? t("collapseContent") : t("viewContent")}
+              onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+              className={cn("h-7 w-7", isItemsExpanded && "bg-surface2")}
+              title={isItemsExpanded ? t("collapseContent") : t("viewContent")}
             >
-              <ChevronDown className={cn("h-4 w-4 transition-transform", isContentExpanded && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform", isItemsExpanded && "rotate-180")} />
             </Button>
 
             {status === "anomaly" && (
@@ -237,7 +239,7 @@ export function SourceDocumentCard({
 
 
       <AnimatePresence>
-        {isContentExpanded && (
+        {showRawInput && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -274,25 +276,34 @@ export function SourceDocumentCard({
         )}
       </AnimatePresence>
 
-      <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
-        {sortedEntries.map((entry) => (
-          <BillEntryItem
-            key={entry.id}
-            ledgerEntry={entry}
-            onView={() => onViewLedgerEntry?.(entry)}
-            mainCurrency={mainCurrency}
-            variant={
-              status === "anomaly"
-                ? "error"
-                : status === "pending"
-                  ? "warning" // Legacy or transient
-                  : status === "processing" || status === "queued"
-                    ? "info"
-                    : "default"
-            }
-          />
-        ))}
-      </div>
+      <AnimatePresence>
+        {isItemsExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30 overflow-hidden"
+          >
+            {sortedEntries.map((entry) => (
+              <BillEntryItem
+                key={entry.id}
+                ledgerEntry={entry}
+                onView={() => onViewLedgerEntry?.(entry)}
+                mainCurrency={mainCurrency}
+                variant={
+                  status === "anomaly"
+                    ? "error"
+                    : status === "pending"
+                      ? "warning"
+                      : status === "processing" || status === "queued"
+                        ? "info"
+                        : "default"
+                }
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ImageViewer
         images={images}
