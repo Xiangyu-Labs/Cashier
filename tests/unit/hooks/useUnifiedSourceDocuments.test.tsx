@@ -85,9 +85,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         const { groups } = result.current;
 
-        // Verify Processing Group (queued + processing)
-        expect(groups.processing).toHaveLength(2);
-        expect(groups.processing.map(g => g.sourceDocument.id).sort()).toEqual(["doc_p1", "doc_q1"].sort());
+        // Verify Processing Group (queued + processing) -> Should now be hidden
+        expect(groups.processing).toHaveLength(0);
 
         // Verify Anomaly Group
         // Only doc_e1 has status='anomaly'. 
@@ -100,6 +99,10 @@ describe("useUnifiedSourceDocuments", () => {
         // Should contain doc_c1 and doc_pending1
         expect(groups.completed).toHaveLength(2);
         expect(groups.completed.map(g => g.sourceDocument.id).sort()).toEqual(["doc_c1", "doc_pending1"].sort());
+
+        // Verify stats
+        expect(result.current.stats.processingCount).toBe(0);
+        expect(result.current.stats.anomalyCount).toBe(1);
     });
 
     it("filters groups by date range", async () => {
@@ -133,9 +136,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-        // Jan 4 doc should be present
-        expect(result.current.groups.processing).toHaveLength(1);
-        expect(result.current.groups.processing[0].sourceDocument.id).toBe("doc_q1");
+        // Jan 4 doc should be present in results but not in processing group (as they are hidden)
+        expect(result.current.groups.processing).toHaveLength(0);
 
         // Jan 1 doc should be filtered out
         // Note: completed group logic in hook takes `grouped.completed` which comes from `completedData`
@@ -180,8 +182,7 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result2.current.isLoading).toBe(false));
 
-        // processing group should have 1 (doc_q1), out of range filtered
-        expect(result2.current.groups.processing).toHaveLength(1);
-        expect(result2.current.groups.processing[0].sourceDocument.id).toBe("doc_q1");
+        // processing group should have 0 as they are now hidden
+        expect(result2.current.groups.processing).toHaveLength(0);
     });
 });

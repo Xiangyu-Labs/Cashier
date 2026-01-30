@@ -72,6 +72,7 @@ export function useUnifiedSourceDocuments(
         queryFn: ({ pageParam }) =>
             fetchSourceDocuments(ledgerId, {
                 cursor: pageParam,
+                status: ['completed'],
                 startDate: dateRange?.start?.toISOString(),
                 endDate: dateRange?.end?.toISOString(),
             }),
@@ -117,8 +118,8 @@ export function useUnifiedSourceDocuments(
             if (doc.status === 'anomaly') {
                 result.anomaly.push({ sourceDocument: doc, ledgerEntries: entries });
             } else {
-                // queued or processing
-                result.processing.push({ sourceDocument: doc, ledgerEntries: entries });
+                // queued or processing - skip according to requirement
+                // result.processing.push({ sourceDocument: doc, ledgerEntries: entries });
             }
         }
 

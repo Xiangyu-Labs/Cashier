@@ -94,16 +94,6 @@ export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInput
 
     return (
         <div className="space-y-4">
-            <Textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onPaste={handlePaste}
-                placeholder={t("placeholder")}
-                className="resize-none"
-                rows={5}
-                autoFocus
-            />
-
             {images.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
                     {images.map((img, idx) => (
@@ -126,6 +116,16 @@ export function SourceDocumentInput({ ledgerId, onSuccess }: SourceDocumentInput
                     ))}
                 </div>
             )}
+
+            <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onPaste={handlePaste}
+                placeholder={t("placeholder")}
+                className="resize-none"
+                rows={5}
+                autoFocus
+            />
 
             {/* Advanced Features Fold */}
             <div className="border border-border rounded-lg overflow-hidden">
