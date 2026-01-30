@@ -321,7 +321,7 @@ describe("OpenAIMessageProcessor", () => {
 
     });
 
-    // AutoConfirm test removed as status field is removed from ParsedTransaction
+
   });
 
   describe("parseResponse() - edge cases", () => {

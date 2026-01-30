@@ -105,7 +105,6 @@ export async function POST(request: NextRequest) {
                     settings: {
                         mergeSimilarItems: ledger.mergeSimilarItems,
                         autoRecognizeDate: ledger.autoRecognizeDate,
-                        autoConfirm: ledger.autoConfirm,
                         aiCustomPrompt: ledger.aiCustomPrompt,
                     },
                 },

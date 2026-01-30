@@ -27,7 +27,7 @@ export async function POST(
             const updatedEntries = await ledgerEntryRepo.confirmAllPending(ledgerId);
 
             // Mark all 'to_confirm' source documents as 'completed'
-            await sourceDocumentRepo.completeAllToConfirm(ledgerId);
+            // await sourceDocumentRepo.completeAllToConfirm(ledgerId);
 
             return NextResponse.json({
                 success: true,

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
-export type ProcessingStatusType = "queued" | "processing" | "to_confirm" | "completed" | "error" | "pending";
+export type ProcessingStatusType = "queued" | "processing" | "completed" | "error" | "pending";
 
 interface ProcessingStatusProps {
     status: ProcessingStatusType;
@@ -23,12 +23,7 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
             colorClass: "text-info",
             bgClass: "bg-info",
         },
-        to_confirm: {
-            label: "待确认",
-            icon: AlertCircle,
-            colorClass: "text-warning",
-            bgClass: "bg-warning",
-        },
+
         completed: {
             label: "已完成",
             icon: CheckCircle2,

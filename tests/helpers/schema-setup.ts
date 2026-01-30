@@ -34,8 +34,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
 
     // Create enums
     await tx.execute(sql`
-      CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'to_confirm', 'completed', 'error');
-      CREATE TYPE error_code AS ENUM ('internal_error', 'parse_failed', 'invalid_content');
+      CREATE TYPE source_document_status AS ENUM ('queued', 'processing', 'completed', 'error');
+      CREATE TYPE error_code AS ENUM ('internal_error', 'parse_failed', 'invalid_content', 'flow_anomaly', 'unknown_currency');
       CREATE TYPE ledger_entry_status AS ENUM ('pending', 'confirmed');
     `);
 
@@ -49,7 +49,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         main_currency TEXT DEFAULT 'CNY',
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        auto_confirm BOOLEAN DEFAULT FALSE,
         auto_recognize_date BOOLEAN DEFAULT FALSE,
         collapse_pending_default BOOLEAN DEFAULT FALSE,
         merge_similar_items BOOLEAN DEFAULT FALSE,
@@ -159,7 +158,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       main_currency TEXT DEFAULT 'CNY',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      auto_confirm BOOLEAN DEFAULT FALSE,
       auto_recognize_date BOOLEAN DEFAULT FALSE,
       collapse_pending_default BOOLEAN DEFAULT FALSE,
       merge_similar_items BOOLEAN DEFAULT FALSE,

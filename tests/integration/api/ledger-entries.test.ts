@@ -270,7 +270,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       .values({
         ledgerId: testLedgerId,
         text: "Purchase data",
-        status: "to_confirm"
+        status: "completed"
       })
       .returning();
 

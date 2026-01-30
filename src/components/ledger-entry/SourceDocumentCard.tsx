@@ -67,7 +67,7 @@ interface SourceDocumentCardProps {
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
-  status: "queued" | "processing" | "to_confirm" | "completed" | "error" | "pending";
+  status: "queued" | "processing" | "completed" | "error" | "pending";
   errorCode?: string | null;
   className?: string;
 }
@@ -315,7 +315,7 @@ export function SourceDocumentCard({
             variant={
               status === "error"
                 ? "error"
-                : status === "to_confirm" || status === "pending"
+                : status === "pending"
                   ? "warning"
                   : status === "processing" || status === "queued"
                     ? "info"

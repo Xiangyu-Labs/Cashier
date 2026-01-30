@@ -29,7 +29,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
 
     const [ledger] = await db
       .insert(ledgers)
-      .values({ name: "Test Ledger", autoConfirm: true })
+      .values({ name: "Test Ledger" })
       .returning();
     testLedgerId = ledger.id;
 

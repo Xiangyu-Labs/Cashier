@@ -45,7 +45,7 @@ export function createLedger(data: { name: string; language?: string }): Promise
 
 export function updateLedger(
   id: string,
-  data: { name?: string; language?: string; currencies?: string[]; mainCurrency?: string; autoConfirm?: boolean; autoRecognizeDate?: boolean; collapsePendingDefault?: boolean; mergeSimilarItems?: boolean; aiCustomPrompt?: string }
+  data: { name?: string; language?: string; currencies?: string[]; mainCurrency?: string; autoRecognizeDate?: boolean; collapsePendingDefault?: boolean; mergeSimilarItems?: boolean; aiCustomPrompt?: string }
 ): Promise<Ledger> {
   return request(
     `${API_BASE}/ledgers/${id}`,

@@ -155,8 +155,8 @@ describe("SourceDocumentCard", () => {
         expect(item.getAttribute("data-variant")).toBe("error");
     });
 
-    it("passes correct variant for to_confirm status", () => {
-        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="to_confirm" />);
+    it("passes correct variant for pending status", () => {
+        renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="pending" />);
         const item = screen.getByTestId("bill-entry-item");
         expect(item.getAttribute("data-variant")).toBe("warning");
     });

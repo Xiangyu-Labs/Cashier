@@ -56,7 +56,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
         const pastDate = "2023-01-01";
         const today = new Date().toISOString().split('T')[0];
 
-        mockProcess.mockResolvedValueOnce({
+        mockProcess.mockResolvedValue({
             rawResponse: "Bought food",
             ledgerEntries: [{
                 amount: 100,
@@ -116,7 +116,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
         // Mock AI response with a specific date in the past
         const pastDate = "2023-01-01";
 
-        mockProcess.mockResolvedValueOnce({
+        mockProcess.mockResolvedValue({
             rawResponse: "Bought food",
             ledgerEntries: [{
                 amount: 100,

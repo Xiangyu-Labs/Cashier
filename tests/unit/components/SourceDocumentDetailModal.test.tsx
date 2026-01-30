@@ -10,7 +10,7 @@ const mockSourceDocument = {
     title: "Test Bill",
     text: "Sample OCR text",
     imageUrls: [],
-    status: "to_confirm" as const,
+    status: "completed" as const,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 };

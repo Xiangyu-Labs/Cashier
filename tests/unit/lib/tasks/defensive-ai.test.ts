@@ -14,7 +14,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [],
-            settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
+            settings: { mergeSimilarItems: false, autoRecognizeDate: true }
         };
 
         const context = {
@@ -44,7 +44,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [],
-            settings: { autoConfirm: true, mergeSimilarItems: false, autoRecognizeDate: true }
+            settings: { mergeSimilarItems: false, autoRecognizeDate: true }
         };
 
         const context = {

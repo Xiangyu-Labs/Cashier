@@ -40,7 +40,7 @@ export interface SourceDocument {
   text: string | null;
   imageUrls: string[];
   createdAt: string;
-  status?: "queued" | "processing" | "to_confirm" | "completed" | "error";
+  status?: "queued" | "processing" | "completed" | "error";
   errorCode?: "internal_error" | "parse_failed" | "invalid_content" | "flow_anomaly" | "unknown_currency" | null;
 }
 

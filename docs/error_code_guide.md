@@ -4,7 +4,7 @@
 
 ## 概览
 
-来源文档共有 `queued`, `processing`, `to_confirm`, `completed`, `error` 五种基本状态。当状态为 `error` 时，我们通过 `errorCode` 枚举来提供更细粒度的错误原因。
+来源文档共有 `queued`, `processing`, `completed`, `error` 四种基本状态。当状态为 `error` 时，我们通过 `errorCode` 枚举来提供更细粒度的错误原因。
 
 目前已有的错误代码：
 - `internal_error`: 系统内部错误（AI 服务超时、数据库异常等）
