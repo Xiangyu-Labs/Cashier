@@ -261,10 +261,10 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     expect(data.items[0].itemName).toBe("Today Created");
   });
 
-  it("should return pending ledger entries from source documents", async () => {
+  it("should return empty list for pending status as anomalies are not stored", async () => {
     const db = getTestDb();
 
-    // Create a source document with status 'to_confirm'
+    // Create a source document
     const [doc] = await db
       .insert(sourceDocuments)
       .values({
@@ -274,55 +274,43 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       })
       .returning();
 
-    // Create real pending ledger entries (now defined by having anomalyCodes)
-    const [entry1, entry2] = await db.insert(ledgerEntries).values([
+    // Create standard ledger entries (technically confirmed)
+    await db.insert(ledgerEntries).values([
       {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
-        itemName: "Pending Item 1",
+        itemName: "Item 1",
         amount: "50.00",
         currency: "CNY",
         categoryId: testCategoryId,
         description: "Lunch with team",
-        anomalyCodes: ["evidence_anomaly"]
       },
       {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
-        itemName: "Pending Item 2",
+        itemName: "Item 2",
         amount: "100.00",
         currency: "USD",
         categoryId: null,
-        anomalyCodes: ["unknown_currency"]
       }
-    ]).returning();
+    ]);
 
-    const response = await GET(
+    // Requesting pending should return empty
+    const responsePending = await GET(
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?status=pending`),
       { params: Promise.resolve({ id: testLedgerId }) }
     );
-    const data = await response.json();
+    const dataPending = await responsePending.json();
+    expect(responsePending.status).toBe(200);
+    expect(dataPending.items).toHaveLength(0);
 
-    expect(response.status).toBe(200);
-    expect(data.items).toHaveLength(2);
-
-    // Verify first item (fully matched)
-    const item1 = data.items.find((t: { itemName: string }) => t.itemName === "Pending Item 1");
-    expect(item1).toBeDefined();
-    expect(item1.amount).toBe("50.00");
-    expect(item1.currency).toBe("CNY");
-    expect(item1.categoryId).toBe(testCategoryId);
-    expect(item1.category).toBeDefined();
-    expect(item1.category.name).toBe("餐饮");
-    expect(item1.description).toBe("Lunch with team");
-    expect(item1.id).toBe(entry1.id); // Should be a real UUID
-
-    // Verify second item (unmatched category)
-    const item2 = data.items.find((t: { itemName: string; amount: string; currency: string; categoryId: string | null }) => t.itemName === "Pending Item 2");
-    expect(item2).toBeDefined();
-    expect(item2.amount).toBe("100.00");
-    expect(item2.currency).toBe("USD");
-    expect(item2.categoryId).toBeNull();
-    expect(item2.id).toBe(entry2.id); // Should be a real UUID
+    // Requesting confirmed should return all
+    const responseConfirmed = await GET(
+      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?status=confirmed`),
+      { params: Promise.resolve({ id: testLedgerId }) }
+    );
+    const dataConfirmed = await responseConfirmed.json();
+    expect(responseConfirmed.status).toBe(200);
+    expect(dataConfirmed.items).toHaveLength(2);
   });
 });

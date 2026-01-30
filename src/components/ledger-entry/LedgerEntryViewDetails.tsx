@@ -115,7 +115,7 @@ export function LedgerEntryViewDetails({
         return [...preferred, ...remaining.sort()];
     }, [preferredCurrencies]);
 
-    const showUnknown = (ledgerEntry.anomalyCodes && ledgerEntry.anomalyCodes.length > 0) || ledgerEntry.sourceDocument?.status === "anomaly";
+    const showUnknown = ledgerEntry.sourceDocument?.status === "anomaly";
 
     return (
         <div className="space-y-6">

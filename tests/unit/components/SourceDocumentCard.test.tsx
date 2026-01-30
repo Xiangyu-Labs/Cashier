@@ -170,10 +170,10 @@ describe("SourceDocumentCard", () => {
         expect(screen.getByText("Lunch")).toBeTruthy();
     });
 
-    it("passes correct variant for anomaly status", () => {
+    it("does NOT render entries for anomaly status", () => {
         renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[mockLedgerEntry]} status="anomaly" defaultExpanded={true} />);
-        const item = screen.getByTestId("bill-entry-item");
-        expect(item.getAttribute("data-variant")).toBe("error");
+        const item = screen.queryByTestId("bill-entry-item");
+        expect(item).toBeNull();
     });
 
     it("passes correct variant for pending status", () => {

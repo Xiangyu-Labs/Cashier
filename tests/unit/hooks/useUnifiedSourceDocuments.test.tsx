@@ -20,22 +20,16 @@ const mockSourceDocs = {
 };
 
 const mockEntries = {
-    pendingForDocPending1: {
-        id: "entry_1",
-        sourceDocumentId: "doc_pending1",
-        anomalyCodes: ["unknown_currency"],
-        sourceDocument: mockSourceDocs.pending
-    },
-    pendingForDocError1: {
-        id: "entry_2",
-        sourceDocumentId: "doc_e1",
-        anomalyCodes: ["evidence_anomaly"],
-        sourceDocument: mockSourceDocs.error
-    },
+    // These concepts of "pending entries" are largely legacy now, 
+    // as anomalies are tracked on the document, not individual entries.
+    // However, keeping structure for compatibility with hook Logic if it still fetches them.
+    // But since anomaly docs have no entries, we should test appropriate scenarios.
+
+    // For doc_p1 (processing) - empty entries usually until complete? Or maybe partial?
+    // Let's assume confirming docs have entries.
     confirmedForDocCompleted1: {
         id: "entry_3",
         sourceDocumentId: "doc_c1",
-        anomalyCodes: [],
         sourceDocument: mockSourceDocs.completed
     }
 };
@@ -73,18 +67,16 @@ describe("useUnifiedSourceDocuments", () => {
             });
         });
 
-        // 2. pendingEntries
+        // 2. pendingEntries - now returns empty as we don't use it for anomaly detection anymore
+        // or effectively empty for the purpose of this test setup
         (fetchLedgerEntries as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string };
-            if (p?.status === 'pending') {
+            // confirmed entries
+            if ((params as { status?: string })?.status === 'confirmed') {
                 return Promise.resolve({
-                    items: [mockEntries.pendingForDocPending1, mockEntries.pendingForDocError1]
+                    items: [mockEntries.confirmedForDocCompleted1]
                 });
             }
-            // confirmed entries
-            return Promise.resolve({
-                items: [mockEntries.confirmedForDocCompleted1]
-            });
+            return Promise.resolve({ items: [] });
         });
 
         const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
@@ -98,19 +90,16 @@ describe("useUnifiedSourceDocuments", () => {
         expect(groups.processing.map(g => g.sourceDocument.id).sort()).toEqual(["doc_p1", "doc_q1"].sort());
 
         // Verify Anomaly Group
-        expect(groups.anomaly).toHaveLength(2);
-        const anomalyIds = groups.anomaly.map(g => g.sourceDocument.id).sort();
-        expect(anomalyIds).toEqual(["doc_e1", "doc_pending1"].sort());
-
-        // Find doc_e1 group to check its entries
-        const errorGroup = groups.anomaly.find(g => g.sourceDocument.id === "doc_e1");
-        expect(errorGroup?.ledgerEntries).toHaveLength(1);
-        expect(errorGroup?.ledgerEntries[0].id).toBe("entry_2");
+        // Only doc_e1 has status='anomaly'. 
+        // doc_pending1 has status='completed' and no entries -> goes to completed group
+        expect(groups.anomaly).toHaveLength(1);
+        expect(groups.anomaly[0].sourceDocument.id).toBe("doc_e1");
+        expect(groups.anomaly[0].ledgerEntries).toHaveLength(0); // No entries for anomaly
 
         // Verify Completed Group
-        // Should only contain doc_c1 as doc_pending1 moved to anomaly
-        expect(groups.completed).toHaveLength(1);
-        expect(groups.completed[0].sourceDocument.id).toBe("doc_c1");
+        // Should contain doc_c1 and doc_pending1
+        expect(groups.completed).toHaveLength(2);
+        expect(groups.completed.map(g => g.sourceDocument.id).sort()).toEqual(["doc_c1", "doc_pending1"].sort());
     });
 
     it("filters groups by date range", async () => {

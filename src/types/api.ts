@@ -55,11 +55,11 @@ export interface LedgerEntry {
   itemName: string;
   description: string | null;
   entryDate: string | null;
-  anomalyCodes?: string[] | null;
   createdAt: string;
   category?: EntryCategory | null;
   sourceDocument?: SourceDocument | null;
 }
+
 
 export interface LedgerEntrySummary {
   byCategory: {

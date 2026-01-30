@@ -124,13 +124,13 @@ export const ledgerEntries = pgTable("ledger_entries", {
   itemName: text("item_name").notNull(),
   description: text("description"),
   entryDate: date("entry_date", { mode: "date" }),
-  anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
   index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
   index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
+
 
 export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
   ledger: one(ledgers, {

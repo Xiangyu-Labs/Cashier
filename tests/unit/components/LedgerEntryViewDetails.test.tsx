@@ -144,9 +144,11 @@ describe("LedgerEntryViewDetails", () => {
         expect(options[1]).toBe("JPY");
     });
 
-    it("shows 'unknown' option only for pending entries", () => {
+    it("shows 'unknown' option only for anomaly entries", () => {
         // Pending status (has anomaly)
-        const pendingEntry = { ...mockLedgerEntry, anomalyCodes: ["unknown_currency"] };
+        const anomalyDoc = { status: "anomaly" } as any;
+        const pendingEntry = { ...mockLedgerEntry, sourceDocument: anomalyDoc };
+
         const { rerender, container } = renderWithQuery(
             <LedgerEntryViewDetails
                 {...defaultProps}
@@ -159,7 +161,8 @@ describe("LedgerEntryViewDetails", () => {
         expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(true);
 
         // Confirmed status (no anomaly)
-        const confirmedEntry = { ...mockLedgerEntry, anomalyCodes: [] };
+        const confirmedDoc = { status: "completed" } as any;
+        const confirmedEntry = { ...mockLedgerEntry, sourceDocument: confirmedDoc };
         rerender(
             <LedgerEntryViewDetails
                 {...defaultProps}

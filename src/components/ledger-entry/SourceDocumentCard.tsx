@@ -302,8 +302,8 @@ export function SourceDocumentCard({
               </div>
             )}
 
-            {/* Entries Section - only for non-processing status */}
-            {status !== "processing" && sortedEntries.length > 0 && (
+            {/* Entries Section - only for completed status (anomaly doesn't have entries) */}
+            {status !== "processing" && status !== "anomaly" && sortedEntries.length > 0 && (
               <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
                 {sortedEntries.map((entry) => (
                   <BillEntryItem
@@ -312,18 +312,17 @@ export function SourceDocumentCard({
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
                     variant={
-                      status === "anomaly"
-                        ? "error"
-                        : status === "pending"
-                          ? "warning"
-                          : status === "queued"
-                            ? "info"
-                            : "default"
+                      status === "pending"
+                        ? "warning"
+                        : status === "queued"
+                          ? "info"
+                          : "default"
                     }
                   />
                 ))}
               </div>
             )}
+
           </motion.div>
         )}
       </AnimatePresence>

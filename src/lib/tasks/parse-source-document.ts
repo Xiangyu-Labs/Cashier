@@ -7,6 +7,7 @@ import { CategoryInfo, ParsedLedgerEntry } from "@/lib/message-processor/types";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
 import { logger } from "@/lib/logger";
 import { sourceDocumentRepo, ledgerEntryRepo } from "@/lib/repositories";
+import { arbitrate } from "@/lib/ai/arbitration";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -29,7 +30,8 @@ export interface ParseSourceDocumentInput {
 export interface ParseSourceDocumentOutput {
     ledgerEntries: ParsedLedgerEntry[];
     title?: string;
-    verificationStatus: 'passed' | 'first_batch_mismatch' | 'merge_mismatch' | 'unknown_currency' | 'invalid';
+    anomalyReason?: string;
+    verificationStatus: 'passed' | 'anomaly' | 'invalid';
 }
 
 /**
@@ -119,7 +121,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         };
 
         const title = result1.title;
-        const entries1 = applyDateOverride(result1.ledgerEntries);
+        let entries1 = applyDateOverride(result1.ledgerEntries);
         const entries2 = applyDateOverride(result2.ledgerEntries);
 
         // 1. Check validity
@@ -127,20 +129,63 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return { ledgerEntries: [], title, verificationStatus: 'invalid' };
         }
 
-        // 2. Check for unknown currency
+        // 2. Check for unknown currency - use arbitration
         if (entries1.some(e => e.currency === "unknown")) {
-            return { ledgerEntries: entries1, title, verificationStatus: 'unknown_currency' };
+            logger.info({ docId: input.sourceDocumentId }, "Unknown currency detected, invoking arbitration");
+
+            const arbitrationResult = await arbitrate(
+                "unknown_currency",
+                entries1,
+                entries2,
+                input.text
+            );
+
+            if (arbitrationResult.choice === 0) {
+                // Genuinely unidentifiable
+                return {
+                    ledgerEntries: [],
+                    title,
+                    anomalyReason: arbitrationResult.reason || "无法识别币种",
+                    verificationStatus: 'anomaly'
+                };
+            }
+            // choice === 1 means AI should have figured it out, but we still can't proceed
+            // without a currency. Return as anomaly but with different reason.
+            return {
+                ledgerEntries: [],
+                title,
+                anomalyReason: "币种识别失败",
+                verificationStatus: 'anomaly'
+            };
         }
 
-        // 3. First Batch Verification
+        // 3. First Batch Verification - use arbitration if mismatch
         if (!verifyAmounts(entries1, entries2)) {
-            logger.warn({
+            logger.info({
                 ledgerId: context.ledgerId,
                 docId: input.sourceDocumentId,
+            }, "Dual GPT verification failed, invoking arbitration");
+
+            const arbitrationResult = await arbitrate(
+                "total_mismatch",
                 entries1,
-                entries2
-            }, "Dual GPT verification failed (first batch)");
-            return { ledgerEntries: entries1, title, verificationStatus: 'first_batch_mismatch' };
+                entries2,
+                input.text
+            );
+
+            if (arbitrationResult.choice === 0) {
+                // Genuinely ambiguous document
+                return {
+                    ledgerEntries: [],
+                    title,
+                    anomalyReason: arbitrationResult.reason || "账单金额存在歧义",
+                    verificationStatus: 'anomaly'
+                };
+            }
+
+            // Use the chosen result
+            entries1 = arbitrationResult.choice === 1 ? entries1 : entries2;
+            logger.info({ choice: arbitrationResult.choice }, "Arbitration resolved - using chosen result");
         }
 
         // 4. Merge Similar Items (Optional)
@@ -158,16 +203,31 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
             finalEntries = await summarizeLedgerEntries(finalEntries, input.aiLanguage, input.text);
 
-            // 5. Merge Verification
-            // Note: Summarization might change structure but total amount per currency/date should match
+            // 5. Merge Verification - also use arbitration
             if (!verifyAmounts(preMergeEntries, finalEntries)) {
-                logger.warn({
+                logger.info({
                     ledgerId: context.ledgerId,
                     docId: input.sourceDocumentId,
-                    preMerge: preMergeEntries,
-                    postMerge: finalEntries
-                }, "Merge verification failed");
-                return { ledgerEntries: finalEntries, title, verificationStatus: 'merge_mismatch' };
+                }, "Merge verification failed, invoking arbitration");
+
+                const arbitrationResult = await arbitrate(
+                    "total_mismatch",
+                    preMergeEntries,
+                    finalEntries,
+                    input.text
+                );
+
+                if (arbitrationResult.choice === 0) {
+                    return {
+                        ledgerEntries: [],
+                        title,
+                        anomalyReason: arbitrationResult.reason || "合并后金额不一致",
+                        verificationStatus: 'anomaly'
+                    };
+                }
+
+                // Use pre-merge or post-merge based on choice
+                finalEntries = arbitrationResult.choice === 1 ? preMergeEntries : finalEntries;
             }
         }
 
@@ -181,7 +241,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
     // 3. Final completion (IDEMPOTENT)
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        const { ledgerEntries: parsedEntries, title, verificationStatus } = output;
+        const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
         // 1. Check if entries already exist (Idempotency)
         const existingEntries = await db.query.ledgerEntries.findFirst({
@@ -193,63 +253,35 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return;
         }
 
-        const validEntries = parsedEntries.filter(entry => entry.amount > 0);
+        // Handle anomaly - do NOT save entries, just update document status
+        if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
+            const anomalyCode = verificationStatus === 'invalid' ? 'invalid_content' : 'evidence_anomaly';
+            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
 
-        // Determine final DB status and Anomaly Codes
-        let status: "completed" | "anomaly" = "anomaly";
-        let docAnomalyCodes: string[] = [];
-        const globalEntryAnomalyCodes: string[] = [];
-
-        switch (verificationStatus) {
-            case 'passed':
-                status = "completed";
-                break;
-            case 'first_batch_mismatch':
-            case 'merge_mismatch':
-                status = "anomaly";
-                docAnomalyCodes.push("evidence_anomaly");
-                globalEntryAnomalyCodes.push("evidence_anomaly"); // Mark all entries as anomalous so they are not "confirmed"
-                break;
-            case 'unknown_currency':
-                status = "anomaly";
-                docAnomalyCodes.push("unknown_currency"); // Good for filtering
-                // We don't add global entry anomaly, we check per entry below
-                break;
-            case 'invalid':
-                status = "anomaly";
-                docAnomalyCodes.push("invalid_content");
-                break;
+            // Save anomaly reason as title for user visibility
+            const displayTitle = anomalyReason || title;
+            if (displayTitle) {
+                await sourceDocumentRepo.update(input.sourceDocumentId, { title: displayTitle }, context.ledgerId);
+            }
+            return;
         }
 
-        // Handle invalid content (no entries to save)
-        if (verificationStatus === 'invalid' || validEntries.length === 0) {
-            // If no valid entries and passed, it's weird, but technically invalid content if empty
-            if (status === 'completed' && validEntries.length === 0) {
-                status = "anomaly";
-                docAnomalyCodes = ["invalid_content"];
-            }
+        const validEntries = parsedEntries.filter(entry => entry.amount > 0);
 
-            if (status === 'anomaly') {
-                if (docAnomalyCodes.length === 0) docAnomalyCodes.push("invalid_content");
-                await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, docAnomalyCodes, context.ledgerId);
-            }
-
+        // Handle empty valid entries
+        if (validEntries.length === 0) {
+            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, ["invalid_content"], context.ledgerId);
             if (title) {
                 await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
             }
             return;
         }
 
-        // Save entries
+        // Save entries (no anomalyCodes field anymore)
         const entriesToInsert = validEntries.map(entry => {
             const categoryId = entry.category
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
-
-            const entryAnomalies = [...globalEntryAnomalyCodes];
-            if (entry.currency === "unknown") {
-                entryAnomalies.push("unknown_currency");
-            }
 
             return {
                 ledgerId: context.ledgerId!,
@@ -260,7 +292,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
                 entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
-                anomalyCodes: entryAnomalies,
             };
         });
 
@@ -268,14 +299,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             await ledgerEntryRepo.batchCreate(entriesToInsert, context.ledgerId);
         }
 
-        // Update document status
-        if (status === 'anomaly') {
-            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, docAnomalyCodes, context.ledgerId);
-        } else {
-            await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
-        }
+        // Update document status to completed
+        await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
 
-        // Always update title if present
+        // Update title if present
         if (title) {
             await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
         }

@@ -40,12 +40,11 @@ export async function GET(
 
     if (query.status) {
       if (query.status === "pending") {
-        // Pending = has anomalies
-        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) > 0`);
-      } else {
-        // Confirmed = no anomalies
-        conditions.push(sql`jsonb_array_length(${ledgerEntries.anomalyCodes}) = 0`);
+        // Pending/Anomaly entries are no longer stored in ledgerEntries table
+        // They are only tracked via sourceDocuments status='anomaly'
+        conditions.push(sql`1 = 0`); // Always false
       }
+      // If confirmed, we don't need to filter because all entries in DB are valid/confirmed
     }
 
     if (query.categoryId) {

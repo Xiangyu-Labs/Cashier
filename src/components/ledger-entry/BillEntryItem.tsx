@@ -1,5 +1,4 @@
 import { LedgerEntry } from "@/types/api";
-import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -33,14 +32,11 @@ export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
     className?: string;
 }
 
-import { useTranslations } from "next-intl";
-
 /**
  * A simplified entry display component designed for embedding within bill cards.
  * Unlike LedgerEntryCard, this component:
  * - Inherits theme from parent via `variant` prop
  * - Has a more compact layout
- * - Displays inline status warnings for missing data
  */
 export function BillEntryItem({
     ledgerEntry,
@@ -49,13 +45,6 @@ export function BillEntryItem({
     variant = "default",
     className,
 }: BillEntryItemProps) {
-    const t = useTranslations("Common");
-    const anomalyCodes = ledgerEntry.anomalyCodes || [];
-    const isUnknownCurrency = anomalyCodes.includes("unknown_currency") || ledgerEntry.currency === "unknown";
-    // Keeping currency check for backward compat or direct value check
-    const isSuspicious = anomalyCodes.includes("suspicious_amount");
-    const needsCategory = !ledgerEntry.categoryId;
-
     const { converted } = useConvertedAmount(
         parseFloat(ledgerEntry.amount),
         ledgerEntry.currency,
@@ -73,7 +62,7 @@ export function BillEntryItem({
             className={cn(itemVariants({ variant }), className)}
             onClick={onView}
         >
-            {/* Left: Icon + Name + Badges */}
+            {/* Left: Icon + Name */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg shrink-0">
                     <CategoryIcon
@@ -100,23 +89,6 @@ export function BillEntryItem({
                                     </>
                                 )}
                             </div>
-                        )}
-
-                        {/* Warning badges for missing data */}
-                        {needsCategory && (
-                            <Badge variant="warning" className="text-[9px] px-1 h-4">
-                                {t("needsCategory")}
-                            </Badge>
-                        )}
-                        {isUnknownCurrency && (
-                            <Badge variant="warning" className="text-[9px] px-1 h-4">
-                                {t("needsCurrency")}
-                            </Badge>
-                        )}
-                        {isSuspicious && (
-                            <Badge variant="error" className="text-[9px] px-1 h-4">
-                                {t("anomaly")}
-                            </Badge>
                         )}
                     </div>
                 </div>

@@ -14,8 +14,13 @@ vi.mock("@/lib/message-processor/utils", () => ({
     summarizeLedgerEntries: vi.fn(),
 }));
 
+vi.mock("@/lib/ai/arbitration", () => ({
+    arbitrate: vi.fn(),
+}));
+
 import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
 import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
+import { arbitrate } from "@/lib/ai/arbitration";
 
 describe("parseSourceDocumentHandler.execute", () => {
     let mockProcessor: { process: ReturnType<typeof vi.fn> };
@@ -167,21 +172,89 @@ describe("parseSourceDocumentHandler.execute", () => {
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
 
         expect(result.ledgerEntries).toHaveLength(0);
+        expect(result.verificationStatus).toBe("invalid");
+    });
+
+    it("should invoke arbitration when dual GPT results don't match", async () => {
+        const input: ParseSourceDocumentInput = {
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
+            settings: {
+                mergeSimilarItems: false,
+                autoRecognizeDate: true,
+            }
+        };
+
+        // First call returns 10, second call returns 15 (mismatch)
+        mockProcessor.process
+            .mockResolvedValueOnce({
+                ledgerEntries: [{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
+                isValid: true
+            })
+            .mockResolvedValueOnce({
+                ledgerEntries: [{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
+                isValid: true
+            });
+
+        // Arbitration chooses result 1
+        vi.mocked(arbitrate).mockResolvedValue({ choice: 1 });
+
+        const context = {
+            updateProgress: vi.fn(),
+        } as unknown as FlowContext;
+
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+
+        expect(arbitrate).toHaveBeenCalledWith("total_mismatch", expect.anything(), expect.anything(), undefined);
+        expect(result.verificationStatus).toBe("passed");
+        expect(result.ledgerEntries[0].amount).toBe(10); // First result chosen
+    });
+
+    it("should return anomaly when arbitration determines genuine ambiguity", async () => {
+        const input: ParseSourceDocumentInput = {
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
+            settings: {
+                mergeSimilarItems: false,
+                autoRecognizeDate: true,
+            }
+        };
+
+        mockProcessor.process
+            .mockResolvedValueOnce({
+                ledgerEntries: [{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
+                isValid: true
+            })
+            .mockResolvedValueOnce({
+                ledgerEntries: [{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
+                isValid: true
+            });
+
+        // Arbitration says it's genuinely ambiguous
+        vi.mocked(arbitrate).mockResolvedValue({ choice: 0, reason: "Amount unclear in receipt" });
+
+        const context = {
+            updateProgress: vi.fn(),
+        } as unknown as FlowContext;
+
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+
+        expect(result.verificationStatus).toBe("anomaly");
+        expect(result.anomalyReason).toBe("Amount unclear in receipt");
+        expect(result.ledgerEntries).toHaveLength(0);
     });
 });
 
 describe("parseSourceDocumentHandler.onComplete", () => {
-    it("should force 'pending' status output has 'unknown_currency' status", async () => {
+    it("should NOT save entries when status is anomaly", async () => {
         const db = getTestDb();
 
-        // 1. Setup ledger and source document
         const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
-        const [category] = await db.insert(entryCategories).values({ ledgerId: ledger.id, name: "餐饮", description: "餐饮" }).returning();
 
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
-            categories: [{ id: category.id, name: "餐饮", description: "餐饮" }],
+            categories: [],
             settings: {
                 mergeSimilarItems: false,
                 autoRecognizeDate: true
@@ -189,68 +262,37 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         };
 
         const output: ParseSourceDocumentOutput = {
-            ledgerEntries: [
-                {
-                    itemName: "Item 1",
-                    amount: 100,
-                    currency: "CNY",
-                    category: "餐饮",
-                    entryDate: "2024-01-01",
-                    notes: null
-                },
-                {
-                    itemName: "Item 2",
-                    amount: 50,
-                    currency: "unknown",
-                    category: "餐饮",
-                    entryDate: "2024-01-01",
-                    notes: null
-                }
-            ],
-            verificationStatus: 'unknown_currency'
+            ledgerEntries: [],
+            title: "Test Title",
+            anomalyReason: "Currency unidentifiable",
+            verificationStatus: 'anomaly'
         };
 
         const context = {
             id: "task-1",
             type: "parse_source_document",
             ledgerId: ledger.id,
-            input,
-            status: "running" as const,
-            createdAt: new Date(),
-            startedAt: new Date(),
-            completedAt: null,
-            error: null,
-            metadata: null,
-            entityId: null,
-            entityType: null,
-            progress: null,
-            title: "Task 1",
         };
 
-        // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
+        await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
 
-        // 3. Verify ledger entries status
+        // Verify NO entries were created
         const entries = await db.query.ledgerEntries.findMany({
             where: eq(ledgerEntries.sourceDocumentId, sourceDoc.id)
         });
+        expect(entries).toHaveLength(0);
 
-        expect(entries).toHaveLength(2);
-        expect(entries[0].anomalyCodes).toEqual([]);
-        expect(entries[1].anomalyCodes).toEqual(["unknown_currency"]);
-
-        // 4. Verify source document status
+        // Verify source document status is anomaly with reason in title
         const updatedSourceDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
         expect(updatedSourceDoc?.status).toBe("anomaly");
-        expect(updatedSourceDoc?.anomalyCodes).toContain("unknown_currency");
+        expect(updatedSourceDoc?.title).toBe("Currency unidentifiable");
     });
 
-    it("should use 'confirmed' status if verification passed", async () => {
+    it("should save entries and use 'completed' status if verification passed", async () => {
         const db = getTestDb();
 
-        // 1. Setup ledger and source document
         const [ledger] = await db.insert(ledgers).values({ name: "Test Ledger" }).returning();
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
         const [category] = await db.insert(entryCategories).values({ ledgerId: ledger.id, name: "餐饮", description: "餐饮" }).returning();
@@ -282,31 +324,19 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             id: "task-2",
             type: "parse_source_document",
             ledgerId: ledger.id,
-            input,
-            status: "running" as const,
-            createdAt: new Date(),
-            startedAt: new Date(),
-            completedAt: null,
-            error: null,
-            metadata: null,
-            entityId: null,
-            entityType: null,
-            progress: null,
-            title: "Task 2",
         };
 
-        // 2. Execute onComplete
-        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
+        await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
 
-        // 3. Verify ledger entries status
+        // Verify entries were created
         const entries = await db.query.ledgerEntries.findMany({
             where: eq(ledgerEntries.sourceDocumentId, sourceDoc.id)
         });
 
         expect(entries).toHaveLength(1);
-        expect(entries[0].anomalyCodes).toEqual([]);
+        expect(entries[0].itemName).toBe("Item 1");
 
-        // 4. Verify source document status
+        // Verify source document status
         const updatedSourceDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
