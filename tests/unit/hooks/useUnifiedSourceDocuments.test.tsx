@@ -85,8 +85,9 @@ describe("useUnifiedSourceDocuments", () => {
 
         const { groups } = result.current;
 
-        // Verify Processing Group (queued + processing) -> Should now be hidden
-        expect(groups.processing).toHaveLength(0);
+        // Verify Processing Group (queued + processing)
+        expect(groups.processing).toHaveLength(2);
+        expect(groups.processing.map(g => g.sourceDocument.status).sort()).toEqual(['processing', 'queued']);
 
         // Verify Anomaly Group
         // Only doc_e1 has status='anomaly'. 
@@ -101,7 +102,7 @@ describe("useUnifiedSourceDocuments", () => {
         expect(groups.completed.map(g => g.sourceDocument.id).sort()).toEqual(["doc_c1", "doc_pending1"].sort());
 
         // Verify stats
-        expect(result.current.stats.processingCount).toBe(0);
+        expect(result.current.stats.processingCount).toBe(2);
         expect(result.current.stats.anomalyCount).toBe(1);
     });
 
@@ -136,8 +137,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-        // Jan 4 doc should be present in results but not in processing group (as they are hidden)
-        expect(result.current.groups.processing).toHaveLength(0);
+        // Jan 4 doc should be in processing group (queued status, in date range)
+        expect(result.current.groups.processing).toHaveLength(1);
 
         // Jan 1 doc should be filtered out
         // Note: completed group logic in hook takes `grouped.completed` which comes from `completedData`
@@ -182,7 +183,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result2.current.isLoading).toBe(false));
 
-        // processing group should have 0 as they are now hidden
-        expect(result2.current.groups.processing).toHaveLength(0);
+        // Only doc_q1 (Jan 4, in range) should be in processing, doc_out (Jan 1, out of range) filtered out
+        expect(result2.current.groups.processing).toHaveLength(1);
+        expect(result2.current.groups.processing[0].sourceDocument.id).toBe("doc_q1");
     });
 });

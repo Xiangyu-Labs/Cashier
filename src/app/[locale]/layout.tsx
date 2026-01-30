@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/components/providers";
+import { SessionManager } from "@/components/SessionManager";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -61,7 +62,10 @@ export default async function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
-          <Providers>{children}</Providers>
+          <Providers>
+            <SessionManager />
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -37,7 +37,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     const { data: summaryData } = useQuery({
         queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.mainCurrency],
-        queryFn: () => fetchLedgerEntrySummary(ledgerId, "confirmed", startDateStr, endDateStr, ledger?.mainCurrency),
+        queryFn: () => fetchLedgerEntrySummary(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency),
         enabled: !!startDateStr && !!endDateStr
     });
 

@@ -5,10 +5,12 @@ import { PATCH } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories as categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { TEST_USER_ID } from "../../helpers/schema-setup";
 
 describe("GET /api/ledgers", () => {
   it("should return empty array when no ledgers exist", async () => {
-    const response = await GET();
+    const request = new NextRequest("http://localhost/api/ledgers");
+    const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -19,11 +21,12 @@ describe("GET /api/ledgers", () => {
     const db = getTestDb();
 
     // Create ledgers with slight delay to ensure different timestamps
-    await db.insert(ledgers).values({ name: "First Ledger" });
+    await db.insert(ledgers).values({ name: "First Ledger", userId: TEST_USER_ID });
     await new Promise((resolve) => setTimeout(resolve, 10));
-    await db.insert(ledgers).values({ name: "Second Ledger" });
+    await db.insert(ledgers).values({ name: "Second Ledger", userId: TEST_USER_ID });
 
-    const response = await GET();
+    const request = new NextRequest("http://localhost/api/ledgers");
+    const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -86,7 +89,7 @@ describe("POST /api/ledgers", () => {
 describe("PATCH /api/ledgers/[id]", () => {
   it("should update ledger settings including all configuration flags", async () => {
     const db = getTestDb();
-    const [ledger] = await db.insert(ledgers).values({ name: "Old Name" }).returning();
+    const [ledger] = await db.insert(ledgers).values({ name: "Old Name", userId: TEST_USER_ID }).returning();
 
     const request = new NextRequest(`http://localhost/api/ledgers/${ledger.id}`, {
       method: "PATCH",
