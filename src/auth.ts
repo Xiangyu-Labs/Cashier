@@ -36,7 +36,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.otp) {
-                    console.log("[Auth] Missing credentials");
                     return null;
                 }
 
@@ -46,7 +45,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 // Verify OTP (defense in depth - already verified in API)
                 const result = await verifyOTPToken(email, otp);
                 if (!result.success) {
-                    console.log("[Auth] OTP verification failed", result);
                     return null;
                 }
 
@@ -60,7 +58,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 let user = await db.query.users.findFirst({
                     where: eq(users.email, email.toLowerCase()),
                 });
-                console.log("[Auth] Found user in DB:", user ? user.id : "No");
 
                 let isNewUser = false;
                 if (!user) {
@@ -113,7 +110,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Override the default session callback to check DB existence
             if (token.sub && session.user) {
                 const userId = token.sub; // 'sub' is the standard claim for user ID in JWT
-                console.log("[Auth] Session callback for userId:", userId);
 
                 const dbUser = await db.query.users.findFirst({
                     where: eq(users.id, userId),
@@ -121,7 +117,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
 
                 if (!dbUser) {
-                    console.warn("[Auth] User not found in DB for session token:", userId);
                     // User not found in DB (stale session), invalidate it
                     // By returning modified session with null user, simple auth checks will fail
                     // Or we could return null/throw to force signout? 
