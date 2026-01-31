@@ -149,4 +149,12 @@ export class LedgerScope {
     static fromContext(context: { ledgerId: string }) {
         return new LedgerScope(context.ledgerId);
     }
+
+    /**
+     * Create a scope from a validated service credential
+     * Used for API key based authentication (e.g., /api/v1 endpoints)
+     */
+    static fromCredential(credential: { ledgerId: string }) {
+        return new LedgerScope(credential.ledgerId);
+    }
 }

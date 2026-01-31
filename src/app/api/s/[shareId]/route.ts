@@ -1,12 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shareRepo } from "@/lib/repositories";
 import { logger } from "@/lib/logger";
+import { rateLimitShareAccess } from "@/lib/ratelimit";
+import { db } from "@/lib/db";
+import { shareAccessLogs } from "@/lib/db/schema";
 
 type RouteParams = { params: Promise<{ shareId: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const { shareId } = await params;
+
+        // 🔒 SECURITY: Rate limiting to prevent abuse
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ||
+                   request.headers.get("x-real-ip") ||
+                   "unknown";
+
+        const rateLimitResult = await rateLimitShareAccess(shareId, ip);
+
+        if (!rateLimitResult.success) {
+            logger.warn(`Rate limit exceeded for share ${shareId} from IP ${ip}`);
+            return NextResponse.json(
+                {
+                    error: "Too many requests. Please try again later.",
+                    retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+                },
+                {
+                    status: 429,
+                    headers: {
+                        "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000))
+                    }
+                }
+            );
+        }
+
         const share = await shareRepo.findByShareId(shareId);
 
         if (!share) {
@@ -19,6 +46,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
             return NextResponse.json({ error: "Share link has expired" }, { status: 410 });
+        }
+
+        // 📊 AUDIT: Log share access for security and analytics
+        const userAgent = request.headers.get("user-agent") || null;
+        const referer = request.headers.get("referer") || null;
+
+        try {
+            await db.insert(shareAccessLogs).values({
+                shareId: share.id,
+                ipAddress: ip,
+                userAgent,
+                referer,
+            });
+        } catch (error) {
+            // Log error but don't fail the request
+            logger.error(error, "Failed to log share access", { shareId });
         }
 
         // Increment access count (fire and forget)

@@ -22,8 +22,15 @@ const publicPatterns = [
 ];
 
 // Check if the path matches any public pattern
+// Use startsWith for precise matching to prevent unintended matches
+// e.g., "/s/" should match "/s/abc" but NOT "/my-s/abc"
 function isPublicPath(pathname: string): boolean {
-    return publicPatterns.some((pattern) => pathname.includes(pattern));
+    return publicPatterns.some((pattern) => {
+        // Remove trailing slash for exact match check
+        const patternWithoutSlash = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern;
+        // Match if pathname starts with the pattern, or is exactly the pattern
+        return pathname.startsWith(pattern) || pathname === patternWithoutSlash;
+    });
 }
 
 export default auth((request) => {

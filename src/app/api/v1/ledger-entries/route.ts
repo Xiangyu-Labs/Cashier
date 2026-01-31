@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateServiceCredential } from "@/lib/service-credentials";
 import { db } from "@/lib/db";
-import { sourceDocuments, serviceCredentials } from "@/lib/db/schema";
+import { serviceCredentials } from "@/lib/db/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { LedgerScope } from "@/lib/scope/ledger-scope";
 
 import { eq } from "drizzle-orm";
 
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
 
     // 3. Construct Message Content
     try {
+        // Create LedgerScope from validated credential
+        const scope = LedgerScope.fromCredential(credential);
+
         const imageUrls: string[] = [];
         if (images && images.length > 0) {
             images.forEach(img => {
@@ -61,16 +65,12 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Save source document with 'queued' status
-        const [savedDoc] = await db
-            .insert(sourceDocuments)
-            .values({
-                ledgerId: credential.ledgerId,
-                text: text || null,
-                imageUrls: imageUrls,
-                status: "queued",
-            })
-            .returning();
+        // Save source document with 'queued' status using scoped repository
+        const savedDoc = await scope.documents.create({
+            text: text || null,
+            imageUrls: imageUrls,
+            status: "queued",
+        });
 
         // Update last used at
         try {
@@ -84,11 +84,18 @@ export async function POST(request: NextRequest) {
         const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks/parse-source-document");
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
+        // Fetch ledger data (still need direct db access for ledgers table as it's not in scope yet)
         const ledger = await db.query.ledgers.findFirst({
             where: eq(ledgerTable.id, credential.ledgerId),
         });
 
         if (ledger) {
+            // Fetch categories using scoped repository
+            // Include both ledger-specific and global (null ledgerId) categories
+            const allCategories = await db.query.entryCategories.findMany({
+                where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId))
+            });
+
             await submitFlowTask({
                 type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
                 title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
@@ -99,9 +106,7 @@ export async function POST(request: NextRequest) {
                     imageUrls: imageUrls,
                     aiLanguage: ledger.aiLanguage,
                     preferredCurrencies: ledger.currencies || undefined,
-                    categories: await db.query.entryCategories.findMany({
-                        where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId))
-                    }),
+                    categories: allCategories,
                     settings: {
                         mergeSimilarItems: ledger.mergeSimilarItems,
                         autoRecognizeDate: ledger.autoRecognizeDate,

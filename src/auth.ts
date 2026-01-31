@@ -12,15 +12,20 @@ import {
 import MagicLinkEmail from "@/emails/magic-link";
 import { Resend as ResendClient } from "resend";
 import { authConfig } from "./auth.config";
+import crypto from "crypto";
 
 const resendClient = new ResendClient(process.env.AUTH_RESEND_KEY);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
+    // Note: We use JWT strategy for authentication, but still use DrizzleAdapter
+    // for managing users, accounts, and verification tokens.
+    // The sessionsTable is NOT used by NextAuth in JWT mode, but we manually
+    // maintain it for device management and audit purposes (see events.signIn below)
     adapter: DrizzleAdapter(db, {
         usersTable: users,
         accountsTable: accounts,
-        sessionsTable: sessions,
+        sessionsTable: sessions, // Not used by NextAuth in JWT mode
         verificationTokensTable: verificationTokens,
     }),
     providers: [
@@ -83,6 +88,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     "@/lib/auth/notifications"
                 );
                 await sendLoginNotification(user.email);
+            }
+
+            // Create session record for device management and audit
+            // Note: In JWT mode, NextAuth doesn't create session records automatically
+            // We manually create them here for device tracking purposes
+            if (user.id) {
+                try {
+                    const sessionToken = crypto.randomBytes(32).toString("hex");
+                    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+                    await db.insert(sessions).values({
+                        sessionToken,
+                        userId: user.id,
+                        expires,
+                        // Device info will be filled by touchSession() when user accesses the app
+                    });
+                } catch (error) {
+                    // Log error but don't fail the sign-in process
+                    console.error("Failed to create session record for device tracking:", error);
+                }
             }
         },
     },

@@ -178,6 +178,21 @@ export const shares = pgTable("shares", {
   index("idx_shares_ledger").on(table.ledgerId),
 ]);
 
+// Share Access Logs (分享访问审计日志)
+export const shareAccessLogs = pgTable("share_access_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shareId: uuid("share_id")
+    .notNull()
+    .references(() => shares.id, { onDelete: "cascade" }),
+  accessedAt: timestamp("accessed_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  referer: text("referer"),
+}, (table) => [
+  index("idx_share_access_logs_share_id").on(table.shareId),
+  index("idx_share_access_logs_accessed_at").on(table.accessedAt),
+]);
+
 // LedgerEntry（账目分录）
 export const ledgerEntries = pgTable("ledger_entries", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -309,7 +324,7 @@ export const sourceDocumentsRelations = relations(
   })
 );
 
-export const sharesRelations = relations(shares, ({ one }) => ({
+export const sharesRelations = relations(shares, ({ one, many }) => ({
   sourceDocument: one(sourceDocuments, {
     fields: [shares.sourceDocumentId],
     references: [sourceDocuments.id],
@@ -317,6 +332,14 @@ export const sharesRelations = relations(shares, ({ one }) => ({
   ledger: one(ledgers, {
     fields: [shares.ledgerId],
     references: [ledgers.id],
+  }),
+  accessLogs: many(shareAccessLogs),
+}));
+
+export const shareAccessLogsRelations = relations(shareAccessLogs, ({ one }) => ({
+  share: one(shares, {
+    fields: [shareAccessLogs.shareId],
+    references: [shares.id],
   }),
 }));
 

@@ -6,6 +6,9 @@ import { logger as _logger } from '@/lib/logger';
 import { flowProducer } from './workers';
 
 import { withAIContext } from '@/lib/ai/ai-context';
+import { db } from '@/lib/db';
+import { taskRuns } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function processJob(job: Job): Promise<unknown> {
     const handler = getFlowTaskHandler(job.name);
@@ -13,10 +16,52 @@ export async function processJob(job: Job): Promise<unknown> {
         throw new Error(`No handler registered for: ${job.name}`);
     }
 
+    // 🔒 SECURITY: Verify task ownership from database
+    // Never trust job.data.__ledgerId directly - always validate against database
+    const { __taskRunId, __ledgerId } = job.data;
+
+    if (__taskRunId) {
+        // Query the real taskRun from database
+        const taskRun = await db.query.taskRuns.findFirst({
+            where: eq(taskRuns.id, __taskRunId),
+            columns: { ledgerId: true, status: true }
+        });
+
+        // Validate task exists
+        if (!taskRun) {
+            throw new Error(`[Security] Task run ${__taskRunId} not found in database`);
+        }
+
+        // Validate ledgerId matches
+        if (taskRun.ledgerId !== __ledgerId) {
+            throw new Error(
+                `[Security] LedgerId mismatch for task ${__taskRunId}: ` +
+                `expected ${taskRun.ledgerId}, got ${__ledgerId}. ` +
+                `Possible payload tampering detected.`
+            );
+        }
+
+        // Prevent re-execution of completed tasks
+        if (taskRun.status === 'completed') {
+            _logger.warn(`Task ${__taskRunId} already completed, skipping execution`);
+            return; // Return early, don't process
+        }
+
+        // Also skip if already failed (unless we want retry logic)
+        if (taskRun.status === 'failed') {
+            _logger.warn(`Task ${__taskRunId} already failed, skipping execution`);
+            return;
+        }
+    }
+
+    // Use validated ledgerId from database verification above (if taskRunId exists)
+    // Otherwise use the payload value (for non-tracked jobs, if any)
+    const validatedLedgerId = job.data.__ledgerId;
+
     const context: FlowContext = {
         jobId: job.id!,
         taskRunId: job.data.__taskRunId,
-        ledgerId: job.data.__ledgerId,
+        ledgerId: validatedLedgerId,
         updateProgress: async (progress) => {
             await job.updateProgress(progress);
             if (job.data.__taskRunId) {
@@ -40,7 +85,8 @@ export async function processJob(job: Job): Promise<unknown> {
             if (handler.onChildrenCompleted) {
                 // Wrap in context just in case (though resuming usually doesn't call AI immediately without new execute)
                 // But safer to wrap
-                result = await withAIContext(job.data.__taskRunId || 'unknown', job.data.__ledgerId || '', async () => {
+                // Use validatedLedgerId to ensure we're using the verified value
+                result = await withAIContext(job.data.__taskRunId || 'unknown', validatedLedgerId || '', async () => {
                     return handler.onChildrenCompleted!(results, context);
                 });
             } else {
@@ -54,17 +100,19 @@ export async function processJob(job: Job): Promise<unknown> {
 
             // 2. Execute (Fan-out / Exploration)
             // Wrap in AI Context
-            result = await withAIContext(job.data.__taskRunId || 'unknown', job.data.__ledgerId || '', async () => {
+            // Use validatedLedgerId to ensure we're using the verified value
+            result = await withAIContext(job.data.__taskRunId || 'unknown', validatedLedgerId || '', async () => {
                 return handler.execute(job.data, context);
             });
 
             // 3. Check for Recursion
             if (isFlowDefinition(result)) {
                 // Setup children
+                // 🔒 SECURITY: Pass validated ledgerId to children tasks
                 const childrenDef = (result.children || []).map(child => ({
                     name: child.name,
                     queueName: child.queueName,
-                    data: { ...(child.data as Record<string, unknown>), __taskRunId: job.data.__taskRunId, __ledgerId: job.data.__ledgerId },
+                    data: { ...(child.data as Record<string, unknown>), __taskRunId: job.data.__taskRunId, __ledgerId: validatedLedgerId },
                     opts: { ...child.opts, parent: { id: job.id!, queue: job.queueQualifiedName } }
                 }));
 
@@ -85,7 +133,8 @@ export async function processJob(job: Job): Promise<unknown> {
         // 4. Final Completion (Root Task)
         if (isRootJob(job) && handler.onComplete) {
             await handler.onComplete(result, job.data, context); // Pass input (job.data)
-            await completeTaskRun(job.data.__taskRunId, result, job.data.__ledgerId);
+            // Use validatedLedgerId for completion
+            await completeTaskRun(job.data.__taskRunId, result, validatedLedgerId);
         }
 
         return result;
@@ -97,7 +146,8 @@ export async function processJob(job: Job): Promise<unknown> {
                 // to BullMQ instead of the original error.
                 await handler.onError(error as Error, job.data, context);
             }
-            await failTaskRun(job.data.__taskRunId, (error as Error).message, job.data.__ledgerId);
+            // Use validatedLedgerId for failure recording
+            await failTaskRun(job.data.__taskRunId, (error as Error).message, validatedLedgerId);
         }
         throw error;
     }
