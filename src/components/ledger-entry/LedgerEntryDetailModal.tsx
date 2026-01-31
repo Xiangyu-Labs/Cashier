@@ -99,7 +99,7 @@ export function LedgerEntryDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg pr-4">
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg">
 
 
           <AnimatePresence mode="wait">
@@ -109,6 +109,7 @@ export function LedgerEntryDetailModal({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
+              className="flex-1 flex flex-col overflow-hidden"
             >
               <LedgerEntryViewDetails
                 ledgerEntry={ledgerEntry}

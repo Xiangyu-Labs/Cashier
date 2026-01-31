@@ -195,15 +195,22 @@ export function SourceDocumentCard({
       >
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted-foreground group-hover:text-text", isItemsExpanded && "rotate-180")} />
-          <span className="text-sm font-medium text-muted-foreground truncate">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">
             {new Date(sourceDocument.createdAt).toLocaleString(locale, {
               month: "long",
               day: "numeric",
               hour: "2-digit",
               minute: "2-digit",
             })}
-
           </span>
+          {status !== "processing" && status !== "queued" && sourceDocument.title && (
+            <>
+              <span className="text-muted-foreground/30 shrink-0">·</span>
+              <span className="text-sm font-semibold text-text truncate">
+                {sourceDocument.title}
+              </span>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>

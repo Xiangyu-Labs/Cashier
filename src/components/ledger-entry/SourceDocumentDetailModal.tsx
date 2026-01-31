@@ -20,7 +20,8 @@ import {
     Calendar,
     AlignLeft,
     Edit2,
-    Share2
+    Share2,
+    X
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
@@ -446,7 +447,8 @@ export function SourceDocumentDetailModal({
                     </AnimatePresence>
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 sm:static px-6 py-4 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-3 z-50">
+                {/* Actions Bottom - Removed fixed to avoid containing block issues with transform */}
+                <div className="shrink-0 px-6 py-4 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-3 z-50">
                     <div className="hidden sm:block">
                         {!isEditing && (
                             <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onClose}>
@@ -456,9 +458,24 @@ export function SourceDocumentDetailModal({
                     </div>
                     <div className="flex items-center gap-2 flex-1 sm:flex-initial">
                         {isEditing ? (
-                            <Button variant="outline" className="flex-1 sm:flex-initial" onClick={() => setIsEditing(false)} disabled={isSaving}>
-                                {tCommon("confirm")}
-                            </Button>
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setIsEditing(false)}
+                                    className="h-10 px-4"
+                                >
+                                    <X className="h-4 w-4 mr-2" />
+                                    {tCommon("cancel")}
+                                </Button>
+                                <Button
+                                    onClick={() => setIsEditing(false)}
+                                    className="h-10 px-6"
+                                    disabled={isSaving}
+                                >
+                                    <Check className="h-4 w-4 mr-2" />
+                                    {tCommon("save")}
+                                </Button>
+                            </div>
                         ) : (
                             <>
                                 <Button variant="ghost" size="sm" className="sm:hidden text-muted-foreground" onClick={onClose}>
