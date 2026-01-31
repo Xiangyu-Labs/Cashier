@@ -4,12 +4,12 @@ import { SourceDocument, LedgerEntry } from "@/types/api";
 import { type ReactNode, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, Wallet, ListChecks } from "lucide-react";
-import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
+import { FileText, Calendar, Wallet, ListChecks, ArrowLeft, ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
 import { SourceDocumentOriginalContent } from "./SourceDocumentOriginalContent";
 import { BillEntryItem } from "./BillEntryItem";
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -26,7 +26,7 @@ function CurrencyBreakdownItem({ currency, amount, mainCurrency, date }: Currenc
 
     return (
         <div className="grid grid-cols-[auto_24px_64px_auto_1fr] items-center gap-1 text-xs text-muted-foreground mt-1.5 leading-none">
-            <div className="font-medium text-text/80 tabular-nums min-w-[80px]">
+            <div className="font-medium text-text/80 tabular-nums min-w-[60px]">
                 {currency} {amount.toFixed(2)}
             </div>
             <span className="opacity-40 text-center text-[10px]">×</span>
@@ -115,110 +115,125 @@ export function SourceDocumentViewDetails({
         });
     }, [ledgerEntries]);
 
-    const status = sourceDocument.status || "completed";
+    // Derived Status Info
+    const isAnomaly = sourceDocument.status === "anomaly";
+    const statusColor = isAnomaly ? "destructive" : "primary";
+    const StatusIcon = isAnomaly ? AlertTriangle : ShieldCheck;
 
     return (
-        <div className="space-y-6">
-            {/* Header Info */}
-            <div className="flex items-start gap-4">
-                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/20 shrink-0">
-                    <FileText className="h-8 w-8" />
+        <div className="h-full flex flex-col lg:flex-row lg:h-[calc(100vh-140px)] gap-6">
+            {/* LEFT COLUMN: Visual Evidence / Original Content */}
+            <div className="flex-1 lg:flex-[0.4] min-h-[300px] lg:min-h-0 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        {tCard("viewContent")}
+                    </h4>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-semibold text-text truncate">
-                        {sourceDocument.title || t("titlePlaceholder")}
-                    </h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {new Date(sourceDocument.createdAt).toLocaleString(locale)}
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border bg-surface2/30 p-4 space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        <Wallet className="h-3 w-3" />
-                        {t("totalAmount")}
-                    </div>
-
-                    <div className="space-y-2">
-                        {uniqueCurrencies.map(curr => (
-                            <CurrencyBreakdownItem
-                                key={curr}
-                                currency={curr}
-                                amount={subtotalsByCurrency[curr]}
-                                mainCurrency={mainCurrency}
-                                date={ledgerEntries.find(e => e.currency === curr)?.entryDate || sourceDocument.createdAt}
-                            />
-                        ))}
-
-                        {/* Final Total in Main Currency */}
-                        <div className="pt-2 mt-2 border-t border-border/50 flex items-baseline justify-between gap-2">
-                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("totalAmount")}</div>
-                            <span className="text-2xl font-bold text-primary">
-                                <span className="text-sm font-normal text-muted-foreground mr-1">{mainCurrency}</span>
-                                {isLoadingConverted ? (
-                                    <span className="animate-pulse opacity-50">...</span>
-                                ) : (
-                                    totalInMainCurrency.toFixed(2)
-                                )}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div className="rounded-xl border border-border bg-surface2/30 p-4 space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        <ListChecks className="h-3 w-3" />
-                        {t("entries")}
-                    </div>
-                    <div className="text-2xl font-bold text-text">
-                        {ledgerEntries.length}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">{tCard("records", { count: ledgerEntries.length }).split(' ')[1]}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Original Content Section */}
-            <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <div className="w-1 h-3 bg-primary rounded-full" />
-                    {tCard("viewContent")}
-                </h4>
-                <div className="p-4 rounded-xl border border-border bg-surface flex flex-col gap-4">
+                <div className="flex-1 rounded-xl border border-border bg-surface overflow-hidden relative shadow-sm">
                     <SourceDocumentOriginalContent
                         text={sourceDocument.text}
                         images={sourceDocument.imageUrls}
+                        className="h-full overflow-y-auto p-4"
                     />
                 </div>
             </div>
 
-            {/* Entries List Section */}
-            <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <div className="w-1 h-3 bg-primary rounded-full" />
-                        {t("entries")}
-                    </h4>
-                </div>
-                <div className="space-y-2">
-                    {sortedEntries.length === 0 ? (
-                        <div className="text-center py-8 bg-surface2/30 rounded-xl border border-dashed border-border text-muted-foreground text-sm">
-                            {t("noEntries")}
+            {/* RIGHT COLUMN: Data Extraction Workstation */}
+            <div className="flex-1 lg:flex-[0.6] min-w-0 flex flex-col h-full overflow-hidden">
+                <div className="flex flex-col h-full gap-4">
+
+                    {/* Header / Meta / Status */}
+                    <div className="shrink-0 space-y-4">
+                        {/* Title & Date */}
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-2xl font-semibold text-text truncate tracking-tight">
+                                    {sourceDocument.title || t("titlePlaceholder")}
+                                </h3>
+                                <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                        <Calendar className="h-4 w-4 opacity-70" />
+                                        {new Date(sourceDocument.createdAt).toLocaleString(locale, {
+                                            dateStyle: 'medium',
+                                            timeStyle: 'short'
+                                        })}
+                                    </div>
+                                    {isAnomaly && (
+                                        <Badge variant="error" className="h-5 px-1.5 text-[10px] uppercase font-bold tracking-wide">
+                                            Anomaly
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        sortedEntries.map((entry) => (
-                            <BillEntryItem
-                                key={entry.id}
-                                ledgerEntry={entry}
-                                onView={() => onViewEntry(entry)}
-                                mainCurrency={mainCurrency}
-                            />
-                        ))
-                    )}
+
+                        {/* Financial Summary Card */}
+                        <div className="rounded-xl border border-border bg-surface2/30 p-4 shadow-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        {t("totalAmount")}
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-sm font-normal text-muted-foreground">{mainCurrency}</span>
+                                        <span className="text-3xl font-bold text-primary tabular-nums tracking-tight">
+                                            {isLoadingConverted ? (
+                                                <span className="animate-pulse opacity-50">...</span>
+                                            ) : (
+                                                totalInMainCurrency.toFixed(2)
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 max-w-xs space-y-1">
+                                    {uniqueCurrencies.map(curr => (
+                                        <CurrencyBreakdownItem
+                                            key={curr}
+                                            currency={curr}
+                                            amount={subtotalsByCurrency[curr]}
+                                            mainCurrency={mainCurrency}
+                                            date={ledgerEntries.find(e => e.currency === curr)?.entryDate || sourceDocument.createdAt}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Scrollable Entries List */}
+                    <div className="flex-1 min-h-0 flex flex-col pt-2">
+                        <div className="flex items-center justify-between mb-2 shrink-0">
+                            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <ListChecks className="w-4 h-4" />
+                                {t("entries")}
+                                <span className="bg-surface2 text-xs py-0.5 px-2 rounded-full font-mono text-text/70 border border-border/50">
+                                    {ledgerEntries.length}
+                                </span>
+                            </h4>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 pb-4">
+                            {sortedEntries.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-border/60 rounded-xl bg-surface2/10">
+                                    <p className="text-muted-foreground text-sm">{t("noEntries")}</p>
+                                </div>
+                            ) : (
+                                sortedEntries.map((entry) => (
+                                    <BillEntryItem
+                                        key={entry.id}
+                                        ledgerEntry={entry}
+                                        onView={() => onViewEntry(entry)}
+                                        mainCurrency={mainCurrency}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

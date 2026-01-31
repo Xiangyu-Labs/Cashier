@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
@@ -101,43 +102,53 @@ export function LedgerEntryDetailModal({
         <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg pr-4">
 
 
-          <LedgerEntryViewDetails
-            ledgerEntry={ledgerEntry}
-            isEditing={isEditing}
-            editData={editData}
-            categories={categories}
-            preferredCurrencies={preferredCurrencies}
-            mainCurrency={mainCurrency}
-            onEditStart={() => {
-              if (ledgerEntry) {
-                setEditData({
-                  itemName: ledgerEntry.itemName,
-                  amount: parseFloat(ledgerEntry.amount),
-                  currency: ledgerEntry.currency || "",
-                  categoryId: ledgerEntry.categoryId || "",
-                  entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                  description: ledgerEntry.description || "",
-                });
-              }
-              setIsEditing(true);
-            }}
-            onEditChange={setEditData}
-            onEditSave={handleSave}
-            onEditCancel={() => {
-              setIsEditing(false);
-              if (ledgerEntry) {
-                setEditData({
-                  itemName: ledgerEntry.itemName,
-                  amount: parseFloat(ledgerEntry.amount),
-                  currency: ledgerEntry.currency || "",
-                  categoryId: ledgerEntry.categoryId || "",
-                  entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                  description: ledgerEntry.description || "",
-                });
-              }
-            }}
-            onDelete={() => setShowDeleteConfirm(true)}
-          />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isEditing ? "edit" : "view"}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <LedgerEntryViewDetails
+                ledgerEntry={ledgerEntry}
+                isEditing={isEditing}
+                editData={editData}
+                categories={categories}
+                preferredCurrencies={preferredCurrencies}
+                mainCurrency={mainCurrency}
+                onEditStart={() => {
+                  if (ledgerEntry) {
+                    setEditData({
+                      itemName: ledgerEntry.itemName,
+                      amount: parseFloat(ledgerEntry.amount),
+                      currency: ledgerEntry.currency || "",
+                      categoryId: ledgerEntry.categoryId || "",
+                      entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
+                      description: ledgerEntry.description || "",
+                    });
+                  }
+                  setIsEditing(true);
+                }}
+                onEditChange={setEditData}
+                onEditSave={handleSave}
+                onEditCancel={() => {
+                  setIsEditing(false);
+                  if (ledgerEntry) {
+                    setEditData({
+                      itemName: ledgerEntry.itemName,
+                      amount: parseFloat(ledgerEntry.amount),
+                      currency: ledgerEntry.currency || "",
+                      categoryId: ledgerEntry.categoryId || "",
+                      entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
+                      description: ledgerEntry.description || "",
+                    });
+                  }
+                }}
+                onDelete={() => setShowDeleteConfirm(true)}
+              />
+            </motion.div>
+          </AnimatePresence>
         </DialogContent>
       </Dialog >
 

@@ -14,6 +14,7 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useMemo } from "react";
 
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface LedgerEntryEditFormData {
     itemName: string;
@@ -284,12 +285,16 @@ export function LedgerEntryViewDetails({
                     ) : (
                         ledgerEntry.description ? (
                             <div className="text-sm text-text">
-                                <div
-                                    ref={descriptionRef}
-                                    className={`break-words whitespace-pre-wrap ${!isDescriptionExpanded ? "line-clamp-3" : ""}`}
-                                >
-                                    {ledgerEntry.description}
-                                </div>
+                                <AnimatePresence initial={false}>
+                                    <motion.div
+                                        ref={descriptionRef}
+                                        initial={false}
+                                        animate={{ height: isDescriptionExpanded ? "auto" : "auto" }}
+                                        className={`break-words whitespace-pre-wrap ${!isDescriptionExpanded ? "line-clamp-3" : ""}`}
+                                    >
+                                        {ledgerEntry.description}
+                                    </motion.div>
+                                </AnimatePresence>
                                 {needsFolding && (
                                     <Button
                                         variant="ghost"
