@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { registerFlowTask, FlowTaskHandler, FlowDefinition, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
-import { mainWorker, apiWorker } from "@/lib/flow/workers";
+import { getMainWorker, getApiWorker, initializeWorkers } from "@/lib/flow/workers";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -72,8 +72,9 @@ describe("Recursive Flow Integration", () => {
 
     beforeAll(async () => {
         // Ensure workers are ready
-        await mainWorker.waitUntilReady();
-        await apiWorker.waitUntilReady();
+        await initializeWorkers();
+        await getMainWorker().waitUntilReady();
+        await getApiWorker().waitUntilReady();
     });
 
     beforeEach(async () => {
@@ -84,10 +85,10 @@ describe("Recursive Flow Integration", () => {
 
     afterAll(async () => {
         // We don't close workers here because other tests might need them if running in parallel suite
-        // But for this file in isolation it's fine. 
+        // But for this file in isolation it's fine.
         // Best practice in this codebase seems to be closing in afterAll if opened/imported specifically
-        await mainWorker.close();
-        await apiWorker.close();
+        await getMainWorker().close();
+        await getApiWorker().close();
         await mainQueue.close();
         await apiQueue.close();
     });

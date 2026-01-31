@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    restart: always
     ports:
       - "3000:3000"
     environment:
@@ -9,14 +10,36 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - OPENAI_MODEL=${OPENAI_MODEL}
       - REDIS_URL=redis://redis:6379
+      - ENABLE_WORKERS=false  # Disable workers in web process
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+  worker:
+    build: .
+    restart: always
+    # No ports mapped - internal only
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - REDIS_URL=redis://redis:6379
+      - ENABLE_WORKERS=true   # Enable workers here
+      - SKIP_MIGRATIONS=true  # Don't run migrations in worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started # Wait for app (migrations) to start
+
   db:
     image: postgres:16-alpine
+    restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -33,6 +56,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: always
     ports:
       - "6379:6379"
     volumes:

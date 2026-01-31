@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { registerFlowTask, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
-import { mainWorker, apiWorker } from "@/lib/flow/workers";
+import { getMainWorker, getApiWorker, initializeWorkers } from "@/lib/flow/workers";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -43,13 +43,14 @@ describe("Flow System Integration", () => {
 
     beforeAll(async () => {
         // Ensure workers are ready (they start on import, but we can wait for ready)
-        await mainWorker.waitUntilReady();
-        await apiWorker.waitUntilReady();
+        await initializeWorkers();
+        await getMainWorker().waitUntilReady();
+        await getApiWorker().waitUntilReady();
     });
 
     afterAll(async () => {
-        await mainWorker.close();
-        await apiWorker.close();
+        await getMainWorker().close();
+        await getApiWorker().close();
         await mainQueue.close();
         await apiQueue.close();
     });

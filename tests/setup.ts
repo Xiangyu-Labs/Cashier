@@ -8,6 +8,7 @@ import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
 import { cleanup } from "@testing-library/react";
+import { initializeWorkers, shutdownWorkers } from "@/lib/flow/workers";
 
 // Test database connection
 const TEST_DATABASE_URL =
@@ -36,6 +37,9 @@ beforeAll(async () => {
   process.env.BULLMQ_LOCK_DURATION = "1000"; // Short for tests
   process.env.BULLMQ_STALLED_INTERVAL = "1000";
 
+  // Initialize workers for integration tests
+  await initializeWorkers();
+
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });
 
@@ -44,6 +48,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await shutdownWorkers();
   if (testClient) {
     await testClient.end();
   }

@@ -30,7 +30,8 @@ describe('BullMQ Workers Configuration', () => {
         process.env.FLOW_MAIN_QUEUE_CONCURRENCY = '5';
 
         // Re-import to trigger initialization with new env vars
-        await import('@/lib/flow/workers');
+        const { initializeWorkers } = await import('@/lib/flow/workers');
+        await initializeWorkers();
 
         expect(mockWorker).toHaveBeenCalled();
 
@@ -48,7 +49,8 @@ describe('BullMQ Workers Configuration', () => {
         delete process.env.BULLMQ_LOCK_DURATION;
         delete process.env.BULLMQ_STALLED_INTERVAL;
 
-        await import('@/lib/flow/workers');
+        const { initializeWorkers } = await import('@/lib/flow/workers');
+        await initializeWorkers();
 
         const mainWorkerCall = mockWorker.mock.calls.find(call => call[0] === 'main');
         const options = mainWorkerCall[2];

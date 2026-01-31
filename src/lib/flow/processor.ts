@@ -3,7 +3,7 @@ import { getFlowTaskHandler } from './registry';
 import { FlowContext, FlowDefinition } from './types';
 import { completeTaskRun, failTaskRun } from './task-run-service';
 import { logger as _logger } from '@/lib/logger';
-import { flowProducer } from './workers';
+import { getFlowProducer } from './workers';
 
 import { withAIContext } from '@/lib/ai/ai-context';
 import { db } from '@/lib/db';
@@ -118,7 +118,7 @@ export async function processJob(job: Job): Promise<unknown> {
 
                 // Add children to queue
                 for (const child of childrenDef) {
-                    await flowProducer.add(child);
+                    await getFlowProducer().add(child);
                 }
 
                 // Mark as resuming and suspend
