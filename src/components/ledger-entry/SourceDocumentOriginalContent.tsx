@@ -17,47 +17,50 @@ export function SourceDocumentOriginalContent({
 }: SourceDocumentOriginalContentProps) {
     const t = useTranslations("Common");
     const tViewer = useTranslations("ImageViewer");
-    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+    const [previewIndex, setPreviewIndex] = useState(0);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
     const hasImages = images && images.length > 0;
 
     if (!text && !hasImages) {
-        return <p className={cn("text-muted-foreground text-sm border border-dashed border-border p-2 rounded", className)}>{t("noContent")}</p>;
+        return <p className={cn("text-muted-foreground text-sm border border-dashed border-border p-4 rounded-xl m-4", className)}>{t("noContent")}</p>;
     }
 
     return (
-        <div className={cn("space-y-4", className)}>
-            {/* Image Content */}
+        <div className={cn("flex flex-col h-full", className)}>
+            {/* Image Content - Maximized for Vertical Fill */}
             {hasImages && (
-                <div className="space-y-2 h-full flex flex-col">
-                    {/* Main Image Preview (First Image) */}
+                <div className="flex-1 flex flex-col min-h-0">
                     <div
-                        className="relative flex-1 min-h-[200px] w-full rounded-lg border border-border overflow-hidden cursor-pointer hover:opacity-95 bg-surface2 group"
-                        onClick={() => setSelectedImageIndex(0)}
+                        className="relative flex-1 w-full overflow-hidden cursor-pointer hover:opacity-[0.98] transition-opacity group flex items-center justify-center p-2"
+                        onClick={() => setIsViewerOpen(true)}
                     >
-                        <Image
-                            src={images[0]}
-                            alt={tViewer("imageAlt", { index: 1 })}
-                            fill
-                            className="object-contain"
-                        />
-                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm">
-                                {tViewer("clickToZoom")}
+                        <div className="relative w-full h-full">
+                            <Image
+                                src={images[previewIndex] || images[0]}
+                                alt={tViewer("imageAlt", { index: previewIndex + 1 })}
+                                fill
+                                className="object-contain drop-shadow-2xl"
+                                priority
+                            />
+                        </div>
+                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                            <span className="bg-black/40 text-white px-4 py-2 rounded-full text-xs font-bold backdrop-blur-md translate-y-2 group-hover:translate-y-0 transition-all">
+                                {tViewer("clickToZoom") || "Click to View"}
                             </span>
                         </div>
                     </div>
 
                     {/* Thumbnail Strip (if more than 1 image) */}
                     {images.length > 1 && (
-                        <div className="flex gap-2 overflow-x-auto pb-2 shrink-0">
+                        <div className="flex gap-3 overflow-x-auto p-4 pt-0 shrink-0 scrollbar-none items-center justify-center sm:justify-start">
                             {images.map((imgSrc, idx) => (
                                 <div
                                     key={idx}
                                     className={cn(
-                                        "relative h-16 w-16 shrink-0 rounded-md border overflow-hidden cursor-pointer hover:opacity-90 bg-surface2",
-                                        idx === 0 ? "border-primary ring-1 ring-primary" : "border-border"
+                                        "relative h-16 w-16 md:h-20 md:w-20 shrink-0 rounded-xl border-2 overflow-hidden cursor-pointer hover:border-primary/50 transition-all bg-surface shadow-md",
+                                        idx === previewIndex ? "border-primary ring-2 ring-primary/20" : "border-transparent"
                                     )}
-                                    onClick={() => setSelectedImageIndex(idx)}
+                                    onClick={() => setPreviewIndex(idx)}
                                 >
                                     <Image
                                         src={imgSrc}
@@ -70,21 +73,30 @@ export function SourceDocumentOriginalContent({
                         </div>
                     )}
 
+
                     <ImageViewer
                         images={images}
-                        initialIndex={selectedImageIndex ?? 0}
-                        open={selectedImageIndex !== null}
-                        onOpenChange={(open) => !open && setSelectedImageIndex(null)}
+                        initialIndex={previewIndex}
+                        open={isViewerOpen}
+                        onOpenChange={setIsViewerOpen}
                     />
                 </div>
             )}
 
-            {/* Text Content */}
+
+            {/* Text Content - Elegant overlay or section */}
             {text && (
-                <div className="flex items-start gap-2 bg-surface2/30 p-3 rounded-lg border border-border/50">
-                    <p className="text-sm text-text whitespace-pre-wrap font-mono text-xs leading-relaxed">{text}</p>
+                <div className={cn(
+                    "shrink-0 p-4 pt-0 border-t border-border/40 bg-surface/50 backdrop-blur-sm",
+                    !hasImages && "flex-1 overflow-y-auto"
+                )}>
+                    <div className="bg-surface2/40 p-3 rounded-xl border border-border/60">
+                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 opacity-60">RAW CONTENT</h5>
+                        <p className="text-xs text-text/90 whitespace-pre-wrap font-mono leading-relaxed">{text}</p>
+                    </div>
                 </div>
             )}
         </div>
     );
 }
+

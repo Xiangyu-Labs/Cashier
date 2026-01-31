@@ -166,7 +166,20 @@
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDate": "Batch Edit Date",
         "batchDescription": "Batch Edit Description",
-        "totalAmount": "Total Amount"
+        "totalAmount": "Total Amount",
+        "rawContent": "Raw Evidence",
+        "rawEvidence": "Evidence",
+        "translation": "Translation",
+        "originalText": "Original"
+    },
+    "ImageViewer": {
+        "clickToZoom": "Click to Zoom",
+        "imageAlt": "Image {index}",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out",
+        "rotate": "Rotate",
+        "reset": "Reset",
+        "close": "Close"
     },
     "Settings": {
         "title": "Settings",

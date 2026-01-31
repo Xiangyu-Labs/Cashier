@@ -488,6 +488,17 @@ export function LedgerEntriesTab({
                     setSelectedLedgerEntry(entry);
                     setIsDetailModalOpen(true);
                 }}
+                onDelete={() => {
+                    if (selectedSourceDocument) {
+                        setDeleteConfirm({
+                            open: true,
+                            type: "sourceDocument",
+                            id: selectedSourceDocument.sourceDocument.id,
+                            title: t("deleteConfirmTitle"),
+                            description: t("deleteConfirmDesc")
+                        });
+                    }
+                }}
             />
 
             {/* Edit-Retry Dialog */}

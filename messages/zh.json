@@ -169,7 +169,20 @@
         "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
         "batchDate": "批量修改日期",
         "batchDescription": "批量修改备注",
-        "totalAmount": "合计金额"
+        "totalAmount": "合计金额",
+        "rawContent": "原始输入",
+        "rawEvidence": "原始凭证",
+        "translation": "翻译",
+        "originalText": "原文"
+    },
+    "ImageViewer": {
+        "clickToZoom": "点击放大",
+        "imageAlt": "图片 {index}",
+        "zoomIn": "放大",
+        "zoomOut": "缩小",
+        "rotate": "旋转",
+        "reset": "重置",
+        "close": "关闭"
     },
     "Settings": {
         "title": "设置",

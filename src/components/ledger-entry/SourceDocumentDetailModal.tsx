@@ -14,13 +14,13 @@ import {
     Coins,
     ChevronDown,
     Check,
-    X,
     Trash2,
     AlertCircle,
     FileText,
     Calendar,
     AlignLeft,
-    Edit2
+    Edit2,
+    Share2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { SUPPORTED_CURRENCIES } from "@/config/currencies"
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails"
 import { Textarea } from "@/components/ui/textarea"
+import { ShareDialog } from "@/components/share/ShareDialog"
 
 interface SourceDocumentDetailModalProps {
     sourceDocument: SourceDocument | null
@@ -46,6 +47,7 @@ interface SourceDocumentDetailModalProps {
     }) => Promise<void>
     onDeleteEntry: (id: string) => Promise<void>
     onBatchDelete?: (ids: string[]) => Promise<void>
+    onDelete?: () => void
     onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void
 }
 
@@ -61,6 +63,7 @@ export function SourceDocumentDetailModal({
     onBatchUpdate,
     onDeleteEntry,
     onBatchDelete,
+    onDelete,
     onViewLedgerEntry,
 }: SourceDocumentDetailModalProps) {
     const t = useTranslations("SourceDocumentDetail")
@@ -72,6 +75,7 @@ export function SourceDocumentDetailModal({
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
 
     const [batchDate, setBatchDate] = useState("")
     const [batchDescription, setBatchDescription] = useState("")
@@ -181,61 +185,19 @@ export function SourceDocumentDetailModal({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl sm:rounded-lg">
-                <DialogHeader className="px-6 py-4 border-b">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                            <FileText className="h-6 w-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex flex-col">
-                                <DialogTitle className="flex items-center gap-2">
-                                    {isEditingTitle ? (
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <Input
-                                                value={title}
-                                                onChange={(e) => setTitle(e.target.value)}
-                                                placeholder={t("titlePlaceholder")}
-                                                className="h-8"
-                                                autoFocus
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") handleSaveTitle()
-                                                    if (e.key === "Escape") setIsEditingTitle(false)
-                                                }}
-                                            />
-                                            <Button size="icon-sm" onClick={handleSaveTitle} disabled={isSaving}>
-                                                <Check className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon-sm" onClick={() => setIsEditingTitle(false)}>
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className="flex items-center gap-2 cursor-pointer group"
-                                            onClick={() => setIsEditingTitle(true)}
-                                        >
-                                            <span className={cn(
-                                                "truncate max-w-[400px]",
-                                                !sourceDocument.title && "text-muted-foreground-foreground italic"
-                                            )}>
-                                                {sourceDocument.title || t("titlePlaceholder")}
-                                            </span>
-                                            <Badge variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {tCommon("edit")}
-                                            </Badge>
-                                        </div>
-                                    )}
-                                </DialogTitle>
-                                <DialogDescription className="text-sm text-muted-foreground">
-                                    {new Date(sourceDocument.createdAt).toLocaleString()}
-                                </DialogDescription>
-                            </div>
-                        </div>
+            <DialogContent className="w-full sm:w-[calc(100vw-2rem)] sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-none sm:rounded-2xl border-none sm:border">
+                <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <DialogTitle className="text-base font-bold truncate">
+                            {sourceDocument.title || t("titlePlaceholder")}
+                        </DialogTitle>
                     </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
                     <AnimatePresence mode="wait">
                         {!isEditing ? (
                             <motion.div
@@ -484,27 +446,62 @@ export function SourceDocumentDetailModal({
                     </AnimatePresence>
                 </div>
 
-                <div className="px-6 py-4 border-t bg-surface2/30 flex justify-between items-center gap-3">
-                    <div>
+                <div className="fixed bottom-0 left-0 right-0 sm:static px-6 py-4 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-3 z-50">
+                    <div className="hidden sm:block">
                         {!isEditing && (
                             <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onClose}>
                                 {tCommon("cancel")}
                             </Button>
                         )}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1 sm:flex-initial">
                         {isEditing ? (
-                            <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                            <Button variant="outline" className="flex-1 sm:flex-initial" onClick={() => setIsEditing(false)} disabled={isSaving}>
                                 {tCommon("confirm")}
                             </Button>
                         ) : (
-                            <Button onClick={() => setIsEditing(true)} className="gap-2">
-                                <Edit2 className="h-4 w-4" />
-                                {tCommon("edit")}
-                            </Button>
+                            <>
+                                <Button variant="ghost" size="sm" className="sm:hidden text-muted-foreground" onClick={onClose}>
+                                    {tCommon("cancel")}
+                                </Button>
+
+                                <div className="flex-1 flex items-center gap-2 sm:gap-3">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-10 w-10 sm:h-10 sm:w-auto sm:px-4 sm:gap-2 rounded-xl text-muted-foreground border-border hover:text-primary hover:border-primary/30 transition-all shrink-0"
+                                        onClick={() => setIsShareDialogOpen(true)}
+                                    >
+                                        <Share2 className="h-4 w-4" />
+                                        <span className="hidden sm:inline">{tCommon("share") || "Share"}</span>
+                                    </Button>
+
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-10 w-10 sm:h-10 sm:w-auto sm:px-4 sm:gap-2 rounded-xl text-destructive/70 border-destructive/10 hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-all shrink-0"
+                                        onClick={onDelete}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="hidden sm:inline">{tCommon("delete")}</span>
+                                    </Button>
+
+                                    <Button onClick={() => setIsEditing(true)} className="flex-1 sm:flex-initial gap-2 h-10 px-6 rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all">
+                                        <Edit2 className="h-4 w-4" />
+                                        <span className="font-bold">{tCommon("edit")}</span>
+                                    </Button>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
+
+                <ShareDialog
+                    isOpen={isShareDialogOpen}
+                    onOpenChange={setIsShareDialogOpen}
+                    ledgerId={sourceDocument.ledgerId}
+                    sourceDocumentId={sourceDocument.id}
+                />
             </DialogContent>
         </Dialog>
     )
