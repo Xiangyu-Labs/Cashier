@@ -10,7 +10,7 @@ export interface ExchangeRates {
 }
 
 export class ExchangeRateService {
-    private static readonly API_BASE_URL = "https://api.frankfurter.dev/v1";
+    private static readonly API_BASE_URL = "https://api.frankfurter.app";
 
     private static pendingRequests = new Map<string, Promise<ExchangeRates>>();
 
@@ -45,10 +45,14 @@ export class ExchangeRateService {
         // 3. Fetch from API
         const fetchPromise = (async () => {
             try {
-                const response = await fetch(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
+                const response = await this.fetchWithRetry(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
 
                 if (!response.ok) {
                     if (response.status === 404) {
+                        // Create a fallback for future dates or way past dates if needed,
+                        // but 404 usually means really invalid.
+                        // However, for weekends, Frankfurter usually returns the previous Friday.
+                        // If it explicitly 404s, it's an error.
                         throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
                     }
                     throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
@@ -57,9 +61,12 @@ export class ExchangeRateService {
                 const data: ExchangeRates = await response.json();
 
                 // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
+                // IMPORTANT: We save using 'targetDateStr' (the requested date) instead of 'data.date'
+                // because on weekends 'data.date' will be the previous Friday.
+                // If we saved 'data.date', the next request for 'targetDateStr' would still be a cache miss.
                 await db.insert(currencyRates)
                     .values({
-                        date: data.date,
+                        date: targetDateStr,
                         base: data.base,
                         rates: data.rates,
                     })
@@ -74,6 +81,18 @@ export class ExchangeRateService {
 
         this.pendingRequests.set(targetDateStr, fetchPromise);
         return fetchPromise;
+    }
+
+    private static async fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
+        for (let i = 0; i < retries; i++) {
+            try {
+                return await fetch(url, { signal: AbortSignal.timeout(5000) });
+            } catch (err) {
+                if (i === retries - 1) throw err;
+                await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+            }
+        }
+        throw new Error("Unreachable");
     }
 
     /**

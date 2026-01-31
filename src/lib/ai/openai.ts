@@ -47,6 +47,11 @@ export class OpenAIClient {
                     max_tokens: 4096,
                 });
 
+                if (!response.choices || !Array.isArray(response.choices) || response.choices.length === 0) {
+                    logger.error({ response }, "OpenAI response missing choices");
+                    throw new Error("Invalid OpenAI response: missing choices");
+                }
+
                 const content = response.choices[0]?.message?.content || "";
 
                 if (response.usage) {
@@ -80,8 +85,8 @@ export class OpenAIClient {
                         throw error;
                     }
 
-                    // Otherwise, retry if it is explicitly retryable or if we want to be robust
-                    if (isRetryable || true) {
+                    // Only retry if it is explicitly retryable
+                    if (isRetryable) {
                         const delay = baseDelay * Math.pow(2, attempt);
                         logger.warn({ err: error, attempt: attempt + 1, maxRetries: maxRetries + 1, delay }, "OpenAI request failed, retrying");
                         await new Promise((resolve) => setTimeout(resolve, delay));

@@ -61,7 +61,7 @@ describe("ExchangeRateService", () => {
             const result = await ExchangeRateService.getRates("2024-02-01");
 
             expect(result).toEqual(apiResponse);
-            expect(fetch).toHaveBeenCalledWith(expect.stringContaining("2024-02-01"));
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining("2024-02-01"), expect.anything());
             expect(db.insert).toHaveBeenCalled();
         });
 
