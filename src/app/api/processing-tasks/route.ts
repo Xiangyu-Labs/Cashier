@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 export async function GET(request: NextRequest) {
     try {
@@ -16,6 +17,11 @@ export async function GET(request: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Verify user owns this ledger
+        const { error } = await requireLedgerAccess(ledgerId);
+
+        if (error) return error;
 
         const conditions = [eq(taskRuns.ledgerId, ledgerId)];
 
@@ -47,12 +53,6 @@ export async function GET(request: NextRequest) {
             startedAt: run.startedAt?.toISOString() || null,
             completedAt: run.completedAt?.toISOString() || null,
         }));
-
-        // Frontend expects 'running'? Yes.
-        // But what about 'queued'?
-        // task_runs starts as 'running'. Ideally we should probably track 'queued' via BullMQ but that's expensive here.
-        // We'll return 'running' for now.
-        // Wait, frontend StatusIcon has 'running'.
 
         return NextResponse.json(tasks);
     } catch (error) {

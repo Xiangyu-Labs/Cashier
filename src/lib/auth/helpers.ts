@@ -52,6 +52,7 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     | { ledger: typeof ledgers.$inferSelect; error?: never }
     | { ledger?: never; error: NextResponse }
 > {
+
     const userId = await getCurrentUserId();
 
     if (!userId) {
