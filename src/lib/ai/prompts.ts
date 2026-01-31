@@ -62,8 +62,8 @@ Output:
   "is_valid": true,
   "title": "7-11 - Breakfast",
   "ledger_entries": [
-    { "item_name": "Latte", "amount": 3.5, "currency": "USD", "category": "Dining", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" },
-    { "item_name": "Sandwich", "amount": 4.5, "currency": "USD", "category": "Dining", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" }
+    { "item_name": "Latte", "amount": 3.5, "currency": "USD", "category": "<Category_Name_From_List>", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" },
+    { "item_name": "Sandwich", "amount": 4.5, "currency": "USD", "category": "<Category_Name_From_List>", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" }
   ]
 }
 `;

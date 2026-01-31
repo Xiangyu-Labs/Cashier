@@ -19,6 +19,19 @@ export async function createDefaultLedgerForUser(
         })
         .returning();
 
+    // Seed categories for the new ledger
+    const { default: defaultLedger } = await import("@/config/default-ledger.json");
+    const { entryCategories } = await import("@/lib/db/schema");
+
+    if (defaultLedger.categories.length > 0) {
+        await db.insert(entryCategories).values(
+            defaultLedger.categories.map((cat) => ({
+                ...cat,
+                ledgerId: newLedger.id,
+            }))
+        );
+    }
+
     // Update user's default ledger
     await db
         .update(users)

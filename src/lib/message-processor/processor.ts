@@ -97,7 +97,17 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
 
   private parseResponse(response: string, allowedCategories: string[]): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
     try {
-      const cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
+      // Robust JSON extraction: look for the first { and last }
+      const jsonStart = response.indexOf('{');
+      const jsonEnd = response.lastIndexOf('}');
+
+      let cleaned = response;
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleaned = response.substring(jsonStart, jsonEnd + 1);
+      } else {
+        // Fallback to basic cleaning if brackets aren't found (though unlikely for valid JSON)
+        cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
+      }
       let parsed;
       try {
         parsed = JSON.parse(cleaned);
@@ -133,7 +143,12 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
 
       return { ledgerEntries, isValid: true, title: validated.title };
     } catch (error) {
-      logger.error({ error, response }, "Failed to parse AI response");
+      const errorObj = error instanceof Error
+        ? { message: error.message, stack: error.stack, name: error.name }
+        : error;
+
+      logger.error({ error: errorObj, response }, "Failed to parse AI response");
+
       if (error instanceof z.ZodError) {
         const issues = error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
         throw new Error(`AI response schema validation failed: ${issues}`);
