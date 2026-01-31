@@ -81,6 +81,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId } = await params;
+    const contentLength = request.headers.get("content-length");
+    logger.info({ ledgerId, contentLength }, "Receiving source document upload");
     const body = await request.json();
     const validated = sourceDocumentSchema.parse(body);
 
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       validated.images.forEach((img) => {
         let data = img.data;
         if (!data.startsWith("data:") && !data.startsWith("http")) {
-          data = `data: image / jpeg; base64, ${data} `;
+          data = `data:image/jpeg;base64,${data}`;
         }
         imageUrls.push(data);
       });

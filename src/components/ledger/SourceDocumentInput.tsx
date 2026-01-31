@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Ledger } from "@/types/api";
 
 import { useTranslations } from "next-intl";
+import { compressImage } from "@/lib/image-utils";
 
 interface SourceDocumentInputProps {
     ledgerId: string;
@@ -114,15 +115,24 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         if (files.length > 0) processFiles(files);
     };
 
-    const processFiles = (files: File[]) => {
-        files.forEach((file) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = reader.result as string;
-                setImages((prev) => [...prev, { data: base64, mimeType: file.type }]);
-            };
-            reader.readAsDataURL(file);
-        });
+
+
+    const processFiles = async (files: File[]) => {
+        for (const file of files) {
+            try {
+                const compressed = await compressImage(file);
+                setImages((prev) => [...prev, compressed]);
+            } catch (error) {
+                console.error("Failed to compress image:", error);
+                // Fallback to original image if compression fails
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result as string;
+                    setImages((prev) => [...prev, { data: base64, mimeType: file.type }]);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
     };
 
     return (

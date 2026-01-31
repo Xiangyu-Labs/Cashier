@@ -59,11 +59,27 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
             const textArea = document.createElement("textarea");
             textArea.value = content;
             textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            textArea.setAttribute("readonly", ""); // Avoid keyboard on mobile
             document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
+
+            // Specialized selection for iOS
+            const isIOS = navigator.userAgent.match(/ipad|iphone/i);
+            if (isIOS) {
+                const range = document.createRange();
+                range.selectNodeContents(textArea);
+                const selection = window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+                textArea.setSelectionRange(0, 999999);
+            } else {
+                textArea.focus();
+                textArea.select();
+            }
+
             try {
                 const successful = document.execCommand('copy');
                 return successful;
