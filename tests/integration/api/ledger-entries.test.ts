@@ -224,7 +224,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
     ]);
 
     // Query starting from 1st of current month
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
 
     const response = await GET(
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?startDate=${startOfMonth.toISOString()}`),
@@ -247,7 +247,7 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       { ledgerId: testLedgerId, amount: "20", itemName: "Old Created", createdAt: lastMonth },
     ]);
 
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
 
     const response = await GET(
       new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?startDate=${startOfMonth.toISOString()}`),
