@@ -4,6 +4,12 @@ import { ledgers } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(id: string): boolean {
+    return UUID_REGEX.test(id);
+}
+
 /**
  * Get the current authenticated user from the session.
  * Returns null if not authenticated.
@@ -60,6 +66,15 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
             error: NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
+            ),
+        };
+    }
+
+    if (!isValidUuid(ledgerId)) {
+        return {
+            error: NextResponse.json(
+                { error: "Invalid ledger ID" },
+                { status: 404 }
             ),
         };
     }

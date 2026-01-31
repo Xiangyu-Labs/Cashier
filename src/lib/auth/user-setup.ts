@@ -55,13 +55,7 @@ export async function getUserDefaultLedgerId(
         return user.defaultLedgerId;
     }
 
-    // Fallback: get the first ledger for this user
-    const firstLedger = await db.query.ledgers.findFirst({
-        where: eq(ledgers.userId, userId),
-        orderBy: (ledgers, { asc }) => [asc(ledgers.createdAt)],
-    });
-
-    return firstLedger?.id ?? null;
+    return null;
 }
 
 /**

@@ -113,7 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 const dbUser = await db.query.users.findFirst({
                     where: eq(users.id, userId),
-                    columns: { id: true, email: true, name: true, image: true }
+                    columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true }
                 });
 
                 if (!dbUser) {
@@ -127,6 +127,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 session.user.email = dbUser.email;
                 session.user.name = dbUser.name;
                 session.user.image = dbUser.image;
+                session.user.defaultLedgerId = dbUser.defaultLedgerId ?? undefined;
             }
             return session;
         },
@@ -181,6 +182,7 @@ declare module "next-auth" {
             name?: string | null;
             email?: string | null;
             image?: string | null;
+            defaultLedgerId?: string | null;
         };
     }
 }

@@ -16,7 +16,7 @@ export default function HomePage(): ReactNode {
   const [statusText, setStatusText] = useState(t("loading"));
 
   // Get the current session
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
 
   const { data: ledgers, isLoading, error: ledgersError } = useQuery({
     queryKey: ["ledgers"],
@@ -49,7 +49,13 @@ export default function HomePage(): ReactNode {
         return;
       }
 
-      // If ledgers exist, redirect to the first one
+      // If we have a default ledger ID in the session, use it
+      if (session?.user?.defaultLedgerId) {
+        router.replace(`/ledger/${session.user.defaultLedgerId}`);
+        return;
+      }
+
+      // If ledgers exist, redirect to the first one (safety fallback if session doesn't have it yet)
       if (ledgers.length > 0) {
         router.replace(`/ledger/${ledgers[0].id}`);
         return;
