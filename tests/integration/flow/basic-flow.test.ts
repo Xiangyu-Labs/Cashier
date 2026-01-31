@@ -5,7 +5,7 @@ import { getMainWorker, getApiWorker, initializeWorkers } from "@/lib/flow/worke
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { mainQueue, apiQueue } from "@/lib/flow/queues";
+import { getMainQueue, getApiQueue } from "@/lib/flow/queues";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // 1. Define Test Task
@@ -51,8 +51,8 @@ describe("Flow System Integration", () => {
     afterAll(async () => {
         await getMainWorker().close();
         await getApiWorker().close();
-        await mainQueue.close();
-        await apiQueue.close();
+        await getMainQueue().close();
+        await getApiQueue().close();
     });
 
     // Mock fetch for API calls if needed by tasks

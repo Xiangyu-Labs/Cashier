@@ -5,7 +5,7 @@ import { getMainWorker, getApiWorker, initializeWorkers } from "@/lib/flow/worke
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { mainQueue, apiQueue } from "@/lib/flow/queues";
+import { getMainQueue, getApiQueue } from "@/lib/flow/queues";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // 1. Define Recursive Test Task
@@ -89,8 +89,8 @@ describe("Recursive Flow Integration", () => {
         // Best practice in this codebase seems to be closing in afterAll if opened/imported specifically
         await getMainWorker().close();
         await getApiWorker().close();
-        await mainQueue.close();
-        await apiQueue.close();
+        await getMainQueue().close();
+        await getApiQueue().close();
     });
 
     it("should execute a recursive fan-out/fan-in flow successfully", async () => {
