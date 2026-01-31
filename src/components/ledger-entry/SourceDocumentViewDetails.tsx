@@ -1,7 +1,7 @@
 "use client";
 
 import { SourceDocument, LedgerEntry } from "@/types/api";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Wallet, FileText, Share2, AlignLeft, ImagePlay, Maximize2, Calendar } from "lucide-react";
@@ -50,7 +50,7 @@ interface SourceDocumentViewDetailsProps {
     onViewEntry: (entry: LedgerEntry) => void;
 }
 
-export function SourceDocumentViewDetails({
+export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
     sourceDocument,
     ledgerEntries,
     mainCurrency = "CNY",
@@ -264,4 +264,5 @@ export function SourceDocumentViewDetails({
             </div>
         </div>
     );
-}
+})
+

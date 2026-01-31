@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, type ReactNode, memo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ interface LedgerEntryDetailModalProps {
   onDelete: () => void;
 }
 
-export function LedgerEntryDetailModal({
+export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   ledgerEntry,
   categories,
   preferredCurrencies,
@@ -164,4 +164,4 @@ export function LedgerEntryDetailModal({
       />
     </>
   );
-}
+});

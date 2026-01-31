@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 
@@ -163,8 +163,6 @@ export function LedgerEntriesTab({
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
-
-
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => deleteSourceDocument(ledgerId, sourceDocumentId),
         onMutate: async (id) => {
@@ -181,7 +179,6 @@ export function LedgerEntriesTab({
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(t("deleteFailed"));
         }
-        // Note: Removed onSettled invalidateQueries - SSE events handle cache updates
     });
 
     const retryMutation = useMutation({
@@ -201,8 +198,91 @@ export function LedgerEntriesTab({
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(tCommon("error"));
         }
-        // Note: Removed onSettled invalidateQueries - SSE events handle cache updates
     });
+
+    // Handlers
+    const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
+        setSelectedSourceDocument(group);
+        setIsSourceDetailModalOpen(true);
+    }, []);
+
+    const handleRetry = useCallback((doc: SourceDocument) => {
+        setEditRetryDocument(doc);
+    }, []);
+
+    const handleDeleteSourceConfirm = useCallback((doc: SourceDocument) => {
+        setDeleteConfirm({
+            open: true,
+            type: "sourceDocument",
+            id: doc.id,
+            title: t("deleteConfirmTitle"),
+            description: t("deleteConfirmDesc")
+        });
+    }, [t]);
+
+    const handleUpdateLedgerEntry = useCallback((id: string, data: any) => {
+        updateMutation.mutate({ ledgerEntryId: id, data });
+    }, [updateMutation]);
+
+    const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
+        setSelectedLedgerEntry(entry);
+        setIsDetailModalOpen(true);
+    }, []);
+
+    const handleCloseSourceDetail = useCallback(() => {
+        setIsSourceDetailModalOpen(false);
+        setSelectedSourceDocument(null);
+    }, []);
+
+    const handleCloseLedgerDetail = useCallback(() => {
+        setIsDetailModalOpen(false);
+        setSelectedLedgerEntry(null);
+    }, []);
+
+    const handleUpdateTitle = useCallback(async (title: string) => {
+        if (selectedSourceDocument) {
+            await updateSourceDocumentMutation.mutateAsync({ id: selectedSourceDocument.sourceDocument.id, title });
+        }
+    }, [selectedSourceDocument, updateSourceDocumentMutation]);
+
+    const handleBatchUpdate = useCallback(async (ids: string[], data: any) => {
+        await batchUpdateLedgerEntriesMutation.mutateAsync({ ledgerEntryIds: ids, data });
+    }, [batchUpdateLedgerEntriesMutation]);
+
+    const handleDeleteEntryRequest = useCallback(async (id: string) => {
+        setDeleteConfirm({
+            open: true,
+            type: "ledgerEntry",
+            id,
+            title: t("deleteEntryConfirmTitle"),
+            description: t("deleteEntryConfirmDesc")
+        });
+    }, [t]);
+
+    const handleBatchDelete = useCallback(async (ids: string[]) => {
+        await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
+    }, [batchDeleteLedgerEntriesMutation]);
+
+    const handleUpdateLedgerEntryDetail = useCallback((data: any) => {
+        if (selectedLedgerEntry) {
+            updateMutation.mutate({
+                ledgerEntryId: selectedLedgerEntry.id,
+                data,
+            });
+        }
+    }, [selectedLedgerEntry, updateMutation]);
+
+    const handleDeleteLedgerEntryRequest = useCallback(() => {
+        if (selectedLedgerEntry) {
+            setDeleteConfirm({
+                open: true,
+                type: "ledgerEntry",
+                id: selectedLedgerEntry.id,
+                title: t("deleteEntryConfirmTitle"),
+                description: t("deleteEntryConfirmDesc")
+            });
+        }
+    }, [selectedLedgerEntry, t]);
 
     // Helper Action Handlers
     function handleDeleteConfirmAction() {
@@ -385,17 +465,11 @@ export function LedgerEntriesTab({
                                                 status="completed"
                                                 mainCurrency={ledger?.mainCurrency}
                                                 defaultExpanded={!ledger?.collapseBillsDefault}
-                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                onUpdateLedgerEntry={(id, data) => updateMutation.mutate({ ledgerEntryId: id, data })}
-                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
-                                                onViewDetails={() => {
-                                                    setSelectedSourceDocument(group);
-                                                    setIsSourceDetailModalOpen(true);
-                                                }}
-                                                onViewLedgerEntry={(entry) => {
-                                                    setSelectedLedgerEntry(entry);
-                                                    setIsDetailModalOpen(true);
-                                                }}
+                                                onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
+                                                onUpdateLedgerEntry={handleUpdateLedgerEntry}
+                                                onRetry={() => handleRetry(group.sourceDocument)}
+                                                onViewDetails={() => handleViewSourceDetail(group)}
+                                                onViewLedgerEntry={handleViewLedgerEntry}
                                             />
                                         </motion.div>
                                     ))}
@@ -423,14 +497,24 @@ export function LedgerEntriesTab({
 
             </div>
 
-            <ConfirmDialog
-                open={deleteConfirm.open}
-                onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title={deleteConfirm.title}
-                description={deleteConfirm.description}
-                onConfirm={handleDeleteConfirmAction}
-                variant="destructive"
-                confirmLabel={tCommon("delete")}
+            <SourceDocumentDetailModal
+                sourceDocument={selectedSourceDocument?.sourceDocument || null}
+                ledgerEntries={selectedSourceDocument?.ledgerEntries || []}
+                categories={categories}
+                preferredCurrencies={ledger?.currencies}
+                mainCurrency={ledger?.mainCurrency}
+                open={isSourceDetailModalOpen}
+                onClose={handleCloseSourceDetail}
+                onUpdateTitle={handleUpdateTitle}
+                onBatchUpdate={handleBatchUpdate}
+                onDeleteEntry={handleDeleteEntryRequest}
+                onBatchDelete={handleBatchDelete}
+                onViewLedgerEntry={handleViewLedgerEntry}
+                onDelete={() => {
+                    if (selectedSourceDocument) {
+                        handleDeleteSourceConfirm(selectedSourceDocument.sourceDocument);
+                    }
+                }}
             />
 
             <LedgerEntryDetailModal
@@ -439,66 +523,19 @@ export function LedgerEntriesTab({
                 preferredCurrencies={ledger?.currencies}
                 mainCurrency={ledger?.mainCurrency}
                 open={isDetailModalOpen}
-                onClose={() => {
-                    setIsDetailModalOpen(false);
-                    setSelectedLedgerEntry(null);
-                }}
-                onUpdate={(data) => {
-                    if (selectedLedgerEntry) {
-                        updateMutation.mutate({
-                            ledgerEntryId: selectedLedgerEntry.id,
-                            data,
-                        });
-                    }
-                }}
-                onDelete={() => {
-                    if (selectedLedgerEntry) {
-                        setDeleteConfirm({ open: true, type: "ledgerEntry", id: selectedLedgerEntry.id, title: t("deleteEntryConfirmTitle"), description: t("deleteEntryConfirmDesc") });
-                    }
-                }}
+                onClose={handleCloseLedgerDetail}
+                onUpdate={handleUpdateLedgerEntryDetail}
+                onDelete={handleDeleteLedgerEntryRequest}
             />
 
-            <SourceDocumentDetailModal
-                sourceDocument={selectedSourceDocument?.sourceDocument || null}
-                ledgerEntries={selectedSourceDocument?.ledgerEntries || []}
-                categories={categories}
-                preferredCurrencies={ledger?.currencies}
-                mainCurrency={ledger?.mainCurrency}
-                open={isSourceDetailModalOpen}
-                onClose={() => {
-                    setIsSourceDetailModalOpen(false);
-                    setSelectedSourceDocument(null);
-                }}
-                onUpdateTitle={async (title) => {
-                    if (selectedSourceDocument) {
-                        await updateSourceDocumentMutation.mutateAsync({ id: selectedSourceDocument.sourceDocument.id, title });
-                    }
-                }}
-                onBatchUpdate={async (ids, data) => {
-                    await batchUpdateLedgerEntriesMutation.mutateAsync({ ledgerEntryIds: ids, data });
-                }}
-                onDeleteEntry={async (id) => {
-                    setDeleteConfirm({ open: true, type: "ledgerEntry", id, title: t("deleteEntryConfirmTitle"), description: t("deleteEntryConfirmDesc") });
-                }}
-                onBatchDelete={async (ids) => {
-                    // Trigger batch delete mutation directly or after confirm usually, but here directly as requested within modal logic
-                    await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
-                }}
-                onViewLedgerEntry={(entry) => {
-                    setSelectedLedgerEntry(entry);
-                    setIsDetailModalOpen(true);
-                }}
-                onDelete={() => {
-                    if (selectedSourceDocument) {
-                        setDeleteConfirm({
-                            open: true,
-                            type: "sourceDocument",
-                            id: selectedSourceDocument.sourceDocument.id,
-                            title: t("deleteConfirmTitle"),
-                            description: t("deleteConfirmDesc")
-                        });
-                    }
-                }}
+            <ConfirmDialog
+                open={deleteConfirm.open}
+                onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+                title={deleteConfirm.title}
+                description={deleteConfirm.description}
+                onConfirm={handleDeleteConfirmAction}
+                variant="destructive"
+                confirmLabel={tCommon("delete")}
             />
 
             {/* Edit-Retry Dialog */}

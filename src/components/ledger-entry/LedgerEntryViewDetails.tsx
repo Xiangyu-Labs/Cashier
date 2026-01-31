@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { Calendar, Edit2, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { type ReactNode, useState, useRef, useEffect } from "react";
+import { type ReactNode, useState, useRef, useEffect, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +39,7 @@ interface LedgerEntryViewDetailsProps {
     onDelete: () => void;
 }
 
-export function LedgerEntryViewDetails({
+export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     ledgerEntry,
     isEditing,
     editData,
@@ -367,4 +367,4 @@ export function LedgerEntryViewDetails({
             </div>
         </div>
     );
-}
+});

@@ -1,5 +1,5 @@
 "use client";
-
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -26,7 +26,7 @@ interface ConfirmDialogProps {
 
 import { useTranslations } from "next-intl";
 
-export function ConfirmDialog({
+export const ConfirmDialog = memo(function ConfirmDialog({
     title,
     description,
     onConfirm,
@@ -69,4 +69,4 @@ export function ConfirmDialog({
             </DialogContent>
         </Dialog>
     );
-}
+});

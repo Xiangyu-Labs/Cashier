@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -38,7 +39,7 @@ export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
  * - Inherits theme from parent via `variant` prop
  * - Has a more compact layout
  */
-export function BillEntryItem({
+export const BillEntryItem = memo(function BillEntryItem({
     ledgerEntry,
     mainCurrency = "CNY",
     onView,
@@ -110,4 +111,4 @@ export function BillEntryItem({
             </div>
         </div>
     );
-}
+});

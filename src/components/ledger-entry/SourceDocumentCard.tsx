@@ -1,6 +1,6 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "./BillEntryItem";
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
@@ -27,16 +27,16 @@ function getSafeImageSrc(data: string): string {
   return `data:image/jpeg;base64,${data}`;
 }
 
-function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
+const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
   return (
     <span className="text-sm font-bold text-text">
       <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
       <TotalValue entries={entries} mainCurrency={mainCurrency} />
     </span>
   );
-}
+});
 
-function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
+const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
   const { subtotalsByCurrency, entryDates } = useMemo(() => {
     const groups: Record<string, number> = {};
     const dates: Record<string, string> = {};
@@ -92,7 +92,7 @@ function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCur
   }
 
   return totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+});
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument;
@@ -119,7 +119,7 @@ interface SourceDocumentCardProps {
   className?: string;
 }
 
-export function SourceDocumentCard({
+export const SourceDocumentCard = memo(function SourceDocumentCard({
   sourceDocument,
   ledgerEntries,
   categories: _,
@@ -356,4 +356,4 @@ export function SourceDocumentCard({
       />
     </div >
   );
-}
+});
