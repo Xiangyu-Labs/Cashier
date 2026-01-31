@@ -207,8 +207,10 @@ export async function cleanupExpiredOTPTokens(): Promise<number> {
       .delete(otpTokens)
       .where(lt(otpTokens.expires, new Date()));
 
-    logger.info({ deleted: result.rowCount }, "Cleaned up expired OTP tokens");
-    return result.rowCount || 0;
+    // For postgres-js/drizzle, the result from delete() should contain the count
+    const deletedCount = (result as any).count ?? 0;
+    logger.info({ deleted: deletedCount }, "Cleaned up expired OTP tokens");
+    return deletedCount;
   } catch (error) {
     logger.error({ error }, "Failed to cleanup expired OTP tokens");
     return 0;

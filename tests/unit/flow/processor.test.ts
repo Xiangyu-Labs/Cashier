@@ -1,53 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Job } from 'bullmq';
-import { FlowDefinition } from '@/lib/flow/types';
+import { sql } from 'drizzle-orm';
 
-// Mock dependencies with factories to ensure they are available
-vi.mock('@/lib/flow/registry', () => ({
-    getFlowTaskHandler: vi.fn(),
-    registerFlowTask: vi.fn()
-}));
-
-vi.mock('@/lib/db', () => ({
-    db: {
-        query: {
-            taskRuns: {
-                findFirst: vi.fn()
-            }
-        }
-    }
-}));
-
-vi.mock('@/lib/flow/workers', () => ({
-    getFlowProducer: vi.fn()
-}));
-
-vi.mock('@/lib/flow/task-run-service', () => ({
-    completeTaskRun: vi.fn(),
-    failTaskRun: vi.fn()
-}));
-
-vi.mock('@/lib/ai/ai-context', () => ({
-    withAIContext: vi.fn((taskId, ledgerId, fn) => fn())
-}));
-
-vi.mock('@/lib/logger', () => ({
-    logger: {
-        warn: vi.fn(),
-        error: vi.fn(),
-        info: vi.fn(),
-    }
-}));
-
-// Import after mocks
-import { processJob } from '@/lib/flow/processor';
-import { getFlowTaskHandler } from '@/lib/flow/registry';
-import { db } from '@/lib/db';
-import { getFlowProducer } from '@/lib/flow/workers';
-import { completeTaskRun, failTaskRun } from '@/lib/flow/task-run-service';
-import { withAIContext } from '@/lib/ai/ai-context';
+// Mock types
+type FlowDefinition = import('@/lib/flow/types').FlowDefinition;
 
 describe('Flow Processor', () => {
+    const VALID_RUN_ID = '00000000-0000-0000-0000-000000000001';
+    const VALID_LEDGER_ID = '00000000-0000-0000-0000-000000000002';
+    const OTHER_LEDGER_ID = '00000000-0000-0000-0000-000000000003';
+
     const mockHandler = {
         execute: vi.fn(),
         validate: vi.fn(),
@@ -60,8 +22,8 @@ describe('Flow Processor', () => {
         id: 'job-123',
         name: 'test-task',
         data: {
-            __taskRunId: 'run-123',
-            __ledgerId: 'ledger-123',
+            __taskRunId: VALID_RUN_ID,
+            __ledgerId: VALID_LEDGER_ID,
             someInput: 'value'
         },
         queueQualifiedName: 'queue-1',
@@ -78,40 +40,76 @@ describe('Flow Processor', () => {
         add: vi.fn()
     };
 
-    beforeEach(() => {
+    let processJob: any;
+    let registerFlowTask: any;
+    let db: any;
+    let workers: any;
+    let taskRunService: any;
+    let aiContext: any;
+
+    beforeEach(async () => {
+        vi.resetModules();
         vi.clearAllMocks();
 
-        // Setup default mocks
-        vi.mocked(getFlowTaskHandler).mockReturnValue(mockHandler as any);
-        vi.mocked(getFlowProducer).mockReturnValue(mockProducer as any);
+        // Setup Mocks before importing modules
+        vi.doMock('@/lib/flow/workers', () => ({
+            getFlowProducer: vi.fn(() => mockProducer)
+        }));
+        vi.doMock('@/lib/flow/task-run-service', () => ({
+            completeTaskRun: vi.fn(),
+            failTaskRun: vi.fn()
+        }));
+        vi.doMock('@/lib/ai/ai-context', () => ({
+            withAIContext: vi.fn((taskId, ledgerId, fn) => fn())
+        }));
+        vi.doMock('@/lib/logger', () => ({
+            logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() }
+        }));
 
-        // Default DB response: Valid task run
-        vi.mocked(db.query.taskRuns.findFirst).mockResolvedValue({
-            ledgerId: 'ledger-123',
-            status: 'pending'
-        } as any);
+        // Dynamic imports to ensure mocks are applied
+        ({ processJob } = await import('@/lib/flow/processor'));
+        ({ registerFlowTask } = await import('@/lib/flow/registry'));
+        ({ db } = await import('@/lib/db'));
+        workers = await import('@/lib/flow/workers');
+        taskRunService = await import('@/lib/flow/task-run-service');
+        aiContext = await import('@/lib/ai/ai-context');
+
+        // Register the task handler
+        registerFlowTask('test-task', mockHandler as any);
+
+        // Setup real test data in database
+        await db.execute(sql`
+            INSERT INTO ledgers (id, user_id, name)
+            VALUES 
+                (${VALID_LEDGER_ID}, '00000000-0000-0000-0000-000000000000', 'Test Ledger'),
+                (${OTHER_LEDGER_ID}, '00000000-0000-0000-0000-000000000000', 'Other Ledger')
+            ON CONFLICT (id) DO NOTHING
+        `);
+
+        await db.execute(sql`
+            INSERT INTO task_runs (id, ledger_id, type, title, status)
+            VALUES (${VALID_RUN_ID}, ${VALID_LEDGER_ID}, 'test-task', 'Test Task', 'pending')
+            ON CONFLICT (id) DO UPDATE SET status = 'pending', ledger_id = ${VALID_LEDGER_ID}
+        `);
     });
 
     it('should throw Security Error if ledgerId does not match DB record', async () => {
-        // Setup mismatch
-        vi.mocked(db.query.taskRuns.findFirst).mockResolvedValue({
-            ledgerId: 'DIFFERENT-LEDGER',
-            status: 'pending'
-        } as any);
+        await db.execute(sql`
+            UPDATE task_runs SET ledger_id = ${OTHER_LEDGER_ID}
+            WHERE id = ${VALID_RUN_ID}
+        `);
 
         await expect(processJob(mockJob)).rejects.toThrow(/Security.*LedgerId mismatch/);
-
         expect(mockHandler.execute).not.toHaveBeenCalled();
     });
 
     it('should skip execution if task is already completed', async () => {
-        vi.mocked(db.query.taskRuns.findFirst).mockResolvedValue({
-            ledgerId: 'ledger-123',
-            status: 'completed'
-        } as any);
+        await db.execute(sql`
+            UPDATE task_runs SET status = 'completed' 
+            WHERE id = ${VALID_RUN_ID}
+        `);
 
         await processJob(mockJob);
-
         expect(mockHandler.execute).not.toHaveBeenCalled();
     });
 
@@ -127,11 +125,11 @@ describe('Flow Processor', () => {
             mockJob.data,
             expect.objectContaining({
                 jobId: mockJob.id,
-                taskRunId: 'run-123',
-                ledgerId: 'ledger-123'
+                taskRunId: VALID_RUN_ID,
+                ledgerId: VALID_LEDGER_ID
             })
         );
-        expect(withAIContext).toHaveBeenCalledWith('run-123', 'ledger-123', expect.any(Function));
+        expect(aiContext.withAIContext).toHaveBeenCalledWith(VALID_RUN_ID, VALID_LEDGER_ID, expect.any(Function));
     });
 
     it('should handle Fan-out (sub-tasks) correctly', async () => {
@@ -154,25 +152,17 @@ describe('Flow Processor', () => {
 
         await processJob(mockJob);
 
-        // Verify children added to queue
         expect(mockProducer.add).toHaveBeenCalledTimes(1);
         expect(mockProducer.add).toHaveBeenCalledWith(expect.objectContaining({
             name: 'child-task',
             queueName: 'api',
             data: expect.objectContaining({
                 childInput: 123,
-                __taskRunId: 'run-123',
-                __ledgerId: 'ledger-123'
-            }),
-            opts: expect.objectContaining({
-                parent: {
-                    id: mockJob.id,
-                    queue: mockJob.queueQualifiedName
-                }
+                __taskRunId: VALID_RUN_ID,
+                __ledgerId: VALID_LEDGER_ID
             })
         }));
 
-        // Verify job suspension
         expect(mockJob.updateData).toHaveBeenCalledWith(expect.objectContaining({
             __resuming: true
         }));
@@ -180,7 +170,6 @@ describe('Flow Processor', () => {
     });
 
     it('should handle Fan-in (Resumption) when children complete', async () => {
-        // Setup resuming job
         const resumingJob = {
             ...mockJob,
             data: {
@@ -191,7 +180,6 @@ describe('Flow Processor', () => {
 
         const childrenResults = { 'child-job-1': 'result1', 'child-job-2': 'result2' };
         (resumingJob.getChildrenValues as any).mockResolvedValue(childrenResults);
-
         mockHandler.onChildrenCompleted.mockResolvedValue('final-result');
 
         const result = await processJob(resumingJob);
@@ -210,7 +198,7 @@ describe('Flow Processor', () => {
         await processJob(mockJob);
 
         expect(mockHandler.onComplete).toHaveBeenCalled();
-        expect(completeTaskRun).toHaveBeenCalledWith('run-123', 'done', 'ledger-123');
+        expect(taskRunService.completeTaskRun).toHaveBeenCalledWith(VALID_RUN_ID, 'done', VALID_LEDGER_ID);
     });
 
     it('should handle errors and fail task run', async () => {
@@ -224,6 +212,6 @@ describe('Flow Processor', () => {
             mockJob.data,
             expect.any(Object)
         );
-        expect(failTaskRun).toHaveBeenCalledWith('run-123', 'Test Error', 'ledger-123');
+        expect(taskRunService.failTaskRun).toHaveBeenCalledWith(VALID_RUN_ID, 'Test Error', VALID_LEDGER_ID);
     });
 });

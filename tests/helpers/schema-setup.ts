@@ -15,7 +15,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS source_documents CASCADE;
       DROP TABLE IF EXISTS entry_categories CASCADE;
       DROP TABLE IF EXISTS service_credentials CASCADE;
-      DROP TABLE IF EXISTS processing_tasks CASCADE;
+      DROP TABLE IF EXISTS otp_tokens CASCADE;
       DROP TABLE IF EXISTS task_runs CASCADE;
       DROP TABLE IF EXISTS share_access_logs CASCADE;
       DROP TABLE IF EXISTS shares CASCADE;
@@ -88,6 +88,22 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         PRIMARY KEY (identifier, token)
       );
 
+      CREATE TABLE otp_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires TIMESTAMP NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        locked_until TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_attempt_at TIMESTAMP,
+        verified_at TIMESTAMP,
+        ip_address TEXT
+      );
+
+      CREATE INDEX idx_otp_tokens_email ON otp_tokens(email);
+      CREATE INDEX idx_otp_tokens_expires ON otp_tokens(expires);
+
       CREATE INDEX idx_sessions_user_id ON sessions(user_id);
     `);
 
@@ -154,24 +170,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         name TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         last_used_at TIMESTAMP
-      );
-
-      CREATE TABLE processing_tasks (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        type TEXT NOT NULL,
-        title TEXT NOT NULL,
-        ledger_id UUID REFERENCES ledgers(id) ON DELETE CASCADE,
-        entity_id UUID,
-        entity_type TEXT,
-        status TEXT NOT NULL DEFAULT 'queued',
-        error TEXT,
-        input JSONB,
-        output JSONB,
-        progress JSONB,
-        metadata JSONB,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        started_at TIMESTAMP,
-        completed_at TIMESTAMP
       );
 
       CREATE TABLE currency_rates (
