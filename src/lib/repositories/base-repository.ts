@@ -9,18 +9,20 @@ type DbClient = typeof db;
 /**
  * Query options for findMany and findFirst methods
  */
-export interface QueryOptions<T> {
+export interface QueryOptions<_T> {
     where?: SQL<unknown>;
-    orderBy?: SQL<unknown> | SQL<unknown>[];
+    orderBy?: SQL<unknown> | SQL<unknown>[] | ((table: any, helpers: any) => SQL<unknown> | SQL<unknown>[]);
     limit?: number;
     offset?: number;
+    with?: Record<string, boolean | object>;
 }
 
 export abstract class BaseRepository<T extends { id: string }, U extends PgTable> {
     constructor(
         protected readonly table: U,
         protected readonly entityType: EntityType,
-        protected readonly ledgerIdField: string = "ledgerId"
+        protected readonly ledgerIdField: string = "ledgerId",
+        protected readonly queryKey?: string
     ) { }
 
     protected get db(): DbClient {
@@ -48,7 +50,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
     /**
      * Find multiple records matching the query conditions
      * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
-     * @param options - Query options (where, orderBy, limit, offset)
+     * @param options - Query options (where, orderBy, limit, offset, with)
      */
     async findMany(ledgerId: string, options: QueryOptions<T> = {}): Promise<T[]> {
         const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
@@ -61,10 +63,74 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             conditions.push(options.where);
         }
 
+        // Use relational query API if 'with' is provided
+        if (options.with) {
+            // Get the query builder from db.query
+            // Use explicit queryKey if provided, otherwise fallback to table name
+            const tableName = this.queryKey || (this.table[Symbol.for('drizzle:Name') as any] as string);
+            const queryBuilder = (this.db.query as any)[tableName];
+
+            if (!queryBuilder) {
+                throw new Error(`Relational query builder not found for table ${tableName}`);
+            }
+
+            let query = queryBuilder.findMany({
+                where: and(...conditions),
+                with: options.with,
+            });
+
+            // Apply ordering if provided (for relational queries)
+            if (options.orderBy) {
+                if (typeof options.orderBy === 'function') {
+                    query = queryBuilder.findMany({
+                        where: and(...conditions),
+                        with: options.with,
+                        orderBy: options.orderBy,
+                    });
+                } else {
+                    query = queryBuilder.findMany({
+                        where: and(...conditions),
+                        with: options.with,
+                        orderBy: options.orderBy,
+                    });
+                }
+            }
+
+            // Apply limit if provided
+            if (options.limit !== undefined) {
+                query = queryBuilder.findMany({
+                    where: and(...conditions),
+                    with: options.with,
+                    orderBy: options.orderBy,
+                    limit: options.limit,
+                });
+            }
+
+            // Apply offset if provided
+            if (options.offset !== undefined) {
+                query = queryBuilder.findMany({
+                    where: and(...conditions),
+                    with: options.with,
+                    orderBy: options.orderBy,
+                    limit: options.limit,
+                    offset: options.offset,
+                });
+            }
+
+            const results = await query;
+            return results as T[];
+        }
+
+        // Standard query without relations
         let query = this.db.select().from(this.table).where(and(...conditions));
 
         // Apply ordering if provided
         if (options.orderBy) {
+            if (typeof options.orderBy === 'function') {
+                // For function-based orderBy, we can't use it with standard select
+                // This is only supported with relational queries
+                throw new Error('Function-based orderBy requires using relational queries with "with" option');
+            }
             const orderByArray = Array.isArray(options.orderBy) ? options.orderBy : [options.orderBy];
             query = query.orderBy(...orderByArray) as typeof query;
         }
@@ -270,6 +336,37 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             inArray(tableWithId.id, ids),
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
+
+        const deleted = await this.db.delete(this.table)
+            .where(and(...conditions))
+            .returning();
+
+        if (deleted.length > 0) {
+            eventBus.publish({
+                type: 'entity:changed',
+                ledgerId: ledgerId,
+                entity: this.entityType,
+                action: 'deleted',
+                ids: (deleted as T[]).map(d => d.id)
+            });
+        }
+    }
+
+    /**
+     * Delete multiple records matching the query conditions and publish 'deleted' event
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     * @param options - Query options (where)
+     */
+    async deleteMany(ledgerId: string, options: Pick<QueryOptions<T>, 'where'> = {}): Promise<void> {
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+
+        // Start with ledger isolation condition
+        const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
+
+        // Add additional where conditions if provided
+        if (options.where) {
+            conditions.push(options.where);
+        }
 
         const deleted = await this.db.delete(this.table)
             .where(and(...conditions))

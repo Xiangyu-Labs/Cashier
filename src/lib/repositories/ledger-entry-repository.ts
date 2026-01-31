@@ -6,7 +6,7 @@ export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 
 class LedgerEntryRepository extends BaseRepository<LedgerEntry, typeof ledgerEntries> {
     constructor() {
-        super(ledgerEntries, 'ledger_entry');
+        super(ledgerEntries, 'ledger_entry', 'ledgerId', 'ledgerEntries');
     }
 }
 

@@ -69,6 +69,13 @@ afterEach(() => {
   cleanup();
 });
 
+// Mock window.confirm
+if (typeof window !== "undefined") {
+  (window as any).confirm = vi.fn(() => true);
+} else {
+  (global as any).confirm = vi.fn(() => true);
+}
+
 // Mock the db module globally
 vi.mock("@/lib/db", () => ({
   get db() {
@@ -106,10 +113,37 @@ vi.mock("@/auth", () => ({
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof import("react");
+  const messages = require("../messages/zh.json");
+
   return {
-    useTranslations: () => (_key: string) => _key,
+    useTranslations: (namespace?: string) => {
+      const nsMessages = namespace ? messages[namespace] : messages;
+      return (key: string, values?: any) => {
+        let msg = nsMessages?.[key];
+
+        // Absolute fallback: search all namespaces
+        if (!msg) {
+          for (const ns in messages) {
+            if (messages[ns] && typeof messages[ns] === 'object' && messages[ns][key]) {
+              msg = messages[ns][key];
+              break;
+            }
+          }
+        }
+
+        if (!msg) return key;
+
+        let translated = msg;
+        if (values && typeof translated === "string") {
+          Object.keys(values).forEach((k) => {
+            translated = translated.replace(`{${k}}`, String(values[k]));
+          });
+        }
+        return translated;
+      };
+    },
     useLocale: () => "zh",
-    useMessages: () => ({}),
+    useMessages: () => messages,
     useTimeZone: () => "UTC",
     useNow: () => new Date(),
     NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>

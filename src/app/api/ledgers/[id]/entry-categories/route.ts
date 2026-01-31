@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 import { LedgerScope } from "@/lib/scope/ledger-scope";
-import { desc } from "drizzle-orm";
+import { entryCategories } from "@/lib/db/schema";
+import { asc, desc } from "drizzle-orm";
 
 const createCategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const scope = new LedgerScope(id);
     const ledgerCategories = await scope.categories.findMany({
-      orderBy: { sortOrder: "asc" },
+      orderBy: asc(entryCategories.sortOrder),
     });
     return NextResponse.json(ledgerCategories);
   } catch (error) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const scope = new LedgerScope(id);
     const existingCategories = await scope.categories.findMany({
-      orderBy: { sortOrder: "desc" },
+      orderBy: desc(entryCategories.sortOrder),
       limit: 1,
     });
     const maxSortOrder = existingCategories[0]?.sortOrder ?? 0;

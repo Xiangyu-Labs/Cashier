@@ -143,7 +143,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         item_name TEXT NOT NULL,
         description TEXT,
         entry_date DATE,
-        anomaly_codes JSONB DEFAULT '[]'::jsonb,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
 
@@ -202,6 +201,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       CREATE TABLE shares (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         source_document_id UUID NOT NULL REFERENCES source_documents(id) ON DELETE CASCADE,
+        ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         expires_at TIMESTAMP,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -209,6 +209,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       );
       
       CREATE INDEX idx_shares_source_doc ON shares(source_document_id);
+      CREATE INDEX idx_shares_ledger ON shares(ledger_id);
     `);
 
   });

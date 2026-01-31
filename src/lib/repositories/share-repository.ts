@@ -7,7 +7,7 @@ export type Share = InferSelectModel<typeof shares>;
 
 export class ShareRepository extends BaseRepository<Share, typeof shares> {
     constructor() {
-        super(shares, 'share', "sourceDocumentId"); // Using sourceDocumentId as a proxy for ledgerId context if needed, though shares are usually public
+        super(shares, 'share', "ledgerId", "shares");
     }
 
     async findActiveBySourceDocumentId(sourceDocumentId: string) {

@@ -123,7 +123,10 @@
         "input": "输入",
         "output": "输出",
         "sending_status": "发送中...",
-        "unclassified": "未分类"
+        "unclassified": "未分类",
+        "edit": "编辑",
+        "selectAll": "全选",
+        "deselectAll": "取消全选"
     },
     "SourceDocumentInput": {
         "placeholder": "输入消费记录，例如：午饭35元... (支持粘贴图片)",
@@ -162,7 +165,8 @@
         "batchCategory": "批量修改类别",
         "batchCurrency": "批量修改货币",
         "selectedCount": "已选 {count} 项",
-        "noEntries": "暂无明细项目"
+        "noEntries": "暂无明细项目",
+        "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？"
     },
     "Settings": {
         "title": "设置",

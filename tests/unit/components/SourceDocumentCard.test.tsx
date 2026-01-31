@@ -222,7 +222,7 @@ describe("SourceDocumentCard", () => {
 
     it("renders anomaly status and message when anomalyCodes is provided", () => {
         renderWithQuery(<SourceDocumentCard sourceDocument={baseSourceDocument} {...defaultProps} ledgerEntries={[]} status="anomaly" anomalyCodes={["internal_error"]} />);
-        expect(screen.getByText("internal_error")).toBeTruthy();
+        expect(screen.getByText("系统内部错误")).toBeTruthy();
     });
 
     it("renders total amount when status is completed", () => {

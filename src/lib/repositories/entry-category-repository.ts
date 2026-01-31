@@ -6,7 +6,7 @@ export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
 export class EntryCategoryRepository extends BaseRepository<EntryCategory, typeof entryCategories> {
     constructor() {
-        super(entryCategories, 'entry category', "ledgerId");
+        super(entryCategories, 'category', "ledgerId", "entryCategories");
     }
 }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { eq } from "drizzle-orm";
+import { ledgerEntries } from "@/lib/db/schema";
 
 type RouteParams = { params: Promise<{ id: string; sourceDocumentId: string }> };
 
@@ -12,14 +14,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         if (error || !scope) return error!;
 
         // Verify source document exists and belongs to ledger
-        const doc = await scope.documents.findById(sourceDocumentId);
+        const doc = await scope.documents.get(sourceDocumentId);
 
         if (!doc) {
             return NextResponse.json({ error: "Source document not found" }, { status: 404 });
         }
 
         // Delete associated ledger entries first
-        await scope.entries.deleteBySourceDocument(sourceDocumentId);
+        await scope.entries.deleteMany({
+            where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId)
+        });
 
         // Delete the source document
         await scope.documents.delete(sourceDocumentId);
@@ -45,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (error || !scope) return error!;
 
         // Verify source document exists and belongs to ledger
-        const doc = await scope.documents.findById(sourceDocumentId);
+        const doc = await scope.documents.get(sourceDocumentId);
 
         if (!doc) {
             return NextResponse.json({ error: "Source document not found" }, { status: 404 });

@@ -29,19 +29,19 @@ describe("SourceDocumentInput", () => {
     it("renders text area and buttons", () => {
         render(<SourceDocumentInput ledgerId="test-ledger" />);
 
-        expect(screen.getByPlaceholderText("placeholder")).toBeTruthy();
-        expect(screen.getByText("image")).toBeTruthy();
-        expect(screen.getByText("send")).toBeTruthy();
+        expect(screen.getByPlaceholderText(/输入消费记录/)).toBeTruthy();
+        expect(screen.getByText("图片")).toBeTruthy();
+        expect(screen.getByText("发送")).toBeTruthy();
     });
 
     it("sends text message", async () => {
         const user = userEvent.setup();
         render(<SourceDocumentInput ledgerId="test-ledger" />);
 
-        const input = screen.getByPlaceholderText("placeholder");
+        const input = screen.getByPlaceholderText(/输入消费记录/);
         await user.type(input, "Lunch 50");
 
-        const sendButton = screen.getByText("send");
+        const sendButton = screen.getByText("发送");
         await user.click(sendButton);
 
         expect(mockMutate).toHaveBeenCalledWith({
@@ -65,7 +65,7 @@ describe("SourceDocumentInput", () => {
         const images = await screen.findAllByRole("img");
         expect(images).toHaveLength(1); // One preview image
 
-        const sendButton = screen.getByText("send");
+        const sendButton = screen.getByText("发送");
         await user.click(sendButton);
 
         expect(mockMutate).toHaveBeenCalledWith({
@@ -99,11 +99,11 @@ describe("SourceDocumentInput", () => {
         expect(img.getAttribute("src")).toBe("data:image/png;base64,abc");
 
         // Should show retry button instead of send
-        expect(screen.queryByText("send")).toBeNull();
-        expect(screen.getByText("retry")).toBeTruthy();
+        expect(screen.queryByText("发送")).toBeNull();
+        expect(screen.getByText("重试")).toBeTruthy();
 
         // Should show advanced features (now visible in both modes)
-        expect(screen.getByText("advancedFeatures")).toBeTruthy();
+        expect(screen.getByText("高级功能")).toBeTruthy();
     });
 
     it("calls retry mutation in retry mode", async () => {
@@ -119,7 +119,7 @@ describe("SourceDocumentInput", () => {
             />
         );
 
-        const retryButton = screen.getByText("retry");
+        const retryButton = screen.getByText("重试");
         await user.click(retryButton);
 
         expect(mockMutate).toHaveBeenCalledWith({

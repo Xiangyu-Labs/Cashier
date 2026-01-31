@@ -7,7 +7,7 @@ export type SourceDocument = InferSelectModel<typeof sourceDocuments>;
 
 class SourceDocumentRepository extends BaseRepository<SourceDocument, typeof sourceDocuments> {
     constructor() {
-        super(sourceDocuments, 'source_document');
+        super(sourceDocuments, 'source_document', 'ledgerId', 'sourceDocuments');
     }
 
     async update(id: string, data: Partial<SourceDocument>, ledgerId?: string): Promise<SourceDocument> {

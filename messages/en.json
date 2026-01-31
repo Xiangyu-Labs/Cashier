@@ -162,7 +162,8 @@
         "batchCategory": "Batch Edit Category",
         "batchCurrency": "Batch Edit Currency",
         "selectedCount": "{count} {count, plural, one {item} other {items}} selected",
-        "noEntries": "No detail items"
+        "noEntries": "No detail items",
+        "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?"
     },
     "Settings": {
         "title": "Settings",

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
-import { eq, inArray, and, desc, lte, gte } from "drizzle-orm";
+import { inArray, and, desc, lte, gte } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { sourceDocumentRepo } from "@/lib/repositories";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 
 const sourceDocumentSchema = z.object({

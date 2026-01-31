@@ -7,10 +7,10 @@ export type TaskRun = InferSelectModel<typeof taskRuns>;
 
 class TaskRunRepository extends BaseRepository<TaskRun, typeof taskRuns> {
     constructor() {
-        super(taskRuns, 'task_run');
+        super(taskRuns, 'task_run', 'ledgerId', 'taskRuns');
     }
 
-    async fail(id: string, error: string, ledgerId?: string) {
+    async fail(id: string, error: string, ledgerId: string) {
         return this.update(id, {
             status: 'failed',
             error,
@@ -18,7 +18,7 @@ class TaskRunRepository extends BaseRepository<TaskRun, typeof taskRuns> {
         }, ledgerId);
     }
 
-    async complete(id: string, output: unknown, ledgerId?: string) {
+    async complete(id: string, output: unknown, ledgerId: string) {
         return this.update(id, {
             status: 'completed',
             output: output as unknown, // safe casting for jsonb

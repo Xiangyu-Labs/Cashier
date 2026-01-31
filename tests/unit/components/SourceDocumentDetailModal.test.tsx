@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitForElementToBeRemoved } from "@testing-library/react";
+import { render, screen, fireEvent, waitForElementToBeRemoved, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
 import { NextIntlClientProvider } from "next-intl";
 import zh from "../../../messages/zh.json";
@@ -89,6 +90,13 @@ const mockCategories = [
     },
 ];
 
+vi.mock("framer-motion", () => ({
+    motion: {
+        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    },
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 describe("SourceDocumentDetailModal", () => {
     const defaultProps = {
         sourceDocument: mockSourceDocument,
@@ -124,41 +132,43 @@ describe("SourceDocumentDetailModal", () => {
         const titleText = screen.getByText("Test Bill");
         fireEvent.click(titleText);
 
-        const input = screen.getByPlaceholderText("titlePlaceholder");
+        const input = screen.getByPlaceholderText("输入账单标题");
         fireEvent.change(input, { target: { value: "Updated Bill" } });
 
         const saveBtn = screen.getAllByRole("button").find(b => b.querySelector("svg.lucide-check"));
         if (saveBtn) fireEvent.click(saveBtn);
 
         expect(defaultProps.onUpdateTitle).toHaveBeenCalledWith("Updated Bill");
+        await waitFor(() => expect(screen.queryByPlaceholderText("输入账单标题")).toBeNull());
     });
 
     it("handles batch selection", async () => {
         renderModal();
 
         // Select all
-        const selectAllBtn = screen.getByText("selectAll");
+        const selectAllBtn = screen.getByText("全选");
         fireEvent.click(selectAllBtn);
 
-        // Verify batch toolbar appears (selected count key)
-        const toolbarText = screen.getByText(/selectedCount/);
+        // Verify batch toolbar appears (selected count in Chinese)
+        const toolbarText = screen.getByText(/已选/);
         expect(toolbarText).toBeDefined();
 
         // Deselect all
-        const deselectAllBtn = screen.getByText("deselectAll");
+        const deselectAllBtn = screen.getByText("取消全选");
         fireEvent.click(deselectAllBtn);
 
         // Wait for it to be removed (AnimatePresence exit animation)
-        await waitForElementToBeRemoved(() => screen.queryByText(/selectedCount/));
+        // Wait for it to be removed (AnimatePresence exit animation - mocked)
+        await waitFor(() => expect(screen.queryByText(/已选/)).toBeNull());
     });
 
     it("triggers batch category update", async () => {
+        const user = userEvent.setup();
         renderModal();
-        const selectAllBtn = screen.getByText("selectAll");
-        fireEvent.click(selectAllBtn);
-
-        const batchCatBtn = screen.getByText("batchCategory");
-        fireEvent.click(batchCatBtn);
+        const selectAllBtn = screen.getByText("全选");
+        await user.click(selectAllBtn);
+        const batchCatBtn = await screen.findByText(/批量修改类别/);
+        await user.click(batchCatBtn);
 
         // Find the Food option in the popover (the button one)
         const foodOptions = screen.getAllByText("Food");
@@ -169,15 +179,17 @@ describe("SourceDocumentDetailModal", () => {
             ["le-1", "le-2"],
             { categoryId: "cat-1" }
         );
+        await waitFor(() => expect(screen.queryByText(/批量修改类别/)).toBeNull());
     });
 
     it("triggers batch currency update", async () => {
+        const user = userEvent.setup();
         renderModal();
-        const selectAllBtn = screen.getByText("selectAll");
-        fireEvent.click(selectAllBtn);
+        const selectAllBtn = screen.getByText("全选");
+        await user.click(selectAllBtn);
 
-        const batchCurrBtn = screen.getByText("batchCurrency");
-        fireEvent.click(batchCurrBtn);
+        const batchCurrBtn = await screen.findByText(/批量修改货币/);
+        await user.click(batchCurrBtn);
 
         const eurOptions = screen.getAllByText("EUR");
         const eurBtn = eurOptions.find(el => el.closest("button"));
@@ -187,6 +199,7 @@ describe("SourceDocumentDetailModal", () => {
             ["le-1", "le-2"],
             { currency: "EUR" }
         );
+        await waitFor(() => expect(screen.queryByText(/批量修改货币/)).toBeNull());
     });
 
     it("triggers entry deletion", () => {
@@ -203,16 +216,18 @@ describe("SourceDocumentDetailModal", () => {
     it("triggers batch delete", async () => {
         const confirmMock = vi.fn(() => true);
         vi.stubGlobal("confirm", confirmMock);
+        const user = userEvent.setup();
         renderModal();
 
         // Select all
-        const selectAllBtn = screen.getByText("selectAll");
-        fireEvent.click(selectAllBtn);
+        const selectAllBtn = screen.getByText("全选");
+        await user.click(selectAllBtn);
 
         // Click batch delete
-        const batchDeleteBtn = screen.getByText("delete");
-        fireEvent.click(batchDeleteBtn);
+        const batchDeleteBtn = await screen.findByText(/删除/);
+        await user.click(batchDeleteBtn);
 
         expect(defaultProps.onBatchDelete).toHaveBeenCalledWith(["le-1", "le-2"]);
+        await waitFor(() => expect(screen.queryByText(/删除/)).toBeNull());
     });
 });

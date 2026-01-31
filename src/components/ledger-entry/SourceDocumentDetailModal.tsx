@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useState, useMemo, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -61,9 +61,9 @@ export function SourceDocumentDetailModal({
     const [isSaving, setIsSaving] = useState(false)
 
     // Reset state when modal opens
-    useMemo(() => {
+    useEffect(() => {
         if (open && sourceDocument) {
-            setTitle(sourceDocument.title || "")
+            setTitle(sourceDocument?.title || "")
             setSelectedIds([])
             setIsEditingTitle(false)
         }
@@ -117,7 +117,7 @@ export function SourceDocumentDetailModal({
 
     const handleBatchDelete = async () => {
         if (selectedIds.length === 0 || !onBatchDelete) return
-        if (!confirm(tCommon("confirmDeleteSelected"))) return
+        if (!confirm(t("confirmDeleteSelected", { count: selectedIds.length }))) return
 
         setIsSaving(true)
         try {
@@ -145,47 +145,49 @@ export function SourceDocumentDetailModal({
                             <FileText className="h-6 w-6" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <DialogTitle className="flex items-center gap-2">
-                                {isEditingTitle ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <Input
-                                            value={title}
-                                            onChange={(e) => setTitle(e.target.value)}
-                                            placeholder={t("titlePlaceholder")}
-                                            className="h-8"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") handleSaveTitle()
-                                                if (e.key === "Escape") setIsEditingTitle(false)
-                                            }}
-                                        />
-                                        <Button size="icon-sm" onClick={handleSaveTitle} disabled={isSaving}>
-                                            <Check className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon-sm" onClick={() => setIsEditingTitle(false)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div
-                                        className="flex items-center gap-2 cursor-pointer group"
-                                        onClick={() => setIsEditingTitle(true)}
-                                    >
-                                        <span className={cn(
-                                            "truncate max-w-[400px]",
-                                            !sourceDocument.title && "text-muted-foreground italic"
-                                        )}>
-                                            {sourceDocument.title || t("titlePlaceholder")}
-                                        </span>
-                                        <Badge variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {tCommon("edit")}
-                                        </Badge>
-                                    </div>
-                                )}
-                            </DialogTitle>
-                            <p className="text-sm text-muted">
-                                {new Date(sourceDocument.createdAt).toLocaleString()}
-                            </p>
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    {isEditingTitle ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <Input
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                placeholder={t("titlePlaceholder")}
+                                                className="h-8"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") handleSaveTitle()
+                                                    if (e.key === "Escape") setIsEditingTitle(false)
+                                                }}
+                                            />
+                                            <Button size="icon-sm" onClick={handleSaveTitle} disabled={isSaving}>
+                                                <Check className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon-sm" onClick={() => setIsEditingTitle(false)}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="flex items-center gap-2 cursor-pointer group"
+                                            onClick={() => setIsEditingTitle(true)}
+                                        >
+                                            <span className={cn(
+                                                "truncate max-w-[400px]",
+                                                !sourceDocument.title && "text-muted-foreground italic"
+                                            )}>
+                                                {sourceDocument.title || t("titlePlaceholder")}
+                                            </span>
+                                            <Badge variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {tCommon("edit")}
+                                            </Badge>
+                                        </div>
+                                    )}
+                                </DialogTitle>
+                                <DialogDescription className="text-sm text-muted">
+                                    {new Date(sourceDocument.createdAt).toLocaleString()}
+                                </DialogDescription>
+                            </DialogHeader>
                         </div>
                     </div>
                 </DialogHeader>

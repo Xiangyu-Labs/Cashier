@@ -1,9 +1,9 @@
 import { BaseRepository, QueryOptions } from "@/lib/repositories/base-repository";
-import { ledgerEntryRepo, LedgerEntry } from "@/lib/repositories/ledger-entry-repository";
-import { sourceDocumentRepo, SourceDocument } from "@/lib/repositories/source-document-repository";
-import { taskRunRepo, TaskRun } from "@/lib/repositories/task-run-repository";
-import { shareRepo, Share } from "@/lib/repositories/share-repository";
-import { entryCategoryRepo, EntryCategory } from "@/lib/repositories/entry-category-repository";
+import { ledgerEntryRepo } from "@/lib/repositories/ledger-entry-repository";
+import { sourceDocumentRepo } from "@/lib/repositories/source-document-repository";
+import { taskRunRepo } from "@/lib/repositories/task-run-repository";
+import { shareRepo } from "@/lib/repositories/share-repository";
+import { entryCategoryRepo } from "@/lib/repositories/entry-category-repository";
 import { PgTable } from "drizzle-orm/pg-core";
 import { InferInsertModel } from "drizzle-orm";
 
@@ -100,6 +100,14 @@ export class ScopedRepository<T extends { id: string }, U extends PgTable> {
      */
     async batchDelete(ids: string[]): Promise<void> {
         return this.repo.batchDelete(ids, this.ledgerId);
+    }
+
+    /**
+     * Delete multiple records matching the query conditions.
+     * The ledgerId is automatically injected to ensure tenant isolation.
+     */
+    async deleteMany(options: Pick<QueryOptions<T>, 'where'>): Promise<void> {
+        return this.repo.deleteMany(this.ledgerId, options);
     }
 }
 
