@@ -22,14 +22,24 @@ const publicPatterns = [
 ];
 
 // Check if the path matches any public pattern
-// Use startsWith for precise matching to prevent unintended matches
-// e.g., "/s/" should match "/s/abc" but NOT "/my-s/abc"
 function isPublicPath(pathname: string): boolean {
+    // Remove the locale prefix if present
+    const locales = routing.locales;
+    const pathSegments = pathname.split('/');
+    // pathSegments[0] is empty string because pathname starts with /
+    const hasLocale = pathSegments.length > 1 && locales.includes(pathSegments[1] as any);
+
+    // Get path without locale
+    const pathWithoutLocale = hasLocale
+        ? '/' + pathSegments.slice(2).join('/')
+        : pathname;
+
     return publicPatterns.some((pattern) => {
         // Remove trailing slash for exact match check
         const patternWithoutSlash = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern;
-        // Match if pathname starts with the pattern, or is exactly the pattern
-        return pathname.startsWith(pattern) || pathname === patternWithoutSlash;
+
+        // Match if path (without locale) starts with the pattern, or is exactly the pattern
+        return pathWithoutLocale.startsWith(pattern) || pathWithoutLocale === patternWithoutSlash;
     });
 }
 
@@ -45,7 +55,7 @@ export default auth((request) => {
         return NextResponse.next();
     }
 
-    // Skip auth for public routes
+    // Skip auth for public routes (now handles localized paths)
     if (isPublicPath(pathname)) {
         return intlMiddleware(request);
     }
@@ -62,8 +72,8 @@ export default auth((request) => {
     // For page routes, redirect to login if not authenticated
     if (!request.auth) {
         const locale = pathname.split("/")[1];
-        const validLocales = ["zh", "en"];
-        const targetLocale = validLocales.includes(locale) ? locale : "zh";
+        const validLocales = routing.locales;
+        const targetLocale = validLocales.includes(locale as any) ? locale : routing.defaultLocale;
         const loginUrl = new URL(`/${targetLocale}/login`, request.url);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);

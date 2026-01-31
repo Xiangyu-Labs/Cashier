@@ -1,4 +1,4 @@
-import { mainQueue, apiQueue } from "./queues";
+import { getMainQueue, getApiQueue } from "./queues";
 import { logger } from "@/lib/logger";
 import { taskRunRepo } from "@/lib/repositories";
 
@@ -24,7 +24,7 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
 
     try {
         // 2. Add to BullMQ
-        const queue = queueName === 'api' ? apiQueue : mainQueue;
+        const queue = queueName === 'api' ? getApiQueue() : getMainQueue();
 
         // Explicitly casting data to object to satisfy BullMQ types if needed, though 'unknown' might be strict
         const jobData = {
