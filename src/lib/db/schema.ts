@@ -14,7 +14,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import defaultLedger from "../../config/default-ledger.json";
+import { defaultLedger } from "../../config/default-ledger";
 
 // ==========================================
 // Enums

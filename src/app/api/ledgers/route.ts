@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ledgers, entryCategories } from "@/lib/db/schema";
-import defaultLedger from "@/config/default-ledger.json";
+import { defaultLedger } from "@/config/default-ledger";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { auth } from "@/auth";

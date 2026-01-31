@@ -20,7 +20,7 @@ export async function createDefaultLedgerForUser(
         .returning();
 
     // Seed categories for the new ledger
-    const { default: defaultLedger } = await import("@/config/default-ledger.json");
+    const { defaultLedger } = await import("@/config/default-ledger");
     const { entryCategories } = await import("@/lib/db/schema");
 
     if (defaultLedger.categories.length > 0) {
