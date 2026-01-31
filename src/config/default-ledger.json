@@ -3,16 +3,7 @@
         "aiLanguage": "zh-CN",
         "currencies": [
             "USD",
-            "AUD",
-            "BRL",
-            "CAD",
-            "CHF",
-            "CNY",
-            "EUR",
-            "GBP",
-            "HKD",
-            "JPY",
-            "SGD"
+            "CNY"
         ],
         "mainCurrency": "CNY",
         "autoRecognizeDate": false,
