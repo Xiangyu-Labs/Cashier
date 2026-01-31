@@ -32,7 +32,7 @@ export default function HomePage(): ReactNode {
         return;
       }
 
-      // If not authenticated, middleware will redirect to login
+      // If not authenticated, SessionManager or middleware will redirect to login
       if (sessionStatus === "unauthenticated") {
         return;
       }
