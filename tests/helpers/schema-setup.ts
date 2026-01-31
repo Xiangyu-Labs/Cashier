@@ -17,6 +17,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS service_credentials CASCADE;
       DROP TABLE IF EXISTS processing_tasks CASCADE;
       DROP TABLE IF EXISTS task_runs CASCADE;
+      DROP TABLE IF EXISTS share_access_logs CASCADE;
       DROP TABLE IF EXISTS shares CASCADE;
       DROP TABLE IF EXISTS ledgers CASCADE;
       DROP TABLE IF EXISTS currency_rates CASCADE;
@@ -208,8 +209,17 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         access_count INTEGER NOT NULL DEFAULT 0
       );
       
-      CREATE INDEX idx_shares_source_doc ON shares(source_document_id);
-      CREATE INDEX idx_shares_ledger ON shares(ledger_id);
+      CREATE TABLE share_access_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        share_id UUID NOT NULL REFERENCES shares(id) ON DELETE CASCADE,
+        accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        ip_address TEXT,
+        user_agent TEXT,
+        referer TEXT
+      );
+
+      CREATE INDEX idx_share_access_logs_share_id ON share_access_logs(share_id);
+      CREATE INDEX idx_share_access_logs_accessed_at ON share_access_logs(accessed_at);
     `);
 
   });
