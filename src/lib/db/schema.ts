@@ -11,6 +11,7 @@ import {
   boolean,
   index,
   primaryKey,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import defaultLedger from "@/config/default-ledger.json";
@@ -44,7 +45,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified"),
   image: text("image"),
-  // Default ledger will be set after ledger is created (no FK to avoid ordering issues)
+  // Default ledger will be set after ledger is created (no FK to avoid circular type dependency)
   defaultLedgerId: uuid("default_ledger_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -124,6 +125,7 @@ export const ledgers = pgTable("ledgers", {
 export const entryCategories = pgTable("entry_categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   ledgerId: uuid("ledger_id")
+    .notNull()
     .references(() => ledgers.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
@@ -132,7 +134,9 @@ export const entryCategories = pgTable("entry_categories", {
   isEditable: boolean("is_editable").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  unique("uniq_category_name_per_ledger").on(table.ledgerId, table.name),
+]);
 
 // SourceDocuments (原始凭证)
 export const sourceDocuments = pgTable("source_documents", {
@@ -162,12 +166,16 @@ export const shares = pgTable("shares", {
   sourceDocumentId: uuid("source_document_id")
     .notNull()
     .references(() => sourceDocuments.id, { onDelete: "cascade" }),
+  ledgerId: uuid("ledger_id")
+    .notNull()
+    .references(() => ledgers.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at"),  // null = never expires
   isActive: boolean("is_active").notNull().default(true),
   accessCount: integer("access_count").notNull().default(0),
 }, (table) => [
   index("idx_shares_source_doc").on(table.sourceDocumentId),
+  index("idx_shares_ledger").on(table.ledgerId),
 ]);
 
 // LedgerEntry（账目分录）
@@ -305,6 +313,10 @@ export const sharesRelations = relations(shares, ({ one }) => ({
   sourceDocument: one(sourceDocuments, {
     fields: [shares.sourceDocumentId],
     references: [sourceDocuments.id],
+  }),
+  ledger: one(ledgers, {
+    fields: [shares.ledgerId],
+    references: [ledgers.id],
   }),
 }));
 

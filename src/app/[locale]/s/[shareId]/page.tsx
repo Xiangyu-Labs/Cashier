@@ -32,8 +32,8 @@ export default async function SharePage({ params }: RouteParams) {
             id: share.sourceDocument.id,
             title: share.sourceDocument.title,
             text: share.sourceDocument.text,
-            imageUrls: share.sourceDocument.imageUrls,
-            createdAt: share.sourceDocument.createdAt,
+            imageUrls: share.sourceDocument.imageUrls || [],
+            createdAt: share.sourceDocument.createdAt.toISOString(),
         },
         entries: share.sourceDocument.ledgerEntries.map(entry => ({
             id: entry.id,
@@ -41,7 +41,7 @@ export default async function SharePage({ params }: RouteParams) {
             currency: entry.currency,
             itemName: entry.itemName,
             description: entry.description,
-            entryDate: entry.entryDate,
+            entryDate: entry.entryDate ? entry.entryDate.toISOString() : null,
             category: entry.category ? {
                 id: entry.category.id,
                 name: entry.category.name,

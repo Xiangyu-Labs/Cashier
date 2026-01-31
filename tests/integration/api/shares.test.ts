@@ -64,6 +64,7 @@ describe("Share API", () => {
 
         const [share] = await db.insert(shares).values({
             sourceDocumentId: doc.id,
+            ledgerId: ledger.id,
             isActive: true,
             accessCount: 0
         }).returning();
@@ -99,6 +100,7 @@ describe("Share API", () => {
 
         const [share] = await db.insert(shares).values({
             sourceDocumentId: doc.id,
+            ledgerId: ledger.id,
             isActive: true,
             expiresAt: yesterday,
             accessCount: 0

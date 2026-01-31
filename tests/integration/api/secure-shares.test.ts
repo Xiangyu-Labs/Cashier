@@ -25,6 +25,7 @@ describe("Share API Security", () => {
 
         const [share] = await db.insert(shares).values({
             sourceDocumentId: doc.id,
+            ledgerId,
             isActive: true,
         }).returning();
 

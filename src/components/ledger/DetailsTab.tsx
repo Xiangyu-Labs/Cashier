@@ -50,7 +50,6 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     } = useInfiniteQuery({
         queryKey: ["ledgerEntries", ledgerId, "confirmed", startDateStr, endDateStr],
         queryFn: ({ pageParam }) => fetchLedgerEntries(ledgerId, {
-            status: "confirmed",
             limit: 20,
             startDate: startDateStr,
             endDate: endDateStr,

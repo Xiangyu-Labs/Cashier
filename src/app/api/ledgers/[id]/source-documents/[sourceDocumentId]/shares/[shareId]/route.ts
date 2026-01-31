@@ -13,7 +13,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const { error } = await requireLedgerAccess(ledgerId);
         if (error) return error;
 
-        await shareRepo.update(shareId, { isActive: false });
+        await shareRepo.update(shareId, { isActive: false }, ledgerId);
 
         return NextResponse.json({ success: true });
     } catch (error) {

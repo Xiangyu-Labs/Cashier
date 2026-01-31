@@ -2,9 +2,19 @@ import { db } from "@/lib/db";
 import { eventBus } from "@/lib/events/event-bus";
 import { EntityType } from "@/lib/events/types";
 import { PgTable, PgColumn } from "drizzle-orm/pg-core";
-import { eq, inArray, and, InferInsertModel } from "drizzle-orm";
+import { eq, inArray, and, InferInsertModel, SQL } from "drizzle-orm";
 
 type DbClient = typeof db;
+
+/**
+ * Query options for findMany and findFirst methods
+ */
+export interface QueryOptions<T> {
+    where?: SQL<unknown>;
+    orderBy?: SQL<unknown> | SQL<unknown>[];
+    limit?: number;
+    offset?: number;
+}
 
 export abstract class BaseRepository<T extends { id: string }, U extends PgTable> {
     constructor(
@@ -18,83 +28,148 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
     }
 
     /**
-     * Get a record by ID, optionally enforcing ledger ownership
+     * Get a record by ID, enforcing ledger ownership
+     * @param id - The record ID
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
      */
-    async getById(id: string, ledgerId?: string): Promise<T | null> {
+    async getById(id: string, ledgerId: string): Promise<T | null> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
 
-        const conditions = [eq(tableWithId.id, id)];
-        if (ledgerId) {
-             const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
-             conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
-        }
+        const conditions = [
+            eq(tableWithId.id, id),
+            eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
+        ];
 
         const [result] = await this.db.select().from(this.table).where(and(...conditions));
         return (result as T) || null;
     }
 
     /**
-     * Insert a record and publish 'created' event
+     * Find multiple records matching the query conditions
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     * @param options - Query options (where, orderBy, limit, offset)
      */
-    async create(data: InferInsertModel<U>, ledgerId?: string): Promise<T> {
+    async findMany(ledgerId: string, options: QueryOptions<T> = {}): Promise<T[]> {
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+
+        // Start with ledger isolation condition
+        const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
+
+        // Add additional where conditions if provided
+        if (options.where) {
+            conditions.push(options.where);
+        }
+
+        let query = this.db.select().from(this.table).where(and(...conditions));
+
+        // Apply ordering if provided
+        if (options.orderBy) {
+            const orderByArray = Array.isArray(options.orderBy) ? options.orderBy : [options.orderBy];
+            query = query.orderBy(...orderByArray) as typeof query;
+        }
+
+        // Apply limit if provided
+        if (options.limit !== undefined) {
+            query = query.limit(options.limit) as typeof query;
+        }
+
+        // Apply offset if provided
+        if (options.offset !== undefined) {
+            query = query.offset(options.offset) as typeof query;
+        }
+
+        const results = await query;
+        return results as T[];
+    }
+
+    /**
+     * Find the first record matching the query conditions
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     * @param options - Query options (where, orderBy)
+     */
+    async findFirst(ledgerId: string, options: QueryOptions<T> = {}): Promise<T | null> {
+        const results = await this.findMany(ledgerId, { ...options, limit: 1 });
+        return results[0] || null;
+    }
+
+    /**
+     * Count records matching the query conditions
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     * @param options - Query options (where)
+     */
+    async count(ledgerId: string, options: Pick<QueryOptions<T>, 'where'> = {}): Promise<number> {
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+
+        // Start with ledger isolation condition
+        const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
+
+        // Add additional where conditions if provided
+        if (options.where) {
+            conditions.push(options.where);
+        }
+
+        const results = await this.db.select().from(this.table).where(and(...conditions));
+        return results.length;
+    }
+
+    /**
+     * Insert a record and publish 'created' event
+     * @param data - The data to insert
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     */
+    async create(data: InferInsertModel<U>, ledgerId: string): Promise<T> {
         const [result] = await this.db.insert(this.table).values(data).returning();
         if (!result) throw new Error(`Failed to create entity ${this.entityType}`);
         const typedResult = result as T;
 
-        // Resolve ledgerId from data or argument
-        const resolvedLedgerId = ledgerId || (typedResult as Record<string, unknown>)[this.ledgerIdField] as string;
-
-        if (resolvedLedgerId) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: resolvedLedgerId,
-                entity: this.entityType,
-                action: 'created',
-                ids: [typedResult.id]
-            });
-        }
+        eventBus.publish({
+            type: 'entity:changed',
+            ledgerId: ledgerId,
+            entity: this.entityType,
+            action: 'created',
+            ids: [typedResult.id]
+        });
 
         return typedResult;
     }
 
     /**
      * Batch insert records and publish 'created' event
+     * @param data - Array of data to insert
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
      */
-    async batchCreate(data: InferInsertModel<U>[], ledgerId?: string): Promise<T[]> {
+    async batchCreate(data: InferInsertModel<U>[], ledgerId: string): Promise<T[]> {
         if (data.length === 0) return [];
 
         const results = await this.db.insert(this.table).values(data).returning();
         const typedResults = results as T[];
 
-        // Assume all belong to the same ledger if batch inserted, or pick from first
-        const firstResult = typedResults[0] as Record<string, unknown>;
-        const resolvedLedgerId = ledgerId || firstResult[this.ledgerIdField] as string;
-
-        if (resolvedLedgerId) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: resolvedLedgerId,
-                entity: this.entityType,
-                action: 'created',
-                ids: typedResults.map(r => r.id)
-            });
-        }
+        eventBus.publish({
+            type: 'entity:changed',
+            ledgerId: ledgerId,
+            entity: this.entityType,
+            action: 'created',
+            ids: typedResults.map(r => r.id)
+        });
 
         return typedResults;
     }
 
     /**
      * Update a record and publish 'updated' event
+     * @param id - The record ID
+     * @param data - The data to update
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
      */
-    async update(id: string, data: Partial<T>, ledgerId?: string): Promise<T> {
-        // We assume 'id' column exists and is the primary key
+    async update(id: string, data: Partial<T>, ledgerId: string): Promise<T> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
 
-        const conditions = [eq(tableWithId.id, id)];
-        if (ledgerId) {
-            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
-            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
-        }
+        const conditions = [
+            eq(tableWithId.id, id),
+            eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
+        ];
 
         const [result] = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)
@@ -104,38 +179,34 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
         if (!result) throw new Error(`Entity ${this.entityType} with id ${id} not found or access denied`);
 
         const typedResult = result as T;
-        const resolvedLedgerId = ledgerId || (typedResult as Record<string, unknown>)[this.ledgerIdField] as string;
 
-        if (resolvedLedgerId) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: resolvedLedgerId,
-                entity: this.entityType,
-                action: 'updated',
-                ids: [id]
-            });
-        }
+        eventBus.publish({
+            type: 'entity:changed',
+            ledgerId: ledgerId,
+            entity: this.entityType,
+            action: 'updated',
+            ids: [id]
+        });
 
         return typedResult;
     }
 
     /**
      * Update multiple records by IDs and publish 'updated' event
+     * @param ids - Array of record IDs to update
+     * @param data - The data to update
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
      */
     async batchUpdate(ids: string[], data: Partial<T>, ledgerId: string): Promise<T[]> {
         if (ids.length === 0) return [];
 
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
 
-        const conditions = [inArray(tableWithId.id, ids)];
-        // Enforce ledgerId for batch updates if provided
-        // Logic: All items must belong to the ledger.
-        // Note: The UPDATE statement will only affect rows that match the ledgerId.
-        // If some IDs belong to other ledgers, they simply won't be updated.
-        if (ledgerId) {
-            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
-            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
-        }
+        const conditions = [
+            inArray(tableWithId.id, ids),
+            eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
+        ];
 
         const results = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)
@@ -157,65 +228,61 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
     /**
      * Delete a record and publish 'deleted' event
+     * @param id - The record ID
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
      */
-    async delete(id: string, ledgerId?: string): Promise<void> {
+    async delete(id: string, ledgerId: string): Promise<void> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
 
-        const conditions = [eq(tableWithId.id, id)];
-        if (ledgerId) {
-            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
-            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
-        }
+        const conditions = [
+            eq(tableWithId.id, id),
+            eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
+        ];
 
         const [deleted] = await this.db.delete(this.table)
             .where(and(...conditions))
             .returning();
 
         if (deleted) {
-            const typedDeleted = deleted as T;
-            const resolvedLedgerId = ledgerId || (typedDeleted as Record<string, unknown>)[this.ledgerIdField] as string;
-            if (resolvedLedgerId) {
-                eventBus.publish({
-                    type: 'entity:changed',
-                    ledgerId: resolvedLedgerId,
-                    entity: this.entityType,
-                    action: 'deleted',
-                    ids: [id]
-                });
-            }
-        } else if (ledgerId) {
-            // If we expected a deletion but nothing happened, it could be a security violation or just not found.
-            // For now, we silently return as delete is often idempotent, but in strict mode we might want to know.
+            eventBus.publish({
+                type: 'entity:changed',
+                ledgerId: ledgerId,
+                entity: this.entityType,
+                action: 'deleted',
+                ids: [id]
+            });
         }
     }
 
-    async batchDelete(ids: string[], ledgerId?: string): Promise<void> {
+    /**
+     * Batch delete records and publish 'deleted' event
+     * @param ids - Array of record IDs to delete
+     * @param ledgerId - The ledger ID (REQUIRED for tenant isolation)
+     */
+    async batchDelete(ids: string[], ledgerId: string): Promise<void> {
         if (ids.length === 0) return;
 
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+        const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
 
-        const conditions = [inArray(tableWithId.id, ids)];
-        if (ledgerId) {
-            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
-            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
-        }
+        const conditions = [
+            inArray(tableWithId.id, ids),
+            eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
+        ];
 
         const deleted = await this.db.delete(this.table)
             .where(and(...conditions))
             .returning();
 
         if (deleted.length > 0) {
-            const typedDeleted = deleted[0] as T;
-            const resolvedLedgerId = ledgerId || (typedDeleted as Record<string, unknown>)[this.ledgerIdField] as string;
-            if (resolvedLedgerId) {
-                eventBus.publish({
-                    type: 'entity:changed',
-                    ledgerId: resolvedLedgerId,
-                    entity: this.entityType,
-                    action: 'deleted',
-                    ids: (deleted as T[]).map(d => d.id)
-                });
-            }
+            eventBus.publish({
+                type: 'entity:changed',
+                ledgerId: ledgerId,
+                entity: this.entityType,
+                action: 'deleted',
+                ids: (deleted as T[]).map(d => d.id)
+            });
         }
     }
 }

@@ -1,4 +1,4 @@
-import { BaseRepository } from "@/lib/repositories/base-repository";
+import { BaseRepository, QueryOptions } from "@/lib/repositories/base-repository";
 import { ledgerEntryRepo, LedgerEntry } from "@/lib/repositories/ledger-entry-repository";
 import { sourceDocumentRepo, SourceDocument } from "@/lib/repositories/source-document-repository";
 import { taskRunRepo, TaskRun } from "@/lib/repositories/task-run-repository";
@@ -21,6 +21,30 @@ export class ScopedRepository<T extends { id: string }, U extends PgTable> {
      */
     async get(id: string): Promise<T | null> {
         return this.repo.getById(id, this.ledgerId);
+    }
+
+    /**
+     * Find multiple records matching the query conditions.
+     * The ledgerId is automatically injected to ensure tenant isolation.
+     */
+    async findMany(options: QueryOptions<T> = {}): Promise<T[]> {
+        return this.repo.findMany(this.ledgerId, options);
+    }
+
+    /**
+     * Find the first record matching the query conditions.
+     * The ledgerId is automatically injected to ensure tenant isolation.
+     */
+    async findFirst(options: QueryOptions<T> = {}): Promise<T | null> {
+        return this.repo.findFirst(this.ledgerId, options);
+    }
+
+    /**
+     * Count records matching the query conditions.
+     * The ledgerId is automatically injected to ensure tenant isolation.
+     */
+    async count(options: Pick<QueryOptions<T>, 'where'> = {}): Promise<number> {
+        return this.repo.count(this.ledgerId, options);
     }
 
     /**
@@ -81,6 +105,7 @@ export class ScopedRepository<T extends { id: string }, U extends PgTable> {
 /**
  * The LedgerScope acts as a factory for scoped repositories.
  * It represents an authenticated context where a specific user is accessing a specific ledger.
+ * This is the primary entry point for all data access in API routes.
  */
 export class LedgerScope {
     constructor(private readonly ledgerId: string) {
@@ -101,11 +126,9 @@ export class LedgerScope {
         return new ScopedRepository(taskRunRepo, this.ledgerId);
     }
 
-    // Share repository might need special handling if it doesn't have ledgerId
-    // but based on schema, shares seem to be linked to documents which are linked to ledgers.
-    // If shareRepo has a ledgerId field, we can use it.
-    // Assuming for now generic support or explicit exclusion if not applicable.
-    // get shares() { return new ScopedRepository(shareRepo, this.ledgerId); }
+    get shares() {
+        return new ScopedRepository(shareRepo, this.ledgerId);
+    }
 
     /**
      * Create a scope from a verified context object (e.g. from requireLedgerAccess)

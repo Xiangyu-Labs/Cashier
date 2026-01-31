@@ -39,7 +39,6 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         queryKey: [
             "summary",
             ledgerId,
-            "confirmed",
             formatDateForApi(startDate),
             formatDateForApi(endDate),
             ledger?.mainCurrency,
@@ -47,7 +46,6 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         queryFn: () =>
             fetchLedgerEntrySummary(
                 ledgerId || "",
-                "confirmed",
                 formatDateForApi(startDate),
                 formatDateForApi(endDate),
                 ledger?.mainCurrency
