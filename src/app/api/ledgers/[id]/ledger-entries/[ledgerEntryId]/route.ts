@@ -72,14 +72,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { scope, error } = await requireLedgerAccess(ledgerId);
     if (error || !scope) return error!;
 
-    const deleted = await scope.entries.delete(ledgerEntryId);
-
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Ledger entry not found" },
-        { status: 404 }
-      );
-    }
+    await scope.entries.delete(ledgerEntryId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

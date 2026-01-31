@@ -58,10 +58,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const newCategory = await scope.categories.create({
       name: validated.name,
-      description: validated.description,
-      icon: validated.icon,
+      description: validated.description ?? null,
+      icon: validated.icon ?? null,
       sortOrder: validated.sortOrder ?? maxSortOrder + 1,
-    });
+    } as any);
 
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {

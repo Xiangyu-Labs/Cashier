@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       text: validated.text || null,
       imageUrls: imageUrls,
       status: "queued",
-    });
+    } as any);
 
 
     // Create a flow task

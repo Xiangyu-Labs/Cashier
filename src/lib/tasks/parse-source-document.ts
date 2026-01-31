@@ -244,6 +244,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
     // 3. Final completion (IDEMPOTENT)
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+        if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
         const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
         // 1. Check if entries already exist (Idempotency)

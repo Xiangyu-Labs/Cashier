@@ -43,7 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             expiresAt: expiresAt,
             isActive: true,
             accessCount: 0,
-        });
+        } as any);
 
         const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${share.id}`;
 

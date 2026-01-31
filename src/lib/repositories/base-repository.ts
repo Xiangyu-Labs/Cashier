@@ -43,7 +43,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
 
-        const [result] = await this.db.select().from(this.table).where(and(...conditions));
+        const [result] = await this.db.select().from(this.table as any).where(and(...conditions));
         return (result as T) || null;
     }
 
@@ -67,7 +67,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
         if (options.with) {
             // Get the query builder from db.query
             // Use explicit queryKey if provided, otherwise fallback to table name
-            const tableName = this.queryKey || (this.table[Symbol.for('drizzle:Name') as any] as string);
+            const tableName = this.queryKey || ((this.table as any)[Symbol.for('drizzle:Name') as any] as string);
             const queryBuilder = (this.db.query as any)[tableName];
 
             if (!queryBuilder) {
@@ -122,7 +122,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
         }
 
         // Standard query without relations
-        let query = this.db.select().from(this.table).where(and(...conditions));
+        let query = this.db.select().from(this.table as any).where(and(...conditions));
 
         // Apply ordering if provided
         if (options.orderBy) {
@@ -175,7 +175,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             conditions.push(options.where);
         }
 
-        const results = await this.db.select().from(this.table).where(and(...conditions));
+        const results = await this.db.select().from(this.table as any).where(and(...conditions));
         return results.length;
     }
 

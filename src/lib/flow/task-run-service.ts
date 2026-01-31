@@ -9,10 +9,12 @@ export async function updateTaskRunProgress(_taskRunId: string, _progress: FlowP
 }
 
 export async function completeTaskRun(taskRunId: string, output: unknown, ledgerId?: string): Promise<void> {
+    if (!ledgerId) throw new Error("ledgerId is required to complete task run");
     await taskRunRepo.complete(taskRunId, output, ledgerId);
 }
 
 export async function failTaskRun(taskRunId: string, error: string, ledgerId?: string): Promise<void> {
+    if (!ledgerId) throw new Error("ledgerId is required to fail task run");
     await taskRunRepo.fail(taskRunId, error, ledgerId);
 }
 
