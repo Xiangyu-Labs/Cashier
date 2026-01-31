@@ -2,16 +2,24 @@
 
 import { useEffect } from "react";
 import { touchSession } from "@/actions/session";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "@/i18n/routing";
 
 export function SessionManager() {
-    const { status } = useSession();
+    const { data: session, status } = useSession();
     const pathname = usePathname();
     const router = useRouter();
 
     useEffect(() => {
         if (status === "authenticated") {
+            // Check if the session is valid (has user.id)
+            // This handles the case where JWT exists but user was deleted from DB
+            if (!session?.user?.id) {
+                console.log("Session exists but user data is invalid, signing out...");
+                signOut({ callbackUrl: "/login" });
+                return;
+            }
+
             // Update session info (IP, User Agent) on load
             touchSession();
         } else if (status === "unauthenticated") {
@@ -28,7 +36,7 @@ export function SessionManager() {
                 router.replace("/login");
             }
         }
-    }, [status, pathname, router]);
+    }, [status, session, pathname, router]);
 
     return null;
 }

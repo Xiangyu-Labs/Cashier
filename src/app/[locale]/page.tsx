@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchLedgers, createLedger } from "@/lib/api";
+import { fetchLedgers, createLedger, ApiError } from "@/lib/api";
 import { useTranslations, useLocale } from "next-intl";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function HomePage(): ReactNode {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function HomePage(): ReactNode {
   // Get the current session
   const { status: sessionStatus } = useSession();
 
-  const { data: ledgers, isLoading } = useQuery({
+  const { data: ledgers, isLoading, error: ledgersError } = useQuery({
     queryKey: ["ledgers"],
     queryFn: fetchLedgers,
     // Only fetch when authenticated
@@ -34,6 +34,13 @@ export default function HomePage(): ReactNode {
 
       // If not authenticated, SessionManager or middleware will redirect to login
       if (sessionStatus === "unauthenticated") {
+        return;
+      }
+
+      // Handle ledgers fetch error (e.g., 401 for invalid session)
+      if (ledgersError instanceof ApiError && ledgersError.status === 401) {
+        console.log("Session invalid (401 on ledgers fetch), signing out...");
+        signOut({ callbackUrl: "/login" });
         return;
       }
 
@@ -65,6 +72,13 @@ export default function HomePage(): ReactNode {
         await queryClient.invalidateQueries({ queryKey: ["ledgers"] });
         router.replace(`/ledger/${newLedger.id}`);
       } catch (error) {
+        // Handle 401 error (user not found in DB)
+        if (error instanceof ApiError && error.status === 401) {
+          console.log("Session invalid (401 on ledger creation), signing out...");
+          signOut({ callbackUrl: "/login" });
+          return;
+        }
+
         console.error("Failed to auto-create ledger:", error);
         creatingRef.current = false;
         setStatusText(t("createFailed"));
@@ -72,7 +86,7 @@ export default function HomePage(): ReactNode {
     };
 
     handleInit();
-  }, [ledgers, isLoading, router, queryClient, t, locale, sessionStatus]);
+  }, [ledgers, isLoading, ledgersError, router, queryClient, t, locale, sessionStatus]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">
@@ -83,3 +97,4 @@ export default function HomePage(): ReactNode {
     </div>
   );
 }
+

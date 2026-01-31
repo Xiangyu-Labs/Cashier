@@ -9,16 +9,27 @@ import {
 
 const API_BASE = "/api";
 
+// Custom error class that includes HTTP status code
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
 async function request<T>(
   url: string,
   options?: RequestInit,
   errorMessage = "Request failed"
 ): Promise<T> {
   const res = await fetch(url, options);
-  if (!res.ok) throw new Error(errorMessage);
+  if (!res.ok) throw new ApiError(errorMessage, res.status);
   if (res.status === 204) return {} as T;
   return res.json();
 }
+
 
 
 
