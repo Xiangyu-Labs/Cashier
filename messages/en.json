@@ -166,8 +166,7 @@
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDate": "Batch Edit Date",
         "batchDescription": "Batch Edit Description",
-        "totalAmount": "Total Amount",
-        "billStatus": "Bill Status"
+        "totalAmount": "Total Amount"
     },
     "Settings": {
         "title": "Settings",

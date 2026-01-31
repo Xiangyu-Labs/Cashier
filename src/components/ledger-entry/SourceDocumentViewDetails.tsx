@@ -74,10 +74,6 @@ export function SourceDocumentViewDetails({
                             <Calendar className="h-3.5 w-3.5" />
                             {new Date(sourceDocument.createdAt).toLocaleString(locale)}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-muted-foreground">{t("billStatus")}:</span>
-                            <ProcessingStatus status={status === "anomaly" ? "error" : status} />
-                        </div>
                     </div>
                 </div>
             </div>
