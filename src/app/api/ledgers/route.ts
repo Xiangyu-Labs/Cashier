@@ -75,6 +75,23 @@ export const POST = auth(async function POST(request): Promise<NextResponse> {
         { status: 400 }
       );
     }
+
+    // Handle Foreign Key violation (User not found)
+    // This happens if the session is valid but the user was deleted/reset from DB
+    // The postgres-js driver or Drizzle might wrap the error, so we check both top-level and .cause
+    const e = error as any;
+    const code = e.code || e.cause?.code;
+    const constraint = e.constraint_name || e.cause?.constraint_name;
+    const detail = e.detail || e.cause?.detail;
+
+    if (code === "23503" && (constraint?.includes("user_id") || detail?.includes('table "users"'))) {
+      logger.warn({ userId: request.auth.user.id }, "Attempted to create ledger for non-existent user");
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 401 }
+      );
+    }
+
     logger.error({ error }, "Failed to create ledger");
     return NextResponse.json(
       { error: "Failed to create ledger" },

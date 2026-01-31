@@ -106,6 +106,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             return true;
         },
+        async session({ session, token }) {
+            // Override the default session callback to check DB existence
+            if (token.sub && session.user) {
+                const userId = token.sub; // 'sub' is the standard claim for user ID in JWT
+
+                const dbUser = await db.query.users.findFirst({
+                    where: eq(users.id, userId),
+                    columns: { id: true, email: true, name: true, image: true }
+                });
+
+                if (!dbUser) {
+                    // User not found in DB (stale session), invalidate it
+                    // By returning modified session with null user, simple auth checks will fail
+                    // Or we could return null/throw to force signout? 
+                    // Returning an empty object or null usually indicates no session.
+                    return {} as any; // Return empty session implies unauthenticated
+                }
+
+                // Sync latest user data
+                session.user.id = dbUser.id;
+                session.user.email = dbUser.email;
+                session.user.name = dbUser.name;
+                session.user.image = dbUser.image;
+            }
+            return session;
+        },
     },
     events: {
         async createUser({ user }) {

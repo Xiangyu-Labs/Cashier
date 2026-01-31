@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/ledgers/route";
 import { PATCH } from "@/app/api/ledgers/[id]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories as categories } from "@/lib/db/schema";
+import { ledgers, entryCategories as categories, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { TEST_USER_ID } from "../../helpers/schema-setup";
 
@@ -83,6 +83,25 @@ describe("POST /api/ledgers", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
+  });
+
+  it("should return 401 if user does not exist in db (stale session)", async () => {
+    // 1. Delete the default test user
+    const db = getTestDb();
+    await db.delete(users).where(eq(users.id, TEST_USER_ID));
+
+    // 2. Request with valid session (mocked in setup.ts) but no user in DB
+    const request = new NextRequest("http://localhost/api/ledgers", {
+      method: "POST",
+      body: JSON.stringify({ name: "Orphan Ledger" }),
+    });
+
+    const response = await POST(request);
+
+    // 3. Expect 401 Unauthorized
+    expect(response.status).toBe(401);
+    const data = await response.json();
+    expect(data.error).toBe("User not found");
   });
 });
 
