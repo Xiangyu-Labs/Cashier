@@ -96,6 +96,27 @@ export const verificationTokens = pgTable("verification_tokens", {
   primaryKey({ columns: [table.identifier, table.token] }),
 ]);
 
+// OTP Tokens - 验证码登录令牌
+export const otpTokens = pgTable("otp_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),  // SHA-256 哈希
+  expires: timestamp("expires").notNull(),            // 5 分钟 TTL
+
+  // 安全控制
+  attempts: integer("attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),             // 锁定至某时刻
+
+  // 审计字段
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  verifiedAt: timestamp("verified_at"),
+  ipAddress: text("ip_address"),
+}, (table) => [
+  index("idx_otp_tokens_email").on(table.email),
+  index("idx_otp_tokens_expires").on(table.expires),
+]);
+
 // ==========================================
 // Business Tables
 // ==========================================
