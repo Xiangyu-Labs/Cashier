@@ -277,7 +277,7 @@ export function LedgerEntriesTab({
 
                 {/* Unified Loading State */}
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground-foreground animate-in fade-in duration-300">
                         <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mb-4"></div>
                         <p className="text-sm font-medium">{tCommon("loading")}</p>
                     </div>
@@ -370,7 +370,7 @@ export function LedgerEntriesTab({
                         {/* Completed (Formal) Section */}
                         <div className="space-y-6 px-2">
                             {groups.completed.length === 0 ? (
-                                <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                                <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                                     <span className="text-4xl opacity-20">🧾</span>
                                     <span>{t("noRecords")}</span>
                                 </div>
@@ -403,7 +403,7 @@ export function LedgerEntriesTab({
                             )}
 
                             {/* Infinite Scroll Sentinel */}
-                            <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                            <div className="h-10 flex items-center justify-center text-muted-foreground text-sm pb-4">
                                 {isFetchingNextPage ? (
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>

@@ -172,13 +172,13 @@ export function LedgerEntryViewDetails({
                             </h3>
                             <div className="mt-1">
                                 <p className="text-3xl font-bold text-primary">
-                                    <span className="text-lg font-normal text-muted mr-1">
+                                    <span className="text-lg font-normal text-muted-foreground mr-1">
                                         {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency === "unknown" ? "?" : ledgerEntry.currency)}
                                     </span>
                                     {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
                                 </p>
                                 {isDifferentCurrency && (
-                                    <p className="text-sm font-medium text-muted mt-0.5 opacity-80">
+                                    <p className="text-sm font-medium text-muted-foreground mt-0.5 opacity-80">
                                         ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
                                     </p>
                                 )}
@@ -193,8 +193,8 @@ export function LedgerEntryViewDetails({
                 <div className="flex justify-between items-center h-10">
                     {/* Date on the left */}
                     <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted" />
-                        <span className="text-sm text-muted mr-1">{t("entryDate")}:</span>
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground mr-1">{t("entryDate")}:</span>
                         {isEditing ? (
                             <Input
                                 type="date"
@@ -211,7 +211,7 @@ export function LedgerEntryViewDetails({
 
                     {/* Category on the right */}
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted mr-1">{t("category")}:</span>
+                        <span className="text-sm text-muted-foreground mr-1">{t("category")}:</span>
                         {isEditing ? (
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -232,7 +232,7 @@ export function LedgerEntryViewDetails({
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span className="text-muted-foreground">{t("selectCategory")}</span>
+                                                <span className="text-muted-foreground-foreground">{t("selectCategory")}</span>
                                             )}
                                         </div>
                                         <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
@@ -306,13 +306,13 @@ export function LedgerEntryViewDetails({
                                 )}
                             </div>
                         ) : (
-                            <span className="text-sm text-muted italic">{t("noDescription")}</span>
+                            <span className="text-sm text-muted-foreground italic">{t("noDescription")}</span>
                         )
                     )}
                 </div>
 
                 <div className="flex justify-between items-center border-t border-border/50 pt-4">
-                    <span className="text-sm text-muted">{t("createdAt")}</span>
+                    <span className="text-sm text-muted-foreground">{t("createdAt")}</span>
                     <span className="text-sm text-text">
                         {formatDateTime(ledgerEntry.createdAt)}
                     </span>

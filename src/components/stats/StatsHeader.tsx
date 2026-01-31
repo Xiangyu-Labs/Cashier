@@ -46,7 +46,7 @@ export function StatsHeader({
                             "flex-1 text-sm py-1.5 rounded-md transition-all font-medium",
                             rangeType === type
                                 ? "bg-surface text-primary shadow-sm"
-                                : "text-muted hover:text-text"
+                                : "text-muted-foreground hover:text-text"
                         )}
                     >
                         {t(type)}
@@ -59,7 +59,7 @@ export function StatsHeader({
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handlePrev}
-                        className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-full transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
                     >
                         <ChevronLeft size={20} />
                     </button>
@@ -68,7 +68,7 @@ export function StatsHeader({
                     </div>
                     <button
                         onClick={handleNext}
-                        className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-full transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
                     >
                         <ChevronRight size={20} />
                     </button>
@@ -77,12 +77,12 @@ export function StatsHeader({
 
             {/* 3. Summary Stats */}
             <div className="flex flex-col items-center gap-1">
-                <div className="text-sm text-muted">{t("totalExpense")}</div>
+                <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
                 <div className="text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
-                    <span className="text-xl text-muted font-normal">{currencySymbol}</span>
+                    <span className="text-xl text-muted-foreground font-normal">{currencySymbol}</span>
                     {totalExpense.toFixed(2)}
                 </div>
-                <div className="text-xs text-muted flex items-center gap-1">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
                     {t("averageDaily")} <span className="font-mono">{averageDaily.toFixed(2)}</span>
                 </div>
             </div>

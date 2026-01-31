@@ -19,7 +19,7 @@ export function SourceDocumentOriginalContent({
     const hasImages = images && images.length > 0;
 
     if (!text && !hasImages) {
-        return <p className="text-muted text-sm border border-dashed border-border p-2 rounded">{t("noContent")}</p>;
+        return <p className="text-muted-foreground text-sm border border-dashed border-border p-2 rounded">{t("noContent")}</p>;
     }
 
     return (

@@ -78,12 +78,12 @@ export function BillEntryItem({
 
                     <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                         {ledgerEntry.category && (
-                            <div className="flex items-center gap-1 text-xs text-muted truncate min-w-0 flex-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground truncate min-w-0 flex-1">
                                 <span className="shrink-0">{ledgerEntry.category.name}</span>
                                 {ledgerEntry.description && (
                                     <>
-                                        <span className="text-muted/30 shrink-0">·</span>
-                                        <span className="truncate text-muted/60 text-[11px] italic">
+                                        <span className="text-muted-foreground/30 shrink-0">·</span>
+                                        <span className="truncate text-muted-foreground/60 text-[11px] italic">
                                             {ledgerEntry.description}
                                         </span>
                                     </>
@@ -97,7 +97,7 @@ export function BillEntryItem({
             {/* Right: Amount */}
             <div className="flex flex-col items-end shrink-0 ml-3">
                 <p className="font-mono font-semibold text-sm text-text">
-                    <span className="text-xs text-muted mr-1">
+                    <span className="text-xs text-muted-foreground mr-1">
                         {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency || "?")}
                     </span>
                     {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}

@@ -174,7 +174,7 @@ export function SourceDocumentDetailModal({
                                         >
                                             <span className={cn(
                                                 "truncate max-w-[400px]",
-                                                !sourceDocument.title && "text-muted-foreground italic"
+                                                !sourceDocument.title && "text-muted-foreground-foreground italic"
                                             )}>
                                                 {sourceDocument.title || t("titlePlaceholder")}
                                             </span>
@@ -184,7 +184,7 @@ export function SourceDocumentDetailModal({
                                         </div>
                                     )}
                                 </DialogTitle>
-                                <DialogDescription className="text-sm text-muted">
+                                <DialogDescription className="text-sm text-muted-foreground">
                                     {new Date(sourceDocument.createdAt).toLocaleString()}
                                 </DialogDescription>
                             </DialogHeader>
@@ -291,7 +291,7 @@ export function SourceDocumentDetailModal({
 
                     <div className="space-y-3">
                         {ledgerEntries.length === 0 ? (
-                            <div className="text-center py-12 bg-surface2/30 rounded-xl border border-dashed text-muted">
+                            <div className="text-center py-12 bg-surface2/30 rounded-xl border border-dashed text-muted-foreground">
                                 <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
                                 <p>{t("noEntries")}</p>
                             </div>
@@ -320,7 +320,7 @@ export function SourceDocumentDetailModal({
                                         <div className="flex items-center justify-between gap-2">
                                             <p className="font-medium text-sm truncate">{entry.itemName}</p>
                                             <p className="font-bold text-sm">
-                                                <span className="text-[10px] text-muted mr-1">{entry.currency}</span>
+                                                <span className="text-[10px] text-muted-foreground mr-1">{entry.currency}</span>
                                                 {parseFloat(entry.amount).toFixed(2)}
                                             </p>
                                         </div>
@@ -329,7 +329,7 @@ export function SourceDocumentDetailModal({
                                                 {entry.category?.name || tCommon("unclassified")}
                                             </Badge>
                                             {entry.entryDate && (
-                                                <span className="text-[10px] text-muted">
+                                                <span className="text-[10px] text-muted-foreground">
                                                     {new Date(entry.entryDate).toLocaleDateString()}
                                                 </span>
                                             )}
@@ -339,7 +339,7 @@ export function SourceDocumentDetailModal({
                                     <Button
                                         variant="ghost"
                                         size="icon-sm"
-                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground-foreground hover:text-destructive transition-opacity"
                                         onClick={() => onDeleteEntry(entry.id)}
                                     >
                                         <Trash2 className="h-4 w-4" />

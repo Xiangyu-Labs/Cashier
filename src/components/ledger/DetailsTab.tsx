@@ -167,17 +167,17 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <div className="text-muted-foreground text-[10px] mb-0.5">{t("expenseSummary")}</div>
+                        <div className="text-muted-foreground-foreground text-[10px] mb-0.5">{t("expenseSummary")}</div>
                         <div className="flex flex-col items-end">
                             <div className="text-xl font-bold font-mono tracking-tight leading-none">
                                 {monthStats.hasMultipleCurrencies && (
-                                    <span className="text-sm font-normal text-muted-foreground mr-1">≈</span>
+                                    <span className="text-sm font-normal text-muted-foreground-foreground mr-1">≈</span>
                                 )}
-                                <span className="text-xs text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
+                                <span className="text-xs text-muted-foreground-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
                                 {monthStats.mainTotal.toFixed(2)}
                             </div>
                             {monthStats.hasMultipleCurrencies && (
-                                <div className="text-[10px] text-muted-foreground font-mono mt-1 opacity-80">
+                                <div className="text-[10px] text-muted-foreground-foreground font-mono mt-1 opacity-80">
                                     {monthStats.breakdown.map((b, idx) => (
                                         <span key={b.currency}>
                                             {idx > 0 && <span className="mx-1 opacity-50">·</span>}
@@ -202,7 +202,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                             className="space-y-2"
                         >
                             <div className="sticky top-[7.5rem] sm:top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
-                                <h3 className="text-[10px] sm:text-xs font-medium text-muted flex items-center gap-2">
+                                <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
                                     {group.title}
                                 </h3>
@@ -233,7 +233,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 </AnimatePresence>
 
                 {monthEntries.length > 0 && (
-                    <div className="h-10 flex items-center justify-center text-muted text-sm pb-4">
+                    <div className="h-10 flex items-center justify-center text-muted-foreground text-sm pb-4">
                         {isFetchingNextPage ? (
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
@@ -250,12 +250,12 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 )}
 
                 {isLoading ? (
-                    <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                         <span className="w-6 h-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin"></span>
                         <span>{tCommon("loading")}</span>
                     </div>
                 ) : monthEntries.length === 0 && (
-                    <div className="text-center py-20 text-muted flex flex-col items-center gap-2">
+                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                         <span className="text-4xl opacity-20">📭</span>
                         <span>{t("noExpenses")}</span>
                     </div>

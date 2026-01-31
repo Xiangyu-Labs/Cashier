@@ -177,7 +177,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                                 <div className="text-sm font-medium">{tSettings("autoRecognizeDate")}</div>
-                                <div className="text-xs text-muted leading-tight">{tSettings("autoRecognizeDateDesc")}</div>
+                                <div className="text-xs text-muted-foreground leading-tight">{tSettings("autoRecognizeDateDesc")}</div>
                             </div>
                             <Switch
                                 checked={ledger?.autoRecognizeDate || false}
@@ -192,7 +192,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                                 <div className="text-sm font-medium">{tSettings("mergeSimilar")}</div>
-                                <div className="text-xs text-muted leading-tight">{tSettings("mergeSimilarDesc")}</div>
+                                <div className="text-xs text-muted-foreground leading-tight">{tSettings("mergeSimilarDesc")}</div>
                             </div>
                             <Switch
                                 checked={ledger?.mergeSimilarItems || false}

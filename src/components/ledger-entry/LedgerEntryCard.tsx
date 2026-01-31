@@ -76,12 +76,12 @@ export function LedgerEntryCard({
                 <p className="font-medium text-text truncate">{ledgerEntry.itemName}</p>
                 <div className="flex items-center gap-2 mt-1">
                   {ledgerEntry.category ? (
-                    <div className="flex items-center gap-1.5 text-xs text-muted min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
                       <span className="shrink-0">{ledgerEntry.category.name}</span>
                       {ledgerEntry.description && (
                         <>
-                          <span className="text-muted/30 ml-0.5 shrink-0">·</span>
-                          <span className="truncate text-muted/50 text-[11px] italic flex-1">
+                          <span className="text-muted-foreground/30 ml-0.5 shrink-0">·</span>
+                          <span className="truncate text-muted-foreground/50 text-[11px] italic flex-1">
                             {ledgerEntry.description}
                           </span>
                         </>
@@ -93,7 +93,7 @@ export function LedgerEntryCard({
                         {t("needsCategory")}
                       </Badge>
                       {ledgerEntry.description && (
-                        <span className="text-xs text-muted truncate">{ledgerEntry.description}</span>
+                        <span className="text-xs text-muted-foreground truncate">{ledgerEntry.description}</span>
                       )}
                     </div>
                   )}
@@ -110,13 +110,13 @@ export function LedgerEntryCard({
             <div className="flex items-center gap-4 shrink-0">
               <div className="flex flex-col items-end">
                 <p className="font-mono font-semibold text-text">
-                  <span className="text-xs text-muted mr-1">
+                  <span className="text-xs text-muted-foreground mr-1">
                     {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency || "?")}
                   </span>
                   {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
                 </p>
                 {isDifferentCurrency && (
-                  <p className="text-[10px] text-muted-foreground font-mono opacity-60">
+                  <p className="text-[10px] text-muted-foreground-foreground font-mono opacity-60">
                     ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
                   </p>
                 )}

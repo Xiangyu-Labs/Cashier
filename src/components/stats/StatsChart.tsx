@@ -155,7 +155,7 @@ export function StatsChart({
                         return (
                             <div
                                 key={i}
-                                className="absolute text-[10px] text-muted transform -translate-x-1/2 text-center w-8"
+                                className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
                                 style={{ left: `${leftPos}%` }}
                             >
                                 {p.label}

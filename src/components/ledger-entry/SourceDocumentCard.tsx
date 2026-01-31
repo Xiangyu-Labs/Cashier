@@ -29,7 +29,7 @@ function getSafeImageSrc(data: string): string {
 function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
   return (
     <span className="text-sm font-bold text-text">
-      <span className="text-xs text-muted mr-1">{mainCurrency}</span>
+      <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
       <TotalValue entries={entries} mainCurrency={mainCurrency} />
     </span>
   );
@@ -145,8 +145,8 @@ export function SourceDocumentCard({
         onClick={() => setIsItemsExpanded(!isItemsExpanded)}
       >
         <div className="flex items-center gap-2 overflow-hidden flex-1">
-          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted group-hover:text-text", isItemsExpanded && "rotate-180")} />
-          <span className="text-sm font-medium text-muted truncate">
+          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted-foreground group-hover:text-text", isItemsExpanded && "rotate-180")} />
+          <span className="text-sm font-medium text-muted-foreground truncate">
             {new Date(sourceDocument.createdAt).toLocaleString(locale, {
               month: "long",
               day: "numeric",
@@ -180,7 +180,7 @@ export function SourceDocumentCard({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="h-7 w-7 text-muted hover:text-text"
+                    className="h-7 w-7 text-muted-foreground hover:text-text"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>

@@ -81,7 +81,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             />
 
             <div className="space-y-2">
-                <h3 className="font-semibold px-2 text-sm text-muted uppercase tracking-wider">
+                <h3 className="font-semibold px-2 text-sm text-muted-foreground uppercase tracking-wider">
                     {t("expenseTrend")}
                 </h3>
                 <StatsChart

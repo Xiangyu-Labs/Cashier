@@ -41,7 +41,7 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
 
     if (data.length === 0) {
         return (
-            <div className="text-center py-12 text-muted">
+            <div className="text-center py-12 text-muted-foreground">
                 <div className="text-4xl mb-2 opacity-20">📭</div>
                 <div className="text-sm">{t("noExpenses")}</div>
             </div>
@@ -73,7 +73,7 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
                                     <div className="font-medium text-text">{cat.categoryName}</div>
                                     <div className="flex items-center gap-2">
                                         <span className="font-mono font-medium">{cat.total.toFixed(2)}</span>
-                                        <span className="text-xs text-muted w-8 text-right">{percent.toFixed(0)}%</span>
+                                        <span className="text-xs text-muted-foreground w-8 text-right">{percent.toFixed(0)}%</span>
                                     </div>
                                 </div>
 
