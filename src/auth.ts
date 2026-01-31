@@ -118,10 +118,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 if (!dbUser) {
                     // User not found in DB (stale session), invalidate it
-                    // By returning modified session with null user, simple auth checks will fail
-                    // Or we could return null/throw to force signout? 
-                    // Returning an empty object or null usually indicates no session.
-                    return {} as any; // Return empty session implies unauthenticated
+                    // Returning null informs NextAuth that the session is invalid
+                    return null as any;
                 }
 
                 // Sync latest user data

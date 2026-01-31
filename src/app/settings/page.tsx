@@ -7,6 +7,8 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
 export default async function SettingsPage() {
     const session = await auth();
     if (!session?.user?.id) {
@@ -22,6 +24,16 @@ export default async function SettingsPage() {
                 <p className="text-muted-foreground mt-2">
                     {t("subtitle") || "Manage your account and preferences"}
                 </p>
+            </div>
+
+            <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
+                    <div className="space-y-1">
+                        <h2 className="text-sm font-medium">{t("language") || "Language"}</h2>
+                        <p className="text-xs text-muted-foreground">{t("languageDesc") || "Select your preferred language"}</p>
+                    </div>
+                    <LanguageSwitcher />
+                </div>
             </div>
 
             <div className="space-y-4">

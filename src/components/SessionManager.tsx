@@ -11,12 +11,18 @@ export function SessionManager() {
     const router = useRouter();
 
     useEffect(() => {
+        console.log(`[SessionManager] Status: ${status}, Pathname: ${pathname}, IsPublic: ${pathname === "/login" || pathname === "/s/" || pathname.startsWith("/login") || pathname.startsWith("/s/")}`);
+
         if (status === "authenticated") {
             // Check if the session is valid (has user.id)
             // This handles the case where JWT exists but user was deleted from DB
             if (!session?.user?.id) {
                 console.log("Session exists but user data is invalid, signing out...");
-                signOut({ callbackUrl: "/login" });
+
+                // Only sign out if we're not already on the login page to avoid redirect loops
+                if (!pathname.includes("/login")) {
+                    signOut({ callbackUrl: "/login" });
+                }
                 return;
             }
 
@@ -32,7 +38,7 @@ export function SessionManager() {
             );
 
             if (!isPublicPath) {
-                console.log("Session invalid on private path, redirecting to login...");
+                console.log(`[SessionManager] Session invalid on private path ${pathname}, redirecting to login...`);
                 router.replace("/login");
             }
         }

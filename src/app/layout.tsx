@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import "../globals.css";
+import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SessionManager } from "@/components/SessionManager";
 
@@ -38,19 +38,14 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 
+import { getLocale } from 'next-intl/server';
+
 export default async function RootLayout({
   children,
-  params,
 }: Readonly<{
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
 }>): Promise<React.ReactNode> {
-  const { locale } = await params;
-
-  // Ensure that the incoming `locale` is valid
-  if (!routing.locales.includes(locale as typeof routing.locales[number])) {
-    notFound();
-  }
+  const locale = await getLocale();
 
   // Providing all messages to the client
   // side is the easiest way to get started
@@ -61,7 +56,7 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>
             <SessionManager />
             {children}
