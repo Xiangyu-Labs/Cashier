@@ -9,6 +9,37 @@ import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { SourceDocumentOriginalContent } from "./SourceDocumentOriginalContent";
 import { BillEntryItem } from "./BillEntryItem";
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useQueries } from "@tanstack/react-query";
+
+interface CurrencyBreakdownItemProps {
+    currency: string;
+    amount: number;
+    mainCurrency: string;
+    date: Date | string;
+}
+
+function CurrencyBreakdownItem({ currency, amount, mainCurrency, date }: CurrencyBreakdownItemProps) {
+    const { converted } = useConvertedAmount(amount, currency, mainCurrency, typeof date === 'string' ? date : date.toISOString());
+
+    const isMainCurrency = currency === mainCurrency;
+    const rate = isMainCurrency ? 1 : (amount > 0 ? converted / amount : 0);
+
+    return (
+        <div className="grid grid-cols-[auto_24px_64px_auto_1fr] items-center gap-1 text-xs text-muted-foreground mt-1.5 leading-none">
+            <div className="font-medium text-text/80 tabular-nums min-w-[80px]">
+                {currency} {amount.toFixed(2)}
+            </div>
+            <span className="opacity-40 text-center text-[10px]">×</span>
+            <div className="bg-surface2/50 px-1.5 py-0.5 rounded-[4px] text-[10px] text-center font-mono tabular-nums">
+                {rate.toFixed(4)}
+            </div>
+            <span className="opacity-40 ml-2 whitespace-nowrap">≈ {mainCurrency}</span>
+            <div className="font-mono text-primary/70 text-right tabular-nums font-medium">
+                {converted.toFixed(2)}
+            </div>
+        </div>
+    );
+}
 
 interface SourceDocumentViewDetailsProps {
     sourceDocument: SourceDocument;
@@ -27,25 +58,53 @@ export function SourceDocumentViewDetails({
     const tCard = useTranslations("SourceDocumentCard");
     const locale = useLocale();
 
-    const { totalAmount, hasMultipleCurrencies } = useMemo(() => {
-        const total = ledgerEntries.reduce((sum, entry) => sum + parseFloat(entry.amount), 0);
+    const { subtotalsByCurrency } = useMemo(() => {
+        const groups: Record<string, number> = {};
+        ledgerEntries.forEach(entry => {
+            const curr = entry.currency || mainCurrency;
+            groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
+        });
 
-        // Use the first entry's currency and date for the primary conversion comparison
-        // In a real scenario, we might want to convert each entry individually, 
-        // but for a summary view, this is often sufficient if they share a document.
-        const firstEntry = ledgerEntries[0];
         return {
-            totalAmount: total,
-            hasMultipleCurrencies: new Set(ledgerEntries.map(e => e.currency)).size > 1
+            subtotalsByCurrency: groups,
         };
-    }, [ledgerEntries]);
+    }, [ledgerEntries, mainCurrency]);
 
-    const { converted } = useConvertedAmount(
-        totalAmount,
-        ledgerEntries[0]?.currency || mainCurrency,
-        mainCurrency,
-        ledgerEntries[0]?.entryDate || sourceDocument.createdAt
-    );
+    const uniqueCurrencies = Object.keys(subtotalsByCurrency);
+
+    // Use useQueries to get all conversions for total calculation
+    const conversionQueries = useQueries({
+        queries: uniqueCurrencies.map(currency => {
+            const amount = subtotalsByCurrency[currency];
+            const date = ledgerEntries.find(e => e.currency === currency)?.entryDate || sourceDocument.createdAt;
+            const dateStr = typeof date === 'string' ? date : (date as any).toISOString();
+
+            return {
+                queryKey: ["convert", amount, currency, mainCurrency, dateStr],
+                queryFn: async () => {
+                    if (currency === mainCurrency) return { converted: amount };
+                    const searchParams = new URLSearchParams();
+                    searchParams.set("amount", amount.toString());
+                    searchParams.set("from", currency);
+                    searchParams.set("to", mainCurrency);
+                    searchParams.set("date", dateStr);
+
+                    const res = await fetch(`/api/currency/convert?${searchParams}`);
+                    if (!res.ok) throw new Error("Conversion failed");
+                    return res.json();
+                },
+                staleTime: 1000 * 60 * 60 * 24,
+            };
+        })
+    });
+
+    const totalInMainCurrency = useMemo(() => {
+        return conversionQueries.reduce((sum, query) => {
+            return sum + (query.data?.converted ?? 0);
+        }, 0);
+    }, [conversionQueries]);
+
+    const isLoadingConverted = conversionQueries.some(q => q.isLoading);
 
     const sortedEntries = useMemo(() => {
         return [...ledgerEntries].sort((a, b) => {
@@ -85,16 +144,30 @@ export function SourceDocumentViewDetails({
                         <Wallet className="h-3 w-3" />
                         {t("totalAmount")}
                     </div>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-primary">
-                            <span className="text-sm font-normal text-muted-foreground mr-1">{mainCurrency}</span>
-                            {converted.toFixed(2)}
-                        </span>
-                        {ledgerEntries[0]?.currency && ledgerEntries[0].currency !== mainCurrency && !hasMultipleCurrencies && (
-                            <span className="text-sm text-muted-foreground">
-                                ≈ {ledgerEntries[0].currency} {totalAmount.toFixed(2)}
+
+                    <div className="space-y-2">
+                        {uniqueCurrencies.map(curr => (
+                            <CurrencyBreakdownItem
+                                key={curr}
+                                currency={curr}
+                                amount={subtotalsByCurrency[curr]}
+                                mainCurrency={mainCurrency}
+                                date={ledgerEntries.find(e => e.currency === curr)?.entryDate || sourceDocument.createdAt}
+                            />
+                        ))}
+
+                        {/* Final Total in Main Currency */}
+                        <div className="pt-2 mt-2 border-t border-border/50 flex items-baseline justify-between gap-2">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("totalAmount")}</div>
+                            <span className="text-2xl font-bold text-primary">
+                                <span className="text-sm font-normal text-muted-foreground mr-1">{mainCurrency}</span>
+                                {isLoadingConverted ? (
+                                    <span className="animate-pulse opacity-50">...</span>
+                                ) : (
+                                    totalInMainCurrency.toFixed(2)
+                                )}
                             </span>
-                        )}
+                        </div>
                     </div>
                 </div>
                 <div className="rounded-xl border border-border bg-surface2/30 p-4 space-y-1">
