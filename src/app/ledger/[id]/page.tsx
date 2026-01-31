@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams, notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +21,7 @@ import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
-import { fetchEntryCategories, fetchLedger } from "@/lib/api";
+import { fetchEntryCategories, fetchLedger, ApiError } from "@/lib/api";
 
 export default function LedgerPage() {
   const params = useParams();
@@ -30,18 +30,28 @@ export default function LedgerPage() {
   const [activeTab, setActiveTab] = useState("history");
   const [isInputOpen, setIsInputOpen] = useState(false);
 
-  const { data: ledger, isLoading: isLedgerLoading } = useQuery({
+  const { data: ledger, isLoading: isLedgerLoading, error: ledgerError } = useQuery({
     queryKey: ["ledger", ledgerId],
     queryFn: () => fetchLedger(ledgerId),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 404) return false;
+      return failureCount < 3;
+    }
   });
+
+  useEffect(() => {
+    if (ledgerError instanceof ApiError && ledgerError.status === 404) {
+      notFound();
+    }
+  }, [ledgerError]);
 
   const { data: categories } = useQuery({
     queryKey: ["entryCategories", ledgerId],
     queryFn: () => fetchEntryCategories(ledgerId),
   });
 
-  // Enable real-time updates
-  useLedgerEvents(ledgerId);
+  // Enable real-time updates only after ledger is loaded
+  useLedgerEvents(ledgerId, !!ledger);
 
 
   if (isLedgerLoading) {

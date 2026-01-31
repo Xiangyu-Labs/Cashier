@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ApiError } from "@/lib/api";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -14,6 +15,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
+            retry: (failureCount, error) => {
+              if (error instanceof ApiError && (error.status === 404 || error.status === 400)) {
+                return false;
+              }
+              return failureCount < 3;
+            },
           },
         },
       })

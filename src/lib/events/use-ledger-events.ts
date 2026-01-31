@@ -5,13 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { handleEvent } from './invalidation-hub';
 import { LedgerEvent } from './types';
 
-export function useLedgerEvents(ledgerId: string) {
+export function useLedgerEvents(ledgerId: string, enabled: boolean = true) {
     const queryClient = useQueryClient();
     const eventSourceRef = useRef<EventSource | null>(null);
 
     useEffect(() => {
-        if (!ledgerId) {
-
+        if (!ledgerId || !enabled) {
             return;
         }
 
@@ -50,5 +49,5 @@ export function useLedgerEvents(ledgerId: string) {
             }
             eventSourceRef.current = null;
         };
-    }, [ledgerId, queryClient]);
+    }, [ledgerId, queryClient, enabled]);
 }

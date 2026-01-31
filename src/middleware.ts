@@ -9,6 +9,8 @@ const { auth } = NextAuth({
     },
 });
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const proxy = auth((request) => {
     const { pathname } = request.nextUrl;
 
@@ -45,6 +47,17 @@ export const proxy = auth((request) => {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
+    }
+
+    // 5. UUID Validation for Ledger routes
+    // Handles /ledger/[id], /ledger/[id]/settings, /ledger/[id]/categories
+    const ledgerMatch = pathname.match(/^\/ledger\/([^\/]+)(\/.*)?$/);
+    if (ledgerMatch) {
+        const id = ledgerMatch[1];
+        if (!UUID_REGEX.test(id)) {
+            // Redirect to 404 for invalid UUIDs in ledger routes
+            return NextResponse.rewrite(new URL("/not-found", request.url));
+        }
     }
 
     // Allow authenticated request

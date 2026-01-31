@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useParams, notFound } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Plus, Pencil, Trash2, Info } from "lucide-react";
@@ -10,6 +10,8 @@ import {
   createEntryCategory,
   updateEntryCategory,
   deleteEntryCategory,
+  fetchLedger,
+  ApiError
 } from "@/lib/api";
 import { EntryCategory } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -62,10 +64,21 @@ export default function CategoriesPage(): React.ReactElement {
   });
 
 
-  const { data: categories, isLoading } = useQuery({
+  // Check if ledger exists first (or we can rely on categories query)
+  const { data: categories, isLoading, error } = useQuery({
     queryKey: ["categories", ledgerId],
     queryFn: () => fetchEntryCategories(ledgerId),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 404) return false;
+      return failureCount < 3;
+    }
   });
+
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+  }, [error]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateCategoryData) =>

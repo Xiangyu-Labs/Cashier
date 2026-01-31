@@ -1,8 +1,8 @@
 "use client";
 
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams, notFound } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     fetchLedger,
@@ -14,7 +14,8 @@ import {
     reorderEntryCategories,
     fetchServiceCredentials,
     createServiceCredential,
-    deleteServiceCredential
+    deleteServiceCredential,
+    ApiError
 } from "@/lib/api";
 import { useLedgerEvents } from "@/lib/events/use-ledger-events";
 import { CurrencySection } from "./components/CurrencySection";
@@ -44,10 +45,20 @@ export default function LedgerSettingsPage() {
     useLedgerEvents(ledgerId);
 
     // Ledger Query
-    const { data: ledger, isLoading: isLedgerLoading } = useQuery({
+    const { data: ledger, isLoading: isLedgerLoading, error: ledgerError } = useQuery({
         queryKey: ["ledger", ledgerId],
         queryFn: () => fetchLedger(ledgerId),
+        retry: (failureCount, error) => {
+            if (error instanceof ApiError && error.status === 404) return false;
+            return failureCount < 3;
+        }
     });
+
+    useEffect(() => {
+        if (ledgerError instanceof ApiError && ledgerError.status === 404) {
+            notFound();
+        }
+    }, [ledgerError]);
 
     // Local state for AI Prompt to allow typing, initialized from ledger data
     const [localAiPrompt, setLocalAiPrompt] = useState(ledger?.aiCustomPrompt || "");
