@@ -55,6 +55,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  // Clean Redis before each test to prevent cross-test contamination
+  const { getRedisConnection } = await import("@/lib/flow/connection");
+  const redis = getRedisConnection();
+  await redis.flushall();
+
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
@@ -62,9 +67,11 @@ beforeEach(async () => {
     );
 
     // Insert default test user for Auth Mock (TEST_USER_ID)
+    // Use ON CONFLICT to prevent race conditions during parallel test file execution
     await testDb.execute(sql`
         INSERT INTO users (id, email, name, email_verified) 
         VALUES ('00000000-0000-0000-0000-000000000000', 'test@example.com', 'Test User', NOW())
+        ON CONFLICT (id) DO NOTHING
     `);
   }
 });
