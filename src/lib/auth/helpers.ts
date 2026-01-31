@@ -83,13 +83,15 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     return { ledger };
 }
 
+import { LedgerScope } from "@/lib/scope/ledger-scope";
+
 /**
- * Helper to get user ID and verify ledger ownership in one call.
- * Common pattern for protected ledger routes.
+ * Helper to get user ID, verify ledger ownership, and return a scoped context.
+ * This is the primary way to access ledger data securely.
  */
 export async function requireLedgerAccess(ledgerId: string): Promise<
-    | { userId: string; ledger: typeof ledgers.$inferSelect; error?: never }
-    | { userId?: never; ledger?: never; error: NextResponse }
+    | { userId: string; ledger: typeof ledgers.$inferSelect; scope: LedgerScope; error?: never }
+    | { userId?: never; ledger?: never; scope?: never; error: NextResponse }
 > {
     const result = await verifyLedgerOwnership(ledgerId);
 
@@ -100,5 +102,6 @@ export async function requireLedgerAccess(ledgerId: string): Promise<
     return {
         userId: result.ledger.userId,
         ledger: result.ledger,
+        scope: new LedgerScope(ledgerId),
     };
 }

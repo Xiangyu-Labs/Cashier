@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { entryCategories } from "@/lib/db/schema";
 import { z } from "zod";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { LedgerScope } from "@/lib/scope/ledger-scope";
+import { desc } from "drizzle-orm";
 
 const createCategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -22,9 +22,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { error } = await requireLedgerAccess(id);
     if (error) return error;
 
-    const ledgerCategories = await db.query.entryCategories.findMany({
-      where: (entryCategories, { eq }) => eq(entryCategories.ledgerId, id),
-      orderBy: (entryCategories, { asc }) => [asc(entryCategories.sortOrder)],
+    const scope = new LedgerScope(id);
+    const ledgerCategories = await scope.categories.findMany({
+      orderBy: { sortOrder: "asc" },
     });
     return NextResponse.json(ledgerCategories);
   } catch (error) {
@@ -48,23 +48,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const validated = createCategorySchema.parse(body);
 
-    const existingCategories = await db.query.entryCategories.findMany({
-      where: (entryCategories, { eq }) => eq(entryCategories.ledgerId, id),
-      orderBy: (entryCategories, { desc }) => [desc(entryCategories.sortOrder)],
+    const scope = new LedgerScope(id);
+    const existingCategories = await scope.categories.findMany({
+      orderBy: { sortOrder: "desc" },
       limit: 1,
     });
     const maxSortOrder = existingCategories[0]?.sortOrder ?? 0;
 
-    const [newCategory] = await db
-      .insert(entryCategories)
-      .values({
-        ledgerId: id,
-        name: validated.name,
-        description: validated.description,
-        icon: validated.icon,
-        sortOrder: validated.sortOrder ?? maxSortOrder + 1,
-      })
-      .returning();
+    const newCategory = await scope.categories.create({
+      name: validated.name,
+      description: validated.description,
+      icon: validated.icon,
+      sortOrder: validated.sortOrder ?? maxSortOrder + 1,
+    });
 
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {

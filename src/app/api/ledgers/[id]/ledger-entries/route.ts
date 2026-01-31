@@ -26,7 +26,7 @@ export async function GET(
     const { id: ledgerId } = await params;
 
     // Verify user owns this ledger
-    const { error } = await requireLedgerAccess(ledgerId);
+    const { scope, error } = await requireLedgerAccess(ledgerId);
     if (error) return error;
     const searchParams = request.nextUrl.searchParams;
 
@@ -39,7 +39,7 @@ export async function GET(
       endDate: searchParams.get("endDate") || undefined,
     });
 
-    const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
+    const conditions = [];
 
     if (query.categoryId) {
       conditions.push(eq(ledgerEntries.categoryId, query.categoryId));
@@ -88,7 +88,7 @@ export async function GET(
       }
     }
 
-    const result = await db.query.ledgerEntries.findMany({
+    const result = await scope.entries.findMany({
       where: and(...conditions),
       with: {
         category: true,

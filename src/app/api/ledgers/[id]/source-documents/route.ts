@@ -26,14 +26,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id: ledgerId } = await params;
 
   // Verify user owns this ledger
-  const { error } = await requireLedgerAccess(ledgerId);
+  const { scope, error } = await requireLedgerAccess(ledgerId);
   if (error) return error;
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get("status"); // e.g. "queued,processing"
   const limit = parseInt(searchParams.get("limit") || "20");
   const cursor = searchParams.get("cursor"); // createdAt timestamp
 
-  const conditions = [eq(sourceDocuments.ledgerId, ledgerId)];
+  const conditions = [];
 
   if (status) {
     const statuses = status.split(",") as ("queued" | "processing" | "completed" | "anomaly")[];
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     conditions.push(lte(sourceDocuments.createdAt, new Date(endDate)));
   }
 
-  const result = await db.query.sourceDocuments.findMany({
+  const result = await scope.documents.findMany({
     where: and(...conditions),
     orderBy: [desc(sourceDocuments.createdAt)],
     limit: limit + 1,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify user owns this ledger
-    const { ledger, error } = await requireLedgerAccess(ledgerId);
+    const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
     if (error) return error;
 
     // Normalize images
@@ -109,12 +109,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Save source document with 'queued' status
-    const savedDoc = await sourceDocumentRepo.create({
-      ledgerId,
+    const savedDoc = await scope.documents.create({
       text: validated.text || null,
       imageUrls: imageUrls,
       status: "queued",
-    }, ledgerId);
+    });
 
 
     // Create a flow task

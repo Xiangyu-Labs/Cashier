@@ -3,6 +3,7 @@ import { ledgerEntryRepo, LedgerEntry } from "@/lib/repositories/ledger-entry-re
 import { sourceDocumentRepo, SourceDocument } from "@/lib/repositories/source-document-repository";
 import { taskRunRepo, TaskRun } from "@/lib/repositories/task-run-repository";
 import { shareRepo, Share } from "@/lib/repositories/share-repository";
+import { entryCategoryRepo, EntryCategory } from "@/lib/repositories/entry-category-repository";
 import { PgTable } from "drizzle-orm/pg-core";
 import { InferInsertModel } from "drizzle-orm";
 
@@ -128,6 +129,10 @@ export class LedgerScope {
 
     get shares() {
         return new ScopedRepository(shareRepo, this.ledgerId);
+    }
+
+    get categories() {
+        return new ScopedRepository(entryCategoryRepo, this.ledgerId);
     }
 
     /**

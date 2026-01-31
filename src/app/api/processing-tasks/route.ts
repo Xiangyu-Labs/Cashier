@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { LedgerScope } from "@/lib/scope/ledger-scope";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
     try {
@@ -23,15 +22,11 @@ export async function GET(request: NextRequest) {
 
         if (error) return error;
 
-        const conditions = [eq(taskRuns.ledgerId, ledgerId)];
+        const scope = new LedgerScope(ledgerId);
 
-        if (activeOnly) {
-            conditions.push(eq(taskRuns.status, 'running'));
-        }
-
-        const runs = await db.query.taskRuns.findMany({
-            where: and(...conditions),
-            orderBy: [desc(taskRuns.createdAt)],
+        const runs = await scope.tasks.findMany({
+            where: activeOnly ? { status: eq("running") } : undefined,
+            orderBy: { createdAt: "desc" },
             limit: limit,
         });
 
