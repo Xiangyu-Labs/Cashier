@@ -1,15 +1,13 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-
     updateLedgerEntry,
     deleteLedgerEntry,
-    retrySourceDocument,
     deleteSourceDocument,
-    updateSourceDocument,
     batchUpdateLedgerEntries,
     batchDeleteLedgerEntries,
 } from "@/lib/api";
+import { retrySourceDocumentAction, updateSourceDocumentAction } from "@/actions/source-document";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
@@ -155,9 +153,13 @@ export function LedgerEntriesTab({
     });
 
     const updateSourceDocumentMutation = useMutation({
-        mutationFn: ({ id, title }: { id: string, title: string }) => updateSourceDocument(ledgerId, id, { title }),
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
+        mutationFn: ({ id, title }: { id: string, title: string }) => updateSourceDocumentAction(ledgerId, id, { title }),
+        onSuccess: (res) => {
+            if (res.success) {
+                toast.success(tCommon("saveSuccess"));
+            } else {
+                toast.error(res.error || tCommon("saveFailed"));
+            }
         },
         onError: () => toast.error(tCommon("saveFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
@@ -182,7 +184,7 @@ export function LedgerEntriesTab({
     });
 
     const retryMutation = useMutation({
-        mutationFn: (id: string) => retrySourceDocument(ledgerId, id),
+        mutationFn: (id: string) => retrySourceDocumentAction(ledgerId, id),
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId, "active") });
             const prevActive = queryClient.getQueryData<SourceDocument[]>(queryKeys.sourceDocuments(ledgerId, "active"));
@@ -193,7 +195,13 @@ export function LedgerEntriesTab({
 
             return { prevActive };
         },
-        onSuccess: () => toast.success(t("retrySubmitted")),
+        onSuccess: (res) => {
+            if (res.success) {
+                toast.success(t("retrySubmitted"));
+            } else {
+                toast.error(res.error || tCommon("error"));
+            }
+        },
         onError: (err, id, ctx) => {
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(tCommon("error"));

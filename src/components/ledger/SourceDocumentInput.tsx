@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSourceDocument, updateLedger, retrySourceDocument } from "@/lib/api";
+import { updateLedger } from "@/lib/api";
+import { createSourceDocumentAction, retrySourceDocumentAction } from "@/actions/source-document";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
@@ -57,11 +58,14 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     });
 
     const sendMutation = useMutation({
-        mutationFn: (data: {
+        mutationFn: async (data: {
             text?: string;
             images?: { data: string; mimeType: string }[];
-        }) =>
-            createSourceDocument(ledgerId, data),
+        }) => {
+            const result = await createSourceDocumentAction(ledgerId, data);
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
             setText("");
@@ -71,11 +75,14 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     });
 
     const retryMutation = useMutation({
-        mutationFn: (data: {
+        mutationFn: async (data: {
             text?: string;
             images?: { data: string; mimeType: string }[];
-        }) =>
-            retrySourceDocument(ledgerId, sourceDocumentId!, data),
+        }) => {
+            const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["sourceDocuments", ledgerId] });
             onSuccess?.();

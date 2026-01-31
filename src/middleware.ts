@@ -24,8 +24,12 @@ export const proxy = auth((request) => {
 
     // 2. API routes handling
     if (pathname.startsWith("/api/")) {
-        // Public APIs
-        if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/s/")) {
+        // Public APIs or Token-based APIs
+        if (
+            pathname.startsWith("/api/auth") ||
+            pathname.startsWith("/api/s/") ||
+            pathname.startsWith("/api/v1/")
+        ) {
             return NextResponse.next();
         }
         // Protected APIs
