@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, Copy, Plus, Key } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Trash2, Copy, Plus, Key, Check } from "lucide-react";
 import { ServiceCredential } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,14 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
     const [createdCredential, setCreatedCredential] = useState<ServiceCredential | null>(null);
+    const [hasCopied, setHasCopied] = useState(false);
+
+    useEffect(() => {
+        if (hasCopied) {
+            const timer = setTimeout(() => setHasCopied(false), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasCopied]);
 
     const handleCreate = async () => {
         if (!newCredName.trim()) return;
@@ -47,40 +55,38 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
     const copyToClipboard = async (text: string) => {
         if (!text) return;
 
-        try {
-            // Priority 1: Modern Clipboard API
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-                toast.success(t("copied"));
-                return;
-            }
-
-            // Priority 2: Fallback for older browsers or non-secure contexts
+        const fallbackCopy = (content: string) => {
             const textArea = document.createElement("textarea");
-            textArea.value = text;
-
-            // Prevent scrolling to bottom
-            textArea.style.top = "0";
-            textArea.style.left = "0";
+            textArea.value = content;
             textArea.style.position = "fixed";
-            textArea.style.opacity = "0";
-
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-
             try {
                 const successful = document.execCommand('copy');
-                if (successful) {
-                    toast.success(t("copied"));
-                } else {
-                    throw new Error('Fallback copy failed');
-                }
+                return successful;
             } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-                toast.error(tCommon("error"));
+                console.error('Fallback copy failed', err);
+                return false;
             } finally {
                 document.body.removeChild(textArea);
+            }
+        };
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                setHasCopied(true);
+                toast.success(t("copied"));
+            } else {
+                if (fallbackCopy(text)) {
+                    setHasCopied(true);
+                    toast.success(t("copied"));
+                } else {
+                    throw new Error('Copy failed');
+                }
             }
         } catch (err) {
             console.error('Failed to copy: ', err);
@@ -188,15 +194,17 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                                 className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => copyToClipboard(createdCredential?.key || "")}
                             >
-                                <Copy size={14} className="mr-1" /> {t("copy")}
+                                {hasCopied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                                {hasCopied ? tCommon("success") : t("copy")}
                             </Button>
                         </div>
                         <Button
                             className="w-full gap-2"
                             onClick={() => copyToClipboard(createdCredential?.key || "")}
+                            variant={hasCopied ? "outline" : "default"}
                         >
-                            <Copy size={16} />
-                            {t("copyCredential")}
+                            {hasCopied ? <Check size={16} /> : <Copy size={16} />}
+                            {hasCopied ? tCommon("success") : t("copyCredential")}
                         </Button>
                     </div>
                     <DialogFooter>

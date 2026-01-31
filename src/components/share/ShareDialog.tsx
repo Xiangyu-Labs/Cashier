@@ -58,7 +58,6 @@ export function ShareDialog({
     const handleCopy = async () => {
         if (!shareUrl) return;
 
-        // Fallback copy function
         const fallbackCopy = (text: string) => {
             const textArea = document.createElement("textarea");
             textArea.value = text;
@@ -70,7 +69,8 @@ export function ShareDialog({
             textArea.select();
             try {
                 return document.execCommand('copy');
-            } catch {
+            } catch (err) {
+                console.error('Fallback copy failed', err);
                 return false;
             } finally {
                 document.body.removeChild(textArea);
@@ -80,12 +80,18 @@ export function ShareDialog({
         try {
             if (navigator.clipboard && window.isSecureContext) {
                 await navigator.clipboard.writeText(shareUrl);
+                setHasCopied(true);
+                toast.success(t("copied"));
+                setTimeout(() => setHasCopied(false), 2000);
             } else {
-                if (!fallbackCopy(shareUrl)) throw new Error('Fallback failed');
+                if (fallbackCopy(shareUrl)) {
+                    setHasCopied(true);
+                    toast.success(t("copied"));
+                    setTimeout(() => setHasCopied(false), 2000);
+                } else {
+                    throw new Error('Fallback failed');
+                }
             }
-            setHasCopied(true);
-            toast.success(t("copied"));
-            setTimeout(() => setHasCopied(false), 2000);
         } catch (error) {
             console.error('Copy failed:', error);
             toast.error(t("copyFailed"));
