@@ -85,7 +85,7 @@ export const POST = auth(async function POST(request): Promise<NextResponse> {
     const detail = e.detail || e.cause?.detail;
 
     if (code === "23503" && (constraint?.includes("user_id") || detail?.includes('table "users"'))) {
-      logger.warn({ userId: request.auth.user.id }, "Attempted to create ledger for non-existent user");
+      logger.warn({ userId: request.auth?.user?.id }, "Attempted to create ledger for non-existent user");
       return NextResponse.json(
         { error: "User not found" },
         { status: 401 }

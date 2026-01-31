@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
             text: text || null,
             imageUrls: imageUrls,
             status: "queued",
-        });
+        } as any);
 
         // Update last used at
         try {
