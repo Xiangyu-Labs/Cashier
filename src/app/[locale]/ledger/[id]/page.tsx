@@ -73,7 +73,7 @@ export default function LedgerPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted hover:text-text h-8 w-8 sm:h-9 sm:w-9"
+                className="text-muted-foreground hover:text-text h-8 w-8 sm:h-9 sm:w-9"
                 title={t("settings")}
               >
                 <Settings className="h-5 w-5" />
