@@ -21,6 +21,7 @@ import { Copy, Check, Share2, Link as LinkIcon, Loader2 } from "lucide-react";
 import { createShare } from "@/lib/api";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { cn, copyToClipboard } from "@/lib/utils";
 
 interface ShareDialogProps {
     isOpen: boolean;
@@ -57,59 +58,12 @@ export function ShareDialog({
 
     const handleCopy = async () => {
         if (!shareUrl) return;
-
-        const fallbackCopy = (text: string) => {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            textArea.setAttribute("readonly", ""); // Avoid keyboard on mobile
-            document.body.appendChild(textArea);
-
-            // Specialized selection for iOS
-            const isIOS = navigator.userAgent.match(/ipad|iphone/i);
-            if (isIOS) {
-                const range = document.createRange();
-                range.selectNodeContents(textArea);
-                const selection = window.getSelection();
-                if (selection) {
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-                textArea.setSelectionRange(0, 999999);
-            } else {
-                textArea.focus();
-                textArea.select();
-            }
-
-            try {
-                return document.execCommand('copy');
-            } catch (err) {
-                console.error('Fallback copy failed', err);
-                return false;
-            } finally {
-                document.body.removeChild(textArea);
-            }
-        };
-
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(shareUrl);
-                setHasCopied(true);
-                toast.success(t("copied"));
-                setTimeout(() => setHasCopied(false), 2000);
-            } else {
-                if (fallbackCopy(shareUrl)) {
-                    setHasCopied(true);
-                    toast.success(t("copied"));
-                    setTimeout(() => setHasCopied(false), 2000);
-                } else {
-                    throw new Error('Fallback failed');
-                }
-            }
-        } catch (error) {
-            console.error('Copy failed:', error);
+        const success = await copyToClipboard(shareUrl);
+        if (success) {
+            setHasCopied(true);
+            toast.success(t("copied"));
+            setTimeout(() => setHasCopied(false), 2000);
+        } else {
             toast.error(t("copyFailed"));
         }
     };

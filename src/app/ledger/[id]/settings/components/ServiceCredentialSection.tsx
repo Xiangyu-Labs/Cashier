@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { useTranslations } from "next-intl";
+import { cn, copyToClipboard } from "@/lib/utils";
 
 interface ServiceCredentialSectionProps {
     credentials: ServiceCredential[];
@@ -52,60 +53,12 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
         }
     };
 
-    const copyToClipboard = async (text: string) => {
-        if (!text) return;
-
-        const fallbackCopy = (content: string) => {
-            const textArea = document.createElement("textarea");
-            textArea.value = content;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            textArea.setAttribute("readonly", ""); // Avoid keyboard on mobile
-            document.body.appendChild(textArea);
-
-            // Specialized selection for iOS
-            const isIOS = navigator.userAgent.match(/ipad|iphone/i);
-            if (isIOS) {
-                const range = document.createRange();
-                range.selectNodeContents(textArea);
-                const selection = window.getSelection();
-                if (selection) {
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-                textArea.setSelectionRange(0, 999999);
-            } else {
-                textArea.focus();
-                textArea.select();
-            }
-
-            try {
-                const successful = document.execCommand('copy');
-                return successful;
-            } catch (err) {
-                console.error('Fallback copy failed', err);
-                return false;
-            } finally {
-                document.body.removeChild(textArea);
-            }
-        };
-
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-                setHasCopied(true);
-                toast.success(t("copied"));
-            } else {
-                if (fallbackCopy(text)) {
-                    setHasCopied(true);
-                    toast.success(t("copied"));
-                } else {
-                    throw new Error('Copy failed');
-                }
-            }
-        } catch (err) {
-            console.error('Failed to copy: ', err);
+    const handleCopy = async (text: string) => {
+        const success = await copyToClipboard(text);
+        if (success) {
+            setHasCopied(true);
+            toast.success(t("copied"));
+        } else {
             toast.error(tCommon("error"));
         }
     };
@@ -208,7 +161,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                                 size="sm"
                                 variant="outline"
                                 className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => copyToClipboard(createdCredential?.key || "")}
+                                onClick={() => handleCopy(createdCredential?.key || "")}
                             >
                                 {hasCopied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
                                 {hasCopied ? tCommon("success") : t("copy")}
@@ -216,7 +169,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
                         </div>
                         <Button
                             className="w-full gap-2"
-                            onClick={() => copyToClipboard(createdCredential?.key || "")}
+                            onClick={() => handleCopy(createdCredential?.key || "")}
                             variant={hasCopied ? "outline" : "default"}
                         >
                             {hasCopied ? <Check size={16} /> : <Copy size={16} />}

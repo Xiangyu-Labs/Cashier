@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useQueries } from "@tanstack/react-query";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -36,13 +37,61 @@ function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[]
 }
 
 function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
-  const totalAmount = entries.reduce((sum, entry) => sum + parseFloat(entry.amount), 0);
-  const firstCurrency = entries[0]?.currency || mainCurrency;
-  const firstDate = entries[0]?.entryDate || entries[0]?.createdAt;
+  const { subtotalsByCurrency, entryDates } = useMemo(() => {
+    const groups: Record<string, number> = {};
+    const dates: Record<string, string> = {};
+    entries.forEach(entry => {
+      const curr = entry.currency || mainCurrency;
+      groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
+      if (!dates[curr]) {
+        dates[curr] = entry.entryDate || entry.createdAt;
+      }
+    });
 
-  const { converted } = useConvertedAmount(totalAmount, firstCurrency, mainCurrency, firstDate);
+    return {
+      subtotalsByCurrency: groups,
+      entryDates: dates,
+    };
+  }, [entries, mainCurrency]);
 
-  return converted.toFixed(2);
+  const uniqueCurrencies = Object.keys(subtotalsByCurrency);
+
+  const conversionQueries = useQueries({
+    queries: uniqueCurrencies.map(currency => {
+      const amount = subtotalsByCurrency[currency];
+      const date = entryDates[currency];
+      const dateStr = typeof date === 'string' ? date : (date as any).toISOString();
+
+      return {
+        queryKey: ["convert", amount, currency, mainCurrency, dateStr],
+        queryFn: async () => {
+          if (currency === mainCurrency) return { converted: amount };
+          const searchParams = new URLSearchParams();
+          searchParams.set("amount", amount.toString());
+          searchParams.set("from", currency);
+          searchParams.set("to", mainCurrency);
+          searchParams.set("date", dateStr);
+
+          const res = await fetch(`/api/currency/convert?${searchParams}`);
+          if (!res.ok) throw new Error("Conversion failed");
+          return res.json();
+        },
+        staleTime: 1000 * 60 * 60 * 24,
+      };
+    })
+  });
+
+  const totalInMainCurrency = conversionQueries.reduce((sum, query) => {
+    return sum + (query.data?.converted ?? 0);
+  }, 0);
+
+  const isLoading = conversionQueries.some(q => q.isLoading);
+
+  if (isLoading) {
+    return <span className="animate-pulse">...</span>;
+  }
+
+  return totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 interface SourceDocumentCardProps {
