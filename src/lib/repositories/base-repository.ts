@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { eventBus } from "@/lib/events/event-bus";
 import { EntityType } from "@/lib/events/types";
 import { PgTable, PgColumn } from "drizzle-orm/pg-core";
-import { eq, inArray, InferInsertModel } from "drizzle-orm";
+import { eq, inArray, and, InferInsertModel } from "drizzle-orm";
 
 type DbClient = typeof db;
 
@@ -15,6 +15,22 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
     protected get db(): DbClient {
         return db;
+    }
+
+    /**
+     * Get a record by ID, optionally enforcing ledger ownership
+     */
+    async getById(id: string, ledgerId?: string): Promise<T | null> {
+        const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
+
+        const conditions = [eq(tableWithId.id, id)];
+        if (ledgerId) {
+             const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+             conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
+        }
+
+        const [result] = await this.db.select().from(this.table).where(and(...conditions));
+        return (result as T) || null;
     }
 
     /**
@@ -74,12 +90,18 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
         // We assume 'id' column exists and is the primary key
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
 
+        const conditions = [eq(tableWithId.id, id)];
+        if (ledgerId) {
+            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
+        }
+
         const [result] = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)
-            .where(eq(tableWithId.id, id))
+            .where(and(...conditions))
             .returning();
 
-        if (!result) throw new Error(`Entity ${this.entityType} with id ${id} not found`);
+        if (!result) throw new Error(`Entity ${this.entityType} with id ${id} not found or access denied`);
 
         const typedResult = result as T;
         const resolvedLedgerId = ledgerId || (typedResult as Record<string, unknown>)[this.ledgerIdField] as string;
@@ -105,15 +127,25 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
 
+        const conditions = [inArray(tableWithId.id, ids)];
+        // Enforce ledgerId for batch updates if provided
+        // Logic: All items must belong to the ledger.
+        // Note: The UPDATE statement will only affect rows that match the ledgerId.
+        // If some IDs belong to other ledgers, they simply won't be updated.
+        if (ledgerId) {
+            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
+        }
+
         const results = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)
-            .where(inArray(tableWithId.id, ids))
+            .where(and(...conditions))
             .returning();
 
         if (results.length > 0) {
             eventBus.publish({
                 type: 'entity:changed',
-                ledgerId: ledgerId, // Trust the passed ledgerId for batch ops to avoid checking every record
+                ledgerId: ledgerId,
                 entity: this.entityType,
                 action: 'updated',
                 ids: (results as T[]).map(r => r.id)
@@ -129,8 +161,14 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
     async delete(id: string, ledgerId?: string): Promise<void> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
 
+        const conditions = [eq(tableWithId.id, id)];
+        if (ledgerId) {
+            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
+        }
+
         const [deleted] = await this.db.delete(this.table)
-            .where(eq(tableWithId.id, id))
+            .where(and(...conditions))
             .returning();
 
         if (deleted) {
@@ -145,6 +183,9 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
                     ids: [id]
                 });
             }
+        } else if (ledgerId) {
+            // If we expected a deletion but nothing happened, it could be a security violation or just not found.
+            // For now, we silently return as delete is often idempotent, but in strict mode we might want to know.
         }
     }
 
@@ -153,10 +194,14 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
 
-        // Optionally enforce ledgerId check if we can.
-        // For simplicity in BaseRepository, we delete by ID.
+        const conditions = [inArray(tableWithId.id, ids)];
+        if (ledgerId) {
+            const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+            conditions.push(eq(tableWithLedgerId[this.ledgerIdField], ledgerId));
+        }
+
         const deleted = await this.db.delete(this.table)
-            .where(inArray(tableWithId.id, ids))
+            .where(and(...conditions))
             .returning();
 
         if (deleted.length > 0) {

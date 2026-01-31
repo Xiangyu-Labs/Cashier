@@ -1,0 +1,116 @@
+import { BaseRepository } from "@/lib/repositories/base-repository";
+import { ledgerEntryRepo, LedgerEntry } from "@/lib/repositories/ledger-entry-repository";
+import { sourceDocumentRepo, SourceDocument } from "@/lib/repositories/source-document-repository";
+import { taskRunRepo, TaskRun } from "@/lib/repositories/task-run-repository";
+import { shareRepo, Share } from "@/lib/repositories/share-repository";
+import { PgTable } from "drizzle-orm/pg-core";
+import { InferInsertModel } from "drizzle-orm";
+
+/**
+ * A scoped wrapper around a repository that automatically applies the ledgerId to all operations.
+ * This ensures that data access is always strictly scoped to the current ledger context.
+ */
+export class ScopedRepository<T extends { id: string }, U extends PgTable> {
+    constructor(
+        private repo: BaseRepository<T, U>,
+        private ledgerId: string
+    ) { }
+
+    /**
+     * Get a record by ID, enforcing strict ledger ownership.
+     */
+    async get(id: string): Promise<T | null> {
+        return this.repo.getById(id, this.ledgerId);
+    }
+
+    /**
+     * Update a record by ID, enforcing strict ledger ownership.
+     */
+    async update(id: string, data: Partial<T>): Promise<T> {
+        return this.repo.update(id, data, this.ledgerId);
+    }
+
+    /**
+     * Delete a record by ID, enforcing strict ledger ownership.
+     */
+    async delete(id: string): Promise<void> {
+        return this.repo.delete(id, this.ledgerId);
+    }
+
+    /**
+     * Create a record, automatically injecting the ledgerId.
+     */
+    async create(data: Omit<InferInsertModel<U>, "ledgerId"> & { ledgerId?: string }): Promise<T> {
+        // We cast to any to inject the ledgerId if it's missing from the type definition
+        // typically the data model has ledgerId as required, but we want to allow omitting it in the call
+        const dataWithLedger = {
+            ...data,
+            ledgerId: this.ledgerId
+        } as InferInsertModel<U>;
+
+        return this.repo.create(dataWithLedger, this.ledgerId);
+    }
+
+    /**
+     * Batch create records, automatically injecting the ledgerId.
+     */
+    async batchCreate(data: (Omit<InferInsertModel<U>, "ledgerId"> & { ledgerId?: string })[]): Promise<T[]> {
+        const dataWithLedger = data.map(d => ({
+            ...d,
+            ledgerId: this.ledgerId
+        })) as InferInsertModel<U>[];
+
+        return this.repo.batchCreate(dataWithLedger, this.ledgerId);
+    }
+
+    /**
+     * Batch update records, enforcing strict ledger ownership.
+     */
+    async batchUpdate(ids: string[], data: Partial<T>): Promise<T[]> {
+        return this.repo.batchUpdate(ids, data, this.ledgerId);
+    }
+
+    /**
+     * Batch delete records, enforcing strict ledger ownership.
+     */
+    async batchDelete(ids: string[]): Promise<void> {
+        return this.repo.batchDelete(ids, this.ledgerId);
+    }
+}
+
+/**
+ * The LedgerScope acts as a factory for scoped repositories.
+ * It represents an authenticated context where a specific user is accessing a specific ledger.
+ */
+export class LedgerScope {
+    constructor(private readonly ledgerId: string) {
+        if (!ledgerId) {
+            throw new Error("LedgerScope requires a valid ledgerId");
+        }
+    }
+
+    get entries() {
+        return new ScopedRepository(ledgerEntryRepo, this.ledgerId);
+    }
+
+    get documents() {
+        return new ScopedRepository(sourceDocumentRepo, this.ledgerId);
+    }
+
+    get tasks() {
+        return new ScopedRepository(taskRunRepo, this.ledgerId);
+    }
+
+    // Share repository might need special handling if it doesn't have ledgerId
+    // but based on schema, shares seem to be linked to documents which are linked to ledgers.
+    // If shareRepo has a ledgerId field, we can use it.
+    // Assuming for now generic support or explicit exclusion if not applicable.
+    // get shares() { return new ScopedRepository(shareRepo, this.ledgerId); }
+
+    /**
+     * Create a scope from a verified context object (e.g. from requireLedgerAccess)
+     */
+    static fromContext(context: { ledgerId: string }) {
+        return new LedgerScope(context.ledgerId);
+    }
+}
