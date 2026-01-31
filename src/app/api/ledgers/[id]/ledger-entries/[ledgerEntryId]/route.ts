@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 
@@ -21,9 +18,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId, ledgerEntryId } = await params;
 
-    // Verify user owns this ledger
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) return error;
+    // Get ledger scope
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) return error!;
 
     const body = await request.json();
     const validated = updateLedgerEntrySchema.parse(body);
@@ -41,16 +38,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
 
-    const [updated] = await db
-      .update(ledgerEntries)
-      .set(updateData)
-      .where(
-        and(
-          eq(ledgerEntries.id, ledgerEntryId),
-          eq(ledgerEntries.ledgerId, ledgerId)
-        )
-      )
-      .returning();
+    const updated = await scope.entries.update(ledgerEntryId, updateData);
 
     if (!updated) {
       return NextResponse.json(
@@ -80,19 +68,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: ledgerId, ledgerEntryId } = await params;
 
-    // Verify user owns this ledger
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) return error;
+    // Get ledger scope
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) return error!;
 
-    const [deleted] = await db
-      .delete(ledgerEntries)
-      .where(
-        and(
-          eq(ledgerEntries.id, ledgerEntryId),
-          eq(ledgerEntries.ledgerId, ledgerId)
-        )
-      )
-      .returning();
+    const deleted = await scope.entries.delete(ledgerEntryId);
 
     if (!deleted) {
       return NextResponse.json(

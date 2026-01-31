@@ -15,9 +15,9 @@ export async function POST(
     try {
         const { id: ledgerId } = await params;
 
-        // Verify user owns this ledger
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return error;
+        // Get ledger scope
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return error!;
 
         const body = await request.json();
         const { ledgerEntryIds } = batchDeleteSchema.parse(body);
@@ -26,8 +26,7 @@ export async function POST(
             return NextResponse.json({ success: true, deletedCount: 0 });
         }
 
-        const { ledgerEntryRepo } = await import("@/lib/repositories");
-        await ledgerEntryRepo.batchDelete(ledgerEntryIds, ledgerId);
+        await scope.entries.batchDelete(ledgerEntryIds);
 
         return NextResponse.json({
             success: true,

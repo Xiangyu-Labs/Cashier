@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shareRepo } from "@/lib/repositories";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
@@ -14,9 +13,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { id: ledgerId, sourceDocumentId } = await params;
 
-        // Verify user owns this ledger
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return error;
+        // Get ledger scope
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return error!;
 
         const body = await request.json();
         const validated = createShareSchema.parse(body);
@@ -39,12 +38,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 break;
         }
 
-        const share = await shareRepo.create({
+        const share = await scope.shares.create({
             sourceDocumentId,
             expiresAt: expiresAt,
             isActive: true,
             accessCount: 0,
-        }, ledgerId);
+        });
 
         const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${share.id}`;
 

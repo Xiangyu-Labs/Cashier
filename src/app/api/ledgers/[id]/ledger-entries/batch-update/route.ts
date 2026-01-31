@@ -17,9 +17,9 @@ export async function PATCH(
     try {
         const { id: ledgerId } = await params;
 
-        // Verify user owns this ledger
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return error;
+        // Get ledger scope
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return error!;
 
         const body = await request.json();
         const { ledgerEntryIds, categoryId, currency } = batchUpdateSchema.parse(body);
@@ -36,8 +36,7 @@ export async function PATCH(
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        const { ledgerEntryRepo } = await import("@/lib/repositories");
-        await ledgerEntryRepo.batchUpdate(ledgerEntryIds, updateData, ledgerId);
+        await scope.entries.batchUpdate(ledgerEntryIds, updateData);
 
         // Result handling for different DB adapters (Drizzle returns differ)
         // For Postgres/SQLite it might be returning().length, for others it might be a count object.
