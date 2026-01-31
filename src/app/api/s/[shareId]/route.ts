@@ -60,7 +60,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     icon: entry.category.icon
                 } : null
             })),
-            ledgerId: sourceDocument.ledgerId, // Might be needed for some context, but prefer not to if possible. 
         });
 
     } catch (error) {

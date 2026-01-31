@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { getActiveSessions } from "@/lib/auth/session";
 import { revokeSession } from "@/actions/session";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Laptop, Smartphone, Globe, LogOut } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";

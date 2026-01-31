@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/processing-tasks/route";
 import { getTestDb } from "../../setup";
-import { taskRuns } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { auth } from "@/auth";
 

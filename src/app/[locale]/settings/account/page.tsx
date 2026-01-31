@@ -1,9 +1,5 @@
 
-import { auth, signOut } from "@/auth";
-import { deleteAccount } from "@/actions/account";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { auth } from "@/auth";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { DeleteAccountForm } from "./DeleteAccountForm";

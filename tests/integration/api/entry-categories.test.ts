@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/ledgers/[id]/entry-categories/route";
 import { POST as REORDER } from "@/app/api/ledgers/[id]/entry-categories/reorder/route";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories as categories } from "@/lib/db/schema";
+import { entryCategories as categories } from "@/lib/db/schema";
 
 import { EntryCategory as Category } from "@/types/api";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

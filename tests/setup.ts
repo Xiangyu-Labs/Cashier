@@ -78,11 +78,11 @@ vi.mock("@/lib/db", () => ({
 
 // Global Auth Mock
 vi.mock("@/auth", () => ({
-  auth: (...args: any[]) => {
+  auth: (...args: unknown[]) => {
     // Case 1: Called as a wrapper function auth((req) => {...})
     if (args.length === 1 && typeof args[0] === "function") {
-      const handler = args[0];
-      return async (req: any, ctx: any) => {
+      const handler = args[0] as (req: unknown, ctx: unknown) => unknown;
+      return async (req: { auth?: unknown }, ctx: unknown) => {
         req.auth = req.auth || {
           user: {
             id: "00000000-0000-0000-0000-000000000000",

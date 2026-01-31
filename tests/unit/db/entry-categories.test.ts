@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { entryCategories as categories, ledgers } from "@/lib/db/schema";
+import { entryCategories as categories } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("Categories Database Operations", () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/ledgers/[id]/ledger-entries/route";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { entryCategories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("GET /api/ledgers/[id]/ledger-entries", () => {

@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/shares/route";
 import { GET as GET_SHARE } from "@/app/api/s/[shareId]/route";
-import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/shares/[shareId]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, sourceDocuments, shares, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, shares, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 

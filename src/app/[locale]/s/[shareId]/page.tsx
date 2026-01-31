@@ -1,6 +1,7 @@
 import { shareRepo } from "@/lib/repositories/share-repository";
 import { notFound } from "next/navigation";
 import { ShareReceipt } from "./components/ShareReceipt";
+import { ShareData } from "@/lib/api";
 
 type RouteParams = { params: Promise<{ shareId: string; locale: string }> };
 
@@ -26,7 +27,7 @@ export default async function SharePage({ params }: RouteParams) {
         notFound();
     }
 
-    const shareData = {
+    const shareData: ShareData = {
         sourceDocument: {
             id: share.sourceDocument.id,
             title: share.sourceDocument.title,
@@ -52,7 +53,7 @@ export default async function SharePage({ params }: RouteParams) {
 
     return (
         <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
-            <ShareReceipt data={shareData as any} />
+            <ShareReceipt data={shareData} />
         </div>
     );
 }

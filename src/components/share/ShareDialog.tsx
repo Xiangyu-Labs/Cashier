@@ -70,7 +70,7 @@ export function ShareDialog({
             textArea.select();
             try {
                 return document.execCommand('copy');
-            } catch (err) {
+            } catch {
                 return false;
             } finally {
                 document.body.removeChild(textArea);
@@ -127,7 +127,7 @@ export function ShareDialog({
                                 <Label htmlFor="expiration">{t("expiration")}</Label>
                                 <Select
                                     value={expiresIn}
-                                    onValueChange={(value) => setExpiresIn(value as any)}
+                                    onValueChange={(value) => setExpiresIn(value as "1d" | "7d" | "30d" | "never")}
                                 >
                                     <SelectTrigger id="expiration">
                                         <SelectValue placeholder={t("selectExpiration")} />

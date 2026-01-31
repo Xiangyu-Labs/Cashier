@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
 import { getTestDb } from "../../setup";
-import { ledgers, taskRuns } from "@/lib/db/schema";
+import { taskRuns } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 

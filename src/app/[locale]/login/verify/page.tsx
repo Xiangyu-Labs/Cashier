@@ -1,8 +1,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Mail, CheckCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 

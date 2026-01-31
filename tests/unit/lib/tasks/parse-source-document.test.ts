@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/lib/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
-import { ledgers, sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";

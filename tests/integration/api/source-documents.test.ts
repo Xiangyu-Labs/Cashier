@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/ledgers/[id]/source-documents/route";
 import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";

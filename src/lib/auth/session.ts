@@ -1,7 +1,7 @@
 
 import { db } from "@/lib/db";
 import { sessions } from "@/lib/db/schema";
-import { eq, ne, and, desc } from "drizzle-orm"; // Fixed: import specific operators
+import { eq, and, desc } from "drizzle-orm"; // Fixed: import specific operators
 import { headers } from "next/headers";
 import { UAParser } from "ua-parser-js";
 

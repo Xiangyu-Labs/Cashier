@@ -1,6 +1,5 @@
 import { shares } from "@/lib/db/schema";
 import { BaseRepository } from "./base-repository";
-import { EntityType } from "@/lib/events/types";
 import { eq, and, gt, desc, or, isNull } from "drizzle-orm";
 import { InferSelectModel } from "drizzle-orm";
 

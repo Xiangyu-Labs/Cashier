@@ -38,7 +38,7 @@ export default function MagicLinkEmail({
                         </Link>
                     </Section>
                     <Text style={footer}>
-                        If you didn't request this email, you can safely ignore it.
+                        If you didn&apos;t request this email, you can safely ignore it.
                     </Text>
                 </Container>
             </Body>

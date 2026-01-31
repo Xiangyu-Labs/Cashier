@@ -3,9 +3,8 @@ import { registerFlowTask, FlowTaskHandler, FlowDefinition, FlowContext } from "
 import { submitFlowTask } from "@/lib/flow/producer";
 import { mainWorker, apiWorker } from "@/lib/flow/workers";
 import { db } from "@/lib/db";
-import { taskRuns, ledgers } from "@/lib/db/schema";
+import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createLedgerData } from "../../helpers/factories";
 import { mainQueue, apiQueue } from "@/lib/flow/queues";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
@@ -79,7 +78,6 @@ describe("Recursive Flow Integration", () => {
 
     beforeEach(async () => {
         // Setup Ledger here because global setup truncates before each test
-        const ledgerData = createLedgerData();
         const { ledgerId: id } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
         ledgerId = id;
     });

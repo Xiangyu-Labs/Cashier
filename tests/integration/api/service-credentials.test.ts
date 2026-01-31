@@ -4,7 +4,7 @@ import { POST as createCredentialPOST, GET as listCredentialsGET } from "@/app/a
 import { DELETE as deleteCredentialDELETE } from "@/app/api/ledgers/[id]/service-credentials/[credentialId]/route";
 import { POST as ledgerEntryPOST } from "@/app/api/v1/ledger-entries/route";
 import { getTestDb } from "../../setup";
-import { ledgers, serviceCredentials, sourceDocuments } from "@/lib/db/schema";
+import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 

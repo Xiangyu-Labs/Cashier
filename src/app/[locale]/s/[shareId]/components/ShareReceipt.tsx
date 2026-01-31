@@ -4,8 +4,6 @@ import { ShareData } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import Image from "next/image";
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
 import { Check, ShoppingBag, Utensils, Plane, Car, Film, Coffee, Music, Home, Gift } from "lucide-react";
 
 interface ShareReceiptProps {

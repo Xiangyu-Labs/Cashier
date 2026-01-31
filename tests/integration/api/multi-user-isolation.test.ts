@@ -8,12 +8,13 @@
  * This is intentional security behavior - not revealing whether a ledger exists
  * to unauthorized users (security through obscurity).
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import {
     TEST_USER_ID,
     createTestUserWithLedger,
 } from "../../helpers/schema-setup";
+import { NextRequest } from "next/server";
 
 // Second test user
 const TEST_USER_ID_2 = "11111111-1111-1111-1111-111111111111";
@@ -51,11 +52,11 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/route"
             );
 
-            const request = new Request(`http://localhost/api/ledgers/${user2Ledger}`, {
+            const request = new NextRequest(`http://localhost/api/ledgers/${user2Ledger}`, {
                 method: "GET",
             });
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -70,11 +71,11 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/route"
             );
 
-            const request = new Request(`http://localhost/api/ledgers/${user1Ledger}`, {
+            const request = new NextRequest(`http://localhost/api/ledgers/${user1Ledger}`, {
                 method: "GET",
             });
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user1Ledger }),
             });
 
@@ -90,13 +91,13 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/route"
             );
 
-            const request = new Request(`http://localhost/api/ledgers/${user2Ledger}`, {
+            const request = new NextRequest(`http://localhost/api/ledgers/${user2Ledger}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: "Hacked Ledger" }),
             });
 
-            const response = await PATCH(request as any, {
+            const response = await PATCH(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -110,11 +111,11 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/route"
             );
 
-            const request = new Request(`http://localhost/api/ledgers/${user2Ledger}`, {
+            const request = new NextRequest(`http://localhost/api/ledgers/${user2Ledger}`, {
                 method: "DELETE",
             });
 
-            const response = await DELETE(request as any, {
+            const response = await DELETE(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -128,12 +129,12 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/ledger-entries/route"
             );
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/ledger-entries`,
                 { method: "GET" }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -147,12 +148,12 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/source-documents/route"
             );
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/source-documents`,
                 { method: "GET" }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -166,12 +167,12 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/entry-categories/route"
             );
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/entry-categories`,
                 { method: "GET" }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -185,12 +186,12 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/service-credentials/route"
             );
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/service-credentials`,
                 { method: "GET" }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -204,12 +205,12 @@ describe("Multi-User Isolation", () => {
                 "@/app/api/ledgers/[id]/ledger-entries/summary/route"
             );
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/ledger-entries/summary`,
                 { method: "GET" }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 
@@ -226,12 +227,12 @@ describe("Multi-User Isolation", () => {
             // Create an AbortController for the signal
             const abortController = new AbortController();
 
-            const request = new Request(
+            const request = new NextRequest(
                 `http://localhost/api/ledgers/${user2Ledger}/events`,
                 { method: "GET", signal: abortController.signal }
             );
 
-            const response = await GET(request as any, {
+            const response = await GET(request, {
                 params: Promise.resolve({ id: user2Ledger }),
             });
 

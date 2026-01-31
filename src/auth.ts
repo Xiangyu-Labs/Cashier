@@ -56,6 +56,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     callbacks: {
         ...authConfig.callbacks,
+        async signIn({ user }) {
+            if (user.email) {
+                const { isRegistrationAllowed } = await import("@/lib/auth/registration");
+                if (!(await isRegistrationAllowed(user.email))) {
+                    return false;
+                }
+            }
+            return true;
+        },
     },
     events: {
         async createUser({ user }) {

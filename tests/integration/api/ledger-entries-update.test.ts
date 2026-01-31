@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { PATCH } from "@/app/api/ledgers/[id]/ledger-entries/[ledgerEntryId]/route";
 import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
