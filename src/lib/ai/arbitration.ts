@@ -11,6 +11,7 @@ import { z } from "zod";
 const arbitrationResultSchema = z.object({
     choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
     reason: z.string().optional(),
+    currency: z.string().optional(),
 });
 
 export type ArbitrationResult = z.infer<typeof arbitrationResultSchema>;
@@ -68,36 +69,37 @@ Determine if the discrepancy is due to:
     }
 
     // unknown_currency scenario
-    const unknownEntries = entries1.filter(e => e.currency === "unknown");
-    return `You are a financial document arbitration AI. An AI system could not determine the currency for some items.
+    return `You are a financial document arbitration AI. An AI system could not determine the currency for some items in at least one of the results.
 
 ### Original Content
 ${originalContent || "(Image-based content)"}
 
-### Entries with Unknown Currency
-${formatEntries(unknownEntries)}
-
-### All Parsed Entries
+### GPT Result #1
 ${formatEntries(entries1)}
 
+### GPT Result #2
+${formatEntries(entries2)}
+
 ### Task
-Determine if the currency truly cannot be identified:
-1. **Genuinely unidentifiable** - no currency symbols, no clues from context, merchant location unknown
-2. **Should be identifiable** - there are clues like symbols (¥, $, €), merchant name, or location hints
+Determine if the currency can be identified from the document and which result is better:
+1. **Genuinely unidentifiable** - no currency symbols, no clues from context, merchant location unknown.
+2. **Result 1 is better** - It identifies the items correctly, and the currency can be inferred.
+3. **Result 2 is better** - It identifies the items correctly, and the currency can be inferred.
 
 ### Rules
 - If the currency genuinely cannot be determined even with reasonable inference, return choice=0
-- If you can confidently infer the currency, return choice=1 (the AI should have figured it out)
+- If you can confidently infer the currency, return choice=1 or choice=2 depending on which result is more accurate.
+- If you infer the currency, provide the 3-letter ISO currency code in the "currency" field (e.g. "CNY", "USD", "MYR").
 - Common patterns: Chinese merchants usually use CNY, US merchants use USD, etc.
 
 ### Output (raw JSON only, no markdown)
-{"choice": 0|1, "reason": "..."}
+{"choice": 0|1|2, "currency": "ISO_CODE", "reason": "..."}
 
 ### Reason Field Requirements (IMPORTANT)
 - Maximum 20 characters
 - ${languageInstruction}
-- State the specific issue directly (e.g., "无货币符号", "商户地区未知", "多币种混合")
-- No generic phrases, be specific about what's missing`;
+- State the specific issue or reasoning directly (e.g., "马币，商户名推断", "无货币符号", "Result 1 更准确")
+- No generic phrases, be specific about what's missing or why you chose a result`;
 }
 
 /**

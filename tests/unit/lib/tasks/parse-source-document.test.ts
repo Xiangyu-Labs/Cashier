@@ -245,6 +245,39 @@ describe("parseSourceDocumentHandler.execute", () => {
         expect(result.anomalyReason).toBe("Amount unclear in receipt");
         expect(result.ledgerEntries).toHaveLength(0);
     });
+
+    it("should accept arbitrated currency when unknown currency is resolved", async () => {
+        const input: ParseSourceDocumentInput = {
+            sourceDocumentId: sourceDocId,
+            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
+            settings: {
+                mergeSimilarItems: false,
+                autoRecognizeDate: true,
+            }
+        };
+
+        mockProcessor.process.mockResolvedValue({
+            ledgerEntries: [
+                { itemName: "Lunch", amount: 10, currency: "unknown", category: "Food", entryDate: "2024-01-01" }
+            ],
+            isValid: true,
+            title: "Test Title"
+        });
+
+        // Arbitration chooses result 1 and provides currency
+        vi.mocked(arbitrate).mockResolvedValue({ choice: 1, currency: "CNY" });
+
+        const context = {
+            updateProgress: vi.fn(),
+            ledgerId: "test-ledger"
+        } as unknown as FlowContext;
+
+        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+
+        expect(arbitrate).toHaveBeenCalledWith("unknown_currency", expect.anything(), expect.anything(), undefined, undefined);
+        expect(result.verificationStatus).toBe("passed");
+        expect(result.ledgerEntries[0].currency).toBe("CNY");
+    });
 });
 
 describe("parseSourceDocumentHandler.onComplete", () => {

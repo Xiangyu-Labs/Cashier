@@ -122,7 +122,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const title = result1.title;
         let entries1 = applyDateOverride(result1.ledgerEntries);
-        const entries2 = applyDateOverride(result2.ledgerEntries);
+        let entries2 = applyDateOverride(result2.ledgerEntries);
 
         // 1. Check validity
         if (result1.isValid === false) {
@@ -150,14 +150,23 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                     verificationStatus: 'anomaly'
                 };
             }
-            // choice === 1 means AI should have figured it out, but we still can't proceed
-            // without a currency. Return as anomaly but with different reason.
-            return {
-                ledgerEntries: [],
-                title,
-                anomalyReason: "币种识别失败",
-                verificationStatus: 'anomaly'
-            };
+
+            // Pick the better result and apply the arbitrated currency
+            let chosenEntries = arbitrationResult.choice === 2 ? entries2 : entries1;
+
+            if (arbitrationResult.currency) {
+                logger.info({ currency: arbitrationResult.currency }, "Arbitration resolved unknown currency");
+                const fixedCurrency = arbitrationResult.currency;
+                entries1 = entries1.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
+                entries2 = entries2.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
+                // Also update the chosen entries to make sure we don't return 'unknown'
+                chosenEntries = chosenEntries.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
+            }
+
+            // Re-assign to entries1 so following checks (e.g. verifyAmounts) use the fixed version
+            entries1 = chosenEntries;
+            // Also need to ensure entries2 is somewhat sane for verifyAmounts if arbitration worked
+            // but we'll let verifyAmounts handle potential mismatches next.
         }
 
         // 3. First Batch Verification - use arbitration if mismatch
