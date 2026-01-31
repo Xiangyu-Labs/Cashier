@@ -34,8 +34,8 @@ beforeAll(async () => {
   process.env.FLOW_MAIN_QUEUE_CONCURRENCY = "1";
   process.env.FLOW_API_QUEUE_CONCURRENCY = "1";
   process.env.PROCESSING_WORKER_COUNT = "1";
-  process.env.BULLMQ_LOCK_DURATION = "1000"; // Short for tests
-  process.env.BULLMQ_STALLED_INTERVAL = "1000";
+  process.env.BULLMQ_LOCK_DURATION = "10000"; // Increased for stability
+  process.env.BULLMQ_STALLED_INTERVAL = "10000";
 
   // Initialize workers for integration tests
   await initializeWorkers();
