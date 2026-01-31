@@ -6,6 +6,8 @@ const batchUpdateSchema = z.object({
     ledgerEntryIds: z.array(z.string()),
     categoryId: z.string().optional(),
     currency: z.string().optional(),
+    entryDate: z.string().optional(),
+    description: z.string().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -22,15 +24,17 @@ export async function PATCH(
         if (error || !scope) return error!;
 
         const body = await request.json();
-        const { ledgerEntryIds, categoryId, currency } = batchUpdateSchema.parse(body);
+        const { ledgerEntryIds, categoryId, currency, entryDate, description } = batchUpdateSchema.parse(body);
 
         if (!ledgerEntryIds || ledgerEntryIds.length === 0) {
             return NextResponse.json({ success: true, updatedCount: 0 });
         }
 
-        const updateData: Record<string, string> = {};
+        const updateData: Record<string, any> = {};
         if (categoryId) updateData.categoryId = categoryId;
         if (currency) updateData.currency = currency;
+        if (entryDate) updateData.entryDate = new Date(entryDate);
+        if (description !== undefined) updateData.description = description;
 
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json({ success: true, updatedCount: 0 });

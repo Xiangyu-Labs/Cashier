@@ -166,7 +166,11 @@
         "batchCurrency": "批量修改货币",
         "selectedCount": "已选 {count} 项",
         "noEntries": "暂无明细项目",
-        "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？"
+        "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
+        "batchDate": "批量修改日期",
+        "batchDescription": "批量修改备注",
+        "totalAmount": "合计金额",
+        "billStatus": "账单状态"
     },
     "Settings": {
         "title": "设置",

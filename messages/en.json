@@ -163,7 +163,11 @@
         "batchCurrency": "Batch Edit Currency",
         "selectedCount": "{count} {count, plural, one {item} other {items}} selected",
         "noEntries": "No detail items",
-        "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?"
+        "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
+        "batchDate": "Batch Edit Date",
+        "batchDescription": "Batch Edit Description",
+        "totalAmount": "Total Amount",
+        "billStatus": "Bill Status"
     },
     "Settings": {
         "title": "Settings",

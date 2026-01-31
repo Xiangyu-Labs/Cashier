@@ -344,6 +344,8 @@ export function batchUpdateLedgerEntries(
     ledgerEntryIds: string[];
     categoryId?: string;
     currency?: string;
+    entryDate?: string;
+    description?: string;
   }
 ): Promise<{ success: boolean; updatedCount: number }> {
   return request(

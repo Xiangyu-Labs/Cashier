@@ -25,9 +25,10 @@ import { useTranslations } from "next-intl";
 
 interface LedgerSwitcherProps {
     currentLedgerId: string;
+    currentLedgerName?: string;
 }
 
-export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
+export function LedgerSwitcher({ currentLedgerId, currentLedgerName }: LedgerSwitcherProps) {
     const t = useTranslations("LedgerSwitcher");
     const tCommon = useTranslations("Common");
     const router = useRouter();
@@ -81,7 +82,7 @@ export function LedgerSwitcher({ currentLedgerId }: LedgerSwitcherProps) {
                         aria-expanded={open}
                         className="w-auto px-2 hover:bg-transparent text-lg font-bold hover:text-primary transition-colors hover:bg-accent/10"
                     >
-                        <span className="truncate text-left max-w-[100px] sm:max-w-[150px]">{currentLedger?.name || t("selectLedger")}</span>
+                        <span className="truncate text-left max-w-[100px] sm:max-w-[150px]">{currentLedger?.name || currentLedgerName || t("selectLedger")}</span>
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>

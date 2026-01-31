@@ -484,6 +484,10 @@ export function LedgerEntriesTab({
                     // Trigger batch delete mutation directly or after confirm usually, but here directly as requested within modal logic
                     await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
                 }}
+                onViewLedgerEntry={(entry) => {
+                    setSelectedLedgerEntry(entry);
+                    setIsDetailModalOpen(true);
+                }}
             />
 
             {/* Edit-Retry Dialog */}
