@@ -72,26 +72,23 @@ export class OpenAIClient {
                 return { content };
             } catch (error) {
                 lastError = error;
-                const isRetryable =
-                    error instanceof Error &&
-                    (error.message.includes("429") || // Rate limit
-                        error.message.includes("5") ||   // Server errors (5xx)
-                        error.message.includes("timeout") ||
-                        error.message.includes("ECONNRESET"));
 
-                if (attempt < maxRetries) {
-                    // Check if it is a 400 error (except 429) which is usually not retryable
-                    if (error instanceof OpenAI.APIError && error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
-                        throw error;
-                    }
+                // Determine if the error is retryable
+                let isRetryable = true;
 
-                    // Only retry if it is explicitly retryable
-                    if (isRetryable) {
-                        const delay = baseDelay * Math.pow(2, attempt);
-                        logger.warn({ err: error, attempt: attempt + 1, maxRetries: maxRetries + 1, delay }, "OpenAI request failed, retrying");
-                        await new Promise((resolve) => setTimeout(resolve, delay));
-                        continue;
+                // If it's an OpenAI APIError, check the status code
+                if (error instanceof OpenAI.APIError && error.status) {
+                    // 4xx errors are generally NOT retryable, except for 429 (Rate Limit)
+                    if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+                        isRetryable = false;
                     }
+                }
+
+                if (attempt < maxRetries && isRetryable) {
+                    const delay = baseDelay * Math.pow(2, attempt);
+                    logger.warn({ err: error, attempt: attempt + 1, maxRetries: maxRetries + 1, delay }, "OpenAI request failed, retrying");
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                    continue;
                 }
 
                 // If we're out of retries or it's not retryable, break loop

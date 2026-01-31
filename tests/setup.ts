@@ -3,6 +3,7 @@ process.env.REDIS_URL = "redis://127.0.0.1:6380";
 
 
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
+import React from "react";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { sql } from "drizzle-orm";
@@ -144,6 +145,7 @@ vi.mock("next-intl", async () => {
         }
 
         if (!msg) return key;
+        return key; // Always return key for predictable testing
 
         let translated = msg;
         if (values && typeof translated === "string") {
@@ -162,3 +164,12 @@ vi.mock("next-intl", async () => {
       React.createElement(React.Fragment, null, children),
   };
 });
+
+// Mock next/image
+vi.mock("next/image", () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return React.createElement("img", { ...props, src: props.src });
+  },
+}));
