@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { touchSession } from "@/actions/session";
 import { useSession, signOut } from "next-auth/react";
-import { usePathname, useRouter } from "@/i18n/routing";
+import { usePathname, useRouter } from "next/navigation";
 
 export function SessionManager() {
     const { data: session, status } = useSession();
