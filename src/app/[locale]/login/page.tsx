@@ -86,7 +86,7 @@ export default function LoginPage() {
             }
 
             // OTP verified, now sign in with credentials
-            const result = await signIn("credentials", {
+            const result = await signIn("otp", {
                 email,
                 otp,
                 redirect: false,
