@@ -10,6 +10,15 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - OPENAI_MODEL=${OPENAI_MODEL}
       - REDIS_URL=redis://redis:6379
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - AUTH_RESEND_KEY=${AUTH_RESEND_KEY}
+      - AUTH_EMAIL_FROM=${AUTH_EMAIL_FROM}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - AI_MAX_RETRIES=${AI_MAX_RETRIES:-3}
+      - AI_RETRY_DELAY_MS=${AI_RETRY_DELAY_MS:-1000}
+      - PROCESSING_WORKER_COUNT=${PROCESSING_WORKER_COUNT:-1}
       - ENABLE_WORKERS=false  # Disable workers in web process
     depends_on:
       db:
@@ -27,6 +36,15 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - OPENAI_MODEL=${OPENAI_MODEL}
       - REDIS_URL=redis://redis:6379
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - AUTH_RESEND_KEY=${AUTH_RESEND_KEY}
+      - AUTH_EMAIL_FROM=${AUTH_EMAIL_FROM}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - AI_MAX_RETRIES=${AI_MAX_RETRIES:-3}
+      - AI_RETRY_DELAY_MS=${AI_RETRY_DELAY_MS:-1000}
+      - PROCESSING_WORKER_COUNT=${PROCESSING_WORKER_COUNT:-1}
       - ENABLE_WORKERS=true   # Enable workers here
       - SKIP_MIGRATIONS=true  # Don't run migrations in worker
     depends_on:
