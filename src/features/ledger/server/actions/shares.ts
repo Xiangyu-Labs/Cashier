@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { shares } from "@/lib/db/schema";
+import { shares } from "@/features/share/server/schema";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { addDays } from "date-fns";
 import crypto from "crypto";
-import { shareRepo } from "@/lib/repositories/share-repository";
+import { shareRepo } from "@/features/share/server/repository";
 import { ShareData } from "@/types/api";
 
 const createShareSchema = z.object({

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
-import { getProcessingStatsAction, getProcessingTasksAction } from "@/actions/processing";
+import { getProcessingStatsAction, getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
 
 // Use partial type or inferred type matching
 interface ProcessingTask {

@@ -1,6 +1,6 @@
 'use server';
 
-import { ExchangeRateService } from "@/lib/currency/exchange-rate-service";
+import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { revalidatePath } from "next/cache";
 
 export interface ConvertCurrencyResult {

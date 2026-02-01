@@ -1,7 +1,6 @@
-import { shares } from "@/lib/db/schema";
-import { BaseRepository } from "./base-repository";
-import { eq, and, gt, desc, or, isNull } from "drizzle-orm";
-import { InferSelectModel } from "drizzle-orm";
+import { shares } from "./schema";
+import { BaseRepository } from "@/lib/repositories/base-repository";
+import { eq, and, gt, desc, or, isNull, InferSelectModel } from "drizzle-orm";
 
 export type Share = InferSelectModel<typeof shares>;
 

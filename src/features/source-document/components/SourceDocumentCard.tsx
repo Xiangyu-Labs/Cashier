@@ -19,7 +19,8 @@ import { useTranslations, useLocale } from "next-intl";
 
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/actions/currency";
+import { deleteSourceDocumentAction } from "@/features/source-document/server/actions/main";
+import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {

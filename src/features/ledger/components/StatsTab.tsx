@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getLedgerStatsAction } from "@/actions/stats";
+import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 
 
 import {

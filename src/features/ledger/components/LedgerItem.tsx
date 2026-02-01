@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/routing";
-import { getLedgerStatsAction } from "@/actions/stats";
+import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 
 
 import { Ledger } from "@/types/api";

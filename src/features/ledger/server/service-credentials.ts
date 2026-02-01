@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { serviceCredentials } from "@/lib/db/schema";
+import { serviceCredentials } from "./schema";
 import { eq, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 

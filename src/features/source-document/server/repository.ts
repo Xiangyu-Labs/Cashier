@@ -1,5 +1,5 @@
 import { BaseRepository } from "@/lib/repositories/base-repository";
-import { sourceDocuments } from "@/lib/db/schema";
+import { sourceDocuments } from "@/features/source-document/server/schema";
 import { InferSelectModel, eq } from "drizzle-orm";
 import { eventBus } from "@/lib/events/event-bus";
 

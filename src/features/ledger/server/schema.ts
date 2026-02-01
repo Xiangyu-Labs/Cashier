@@ -70,7 +70,7 @@ export const entryCategories = pgTable("entry_categories", {
 // Actually, I can decouple it? No, FK existence is important for migrations.
 // I will import `sourceDocuments` from "@/lib/db/schemas/legacy".
 
-import { sourceDocuments } from "../../../lib/db/schemas/legacy";
+import { sourceDocuments } from "@/features/source-document/server/schema";
 
 // LedgerEntry（账目分录）
 export const ledgerEntries = pgTable("ledger_entries", {
@@ -95,3 +95,15 @@ export const ledgerEntries = pgTable("ledger_entries", {
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
     index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
+
+// ServiceCredentials (服务凭据)
+export const serviceCredentials = pgTable("service_credentials", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull().unique(),
+    ledgerId: uuid("ledger_id")
+        .notNull()
+        .references(() => ledgers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at"),
+});

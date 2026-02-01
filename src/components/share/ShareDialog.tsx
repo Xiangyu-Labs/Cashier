@@ -18,7 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
 import { Copy, Check, Share2, Link as LinkIcon, Loader2 } from "lucide-react";
-import { createShareAction } from "@/actions/shares";
+import { createShareAction } from "@/features/ledger/server/actions/shares";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn, copyToClipboard } from "@/lib/utils";

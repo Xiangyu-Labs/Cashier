@@ -1,6 +1,6 @@
 process.env.NO_DB = "true";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ExchangeRateService } from "@/lib/currency/exchange-rate-service";
+import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { db } from "@/lib/db";
 
 

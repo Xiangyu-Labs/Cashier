@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateServiceCredential } from "@/lib/service-credentials";
+import { validateServiceCredential } from "@/features/ledger/server/service-credentials";
 import { db } from "@/lib/db";
-import { serviceCredentials } from "@/lib/db/schema";
+import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { LedgerScope } from "@/features/ledger/server/service";

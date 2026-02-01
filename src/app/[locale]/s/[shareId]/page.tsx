@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ShareReceipt } from "./components/ShareReceipt";
-import { getPublicShareAction } from "@/actions/shares";
+import { getPublicShareAction } from "@/features/ledger/server/actions/shares";
 
 type RouteParams = { params: Promise<{ shareId: string; locale: string }> };
 

@@ -1,7 +1,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getLedgerStatsAction } from "@/actions/stats"; // New Action
+import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats"; // New Action
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";

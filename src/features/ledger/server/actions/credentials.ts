@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { serviceCredentials } from "@/lib/db/schema";
+import { serviceCredentials } from "@/features/ledger/server/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";

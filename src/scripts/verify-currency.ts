@@ -34,7 +34,7 @@ async function main() {
 
     try {
         // Dynamic import to ensure process.env is set BEFORE the module loads
-        const { ExchangeRateService } = await import("../lib/currency/exchange-rate-service");
+        const { ExchangeRateService } = await import("../features/currency/server/exchange-rate-service");
 
         // 1. Fetch Rates (should hit API first time)
         console.log("1. Fetching current rates...");

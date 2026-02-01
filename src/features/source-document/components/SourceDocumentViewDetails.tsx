@@ -11,7 +11,11 @@ import { useQueries } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import { convertCurrencyAction } from "@/actions/currency";
+import {
+    updateSourceDocumentAction,
+    deleteSourceDocumentAction
+} from "@/features/source-document/server/actions/main";
+import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
 
 interface CurrencyBreakdownItemProps {
     currency: string;

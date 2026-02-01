@@ -8,7 +8,7 @@ import {
     createEntryCategoryAction,
     updateEntryCategoryAction,
     deleteEntryCategoryAction,
-} from "@/actions/categories";
+} from "@/features/ledger/server/actions/categories";
 import { EntryCategory } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
