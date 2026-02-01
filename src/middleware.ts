@@ -9,20 +9,19 @@ const intlMiddleware = createMiddleware(routing);
 
 export default auth((req) => {
     const { pathname } = req.nextUrl;
+    const referer = req.headers.get("referer");
+    const acceptLanguage = req.headers.get("accept-language");
 
-    // 1. Skip static files and Next.js internals
-    if (
-        pathname.startsWith("/_next") ||
-        pathname.includes(".")
-    ) {
+    // 1. Skip static files
+    if (pathname.startsWith("/_next") || pathname.includes(".")) {
         return NextResponse.next();
     }
 
-    // 2. API Routes - Skip internationalization, handle Auth
+    // 2. Handle API Routes
     if (pathname.startsWith("/api/")) {
         const isPublicApi =
             pathname.startsWith("/api/auth") ||
-            pathname.startsWith("/api/s/") || // Share API
+            pathname.startsWith("/api/s/") ||
             pathname.startsWith("/api/v1/");
 
         if (!isPublicApi && !req.auth) {
@@ -34,36 +33,30 @@ export default auth((req) => {
     // 3. Define Public Pages
     const isPublicPath = (path: string) => {
         const publicPrefixes = ["/login", "/s/"];
-
-        // Remove locale prefix for checking if the path is public
-        // next-intl middleware will handle the actual prefixing/un-prefixing
         const pathSegments = path.split('/').filter(Boolean);
         const firstSegment = pathSegments[0];
-
-        // Check if first segment is a locale
         let checkPath = path;
         if (routing.locales.includes(firstSegment as any)) {
             checkPath = '/' + pathSegments.slice(1).join('/');
         }
-
-        if (publicPrefixes.some(p => checkPath === p || checkPath.startsWith(p))) return true;
-        return false;
+        return publicPrefixes.some(p => checkPath === p || checkPath.startsWith(p));
     };
 
     const isPublicPage = isPublicPath(pathname);
 
-    // 4. Protected Routes Logic
+    // 4. Handle Auth Redirects BEFORE Intl if not public
     if (!isPublicPage && !req.auth) {
-        // Redirect to /login. next-intl middleware (called via intlMiddleware) 
-        // will handle adding the locale prefix if needed based on the 'as-needed' rule.
-        const loginUrl = new URL("/login", req.url);
-        loginUrl.searchParams.set("callbackUrl", pathname);
-        return NextResponse.redirect(loginUrl);
+        const url = req.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("callbackUrl", pathname);
+        return NextResponse.redirect(url);
     }
 
-    // 5. Run Layout/Locale Middleware
+    // 5. Run Intl Middleware
     return intlMiddleware(req);
 });
+
+// };
 
 export const config = {
     // Matcher ignoring static files
