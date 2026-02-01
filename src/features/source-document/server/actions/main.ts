@@ -123,7 +123,9 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
             const updatePayload: any = {};
             if (input.text !== undefined) updatePayload.text = input.text;
             // Note: images normalization happens in prepareSourceDocumentTask
-            await scope.documents.update(sourceDocumentId, updatePayload);
+            if (Object.keys(updatePayload).length > 0) {
+                await scope.documents.update(sourceDocumentId, updatePayload);
+            }
         }
 
         // We use the existing imageUrls if no new ones are provided
