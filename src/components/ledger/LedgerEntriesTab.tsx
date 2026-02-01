@@ -126,12 +126,6 @@ export function LedgerEntriesTab({
                 });
             }
         },
-        onError: () => toast.error(tCommon("saveFailed")),
-        // Invalidation handled by Server Action revalidatePath + SSE (if enabled) but here we rely on revalidatePath
-        // However, useUnifiedSourceDocuments uses useInfiniteQuery which might not be automatically invalidated by revalidatePath if it's client-side fetch.
-        // Wait, useUnifiedSourceDocuments fetches via API route /api/ledgers/.../source-documents?
-        // Let's check matching grep. useUnifiedSourceDocuments usually calls an API.
-        // If so, revalidatePath won't update client cache unless we use queryClient.invalidateQueries.
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
