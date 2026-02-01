@@ -336,5 +336,14 @@
         "deleteConfirmDesc": "You are about to permanently delete your account, including all ledgers, records, and settings. This cannot be undone. Enter your email to confirm:",
         "deleteConfirmPlaceholder": "Enter your email to confirm",
         "deleteSuccess": "Account deleted successfully"
+    },
+    "Error": {
+        "retry": "Retry",
+        "backToHome": "Back to Home"
+    },
+    "LedgerError": {
+        "title": "Error Loading Ledger",
+        "description": "An error occurred while loading the ledger data. This might be due to a network issue or the ledger no longer exists.",
+        "backToHome": "Back to Home"
     }
 }

@@ -47,9 +47,9 @@ export default function LedgerError({
                         className="w-full gap-2"
                         asChild
                     >
-                        <Link href="/dashboard">
+                        <Link href="/">
                             <LayoutDashboard className="w-4 h-4" />
-                            {tLedger("backToDashboard")}
+                            {tLedger("backToHome")}
                         </Link>
                     </Button>
                 </div>

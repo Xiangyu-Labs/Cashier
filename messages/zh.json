@@ -339,5 +339,14 @@
         "deleteConfirmDesc": "您即将永久删除您的账户，包括所有账本、记录和设置。此操作无法撤销。请输入您的邮箱确认：",
         "deleteConfirmPlaceholder": "输入您的邮箱确认",
         "deleteSuccess": "账户已删除"
+    },
+    "Error": {
+        "retry": "重试",
+        "backToHome": "返回主页"
+    },
+    "LedgerError": {
+        "title": "加载账本出错",
+        "description": "加载账本数据时发生错误。这可能是由于网络问题或账本不存在导致。",
+        "backToHome": "返回主页"
     }
 }
