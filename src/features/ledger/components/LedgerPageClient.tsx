@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
@@ -70,15 +70,7 @@ export function LedgerPageClient({
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-text h-8 w-8 sm:h-9 sm:w-9"
-                            title={t("settings")}
-                            onClick={() => setActiveTab("settings")}
-                        >
-                            <Settings className="h-5 w-5" />
-                        </Button>
+
                         <Button
                             size="sm"
                             onClick={() => setIsInputOpen(true)}
