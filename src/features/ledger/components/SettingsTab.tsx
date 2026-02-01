@@ -24,11 +24,12 @@ import { ProcessingSystemSection } from "@/app/[locale]/ledger/[id]/settings/com
 import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
 import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
-import { Monitor, Sun, Moon } from "lucide-react";
+import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { toast } from "sonner";
+import { signOutAction } from "@/features/auth/server/actions/sign-out";
 
 interface SettingsTabProps {
     ledger: Ledger;
@@ -49,6 +50,15 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     // Categories - Use props directly
     const categories = initialCategories;
     const credentials = initialCredentials;
+
+    // Local state for Ledger Name
+    const [localLedgerName, setLocalLedgerName] = useState(ledger.name);
+    const [isNameFocused, setIsNameFocused] = useState(false);
+
+    // Sync from props only when not focused and not pending
+    if (!isNameFocused && !isPending && localLedgerName !== ledger.name) {
+        setLocalLedgerName(ledger.name);
+    }
 
     // Local state for AI Prompt
     const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
@@ -172,6 +182,31 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
 
     return (
         <div className="space-y-6 sm:space-y-8">
+            {/* Ledger Name Settings */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
+                <h2 className="text-lg font-medium mb-6">{t('ledgerName')}</h2>
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-sm text-[var(--muted)] mb-2">{t('ledgerNameDesc')}</p>
+                        <input
+                            type="text"
+                            value={localLedgerName}
+                            onChange={(e) => setLocalLedgerName(e.target.value)}
+                            onFocus={() => setIsNameFocused(true)}
+                            onBlur={() => {
+                                setIsNameFocused(false);
+                                if (localLedgerName !== ledger.name) {
+                                    handleUpdateLedger({ name: localLedgerName });
+                                }
+                            }}
+                            disabled={isPending}
+                            placeholder={t('ledgerNamePlaceholder')}
+                            className="w-full bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
+                        />
+                    </div>
+                </div>
+            </section>
+
             {/* Appearance Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
@@ -408,6 +443,27 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                     onDeleteCredential={(id) => deleteCredentialMutation.mutate(id)}
                 />
             </section>
-        </div>
+
+            {/* Account Settings (Sign Out) */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
+                <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-base font-medium">{t('signOut')}</h3>
+                        <p className="text-sm text-[var(--muted)]">{t('signOutDesc')}</p>
+                    </div>
+                    <button
+                        onClick={() => startTransition(async () => {
+                            await signOutAction();
+                        })}
+                        disabled={isPending}
+                        className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        <span>{t('signOut')}</span>
+                    </button>
+                </div>
+            </section>
+        </div >
     );
 }

@@ -238,7 +238,12 @@
         "notificationNotSupported": "Not supported on this device",
         "newCategoryPlaceholder": "New Category Name",
         "addCategory": "Add",
-        "settingsUpdated": "Settings updated successfully"
+        "settingsUpdated": "Settings updated successfully",
+        "ledgerName": "Ledger Name",
+        "ledgerNameDesc": "The name of the ledger displayed on the home page",
+        "ledgerNamePlaceholder": "e.g., My Ledger",
+        "signOut": "Sign Out",
+        "signOutDesc": "Sign out of your current account"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

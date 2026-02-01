@@ -241,7 +241,12 @@
         "notificationNotSupported": "当前设备不支持",
         "newCategoryPlaceholder": "新分类名称",
         "addCategory": "添加",
-        "settingsUpdated": "设置已更新"
+        "settingsUpdated": "设置已更新",
+        "ledgerName": "账本名称",
+        "ledgerNameDesc": "在首页显示的账本名称",
+        "ledgerNamePlaceholder": "例如：我的账本",
+        "signOut": "退出登录",
+        "signOutDesc": "退出当前账户登录状态"
     },
     "ServiceCredentials": {
         "title": "服务密钥",
