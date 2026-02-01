@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,7 +82,8 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     const ledger = await db.query.ledgers.findFirst({
         where: and(
             eq(ledgers.id, ledgerId),
-            eq(ledgers.userId, userId)
+            eq(ledgers.userId, userId),
+            isNull(ledgers.deletedAt)
         ),
     });
 

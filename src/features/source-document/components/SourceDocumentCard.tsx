@@ -1,7 +1,7 @@
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Share2 } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { ShareDialog } from "@/components/share/ShareDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -138,7 +137,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   const locale = useLocale();
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
 
@@ -251,14 +249,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                   </DropdownMenuItem>
                 )}
 
-                {status === "completed" && (
-                  <DropdownMenuItem
-                    onClick={() => setIsShareDialogOpen(true)}
-                  >
-                    <Share2 className="mr-2 h-4 w-4" />
-                    {t("share")}
-                  </DropdownMenuItem>
-                )}
                 {onDelete && (
                   <DropdownMenuItem
                     onClick={onDelete}
@@ -276,12 +266,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         </div>
       </div>
 
-      <ShareDialog
-        isOpen={isShareDialogOpen}
-        onOpenChange={setIsShareDialogOpen}
-        ledgerId={sourceDocument.ledgerId}
-        sourceDocumentId={sourceDocument.id}
-      />
 
       <AnimatePresence initial={false}>
         {isItemsExpanded && (

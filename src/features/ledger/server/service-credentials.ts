@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { serviceCredentials } from "./schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 // Helper function to generate a secure random key
@@ -24,18 +24,20 @@ export async function createServiceCredential(ledgerId: string, name: string) {
 
 export async function listServiceCredentials(ledgerId: string) {
     return await db.query.serviceCredentials.findMany({
-        where: eq(serviceCredentials.ledgerId, ledgerId),
+        where: and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt)),
         orderBy: (serviceCredentials, { desc }) => [desc(serviceCredentials.createdAt)],
     });
 }
 
 export async function deleteServiceCredential(ledgerId: string, id: string) {
-    await db.delete(serviceCredentials).where(and(eq(serviceCredentials.id, id), eq(serviceCredentials.ledgerId, ledgerId)));
+    await db.update(serviceCredentials)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(serviceCredentials.id, id), eq(serviceCredentials.ledgerId, ledgerId)));
 }
 
 export async function validateServiceCredential(key: string) {
     const existingKey = await db.query.serviceCredentials.findFirst({
-        where: eq(serviceCredentials.key, key),
+        where: and(eq(serviceCredentials.key, key), isNull(serviceCredentials.deletedAt)),
     });
 
     if (existingKey) {

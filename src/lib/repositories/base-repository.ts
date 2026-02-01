@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { eventBus } from "@/lib/events/event-bus";
 import { EntityType } from "@/lib/events/types";
 import { PgTable, PgColumn } from "drizzle-orm/pg-core";
-import { eq, inArray, and, InferInsertModel, SQL } from "drizzle-orm";
+import { eq, inArray, and, InferInsertModel, SQL, isNull } from "drizzle-orm";
 
 type DbClient = typeof db;
 
@@ -37,11 +37,16 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
     async getById(id: string, ledgerId: string): Promise<T | null> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
         const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
 
         const conditions = [
             eq(tableWithId.id, id),
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
+
+        if (tableWithDeletedAt.deletedAt) {
+            conditions.push(isNull(tableWithDeletedAt.deletedAt));
+        }
 
         const [result] = await this.db.select().from(this.table as any).where(and(...conditions));
         return (result as T) || null;
@@ -57,6 +62,11 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
         // Start with ledger isolation condition
         const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
+
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
+        if (tableWithDeletedAt.deletedAt) {
+            conditions.push(isNull(tableWithDeletedAt.deletedAt));
+        }
 
         // Add additional where conditions if provided
         if (options.where) {
@@ -169,6 +179,11 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
         // Start with ledger isolation condition
         const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
+
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
+        if (tableWithDeletedAt.deletedAt) {
+            conditions.push(isNull(tableWithDeletedAt.deletedAt));
+        }
 
         // Add additional where conditions if provided
         if (options.where) {
@@ -310,25 +325,42 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
     async delete(id: string, ledgerId: string): Promise<void> {
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
         const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
 
         const conditions = [
             eq(tableWithId.id, id),
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
 
-        const [deleted] = await this.db.delete(this.table)
+        if (!tableWithDeletedAt.deletedAt) {
+            // Fallback to hard delete if table doesn't support soft delete
+            const [deleted] = await this.db.delete(this.table)
+                .where(and(...conditions))
+                .returning();
+            if (deleted) {
+                this.publishEvent(ledgerId, 'deleted', [id]);
+            }
+            return;
+        }
+
+        const [result] = await this.db.update(this.table)
+            .set({ deletedAt: new Date() } as any)
             .where(and(...conditions))
             .returning();
 
-        if (deleted) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: ledgerId,
-                entity: this.entityType,
-                action: 'deleted',
-                ids: [id]
-            });
+        if (result) {
+            this.publishEvent(ledgerId, 'deleted', [id]);
         }
+    }
+
+    private publishEvent(ledgerId: string, action: 'created' | 'updated' | 'deleted', ids: string[]) {
+        eventBus.publish({
+            type: 'entity:changed',
+            ledgerId: ledgerId,
+            entity: this.entityType,
+            action: action,
+            ids: ids
+        });
     }
 
     /**
@@ -341,24 +373,30 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
 
         const tableWithId = this.table as unknown as PgTable & { id: PgColumn };
         const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
 
         const conditions = [
             inArray(tableWithId.id, ids),
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
 
-        const deleted = await this.db.delete(this.table)
+        if (!tableWithDeletedAt.deletedAt) {
+            const deleted = await this.db.delete(this.table)
+                .where(and(...conditions))
+                .returning();
+            if (deleted.length > 0) {
+                this.publishEvent(ledgerId, 'deleted', (deleted as T[]).map(d => d.id));
+            }
+            return;
+        }
+
+        const results = await this.db.update(this.table)
+            .set({ deletedAt: new Date() } as any)
             .where(and(...conditions))
             .returning();
 
-        if (deleted.length > 0) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: ledgerId,
-                entity: this.entityType,
-                action: 'deleted',
-                ids: (deleted as T[]).map(d => d.id)
-            });
+        if (results.length > 0) {
+            this.publishEvent(ledgerId, 'deleted', (results as T[]).map(r => r.id));
         }
     }
 
@@ -369,6 +407,7 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
      */
     async deleteMany(ledgerId: string, options: Pick<QueryOptions<T>, 'where'> = {}): Promise<void> {
         const tableWithLedgerId = this.table as unknown as Record<string, PgColumn>;
+        const tableWithDeletedAt = this.table as unknown as Record<string, PgColumn>;
 
         // Start with ledger isolation condition
         const conditions: SQL<unknown>[] = [eq(tableWithLedgerId[this.ledgerIdField], ledgerId)];
@@ -378,18 +417,23 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             conditions.push(options.where);
         }
 
-        const deleted = await this.db.delete(this.table)
+        if (!tableWithDeletedAt.deletedAt) {
+            const deleted = await this.db.delete(this.table)
+                .where(and(...conditions))
+                .returning();
+            if (deleted.length > 0) {
+                this.publishEvent(ledgerId, 'deleted', (deleted as T[]).map(d => d.id));
+            }
+            return;
+        }
+
+        const deleted = await this.db.update(this.table)
+            .set({ deletedAt: new Date() } as any)
             .where(and(...conditions))
             .returning();
 
         if (deleted.length > 0) {
-            eventBus.publish({
-                type: 'entity:changed',
-                ledgerId: ledgerId,
-                entity: this.entityType,
-                action: 'deleted',
-                ids: (deleted as T[]).map(d => d.id)
-            });
+            this.publishEvent(ledgerId, 'deleted', (deleted as T[]).map(d => d.id));
         }
     }
 }

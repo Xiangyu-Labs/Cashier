@@ -5,7 +5,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, inArray, and, gte, lte, desc } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, desc, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -157,7 +157,10 @@ export async function getLedgerEntriesAction(
     }
 
     const limit = params.limit ?? 20;
-    const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
+    const conditions = [
+        eq(ledgerEntries.ledgerId, ledgerId),
+        isNull(ledgerEntries.deletedAt)
+    ];
 
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));
     if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(params.endDate)));

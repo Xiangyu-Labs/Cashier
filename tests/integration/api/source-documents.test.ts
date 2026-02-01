@@ -217,13 +217,17 @@ describe("SourceDocument Actions", () => {
     const docAfter = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
-    expect(docAfter).toBeUndefined();
+    expect(docAfter).toBeDefined();
+    expect(docAfter?.deletedAt).not.toBeNull();
 
 
     const entriesAfter = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
     });
-    expect(entriesAfter.length).toBe(0);
+    expect(entriesAfter.length).toBeGreaterThan(0);
+    entriesAfter.forEach(entry => {
+      expect(entry.deletedAt).not.toBeNull();
+    });
   });
 
   it("should batch delete source documents", async () => {
@@ -242,7 +246,8 @@ describe("SourceDocument Actions", () => {
     const docs = await db.query.sourceDocuments.findMany({
       where: inArray(sourceDocuments.id, ids)
     });
-    expect(docs).toHaveLength(0);
+    expect(docs).toHaveLength(2);
+    docs.forEach(d => expect(d.deletedAt).not.toBeNull());
 
     const retained = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, res3.sourceDocumentId!)

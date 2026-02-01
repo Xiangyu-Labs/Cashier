@@ -24,6 +24,7 @@ export const users = pgTable("users", {
     defaultLedgerId: uuid("default_ledger_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
 });
 
 export type User = InferSelectModel<typeof users>;

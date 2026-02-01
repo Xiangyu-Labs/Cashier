@@ -22,7 +22,9 @@ export async function deleteAccount() {
         // Note: Drizzle schema `references(..., { onDelete: "cascade" })` sets the constraint in DB.
         // Assuming DB was migrated with these constraints.
 
-        await db.delete(users).where(eq(users.id, session.user.id));
+        await db.update(users)
+            .set({ deletedAt: new Date() })
+            .where(eq(users.id, session.user.id));
 
         // Sign out
         await signOut({ redirectTo: "/" });

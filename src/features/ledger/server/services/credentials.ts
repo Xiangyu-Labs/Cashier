@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { ServiceCredential } from "@/types/api";
 
 export const getServiceCredentials = cache(async (ledgerId: string): Promise<ServiceCredential[]> => {
     const rows = await db.query.serviceCredentials.findMany({
-        where: eq(serviceCredentials.ledgerId, ledgerId),
+        where: and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt)),
         orderBy: [desc(serviceCredentials.createdAt)],
     });
 
@@ -17,5 +17,6 @@ export const getServiceCredentials = cache(async (ledgerId: string): Promise<Ser
         ledgerId: r.ledgerId,
         createdAt: r.createdAt.toISOString(),
         lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null,
+        deletedAt: r.deletedAt ? r.deletedAt.toISOString() : null,
     }));
 });

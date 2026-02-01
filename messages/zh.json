@@ -104,8 +104,6 @@
         "viewDetails": "查看详情",
         "retryProcessing": "重新处理",
         "editRetry": "编辑重试",
-        "share": "分享",
-        "shareComingSoon": "分享功能开发中",
         "moreActions": "更多操作"
     },
     "Common": {
@@ -262,34 +260,6 @@
         "title": "页面未找到",
         "description": "抱歉，您访问的页面不存在或已被移除。",
         "backToHome": "返回主账本"
-    },
-    "Share": {
-        "title": "分享账单",
-        "description": "创建一个安全链接将此账单分享给他人。",
-        "expiration": "链接有效期",
-        "selectExpiration": "选择有效期",
-        "1day": "1 天",
-        "7days": "7 天",
-        "30days": "30 天",
-        "never": "永久有效",
-        "neverExpiresDesc": "该链接将会永久有效，除非手动删除。",
-        "expiresDesc": "该链接将在 {count} 天后失效。",
-        "createLink": "生成分享链接",
-        "createFailed": "生成链接失败",
-        "copyLink": "复制链接",
-        "copyFailed": "复制链接失败",
-        "copied": "已复制！",
-        "shareSuccess": "分享链接已生成",
-        "expired": "该分享链接已过期",
-        "notFound": "分享内容未找到",
-        "close": "关闭"
-    },
-    "SharePage": {
-        "receipt": "消费小票",
-        "total": "合计",
-        "poweredBy": "Shared via Cashier",
-        "details": "明细",
-        "items": "共 {count} 项"
     },
     "Auth": {
         "login": "登录",

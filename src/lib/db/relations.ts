@@ -3,7 +3,6 @@ import { users, accounts, sessions } from "@/features/auth/server/schema";
 import { ledgers, entryCategories, ledgerEntries, serviceCredentials } from "@/features/ledger/server/schema";
 import { taskRuns } from "@/features/tasks/server/schema";
 import { sourceDocuments, sourceDocumentStatusEnum, anomalyCodeEnum } from "@/features/source-document/server/schema";
-import { shares, shareAccessLogs } from "@/features/share/server/schema";
 
 // Auth relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -52,28 +51,9 @@ export const sourceDocumentsRelations = relations(
             references: [ledgers.id],
         }),
         ledgerEntries: many(ledgerEntries),
-        shares: many(shares),
     })
 );
 
-export const sharesRelations = relations(shares, ({ one, many }) => ({
-    sourceDocument: one(sourceDocuments, {
-        fields: [shares.sourceDocumentId],
-        references: [sourceDocuments.id],
-    }),
-    ledger: one(ledgers, {
-        fields: [shares.ledgerId],
-        references: [ledgers.id],
-    }),
-    accessLogs: many(shareAccessLogs),
-}));
-
-export const shareAccessLogsRelations = relations(shareAccessLogs, ({ one }) => ({
-    share: one(shares, {
-        fields: [shareAccessLogs.shareId],
-        references: [shares.id],
-    }),
-}));
 
 export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
     ledger: one(ledgers, {

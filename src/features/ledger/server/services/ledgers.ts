@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { Ledger } from "@/types/api";
 
@@ -11,7 +11,7 @@ import { Ledger } from "@/types/api";
 
 export const getLedgers = cache(async (userId: string): Promise<Ledger[]> => {
     const rows = await db.query.ledgers.findMany({
-        where: eq(ledgers.userId, userId),
+        where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
         orderBy: [desc(ledgers.createdAt)],
     });
 
@@ -20,7 +20,7 @@ export const getLedgers = cache(async (userId: string): Promise<Ledger[]> => {
 
 export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefined> => {
     const row = await db.query.ledgers.findFirst({
-        where: eq(ledgers.id, ledgerId),
+        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
     });
 
     if (!row) return undefined;
@@ -42,5 +42,6 @@ function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
         mergeSimilarItems: row.mergeSimilarItems ?? false,
         collapseBillsDefault: row.collapseBillsDefault ?? false,
         aiCustomPrompt: row.aiCustomPrompt || "",
+        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     };
 }

@@ -32,6 +32,7 @@ export const ledgers = pgTable("ledgers", {
     mergeSimilarItems: boolean("merge_similar_items").default(defaultLedger.settings.mergeSimilarItems),
     collapseBillsDefault: boolean("collapse_bills_default").default(defaultLedger.settings.collapseBillsDefault),
     aiCustomPrompt: text("ai_custom_prompt").default(defaultLedger.settings.aiCustomPrompt),
+    deletedAt: timestamp("deleted_at"),
 }, (table) => [
     index("idx_ledgers_user_id").on(table.userId),
 ]);
@@ -51,6 +52,7 @@ export const entryCategories = pgTable("entry_categories", {
     isEditable: boolean("is_editable").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
 }, (table) => [
     unique("uniq_category_name_per_ledger").on(table.ledgerId, table.name),
 ]);
@@ -95,6 +97,7 @@ export const ledgerEntries = pgTable("ledger_entries", {
     description: text("description"),
     entryDate: date("entry_date", { mode: "date" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
 }, (table) => [
     index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
@@ -113,6 +116,7 @@ export const serviceCredentials = pgTable("service_credentials", {
     name: text("name").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at"),
+    deletedAt: timestamp("deleted_at"),
 });
 
 export type ServiceCredential = InferSelectModel<typeof serviceCredentials>;

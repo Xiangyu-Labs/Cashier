@@ -33,7 +33,8 @@ describe("Ledger Entry Delete Action", () => {
         const deletedEntry = await db.query.ledgerEntries.findFirst({
             where: eq(ledgerEntries.id, testEntryId),
         });
-        expect(deletedEntry).toBeUndefined();
+        expect(deletedEntry).toBeDefined();
+        expect(deletedEntry?.deletedAt).not.toBeNull();
     });
 
     it("should fail if ledger entry belongs to another ledger", async () => {

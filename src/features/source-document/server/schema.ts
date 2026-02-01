@@ -43,6 +43,7 @@ export const sourceDocuments = pgTable("source_documents", {
     anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
 }, (table) => [
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
     index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),

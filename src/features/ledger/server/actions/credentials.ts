@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import crypto from "crypto";
@@ -18,7 +18,7 @@ export async function getServiceCredentialsAction(ledgerId: string) {
     if (error || !scope) throw new Error("Unauthorized");
 
     const credentials = await db.query.serviceCredentials.findMany({
-        where: eq(serviceCredentials.ledgerId, ledgerId),
+        where: and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt)),
         orderBy: [desc(serviceCredentials.createdAt)],
     });
 
@@ -63,12 +63,14 @@ export async function deleteServiceCredentialAction(ledgerId: string, credential
         if (error || !scope) return { success: false, error: "Unauthorized" };
 
         // Verify ownership and delete
-        const result = await db.delete(serviceCredentials).where(
-            and(
-                eq(serviceCredentials.id, credentialId),
-                eq(serviceCredentials.ledgerId, ledgerId)
-            )
-        ).returning();
+        const result = await db.update(serviceCredentials)
+            .set({ deletedAt: new Date() })
+            .where(
+                and(
+                    eq(serviceCredentials.id, credentialId),
+                    eq(serviceCredentials.ledgerId, ledgerId)
+                )
+            ).returning();
 
         if (result.length === 0) return { success: false, error: "Not found" };
 

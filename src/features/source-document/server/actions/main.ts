@@ -31,7 +31,10 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: any, text: st
     }
 
     const categories = await db.query.entryCategories.findMany({
-        where: (table, { eq, or, isNull }) => or(eq(table.ledgerId, ledgerId), isNull(table.ledgerId))
+        where: (table, { eq, or, isNull, and }) => and(
+            or(eq(table.ledgerId, ledgerId), isNull(table.ledgerId)),
+            isNull(table.deletedAt)
+        )
     });
 
     await submitFlowTask({
@@ -180,6 +183,10 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
         const { scope, error } = await requireLedgerAccess(ledgerId);
         if (error || !scope) throw new Error("Unauthorized");
 
+        // Cascade soft delete to ledger entries
+        await scope.entries.deleteMany({
+            where: eq(ledgerEntries.sourceDocumentId, sourceId)
+        });
         await scope.documents.delete(sourceId);
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
@@ -314,6 +321,10 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
 
         if (sourceDocumentIds.length === 0) return { success: true };
 
+        // Cascade soft delete to associated ledger entries
+        await scope.entries.deleteMany({
+            where: inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
+        });
         await scope.documents.batchDelete(sourceDocumentIds);
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };

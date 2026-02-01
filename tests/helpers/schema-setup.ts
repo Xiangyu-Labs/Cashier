@@ -39,8 +39,6 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS service_credentials CASCADE;
       DROP TABLE IF EXISTS otp_tokens CASCADE;
       DROP TABLE IF EXISTS task_runs CASCADE;
-      DROP TABLE IF EXISTS share_access_logs CASCADE;
-      DROP TABLE IF EXISTS shares CASCADE;
       DROP TABLE IF EXISTS ledgers CASCADE;
       DROP TABLE IF EXISTS currency_rates CASCADE;
       DROP TABLE IF EXISTS sessions CASCADE;
@@ -74,7 +72,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         image TEXT,
         default_ledger_id UUID,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMP
       );
 
       CREATE TABLE accounts (
@@ -144,7 +143,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         collapse_processing_default BOOLEAN DEFAULT FALSE,
         merge_similar_items BOOLEAN DEFAULT FALSE,
         collapse_bills_default BOOLEAN DEFAULT FALSE,
-        ai_custom_prompt TEXT
+        ai_custom_prompt TEXT,
+        deleted_at TIMESTAMP
       );
 
       CREATE INDEX idx_ledgers_user_id ON ledgers(user_id);
@@ -158,7 +158,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         sort_order INTEGER NOT NULL DEFAULT 0,
         is_editable BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMP
       );
 
       CREATE TABLE source_documents (
@@ -169,7 +170,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         image_urls JSONB DEFAULT '[]'::jsonb,
         status source_document_status NOT NULL DEFAULT 'queued',
         anomaly_codes JSONB DEFAULT '[]'::jsonb,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMP
       );
 
       CREATE TABLE ledger_entries (
@@ -182,7 +184,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         item_name TEXT NOT NULL,
         description TEXT,
         entry_date DATE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMP
       );
 
       CREATE TABLE service_credentials (
@@ -191,7 +194,8 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        last_used_at TIMESTAMP
+        last_used_at TIMESTAMP,
+        deleted_at TIMESTAMP
       );
 
       CREATE TABLE currency_rates (
@@ -216,30 +220,11 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         usage JSONB,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         started_at TIMESTAMP,
-        completed_at TIMESTAMP
+        completed_at TIMESTAMP,
+        deleted_at TIMESTAMP
       );
 
-      CREATE TABLE shares (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        source_document_id UUID NOT NULL REFERENCES source_documents(id) ON DELETE CASCADE,
-        ledger_id UUID NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        expires_at TIMESTAMP,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        access_count INTEGER NOT NULL DEFAULT 0
-      );
-      
-      CREATE TABLE share_access_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        share_id UUID NOT NULL REFERENCES shares(id) ON DELETE CASCADE,
-        accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        ip_address TEXT,
-        user_agent TEXT,
-        referer TEXT
-      );
-
-      CREATE INDEX idx_share_access_logs_share_id ON share_access_logs(share_id);
-      CREATE INDEX idx_share_access_logs_accessed_at ON share_access_logs(accessed_at);
+      -- Shares removed
     `);
 
   });

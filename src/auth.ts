@@ -8,7 +8,7 @@ import {
     sessions,
     verificationTokens,
 } from "@/features/auth/server/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
 import crypto from "crypto";
@@ -56,7 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 // Get or create user
                 let user = await db.query.users.findFirst({
-                    where: eq(users.email, email.toLowerCase()),
+                    where: and(eq(users.email, email.toLowerCase()), isNull(users.deletedAt)),
                 });
 
                 let isNewUser = false;
@@ -112,7 +112,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 const userId = token.sub; // 'sub' is the standard claim for user ID in JWT
 
                 const dbUser = await db.query.users.findFirst({
-                    where: eq(users.id, userId),
+                    where: and(eq(users.id, userId), isNull(users.deletedAt)),
                     columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true }
                 });
 

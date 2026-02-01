@@ -39,11 +39,12 @@ describe("Ledger Actions", () => {
 
     expect(result.success).toBe(true);
 
-    // Verify deletion
+    // Verify deletion (soft delete)
     const found = await db.query.ledgers.findFirst({
       where: eq(ledgers.id, ledgerId),
     });
-    expect(found).toBeUndefined();
+    expect(found).toBeDefined();
+    expect(found?.deletedAt).not.toBeNull();
   });
 
   it("should return error for non-existent ledger (Delete)", async () => {

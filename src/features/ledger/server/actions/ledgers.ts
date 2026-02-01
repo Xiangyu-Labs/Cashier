@@ -6,7 +6,7 @@ import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 const createLedgerSchema = z.object({
@@ -81,7 +81,7 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
 
         // Verify ownership
         const existing = await db.query.ledgers.findFirst({
-            where: eq(ledgers.id, id),
+            where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
         });
 
         if (!existing || existing.userId !== session.user.id) {
@@ -118,14 +118,16 @@ export async function deleteLedgerAction(id: string) {
 
         // Verify ownership
         const existing = await db.query.ledgers.findFirst({
-            where: eq(ledgers.id, id),
+            where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
         });
 
         if (!existing || existing.userId !== session.user.id) {
             return { success: false, error: "Unauthorized or Ledger not found" };
         }
 
-        await db.delete(ledgers).where(eq(ledgers.id, id));
+        await db.update(ledgers)
+            .set({ deletedAt: new Date() })
+            .where(eq(ledgers.id, id));
 
         revalidatePath("/dashboard");
 
@@ -143,7 +145,7 @@ export async function getLedgerAction(id: string) {
     }
 
     const existing = await db.query.ledgers.findFirst({
-        where: eq(ledgers.id, id),
+        where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
     });
 
     if (!existing || existing.userId !== session.user.id) {

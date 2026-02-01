@@ -1,7 +1,7 @@
 import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
@@ -75,7 +75,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     // 0. Pre-validations
     async validate(input: ParseSourceDocumentInput) {
         const doc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, input.sourceDocumentId),
+            where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
         });
         if (!doc) {
             throw new Error(`Source document not found: ${input.sourceDocumentId}`);

@@ -37,6 +37,7 @@ export const taskRuns = pgTable("task_runs", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     startedAt: timestamp("started_at"),
     completedAt: timestamp("completed_at"),
+    deletedAt: timestamp("deleted_at"),
 }, (table) => [
     index("idx_task_runs_ledger_status").on(table.ledgerId, table.status),
     index("idx_task_runs_created_at").on(table.createdAt),

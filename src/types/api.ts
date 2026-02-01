@@ -5,7 +5,6 @@ import {
   type ServiceCredential as DbServiceCredential
 } from "@/features/ledger/server/schema";
 import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
-import { type Share as DbShare, type ShareAccessLog as DbShareAccessLog } from "@/features/share/server/schema";
 import { type TaskRun as DbTaskRun } from "@/features/tasks/server/schema";
 import { type User as DbUser } from "@/features/auth/server/schema";
 import { type CurrencyRate as DbCurrencyRate } from "@/features/currency/server/schema";
@@ -16,8 +15,6 @@ export type Ledger = Serialized<DbLedger>;
 export type ServiceCredential = Serialized<DbServiceCredential>;
 export type EntryCategory = Serialized<DbEntryCategory>;
 export type SourceDocument = Serialized<DbSourceDocument>;
-export type Share = Serialized<DbShare>;
-export type ShareAccessLog = Serialized<DbShareAccessLog>;
 export type TaskRun = Serialized<DbTaskRun>;
 export type User = Serialized<DbUser>;
 export type CurrencyRate = Serialized<DbCurrencyRate>;
@@ -36,13 +33,6 @@ export type Settings = Pick<
   "collapseProcessingDefault" | "mergeSimilarItems" | "collapseBillsDefault" | "aiCustomPrompt"
 >;
 
-export interface ShareData {
-  sourceDocument: Pick<SourceDocument, "id" | "title" | "text" | "imageUrls" | "createdAt">;
-  entries: (Pick<LedgerEntry, "id" | "amount" | "currency" | "itemName" | "description" | "entryDate"> & {
-    category: Pick<EntryCategory, "id" | "name" | "icon"> | null;
-  })[];
-  ledgerId: string;
-}
 
 export interface LedgerEntrySummary {
   convertedTotal: {

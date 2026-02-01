@@ -20,7 +20,6 @@ import {
     Calendar,
     AlignLeft,
     Edit2,
-    Share2,
     X
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -29,7 +28,6 @@ import { cn } from "@/lib/utils"
 import { SUPPORTED_CURRENCIES } from "@/config/currencies"
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails"
 import { Textarea } from "@/components/ui/textarea"
-import { ShareDialog } from "@/components/share/ShareDialog"
 
 interface SourceDocumentDetailModalProps {
     sourceDocument: SourceDocument | null
@@ -76,7 +74,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
-    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
 
     const [batchDate, setBatchDate] = useState("")
     const [batchDescription, setBatchDescription] = useState("")
@@ -491,15 +488,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                 </Button>
 
                                 <div className="flex-1 flex items-center gap-2 sm:gap-3">
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-10 w-10 sm:h-10 sm:w-auto sm:px-4 sm:gap-2 rounded-xl text-muted-foreground border-border hover:text-primary hover:border-primary/30 transition-all shrink-0"
-                                        onClick={() => setIsShareDialogOpen(true)}
-                                    >
-                                        <Share2 className="h-4 w-4" />
-                                        <span className="hidden sm:inline">{tCommon("share") || "Share"}</span>
-                                    </Button>
 
                                     <Button
                                         variant="outline"
@@ -521,12 +509,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     </div>
                 </div>
 
-                <ShareDialog
-                    isOpen={isShareDialogOpen}
-                    onOpenChange={setIsShareDialogOpen}
-                    ledgerId={sourceDocument.ledgerId}
-                    sourceDocumentId={sourceDocument.id}
-                />
             </DialogContent>
         </Dialog>
     )

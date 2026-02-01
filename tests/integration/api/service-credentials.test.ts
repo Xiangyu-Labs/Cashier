@@ -114,6 +114,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         const check = await db.query.serviceCredentials.findFirst({
             where: eq(serviceCredentials.id, c.id)
         });
-        expect(check).toBeUndefined();
+        expect(check).toBeDefined();
+        expect(check?.deletedAt).not.toBeNull();
     });
 });

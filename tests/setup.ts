@@ -64,7 +64,7 @@ beforeEach(async () => {
   // Clean all tables before each test
   if (getTestDb()) {
     await testDb.execute(
-      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, task_runs, currency_rates, shares, sessions, accounts, verification_tokens, otp_tokens, users CASCADE`
+      sql`TRUNCATE ledger_entries, source_documents, entry_categories, ledgers, service_credentials, task_runs, currency_rates, sessions, accounts, verification_tokens, otp_tokens, users CASCADE`
     );
 
     // Insert default test user for Auth Mock (TEST_USER_ID)

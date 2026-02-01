@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 
 export async function getProcessingTasksAction(ledgerId: string, params: {
     activeOnly?: boolean;
@@ -17,7 +17,10 @@ export async function getProcessingTasksAction(ledgerId: string, params: {
     // Using scope.tasks if available or direct db.
     // Let's use db directly for now as per previous route, but strictly filtered by ledgerId.
 
-    const conditions = [eq(taskRuns.ledgerId, ledgerId)];
+    const conditions = [
+        eq(taskRuns.ledgerId, ledgerId),
+        isNull(taskRuns.deletedAt)
+    ];
     if (activeOnly) {
         conditions.push(inArray(taskRuns.status, ["running", "queued"]));
     }
@@ -43,7 +46,8 @@ export async function getProcessingStatsAction(ledgerId: string) {
     const tasks = await db.query.taskRuns.findMany({
         where: and(
             eq(taskRuns.ledgerId, ledgerId),
-            eq(taskRuns.status, 'completed')
+            eq(taskRuns.status, 'completed'),
+            isNull(taskRuns.deletedAt)
         ),
     });
 

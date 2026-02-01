@@ -6,7 +6,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { LedgerScope } from "@/features/ledger/server/service";
 
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 const ledgerEntryInputSchema = z.object({
     text: z.string().optional(),
@@ -86,14 +86,17 @@ export async function POST(request: NextRequest) {
 
         // Fetch ledger data (still need direct db access for ledgers table as it's not in scope yet)
         const ledger = await db.query.ledgers.findFirst({
-            where: eq(ledgerTable.id, credential.ledgerId),
+            where: and(eq(ledgerTable.id, credential.ledgerId), isNull(ledgerTable.deletedAt)),
         });
 
         if (ledger) {
             // Fetch categories using scoped repository
             // Include both ledger-specific and global (null ledgerId) categories
             const allCategories = await db.query.entryCategories.findMany({
-                where: (c, { eq, or, isNull }) => or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId))
+                where: (c, { eq, or, isNull, and }) => and(
+                    or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId)),
+                    isNull(c.deletedAt)
+                )
             });
 
             await submitFlowTask({

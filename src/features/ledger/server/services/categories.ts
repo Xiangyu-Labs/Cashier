@@ -1,7 +1,7 @@
 
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
-import { eq, or, isNull, asc } from "drizzle-orm";
+import { eq, or, isNull, asc, and } from "drizzle-orm";
 import { cache } from "react";
 import { EntryCategory } from "@/types/api";
 
@@ -11,7 +11,7 @@ import { EntryCategory } from "@/types/api";
 
 export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryCategory[]> => {
     const rows = await db.query.entryCategories.findMany({
-        where: or(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.ledgerId)),
+        where: and(or(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.ledgerId)), isNull(entryCategories.deletedAt)),
         orderBy: [asc(entryCategories.sortOrder)],
     });
 
@@ -25,5 +25,6 @@ export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryC
         isEditable: row.isEditable ?? false,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
+        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     }));
 });

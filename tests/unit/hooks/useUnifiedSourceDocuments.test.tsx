@@ -2,12 +2,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 
 // Mock API modules
 vi.mock("@/features/source-document/server/actions/main", () => ({
-    getSourceDocumentsAction: vi.fn(),
+    getUnifiedSourceDocumentsAction: vi.fn(),
+    getSourceDocumentsAction: vi.fn(), // Keeping for potential other uses
 }));
 vi.mock("@/features/ledger/server/actions/entries", () => ({
     getLedgerEntriesAction: vi.fn(),
@@ -15,11 +16,11 @@ vi.mock("@/features/ledger/server/actions/entries", () => ({
 
 // Mock Data
 const mockSourceDocs = {
-    queued: { id: "doc_q1", status: "queued", createdAt: "2024-01-04T10:00:00Z" },
-    processing: { id: "doc_p1", status: "processing", createdAt: "2024-01-04T11:00:00Z" },
-    error: { id: "doc_e1", status: "anomaly", createdAt: "2024-01-04T12:00:00Z" },
-    pending: { id: "doc_pending1", status: "completed", createdAt: "2024-01-03T10:00:00Z" }, // Completed doc but has pending entries
-    completed: { id: "doc_c1", status: "completed", createdAt: "2024-01-01T10:00:00Z" },
+    queued: { id: "doc_q1", status: "queued", createdAt: "2024-01-04T10:00:00Z", deletedAt: null },
+    processing: { id: "doc_p1", status: "processing", createdAt: "2024-01-04T11:00:00Z", deletedAt: null },
+    error: { id: "doc_e1", status: "anomaly", createdAt: "2024-01-04T12:00:00Z", deletedAt: null },
+    pending: { id: "doc_pending1", status: "completed", createdAt: "2024-01-03T10:00:00Z", deletedAt: null }, // Completed doc but has pending entries
+    completed: { id: "doc_c1", status: "completed", createdAt: "2024-01-01T10:00:00Z", deletedAt: null },
 };
 
 const mockEntries = {
@@ -55,25 +56,45 @@ describe("useUnifiedSourceDocuments", () => {
 
     it("correctly groups documents into processing, error, and completed", async () => {
         // Setup Mocks
-        // 1. activeDocuments (queued, processing, error)
-        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string };
-            if (p?.status?.includes('queued')) {
+        // 1. Unified Action Mock
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string, cursor?: string };
+
+            // If it's an infinite scroll fetch (cursor provided)
+            if (p?.cursor) {
                 return Promise.resolve({
-                    items: [
-                        { ...mockSourceDocs.queued, ledgerEntries: [] },
-                        { ...mockSourceDocs.processing, ledgerEntries: [] },
-                        { ...mockSourceDocs.error, ledgerEntries: [] }
-                    ]
+                    groups: {
+                        processing: [],
+                        anomaly: [],
+                        completed: [
+                            { sourceDocument: { ...mockSourceDocs.completed, id: "doc_c2" }, ledgerEntries: [] }
+                        ]
+                    },
+                    nextCursor: null,
+                    stats: { processingCount: 0, anomalyCount: 0 }
                 });
             }
-            // infinite scroll fetch
+
+            // Normal initial fetch
             return Promise.resolve({
-                items: [
-                    { ...mockSourceDocs.completed, ledgerEntries: [mockEntries.confirmedForDocCompleted1] },
-                    { ...mockSourceDocs.pending, ledgerEntries: [] }
-                ],
-                nextCursor: null
+                groups: {
+                    processing: [
+                        { sourceDocument: mockSourceDocs.queued, ledgerEntries: [] },
+                        { sourceDocument: mockSourceDocs.processing, ledgerEntries: [] }
+                    ],
+                    anomaly: [
+                        { sourceDocument: mockSourceDocs.error, ledgerEntries: [] }
+                    ],
+                    completed: [
+                        { sourceDocument: mockSourceDocs.completed, ledgerEntries: [mockEntries.confirmedForDocCompleted1] },
+                        { sourceDocument: mockSourceDocs.pending, ledgerEntries: [] }
+                    ]
+                },
+                nextCursor: null,
+                stats: {
+                    processingCount: 2,
+                    anomalyCount: 1
+                }
             });
         });
 
@@ -109,7 +130,11 @@ describe("useUnifiedSourceDocuments", () => {
 
     it("filters groups by date range", async () => {
         // All mocks same as above
-        (getSourceDocumentsAction as unknown as Mock).mockResolvedValue({ items: [], nextCursor: null });
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockResolvedValue({
+            groups: { processing: [], anomaly: [], completed: [] },
+            nextCursor: null,
+            stats: { processingCount: 0, anomalyCount: 0 }
+        });
         (getLedgerEntriesAction as unknown as Mock).mockResolvedValue({ items: [] });
 
         // Mock specific returns for this test to control dates easier if needed, 
@@ -118,12 +143,17 @@ describe("useUnifiedSourceDocuments", () => {
         // doc_q1: 2024-01-04 (Jan 4)
 
         // Let's reuse the mocks implementation pattern
-        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
             const p = params as { status?: string };
-            if (p?.status?.includes('queued')) {
-                return Promise.resolve({ items: [{ ...mockSourceDocs.queued, ledgerEntries: [] }] });
-            }
-            return Promise.resolve({ items: [{ ...mockSourceDocs.completed, ledgerEntries: [] }] });
+            return Promise.resolve({
+                groups: {
+                    processing: [{ sourceDocument: mockSourceDocs.queued, ledgerEntries: [] }],
+                    anomaly: [],
+                    completed: [{ sourceDocument: mockSourceDocs.completed, ledgerEntries: [] }]
+                },
+                nextCursor: null,
+                stats: { processingCount: 1, anomalyCount: 0 }
+            });
         });
 
         const dateRange = {
@@ -169,12 +199,19 @@ describe("useUnifiedSourceDocuments", () => {
         // Let's assume doc_out_range
         const docOutOfRange = { ...mockSourceDocs.queued, id: "doc_out", createdAt: "2024-01-01T10:00:00Z" };
 
-        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string };
-            if (p?.status?.includes('queued')) {
-                return Promise.resolve({ items: [{ ...mockSourceDocs.queued, ledgerEntries: [] }, { ...docOutOfRange, ledgerEntries: [] }] });
-            }
-            return Promise.resolve({ items: [] });
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            return Promise.resolve({
+                groups: {
+                    processing: [
+                        { sourceDocument: mockSourceDocs.queued, ledgerEntries: [] },
+                        { sourceDocument: docOutOfRange, ledgerEntries: [] }
+                    ],
+                    anomaly: [],
+                    completed: []
+                },
+                nextCursor: null,
+                stats: { processingCount: 2, anomalyCount: 0 }
+            });
         });
 
         const { result: result2 } = renderHook(
