@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { NextRequest } from "next/server";
-import { GET as tokenUsageGET } from "@/app/api/ledgers/[id]/processing-stats/token-usage/route";
+import { getProcessingStatsAction } from "@/actions/processing";
 import { getTestDb } from "../../setup";
 import { taskRuns } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
-
-describe("Processing Stats: Token Usage API", () => {
+describe("Processing Stats Actions", () => {
     let testLedgerId: string;
 
     beforeEach(async () => {
@@ -16,15 +14,8 @@ describe("Processing Stats: Token Usage API", () => {
     });
 
     it("should return zero stats when no tasks exist", async () => {
-        const req = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/processing-stats/token-usage`
-        );
-        const res = await tokenUsageGET(req, {
-            params: Promise.resolve({ id: testLedgerId }),
-        });
+        const stats = await getProcessingStatsAction(testLedgerId);
 
-        expect(res.status).toBe(200);
-        const stats = await res.json();
         expect(stats).toEqual({
             totalInputTokens: 0,
             totalOutputTokens: 0,
@@ -76,15 +67,8 @@ describe("Processing Stats: Token Usage API", () => {
             }
         ]);
 
-        const req = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/processing-stats/token-usage`
-        );
-        const res = await tokenUsageGET(req, {
-            params: Promise.resolve({ id: testLedgerId }),
-        });
+        const stats = await getProcessingStatsAction(testLedgerId);
 
-        expect(res.status).toBe(200);
-        const stats = await res.json();
         expect(stats).toEqual({
             totalInputTokens: 300,
             totalOutputTokens: 150,

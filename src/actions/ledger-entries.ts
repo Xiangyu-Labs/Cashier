@@ -124,10 +124,12 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         const { scope, error } = await requireLedgerAccess(ledgerId);
         if (error || !scope) return { success: false, error: "Unauthorized" };
 
-        // Basic validation or casting
         const updateData: any = {};
         if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-        // Add other fields as needed
+        if (data.currency !== undefined) updateData.currency = data.currency;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.itemName !== undefined) updateData.itemName = data.itemName;
+        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? new Date(data.entryDate) : null;
 
         await scope.entries.batchUpdate(ledgerEntryIds, updateData);
 
@@ -146,6 +148,7 @@ export async function getLedgerEntriesAction(
         cursor?: string | null;
         startDate?: string | null;
         endDate?: string | null;
+        categoryId?: string | null;
     }
 ) {
     const { scope, error } = await requireLedgerAccess(ledgerId);
@@ -159,11 +162,16 @@ export async function getLedgerEntriesAction(
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));
     if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(params.endDate)));
     if (params.cursor) conditions.push(lte(ledgerEntries.createdAt, new Date(params.cursor)));
+    if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
 
     const items = await db.query.ledgerEntries.findMany({
         where: and(...conditions),
         orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt)],
         limit: limit + 1,
+        with: {
+            category: true,
+            sourceDocument: true,
+        }
     });
 
     let nextCursor: string | undefined = undefined;
@@ -177,8 +185,19 @@ export async function getLedgerEntriesAction(
         ...item,
         amount: String(item.amount), // Ensure string to match LedgerEntry interface
         createdAt: item.createdAt.toISOString(),
-        // updatedAt not in schema
         entryDate: item.entryDate ? item.entryDate.toISOString() : null,
+        // Map relations if they exist (they should with query builder)
+        category: item.category ? {
+            ...item.category,
+            createdAt: item.category.createdAt.toISOString(),
+            updatedAt: item.category.updatedAt.toISOString(),
+        } : null,
+        sourceDocument: item.sourceDocument ? {
+            ...item.sourceDocument,
+            createdAt: item.sourceDocument.createdAt.toISOString(),
+            // Map text/title etc. ImageUrls is json, auto-parsed? Drizzle JSONB is usually parsed.
+            // Check TS types if needed.
+        } : null,
     }));
 
     return {

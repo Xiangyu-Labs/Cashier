@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { NextRequest } from "next/server";
-import { POST } from "@/app/api/ledgers/[id]/source-documents/route";
-import { DELETE } from "@/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/route";
+import { createSourceDocumentAction, deleteSourceDocumentAction } from "@/actions/source-document";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -16,7 +14,7 @@ vi.mock("@/lib/ai/openai", () => ({
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { processAllPendingTasks } from "../../helpers/processing";
 
-describe("POST /api/ledgers/[id]/source-documents", () => {
+describe("SourceDocument Actions", () => {
   let testLedgerId: string;
   let testCategoryId: string;
 
@@ -35,7 +33,6 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
       where: eq(categories.name, "餐饮"),
     });
 
-    // Fallback if not seeded (though setup should seed it)
     if (category) {
       testCategoryId = category.id;
     } else {
@@ -45,6 +42,7 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
           name: "餐饮",
           description: "外卖、堂食",
           sortOrder: 1,
+          ledgerId: testLedgerId,
         })
         .returning();
       testCategoryId = newCat.id;
@@ -59,11 +57,10 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
         name: "水果",
         description: "Fresh Fruit",
         sortOrder: 2,
+        ledgerId: testLedgerId,
       });
     }
   });
-
-  // ...
 
   it("should persist ledger entries with notes", async () => {
     // Override mock for this test
@@ -71,28 +68,17 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
       generateContent: vi.fn().mockResolvedValue({ content: MOCK_RESPONSES.entryWithMetadata }),
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "苹果2公斤，每公斤10元" }),
-      }
-    );
+    const result = await createSourceDocumentAction(testLedgerId, { text: "苹果2公斤，每公斤10元" });
 
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
+    expect(result.success).toBe(true);
+    expect(result.status).toBe("queued");
 
     // Process
     await processAllPendingTasks();
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe("queued");
-
     const db = getTestDb();
     const savedEntry = await db.query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId)
+      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId!)
     });
 
     expect(savedEntry).toBeDefined();
@@ -103,29 +89,17 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   });
 
   it("should process text message and create ledger entry", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "午餐花了25.5元" }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
+    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐花了25.5元" });
+    expect(result.success).toBe(true);
+    expect(result.sourceDocumentId).toBeDefined();
+    expect(result.status).toBe("queued");
 
     // Process
     await processAllPendingTasks();
 
-    expect(response.status).toBe(200);
-    expect(data.sourceDocumentId).toBeDefined();
-    expect(data.status).toBe("queued");
-
     const db = getTestDb();
     const savedEntries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId),
+      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId!),
     });
 
     expect(savedEntries).toHaveLength(1);
@@ -134,27 +108,15 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   });
 
   it("should match category by name", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "午餐" }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
+    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐" });
+    expect(result.status).toBe("queued");
 
     // Process
     await processAllPendingTasks();
 
-    expect(data.status).toBe("queued");
-
     const db = getTestDb();
     const savedEntries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, data.sourceDocumentId),
+      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId!),
       with: { category: true }
     });
 
@@ -165,22 +127,11 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   });
 
   it("should save input message with AI response", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "午餐25元" }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const data = await response.json();
+    const result = await createSourceDocumentAction(testLedgerId, { text: "午餐25元" });
 
     const db = getTestDb();
     const savedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, data.sourceDocumentId),
+      where: eq(sourceDocuments.id, result.sourceDocumentId!),
     });
 
     expect(savedDoc).toBeDefined();
@@ -193,104 +144,56 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
   });
 
 
-  it("should return 400 when no input provided", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({}),
-      }
-    );
+  it("should return error when no input provided", async () => {
+    const result = await createSourceDocumentAction(testLedgerId, {});
 
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain("At least one input (text or images) is required");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("At least one input");
   });
 
-  it("should return 404 for non-existent ledger", async () => {
-    // Note: The new /api/v1/ledger-entries route actually handles "Authorization" header for ledger resolution if not nested under [id].
-    // But here we are testing /api/ledgers/[id]/source-documents which is specific to [id].
-    // Wait, createSourceDocument in lib/api calls /api/ledgers/[id]/source-documents, but POST is implemented in /app/api/v1/ledger-entries/route.ts?
-    // No, I created a new file at src/app/api/ledgers/[id]/source-documents/route.ts? 
-    // Wait, let me check if I actually created that file. I created /api/v1/ledger-entries but did I update /api/ledgers/[id]/source-documents?
-    // Checking previous steps... 
-    // I updated `src/app/api/v1/ledger-entries/route.ts`.
-    // But `src/lib/api.ts` `createSourceDocument` uses `${API_BASE}/ledgers/${ledgerId}/source-documents`.
-    // I need to make sure `src/app/api/ledgers/[id]/source-documents/route.ts` exists and handles POST correctly if that's what's being tested relative to `createSourceDocument`,
-    // OR I need to update `lib/api.ts` to use `/api/v1/ledger-entries` if that was the intention.
-    // However, looking at `src/app/api/v1/ledger-entries/route.ts`, it requires an API Key. 
-    // The internal frontend likely uses the session/cookie based auth or just open for now (MVP). 
-    // Most likely `src/app/api/ledgers/[id]/source-documents/route.ts` handles the frontend requests. 
-    // Let me check if that file exists.
-    // Actually, looking at my history, I only updated `DELETE` in `src/app/api/ledgers/[id]/source-documents/[sourceDocumentId]/route.ts`.
-    // I did NOT creating/updating `src/app/api/ledgers/[id]/source-documents/route.ts`. 
-    // The old `receipts/route.ts` was likely renamed to `source-documents/route.ts` during the file move phase? 
-    // If I renamed the directory `src/app/api/ledgers/[id]/receipts` to `source-documents`, then `route.ts` inside it handles both GET and POST.
-    // I should verify this file exists and update it.
+  it("should return error for non-existent ledger", async () => {
+    const result = await createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" });
+    // requireLedgerAccess returns 404 response object via helper?
+    // Wait, helper implementation returns { error: NextResponse }.
+    // Action catches it?
+    // In action:
+    // const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
+    // if (error || !scope) throw new Error("Unauthorized or Ledger not found");
 
-    // TODO: Implement test for non-existent ledger
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Unauthorized or Ledger not found");
   });
 
   it("should handle image input", async () => {
-    const request = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          images: [
-            {
-              data: "data:image/jpeg;base64,/9j/4AAQSkZ...",
-              mimeType: "image/jpeg",
-            },
-          ],
-        }),
-      }
-    );
-
-    const response = await POST(request, {
-      params: Promise.resolve({ id: testLedgerId }),
+    const result = await createSourceDocumentAction(testLedgerId, {
+      images: [
+        {
+          data: "data:image/jpeg;base64,/9j/4AAQSkZ...",
+          mimeType: "image/jpeg",
+        },
+      ],
     });
-    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.status).toBe("queued");
+    expect(result.success).toBe(true);
+    expect(result.status).toBe("queued");
 
     const db = getTestDb();
     const savedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, data.sourceDocumentId),
+      where: eq(sourceDocuments.id, result.sourceDocumentId!),
     });
     expect(savedDoc?.imageUrls).toHaveLength(1);
-    expect(savedDoc?.text).toBeNull();
+    expect(savedDoc?.text).toBeNull(); // text optional in input, but in action we pass null if undefined
 
     // Process tasks to ensure cleanup
     await processAllPendingTasks();
   });
 
-
-
   it("should delete source document and associated ledger entries", async () => {
     // 1. Create a message first
-    const createReq = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({ text: "待删除的项目 100元" }),
-      }
-    );
-    const createRes = await POST(createReq, {
-      params: Promise.resolve({ id: testLedgerId }),
-    });
-    const createData = await createRes.json();
-    const sourceDocumentId = createData.sourceDocumentId;
+    const createRes = await createSourceDocumentAction(testLedgerId, { text: "待删除的项目 100元" });
+    const sourceDocumentId = createRes.sourceDocumentId!;
 
     // Process
-    await processAllPendingTasks();
-
-    // Wait for processing to ensure ledger entries are created
     await processAllPendingTasks();
 
     // Verify ledger entry exists
@@ -301,18 +204,8 @@ describe("POST /api/ledgers/[id]/source-documents", () => {
     expect(entriesBefore.length).toBeGreaterThan(0);
 
     // 2. DELETE request
-    const deleteReq = new NextRequest(
-      `http://localhost/api/ledgers/${testLedgerId}/source-documents/${sourceDocumentId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    const deleteRes = await DELETE(deleteReq, {
-      params: Promise.resolve({ id: testLedgerId, sourceDocumentId }),
-    });
-
-    expect(deleteRes.status).toBe(204);
+    const deleteRes = await deleteSourceDocumentAction(testLedgerId, sourceDocumentId);
+    expect(deleteRes.success).toBe(true);
 
     // 3. Verify deletion
     const docAfter = await db.query.sourceDocuments.findFirst({

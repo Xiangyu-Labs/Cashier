@@ -173,3 +173,10 @@ vi.mock("next/image", () => ({
     return React.createElement("img", { ...props, src: props.src });
   },
 }));
+
+// Mock next/cache
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: (fn: any) => fn,
+}));

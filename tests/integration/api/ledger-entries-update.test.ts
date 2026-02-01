@@ -1,13 +1,12 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
-import { PATCH } from "@/app/api/ledgers/[id]/ledger-entries/[ledgerEntryId]/route";
+import { updateLedgerEntryAction } from "@/actions/ledger-entries";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
-describe("PATCH /api/ledgers/[id]/ledger-entries/[ledgerEntryId]", () => {
+describe("Ledger Entry Update Action", () => {
     let testLedgerId: string;
     let testEntryId: string;
     let testCategoryId: string;
@@ -40,21 +39,10 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/[ledgerEntryId]", () => {
     it("should update description correctly", async () => {
         const newDescription = "Updated description";
 
-        const request = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/ledger-entries/${testEntryId}`,
-            {
-                method: "PATCH",
-                body: JSON.stringify({ description: newDescription }),
-            }
-        );
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { description: newDescription });
 
-        const response = await PATCH(request, {
-            params: Promise.resolve({ id: testLedgerId, ledgerEntryId: testEntryId })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(data.description).toBe(newDescription);
+        expect(result.success).toBe(true);
+        expect(result.data?.description).toBe(newDescription);
 
         // Verify in DB
         const db = getTestDb();
@@ -74,42 +62,20 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/[ledgerEntryId]", () => {
             entryDate: "2023-01-01T00:00:00.000Z",
         };
 
-        const request = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/ledger-entries/${testEntryId}`,
-            {
-                method: "PATCH",
-                body: JSON.stringify(changes),
-            }
-        );
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
 
-        const response = await PATCH(request, {
-            params: Promise.resolve({ id: testLedgerId, ledgerEntryId: testEntryId })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(data.amount).toBe("200.00");
-        expect(data.itemName).toBe(changes.itemName);
-        expect(data.currency).toBe(changes.currency);
-        expect(new Date(data.entryDate).toISOString()).toBe(changes.entryDate);
+        expect(result.success).toBe(true);
+        expect(result.data?.amount).toBe("200.00");
+        expect(result.data?.itemName).toBe(changes.itemName);
+        expect(result.data?.currency).toBe(changes.currency);
+        expect(new Date(result.data!.entryDate!).toISOString()).toBe(changes.entryDate);
     });
 
     it("should handle partial updates", async () => {
-        const request = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/ledger-entries/${testEntryId}`,
-            {
-                method: "PATCH",
-                body: JSON.stringify({ itemName: "Only Name Changed" }),
-            }
-        );
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { itemName: "Only Name Changed" });
 
-        const response = await PATCH(request, {
-            params: Promise.resolve({ id: testLedgerId, ledgerEntryId: testEntryId })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(data.itemName).toBe("Only Name Changed");
-        expect(data.amount).toBe("100.00"); // Original value
+        expect(result.success).toBe(true);
+        expect(result.data?.itemName).toBe("Only Name Changed");
+        expect(result.data?.amount).toBe("100.00"); // Original value
     });
 });

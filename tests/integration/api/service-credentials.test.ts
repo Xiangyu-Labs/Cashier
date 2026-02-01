@@ -1,17 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as createCredentialPOST, GET as listCredentialsGET } from "@/app/api/ledgers/[id]/service-credentials/route";
-import { DELETE as deleteCredentialDELETE } from "@/app/api/ledgers/[id]/service-credentials/[credentialId]/route";
 import { POST as ledgerEntryPOST } from "@/app/api/v1/ledger-entries/route";
 import { getTestDb } from "../../setup";
 import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/actions/service-credentials";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
     createProcessingTask: vi.fn(),
     createTask: vi.fn(),
+}));
+
+// Mock Tasks
+vi.mock("@/lib/flow/producer", () => ({
+    submitFlowTask: vi.fn(),
 }));
 
 // Mock Tasks
@@ -29,38 +33,20 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         testLedgerId = ledgerId;
     });
 
-    it("should create and list service credentials", async () => {
+    it("should create and list service credentials via Actions", async () => {
         // Create Credential
-        const createReq = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/service-credentials`,
-            {
-                method: "POST",
-                body: JSON.stringify({ name: "Test Credential" }),
-            }
-        );
+        const createRes = await createServiceCredentialAction(testLedgerId, { name: "Test Credential" });
 
-        const createRes = await createCredentialPOST(createReq, {
-            params: Promise.resolve({ id: testLedgerId }),
-        });
-
-        expect(createRes.status).toBe(201);
-        const newCred = await createRes.json();
-        expect(newCred.key).toBeDefined();
-        expect(newCred.name).toBe("Test Credential");
-
+        expect(createRes.success).toBe(true);
+        expect(createRes.data).toBeDefined();
+        expect(createRes.data?.key).toBeDefined();
+        expect(createRes.data?.name).toBe("Test Credential");
 
         // List Credentials
-        const listReq = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/service-credentials`
-        );
-        const listRes = await listCredentialsGET(listReq, {
-            params: Promise.resolve({ id: testLedgerId }),
-        });
+        const listRes = await getServiceCredentialsAction(testLedgerId);
 
-        expect(listRes.status).toBe(200);
-        const creds = await listRes.json();
-        expect(creds).toHaveLength(1);
-        expect(creds[0].id).toBe(newCred.id);
+        expect(listRes).toHaveLength(1);
+        expect(listRes[0].id).toBe(createRes.data!.id);
     });
 
     it("should ingest ledger entry with valid service credential", async () => {
@@ -113,7 +99,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         expect(res.status).toBe(401);
     });
 
-    it("should delete service credential", async () => {
+    it("should delete service credential via Action", async () => {
         const db = getTestDb();
         const [c] = await db.insert(serviceCredentials).values({
             ledgerId: testLedgerId,
@@ -121,16 +107,9 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
             key: "sk_delete_123"
         }).returning();
 
-        const req = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/service-credentials/${c.id}`,
-            { method: "DELETE" }
-        );
+        const result = await deleteServiceCredentialAction(testLedgerId, c.id);
 
-        const res = await deleteCredentialDELETE(req, {
-            params: Promise.resolve({ id: testLedgerId, credentialId: c.id })
-        });
-
-        expect(res.status).toBe(204);
+        expect(result.success).toBe(true);
 
         const check = await db.query.serviceCredentials.findFirst({
             where: eq(serviceCredentials.id, c.id)

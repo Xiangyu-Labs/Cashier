@@ -10,10 +10,66 @@ import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 import { addDays } from "date-fns";
 import crypto from "crypto";
+import { shareRepo } from "@/lib/repositories/share-repository";
+import { ShareData } from "@/types/api";
 
 const createShareSchema = z.object({
     expiresIn: z.enum(["1d", "7d", "30d", "never"]),
 });
+
+export async function getPublicShareAction(shareId: string): Promise<{ success: boolean; data?: ShareData; error?: string; status?: number }> {
+    try {
+        const share = await shareRepo.findByShareId(shareId);
+
+        if (!share) {
+            return { success: false, error: "Share not found", status: 404 };
+        }
+
+        if (!share.isActive || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
+            return { success: false, error: "Share expired or inactive", status: 410 };
+        }
+
+        // Increment access count (fire and forget, or await?)
+        // Await to ensure it works, but catch error so it doesn't block view
+        await shareRepo.incrementAccessCount(shareId).catch(err => {
+            logger.error({ err, shareId }, "Failed to increment access count");
+        });
+
+        if (!share.sourceDocument) {
+            return { success: false, error: "Source document not found", status: 404 };
+        }
+
+        const shareData: ShareData = {
+            sourceDocument: {
+                id: share.sourceDocument.id,
+                title: share.sourceDocument.title,
+                text: share.sourceDocument.text,
+                imageUrls: share.sourceDocument.imageUrls || [],
+                createdAt: share.sourceDocument.createdAt.toISOString(),
+            },
+            entries: share.sourceDocument.ledgerEntries.map(entry => ({
+                id: entry.id,
+                amount: entry.amount,
+                currency: entry.currency,
+                itemName: entry.itemName,
+                description: entry.description,
+                entryDate: entry.entryDate ? entry.entryDate.toISOString() : null,
+                category: entry.category ? {
+                    id: entry.category.id,
+                    name: entry.category.name,
+                    icon: entry.category.icon
+                } : null
+            })),
+            ledgerId: share.sourceDocument.ledgerId,
+        };
+
+        return { success: true, data: shareData };
+
+    } catch (error) {
+        logger.error({ error, shareId }, "Failed to get public share");
+        return { success: false, error: "Internal Server Error", status: 500 };
+    }
+}
 
 export async function createShareAction(ledgerId: string, sourceDocumentId: string, data: z.infer<typeof createShareSchema>) {
     try {

@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
-import { PATCH } from "@/app/api/ledgers/[id]/ledger-entries/batch-update/route";
+import { batchUpdateLedgerEntriesAction } from "@/actions/ledger-entries";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
-describe("PATCH /api/ledgers/[id]/ledger-entries/batch-update", () => {
+describe("Batch Update Ledger Entries Action", () => {
     let testLedgerId: string;
     let testEntryIds: string[];
     let testCategoryId: string;
@@ -44,25 +43,12 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/batch-update", () => {
     });
 
     it("should batch update category and currency", async () => {
-        const request = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/ledger-entries/batch-update`,
-            {
-                method: "PATCH",
-                body: JSON.stringify({
-                    ledgerEntryIds: testEntryIds,
-                    categoryId: testCategoryId,
-                    currency: "USD"
-                }),
-            }
-        );
-
-        const response = await PATCH(request, {
-            params: Promise.resolve({ id: testLedgerId })
+        const result = await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
+            categoryId: testCategoryId,
+            currency: "USD"
         });
-        const data = await response.json();
 
-        expect(response.status).toBe(200);
-        expect(data.success).toBe(true);
+        expect(result.success).toBe(true);
 
         // Verify in DB
         const db = getTestDb();
@@ -82,25 +68,37 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/batch-update", () => {
         const newDate = "2023-10-27T00:00:00.000Z";
         const newDescription = "Batch updated description";
 
-        const request = new NextRequest(
-            `http://localhost/api/ledgers/${testLedgerId}/ledger-entries/batch-update`,
-            {
-                method: "PATCH",
-                body: JSON.stringify({
-                    ledgerEntryIds: testEntryIds,
-                    entryDate: newDate,
-                    description: newDescription
-                }),
-            }
-        );
+        // Note: Action might expect Date object for date fields if typed tightly, 
+        // OR it parses inside. The action says:
+        /*
+        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate ? new Date(validated.entryDate) : null;
+        But wait, `batchUpdateLedgerEntriesAction` takes `data: any` and does manual check.
+        It does NOT seemingly confirm Zod schema or parse date string to Date object in the generic `updateData` construction?
+        Let's check `actions/ledger-entries.ts` again.
 
-        const response = await PATCH(request, {
-            params: Promise.resolve({ id: testLedgerId })
+        export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: any) {
+             // ...
+             if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+             // Add other fields as needed
+             await scope.entries.batchUpdate(ledgerEntryIds, updateData);
+        }
+        
+        The implementation I saw earlier was very minimal:
+        // if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+        // Add other fields as needed
+
+        I might need to UPDATE `batchUpdateLedgerEntriesAction` to support more fields!
+        */
+
+        // I should check `src/actions/ledger-entries.ts` again to see if I need to expand it.
+        // Assuming I need to expand it, I will do so.
+
+        const result = await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
+            entryDate: newDate,
+            description: newDescription
         });
-        const data = await response.json();
 
-        expect(response.status).toBe(200);
-        expect(data.success).toBe(true);
+        expect(result.success).toBe(true);
 
         // Verify in DB
         const db = getTestDb();
@@ -112,6 +110,7 @@ describe("PATCH /api/ledgers/[id]/ledger-entries/batch-update", () => {
         expect(updatedEntries).toHaveLength(2);
         updatedEntries.forEach(entry => {
             expect(entry.description).toBe(newDescription);
+            // entryDate might be Date object
             expect(entry.entryDate?.toISOString().split('T')[0]).toBe(newDate.split('T')[0]);
         });
     });

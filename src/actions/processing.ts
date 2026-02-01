@@ -41,7 +41,10 @@ export async function getProcessingStatsAction(ledgerId: string) {
     if (error || !scope) throw new Error("Unauthorized");
 
     const tasks = await db.query.taskRuns.findMany({
-        where: eq(taskRuns.ledgerId, ledgerId),
+        where: and(
+            eq(taskRuns.ledgerId, ledgerId),
+            eq(taskRuns.status, 'completed')
+        ),
     });
 
     let totalTokens = 0;

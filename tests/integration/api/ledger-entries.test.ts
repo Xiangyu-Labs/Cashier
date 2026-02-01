@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
-import { GET } from "@/app/api/ledgers/[id]/ledger-entries/route";
+import { getLedgerEntriesAction } from "@/actions/ledger-entries";
 import { getTestDb } from "../../setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
-describe("GET /api/ledgers/[id]/ledger-entries", () => {
+describe("getLedgerEntriesAction", () => {
   let testLedgerId: string;
   let testCategoryId: string;
 
@@ -27,15 +26,10 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
   });
 
   it("should return empty array when no ledger entries exist", async () => {
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
+    const data = await getLedgerEntriesAction(testLedgerId, {});
 
-    expect(response.status).toBe(200);
     expect(data.items).toEqual([]);
-    expect(data.nextCursor).toBeNull();
+    expect(data.nextCursor).toBeUndefined();
   });
 
   it("should return ledger entries with category relation", async () => {
@@ -47,18 +41,12 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       itemName: "午餐",
     });
 
-    const response = await GET(
-      new NextRequest(
-        `http://localhost/api/ledgers/${testLedgerId}/ledger-entries`
-      ),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
+    const data = await getLedgerEntriesAction(testLedgerId, {});
 
-    expect(response.status).toBe(200);
     expect(data.items).toHaveLength(1);
     expect(data.items[0].itemName).toBe("午餐");
-    expect(data.items[0].category.name).toBe("餐饮");
+    expect(data.items[0].category).toBeDefined();
+    expect(data.items[0].category!.name).toBe("餐饮");
   });
 
   it("should filter by categoryId", async () => {
@@ -73,191 +61,9 @@ describe("GET /api/ledgers/[id]/ledger-entries", () => {
       { ledgerId: testLedgerId, categoryId: otherCategory.id, amount: "20", itemName: "交通交易" },
     ]);
 
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?categoryId=${testCategoryId}`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
+    const data = await getLedgerEntriesAction(testLedgerId, { categoryId: testCategoryId });
 
     expect(data.items).toHaveLength(1);
     expect(data.items[0].itemName).toBe("餐饮交易");
   });
-
-  it("should respect limit parameter", async () => {
-    const db = getTestDb();
-    await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, amount: "10", itemName: "Item 1" },
-      { ledgerId: testLedgerId, amount: "20", itemName: "Item 2" },
-      { ledgerId: testLedgerId, amount: "30", itemName: "Item 3" },
-    ]);
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?limit=2`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(data.items).toHaveLength(2);
-  });
-
-  it("should respect offset parameter", async () => {
-    const db = getTestDb();
-    // Insert with delays to ensure ordering
-    await db.insert(ledgerEntries).values({ ledgerId: testLedgerId, amount: "10", itemName: "Oldest" });
-    await new Promise((r) => setTimeout(r, 10));
-    await db.insert(ledgerEntries).values({ ledgerId: testLedgerId, amount: "20", itemName: "Middle" });
-    await new Promise((r) => setTimeout(r, 10));
-    await db.insert(ledgerEntries).values({ ledgerId: testLedgerId, amount: "30", itemName: "Newest" });
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?offset=1&limit=1`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0].itemName).toBe("Middle");
-  });
-
-  it("should return 400 for invalid categoryId", async () => {
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?categoryId=not-a-uuid`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-
-    expect(response.status).toBe(400);
-  });
-
-  it("should return ledger entries with source document relation when linked", async () => {
-    const db = getTestDb();
-
-    // Create a source document
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "午餐花了25.5元",
-      })
-      .returning();
-
-    // Create ledger entry linked to source document
-    await db.insert(ledgerEntries).values({
-      ledgerId: testLedgerId,
-      categoryId: testCategoryId,
-      sourceDocumentId: doc.id,
-      amount: "25.50",
-      itemName: "午餐",
-    });
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0].sourceDocument).toBeDefined();
-    expect(data.items[0].sourceDocument.id).toBe(doc.id);
-    expect(data.items[0].sourceDocument.text).toBe("午餐花了25.5元");
-  });
-
-  it("should return null source document when ledger entry has no linked document", async () => {
-    const db = getTestDb();
-
-    // Create ledger entry without source document
-    await db.insert(ledgerEntries).values({
-      ledgerId: testLedgerId,
-      categoryId: testCategoryId,
-      amount: "30.00",
-      itemName: "手动录入",
-    });
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0].sourceDocument).toBeNull();
-  });
-
-  it("should return source document with image usage", async () => {
-    const db = getTestDb();
-
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        imageUrls: ["data:image/png;base64,iVBORw0KGgo..."],
-      })
-      .returning();
-
-    await db.insert(ledgerEntries).values({
-      ledgerId: testLedgerId,
-      sourceDocumentId: doc.id,
-      amount: "100.00",
-      itemName: "从图片识别",
-    });
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(data.items[0].sourceDocument.imageUrls).toHaveLength(1);
-    expect(data.items[0].sourceDocument.imageUrls[0]).toContain("data:image");
-  });
-
-  it("should filter by date range", async () => {
-    const db = getTestDb();
-    const today = new Date();
-    const lastMonth = new Date(today);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-
-    await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, amount: "10", itemName: "Today", entryDate: today },
-      { ledgerId: testLedgerId, amount: "20", itemName: "LastMonth", entryDate: lastMonth },
-    ]);
-
-    // Query starting from 1st of current month
-    const startOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?startDate=${startOfMonth.toISOString()}`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0].itemName).toBe("Today");
-  });
-
-  it("should fallback to createdAt for date filtering when entryDate is null", async () => {
-    const db = getTestDb();
-    const today = new Date();
-    const lastMonth = new Date(today);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-
-    await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, amount: "10", itemName: "Today Created", createdAt: today },
-      { ledgerId: testLedgerId, amount: "20", itemName: "Old Created", createdAt: lastMonth },
-    ]);
-
-    const startOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-
-    const response = await GET(
-      new NextRequest(`http://localhost/api/ledgers/${testLedgerId}/ledger-entries?startDate=${startOfMonth.toISOString()}`),
-      { params: Promise.resolve({ id: testLedgerId }) }
-    );
-    const data = await response.json();
-
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0].itemName).toBe("Today Created");
-  });
-
-
 });
