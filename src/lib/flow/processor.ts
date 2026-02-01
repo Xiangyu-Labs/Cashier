@@ -1,7 +1,7 @@
 import { Job, WaitingChildrenError } from 'bullmq';
 import { getFlowTaskHandler } from '@/lib/flow/registry';
 import { FlowContext, FlowDefinition } from '@/lib/flow/types';
-import { completeTaskRun, failTaskRun } from '@/lib/flow/task-run-service';
+import { completeTaskRun, failTaskRun } from '@/features/tasks/server/services/task-run-service';
 import { logger as _logger } from '@/lib/logger';
 import { getFlowProducer } from '@/lib/flow/workers';
 
