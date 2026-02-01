@@ -92,7 +92,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const createCategoryMutation = useMutation({
         mutationFn: async (data: { name: string }) => {
             const result = await createEntryCategoryAction(ledgerId, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(t("categoryCreated"));
@@ -108,7 +108,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 description: data.description ?? undefined,
                 icon: data.icon ?? undefined,
             });
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(t("categoryUpdated"));
@@ -120,7 +120,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const deleteCategoryMutation = useMutation({
         mutationFn: async (id: string) => {
             const result = await deleteEntryCategoryAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(t("categoryDeleted"));
@@ -151,7 +151,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const deleteCredentialMutation = useMutation({
         mutationFn: async (id: string) => {
             const result = await deleteServiceCredentialAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(t("credentialDeleted"));
@@ -170,7 +170,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('theme')}</h3>
-                            <p className="text-sm text-[var(--muted)]">设置当前界面的色彩模式</p>
+                            <p className="text-sm text-[var(--muted)]">{t('themeDescription')}</p>
                         </div>
                         <div className="flex bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
                             <button

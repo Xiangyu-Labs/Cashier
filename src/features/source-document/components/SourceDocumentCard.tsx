@@ -185,8 +185,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
       <div
         className={cn(
-          "px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center transition-colors group",
-          "cursor-pointer hover:bg-surface2"
+          "px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center transition-all group",
+          "cursor-pointer hover:bg-surface2 active:scale-[0.995] active:brightness-95"
         )}
         onClick={() => setIsItemsExpanded(!isItemsExpanded)}
       >

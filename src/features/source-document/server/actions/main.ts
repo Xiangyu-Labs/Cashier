@@ -8,6 +8,7 @@ import { submitFlowTask } from "@/lib/flow/producer";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
 import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
+import { safeError } from "@/lib/safe-error";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -94,7 +95,7 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
         logger.error({ error, ledgerId }, "Failed to create source document via action");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to queue source document",
+            error: safeError(error),
             sourceDocumentId: null,
             status: null,
         };
@@ -147,7 +148,7 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         logger.error({ error, ledgerId, sourceDocumentId }, "Failed to retry source document via action");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to retry source document",
+            error: safeError(error),
             sourceDocumentId: null,
             status: null,
         };
@@ -169,7 +170,7 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
         logger.error({ error, ledgerId, sourceId }, "Failed to update source document via action");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to update source document",
+            error: safeError(error),
         };
     }
 }
@@ -186,7 +187,7 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
         logger.error({ error, ledgerId, sourceId }, "Failed to delete source document via action");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to delete source document",
+            error: safeError(error),
         };
     }
 }
@@ -320,7 +321,7 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch delete source documents");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to batch delete source documents",
+            error: safeError(error),
         };
     }
 }
@@ -361,7 +362,7 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch retry source documents");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to batch retry source documents",
+            error: safeError(error),
         };
     }
 }
@@ -390,62 +391,68 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     const { scope, error } = await requireLedgerAccess(ledgerId);
     if (error || !scope) throw new Error("Unauthorized");
 
-    const { startDate, endDate, limit = 20, cursor } = params;
+    try {
 
-    // 1. Fetch active documents (queued, processing, anomaly)
-    // For active docs, we might want to ignore date range if they are "active"
-    // but the plan says "Server-side filtering for ALL sections".
-    // Let's apply date range to all.
-    const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
-        status: 'queued,processing,anomaly',
-        includeLedgerEntries: true,
-        startDate,
-        endDate,
-    });
+        const { startDate, endDate, limit = 20, cursor } = params;
 
-    // 2. Fetch completed documents (paginated)
-    const completedDocsResult = await getSourceDocumentsAction(ledgerId, {
-        status: 'completed',
-        includeLedgerEntries: true,
-        startDate,
-        endDate,
-        limit,
-        cursor,
-    });
-
-    const groups: GroupedSourceDocuments = {
-        processing: [],
-        anomaly: [],
-        completed: [],
-    };
-
-    activeDocsResult.items.forEach((doc: any) => {
-        const group = {
-            sourceDocument: doc,
-            ledgerEntries: doc.ledgerEntries || [],
-        };
-        if (doc.status === 'anomaly') {
-            groups.anomaly.push(group);
-        } else {
-            groups.processing.push(group);
-        }
-    });
-
-    completedDocsResult.items.forEach((doc: any) => {
-        groups.completed.push({
-            sourceDocument: doc,
-            ledgerEntries: doc.ledgerEntries || [],
+        // 1. Fetch active documents (queued, processing, anomaly)
+        // For active docs, we might want to ignore date range if they are "active"
+        // but the plan says "Server-side filtering for ALL sections".
+        // Let's apply date range to all.
+        const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
+            status: 'queued,processing,anomaly',
+            includeLedgerEntries: true,
+            startDate,
+            endDate,
         });
-    });
 
-    return {
-        groups,
-        nextCursor: completedDocsResult.nextCursor,
-        stats: {
-            processingCount: groups.processing.length,
-            anomalyCount: groups.anomaly.length,
-        }
-    };
+        // 2. Fetch completed documents (paginated)
+        const completedDocsResult = await getSourceDocumentsAction(ledgerId, {
+            status: 'completed',
+            includeLedgerEntries: true,
+            startDate,
+            endDate,
+            limit,
+            cursor,
+        });
+
+        const groups: GroupedSourceDocuments = {
+            processing: [],
+            anomaly: [],
+            completed: [],
+        };
+
+        activeDocsResult.items.forEach((doc: any) => {
+            const group = {
+                sourceDocument: doc,
+                ledgerEntries: doc.ledgerEntries || [],
+            };
+            if (doc.status === 'anomaly') {
+                groups.anomaly.push(group);
+            } else {
+                groups.processing.push(group);
+            }
+        });
+
+        completedDocsResult.items.forEach((doc: any) => {
+            groups.completed.push({
+                sourceDocument: doc,
+                ledgerEntries: doc.ledgerEntries || [],
+            });
+        });
+
+        return {
+            groups,
+            nextCursor: completedDocsResult.nextCursor,
+            stats: {
+                processingCount: groups.processing.length,
+                anomalyCount: groups.anomaly.length,
+            }
+        };
+    } catch (error) {
+        logger.error({ error, ledgerId }, "Failed to get unified source documents");
+        throw new Error(safeError(error));
+    }
 }
 
 export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }) {
@@ -462,7 +469,7 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch update source documents");
         return {
             success: false,
-            error: error instanceof Error ? error.message : "Failed to batch update source documents",
+            error: safeError(error),
         };
     }
 }

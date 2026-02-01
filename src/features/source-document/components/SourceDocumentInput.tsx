@@ -62,7 +62,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 collapseBillsDefault: data.collapseBillsDefault === null ? undefined : data.collapseBillsDefault,
                 aiCustomPrompt: data.aiCustomPrompt === null ? undefined : data.aiCustomPrompt,
             });
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data;
         },
         onSuccess: () => {
@@ -76,7 +76,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             images?: { data: string; mimeType: string }[];
         }) => {
             const result = await createSourceDocumentAction(ledgerId, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
             return result;
         },
         onSuccess: () => {
@@ -93,7 +93,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             images?: { data: string; mimeType: string }[];
         }) => {
             const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
             return result;
         },
         onSuccess: () => {

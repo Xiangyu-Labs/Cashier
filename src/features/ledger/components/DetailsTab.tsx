@@ -91,7 +91,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const updateMutation = useMutation({
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data as LedgerEntry;
         },
         onSuccess: (updatedEntry) => {
@@ -114,7 +114,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const deleteMutation = useMutation({
         mutationFn: async (ledgerEntryId: string) => {
             const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             // Invalidation handled by Server Action revalidatePath + SSE

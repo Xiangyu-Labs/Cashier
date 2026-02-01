@@ -7,8 +7,8 @@
         "unknown_currency": "Unknown currency"
     },
     "HomePage": {
-        "loading": "Loading...",
-        "creating": "Creating default ledger...",
+        "loading": "Loading…",
+        "creating": "Creating default ledger…",
         "defaultLedgerName": "My Ledger",
         "createFailed": "Creation failed, please refresh to retry"
     },
@@ -39,7 +39,7 @@
         "ledgerName": "Ledger Name",
         "placeholder": "e.g., Daily Expenses",
         "create": "Create",
-        "creating": "Creating...",
+        "creating": "Creating…",
         "createSuccess": "Created successfully",
         "createSuccessDesc": "Ledger created",
         "createFailed": "Creation failed",
@@ -116,17 +116,19 @@
         "save": "Save",
         "saveSuccess": "Saved successfully",
         "saveFailed": "Save failed",
-        "loading": "Loading...",
-        "sending": "Sending...",
+        "loading": "Loading…",
+        "sending": "Sending…",
         "success": "Success",
         "error": "Error",
         "input": "Input",
         "output": "Output",
-        "sending_status": "Sending...",
-        "unclassified": "Unclassified"
+        "sending_status": "Sending…",
+        "unclassified": "Unclassified",
+        "needsCategory": "Needs Category",
+        "needsCurrency": "Needs Currency"
     },
     "SourceDocumentInput": {
-        "placeholder": "Enter consumption record, e.g.: lunch 35 dollars... (supports pasting images)",
+        "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
         "image": "Image",
         "send": "Send",
         "advancedFeatures": "Advanced Features"
@@ -183,8 +185,11 @@
     },
     "Settings": {
         "title": "Settings",
+        "subtitle": "Manage your ledger preferences and account settings",
+        "account": "Account",
         "appearance": "Appearance",
         "theme": "Theme",
+        "themeDescription": "Set the color mode for the current interface",
         "themeAuto": "Follow System",
         "themeLight": "Light Mode",
         "themeDark": "Dark Mode",
@@ -338,6 +343,10 @@
         "deleteSuccess": "Account deleted successfully"
     },
     "Error": {
+        "title": "Application Error",
+        "description": "An unexpected error occurred: {message}",
+        "errorId": "Error ID: {id}",
+        "goHome": "Go Home",
         "retry": "Retry",
         "backToHome": "Back to Home"
     },

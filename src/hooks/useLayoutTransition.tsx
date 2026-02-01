@@ -17,9 +17,9 @@ export function useLayoutTransition() {
         // Helper to get motion props for an item
         // Note: Removed layoutId to prevent cross-item layout animations that cause visual jumps
         getItemProps: () => ({
-            initial: { opacity: 0, y: 10 },
+            initial: { opacity: 0, y: 2 },
             animate: { opacity: 1, y: 0 },
-            exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
+            exit: { opacity: 0, y: -2, transition: { duration: 0.15 } },
             transition: {
                 duration: 0.2,
                 ease: [0.32, 0.72, 0, 1] as const // Standard easeOut expo curve

@@ -7,8 +7,8 @@
         "unknown_currency": "货币未知"
     },
     "HomePage": {
-        "loading": "加载中...",
-        "creating": "正在创建默认账本...",
+        "loading": "加载中…",
+        "creating": "正在创建默认账本…",
         "defaultLedgerName": "我的账本",
         "createFailed": "创建失败，请刷新重试"
     },
@@ -39,7 +39,7 @@
         "ledgerName": "账本名称",
         "placeholder": "例如：日常开销",
         "create": "创建",
-        "creating": "创建中...",
+        "creating": "创建中…",
         "createSuccess": "创建成功",
         "createSuccessDesc": "账本已创建",
         "createFailed": "创建失败",
@@ -116,20 +116,22 @@
         "save": "保存",
         "saveSuccess": "保存成功",
         "saveFailed": "保存失败",
-        "loading": "加载中...",
-        "sending": "发送中...",
+        "loading": "加载中…",
+        "sending": "发送中…",
         "success": "成功",
         "error": "错误",
         "input": "输入",
         "output": "输出",
-        "sending_status": "发送中...",
+        "sending_status": "发送中…",
         "unclassified": "未分类",
+        "needsCategory": "需要分类",
+        "needsCurrency": "需要货币",
         "edit": "编辑",
         "selectAll": "全选",
         "deselectAll": "取消全选"
     },
     "SourceDocumentInput": {
-        "placeholder": "输入消费记录，例如：午饭35元... (支持粘贴图片)",
+        "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
         "image": "图片",
         "send": "发送",
         "advancedFeatures": "高级功能"
@@ -186,8 +188,11 @@
     },
     "Settings": {
         "title": "设置",
+        "subtitle": "管理您的账本首选项和账户设置",
+        "account": "账户",
         "appearance": "外观",
         "theme": "主题",
+        "themeDescription": "设置当前界面的色彩模式",
         "themeAuto": "跟随系统",
         "themeLight": "浅色模式",
         "themeDark": "深色模式",
@@ -341,6 +346,10 @@
         "deleteSuccess": "账户已删除"
     },
     "Error": {
+        "title": "应用错误",
+        "description": "发生意外错误：{message}",
+        "errorId": "错误 ID：{id}",
+        "goHome": "返回首页",
         "retry": "重试",
         "backToHome": "返回主页"
     },

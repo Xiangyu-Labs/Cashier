@@ -16,8 +16,8 @@
   --color-warning: var(--warning);
   --color-info: var(--info);
 
-  --shadow-modal: var(--shadow-modal);
-  --shadow-toast: var(--shadow-toast);
+  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-toast: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
@@ -36,7 +36,8 @@
   --surface2: #f7f7f8;
 
   --text: #343541;
-  --muted: #8e8ea0;
+  /* Darkened from #8e8ea0 to ensure 4.5:1 contrast */
+  --muted: #71717a;
 
   --border: #e5e5e5;
   --ring: #10a37f;
@@ -128,6 +129,11 @@ body {
 
 .input-error:focus {
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
 /* Custom Scrollbar */

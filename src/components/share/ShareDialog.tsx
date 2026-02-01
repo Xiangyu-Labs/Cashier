@@ -54,7 +54,7 @@ export function ShareDialog({
                 setShareUrl(url);
                 toast.success(t("shareSuccess"));
             } else {
-                throw new Error(result.error);
+                throw new Error(result.error || "Share failed");
             }
         } catch (error) {
             console.error(error);

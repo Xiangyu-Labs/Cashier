@@ -45,7 +45,7 @@ export function SourceDocumentOriginalContent({
                         </div>
                         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                             <span className="bg-black/40 text-white px-4 py-2 rounded-full text-xs font-bold backdrop-blur-md translate-y-2 group-hover:translate-y-0 transition-all">
-                                {tViewer("clickToZoom") || "Click to View"}
+                                {tViewer("clickToZoom") || tViewer("clickToZoom")}
                             </span>
                         </div>
                     </div>
@@ -91,7 +91,9 @@ export function SourceDocumentOriginalContent({
                     !hasImages && "flex-1 overflow-y-auto"
                 )}>
                     <div className="bg-surface2/40 p-3 rounded-xl border border-border/60">
-                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 opacity-60">RAW CONTENT</h5>
+                        <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 opacity-60 flex items-center gap-2">
+                            {t("rawContent") || "RAW CONTENT"}
+                        </h5>
                         <p className="text-xs text-text/90 whitespace-pre-wrap font-mono leading-relaxed">{text}</p>
                     </div>
                 </div>

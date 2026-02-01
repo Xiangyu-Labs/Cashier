@@ -106,7 +106,7 @@ export function LedgerEntriesTab({
     const updateMutation = useMutation({
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data as LedgerEntry;
         },
         onSuccess: (updatedEntry) => {
@@ -134,7 +134,7 @@ export function LedgerEntriesTab({
     const deleteLedgerEntryMutation = useMutation({
         mutationFn: async (ledgerEntryId: string) => {
             const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
@@ -155,7 +155,7 @@ export function LedgerEntriesTab({
     const batchDeleteLedgerEntriesMutation = useMutation({
         mutationFn: async (ledgerEntryIds: string[]) => {
             const result = await batchDeleteLedgerEntriesAction(ledgerId, ledgerEntryIds);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
@@ -167,7 +167,7 @@ export function LedgerEntriesTab({
     const batchUpdateLedgerEntriesMutation = useMutation({
         mutationFn: async ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: any }) => {
             const result = await batchUpdateLedgerEntriesAction(ledgerId, ledgerEntryIds, data);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
