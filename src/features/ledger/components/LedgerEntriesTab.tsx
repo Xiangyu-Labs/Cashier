@@ -15,7 +15,8 @@ import {
 } from "@/features/source-document/server/actions";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
-import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
+import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
+import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentDetailModal } from "@/features/source-document/components/SourceDocumentDetailModal";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { Button } from "@/components/ui/button";
@@ -76,19 +77,14 @@ export function LedgerEntriesTab({
         description: string;
     }>({ open: false, type: null, id: null, title: "", description: "" });
 
-    const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    // Edit-Retry Dialog State (Keep this local as it's a specialized dialog)
+    const [retrySourceDocument, setRetrySourceDocument] = useState<SourceDocument | null>(null);
 
-    const [selectedSourceDocument, setSelectedSourceDocument] = useState<{
-        sourceDocument: SourceDocument;
-        ledgerEntries: LedgerEntry[];
-    } | null>(null);
-    const [isSourceDetailModalOpen, setIsSourceDetailModalOpen] = useState(false);
+    const pushModal = useModalStackStore(state => state.push);
 
-    // Edit-Retry Dialog State
-    const [editRetryDocument, setEditRetryDocument] = useState<SourceDocument | null>(null);
-
-    // Unified Data Hook
+    const handleViewEntry = useCallback((entry: LedgerEntry) => {
+        pushModal({ type: 'ledger-entry', id: entry.id });
+    }, [pushModal]);// Unified Data Hook
     const {
         groups,
         isLoading,
@@ -111,22 +107,6 @@ export function LedgerEntriesTab({
         },
         onSuccess: (updatedEntry) => {
             toast.success(tCommon("saveSuccess"));
-            if (selectedLedgerEntry?.id === updatedEntry.id) {
-                setSelectedLedgerEntry({
-                    ...updatedEntry,
-                    category: categories.find(c => c.id === updatedEntry.categoryId) || null,
-                    sourceDocument: selectedLedgerEntry.sourceDocument
-                });
-            }
-            if (selectedSourceDocument) {
-                const updatedEntries = selectedSourceDocument.ledgerEntries.map(e =>
-                    e.id === updatedEntry.id ? updatedEntry : e
-                );
-                setSelectedSourceDocument({
-                    ...selectedSourceDocument,
-                    ledgerEntries: updatedEntries
-                });
-            }
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
@@ -138,14 +118,6 @@ export function LedgerEntriesTab({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            setIsDetailModalOpen(false);
-            if (selectedSourceDocument && deleteConfirm.id) {
-                const updatedEntries = selectedSourceDocument.ledgerEntries.filter(e => e.id !== deleteConfirm.id);
-                setSelectedSourceDocument({
-                    ...selectedSourceDocument,
-                    ledgerEntries: updatedEntries
-                });
-            }
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
         onError: () => toast.error(tCommon("deleteFailed")),
@@ -261,12 +233,11 @@ export function LedgerEntriesTab({
 
     // Handlers
     const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
-        setSelectedSourceDocument(group);
-        setIsSourceDetailModalOpen(true);
-    }, []);
+        pushModal({ type: 'source-document', id: group.sourceDocument.id });
+    }, [pushModal]);
 
     const handleRetry = useCallback((doc: SourceDocument) => {
-        setEditRetryDocument(doc);
+        setRetrySourceDocument(doc);
     }, []);
 
     const handleDeleteSourceConfirm = useCallback((doc: SourceDocument) => {
@@ -284,25 +255,12 @@ export function LedgerEntriesTab({
     }, [updateMutation]);
 
     const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
-        setSelectedLedgerEntry(entry);
-        setIsDetailModalOpen(true);
-    }, []);
+        pushModal({ type: 'ledger-entry', id: entry.id });
+    }, [pushModal]);
 
-    const handleCloseSourceDetail = useCallback(() => {
-        setIsSourceDetailModalOpen(false);
-        setSelectedSourceDocument(null);
-    }, []);
-
-    const handleCloseLedgerDetail = useCallback(() => {
-        setIsDetailModalOpen(false);
-        setSelectedLedgerEntry(null);
-    }, []);
-
-    const handleUpdateTitle = useCallback(async (title: string) => {
-        if (selectedSourceDocument) {
-            await updateSourceDocumentMutation.mutateAsync({ id: selectedSourceDocument.sourceDocument.id, title });
-        }
-    }, [selectedSourceDocument, updateSourceDocumentMutation]);
+    const handleUpdateTitle = useCallback(async (id: string, title: string) => {
+        await updateSourceDocumentMutation.mutateAsync({ id, title });
+    }, [updateSourceDocumentMutation]);
 
     const handleBatchUpdate = useCallback(async (ids: string[], data: any) => {
         await batchUpdateLedgerEntriesMutation.mutateAsync({ ledgerEntryIds: ids, data });
@@ -322,26 +280,22 @@ export function LedgerEntriesTab({
         await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
     }, [batchDeleteLedgerEntriesMutation]);
 
-    const handleUpdateLedgerEntryDetail = useCallback((data: any) => {
-        if (selectedLedgerEntry) {
-            updateMutation.mutate({
-                ledgerEntryId: selectedLedgerEntry.id,
-                data,
-            });
-        }
-    }, [selectedLedgerEntry, updateMutation]);
+    const handleUpdateLedgerEntryDetail = useCallback(async (id: string, data: any) => {
+        updateMutation.mutate({
+            ledgerEntryId: id,
+            data,
+        });
+    }, [updateMutation]);
 
-    const handleDeleteLedgerEntryRequest = useCallback(() => {
-        if (selectedLedgerEntry) {
-            setDeleteConfirm({
-                open: true,
-                type: "ledgerEntry",
-                id: selectedLedgerEntry.id,
-                title: t("deleteEntryConfirmTitle"),
-                description: t("deleteEntryConfirmDesc")
-            });
-        }
-    }, [selectedLedgerEntry, t]);
+    const handleDeleteLedgerEntryRequest = useCallback(async (id: string) => {
+        setDeleteConfirm({
+            open: true,
+            type: "ledgerEntry",
+            id,
+            title: t("deleteEntryConfirmTitle"),
+            description: t("deleteEntryConfirmDesc")
+        });
+    }, [t]);
 
     // Helper Action Handlers
     function handleDeleteConfirmAction() {
@@ -454,7 +408,7 @@ export function LedgerEntriesTab({
                                                                 className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                 defaultExpanded={true}
                                                                 mainCurrency={ledger?.mainCurrency || undefined}
-                                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
+                                                                onRetry={() => setRetrySourceDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
                                                         </motion.div>
@@ -503,7 +457,7 @@ export function LedgerEntriesTab({
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                                                                 defaultExpanded={!ledger?.collapseBillsDefault}
                                                                 mainCurrency={ledger?.mainCurrency || undefined}
-                                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
+                                                                onRetry={() => setRetrySourceDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
                                                         </motion.div>
@@ -567,36 +521,8 @@ export function LedgerEntriesTab({
 
             </div>
 
-            <SourceDocumentDetailModal
-                sourceDocument={selectedSourceDocument?.sourceDocument || null}
-                ledgerEntries={selectedSourceDocument?.ledgerEntries || []}
-                categories={categories}
-                preferredCurrencies={ledger?.currencies || []}
-                mainCurrency={ledger?.mainCurrency || undefined}
-                open={isSourceDetailModalOpen}
-                onClose={handleCloseSourceDetail}
-                onUpdateTitle={handleUpdateTitle}
-                onBatchUpdate={handleBatchUpdate}
-                onDeleteEntry={handleDeleteEntryRequest}
-                onBatchDelete={handleBatchDelete}
-                onViewLedgerEntry={handleViewLedgerEntry}
-                onDelete={() => {
-                    if (selectedSourceDocument) {
-                        handleDeleteSourceConfirm(selectedSourceDocument.sourceDocument);
-                    }
-                }}
-            />
+            {/* Global Modal Stack Renderer */}
 
-            <LedgerEntryDetailModal
-                ledgerEntry={selectedLedgerEntry}
-                categories={categories}
-                preferredCurrencies={ledger?.currencies || []}
-                mainCurrency={ledger?.mainCurrency || undefined}
-                open={isDetailModalOpen}
-                onClose={handleCloseLedgerDetail}
-                onUpdate={handleUpdateLedgerEntryDetail}
-                onDelete={handleDeleteLedgerEntryRequest}
-            />
 
             <ConfirmDialog
                 open={deleteConfirm.open}
@@ -609,12 +535,12 @@ export function LedgerEntriesTab({
             />
 
             {/* Edit-Retry Dialog */}
-            {editRetryDocument && (
+            {retrySourceDocument && (
                 <SourceDocumentEditRetryDialog
                     ledgerId={ledgerId}
-                    sourceDocument={editRetryDocument}
-                    open={!!editRetryDocument}
-                    onOpenChange={(open) => !open && setEditRetryDocument(null)}
+                    sourceDocument={retrySourceDocument}
+                    open={!!retrySourceDocument}
+                    onOpenChange={(open) => !open && setRetrySourceDocument(null)}
                     onSuccess={() => {
                         toast.success(t("retrySubmitted"));
                     }}

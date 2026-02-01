@@ -25,6 +25,7 @@ interface LedgerEntryDetailModalProps {
     description?: string | null;
   }) => void;
   onDelete: () => void;
+  onViewSourceDocument?: (sourceDocumentId: string) => void;
 }
 
 export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
@@ -36,6 +37,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  onViewSourceDocument,
 }: LedgerEntryDetailModalProps): ReactNode | null {
   const tTab = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");

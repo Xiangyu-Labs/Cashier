@@ -17,10 +17,12 @@ export const queryKeys = {
     // === Ledger Entries ===
     ledgerEntries: (ledgerId: string, ...filters: (string | undefined)[]) =>
         ['ledgerEntries', ledgerId, ...filters.filter(Boolean)] as const,
+    ledgerEntry: (id: string) => ['ledgerEntry', id] as const,
 
     // === Source Documents ===
     sourceDocuments: (ledgerId: string, ...filters: (string | undefined)[]) =>
         ['sourceDocuments', ledgerId, ...filters.filter(Boolean)] as const,
+    sourceDocument: (id: string) => ['sourceDocument', id] as const,
 
     // === Categories ===
     entryCategories: (ledgerId: string) => ['entryCategories', ledgerId] as const,

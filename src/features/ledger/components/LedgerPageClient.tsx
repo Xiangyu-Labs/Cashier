@@ -21,6 +21,7 @@ import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
 import { Ledger, EntryCategory, SourceDocument, ServiceCredential } from "@/types/api";
+import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 
 interface LedgerPageClientProps {
     initialLedger: Ledger;
@@ -151,6 +152,8 @@ export function LedgerPageClient({
                     <Plus className="h-6 w-6" />
                 </Button>
             </div>
+
+            <ModalStackRenderer categories={categories} />
         </div >
     );
 }
