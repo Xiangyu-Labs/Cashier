@@ -258,7 +258,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                 <span>{tLedger("loadMore")}</span>
                             </motion.div>
                         ) : (
-                            <span className="opacity-50 text-xs">{tLedger("noMore")}</span>
+                            <span className="opacity-50 text-xs">{tCommon("noMore")}</span>
                         )}
                     </div>
                 )}
@@ -270,8 +270,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     </div>
                 ) : monthEntries.length === 0 && (
                     <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                        <span className="text-4xl opacity-20">📭</span>
-                        <span>{t("noExpenses")}</span>
+                        <span>{tCommon("noRecords")}</span>
                     </div>
                 )}
             </div>

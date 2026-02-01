@@ -40,12 +40,7 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
     }
 
     if (data.length === 0) {
-        return (
-            <div className="text-center py-12 text-muted-foreground">
-                <div className="text-4xl mb-2 opacity-20">📭</div>
-                <div className="text-sm">{t("noExpenses")}</div>
-            </div>
-        );
+        return null;
     }
 
     // Sort descending just in case the API didn't

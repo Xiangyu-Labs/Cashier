@@ -125,7 +125,9 @@
         "sending_status": "Sending…",
         "unclassified": "Unclassified",
         "needsCategory": "Needs Category",
-        "needsCurrency": "Needs Currency"
+        "needsCurrency": "Needs Currency",
+        "noRecords": "No records",
+        "noMore": "No more items"
     },
     "SourceDocumentInput": {
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",

@@ -58,8 +58,8 @@ export function LedgerEntriesTab({
 
     // Local State
 
-    const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed || (ledger?.collapseProcessingDefault ?? false));
-    const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed || (ledger?.collapseProcessingDefault ?? false));
+    const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
+    const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
         const now = new Date();
         return {
@@ -404,7 +404,7 @@ export function LedgerEntriesTab({
                                                                 status={group.sourceDocument.status || 'processing'}
                                                                 className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                 defaultExpanded={true}
-                                                                mainCurrency={ledger?.mainCurrency || undefined}
+                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
                                                                 onRetry={() => setRetrySourceDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
@@ -452,8 +452,8 @@ export function LedgerEntriesTab({
                                                                 status="anomaly"
                                                                 anomalyCodes={group.sourceDocument.anomalyCodes}
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                                                                defaultExpanded={!ledger?.collapseBillsDefault}
-                                                                mainCurrency={ledger?.mainCurrency || undefined}
+                                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
+                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
                                                                 onRetry={() => setRetrySourceDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
@@ -472,8 +472,7 @@ export function LedgerEntriesTab({
                         <div className="space-y-6 px-2">
                             {groups.completed.length === 0 ? (
                                 <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                                    <span className="text-4xl opacity-20">🧾</span>
-                                    <span>{t("noRecords")}</span>
+                                    <span>{tCommon("noRecords")}</span>
                                 </div>
                             ) : (
                                 <AnimatePresence mode="wait">
@@ -484,8 +483,8 @@ export function LedgerEntriesTab({
                                                 ledgerEntries={group.ledgerEntries}
                                                 categories={categories}
                                                 status="completed"
-                                                mainCurrency={ledger?.mainCurrency || undefined}
-                                                defaultExpanded={!ledger?.collapseBillsDefault}
+                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
+                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
                                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
                                                 onUpdateLedgerEntry={handleUpdateLedgerEntry}
                                                 onRetry={() => handleRetry(group.sourceDocument)}
@@ -509,7 +508,7 @@ export function LedgerEntriesTab({
                                         <span>{t("loadMore")}</span>
                                     </motion.div>
                                 ) : (
-                                    <span className="opacity-50 text-xs">{t("noMore")}</span>
+                                    <span className="opacity-50 text-xs">{tCommon("noMore")}</span>
                                 )}
                             </div>
                         </div>
