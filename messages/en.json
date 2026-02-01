@@ -228,7 +228,8 @@
         "notificationsDisabled": "Notifications disabled",
         "notificationSubscribeFailed": "Failed to enable notifications",
         "notificationUnsubscribeFailed": "Failed to disable notifications",
-        "notificationPermissionDenied": "Permission denied. Please enable notifications in your browser settings."
+        "notificationPermissionDenied": "Permission denied. Please enable notifications in your browser settings.",
+        "notificationNotSupported": "Not supported on this device"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

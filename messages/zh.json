@@ -223,7 +223,16 @@
         "taskCenter": "任务中心",
         "aiPrompt": "账本提示词",
         "aiPromptDesc": "自定义 AI 识别时的特殊偏好（例如：给账单起的标题包含更多颜文字）",
-        "aiPromptPlaceholder": "输入您的自定义偏好，例如：我想让账单摘要更加口语化，并加入适合的颜文字。"
+        "aiPromptPlaceholder": "输入您的自定义偏好，例如：我希望账单摘要更随意一些，并在标题中包含相关的表情符号。",
+        "notifications": "通知设置",
+        "pushNotifications": "推送通知",
+        "pushNotificationsDesc": "当您的账单处理完成时接收实时通知。",
+        "notificationsEnabled": "通知已开启",
+        "notificationsDisabled": "通知已关闭",
+        "notificationSubscribeFailed": "开启通知失败",
+        "notificationUnsubscribeFailed": "关闭通知失败",
+        "notificationPermissionDenied": "权限被拒绝。请在浏览器设置中允许通知。",
+        "notificationNotSupported": "当前设备不支持"
     },
     "ServiceCredentials": {
         "title": "服务凭证",
