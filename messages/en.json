@@ -229,7 +229,9 @@
         "notificationSubscribeFailed": "Failed to enable notifications",
         "notificationUnsubscribeFailed": "Failed to disable notifications",
         "notificationPermissionDenied": "Permission denied. Please enable notifications in your browser settings.",
-        "notificationNotSupported": "Not supported on this device"
+        "notificationNotSupported": "Not supported on this device",
+        "newCategoryPlaceholder": "New Category Name",
+        "addCategory": "Add"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

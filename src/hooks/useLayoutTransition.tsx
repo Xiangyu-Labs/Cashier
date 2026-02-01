@@ -1,4 +1,3 @@
-import { LayoutGroup } from "framer-motion";
 import { useId } from "react";
 
 /**
@@ -26,11 +25,7 @@ export function useLayoutTransition() {
             }
         }),
 
-        // The LayoutGroup component to wrap lists in
-        LayoutGroup: ({ children }: { children: React.ReactNode }) => (
-            <LayoutGroup id={layoutGroupId}>
-                {children}
-            </LayoutGroup>
-        )
+        // Return the ID so the parent can use a stable LayoutGroup component
+        layoutGroupId
     };
 }

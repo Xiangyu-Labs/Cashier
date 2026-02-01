@@ -232,7 +232,9 @@
         "notificationSubscribeFailed": "开启通知失败",
         "notificationUnsubscribeFailed": "关闭通知失败",
         "notificationPermissionDenied": "权限被拒绝。请在浏览器设置中允许通知。",
-        "notificationNotSupported": "当前设备不支持"
+        "notificationNotSupported": "当前设备不支持",
+        "newCategoryPlaceholder": "新分类名称",
+        "addCategory": "添加"
     },
     "ServiceCredentials": {
         "title": "服务凭证",

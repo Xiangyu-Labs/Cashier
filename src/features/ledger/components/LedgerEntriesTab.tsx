@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations } from "next-intl";
@@ -53,7 +53,7 @@ export function LedgerEntriesTab({
 
 
     // Layout Transitions
-    const { containerProps, getItemProps, LayoutGroup } = useLayoutTransition();
+    const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
     // Local State
 
@@ -407,7 +407,7 @@ export function LedgerEntriesTab({
 
 
     return (
-        <LayoutGroup>
+        <LayoutGroup id={layoutGroupId}>
             <div className="space-y-4" {...containerProps}>
 
                 {/* Date Filter */}
