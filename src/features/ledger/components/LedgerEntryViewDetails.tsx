@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { Calendar, Edit2, Trash2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Edit2, Trash2, Check, X, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { type ReactNode, useState, useRef, useEffect, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -35,6 +35,7 @@ interface LedgerEntryViewDetailsProps {
     onEditSave: () => void;
     onEditCancel: () => void;
     onDelete: () => void;
+    onViewSourceDocument?: () => void;
 }
 
 export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
@@ -49,6 +50,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     onEditSave,
     onEditCancel,
     onDelete,
+    onViewSourceDocument,
 }: LedgerEntryViewDetailsProps): ReactNode {
     const t = useTranslations("LedgerEntryDetail");
     const tCommon = useTranslations("Common");
@@ -345,20 +347,34 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                     </>
                 ) : (
                     <>
+                        {/* Left-aligned secondary actions */}
+                        <div className="flex-1 flex gap-2">
+                            {onViewSourceDocument && (
+                                <Button
+                                    variant="outline"
+                                    onClick={onViewSourceDocument}
+                                    className="h-10 px-4 gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                    <span className="hidden sm:inline">{t("viewSource")}</span>
+                                </Button>
+                            )}
+                        </div>
+
                         <Button
                             variant="destructive"
                             onClick={onDelete}
-                            className="h-10 px-6 rounded-xl text-destructive/80 bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all font-medium"
+                            className="h-10 px-4 rounded-xl text-destructive/80 bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all font-medium"
                         >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {tCommon("delete")}
+                            <Trash2 className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{tCommon("delete")}</span>
                         </Button>
                         <Button
                             onClick={onEditStart}
                             className="h-10 px-6 rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all text-white font-bold"
                         >
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            {t("edit")}
+                            <Edit2 className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{t("edit")}</span>
                         </Button>
                     </>
                 )}

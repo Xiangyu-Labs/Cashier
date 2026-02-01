@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, memo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -166,6 +167,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         }
     }
 
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
     const handleBatchDelete = async () => {
         if (selectedIds.length === 0 || !onBatchDelete) return
         if (!confirm(t("confirmDeleteSelected", { count: selectedIds.length }))) return
@@ -179,6 +182,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         } finally {
             setIsSaving(false)
         }
+    }
+
+    const handleDeleteDocument = () => {
+        onDelete?.();
+        setShowDeleteConfirm(false);
     }
 
     const sortedCurrencies = useMemo(() => {
@@ -493,7 +501,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         variant="outline"
                                         size="icon"
                                         className="h-10 w-10 sm:h-10 sm:w-auto sm:px-4 sm:gap-2 rounded-xl text-destructive/70 border-destructive/10 hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-all shrink-0"
-                                        onClick={onDelete}
+                                        onClick={() => setShowDeleteConfirm(true)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                         <span className="hidden sm:inline">{tCommon("delete")}</span>
@@ -510,6 +518,16 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 </div>
 
             </DialogContent>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title={tCommon("delete")}
+                description={t("deleteConfirmDesc")}
+                onConfirm={handleDeleteDocument}
+                variant="destructive"
+                confirmLabel={tCommon("delete")}
+            />
         </Dialog>
     )
 });

@@ -114,6 +114,8 @@
         "save": "保存",
         "saveSuccess": "保存成功",
         "saveFailed": "保存失败",
+        "deleteSuccess": "删除成功",
+        "deleteFailed": "删除失败",
         "loading": "加载中…",
         "sending": "发送中…",
         "success": "成功",
@@ -153,7 +155,8 @@
         "selectCategory": "选择分类",
         "unknown": "未知",
         "expand": "展开",
-        "collapse": "收起"
+        "collapse": "收起",
+        "viewSource": "查看原始凭证"
     },
     "SourceDocumentDetail": {
         "title": "账单详情",
@@ -170,6 +173,7 @@
         "batchDate": "批量修改日期",
         "batchDescription": "批量修改备注",
         "totalAmount": "合计金额",
+        "deleteConfirmDesc": "确定要删除此原始凭证吗？这将同时删除所有关联的账本记录。",
         "rawContent": "原始输入",
         "rawEvidence": "原始凭证",
         "translation": "翻译",

@@ -3,16 +3,22 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
+import { usePathname, useRouter } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 
 export function LanguageSwitcher() {
     const locale = useLocale();
     const t = useTranslations("Settings");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
 
     const switchLocale = (newLocale: string) => {
-        // Set cookie manually
-        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-        // Reload to apply changes server-side
-        window.location.reload();
+        // Construct the new URL preserving query parameters
+        const params = new URLSearchParams(searchParams.toString());
+        const query = params.toString() ? `?${params.toString()}` : "";
+
+        router.replace(`${pathname}${query}`, { locale: newLocale });
     };
 
     return (

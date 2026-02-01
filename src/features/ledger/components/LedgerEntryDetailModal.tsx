@@ -149,6 +149,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
                   }
                 }}
                 onDelete={() => setShowDeleteConfirm(true)}
+                onViewSourceDocument={onViewSourceDocument ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!) : undefined}
               />
             </motion.div>
           </AnimatePresence>
