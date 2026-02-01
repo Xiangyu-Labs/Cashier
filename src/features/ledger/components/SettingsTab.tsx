@@ -219,7 +219,9 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                                     return;
                                 }
                                 if (newLocale !== locale) {
-                                    router.push(pathname as any, { locale: newLocale as any });
+                                    const params = new URLSearchParams(window.location.search);
+                                    const query = params.toString() ? `?${params.toString()}` : "";
+                                    router.push(`${pathname}${query}` as any, { locale: newLocale as any });
                                 }
                             }}
                             disabled={isPending}

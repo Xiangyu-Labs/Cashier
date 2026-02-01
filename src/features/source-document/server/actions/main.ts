@@ -129,13 +129,38 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         if (input) {
             const updatePayload: any = {};
             if (input.text !== undefined) updatePayload.text = input.text;
-            // Note: images normalization happens in prepareSourceDocumentTask
+
+            // Fix: Store updated images in DB if provided
+            if (images) {
+                // Convert input images to imageUrls format (data URI) for storage/usage
+                // Note: DB usually stores array of strings. 
+                // The normalize happens in prepareSourceDocumentTask but meaningful persistence should happen here.
+                // However, scope.documents.update expects the schema format.
+
+                // We need to map images {data, mimeType} to string[] usually. 
+                // Assuming data is arguably the URL/Base64.
+
+                const newImageUrls = images.map(img => {
+                    let data = img.data;
+                    if (!data.startsWith("data:") && !data.startsWith("http")) {
+                        return `data:${img.mimeType};base64,${data}`;
+                    }
+                    return data;
+                });
+                updatePayload.imageUrls = newImageUrls;
+            }
 
             await scope.documents.update(sourceDocumentId, updatePayload);
         }
 
         // We use the existing imageUrls if no new ones are provided
+        // Use the updated doc we just potentially patched, or logic:
         const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
+
+        // Fix: Delete existing ledger entries to prevent idempotency check from blocking new results
+        await scope.entries.deleteMany({
+            where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId)
+        });
 
         await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 
