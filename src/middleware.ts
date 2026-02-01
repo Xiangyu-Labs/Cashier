@@ -1,20 +1,16 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
+import createMiddleware from "next-intl/middleware";
+import { routing } from "./i18n/routing";
 import { NextResponse } from "next/server";
 
-const { auth } = NextAuth({
-    ...authConfig,
-    session: {
-        strategy: "jwt",
-    },
-});
+const { auth } = NextAuth(authConfig);
+const intlMiddleware = createMiddleware(routing);
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export default auth((req) => {
+    const { pathname } = req.nextUrl;
 
-export const proxy = auth((request) => {
-    const { pathname } = request.nextUrl;
-
-    // 1. Skip static files and Next.js internals
+    // 1. Skip static files and Next.js internals (handled by matcher, but double check)
     if (
         pathname.startsWith("/_next") ||
         pathname.includes(".")
@@ -22,54 +18,54 @@ export const proxy = auth((request) => {
         return NextResponse.next();
     }
 
-    // 2. API routes handling
+    // 2. API Routes - Skip internationalization, handle Auth
     if (pathname.startsWith("/api/")) {
-        // Public APIs or Token-based APIs
-        if (
+        const isPublicApi =
             pathname.startsWith("/api/auth") ||
-            pathname.startsWith("/api/s/") ||
-            pathname.startsWith("/api/v1/")
-        ) {
-            return NextResponse.next();
-        }
-        // Protected APIs
-        if (!request.auth) {
+            pathname.startsWith("/api/s/") || // Share API
+            pathname.startsWith("/api/v1/");  // Basic V1 might be public? Original code said yes.
+
+        if (!isPublicApi && !req.auth) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         return NextResponse.next();
     }
 
-    // 3. Public Pages handling
-    const publicPages = ["/login", "/s/"];
-    if (publicPages.some(p => pathname === p || pathname.startsWith(p))) {
-        return NextResponse.next();
-    }
+    // 3. Define Public Pages
+    const isPublicPath = (path: string) => {
+        const publicPrefixes = ["/login", "/s/"];
+        // Check exact match or startswith for root paths
+        if (publicPrefixes.some(p => path === p || path.startsWith(p))) return true;
 
-    // 4. Protected Pages handling
-    if (!request.auth) {
-        // Redirect to login if not authenticated
-        const loginUrl = new URL("/login", request.url);
+        // Check locale prefixed paths
+        return routing.locales.some(locale => {
+            const prefix = `/${locale}`;
+            return publicPrefixes.some(p =>
+                path === `${prefix}${p}` || path.startsWith(`${prefix}${p}/`)
+            );
+        });
+    };
+
+    const isPublicPage = isPublicPath(pathname);
+
+    // 4. Protected Routes Logic
+    if (!isPublicPage && !req.auth) {
+        // Infer locale from path or default
+        const localeMatch = pathname.match(new RegExp(`^/(${routing.locales.join("|")})`));
+        const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
+
+        const loginPath = `/${locale}/login`;
+
+        const loginUrl = new URL(loginPath, req.url);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
     }
 
-    // 5. UUID Validation for Ledger routes
-    // Handles /ledger/[id], /ledger/[id]/settings, /ledger/[id]/categories
-    const ledgerMatch = pathname.match(/^\/ledger\/([^\/]+)(\/.*)?$/);
-    if (ledgerMatch) {
-        const id = ledgerMatch[1];
-        if (!UUID_REGEX.test(id)) {
-            // Redirect to 404 for invalid UUIDs in ledger routes
-            return NextResponse.rewrite(new URL("/not-found", request.url));
-        }
-    }
-
-    // Allow authenticated request
-    return NextResponse.next();
+    // 5. Run Layout/Locale Middleware
+    return intlMiddleware(req);
 });
 
-export default proxy;
-
 export const config = {
-    matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+    // Matcher ignoring static files
+    matcher: ["/((?!_next|.*\\..*).*)"],
 };

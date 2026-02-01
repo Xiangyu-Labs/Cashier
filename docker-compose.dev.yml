@@ -1,26 +1,17 @@
+name: cashier-dev
+
 services:
   app-dev:
     build:
       context: .
-      target: base
+      target: deps
     command: npm run dev
+    working_dir: /app
     restart: always
     ports:
       - "3001:3000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - OPENAI_MODEL=${OPENAI_MODEL}
-      - REDIS_URL=redis://redis:6379
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=${AUTH_URL}
-      - AUTH_RESEND_KEY=${AUTH_RESEND_KEY}
-      - AUTH_EMAIL_FROM=${AUTH_EMAIL_FROM}
-      - LOG_LEVEL=debug
-      - ENABLE_WORKERS=false
-      - SKIP_MIGRATIONS=false # Run migrations on startup in dev
+    env_file:
+      - .env.dev
     volumes:
       - .:/app
       - /app/node_modules
@@ -34,18 +25,13 @@ services:
   worker-dev:
     build:
       context: .
-      target: base
+      target: deps
     command: npm run dev
+    working_dir: /app
     restart: always
+    env_file:
+      - .env.dev
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - OPENAI_MODEL=${OPENAI_MODEL}
-      - REDIS_URL=redis://redis:6379
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - LOG_LEVEL=debug
       - ENABLE_WORKERS=true
       - SKIP_MIGRATIONS=true
     volumes:

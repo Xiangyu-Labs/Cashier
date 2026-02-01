@@ -32,10 +32,8 @@ export function SessionManager() {
             // If the user is unauthenticated on a private route, redirect to login
             // Note: Middleware usually handles this, but this serves as a backup for
             // client-side session invalidation (e.g. user deleted from DB)
-            const publicPaths = ["/login", "/s/"];
-            const isPublicPath = publicPaths.some(path =>
-                pathname === path || pathname.startsWith(path)
-            );
+            // Simple check: if path contains "login" or starts with "/s/", it's public
+            const isPublicPath = pathname.includes("/login") || pathname.includes("/s/");
 
             if (!isPublicPath) {
                 console.log(`[SessionManager] Session invalid on private path ${pathname}, redirecting to login...`);

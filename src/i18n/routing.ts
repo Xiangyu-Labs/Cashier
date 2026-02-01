@@ -10,7 +10,7 @@ export const routing = defineRouting({
 
     // Use a cookie to remember the locale and don't
     // show the locale prefix in the URL
-    localePrefix: 'never'
+    localePrefix: 'as-needed'
 });
 
 // Lightweight wrappers around Next.js' navigation APIs
