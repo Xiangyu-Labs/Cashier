@@ -114,9 +114,6 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
             <div className="mb-6">
                 <h3 className="text-base font-medium">{t("processedTokenStats")}</h3>
-                <p className="text-sm text-muted">
-                    {t("tokenStatsDesc")}
-                </p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -138,9 +135,7 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                 </div>
             </div>
 
-            <div className="mt-4 text-[10px] text-muted opacity-70">
-                {t("tokenStatsFootnote")}
-            </div>
+
 
             <div className="mt-8 pt-6 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
