@@ -11,6 +11,7 @@ import { useQueries } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { convertCurrencyAction } from "@/actions/currency";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -86,15 +87,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 queryKey: ["convert", amount, currency, mainCurrency, dateStr],
                 queryFn: async () => {
                     if (currency === mainCurrency) return { converted: amount };
-                    const searchParams = new URLSearchParams();
-                    searchParams.set("amount", amount.toString());
-                    searchParams.set("from", currency);
-                    searchParams.set("to", mainCurrency);
-                    searchParams.set("date", dateStr);
-
-                    const res = await fetch(`/api/currency/convert?${searchParams}`);
-                    if (!res.ok) throw new Error("Conversion failed");
-                    return res.json();
+                    const result = await convertCurrencyAction(amount, currency, mainCurrency, dateStr);
+                    if (!result.success) throw new Error(result.error || "Conversion failed");
+                    return { converted: result.converted! };
                 },
                 staleTime: 1000 * 60 * 60 * 24,
             };

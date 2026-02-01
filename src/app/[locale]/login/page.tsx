@@ -6,11 +6,12 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Loader2, ArrowLeft, KeyRound } from "lucide-react";
-import { useRouter, usePathname } from "@/i18n/routing";
+import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { OTPInput } from "@/components/auth/otp-input";
 import { ResendCountdown } from "@/components/auth/resend-countdown";
 import { ExpiryTimer } from "@/components/auth/expiry-timer";
+import { sendOTPAction, verifyOTPAction } from "@/actions/auth";
 
 type LoginStep = "email" | "otp";
 
@@ -30,29 +31,21 @@ export default function LoginPage() {
 
     const handleSendOTP = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!email) return;
 
         setIsLoading(true);
         setError(null);
 
         try {
-            const response = await fetch("/api/auth/send-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.error || "Failed to send verification code");
+            const result = await sendOTPAction(email);
+            if (!result.success) {
+                setError(result.error || "Failed to send verification code");
                 setIsLoading(false);
                 return;
             }
 
-            setExpiresAt(data.expiresAt);
-            setCanResendAt(data.canResendAt);
+            setExpiresAt(result.expiresAt || null);
+            setCanResendAt(result.canResendAt || null);
             setStep("otp");
             setIsLoading(false);
         } catch {
@@ -71,34 +64,24 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            // First verify the OTP
-            const verifyResponse = await fetch("/api/auth/verify-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, otp }),
-            });
-
-            const verifyData = await verifyResponse.json();
-
-            if (!verifyResponse.ok) {
-                setError(verifyData.error || "Invalid verification code");
+            const verifyResult = await verifyOTPAction(email, otp);
+            if (!verifyResult.success) {
+                setError(verifyResult.error || "Invalid verification code");
                 setIsLoading(false);
                 return;
             }
 
-            // OTP verified, now sign in with credentials
-            const result = await signIn("otp", {
+            const signInResult = await signIn("otp", {
                 email,
                 otp,
                 redirect: false,
                 callbackUrl,
             });
 
-            if (result?.error) {
-                setError(result.error);
+            if (signInResult?.error) {
+                setError(signInResult.error);
                 setIsLoading(false);
-            } else if (result?.ok) {
-                // Successfully signed in
+            } else if (signInResult?.ok) {
                 router.push(callbackUrl);
                 router.refresh();
             }
@@ -111,23 +94,14 @@ export default function LoginPage() {
     const handleResendOTP = async () => {
         setError(null);
         setOtp("");
-
         try {
-            const response = await fetch("/api/auth/send-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.error || "Failed to resend verification code");
+            const result = await sendOTPAction(email);
+            if (!result.success) {
+                setError(result.error || "Failed to resend verification code");
                 return;
             }
-
-            setExpiresAt(data.expiresAt);
-            setCanResendAt(data.canResendAt);
+            setExpiresAt(result.expiresAt || null);
+            setCanResendAt(result.canResendAt || null);
         } catch {
             setError("Failed to resend verification code");
         }
@@ -148,7 +122,6 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-bg px-4">
             <div className="max-w-md w-full">
-                {/* Logo / Brand */}
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         {step === "email" ? (
@@ -167,7 +140,6 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                {/* Login Form */}
                 <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
                     {step === "email" ? (
                         <form onSubmit={handleSendOTP} className="space-y-4">
@@ -188,13 +160,11 @@ export default function LoginPage() {
                                     autoFocus
                                 />
                             </div>
-
                             {error && (
                                 <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                                     {error}
                                 </div>
                             )}
-
                             <Button
                                 type="submit"
                                 className="w-full h-11"
@@ -226,20 +196,17 @@ export default function LoginPage() {
                                         disabled={isLoading}
                                     />
                                 </div>
-
                                 <ExpiryTimer
                                     expiresAt={expiresAt}
                                     onExpired={handleOTPExpired}
                                     className="text-center"
                                 />
                             </div>
-
                             {error && (
                                 <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                                     {error}
                                 </div>
                             )}
-
                             <Button
                                 type="button"
                                 className="w-full h-11"
@@ -255,7 +222,6 @@ export default function LoginPage() {
                                     t("verify")
                                 )}
                             </Button>
-
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <Button
                                     type="button"
@@ -267,7 +233,6 @@ export default function LoginPage() {
                                     <ArrowLeft className="mr-2 h-4 w-4" />
                                     {t("changeEmail")}
                                 </Button>
-
                                 <ResendCountdown
                                     canResendAt={canResendAt}
                                     onResend={handleResendOTP}
@@ -277,8 +242,6 @@ export default function LoginPage() {
                         </div>
                     )}
                 </div>
-
-                {/* Security note */}
                 <p className="text-center text-xs text-muted-foreground mt-6">
                     {step === "email"
                         ? t("codeExpires", { minutes: 5 })

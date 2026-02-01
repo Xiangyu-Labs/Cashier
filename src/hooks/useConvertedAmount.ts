@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { convertCurrencyAction } from "@/actions/currency";
 
 interface ConversionData {
     amount: number;
@@ -21,15 +22,15 @@ export function useConvertedAmount(
     const { data, isLoading, error } = useQuery<ConversionData>({
         queryKey: ["convert", amount, from, to, date],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            searchParams.set("amount", amount.toString());
-            searchParams.set("from", from!);
-            searchParams.set("to", to!);
-            if (date) searchParams.set("date", date);
-
-            const res = await fetch(`/api/currency/convert?${searchParams}`);
-            if (!res.ok) throw new Error("Conversion failed");
-            return res.json();
+            const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
+            if (!result.success) throw new Error(result.error || "Conversion failed");
+            return {
+                amount,
+                from: from!,
+                to: to!,
+                date: date || undefined,
+                converted: result.converted!,
+            };
         },
         enabled: !isSameCurrency && !isMissingInfo,
         staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
