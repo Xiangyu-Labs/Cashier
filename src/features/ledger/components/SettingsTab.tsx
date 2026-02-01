@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "@/i18n/routing";
+import { useRouter, usePathname } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
     updateLedgerAction,
@@ -25,7 +26,6 @@ import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
-import { usePathname } from "@/i18n/routing";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const locale = useLocale();
     const t = useTranslations('Settings');
     const { theme, setTheme } = useTheme();
+    const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
 
     // Categories - Use props directly
@@ -219,8 +220,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                                     return;
                                 }
                                 if (newLocale !== locale) {
-                                    const params = new URLSearchParams(window.location.search);
-                                    const query = params.toString() ? `?${params.toString()}` : "";
+                                    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
                                     router.push(`${pathname}${query}` as any, { locale: newLocale as any });
                                 }
                             }}

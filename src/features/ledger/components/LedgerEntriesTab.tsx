@@ -184,18 +184,15 @@ export function LedgerEntriesTab({
     const retryMutation = useMutation({
         mutationFn: (id: string) => retrySourceDocumentAction(ledgerId, id),
         onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId, "active") });
-            const prevActive = queryClient.getQueryData<SourceDocument[]>(queryKeys.sourceDocuments(ledgerId, "active"));
-
-            queryClient.setQueryData<SourceDocument[]>(queryKeys.sourceDocuments(ledgerId, "active"), (old) =>
-                old?.map(d => d.id === id ? { ...d, status: "processing" as const } : d) || []
-            );
-
-            return { prevActive };
+            // Optimistic updates for unified structure are complex, so we just invalidate for correctness
+            // But we can try to cancel queries to prevent overwrites
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
         },
         onSuccess: (res) => {
             if (res.success) {
                 toast.success(t("retrySubmitted"));
+                // Invalidate the root key to refresh unified and infinite lists
+                queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
             } else {
                 toast.error(res.error || tCommon("error"));
             }
@@ -543,6 +540,7 @@ export function LedgerEntriesTab({
                     onOpenChange={(open) => !open && setRetrySourceDocument(null)}
                     onSuccess={() => {
                         toast.success(t("retrySubmitted"));
+                        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
                     }}
                 />
             )}
