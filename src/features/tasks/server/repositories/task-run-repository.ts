@@ -1,4 +1,4 @@
-import { BaseRepository } from "./base-repository";
+import { BaseRepository } from "@/lib/repositories/base-repository";
 import { taskRuns } from "@/lib/db/schema";
 import { InferSelectModel, sql, eq } from "drizzle-orm";
 import { eventBus } from "@/lib/events/event-bus";

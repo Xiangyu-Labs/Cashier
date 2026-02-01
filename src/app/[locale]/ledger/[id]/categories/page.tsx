@@ -1,6 +1,6 @@
 
 import { auth } from "@/auth";
-import { getEntryCategories } from "@/services/categories";
+import { getEntryCategories } from "@/features/ledger/server/services/categories";
 import { CategoriesPageClient } from "@/features/ledger/components/CategoriesPageClient";
 import { redirect } from "@/i18n/routing";
 

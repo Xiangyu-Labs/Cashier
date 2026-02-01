@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { users, accounts, sessions } from "@/features/auth/server/schema";
 import { ledgers, entryCategories, ledgerEntries, serviceCredentials } from "@/features/ledger/server/schema";
-import { taskRuns } from "@/lib/db/schemas/legacy";
+import { taskRuns } from "@/features/tasks/server/schema";
 import { sourceDocuments, sourceDocumentStatusEnum, anomalyCodeEnum } from "@/features/source-document/server/schema";
 import { shares, shareAccessLogs } from "@/features/share/server/schema";
 

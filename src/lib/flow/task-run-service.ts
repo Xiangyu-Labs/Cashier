@@ -1,5 +1,5 @@
 import { FlowProgress } from "./types";
-import { taskRunRepo } from "@/lib/repositories";
+import { taskRunRepo } from "@/features/tasks/server/repositories/task-run-repository";
 
 /**
  * Update task run progress in database

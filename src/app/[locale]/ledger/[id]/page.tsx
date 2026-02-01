@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getLedger, getLedgers } from "@/services/ledgers";
-import { getEntryCategories } from "@/services/categories";
+import { getLedger, getLedgers } from "@/features/ledger/server/services/ledgers";
+import { getEntryCategories } from "@/features/ledger/server/services/categories";
 import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
 import { Ledger, EntryCategory, SourceDocument } from "@/types/api";
 import { getTranslations } from "next-intl/server";

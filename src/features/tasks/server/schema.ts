@@ -3,24 +3,11 @@ import {
     uuid,
     text,
     timestamp,
-    boolean,
     integer,
     jsonb,
-    date,
     index,
-    primaryKey,
-    pgEnum,
-    unique,
 } from "drizzle-orm/pg-core";
 import { ledgers } from "@/features/ledger/server/schema";
-
-// Enums
-// SourceDocuments moved to @/features/source-document/server/schema
-// Shares moved to @/features/share/server/schema
-// Share Access Logs moved to @/features/share/server/schema
-
-
-// ServiceCredentials moved to @/features/ledger/server/schema
 
 // TaskRuns (任务运行记录 - 仅用于审计和前端展示)
 export const taskRuns = pgTable("task_runs", {
@@ -53,5 +40,3 @@ export const taskRuns = pgTable("task_runs", {
     index("idx_task_runs_ledger_status").on(table.ledgerId, table.status),
     index("idx_task_runs_created_at").on(table.createdAt),
 ]);
-
-// CurrencyRates moved to @/features/currency/server/schema

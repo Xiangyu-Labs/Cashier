@@ -1,6 +1,6 @@
 import { getMainQueue, getApiQueue } from "./queues";
 import { logger } from "@/lib/logger";
-import { taskRunRepo } from "@/lib/repositories";
+import { taskRunRepo } from "@/features/tasks/server/repositories/task-run-repository";
 
 interface SubmitTaskOptions {
     type: string;
