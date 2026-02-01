@@ -5,6 +5,10 @@ import {
   type ServiceCredential as DbServiceCredential
 } from "@/features/ledger/server/schema";
 import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
+import { type Share as DbShare, type ShareAccessLog as DbShareAccessLog } from "@/features/share/server/schema";
+import { type TaskRun as DbTaskRun } from "@/features/tasks/server/schema";
+import { type User as DbUser } from "@/features/auth/server/schema";
+import { type CurrencyRate as DbCurrencyRate } from "@/features/currency/server/schema";
 import { Serialized } from "./utils";
 
 // Re-export Serialized wrapper types
@@ -12,6 +16,11 @@ export type Ledger = Serialized<DbLedger>;
 export type ServiceCredential = Serialized<DbServiceCredential>;
 export type EntryCategory = Serialized<DbEntryCategory>;
 export type SourceDocument = Serialized<DbSourceDocument>;
+export type Share = Serialized<DbShare>;
+export type ShareAccessLog = Serialized<DbShareAccessLog>;
+export type TaskRun = Serialized<DbTaskRun>;
+export type User = Serialized<DbUser>;
+export type CurrencyRate = Serialized<DbCurrencyRate>;
 
 // Extended types
 export type LedgerEntry = Serialized<DbLedgerEntry> & {
@@ -36,6 +45,19 @@ export interface ShareData {
 }
 
 export interface LedgerEntrySummary {
+  convertedTotal: {
+    total: number;
+    currency: string;
+  } | null;
+  totals: {
+    currency: string;
+    total: number;
+    count: number;
+  }[];
+  trend: {
+    date: string;
+    total: number;
+  }[];
   byCategory: {
     categoryId: string | null;
     categoryName: string;
@@ -44,25 +66,6 @@ export interface LedgerEntrySummary {
     total: number;
     count: number;
   }[];
-  totals: {
-    currency: string | null;
-    total: number;
-    count: number;
-  }[];
-  trend: {
-    date: string;
-    total: number;
-  }[];
-  convertedTotal?: {
-    currency: string;
-    total: number;
-    conversions: {
-      fromCurrency: string | null;
-      originalTotal: number;
-      convertedTotal: number;
-      count: number;
-    }[];
-  };
 }
 
 export interface SourceDocumentResponse {

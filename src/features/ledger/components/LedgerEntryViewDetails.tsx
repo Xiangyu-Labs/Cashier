@@ -16,14 +16,12 @@ import { useMemo } from "react";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { motion, AnimatePresence } from "framer-motion";
 
-export interface LedgerEntryEditFormData {
-    itemName: string;
+export type LedgerEntryEditFormData = Pick<LedgerEntry, "itemName" | "currency" | "categoryId" | "description"> & {
     amount: number;
-    currency: string;
-    categoryId: string;
-    entryDate: string;
-    description: string;
-}
+    entryDate: string; // Serialized<DbLedgerEntry> already has string for Date, but let's be explicit if needed or just use Pick
+};
+// Actually Serialized<DbLedgerEntry> has entryDate: Serialized<Date | null> which is string | null.
+// Form needs it as string (usually for input type="date").
 
 interface LedgerEntryViewDetailsProps {
     ledgerEntry: LedgerEntry;
@@ -146,7 +144,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                                 <div className="flex gap-2 items-end">
                                     <div className="w-24">
                                         <select
-                                            value={editData.currency}
+                                            value={editData.currency || ""}
                                             onChange={(e) => handleFieldChange("currency", e.target.value)}
                                             className="w-full h-10 rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
@@ -277,7 +275,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                     <div className="border-t border-border/50 pt-4 mt-2">
                         {isEditing ? (
                             <Textarea
-                                value={editData.description}
+                                value={editData.description || ""}
                                 onChange={(e) => handleFieldChange("description", e.target.value)}
                                 className="min-h-[100px] text-sm"
                                 placeholder={t("description")}

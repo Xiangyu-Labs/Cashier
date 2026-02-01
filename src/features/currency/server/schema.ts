@@ -5,6 +5,7 @@ import {
     jsonb,
     date,
 } from "drizzle-orm/pg-core";
+import { type InferSelectModel } from "drizzle-orm";
 
 // CurrencyRates (汇率缓存 - Daily Snapshot)
 export const currencyRates = pgTable("currency_rates", {
@@ -13,3 +14,5 @@ export const currencyRates = pgTable("currency_rates", {
     rates: jsonb("rates").$type<Record<string, number>>().notNull(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export type CurrencyRate = InferSelectModel<typeof currencyRates>;

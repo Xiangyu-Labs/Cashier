@@ -7,6 +7,7 @@ import {
     primaryKey,
     index,
 } from "drizzle-orm/pg-core";
+import { type InferSelectModel } from "drizzle-orm";
 
 // ==========================================
 // Auth.js Tables
@@ -24,6 +25,8 @@ export const users = pgTable("users", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export type User = InferSelectModel<typeof users>;
 
 // Accounts - OAuth 账户关联
 export const accounts = pgTable("accounts", {
@@ -44,6 +47,8 @@ export const accounts = pgTable("accounts", {
     primaryKey({ columns: [table.provider, table.providerAccountId] }),
 ]);
 
+export type Account = InferSelectModel<typeof accounts>; // Added this type export
+
 // Sessions - 数据库 Session
 export const sessions = pgTable("sessions", {
     sessionToken: text("session_token").primaryKey(),
@@ -60,6 +65,8 @@ export const sessions = pgTable("sessions", {
 }, (table) => [
     index("idx_sessions_user_id").on(table.userId),
 ]);
+
+export type Session = InferSelectModel<typeof sessions>;
 
 // Verification Tokens - Magic Link 验证令牌
 export const verificationTokens = pgTable("verification_tokens", {

@@ -7,6 +7,7 @@ import {
     jsonb,
     index,
 } from "drizzle-orm/pg-core";
+import { type InferSelectModel } from "drizzle-orm";
 import { ledgers } from "@/features/ledger/server/schema";
 
 // TaskRuns (任务运行记录 - 仅用于审计和前端展示)
@@ -40,3 +41,5 @@ export const taskRuns = pgTable("task_runs", {
     index("idx_task_runs_ledger_status").on(table.ledgerId, table.status),
     index("idx_task_runs_created_at").on(table.createdAt),
 ]);
+
+export type TaskRun = InferSelectModel<typeof taskRuns>;

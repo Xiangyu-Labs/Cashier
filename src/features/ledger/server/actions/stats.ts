@@ -6,29 +6,7 @@ import { auth } from "@/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
-export interface LedgerEntrySummary {
-    convertedTotal: {
-        total: number;
-        currency: string;
-    } | null;
-    totals: {
-        currency: string;
-        total: number;
-        count: number;
-    }[];
-    trend: {
-        date: string;
-        total: number;
-    }[];
-    byCategory: {
-        categoryId: string | null;
-        categoryName: string;
-        categoryIcon: string | null;
-        currency: string | null;
-        total: number;
-        count: number;
-    }[];
-}
+import { LedgerEntrySummary } from "@/types/api";
 
 export async function getLedgerStatsAction(
     ledgerId: string,
