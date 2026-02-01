@@ -27,6 +27,7 @@ describe("parseSourceDocumentHandler.execute", () => {
     let mockProcessor: { process: ReturnType<typeof vi.fn> };
     let sourceDocId: string;
     let categoryId: string;
+    let currentLedgerId: string;
 
     beforeEach(async () => {
         vi.clearAllMocks();
@@ -39,6 +40,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         // Setup real DB data
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        currentLedgerId = ledgerId;
         const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({
             ledgerId: ledger.id,
@@ -76,6 +78,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -111,6 +114,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -143,6 +147,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -169,6 +174,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -203,6 +209,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -237,6 +244,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
+            ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -269,7 +277,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-            ledgerId: "test-ledger"
+            ledgerId: currentLedgerId
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;

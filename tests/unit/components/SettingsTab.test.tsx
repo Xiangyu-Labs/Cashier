@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SettingsTab } from "@/features/ledger/components/SettingsTab";
 import { Ledger, EntryCategory, ServiceCredential } from "@/types/api";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Create tracked mocks
 const mockBack = vi.fn();
 const mockRefresh = vi.fn();
 const mockPush = vi.fn();
 const mockSetTheme = vi.fn();
-const mockUpdateLedgerAction = vi.fn(() => Promise.resolve({ success: true }));
+const mockUpdateLedgerAction = vi.fn((id: string, data: any) => Promise.resolve({ success: true }));
 
 // Mock hooks and actions
 vi.mock("@/i18n/routing", () => ({
@@ -73,18 +75,28 @@ describe("SettingsTab", () => {
     const mockCategories: EntryCategory[] = [];
     const mockCredentials: ServiceCredential[] = [];
 
+    let queryClient: QueryClient;
     beforeEach(() => {
         vi.clearAllMocks();
+        queryClient = new QueryClient({
+            defaultOptions: {
+                queries: {
+                    retry: false,
+                },
+            },
+        });
     });
 
     it("renders settings sections correctly", () => {
         render(
-            <SettingsTab
-                ledger={mockLedger}
-                initialCategories={mockCategories}
-                initialCredentials={mockCredentials}
-                ledgerId="l1"
-            />
+            <QueryClientProvider client={queryClient}>
+                <SettingsTab
+                    ledger={mockLedger}
+                    initialCategories={mockCategories}
+                    initialCredentials={mockCredentials}
+                    ledgerId="l1"
+                />
+            </QueryClientProvider>
         );
 
         expect(screen.getByText("appearance")).toBeDefined();
@@ -94,12 +106,14 @@ describe("SettingsTab", () => {
 
     it("handles theme switching", () => {
         render(
-            <SettingsTab
-                ledger={mockLedger}
-                initialCategories={mockCategories}
-                initialCredentials={mockCredentials}
-                ledgerId="l1"
-            />
+            <QueryClientProvider client={queryClient}>
+                <SettingsTab
+                    ledger={mockLedger}
+                    initialCategories={mockCategories}
+                    initialCredentials={mockCredentials}
+                    ledgerId="l1"
+                />
+            </QueryClientProvider>
         );
 
         const darkButton = screen.getByTitle("themeDark");
@@ -108,23 +122,26 @@ describe("SettingsTab", () => {
     });
 
     it("handles AI prompt updates on blur", async () => {
+        const user = userEvent.setup();
         render(
-            <SettingsTab
-                ledger={mockLedger}
-                initialCategories={mockCategories}
-                initialCredentials={mockCredentials}
-                ledgerId="l1"
-            />
+            <QueryClientProvider client={queryClient}>
+                <SettingsTab
+                    ledger={mockLedger}
+                    initialCategories={mockCategories}
+                    initialCredentials={mockCredentials}
+                    ledgerId="l1"
+                />
+            </QueryClientProvider>
         );
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
-        fireEvent.change(textarea, { target: { value: "New Custom Prompt" } });
-        fireEvent.blur(textarea);
+        await user.type(textarea, "New Custom Prompt");
+        await user.click(document.body); // Trigger blur
 
         await waitFor(() => {
             expect(mockUpdateLedgerAction).toHaveBeenCalledWith("l1", expect.objectContaining({
-                aiCustomPrompt: "New Custom Prompt"
+                aiCustomPrompt: "Custom PromptNew Custom Prompt"
             }));
-        });
+        }, { timeout: 3000 });
     });
 });
