@@ -43,3 +43,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 docker-compose.yml
+
+# PWA
+public/sw.js
+public/workbox-*.js
+public/swe-worker-*.js
+

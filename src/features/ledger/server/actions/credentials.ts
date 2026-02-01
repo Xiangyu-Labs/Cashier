@@ -22,7 +22,12 @@ export async function getServiceCredentialsAction(ledgerId: string) {
         orderBy: [desc(serviceCredentials.createdAt)],
     });
 
-    return credentials;
+    return credentials.map(c => ({
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+        deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
+        lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
+    }));
 }
 
 export async function createServiceCredentialAction(ledgerId: string, data: z.infer<typeof createCredentialSchema>) {
@@ -48,7 +53,8 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
             data: {
                 ...credential,
                 createdAt: credential.createdAt.toISOString(),
-                lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : null
+                lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : null,
+                deletedAt: credential.deletedAt ? credential.deletedAt.toISOString() : null,
             }
         };
     } catch (error) {

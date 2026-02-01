@@ -228,16 +228,19 @@ export async function getLedgerEntriesAction(
         ...item,
         amount: String(item.amount), // Ensure string to match LedgerEntry interface
         createdAt: item.createdAt.toISOString(),
+        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
         entryDate: item.entryDate ? item.entryDate.toISOString() : null,
         // Map relations if they exist (they should with query builder)
         category: item.category ? {
             ...item.category,
             createdAt: item.category.createdAt.toISOString(),
             updatedAt: item.category.updatedAt.toISOString(),
+            deletedAt: item.category.deletedAt ? item.category.deletedAt.toISOString() : null,
         } : null,
         sourceDocument: item.sourceDocument ? {
             ...item.sourceDocument,
             createdAt: item.sourceDocument.createdAt.toISOString(),
+            deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
             // Map text/title etc. ImageUrls is json, auto-parsed? Drizzle JSONB is usually parsed.
             // Check TS types if needed.
         } : null,
