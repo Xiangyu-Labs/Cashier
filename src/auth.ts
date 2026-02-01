@@ -95,43 +95,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         signIn: "/login",
         error: "/login/error",
     },
-    callbacks: {
-        ...authConfig.callbacks,
-        async signIn({ user }) {
-            if (user.email) {
-                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
-                if (!(await isRegistrationAllowed(user.email))) {
-                    return false;
-                }
-            }
-            return true;
-        },
-        async session({ session, token }) {
-            // Override the default session callback to check DB existence
-            if (token.sub && session.user) {
-                const userId = token.sub; // 'sub' is the standard claim for user ID in JWT
-
-                const dbUser = await db.query.users.findFirst({
-                    where: and(eq(users.id, userId), isNull(users.deletedAt)),
-                    columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true }
-                });
-
-                if (!dbUser) {
-                    // User not found in DB (stale session), invalidate it
-                    // Returning null informs NextAuth that the session is invalid
-                    return null as any;
-                }
-
-                // Sync latest user data
-                session.user.id = dbUser.id;
-                session.user.email = dbUser.email;
-                session.user.name = dbUser.name;
-                session.user.image = dbUser.image;
-                session.user.defaultLedgerId = dbUser.defaultLedgerId ?? undefined;
-            }
-            return session;
-        },
-    },
     events: {
         async createUser({ user }) {
             // When a new user is created, auto-create their default ledger
@@ -150,26 +113,132 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 );
                 await sendLoginNotification(user.email);
             }
-
-            // Create session record for device management and audit
-            // Note: In JWT mode, NextAuth doesn't create session records automatically
-            // We manually create them here for device tracking purposes
-            if (user.id) {
-                try {
-                    const sessionToken = crypto.randomBytes(32).toString("hex");
-                    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-                    await db.insert(sessions).values({
-                        sessionToken,
-                        userId: user.id,
-                        expires,
-                        // Device info will be filled by touchSession() when user accesses the app
-                    });
-                } catch (error) {
-                    // Log error but don't fail the sign-in process
-                    console.error("Failed to create session record for device tracking:", error);
+        },
+    },
+    callbacks: {
+        ...authConfig.callbacks,
+        async signIn({ user }) {
+            if (user.email) {
+                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
+                if (!(await isRegistrationAllowed(user.email))) {
+                    return false;
                 }
             }
+            return true;
+        },
+        // JWT Callback: The core of our session management
+        async jwt({ token, user, trigger, account, session }) {
+            // 1. Initial Sign In
+            if (user) {
+                token.id = user.id;
+                token.sub = user.id;
+            }
+
+            // 2. Ensuring we have a JTI (Session ID)
+            // NextAuth usually adds 'jti' by default. We use it as our sessionToken.
+            if (!token.jti) {
+                const { v4: uuidv4 } = await import("uuid");
+                token.jti = uuidv4();
+            }
+
+            const userId = token.sub;
+            const sessionId = token.jti;
+
+            if (userId && sessionId) {
+                // 3. Persist/Update Session in DB
+                // We do this in JWT callback because it runs on every rotation/visit (if updated)
+                // To avoid DB spam, we can throttle updates, but for security (revocation check),
+                // we should at least ensure it EXISTS.
+
+                // Note: We cannot easily use `headers()` inside `jwt` callback in all edge cases,
+                // but usually it works in Next.js Server Components / Actions.
+                // We'll try to capture device info if possible, or leave it merely as ID tracking.
+
+                try {
+                    // Check if session exists
+                    const existingSession = await db.query.sessions.findFirst({
+                        where: eq(sessions.sessionToken, sessionId),
+                        columns: { sessionToken: true, lastActiveAt: true },
+                    });
+
+                    const now = new Date();
+
+                    if (!existingSession) {
+                        // Create new session record
+                        // We try to get UA/IP if possible (best effort)
+                        /* Note: Getting headers in JWT callback is tricky in some NextAuth versions.
+                           Ideally we do this in a separate server action or middleware, 
+                           but doing it here ensures the "Token" implies "DB Record".
+                        */
+                        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+                        // Heuristically try to get headers if we are in a context that supports it
+                        // In NextAuth v5 (beta), we might not have direct access to headers() here easily.
+                        // We will insert basic info and let a `touchSession` logic update UA later if needed.
+                        await db.insert(sessions).values({
+                            sessionToken: sessionId,
+                            userId: userId,
+                            expires: expires,
+                            lastActiveAt: now,
+                        });
+                    } else {
+                        // Throttled Update: active touch every 1 hour
+                        const lastActive = existingSession.lastActiveAt ? new Date(existingSession.lastActiveAt).getTime() : 0;
+                        if (Date.now() - lastActive > 60 * 60 * 1000) {
+                            await db.update(sessions)
+                                .set({ lastActiveAt: now })
+                                .where(eq(sessions.sessionToken, sessionId));
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to sync session with DB:", error);
+                }
+            }
+
+            return token;
+        },
+        async session({ session, token }) {
+            // Override the default session callback to check DB existence (Security barrier)
+            if (token.sub && session.user) {
+                const userId = token.sub;
+                const sessionId = token.jti as string;
+
+                // 1. Verify Session Validity (Revocation Check)
+                const dbSession = await db.query.sessions.findFirst({
+                    where: eq(sessions.sessionToken, sessionId),
+                    columns: { sessionToken: true }
+                });
+
+                if (!dbSession) {
+                    // Session was revoked (deleted) from DB
+                    return null as any;
+                }
+
+                // 2. Fetch User Data
+                const dbUser = await db.query.users.findFirst({
+                    where: and(eq(users.id, userId), isNull(users.deletedAt)),
+                    columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true }
+                });
+
+                if (!dbUser) {
+                    return null as any;
+                }
+
+                // 3. Populate Session Object
+                session.user.id = dbUser.id;
+                session.user.email = dbUser.email;
+                session.user.name = dbUser.name;
+                session.user.image = dbUser.image;
+                session.user.defaultLedgerId = dbUser.defaultLedgerId ?? undefined;
+
+                // Expose sessionId to client/server-actions for identification
+                (session as any).sessionId = sessionId;
+
+                // 4. (Optional) Update UA/IP asynchronously here if we have request context?
+                // `session` callback receives `request` in some versions, but standard is (session, token).
+                // We'll rely on the initial creation or separate mechanics for IP tracking.
+            }
+            return session;
         },
     },
 });

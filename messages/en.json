@@ -328,7 +328,12 @@
         "signOutDevice": "Sign Out Device",
         "signOutAll": "Sign Out All Other Devices",
         "signOutSuccess": "Device signed out successfully",
-        "signOutAllSuccess": "All other devices signed out successfully"
+        "signOutAllSuccess": "All other devices signed out successfully",
+        "confirmLogoutTitle": "Sign Out Device",
+        "confirmLogoutDesc": "Are you sure you want to sign out this device? It will need to log in again to access the account.",
+        "activeNow": "Active now",
+        "unknownIp": "Unknown IP",
+        "unknownDevice": "Unknown Device"
     },
     "Account": {
         "title": "Account Management",

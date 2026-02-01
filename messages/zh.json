@@ -331,7 +331,12 @@
         "signOutDevice": "退出此设备",
         "signOutAll": "退出所有其他设备",
         "signOutSuccess": "已成功退出设备",
-        "signOutAllSuccess": "已成功退出所有其他设备"
+        "signOutAllSuccess": "All other devices signed out successfully",
+        "confirmLogoutTitle": "Sign Out Device",
+        "confirmLogoutDesc": "Are you sure you want to sign out this device? It will need to log in again to access the account.",
+        "activeNow": "Active now",
+        "unknownIp": "Unknown IP",
+        "unknownDevice": "Unknown Device"
     },
     "Account": {
         "title": "账户管理",
