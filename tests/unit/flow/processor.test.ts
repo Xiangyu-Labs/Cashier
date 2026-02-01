@@ -66,6 +66,18 @@ describe('Flow Processor', () => {
             logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() }
         }));
 
+        // Mock DB
+        vi.doMock('@/lib/db', () => ({
+            db: {
+                query: {
+                    taskRuns: {
+                        findFirst: vi.fn()
+                    }
+                },
+                execute: vi.fn()
+            }
+        }));
+
         // Dynamic imports to ensure mocks are applied
         ({ processJob } = await import('@/lib/flow/processor'));
         ({ registerFlowTask } = await import('@/lib/flow/registry'));
@@ -77,37 +89,31 @@ describe('Flow Processor', () => {
         // Register the task handler
         registerFlowTask('test-task', mockHandler as any);
 
-        // Setup real test data in database
-        await db.execute(sql`
-            INSERT INTO ledgers (id, user_id, name)
-            VALUES 
-                (${VALID_LEDGER_ID}, '00000000-0000-0000-0000-000000000000', 'Test Ledger'),
-                (${OTHER_LEDGER_ID}, '00000000-0000-0000-0000-000000000000', 'Other Ledger')
-            ON CONFLICT (id) DO NOTHING
-        `);
-
-        await db.execute(sql`
-            INSERT INTO task_runs (id, ledger_id, type, title, status)
-            VALUES (${VALID_RUN_ID}, ${VALID_LEDGER_ID}, 'test-task', 'Test Task', 'pending')
-            ON CONFLICT (id) DO UPDATE SET status = 'pending', ledger_id = ${VALID_LEDGER_ID}
-        `);
+        // Default: Mock DB finding the task run
+        db.query.taskRuns.findFirst.mockResolvedValue({
+            id: VALID_RUN_ID,
+            ledgerId: VALID_LEDGER_ID,
+            status: 'pending'
+        });
     });
 
     it('should throw Security Error if ledgerId does not match DB record', async () => {
-        await db.execute(sql`
-            UPDATE task_runs SET ledger_id = ${OTHER_LEDGER_ID}
-            WHERE id = ${VALID_RUN_ID}
-        `);
+        db.query.taskRuns.findFirst.mockResolvedValue({
+            id: VALID_RUN_ID,
+            ledgerId: OTHER_LEDGER_ID, // Mismatch
+            status: 'pending'
+        });
 
         await expect(processJob(mockJob)).rejects.toThrow(/Security.*LedgerId mismatch/);
         expect(mockHandler.execute).not.toHaveBeenCalled();
     });
 
     it('should skip execution if task is already completed', async () => {
-        await db.execute(sql`
-            UPDATE task_runs SET status = 'completed' 
-            WHERE id = ${VALID_RUN_ID}
-        `);
+        db.query.taskRuns.findFirst.mockResolvedValue({
+            id: VALID_RUN_ID,
+            ledgerId: VALID_LEDGER_ID,
+            status: 'completed'
+        });
 
         await processJob(mockJob);
         expect(mockHandler.execute).not.toHaveBeenCalled();
@@ -150,7 +156,7 @@ describe('Flow Processor', () => {
 
         mockHandler.execute.mockResolvedValue(flowDefinition);
 
-        await processJob(mockJob);
+        await expect(processJob(mockJob)).rejects.toThrow('bullmq:movedToWaitingChildren');
 
         expect(mockProducer.add).toHaveBeenCalledTimes(1);
         expect(mockProducer.add).toHaveBeenCalledWith(expect.objectContaining({

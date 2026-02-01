@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
-import { GET } from "@/app/api/processing-tasks/route";
+import { getProcessingTasksAction } from "@/actions/processing";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { auth } from "@/auth";
@@ -11,7 +10,7 @@ vi.mock("@/auth", () => ({
     auth: vi.fn(),
 }));
 
-describe("Processing Tasks API Security", () => {
+describe("Processing Tasks Action Security", () => {
     let testLedgerId: string;
     let testUserId: string;
 
@@ -28,29 +27,21 @@ describe("Processing Tasks API Security", () => {
             user: { id: testUserId }
         });
 
-        const req = new NextRequest(
-            `http://localhost/api/processing-tasks?ledgerId=${testLedgerId}`
-        );
-        const res = await GET(req);
+        const tasks = await getProcessingTasksAction(testLedgerId, {});
 
-        expect(res.status).toBe(200);
+        expect(tasks).toBeDefined();
+        expect(Array.isArray(tasks)).toBe(true);
     });
 
-    it("should deny access when user is not authenticated", async () => {
+    it("should throw error when user is not authenticated", async () => {
         // Mock unauthenticated
         (auth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-        const req = new NextRequest(
-            `http://localhost/api/processing-tasks?ledgerId=${testLedgerId}`
-        );
-        const res = await GET(req);
-
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.error).toBe("Unauthorized");
+        await expect(getProcessingTasksAction(testLedgerId, {}))
+            .rejects.toThrow("Unauthorized");
     });
 
-    it("should deny access when user requests another user's ledger (IDOR)", async () => {
+    it("should throw error when user requests another user's ledger (IDOR)", async () => {
         const db = getTestDb();
         // Create another user and ledger with a DIFFERENT ID
         const victimId = "11111111-1111-1111-1111-111111111111";
@@ -66,15 +57,7 @@ describe("Processing Tasks API Security", () => {
             user: { id: testUserId }
         });
 
-        const req = new NextRequest(
-            `http://localhost/api/processing-tasks?ledgerId=${otherLedgerId}`
-        );
-        const res = await GET(req);
-
-        // Should be 404 (Not Found) to avoid leaking existence, or 401/403.
-        // requireLedgerAccess usually returns 404 if not found/owned.
-        expect(res.status).toBe(404);
-        const body = await res.json();
-        expect(body.error).toBe("Ledger not found");
+        await expect(getProcessingTasksAction(otherLedgerId, {}))
+            .rejects.toThrow("Unauthorized");
     });
 });

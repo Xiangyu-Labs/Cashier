@@ -2,12 +2,15 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnifiedSourceDocuments } from "@/hooks/useUnifiedSourceDocuments";
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
-import { fetchSourceDocuments, fetchLedgerEntries } from "@/lib/api";
+import { getSourceDocumentsAction } from "@/actions/source-document";
+import { getLedgerEntriesAction } from "@/actions/ledger-entries";
 
 // Mock API modules
-vi.mock("@/lib/api", () => ({
-    fetchSourceDocuments: vi.fn(),
-    fetchLedgerEntries: vi.fn(),
+vi.mock("@/actions/source-document", () => ({
+    getSourceDocumentsAction: vi.fn(),
+}));
+vi.mock("@/actions/ledger-entries", () => ({
+    getLedgerEntriesAction: vi.fn(),
 }));
 
 // Mock Data
@@ -53,8 +56,8 @@ describe("useUnifiedSourceDocuments", () => {
     it("correctly groups documents into processing, error, and completed", async () => {
         // Setup Mocks
         // 1. activeDocuments (queued, processing, error)
-        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string[] };
+        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
                 return Promise.resolve({
                     items: [mockSourceDocs.queued, mockSourceDocs.processing, mockSourceDocs.error]
@@ -62,21 +65,18 @@ describe("useUnifiedSourceDocuments", () => {
             }
             // infinite scroll fetch
             return Promise.resolve({
-                items: [mockSourceDocs.completed, mockSourceDocs.pending], // Infinite scroll returns everything usually, but here we simulate the rest
+                items: [mockSourceDocs.completed, mockSourceDocs.pending],
                 nextCursor: null
             });
         });
 
         // 2. pendingEntries - now returns empty as we don't use it for anomaly detection anymore
         // or effectively empty for the purpose of this test setup
-        (fetchLedgerEntries as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+        (getLedgerEntriesAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
             // confirmed entries
-            if ((params as { status?: string })?.status === 'confirmed') {
-                return Promise.resolve({
-                    items: [mockEntries.confirmedForDocCompleted1]
-                });
-            }
-            return Promise.resolve({ items: [] });
+            return Promise.resolve({
+                items: [mockEntries.confirmedForDocCompleted1]
+            });
         });
 
         const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
@@ -108,8 +108,8 @@ describe("useUnifiedSourceDocuments", () => {
 
     it("filters groups by date range", async () => {
         // All mocks same as above
-        (fetchSourceDocuments as unknown as Mock).mockResolvedValue({ items: [], nextCursor: null });
-        (fetchLedgerEntries as unknown as Mock).mockResolvedValue({ items: [] });
+        (getSourceDocumentsAction as unknown as Mock).mockResolvedValue({ items: [], nextCursor: null });
+        (getLedgerEntriesAction as unknown as Mock).mockResolvedValue({ items: [] });
 
         // Mock specific returns for this test to control dates easier if needed, 
         // but existing mocks have dates:
@@ -117,8 +117,8 @@ describe("useUnifiedSourceDocuments", () => {
         // doc_q1: 2024-01-04 (Jan 4)
 
         // Let's reuse the mocks implementation pattern
-        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string[] };
+        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
                 return Promise.resolve({ items: [mockSourceDocs.queued] });
             }
@@ -168,8 +168,8 @@ describe("useUnifiedSourceDocuments", () => {
         // Let's assume doc_out_range
         const docOutOfRange = { ...mockSourceDocs.queued, id: "doc_out", createdAt: "2024-01-01T10:00:00Z" };
 
-        (fetchSourceDocuments as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string[] };
+        (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
                 return Promise.resolve({ items: [mockSourceDocs.queued, docOutOfRange] });
             }

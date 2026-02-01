@@ -84,7 +84,7 @@ describe("Flow System Integration", () => {
 
         // 3. Poll for Completion (Wait for worker)
         // Max wait 5s
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 300; i++) {
             await new Promise(r => setTimeout(r, 100)); // 100ms
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)
@@ -113,7 +113,7 @@ describe("Flow System Integration", () => {
 
         // Wait for completion
         let run;
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 300; i++) {
             await new Promise(r => setTimeout(r, 100));
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)

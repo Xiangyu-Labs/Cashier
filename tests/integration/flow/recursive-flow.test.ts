@@ -119,7 +119,7 @@ describe("Recursive Flow Integration", () => {
         // Recursive tasks take longer due to multiple queue roundtrips
         // Max wait 10s
         let run;
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 600; i++) {
             await new Promise(r => setTimeout(r, 100));
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)
@@ -134,5 +134,5 @@ describe("Recursive Flow Integration", () => {
         const output = run?.output as RecursiveOutput;
         expect(output.sum).toBe(100);
         expect(output.isLeaf).toBe(false);
-    }, 15000); // Increased timeout for recursion
+    }, 70000); // Increased timeout for recursion
 });

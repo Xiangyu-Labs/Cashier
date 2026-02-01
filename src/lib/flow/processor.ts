@@ -1,4 +1,4 @@
-import { Job } from 'bullmq';
+import { Job, WaitingChildrenError } from 'bullmq';
 import { getFlowTaskHandler } from '@/lib/flow/registry';
 import { FlowContext, FlowDefinition } from '@/lib/flow/types';
 import { completeTaskRun, failTaskRun } from '@/lib/flow/task-run-service';
@@ -126,7 +126,7 @@ export async function processJob(job: Job): Promise<unknown> {
                 await job.moveToWaitingChildren(job.token!);
 
                 // Stop processing this run
-                return;
+                throw new WaitingChildrenError();
             }
         }
 
@@ -140,6 +140,11 @@ export async function processJob(job: Job): Promise<unknown> {
         return result;
 
     } catch (error) {
+        // Don't mark as failed if we are just suspending for children
+        if (error instanceof WaitingChildrenError || (error as Error).name === 'WaitingChildrenError') {
+            throw error;
+        }
+
         if (isRootJob(job)) {
             if (handler.onError) {
                 // If onError throws (e.g., UnrecoverableError), we want THAT error to propagate
