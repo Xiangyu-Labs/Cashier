@@ -112,6 +112,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onUpdateTitle(title)
             setIsEditingTitle(false)
+        } catch (error) {
+            console.error("Failed to update title:", error)
         } finally {
             setIsSaving(false)
         }
@@ -123,6 +125,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchUpdate(selectedIds, { categoryId })
             setSelectedIds([])
+        } catch (error) {
+            console.error("Failed to update categories:", error)
         } finally {
             setIsSaving(false)
         }
@@ -134,6 +138,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchUpdate(selectedIds, { currency })
             setSelectedIds([])
+        } catch (error) {
+            console.error("Failed to update currencies:", error)
         } finally {
             setIsSaving(false)
         }
@@ -171,6 +177,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchDelete(selectedIds)
             setSelectedIds([])
+        } catch (error) {
+            console.error("Failed to delete entries:", error)
         } finally {
             setIsSaving(false)
         }

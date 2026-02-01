@@ -62,13 +62,13 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
         revalidatePath("/dashboard");
         revalidatePath("/ledgers"); // Assuming there might be a ledgers page
 
-        return { success: true, data: newLedger };
+        return { success: true, data: newLedger, error: null };
     } catch (error) {
         logger.error({ error }, "Failed to create ledger via action");
         if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation failed", details: error.issues };
+            return { success: false, error: "Validation failed", details: error.issues, data: null };
         }
-        return { success: false, error: "Failed to create ledger" };
+        return { success: false, error: "Failed to create ledger", data: null };
     }
 }
 
@@ -99,13 +99,13 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
         revalidatePath(`/ledger/${id}`);
         revalidatePath("/dashboard");
 
-        return { success: true, data: updatedLedger };
+        return { success: true, data: updatedLedger, error: null };
     } catch (error) {
         logger.error({ error, ledgerId: id }, "Failed to update ledger via action");
         if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation failed", details: error.issues };
+            return { success: false, error: "Validation failed", details: error.issues, data: null };
         }
-        return { success: false, error: "Failed to update ledger" };
+        return { success: false, error: "Failed to update ledger", data: null };
     }
 }
 
@@ -129,7 +129,7 @@ export async function deleteLedgerAction(id: string) {
 
         revalidatePath("/dashboard");
 
-        return { success: true };
+        return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId: id }, "Failed to delete ledger via action");
         return { success: false, error: "Failed to delete ledger" };

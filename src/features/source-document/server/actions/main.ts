@@ -87,13 +87,16 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
         return {
             success: true,
             sourceDocumentId: savedDoc.id,
-            status: "queued",
+            status: "queued" as const,
+            error: null,
         };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to create source document via action");
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to queue source document",
+            sourceDocumentId: null,
+            status: null,
         };
     }
 }
@@ -137,13 +140,16 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         return {
             success: true,
             sourceDocumentId,
-            status: "queued",
+            status: "queued" as const,
+            error: null,
         };
     } catch (error) {
         logger.error({ error, ledgerId, sourceDocumentId }, "Failed to retry source document via action");
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to retry source document",
+            sourceDocumentId: null,
+            status: null,
         };
     }
 }
@@ -158,7 +164,7 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
 
         await scope.documents.update(sourceId, data);
         revalidatePath(`/ledger/${ledgerId}`);
-        return { success: true };
+        return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, sourceId }, "Failed to update source document via action");
         return {
@@ -175,7 +181,7 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
 
         await scope.documents.delete(sourceId);
         revalidatePath(`/ledger/${ledgerId}`);
-        return { success: true };
+        return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, sourceId }, "Failed to delete source document via action");
         return {
