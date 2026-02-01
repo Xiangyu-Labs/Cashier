@@ -1,4 +1,3 @@
-
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getLedger } from "@/features/ledger/server/services/ledgers";
