@@ -15,7 +15,11 @@ export async function createDefaultLedgerForUser(
         .values({
             userId,
             name: `${userEmail.split("@")[0]}'s Ledger`,
-            aiLanguage: "zh", // Default to Chinese, user can change later
+            metadata: {
+                settings: {
+                    aiLanguage: "zh", // Default to Chinese, user can change later
+                }
+            }
         })
         .returning();
 

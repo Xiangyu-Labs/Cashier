@@ -37,6 +37,8 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: any, text: st
         )
     });
 
+    const settings = ledger.metadata?.settings || {};
+
     await submitFlowTask({
         type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
         title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
@@ -45,13 +47,13 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: any, text: st
             sourceDocumentId: sourceDocumentId,
             text: text,
             imageUrls: imageUrls,
-            aiLanguage: ledger.aiLanguage,
-            preferredCurrencies: ledger.currencies || undefined,
+            aiLanguage: settings.aiLanguage || "zh-CN",
+            preferredCurrencies: settings.currencies || undefined,
             categories: categories,
             settings: {
-                mergeSimilarItems: ledger.mergeSimilarItems,
-                autoRecognizeDate: ledger.autoRecognizeDate,
-                aiCustomPrompt: ledger.aiCustomPrompt,
+                mergeSimilarItems: settings.mergeSimilarItems,
+                autoRecognizeDate: settings.autoRecognizeDate,
+                aiCustomPrompt: settings.aiCustomPrompt,
             },
         },
     });

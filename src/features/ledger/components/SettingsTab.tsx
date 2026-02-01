@@ -51,42 +51,50 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const credentials = initialCredentials;
 
     // Local state for AI Prompt
-    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.aiCustomPrompt || "");
+    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
     const [isPromptFocused, setIsPromptFocused] = useState(false);
 
     // Sync from props only when not focused and not pending
-    if (!isPromptFocused && !isPending && localAiPrompt !== (ledger.aiCustomPrompt || "")) {
-        setLocalAiPrompt(ledger.aiCustomPrompt || "");
+    if (!isPromptFocused && !isPending && localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
+        setLocalAiPrompt(ledger.metadata?.settings?.aiCustomPrompt || "");
     }
 
     // Optimistic states
-    const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.collapseProcessingDefault);
-    const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.collapseBillsDefault);
-    const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.autoRecognizeDate);
-    const [optimisticMergeSimilar, setOptimisticMergeSimilar] = useState(ledger.mergeSimilarItems);
+    const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.metadata?.settings?.collapseProcessingDefault);
+    const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
+    const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.metadata?.settings?.autoRecognizeDate);
+    const [optimisticMergeSimilar, setOptimisticMergeSimilar] = useState(ledger.metadata?.settings?.mergeSimilarItems);
 
-    function handleUpdateLedger(data: Partial<Ledger>) {
+    function handleUpdateLedger(data: any) { // using any to accept flat legacy props from UI controls
         startTransition(async () => {
-            const cleanData = {
-                ...data,
-                currencies: data.currencies || undefined,
-                mainCurrency: data.mainCurrency || undefined,
-                autoRecognizeDate: data.autoRecognizeDate === null ? undefined : data.autoRecognizeDate,
-                collapseProcessingDefault: data.collapseProcessingDefault === null ? undefined : data.collapseProcessingDefault,
-                mergeSimilarItems: data.mergeSimilarItems === null ? undefined : data.mergeSimilarItems,
-                collapseBillsDefault: data.collapseBillsDefault === null ? undefined : data.collapseBillsDefault,
-                aiCustomPrompt: data.aiCustomPrompt === null ? undefined : data.aiCustomPrompt,
+            const cleanSettings = {
+                currencies: data.currencies,
+                mainCurrency: data.mainCurrency,
+                aiLanguage: data.aiLanguage,
+                autoRecognizeDate: data.autoRecognizeDate,
+                collapseProcessingDefault: data.collapseProcessingDefault,
+                mergeSimilarItems: data.mergeSimilarItems,
+                collapseBillsDefault: data.collapseBillsDefault,
+                aiCustomPrompt: data.aiCustomPrompt,
             };
-            const result = await updateLedgerAction(ledgerId, cleanData);
+
+            // Remove undefined keys
+            Object.keys(cleanSettings).forEach(key => (cleanSettings as any)[key] === undefined && delete (cleanSettings as any)[key]);
+
+            const payload: any = {};
+            if (data.name) payload.name = data.name;
+            if (Object.keys(cleanSettings).length > 0) payload.settings = cleanSettings;
+
+            const result = await updateLedgerAction(ledgerId, payload);
             if (result.success) {
                 toast.success(t("settingsUpdated"));
                 router.refresh();
             } else {
                 toast.error(t("updateFailed"));
-                setOptimisticCollapseProcessing(ledger.collapseProcessingDefault);
-                setOptimisticCollapseBills(ledger.collapseBillsDefault);
-                setOptimisticAutoRecognizeDate(ledger.autoRecognizeDate);
-                setOptimisticMergeSimilar(ledger.mergeSimilarItems);
+                setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
+                setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
+                setOptimisticAutoRecognizeDate(ledger.metadata?.settings?.autoRecognizeDate);
+                setOptimisticMergeSimilar(ledger.metadata?.settings?.mergeSimilarItems);
             }
         });
     }
@@ -282,7 +290,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                             <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
                         </div>
                         <select
-                            value={ledger.aiLanguage || 'zh-CN'}
+                            value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
                             onChange={(e) => {
                                 handleUpdateLedger({ aiLanguage: e.target.value });
                             }}
@@ -343,7 +351,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                             onFocus={() => setIsPromptFocused(true)}
                             onBlur={(_e) => {
                                 setIsPromptFocused(false);
-                                if (localAiPrompt !== (ledger.aiCustomPrompt || "")) {
+                                if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
                                     handleUpdateLedger({ aiCustomPrompt: localAiPrompt });
                                 }
                             }}
@@ -362,7 +370,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 <div className="space-y-8">
                     {/* Currency Settings */}
                     <CurrencySection
-                        settings={{ ...ledger, currencies: ledger.currencies || [] } as unknown as any}
+                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as any}
                         onUpdateSettings={(data) => handleUpdateLedger(data)}
                     />
 

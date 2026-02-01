@@ -16,14 +16,16 @@ const createLedgerSchema = z.object({
 
 const updateLedgerSchema = z.object({
     name: z.string().optional(),
-    aiLanguage: z.string().optional(),
-    currencies: z.array(z.string()).optional(),
-    mainCurrency: z.string().optional(),
-    autoRecognizeDate: z.boolean().optional(),
-    collapseProcessingDefault: z.boolean().optional(),
-    mergeSimilarItems: z.boolean().optional(),
-    collapseBillsDefault: z.boolean().optional(),
-    aiCustomPrompt: z.string().optional(),
+    settings: z.object({
+        aiLanguage: z.string().optional(),
+        currencies: z.array(z.string()).optional(),
+        mainCurrency: z.string().optional(),
+        autoRecognizeDate: z.boolean().optional(),
+        collapseProcessingDefault: z.boolean().optional(),
+        mergeSimilarItems: z.boolean().optional(),
+        collapseBillsDefault: z.boolean().optional(),
+        aiCustomPrompt: z.string().optional(),
+    }).optional(),
 });
 
 export async function createLedgerAction(data: z.infer<typeof createLedgerSchema>) {
@@ -41,11 +43,15 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
             .values({
                 userId: session.user.id,
                 name: validated.name,
-                aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
-                currencies: defaultLedger.settings.currencies,
-                autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
-                collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
-                mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,
+                metadata: {
+                    settings: {
+                        aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
+                        currencies: defaultLedger.settings.currencies,
+                        autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
+                        collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
+                        mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,
+                    }
+                }
             })
             .returning();
 
@@ -90,9 +96,28 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
 
         const validated = updateLedgerSchema.parse(data);
 
+        // Helper to merge deep objects is tricky with Drizzle's set, so we fetch and merge in app logic
+        // or use sql hacks. But for metadata, we can fetch, merge, update.
+        // However, here we can just assume we want to update specific fields in settings.
+        // We need to get current metadata first.
+
+        const currentMetadata = existing.metadata || {};
+        const currentSettings = currentMetadata.settings || {};
+
+        const newSettings = {
+            ...currentSettings,
+            ...(validated.settings || {}),
+        };
+
         const [updatedLedger] = await db
             .update(ledgers)
-            .set(validated)
+            .set({
+                name: validated.name || existing.name,
+                metadata: {
+                    ...currentMetadata,
+                    settings: newSettings,
+                }
+            })
             .where(eq(ledgers.id, id))
             .returning();
 
@@ -152,18 +177,20 @@ export async function getLedgerAction(id: string) {
         throw new Error("Unauthorized or Ledger not found");
     }
 
+    const settings = existing.metadata?.settings || {};
+
     return {
         id: existing.id,
         name: existing.name,
-        aiLanguage: existing.aiLanguage || "en",
-        currencies: existing.currencies || [],
-        mainCurrency: existing.mainCurrency || "USD",
+        aiLanguage: settings.aiLanguage || "en",
+        currencies: settings.currencies || [],
+        mainCurrency: settings.mainCurrency || "USD",
         createdAt: existing.createdAt.toISOString(),
         updatedAt: existing.updatedAt.toISOString(),
-        autoRecognizeDate: existing.autoRecognizeDate || false,
-        collapseProcessingDefault: existing.collapseProcessingDefault || false,
-        mergeSimilarItems: existing.mergeSimilarItems || false,
-        collapseBillsDefault: existing.collapseBillsDefault || false,
-        aiCustomPrompt: existing.aiCustomPrompt || "",
+        autoRecognizeDate: settings.autoRecognizeDate || false,
+        collapseProcessingDefault: settings.collapseProcessingDefault || false,
+        mergeSimilarItems: settings.mergeSimilarItems || false,
+        collapseBillsDefault: settings.collapseBillsDefault || false,
+        aiCustomPrompt: settings.aiCustomPrompt || "",
     };
 }

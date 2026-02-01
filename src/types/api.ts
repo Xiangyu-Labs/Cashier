@@ -27,11 +27,12 @@ export type LedgerEntry = Serialized<DbLedgerEntry> & {
 
 // Derived types (subsets or composites)
 // Settings is a subset of Ledger fields used for configuration
-export type Settings = Pick<
-  Ledger,
-  "id" | "aiLanguage" | "currencies" | "mainCurrency" | "autoRecognizeDate" |
-  "collapseProcessingDefault" | "mergeSimilarItems" | "collapseBillsDefault" | "aiCustomPrompt"
->;
+// Since we now use metadata, we need to extract from there or define manually
+import { LedgerMetadata } from "@/features/ledger/server/schema";
+
+export type Settings = {
+  id: string;
+} & NonNullable<LedgerMetadata["settings"]>;
 
 
 export interface LedgerEntrySummary {

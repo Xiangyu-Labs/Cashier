@@ -59,18 +59,22 @@ describe("SettingsTab", () => {
     const mockLedger: Ledger = {
         id: "l1",
         name: "Test Ledger",
-        mainCurrency: "CNY",
-        currencies: ["CNY", "USD"],
-        aiLanguage: "zh-CN",
-        autoRecognizeDate: true,
-        collapseProcessingDefault: false,
-        collapseBillsDefault: false,
-        mergeSimilarItems: false,
-        aiCustomPrompt: "Custom Prompt",
         userId: "u1",
+        metadata: {
+            settings: {
+                mainCurrency: "CNY",
+                currencies: ["CNY", "USD"],
+                aiLanguage: "zh-CN",
+                autoRecognizeDate: true,
+                collapseProcessingDefault: false,
+                collapseBillsDefault: false,
+                mergeSimilarItems: false,
+                aiCustomPrompt: "Custom Prompt",
+            }
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        deletedAt: null // Added missing property
+        deletedAt: null
     };
 
     const mockCategories: EntryCategory[] = [];
@@ -137,11 +141,11 @@ describe("SettingsTab", () => {
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
         await user.type(textarea, "New Custom Prompt");
-        await user.click(document.body); // Trigger blur
-
         await waitFor(() => {
             expect(mockUpdateLedgerAction).toHaveBeenCalledWith("l1", expect.objectContaining({
-                aiCustomPrompt: "Custom PromptNew Custom Prompt"
+                settings: expect.objectContaining({
+                    aiCustomPrompt: "Custom PromptNew Custom Prompt"
+                })
             }));
         }, { timeout: 3000 });
     });

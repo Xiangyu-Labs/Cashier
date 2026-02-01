@@ -27,21 +27,17 @@ export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefi
     return mapLedgerToApi(row);
 });
 
+import { logger } from "@/lib/logger";
+
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
+    logger.info({ ledgerId: row.id, metadata: row.metadata }, "Mapping ledger to API");
     return {
         id: row.id,
         userId: row.userId,
         name: row.name,
-        aiLanguage: row.aiLanguage ?? "en", // Default? Schema says string not null usually or default
-        currencies: row.currencies || [],
-        mainCurrency: row.mainCurrency || "USD",
+        metadata: row.metadata,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        autoRecognizeDate: row.autoRecognizeDate ?? false,
-        collapseProcessingDefault: row.collapseProcessingDefault ?? false,
-        mergeSimilarItems: row.mergeSimilarItems ?? false,
-        collapseBillsDefault: row.collapseBillsDefault ?? false,
-        aiCustomPrompt: row.aiCustomPrompt || "",
         deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     };
 }

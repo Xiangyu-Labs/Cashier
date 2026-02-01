@@ -4,6 +4,7 @@ import {
     text,
     timestamp,
     integer,
+    jsonb,
     primaryKey,
     index,
 } from "drizzle-orm/pg-core";
@@ -22,10 +23,23 @@ export const users = pgTable("users", {
     image: text("image"),
     // Default ledger will be set after ledger is created (no FK to avoid circular type dependency)
     defaultLedgerId: uuid("default_ledger_id"),
+    metadata: jsonb("metadata").$type<UserMetadata>().default({}),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     deletedAt: timestamp("deleted_at"),
 });
+
+export interface UserMetadata {
+    uiPreferences?: {
+        theme?: "light" | "dark" | "system";
+        sidebarCollapsed?: boolean;
+        lastActiveLedgerId?: string;
+    };
+    onboarding?: {
+        hasSeenWelcomeModal?: boolean;
+        guideStep?: number;
+    };
+}
 
 export type User = InferSelectModel<typeof users>;
 

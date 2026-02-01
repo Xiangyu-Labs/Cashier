@@ -41,6 +41,7 @@ export const sourceDocuments = pgTable("source_documents", {
 
     status: sourceDocumentStatusEnum("status").notNull().default("queued"),
     anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
+    metadata: jsonb("metadata").$type<SourceDocMetadata>().default({}),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
     deletedAt: timestamp("deleted_at"),
@@ -48,5 +49,20 @@ export const sourceDocuments = pgTable("source_documents", {
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
     index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),
 ]);
+
+export interface SourceDocMetadata {
+    rawOcrText?: string;
+    aiRawResponse?: unknown;
+    emailHeaders?: {
+        from?: string;
+        subject?: string;
+        messageId?: string;
+    };
+    fileMeta?: {
+        sizeBytes?: number;
+        mimeType?: string;
+        originalName?: string;
+    };
+}
 
 export type SourceDocument = InferSelectModel<typeof sourceDocuments>;

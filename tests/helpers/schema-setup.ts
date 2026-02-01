@@ -22,7 +22,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
     // Check if a known table exists to skip creation
     const tableCheck = await tx.execute(sql`
       SELECT 1 FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name = 'users'
+      WHERE table_schema = 'public' AND table_name = 'push_subscriptions'
       LIMIT 1
     `);
 
@@ -52,6 +52,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       DROP TABLE IF EXISTS categories CASCADE;
       DROP TABLE IF EXISTS api_keys CASCADE;
       DROP TABLE IF EXISTS gpt_tasks CASCADE;
+      DROP TABLE IF EXISTS push_subscriptions CASCADE;
 
       DROP TYPE IF EXISTS source_document_status CASCADE;
       DROP TYPE IF EXISTS error_code CASCADE;
@@ -71,6 +72,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         email_verified TIMESTAMP,
         image TEXT,
         default_ledger_id UUID,
+        metadata JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         deleted_at TIMESTAMP
@@ -126,6 +128,20 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       CREATE INDEX idx_otp_tokens_expires ON otp_tokens(expires);
 
       CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+
+      CREATE TABLE push_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, endpoint)
+      );
+
+      CREATE INDEX idx_push_subs_user ON push_subscriptions(user_id);
     `);
 
     // Create business tables
@@ -134,16 +150,9 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        ai_language TEXT NOT NULL DEFAULT 'zh-CN',
-        currencies JSONB DEFAULT '["CNY", "USD", "EUR", "JPY", "GBP", "HKD", "TWD"]',
-        main_currency TEXT DEFAULT 'CNY',
+        metadata JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        auto_recognize_date BOOLEAN DEFAULT FALSE,
-        collapse_processing_default BOOLEAN DEFAULT FALSE,
-        merge_similar_items BOOLEAN DEFAULT FALSE,
-        collapse_bills_default BOOLEAN DEFAULT FALSE,
-        ai_custom_prompt TEXT,
         deleted_at TIMESTAMP
       );
 
@@ -170,6 +179,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         image_urls JSONB DEFAULT '[]'::jsonb,
         status source_document_status NOT NULL DEFAULT 'queued',
         anomaly_codes JSONB DEFAULT '[]'::jsonb,
+        metadata JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         deleted_at TIMESTAMP
       );
@@ -184,6 +194,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
         item_name TEXT NOT NULL,
         description TEXT,
         entry_date DATE,
+        metadata JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         deleted_at TIMESTAMP
       );
