@@ -233,6 +233,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         items: result.map(item => ({
             ...item,
             createdAt: item.createdAt.toISOString(),
+            status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
         })),
         nextCursor,
     };
@@ -248,5 +249,6 @@ export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId
     return {
         ...doc,
         createdAt: doc.createdAt.toISOString(),
+        status: doc.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
     };
 }

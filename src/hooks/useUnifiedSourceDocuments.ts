@@ -37,21 +37,24 @@ interface UseUnifiedSourceDocumentsOptions {
  */
 export function useUnifiedSourceDocuments(
     ledgerId: string,
-    options: UseUnifiedSourceDocumentsOptions = {}
+    options: UseUnifiedSourceDocumentsOptions & {
+        initialActive?: SourceDocument[];
+        initialCompletedPages?: { items: SourceDocument[]; nextCursor: string | null }[];
+    } = {}
 ) {
-    const { dateRange } = options;
+    const { dateRange, initialActive, initialCompletedPages } = options;
 
     // Query 1: Fetch non-completed documents (processing, anomaly states)
     // These are typically few in number and need real-time updates
-    const { data: activeDocuments = [], isLoading: isActiveLoading } = useQuery({
+    const { data: activeDocuments = (initialActive as SourceDocument[]) || [], isLoading: isActiveLoading } = useQuery({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'active'),
         queryFn: async () => {
             const res = await getSourceDocumentsAction(ledgerId, {
                 status: 'queued,processing,anomaly',
             });
-            // Casting because action returns inferred type which is compatible but strictly different from shared interface
-            return res.items as unknown as SourceDocument[];
+            return res.items as SourceDocument[];
         },
+        initialData: initialActive,
     });
 
     // Query 3: Infinite scroll for completed documents (paginated)
@@ -77,12 +80,16 @@ export function useUnifiedSourceDocuments(
                 endDate: dateRange?.end?.toISOString() || null,
             });
             return {
-                items: res.items as unknown as SourceDocument[],
+                items: res.items as SourceDocument[],
                 nextCursor: res.nextCursor
             };
         },
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialData: initialCompletedPages ? {
+            pages: initialCompletedPages,
+            pageParams: [undefined],
+        } : undefined,
     });
 
     // Query 4: Fetch confirmed entries to match with completed documents

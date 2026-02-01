@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction, getLedgerAction } from "@/actions/ledgers";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/actions/source-document";
@@ -34,6 +34,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     const [text, setText] = useState(initialData?.text || "");
     const [images, setImages] = useState<{ data: string; mimeType: string }[]>(initialData?.images || []);
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+    const [isTransitionPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Reset state when initialData changes (for retry mode)
@@ -98,14 +99,16 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             text: text || undefined,
             images: images.length > 0 ? images : undefined,
         };
-        if (mode === "retry") {
-            retryMutation.mutate(payload);
-        } else {
-            sendMutation.mutate(payload);
-        }
+        startTransition(() => {
+            if (mode === "retry") {
+                retryMutation.mutate(payload);
+            } else {
+                sendMutation.mutate(payload);
+            }
+        });
     };
 
-    const isPending = mode === "retry" ? retryMutation.isPending : sendMutation.isPending;
+    const isPending = (mode === "retry" ? retryMutation.isPending : sendMutation.isPending) || isTransitionPending;
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;

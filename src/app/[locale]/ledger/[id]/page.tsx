@@ -3,8 +3,10 @@ import { auth } from "@/auth";
 import { getLedger, getLedgers } from "@/services/ledgers";
 import { getEntryCategories } from "@/services/categories";
 import { LedgerPageClient } from "@/components/ledger/LedgerPageClient";
+import { Ledger, EntryCategory, SourceDocument } from "@/types/api";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
+import { getSourceDocumentsAction } from "@/actions/source-document";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;
@@ -20,10 +22,12 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
   }
 
   // Parallel data fetching
-  const [ledger, categories, allLedgers] = await Promise.all([
+  const [ledger, categories, allLedgers, activeDocs, completedDocs] = await Promise.all([
     getLedger(ledgerId),
     getEntryCategories(ledgerId),
     getLedgers(session!.user!.id!),
+    getSourceDocumentsAction(ledgerId, { status: 'queued,processing,anomaly' }),
+    getSourceDocumentsAction(ledgerId, { status: 'completed' }),
   ]);
 
   if (!ledger) {
@@ -40,6 +44,8 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
       initialCategories={categories}
       allLedgers={allLedgers}
       ledgerId={ledgerId}
+      initialActiveSourceDocuments={activeDocs.items as SourceDocument[]}
+      initialCompletedSourceDocuments={completedDocs.items as SourceDocument[]}
     />
   );
 }

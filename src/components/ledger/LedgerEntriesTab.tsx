@@ -33,6 +33,8 @@ interface LedgerEntriesTabProps {
     categories: EntryCategory[];
     defaultCollapsed?: boolean;
     ledger?: Ledger;
+    initialActiveSourceDocuments?: SourceDocument[];
+    initialCompletedSourceDocuments?: SourceDocument[];
 }
 
 export function LedgerEntriesTab({
@@ -40,6 +42,8 @@ export function LedgerEntriesTab({
     categories,
     defaultCollapsed = false,
     ledger,
+    initialActiveSourceDocuments,
+    initialCompletedSourceDocuments
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
@@ -89,7 +93,11 @@ export function LedgerEntriesTab({
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
-    } = useUnifiedSourceDocuments(ledgerId, { dateRange });
+    } = useUnifiedSourceDocuments(ledgerId, {
+        dateRange,
+        initialActive: initialActiveSourceDocuments,
+        initialCompletedPages: initialCompletedSourceDocuments ? [{ items: initialCompletedSourceDocuments, nextCursor: null }] : undefined
+    });
 
     // --- Mutations ---
 

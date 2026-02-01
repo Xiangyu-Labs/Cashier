@@ -19,20 +19,24 @@ import { useLedgerEvents } from "@/lib/events/use-ledger-events";
 import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
-import { Ledger, EntryCategory } from "@/types/api";
+import { Ledger, EntryCategory, SourceDocument } from "@/types/api";
 
 interface LedgerPageClientProps {
     initialLedger: Ledger;
     initialCategories: EntryCategory[];
     allLedgers: Ledger[];
     ledgerId: string;
+    initialActiveSourceDocuments?: SourceDocument[];
+    initialCompletedSourceDocuments?: SourceDocument[];
 }
 
 export function LedgerPageClient({
     initialLedger: ledger,
     initialCategories: categories,
     allLedgers,
-    ledgerId
+    ledgerId,
+    initialActiveSourceDocuments,
+    initialCompletedSourceDocuments
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const [activeTab, setActiveTab] = useState("history");
@@ -102,6 +106,8 @@ export function LedgerPageClient({
                             categories={categories || []}
                             defaultCollapsed={ledger.collapseProcessingDefault}
                             ledger={ledger}
+                            initialActiveSourceDocuments={initialActiveSourceDocuments}
+                            initialCompletedSourceDocuments={initialCompletedSourceDocuments}
                         />
                     </TabsContent>
 
