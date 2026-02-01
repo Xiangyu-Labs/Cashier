@@ -226,52 +226,50 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
 
           <div className="flex items-center gap-1.5 ml-1">
-            {/* Context Menu for Anomaly and Completed */}
-            {(status === "anomaly" || status === "completed") && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="h-7 w-7 text-muted-foreground hover:text-text"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  {_onViewDetails && (
-                    <DropdownMenuItem onClick={_onViewDetails}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t("viewDetails")}
-                    </DropdownMenuItem>
-                  )}
-                  {(status === "anomaly" || status === "completed") && onRetry && (
-                    <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
-                      <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                      {t("editRetry")}
-                    </DropdownMenuItem>
-                  )}
+            {/* Context Menu for all statuses */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-muted-foreground hover:text-text"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {_onViewDetails && status === "completed" && (
+                  <DropdownMenuItem onClick={_onViewDetails}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("viewDetails")}
+                  </DropdownMenuItem>
+                )}
+                {onRetry && (
+                  <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
+                    <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
+                    {status === "queued" || status === "processing" ? tCommon("retry") : t("editRetry")}
+                  </DropdownMenuItem>
+                )}
 
-                  {status === "completed" && (
-                    <DropdownMenuItem
-                      onClick={() => setIsShareDialogOpen(true)}
-                    >
-                      <Share2 className="mr-2 h-4 w-4" />
-                      {t("share")}
-                    </DropdownMenuItem>
-                  )}
-                  {onDelete && (
-                    <DropdownMenuItem
-                      onClick={onDelete}
-                      className="text-danger focus:text-danger"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {tCommon("delete")}
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                {status === "completed" && (
+                  <DropdownMenuItem
+                    onClick={() => setIsShareDialogOpen(true)}
+                  >
+                    <Share2 className="mr-2 h-4 w-4" />
+                    {t("share")}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-danger focus:text-danger"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {tCommon("delete")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
 
           </div>
