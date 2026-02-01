@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface ExpiryTimerProps {
@@ -41,6 +42,8 @@ export function ExpiryTimer({
     return () => clearInterval(interval);
   }, [expiresAt, hasExpired, onExpired]);
 
+  const t = useTranslations("Auth");
+
   if (!expiresAt) {
     return null;
   }
@@ -59,10 +62,10 @@ export function ExpiryTimer({
             isUrgent && "text-destructive font-medium"
           )}
         >
-          Code expires in {minutes}:{seconds.toString().padStart(2, "0")}
+          {t("codeExpiresTimer", { time: `${minutes}:${seconds.toString().padStart(2, "0")}` })}
         </p>
       ) : (
-        <p className="text-destructive font-medium">Code has expired</p>
+        <p className="text-destructive font-medium">{t("codeExpired")}</p>
       )}
     </div>
   );

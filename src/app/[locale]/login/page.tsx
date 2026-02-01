@@ -242,11 +242,11 @@ export default function LoginPage() {
                         </div>
                     )}
                 </div>
-                <p className="text-center text-xs text-muted-foreground mt-6">
-                    {step === "email"
-                        ? t("codeExpires", { minutes: 5 })
-                        : t("codeSecurityNote")}
-                </p>
+                {step === "otp" && (
+                    <p className="text-center text-xs text-muted-foreground mt-6">
+                        {t("codeExpires", { minutes: 5 })}
+                    </p>
+                )}
             </div>
         </div>
     );
