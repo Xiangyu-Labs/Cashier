@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useUnifiedSourceDocuments } from "@/hooks/useUnifiedSourceDocuments";
+import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";

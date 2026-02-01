@@ -6,7 +6,7 @@ import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { LedgerEvent } from "@/lib/events/types";
-import { completeTaskRun, failTaskRun, recordTaskRunUsage } from "@/lib/flow/task-run-service";
+import { completeTaskRun, failTaskRun, recordTaskRunUsage } from "@/features/tasks/server/services/task-run-service";
 
 describe("SSE Event Flow Integration", () => {
     let ledgerId: string;
