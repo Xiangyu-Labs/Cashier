@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
 import { StatsTab } from "./StatsTab";
+import { SettingsTab } from "./SettingsTab";
 import {
     Dialog,
     DialogContent,
@@ -19,7 +20,7 @@ import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-event
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
-import { Ledger, EntryCategory, SourceDocument } from "@/types/api";
+import { Ledger, EntryCategory, SourceDocument, ServiceCredential } from "@/types/api";
 
 interface LedgerPageClientProps {
     initialLedger: Ledger;
@@ -28,6 +29,7 @@ interface LedgerPageClientProps {
     ledgerId: string;
     initialActiveSourceDocuments?: SourceDocument[];
     initialCompletedSourceDocuments?: SourceDocument[];
+    initialCredentials: ServiceCredential[];
 }
 
 export function LedgerPageClient({
@@ -36,7 +38,8 @@ export function LedgerPageClient({
     allLedgers,
     ledgerId,
     initialActiveSourceDocuments,
-    initialCompletedSourceDocuments
+    initialCompletedSourceDocuments,
+    initialCredentials
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const [activeTab, setActiveTab] = useState("history");
@@ -67,16 +70,15 @@ export function LedgerPageClient({
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <I18nLink href={`/ledger/${ledgerId}/settings`}>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-text h-8 w-8 sm:h-9 sm:w-9"
-                                title={t("settings")}
-                            >
-                                <Settings className="h-5 w-5" />
-                            </Button>
-                        </I18nLink>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-text h-8 w-8 sm:h-9 sm:w-9"
+                            title={t("settings")}
+                            onClick={() => setActiveTab("settings")}
+                        >
+                            <Settings className="h-5 w-5" />
+                        </Button>
                         <Button
                             size="sm"
                             onClick={() => setIsInputOpen(true)}
@@ -94,10 +96,11 @@ export function LedgerPageClient({
                     onValueChange={setActiveTab}
                     className="w-full space-y-4"
                 >
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="history">{t("history")}</TabsTrigger>
                         <TabsTrigger value="details">{t("details")}</TabsTrigger>
                         <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
+                        <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="history" className="mt-0">
@@ -121,6 +124,15 @@ export function LedgerPageClient({
 
                     <TabsContent value="stats" className="mt-0">
                         <StatsTab ledgerId={ledgerId} ledger={ledger} />
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="mt-0">
+                        <SettingsTab
+                            ledgerId={ledgerId}
+                            ledger={ledger}
+                            initialCategories={categories}
+                            initialCredentials={initialCredentials}
+                        />
                     </TabsContent>
                 </Tabs>
             </main>
