@@ -1,4 +1,9 @@
-import { type Ledger as DbLedger, type EntryCategory as DbEntryCategory, type LedgerEntry as DbLedgerEntry, type ServiceCredential as DbServiceCredential } from "@/features/ledger/server/schema";
+import {
+  type Ledger as DbLedger,
+  type EntryCategory as DbEntryCategory,
+  type LedgerEntry as DbLedgerEntry,
+  type ServiceCredential as DbServiceCredential
+} from "@/features/ledger/server/schema";
 import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
 import { Serialized } from "./utils";
 
@@ -15,35 +20,18 @@ export type LedgerEntry = Serialized<DbLedgerEntry> & {
 };
 
 // Derived types (subsets or composites)
-export interface Settings {
-  id: string;
-  aiLanguage: string;
-  currencies: string[];
-  mainCurrency?: string;
-  autoRecognizeDate?: boolean;
-}
+// Settings is a subset of Ledger fields used for configuration
+export type Settings = Pick<
+  Ledger,
+  "id" | "aiLanguage" | "currencies" | "mainCurrency" | "autoRecognizeDate" |
+  "collapseProcessingDefault" | "mergeSimilarItems" | "collapseBillsDefault" | "aiCustomPrompt"
+>;
 
 export interface ShareData {
-  sourceDocument: {
-    id: string;
-    title: string | null;
-    text: string | null;
-    imageUrls: string[];
-    createdAt: string;
-  };
-  entries: {
-    id: string;
-    amount: string;
-    currency: string | null;
-    itemName: string;
-    description: string | null;
-    entryDate: string | null;
-    category: {
-      id: string;
-      name: string;
-      icon: string | null;
-    } | null;
-  }[];
+  sourceDocument: Pick<SourceDocument, "id" | "title" | "text" | "imageUrls" | "createdAt">;
+  entries: (Pick<LedgerEntry, "id" | "amount" | "currency" | "itemName" | "description" | "entryDate"> & {
+    category: Pick<EntryCategory, "id" | "name" | "icon"> | null;
+  })[];
   ledgerId: string;
 }
 
