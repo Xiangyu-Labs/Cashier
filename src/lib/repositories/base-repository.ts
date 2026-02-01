@@ -237,6 +237,11 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
 
+        // If no data to update, return early to avoid invalid SQL (SET clause empty)
+        if (Object.keys(data as object).length === 0) {
+            return this.getById(id, ledgerId) as Promise<T>;
+        }
+
         const [result] = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)
             .where(and(...conditions))
@@ -273,6 +278,11 @@ export abstract class BaseRepository<T extends { id: string }, U extends PgTable
             inArray(tableWithId.id, ids),
             eq(tableWithLedgerId[this.ledgerIdField], ledgerId)
         ];
+
+        // If no data to update, return early to avoid invalid SQL (SET clause empty)
+        if (Object.keys(data as object).length === 0) {
+            return this.findMany(ledgerId, { where: inArray(tableWithId.id, ids) });
+        }
 
         const results = await this.db.update(this.table)
             .set(data as unknown as Record<string, unknown>)

@@ -11,6 +11,12 @@ class SourceDocumentRepository extends BaseRepository<SourceDocument, typeof sou
     }
 
     async update(id: string, data: Partial<SourceDocument>, ledgerId?: string): Promise<SourceDocument> {
+        if (Object.keys(data).length === 0) {
+            const [existing] = await this.db.select().from(this.table).where(eq(this.table.id, id));
+            if (!existing) throw new Error(`Entity ${this.entityType} with id ${id} not found`);
+            return existing as SourceDocument;
+        }
+
         const [result] = await this.db.update(this.table)
             .set(data)
             .where(eq(this.table.id, id))
