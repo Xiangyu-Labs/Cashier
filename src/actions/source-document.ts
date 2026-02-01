@@ -1,12 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { entryCategories } from "@/lib/db/schema";
+import { entryCategories, sourceDocuments } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
+import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -181,4 +182,71 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
             error: error instanceof Error ? error.message : "Failed to delete source document",
         };
     }
+}
+
+export async function getSourceDocumentsAction(ledgerId: string, params: {
+    status?: string | null;
+    limit?: number;
+    cursor?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+}) {
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) throw new Error("Unauthorized");
+
+    const { status, limit = 20, cursor, startDate, endDate } = params;
+    const conditions = [];
+
+    if (status) {
+        const statuses = status.split(",").filter(Boolean);
+        if (statuses.length > 0) {
+            conditions.push(inArray(sourceDocuments.status, statuses as any[]));
+        }
+    }
+
+    if (cursor) {
+        conditions.push(lte(sourceDocuments.createdAt, new Date(cursor)));
+    }
+
+    if (startDate) {
+        conditions.push(gte(sourceDocuments.createdAt, new Date(startDate)));
+    }
+    if (endDate) {
+        conditions.push(lte(sourceDocuments.createdAt, new Date(endDate)));
+    }
+
+    const result = await scope.documents.findMany({
+        where: and(...conditions),
+        orderBy: [desc(sourceDocuments.createdAt)],
+        limit: limit + 1,
+    });
+
+    let nextCursor = null;
+    if (result.length > limit) {
+        const nextItem = result.pop();
+        if (nextItem) {
+            nextCursor = nextItem.createdAt.toISOString();
+        }
+    }
+
+    return {
+        items: result.map(item => ({
+            ...item,
+            createdAt: item.createdAt.toISOString(),
+        })),
+        nextCursor,
+    };
+}
+
+export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId: string) {
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) throw new Error("Unauthorized");
+
+    const doc = await scope.documents.get(sourceDocumentId);
+    if (!doc) return null;
+
+    return {
+        ...doc,
+        createdAt: doc.createdAt.toISOString(),
+    };
 }

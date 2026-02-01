@@ -9,6 +9,16 @@ import { eq, inArray, and, gte, lte, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 
+const createLedgerEntrySchema = z.object({
+    amount: z.number(),
+    currency: z.string().optional(),
+    itemName: z.string().min(1),
+    categoryId: z.string().optional(),
+    entryDate: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    sourceDocumentId: z.string().optional().nullable(),
+});
+
 const updateLedgerEntrySchema = z.object({
     categoryId: z.string().nullable().optional(),
     amount: z.number().optional(),
@@ -17,6 +27,31 @@ const updateLedgerEntrySchema = z.object({
     description: z.string().nullable().optional(),
     entryDate: z.string().nullable().optional(),
 });
+
+export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return { success: false, error: "Unauthorized" };
+
+        const validated = createLedgerEntrySchema.parse(data);
+
+        // Cast to any to avoid "unknown property" error if Repo type doesn't include currency yet
+        const entry = await scope.entries.create({
+            ...validated,
+            amount: validated.amount.toString(),
+            ledgerId: ledgerId,
+            currency: validated.currency || "CNY",
+            // entryDate handled by scope? or need validation?
+            entryDate: validated.entryDate ? new Date(validated.entryDate) : undefined,
+        } as any);
+
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true, data: entry };
+    } catch (error) {
+        logger.error({ error, ledgerId }, "Failed to create ledger entry via action");
+        return { success: false, error: "Failed to create ledger entry" };
+    }
+}
 
 export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>) {
     try {
@@ -108,9 +143,9 @@ export async function getLedgerEntriesAction(
     ledgerId: string,
     params: {
         limit?: number;
-        cursor?: string;
-        startDate?: string;
-        endDate?: string;
+        cursor?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
     }
 ) {
     const { scope, error } = await requireLedgerAccess(ledgerId);

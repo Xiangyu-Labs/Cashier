@@ -43,27 +43,7 @@ async function request<T>(
 }
 
 // Ledgers
-export function createLedger(data: {
-  name: string;
-  aiLanguage: string;
-  currencies: string[];
-  mainCurrency: string;
-  autoRecognizeDate: boolean;
-  collapseProcessingDefault: boolean;
-  mergeSimilarItems: boolean;
-  collapseBillsDefault: boolean;
-  aiCustomPrompt: string;
-}): Promise<Ledger> {
-  return request(
-    `/ledgers`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to create ledger"
-  );
-}
+// function createLedger removed
 
 // LedgerEntry API
 export interface PaginatedResponse<T> {
@@ -71,120 +51,16 @@ export interface PaginatedResponse<T> {
   nextCursor?: string | null;
 }
 
-export function fetchLedgerEntries(
-  ledgerId: string,
-  params?: {
-    limit?: number;
-    offset?: number;
-    cursor?: string;
-    startDate?: string;
-    endDate?: string;
-  }
-): Promise<PaginatedResponse<LedgerEntry>> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", params.limit.toString());
-  if (params?.offset) searchParams.set("offset", params.offset.toString());
-  if (params?.cursor) searchParams.set("cursor", params.cursor);
-  if (params?.startDate) searchParams.set("startDate", params.startDate);
-  if (params?.endDate) searchParams.set("endDate", params.endDate);
-
-  return request(
-    `/ledgers/${ledgerId}/ledger-entries?${searchParams}`,
-    undefined,
-    "Failed to fetch ledger entries"
-  );
-}
+// function fetchLedgerEntries removed
 
 // function fetchLedgerEntrySummary removed
 // function fetchLedgerEntries removed
 
-export function fetchSourceDocuments(
-  ledgerId: string,
-  params: {
-    status?: string[];
-    limit?: number;
-    cursor?: string;
-    startDate?: string;
-    endDate?: string;
-  } = {}
-): Promise<PaginatedResponse<SourceDocument>> {
-  const searchParams = new URLSearchParams();
-  if (params.status) searchParams.set("status", params.status.join(","));
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-  if (params.cursor) searchParams.set("cursor", params.cursor);
-  if (params.startDate) searchParams.set("startDate", params.startDate);
-  if (params.endDate) searchParams.set("endDate", params.endDate);
-
-  return request(
-    `/ledgers/${ledgerId}/source-documents?${searchParams}`,
-    undefined,
-    "Failed to fetch source documents"
-  );
-}
+// function fetchSourceDocuments removed
 
 // ProcessingTasks API
-export interface ProcessingTask {
-  id: string;
-  type: string;
-  title: string;
-  ledgerId: string | null;
-
-  status: "running" | "completed" | "failed";
-  error: string | null;
-  usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-}
-
-export function fetchProcessingTasks(
-  ledgerId: string,
-  params: { activeOnly?: boolean; limit?: number } = {}
-): Promise<ProcessingTask[]> {
-  const searchParams = new URLSearchParams();
-  searchParams.set("ledgerId", ledgerId);
-  if (params.activeOnly) searchParams.set("activeOnly", "true");
-  if (params.limit) searchParams.set("limit", params.limit.toString());
-
-  return request(
-    `/processing-tasks?${searchParams}`,
-    undefined,
-    "Failed to fetch processing tasks"
-  );
-}
+// ProcessingTasks API removed (migrated to actions)
 
 
 // Share API
-export function createShare(
-  ledgerId: string,
-  sourceDocumentId: string,
-  expiresIn: "1d" | "7d" | "30d" | "never" = "7d"
-): Promise<{ id: string; shareUrl: string; expiresAt: string | null }> {
-  return request(
-    `/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expiresIn }),
-    },
-    "Failed to create share link"
-  );
-}
-
-export function deleteShare(
-  ledgerId: string,
-  sourceDocumentId: string,
-  shareId: string
-): Promise<void> {
-  return request(
-    `/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares/${shareId}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete share link"
-  );
-}
-
-export function fetchShareData(shareId: string): Promise<ShareData> {
-  return request(`/s/${shareId}`, undefined, "Failed to fetch share data");
-}
+// Share API functions removed (migrated to actions)

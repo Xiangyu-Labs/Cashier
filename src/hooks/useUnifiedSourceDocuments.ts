@@ -2,7 +2,8 @@
 
 import { useMemo, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { fetchSourceDocuments, fetchLedgerEntries } from '@/lib/api';
+import { getSourceDocumentsAction } from "@/actions/source-document";
+import { getLedgerEntriesAction } from "@/actions/ledger-entries";
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -45,14 +46,13 @@ export function useUnifiedSourceDocuments(
     const { data: activeDocuments = [], isLoading: isActiveLoading } = useQuery({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'active'),
         queryFn: async () => {
-            const res = await fetchSourceDocuments(ledgerId, {
-                status: ['queued', 'processing', 'anomaly'],
+            const res = await getSourceDocumentsAction(ledgerId, {
+                status: 'queued,processing,anomaly',
             });
-            return res.items;
+            // Casting because action returns inferred type which is compatible but strictly different from shared interface
+            return res.items as unknown as SourceDocument[];
         },
     });
-
-
 
     // Query 3: Infinite scroll for completed documents (paginated)
     const {
@@ -69,13 +69,18 @@ export function useUnifiedSourceDocuments(
             dateRange?.start?.toISOString(),
             dateRange?.end?.toISOString(),
         ],
-        queryFn: ({ pageParam }) =>
-            fetchSourceDocuments(ledgerId, {
-                cursor: pageParam,
-                status: ['completed'],
-                startDate: dateRange?.start?.toISOString(),
-                endDate: dateRange?.end?.toISOString(),
-            }),
+        queryFn: async ({ pageParam }) => {
+            const res = await getSourceDocumentsAction(ledgerId, {
+                cursor: pageParam as string | null,
+                status: 'completed',
+                startDate: dateRange?.start?.toISOString() || null,
+                endDate: dateRange?.end?.toISOString() || null,
+            });
+            return {
+                items: res.items as unknown as SourceDocument[],
+                nextCursor: res.nextCursor
+            };
+        },
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
@@ -84,8 +89,9 @@ export function useUnifiedSourceDocuments(
     const { data: confirmedEntries = [] } = useQuery({
         queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed'),
         queryFn: async () => {
-            const res = await fetchLedgerEntries(ledgerId, { limit: 500 });
-            return res.items;
+            // Fix: Pass object params
+            const res = await getLedgerEntriesAction(ledgerId, { limit: 500 });
+            return res.items as unknown as LedgerEntry[];
         },
     });
 
@@ -123,8 +129,6 @@ export function useUnifiedSourceDocuments(
             }
         }
 
-
-
         // 3. All documents from infinite scroll that are not categorized go to completed
         const allCompletedDocs = completedData?.pages.flatMap((page) => page.items) || [];
         for (const doc of allCompletedDocs) {
@@ -146,7 +150,7 @@ export function useUnifiedSourceDocuments(
         result.completed.sort(sortByDate);
 
         return result;
-    }, [activeDocuments, confirmedEntries, completedData]); // Removed isDateInRange from here as it is not used in grouped
+    }, [activeDocuments, confirmedEntries, completedData]);
 
     // Helper to check if date is in range (for filtering)
     const isDateInRange = useCallback((dateStr: string) => {

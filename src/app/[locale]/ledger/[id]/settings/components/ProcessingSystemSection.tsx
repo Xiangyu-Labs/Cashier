@@ -2,26 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProcessingTasks, ProcessingTask } from "@/lib/api";
 import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
+import { getProcessingStatsAction, getProcessingTasksAction } from "@/actions/processing";
 
-interface TokenStats {
-    totalInputTokens: number;
-    totalOutputTokens: number;
-    totalTokens: number;
-    taskCount: number;
-    averageTokensPerTask: number;
+// Use partial type or inferred type matching
+interface ProcessingTask {
+    id: string;
+    title: string;
+    status: string; // "running" | "completed" | "failed"
+    startedAt?: string | null;
+    createdAt: string;
 }
 
-async function fetchTokenStats(ledgerId: string): Promise<TokenStats> {
-    const res = await fetch(`/api/ledgers/${ledgerId}/processing-stats/token-usage`);
-    if (!res.ok) throw new Error("Failed to fetch token stats");
-    return res.json();
-}
-
-function TaskStatusIcon({ status }: { status: ProcessingTask["status"] }) {
+function TaskStatusIcon({ status }: { status: any }) {
     switch (status) {
         case "running":
             return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
@@ -34,9 +29,9 @@ function TaskStatusIcon({ status }: { status: ProcessingTask["status"] }) {
     }
 }
 
-function TaskStatusBadge({ status }: { status: ProcessingTask["status"] }) {
+function TaskStatusBadge({ status }: { status: any }) {
     const t = useTranslations("TaskCenter");
-    const statusConfig = {
+    const statusConfig: Record<string, { label: string; className: string }> = {
         running: { label: t("statusRunning"), className: "bg-primary/10 text-primary" },
         completed: { label: t("statusCompleted"), className: "bg-primary/10 text-primary" },
         failed: { label: t("statusFailed"), className: "bg-danger/10 text-danger" },
@@ -81,17 +76,17 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
     const { data: stats, isLoading: isStatsLoading } = useQuery({
         queryKey: queryKeys.tokenStats(ledgerId),
-        queryFn: () => fetchTokenStats(ledgerId),
+        queryFn: () => getProcessingStatsAction(ledgerId),
     });
 
     const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
         queryKey: queryKeys.processingTasks(ledgerId),
-        queryFn: () => fetchProcessingTasks(ledgerId, { limit: 10 }), // Show last 10 tasks in settings
+        queryFn: () => getProcessingTasksAction(ledgerId, { limit: 10 }), // Show last 10 tasks in settings
         enabled: !!ledgerId,
     });
 
     // Only show running tasks as "active" in the list below stats
-    const activeTasks = tasks.filter((t: ProcessingTask) => t.status === "running");
+    const activeTasks = tasks.filter((t: any) => t.status === "running");
 
     if (isStatsLoading && !stats) {
         return (
@@ -170,8 +165,8 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                         </div>
                     ) : (
                         <div className="space-y-1">
-                            {activeTasks.map((task) => {
-                                const statusColors = {
+                            {activeTasks.map((task: any) => {
+                                const statusColors: Record<string, string> = {
                                     queued: "border-l-muted/30",
                                     running: "border-l-primary",
                                     failed: "border-l-danger",

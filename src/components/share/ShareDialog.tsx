@@ -18,7 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
 import { Copy, Check, Share2, Link as LinkIcon, Loader2 } from "lucide-react";
-import { createShare } from "@/lib/api";
+import { createShareAction } from "@/actions/shares";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn, copyToClipboard } from "@/lib/utils";
@@ -45,9 +45,17 @@ export function ShareDialog({
     const handleCreateShare = async () => {
         setIsLoading(true);
         try {
-            const result = await createShare(ledgerId, sourceDocumentId, expiresIn);
-            setShareUrl(result.shareUrl);
-            toast.success(t("shareSuccess"));
+            const result = await createShareAction(ledgerId, sourceDocumentId, { expiresIn });
+            if (result.success && result.data) {
+                // Ensure full URL if action returns relative
+                const url = result.data.shareUrl.startsWith("http")
+                    ? result.data.shareUrl
+                    : `${window.location.origin}${result.data.shareUrl}`; // Construct full URL client-side
+                setShareUrl(url);
+                toast.success(t("shareSuccess"));
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
             console.error(error);
             toast.error(t("createFailed"));
