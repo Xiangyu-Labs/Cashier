@@ -1,4 +1,4 @@
-import { FlowProgress } from "./types";
+import { FlowProgress } from "@/lib/flow/types";
 import { taskRunRepo } from "@/features/tasks/server/repositories/task-run-repository";
 
 /**

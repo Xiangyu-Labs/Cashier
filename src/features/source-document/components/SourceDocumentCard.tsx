@@ -17,7 +17,7 @@ import { ShareDialog } from "@/components/share/ShareDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
 import { deleteSourceDocumentAction } from "@/features/source-document/server/actions/main";
 import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";

@@ -3,7 +3,7 @@ import { LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 
 /**
  * Variant styles for different bill states.

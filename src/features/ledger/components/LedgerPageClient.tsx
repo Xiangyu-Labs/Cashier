@@ -15,7 +15,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { useLedgerEvents } from "@/lib/events/use-ledger-events";
+import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";

@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Wallet, FileText, Share2, AlignLeft, ImagePlay, Maximize2, Calendar } from "lucide-react";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 
 // Card styling variants
 const cardVariants = cva("transition-all", {

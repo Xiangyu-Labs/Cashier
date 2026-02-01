@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useMemo } from "react";
 
-import { useConvertedAmount } from "@/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface LedgerEntryEditFormData {

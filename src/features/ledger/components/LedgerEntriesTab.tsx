@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations } from "next-intl";
-import { useUnifiedSourceDocuments } from "@/hooks/useUnifiedSourceDocuments";
+import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { queryKeys } from "@/lib/query-keys";
 

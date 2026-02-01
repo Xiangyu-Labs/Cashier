@@ -3,7 +3,7 @@ import { logger } from './lib/logger';
 import { initializeWorkers, shutdownWorkers } from './lib/flow/workers';
 
 // Import task handlers to register them
-import './lib/tasks';
+import '@/features/source-document/server/tasks/parse-source-document';
 
 async function start() {
     logger.info('Starting standalone worker process...');

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { handleEvent } from './invalidation-hub';
-import { LedgerEvent } from './types';
+import { handleEvent } from '@/lib/events/invalidation-hub';
+import { LedgerEvent } from '@/lib/events/types';
 
 export function useLedgerEvents(ledgerId: string, enabled: boolean = true) {
     const queryClient = useQueryClient();
