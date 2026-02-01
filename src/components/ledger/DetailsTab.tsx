@@ -1,6 +1,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { fetchLedgerEntries, fetchLedgerEntrySummary } from "@/lib/api"; // Keep fetch for now as it's GET
+import { getLedgerEntriesAction } from "@/actions/ledger-entries";
+import { getLedgerStatsAction } from "@/actions/stats"; // New Action
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/actions/ledger-entries";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
@@ -38,7 +39,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     const { data: summaryData } = useQuery({
         queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.mainCurrency],
-        queryFn: () => fetchLedgerEntrySummary(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency),
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency),
         enabled: !!startDateStr && !!endDateStr
     });
 
@@ -50,11 +51,11 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         isLoading,
     } = useInfiniteQuery({
         queryKey: ["ledgerEntries", ledgerId, "confirmed", startDateStr, endDateStr],
-        queryFn: ({ pageParam }) => fetchLedgerEntries(ledgerId, {
+        queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
             limit: 20,
             startDate: startDateStr,
             endDate: endDateStr,
-            cursor: pageParam
+            cursor: pageParam as string | undefined
         }),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,

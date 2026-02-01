@@ -125,7 +125,7 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
     const createCredentialMutation = useMutation({
         mutationFn: async (name: string) => {
             const result = await createServiceCredentialAction(ledgerId, { name });
-            if (!result.success) throw new Error(result.error);
+            if (!result.success || !result.data) throw new Error(result.error || "Failed to create credential");
             return result.data;
         },
         onSuccess: () => {

@@ -2,7 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/routing";
-import { fetchLedgerEntrySummary } from "@/lib/api";
+import { getLedgerStatsAction } from "@/actions/stats";
+
+
 import { Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +24,7 @@ export function LedgerItem({ ledger, onEdit, onDelete }: LedgerItemProps) {
 
     const { data: summary } = useQuery({
         queryKey: ["summary", ledger.id],
-        queryFn: () => fetchLedgerEntrySummary(ledger.id),
+        queryFn: () => getLedgerStatsAction(ledger.id),
     });
 
     const stats = useMemo(() => {

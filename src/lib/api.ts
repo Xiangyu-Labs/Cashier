@@ -95,9 +95,8 @@ export function fetchLedgerEntries(
   );
 }
 
-export function fetchLedgerEntrySummary(ledgerId: string): Promise<LedgerEntrySummary> {
-  return request(`/ledgers/${ledgerId}/summary`, undefined, "Failed to fetch summary");
-}
+// function fetchLedgerEntrySummary removed
+// function fetchLedgerEntries removed
 
 export function fetchSourceDocuments(
   ledgerId: string,

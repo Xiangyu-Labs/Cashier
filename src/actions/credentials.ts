@@ -38,7 +38,14 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
         revalidatePath(`/ledger/${ledgerId}`);
 
         // Return key ONCE
-        return { success: true, data: { ...credential, createdAt: credential.createdAt.toISOString() } };
+        return {
+            success: true,
+            data: {
+                ...credential,
+                createdAt: credential.createdAt.toISOString(),
+                lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : undefined
+            }
+        };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to create service credential");
         return { success: false, error: "Failed to create service credential" };

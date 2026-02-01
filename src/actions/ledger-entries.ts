@@ -5,7 +5,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/lib/auth/helpers";
 
@@ -102,4 +102,52 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch update ledger entries");
         return { success: false, error: "Failed to batch update" };
     }
+}
+
+export async function getLedgerEntriesAction(
+    ledgerId: string,
+    params: {
+        limit?: number;
+        cursor?: string;
+        startDate?: string;
+        endDate?: string;
+    }
+) {
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) {
+        throw new Error("Unauthorized");
+    }
+
+    const limit = params.limit ?? 20;
+    const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
+
+    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));
+    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(params.endDate)));
+    if (params.cursor) conditions.push(lte(ledgerEntries.createdAt, new Date(params.cursor)));
+
+    const items = await db.query.ledgerEntries.findMany({
+        where: and(...conditions),
+        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt)],
+        limit: limit + 1,
+    });
+
+    let nextCursor: string | undefined = undefined;
+    if (items.length > limit) {
+        const nextItem = items.pop();
+        nextCursor = nextItem?.createdAt.toISOString();
+    }
+
+    // Map dates to strings
+    const mappedItems = items.map(item => ({
+        ...item,
+        amount: String(item.amount), // Ensure string to match LedgerEntry interface
+        createdAt: item.createdAt.toISOString(),
+        // updatedAt not in schema
+        entryDate: item.entryDate ? item.entryDate.toISOString() : null,
+    }));
+
+    return {
+        items: mappedItems,
+        nextCursor
+    };
 }

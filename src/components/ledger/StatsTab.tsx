@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchLedgerEntrySummary } from "@/lib/api";
+import { getLedgerStatsAction } from "@/actions/stats";
+
+
 import {
     DateRangeType,
     getDateRange,
@@ -44,7 +46,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             ledger?.mainCurrency,
         ],
         queryFn: () =>
-            fetchLedgerEntrySummary(
+            getLedgerStatsAction(
                 ledgerId || "",
                 formatDateForApi(startDate),
                 formatDateForApi(endDate),
