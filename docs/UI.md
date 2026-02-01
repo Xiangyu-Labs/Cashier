@@ -34,6 +34,7 @@
 
 ### 4. 克制动效
 - 仅使用淡入、位移 ≤ 2px、缩放 0.99
+- 严禁状态切换时的"瞬间跳变"（Snapping）
 - 不使用复杂路径动画或连续动画
 
 ---
@@ -98,6 +99,12 @@
 - 小元素（Tag/Badge）使用 `sm`
 - 输入框/按钮使用 `md`
 - 卡片/弹窗使用 `lg` / `xl`
+
+**Radius Trap (圆角陷阱)**：
+嵌套容器必须遵循公式：`Inner Radius = Outer Radius - Padding`。
+如果计算结果 < 0，则内部应为直角 (0px)。
+- ✅ Card (Radius 12px) padding 12px -> 内部内容直角 (0px)
+- ❌ Card (Radius 12px) padding 0px -> 内部内容圆角应为 12px
 
 ### 3.4 间距系统（Spacing Scale）
 
@@ -211,8 +218,14 @@ select {
 #### 交互规范
 - **hover**：亮度/透明度轻微变化（`hover:bg-primary/90`）
 - **active**：`transform: scale(0.99)`
-- **focus**：`ring: 3px var(--ring)/50`
-- **disabled**：`opacity: 0.5` + `pointer-events: none`
+- **focus**：`ring: 3px var(--ring)/50`（必须保证可见度 > 3:1）
+- **disabled**：禁止单纯使用 opacity: 0.5。必须使用特定的灰度背景与低对比度文字，但需保证文字对比度至少 3:1。
+  - 推荐：`bg-muted text-muted-foreground opacity-100 cursor-not-allowed`
+
+#### 触控目标（Touch Target）
+移动端可交互元素必须满足最小点击区域：
+- **高度**：≥ 44px (可通过 padding 实现)
+- **宽度**：≥ 44px
 
 ---
 
@@ -240,6 +253,8 @@ border-radius: var(--radius);
 background: var(--surface);
 border: 1px solid var(--border);
 border-radius: var(--radius-xl);
+/* 统一使用 p-6，确保空间感 */
+padding: var(--space-lg); /* 24px */
 box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* 可选：极轻阴影 */
 ```
 
@@ -1021,11 +1036,15 @@ desktop: ≥ 768px
 /* 淡入淡出 */
 opacity: 0 → 1;
 
-/* 轻微位移 */
+/* 轻微位移 (必须 ≤ 2px) */
 transform: translateY(±2px);
 
 /* 微缩放 */
 transform: scale(0.99);
+
+/* 布局过渡 (Layout Transitions) */
+/* 必须使用 layout 属性避免瞬间位移 */
+<motion.div layout transition={{ duration: 0.2 }} />
 ```
 
 ### 8.2 禁止的动效
@@ -1037,7 +1056,12 @@ transform: scale(0.99);
 
 ```css
 /* 推荐使用 */
+/* 推荐使用 */
 transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+/* 加载状态 (Nothing to Something) */
+/* 禁止从“空”直接跳变到“内容”，必须使用 Skeleton */
+/* 禁止使用全屏加载菊花 */
 ```
 
 ---
@@ -1077,8 +1101,10 @@ transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 ```
 
 ### 10.3 色彩对比度
-- 文字与背景对比度 **≥ WCAG AA**
-- 关键操作按钮对比度 **≥ WCAG AAA**
+- 文字与背景对比度 **≥ WCAG AA (4.5:1)**
+  - 特别注意：`muted-foreground` 在某些背景下可能不达标
+- 关键操作按钮对比度 **≥ WCAG AAA (7:1)**
+- **禁用状态**：文字对比度必须 **≥ 3:1**，不可完全不可见
 
 ---
 
@@ -1248,6 +1274,19 @@ desktop: ≥ 768px
     min-width: 600px;  /* 保持最小宽度 */
   }
 }
+
+### 安全区域 (Safe Areas)
+必须适配刘海屏与底部 Home Bar：
+
+```css
+padding-top: env(safe-area-inset-top);
+padding-bottom: env(safe-area-inset-bottom);
+padding-left: env(safe-area-inset-left);
+padding-right: env(safe-area-inset-right);
+```
+
+- **Sticky Header**: 必须包含 top inset
+- **Bottom Fixed**: 必须包含 bottom inset
 ```
 
 ### Modal → Drawer 转换
@@ -1336,3 +1375,56 @@ export function ResponsiveModal({ children, ...props }) {
 - ❌ 禁止只用 `alert()` 提示验证错误
 - ❌ 禁止错误消息显示在页面顶部（远离输入框）
 - ❌ 禁止只变边框不显示文字说明
+
+---
+
+## 17. 内容与开发体验规范 (Content & DX Guidelines)
+
+### 17.1 术语一致性 (Terminology)
+| 概念 | 推荐用词 (Eng) | 推荐用词 (中) | 禁止用词 |
+|------|----------------|---------------|----------|
+| **删除** | **Delete** | 删除 | Remove, Discard |
+| **新建/入口** | **New** | 新建 | Create (作为按钮文案) |
+| **创建动作** | **Create** | 创建 | New (作为动词) |
+| **单据** | **Bill** | 单据 | Receipt, Invoice (视上下文), Document |
+| **流水** | **Stream** | 流水 | Transaction, Flow |
+| **服务密钥** | **Service Key** | 服务密钥 | Service Credential |
+
+### 17.2 文本标准 (Text Standards)
+- **省略号**：必须使用排版字符 `…` (&hellip;)，禁止使用三个点 `...`。
+- **中西文间距**：汉字与英文/数字之间必须加空格。
+  - ✅ `总支出 ({count} 笔)`
+  - ❌ `总支出({count}笔)`
+- **技术术语**：禁止向用户暴露内部术语。
+  - ❌ "Evidence anomaly"
+  - ✅ "Receipt issue" / "无法识别的文件"
+
+### 17.3 错误处理 (Error Handling)
+- **禁止裸露后端错误**：UI 绝不可显示 `ETIMEDOUT`, `Duplicate key`, `Unknown column` 等原始错误。
+- **人话报错**：所有错误必须经过前端映射，转化为用户可读的建议。
+  - ❌ `Error: 500 Internal Server Error`
+  - ✅ `保存失败，请检查网络连接或稍后重试`
+
+---
+
+## 18. 国际化与本地化规范 (i18n & Localization)
+
+### 18.1 硬编码零容忍
+- ❌ **严禁**在组件、Server Action、Email 模板中硬编码任何自然语言字符串。
+- ✅ 所有用户可见文本必须提取到 `messages/{locale}.json`。
+- ✅ 即使是 AI Prompt，如果涉及用户可见的输出，也应考虑本地化或统一为英语。
+
+### 18.2 动态插值 (Dynamic Values)
+禁止手动拼接字符串，必须使用 ICU插值：
+
+- ❌ `t("total") + ": " + amount + " " + currency`
+- ✅ `t("total", { amount, currency })` -> `"Total: $100"`
+
+**货币格式化**：
+使用统一的 Key 或 `Intl.NumberFormat`：
+- `"currency_format": "{currency} {amount}"`
+
+### 18.3 日期与时间
+禁止硬编码日期格式：
+- ❌ `format(date, "yyyy年MM月dd日")`
+- ✅ 使用 `next-intl` 的 `useFormatter` 或 `date-fns` 的 locale 模块。
