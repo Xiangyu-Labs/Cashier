@@ -19,6 +19,7 @@ import { useTranslations, useLocale } from "next-intl";
 
 import { useConvertedAmount } from "@/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
+import { convertCurrencyAction } from "@/actions/currency";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -66,15 +67,10 @@ const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries
         queryKey: ["convert", amount, currency, mainCurrency, dateStr],
         queryFn: async () => {
           if (currency === mainCurrency) return { converted: amount };
-          const searchParams = new URLSearchParams();
-          searchParams.set("amount", amount.toString());
-          searchParams.set("from", currency);
-          searchParams.set("to", mainCurrency);
-          searchParams.set("date", dateStr);
 
-          const res = await fetch(`/api/currency/convert?${searchParams}`);
-          if (!res.ok) throw new Error("Conversion failed");
-          return res.json();
+          const res = await convertCurrencyAction(amount, currency, mainCurrency, dateStr);
+          if (!res.success) throw new Error(res.error || "Conversion failed");
+          return { converted: res.converted };
         },
         staleTime: 1000 * 60 * 60 * 24,
       };

@@ -63,7 +63,13 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     });
 
     const monthEntries = useMemo(() => {
-        return data?.pages.flatMap(p => p.items) || [];
+        return data?.pages.flatMap(p => p.items.map(item => ({
+            ...item,
+            sourceDocument: item.sourceDocument ? {
+                ...item.sourceDocument,
+                imageUrls: item.sourceDocument.imageUrls || []
+            } : item.sourceDocument
+        }))) || [];
     }, [data]);
 
     const monthStats = useMemo(() => {
