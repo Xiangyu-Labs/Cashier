@@ -48,9 +48,10 @@
 
 ## 3. 设计 Token（Design Tokens）
 
-### 3.1 基础变量（Light / Dark）
+### 3.1 核心变量 (Core Tokens)
+**(必须严格执行 12 个不可变基石)**
 
-以下 **12 个变量** 覆盖 90% UI 场景，其余样式必须由它们派生。
+以下 **12 个变量** 定义了产品的物理属性，其余所有样式必须由它们派生：
 
 ```css
 :root {
@@ -73,6 +74,25 @@
   --radius: 8px;
 }
 
+/* 3.2 派生变量 (System Tokens) - 自动计算或通过规则定义 */
+:root {
+  /* Alpha Variants (禁止在组件中手写 hex 透明度) */
+  --primary-a10: color-mix(in srgb, var(--primary), transparent 90%);
+  --primary-a20: color-mix(in srgb, var(--primary), transparent 80%);
+  --danger-a10:  color-mix(in srgb, var(--danger), transparent 90%);
+  --warning-a10: color-mix(in srgb, var(--warning), transparent 90%);
+  --info-a10:    color-mix(in srgb, var(--info), transparent 90%);
+  
+  /* Focus Ring 统一规范 */
+  --ring-width: 3px;
+  --ring-offset: 2px;
+  
+  /* Syntax Highlight (映射语义) */
+  --code-keyword: var(--primary);
+  --code-string: var(--info);
+  --code-function: var(--warning);
+}
+
 .dark {
   --bg: #343541;
   --surface: #444654;
@@ -86,8 +106,8 @@
 ```
 
 ### 3.2 使用规则
-- ✅ 所有颜色 **必须** 来自变量
-- ❌ 不允许在组件中直接写具体颜色值
+- ✅ 所有颜色 **必须** 来自变量（包括透明度，使用 `-a10`/`-a20` 变体）
+- ❌ 不允许在组件中直接写具体颜色值（如 `#ef444420`）
 - ✅ 深色模式只通过变量切换，不重写组件样式
 
 ### 3.3 圆角系统（Radius Scale）
@@ -182,7 +202,21 @@ font-family: Inter, system-ui, sans-serif;
 | 主标题（H1） | 24px |
 | 辅助文字 | 12px |
 
-**原则**：宁少勿多，层级越少，越接近 ChatGPT 的阅读体验。
+### 4.2 标题体系 (Title Hierarchy)
+
+**严格区分“产品 UI 标题”与“内容标题”：**
+
+1.  **产品 UI 标题** (导航、各种 Tab、功能入口)：
+    - **H3 (Section)**: 14px / bold (如卡片标题)
+    - **H2 (Page)**: 20px / bold (如页面主标题)
+    - **H1 (Feature)**: 24px / bold (仅用于极少数 Feature 首页)
+
+2.  **内容标题** (Markdown 渲染区、文章正文)：
+    - 为了阅读体验（类似 ChatGPT），内容区的标题应更克制：
+    - **Prose H3**: 16px / bold
+    - **Prose H1/H2**: 24px / 20px / bold
+
+**原则**：UI 是容器，应该“消隐”；内容是主角，应该“清晰”。不要让 UI 标题抢了内容的戏。
 
 ### 4.3 移动端约束
 
@@ -225,7 +259,9 @@ select {
 #### 交互规范
 - **hover**：亮度/透明度轻微变化（`hover:bg-primary/90`）
 - **active**：`transform: scale(0.99)`
-- **focus**：`ring: 3px var(--ring)/50`（必须保证可见度 > 3:1）
+- **active**：`transform: scale(0.99)`
+- **focus**：`outline: var(--ring-width) solid var(--ring); opacity: 0.5` (统一使用 token)
+- **focus-visible**: `outline-offset: var(--ring-offset)`
 - **disabled**：禁止单纯使用 opacity: 0.5。必须使用特定的灰度背景与低对比度文字，但需保证文字对比度至少 3:1。
   - 推荐：`bg-muted text-muted-foreground opacity-100 cursor-not-allowed`
 
@@ -245,7 +281,7 @@ border-radius: var(--radius);
 
 &:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--ring);
+  box-shadow: 0 0 0 var(--ring-width) var(--ring); /* 使用统一 Ring Token */
 }
 ```
 
@@ -262,8 +298,14 @@ border: 1px solid var(--border);
 border-radius: var(--radius-xl);
 /* 统一使用 p-6，确保空间感 */
 padding: var(--space-lg); /* 24px */
-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* 可选：极轻阴影 */
+box-shadow: var(--shadow-none); /* 默认无阴影，坚持“边框优先” */
 ```
+
+**阴影分级 (Shadow Scale)**：
+- `--shadow-none`: 0 0 0 transparent (默认)
+- `--shadow-subtle`: 0 1px 2px rgba(0,0,0,0.05) (仅用于纯白背景上的细微层次)
+- `--shadow-float`: 0 10px 30px rgba(0,0,0,0.1) (仅用于 Hover/Float)
+- `--shadow-modal`: 0 20px 50px rgba(0,0,0,0.2) (仅用于 Dialog)
 
 #### 组件结构
 
@@ -395,10 +437,10 @@ border-radius: var(--radius);
 | 变体 | 背景 | 文字颜色 | 使用场景 |
 |------|------|----------|----------|
 | **default** | `var(--surface2)` | `var(--text)` | 中性信息 |
-| **success** | `#10a37f20` | `var(--primary)` | 成功/已完成 |
-| **warning** | `#f59e0b20` | `var(--warning)` | 警告/待处理 |
-| **error** | `#ef444420` | `var(--danger)` | 错误/失败 |
-| **info** | `#3b82f620` | `var(--info)` | 提示/说明 |
+| **success** | `var(--primary-a20)` | `var(--primary)` | 成功/已完成 |
+| **warning** | `var(--warning-a20)` | `var(--warning)` | 警告/待处理 |
+| **error** | `var(--danger-a20)` | `var(--danger)` | 错误/失败 |
+| **info** | `var(--info-a20)` | `var(--info)` | 提示/说明 |
 
 **原则**：
 - 背景使用语义色的 `20%` 透明度
@@ -592,17 +634,14 @@ border-radius: var(--radius);
 
 ```css
 /* 浅色模式 */
-.code-keyword { color: #0550ae; }    /* 关键字 */
-.code-string { color: #0a3069; }     /* 字符串 */
-.code-comment { color: var(--muted); } /* 注释 */
-.code-function { color: #8250df; }   /* 函数名 */
-.code-number { color: #0550ae; }     /* 数字 */
+```css
+/* 浅色模式 */
+.code-keyword { color: var(--code-keyword); }
+.code-string { color: var(--code-string); }
+.code-function { color: var(--code-function); }
 
-/* 深色模式 */
-.dark .code-keyword { color: #79c0ff; }
-.dark .code-string { color: #a5d6ff; }
-.dark .code-function { color: #d2a8ff; }
-.dark .code-number { color: #79c0ff; }
+/* 深色模式：直接复用语义变量，无需重新做色值 */
+```
 ```
 
 #### 头部操作栏
@@ -1027,6 +1066,18 @@ code:not(.code-block code) {
 /* 只需一个断点，避免过度复杂化 */
 mobile: < 768px
 desktop: ≥ 768px
+### 8.3 可访问性 (Reduced Motion)
+必须尊重用户系统设置：
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 ```
 
 ### 7.3 移动端
@@ -1281,15 +1332,19 @@ desktop: ≥ 768px
     min-width: 600px;  /* 保持最小宽度 */
   }
 }
+```
 
-### 安全区域 (Safe Areas)
+### 15.2 安全区域 (Safe Areas)
 必须适配刘海屏与底部 Home Bar：
 
 ```css
-padding-top: env(safe-area-inset-top);
-padding-bottom: env(safe-area-inset-bottom);
-padding-left: env(safe-area-inset-left);
-padding-right: env(safe-area-inset-right);
+/* 独立代码块，避免嵌套错误 */
+.safe-area-padding {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 ```
 
 - **Sticky Header**: 必须包含 top inset
@@ -1382,6 +1437,21 @@ export function ResponsiveModal({ children, ...props }) {
 - ❌ 禁止只用 `alert()` 提示验证错误
 - ❌ 禁止错误消息显示在页面顶部（远离输入框）
 - ❌ 禁止只变边框不显示文字说明
+
+---
+
+## 19. 决策可回溯检查清单 (Decision Traceability)
+
+在提交 PR 前，**必须** 自查以下问题。如果任何一项为 YES，必须在 PR 描述中详细解释“为什么现有系统无法满足”：
+
+1.  **颜色自造**：是否引入了不在 `Core Tokens` 或 `System Tokens` 中的 Hex 颜色值？
+2.  **透明度逃逸**：是否在组件中手动写了 `opacity` 或 hex alpha（如 `#00000050`），而不是使用 `-a10` 变量？
+3.  **阴影滥用**：是否给非浮层元素加了阴影？
+4.  **动画过载**：是否使用了位移 > 2px 的动画？是否无法通过 `prefers-reduced-motion` 关闭？
+5.  **标题越级**：是否在产品 UI 区域使用了 H2 甚至 H1，导致视觉抢占了内容？
+6.  **圆角非法**：是否出现了嵌套圆角不满足 `Inner = Outer - Padding` 的情况？
+
+> **Golden Rule**: If you can't define it with a token, you probably shouldn't build it.
 
 ---
 
