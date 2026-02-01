@@ -5,11 +5,33 @@ import * as schema from "@/lib/db/schema";
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
+  // Use a different lock ID for "is creation done" check
+  const CHECK_LOCK_ID = 1234568;
+
+  // Try to acquire a session-level advisory lock. 
+  // If we can't get it immediately, it means someone else is creating or already created it.
+  // Wait, session locks stay until connection ends. In tests, connections stay.
+
+  // Better: Use a simple table or a specific lock pattern.
+  // Let's use a transaction lock but check for existence.
+
   await db.transaction(async (tx) => {
     // Advisory lock for the duration of the transaction
     await tx.execute(sql`SELECT pg_advisory_xact_lock(1234567)`);
 
-    // Drop tables if they exist to start fresh
+    // Check if a known table exists to skip creation
+    const tableCheck = await tx.execute(sql`
+      SELECT 1 FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'users'
+      LIMIT 1
+    `);
+
+    if ((tableCheck as any).length > 0) {
+      // Schema already exists, skip creation
+      return;
+    }
+
+    // Drop tables if they exist to start fresh (in case of partial state)
     await tx.execute(sql`
       DROP TABLE IF EXISTS ledger_entries CASCADE;
       DROP TABLE IF EXISTS source_documents CASCADE;
