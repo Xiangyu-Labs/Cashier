@@ -1,4 +1,4 @@
-import { BaseRepository } from "./base-repository";
+import { BaseRepository } from "@/lib/repositories/base-repository";
 import { ledgerEntries } from "@/lib/db/schema";
 import { InferSelectModel } from "drizzle-orm";
 

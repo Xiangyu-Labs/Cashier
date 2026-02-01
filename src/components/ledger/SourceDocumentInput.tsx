@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLedgerAction, getLedgerAction } from "@/actions/ledgers";
+import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/actions/source-document";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

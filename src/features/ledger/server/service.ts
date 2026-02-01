@@ -1,5 +1,5 @@
 import { BaseRepository, QueryOptions } from "@/lib/repositories/base-repository";
-import { ledgerEntryRepo } from "@/lib/repositories/ledger-entry-repository";
+import { ledgerEntryRepo } from "./repository";
 import { sourceDocumentRepo } from "@/lib/repositories/source-document-repository";
 import { taskRunRepo } from "@/lib/repositories/task-run-repository";
 import { shareRepo } from "@/lib/repositories/share-repository";

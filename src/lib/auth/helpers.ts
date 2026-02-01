@@ -98,7 +98,7 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     return { ledger };
 }
 
-import { LedgerScope } from "@/lib/scope/ledger-scope";
+import { LedgerScope } from "@/features/ledger/server/service";
 
 /**
  * Helper to get user ID, verify ledger ownership, and return a scoped context.

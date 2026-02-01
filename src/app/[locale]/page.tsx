@@ -4,7 +4,7 @@ import { redirect } from "@/i18n/routing";
 import { getTranslations, getLocale } from "next-intl/server";
 import { auth } from "@/auth";
 import { getLedgers } from "@/services/ledgers";
-import { createLedgerAction } from "@/actions/ledgers";
+import { createLedgerAction } from "@/features/ledger/server/actions/ledgers";
 
 export default async function HomePage(): Promise<ReactNode> {
   const session = await auth();

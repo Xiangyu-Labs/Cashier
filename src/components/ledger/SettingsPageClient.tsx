@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { useMutation } from "@tanstack/react-query";
 import {
     updateLedgerAction,
-} from "@/actions/ledgers";
+} from "@/features/ledger/server/actions/ledgers";
 import {
     createEntryCategoryAction,
     updateEntryCategoryAction,

@@ -5,7 +5,7 @@ import {
     deleteLedgerEntryAction,
     batchUpdateLedgerEntriesAction,
     batchDeleteLedgerEntriesAction,
-} from "@/actions/ledger-entries";
+} from "@/features/ledger/server/actions/entries";
 import {
     retrySourceDocumentAction,
     updateSourceDocumentAction,

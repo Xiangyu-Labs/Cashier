@@ -20,7 +20,12 @@ function loadEnvLocal() {
 loadEnvLocal();
 
 export default defineConfig({
-  schema: "./src/lib/db/schema.ts",
+  schema: [
+    "./src/lib/db/schemas/auth.ts",
+    "./src/lib/db/schemas/legacy.ts",
+    "./src/features/ledger/server/schema.ts",
+    "./src/lib/db/relations.ts"
+  ],
   out: "./src/lib/db/migrations",
   dialect: "postgresql",
   dbCredentials: {

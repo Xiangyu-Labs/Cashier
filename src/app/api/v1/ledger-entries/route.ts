@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/lib/db/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { LedgerScope } from "@/lib/scope/ledger-scope";
+import { LedgerScope } from "@/features/ledger/server/service";
 
 import { eq } from "drizzle-orm";
 
