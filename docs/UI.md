@@ -5,9 +5,16 @@
 这是一套为工具型产品与 AI 应用设计的极简 UI 设计系统，目标是：
 - **内容优先**：界面为信息服务，而不是装饰
 - **低认知负担**：用户无需学习即可使用
-- **高一致性**：不同页面、不同项目保持相同气质
+- **高一致性**：不同页面、不同项目保持相同气质，用户一眼识别品牌
 - **AI 友好**：规则清晰，便于 AI 按约束生成一致 UI
 - **长期维护**：避免复杂主题系统与视觉债务
+
+### 核心识别度 (Brand Identity)
+用户通过以下特征识别我们的产品：
+1. **触感**：极度克制的动画 (2px 位移) 与扎实的物理反馈 (Scale 0.99)。
+2. **通透**：大面积留白与高亮的边框，而非阴影堆叠。
+3. **精准**：极简的文字与严格对齐的排版。
+
 
 ### 适用场景
 - AI 工具 / SaaS
@@ -1386,9 +1393,10 @@ export function ResponsiveModal({ children, ...props }) {
 | **删除** | **Delete** | 删除 | Remove, Discard |
 | **新建/入口** | **New** | 新建 | Create (作为按钮文案) |
 | **创建动作** | **Create** | 创建 | New (作为动词) |
-| **单据** | **Bill** | 单据 | Receipt, Invoice (视上下文), Document |
-| **流水** | **Stream** | 流水 | Transaction, Flow |
-| **服务密钥** | **Service Key** | 服务密钥 | Service Credential |
+| **编辑** | **Edit** | 编辑 | Modify, Change |
+| **设置** | **Settings** | 设置 | Config, Preference |
+
+*(注：具体业务术语应在各项目的 `DOMAIN.md` 中单独定义，但必须遵循上述动词规范)*
 
 ### 17.2 文本标准 (Text Standards)
 - **省略号**：必须使用排版字符 `…` (&hellip;)，禁止使用三个点 `...`。
@@ -1396,8 +1404,8 @@ export function ResponsiveModal({ children, ...props }) {
   - ✅ `总支出 ({count} 笔)`
   - ❌ `总支出({count}笔)`
 - **技术术语**：禁止向用户暴露内部术语。
-  - ❌ "Evidence anomaly"
-  - ✅ "Receipt issue" / "无法识别的文件"
+  - ❌ "Anomaly code: E_INVALID_FILE"
+  - ✅ "文件无法识别"
 
 ### 17.3 错误处理 (Error Handling)
 - **禁止裸露后端错误**：UI 绝不可显示 `ETIMEDOUT`, `Duplicate key`, `Unknown column` 等原始错误。
