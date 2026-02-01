@@ -421,6 +421,8 @@ export function LedgerEntriesTab({
                                                                 className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                 defaultExpanded={true}
                                                                 mainCurrency={ledger?.mainCurrency || undefined}
+                                                                onRetry={() => setEditRetryDocument(group.sourceDocument)}
+                                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
                                                         </motion.div>
                                                     ))}
