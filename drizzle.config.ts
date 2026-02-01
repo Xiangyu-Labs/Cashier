@@ -21,9 +21,12 @@ loadEnvLocal();
 
 export default defineConfig({
   schema: [
-    "./src/lib/db/schemas/auth.ts",
-    "./src/lib/db/schemas/legacy.ts",
+    "./src/features/auth/server/schema.ts",
+    "./src/features/currency/server/schema.ts",
     "./src/features/ledger/server/schema.ts",
+    "./src/features/share/server/schema.ts",
+    "./src/features/source-document/server/schema.ts",
+    "./src/features/tasks/server/schema.ts",
     "./src/lib/db/relations.ts"
   ],
   out: "./src/lib/db/migrations",
