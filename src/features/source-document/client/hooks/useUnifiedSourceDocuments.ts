@@ -131,6 +131,9 @@ export function useUnifiedSourceDocuments(
 
             if (doc.status === 'anomaly') {
                 result.anomaly.push({ sourceDocument: doc, ledgerEntries: entries });
+            } else if (doc.status === 'completed') {
+                // Should not happen based on API query, but if it does (e.g. stale cache), put in completed
+                result.completed.push({ sourceDocument: doc, ledgerEntries: entries });
             } else {
                 // queued or processing
                 result.processing.push({ sourceDocument: doc, ledgerEntries: entries });

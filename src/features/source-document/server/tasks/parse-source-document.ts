@@ -84,6 +84,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
     // 1. Main execution
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
+        if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
         // Update status to processing
         await sourceDocumentRepo.setProcessing(input.sourceDocumentId, context.ledgerId);
 
@@ -258,12 +259,15 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
         // 1. Check if entries already exist (Idempotency)
-        const existingEntries = await db.query.ledgerEntries.findFirst({
-            where: eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)
-        });
+        const [existingEntries] = await db.select().from(ledgerEntries).where(eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)).limit(1);
 
         if (existingEntries) {
-            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, skipping insert");
+            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, ensuring status is completed");
+            // Still need to mark as completed and update title even if entries exist (idempotency)
+            await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
+            if (title) {
+                await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
+            }
             return;
         }
 
@@ -328,6 +332,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         let anomalyCode = "internal_error";
         if (error.message.includes("schema validation failed") || error.message.includes("Invalid content")) {
             anomalyCode = "invalid_content";
+        }
+
+        if (!context.ledgerId) {
+            logger.warn({ sourceDocumentId: input.sourceDocumentId }, "Missing ledgerId in onError, cannot update status");
+            return;
         }
 
         // Update source document status to anomaly via Repo

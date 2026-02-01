@@ -213,11 +213,14 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             value={locale}
                             onChange={(e) => {
                                 const newLocale = e.target.value;
+                                if (newLocale === 'auto') {
+                                    // Clear cookie to allow middleware to detect browser language
+                                    document.cookie = `NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                                    window.location.reload();
+                                    return;
+                                }
                                 if (newLocale !== locale) {
-                                    router.push(pathname as any);
-                                    router.refresh();
-                                    // Helper for prefix handling if easy
-                                    // But using router.push from @/i18n/routing usually handles it.
+                                    router.push(pathname as any, { locale: newLocale as any });
                                 }
                             }}
                             className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
