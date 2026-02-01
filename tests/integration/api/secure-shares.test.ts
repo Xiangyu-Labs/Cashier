@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from "vitest";
-import { getPublicShareAction } from "@/actions/shares";
+import { getPublicShareAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { sourceDocuments, shares } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

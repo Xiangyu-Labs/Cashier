@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/actions/currency";
+import { convertCurrencyAction } from "@/features/ledger/server/actions";
 
 interface ConversionData {
     amount: number;

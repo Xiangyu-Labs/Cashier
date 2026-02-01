@@ -8,7 +8,7 @@ import {
   getLockoutExpiration,
   getMaxAttempts,
   getResendCooldown,
-} from "@/lib/auth/otp";
+} from "@/features/auth/server/services/otp";
 
 describe("OTP Utility Functions", () => {
   describe("generateOTP", () => {

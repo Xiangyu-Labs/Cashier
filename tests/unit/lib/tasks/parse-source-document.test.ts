@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/lib/tasks/parse-source-document";
+import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,21 +7,21 @@ import { FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
 // Mock the processor and utils
-vi.mock("@/lib/message-processor/processor", () => ({
+vi.mock("@/features/ai/server/services/processor", () => ({
     getSourceDocumentProcessor: vi.fn(),
 }));
 
-vi.mock("@/lib/message-processor/utils", () => ({
+vi.mock("@/features/ai/server/utils/utils", () => ({
     summarizeLedgerEntries: vi.fn(),
 }));
 
-vi.mock("@/lib/ai/arbitration", () => ({
+vi.mock("@/features/ai/server/services/arbitration", () => ({
     arbitrate: vi.fn(),
 }));
 
-import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
-import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
-import { arbitrate } from "@/lib/ai/arbitration";
+import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
+import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
+import { arbitrate } from "@/features/ai/server/services/arbitration";
 
 describe("parseSourceDocumentHandler.execute", () => {
     let mockProcessor: { process: ReturnType<typeof vi.fn> };

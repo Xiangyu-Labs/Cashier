@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
+import { LedgerEntryDetailModal } from "@/features/ledger/components/LedgerEntryDetailModal";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { useEffect } from "react";
 
@@ -28,7 +28,7 @@ vi.mock("@/hooks/use-toast", () => ({
 }));
 
 // Mock child components to simplify testing parent logic
-vi.mock("@/components/ledger-entry/LedgerEntryEditForm", () => ({
+vi.mock("@/features/ledger/components/LedgerEntryEditForm", () => ({
     LedgerEntryEditForm: ({ onSave, onCancel }: { onSave: () => void, onCancel: () => void }) => (
         <div>
             <button onClick={onSave}>Save</button>
@@ -37,7 +37,7 @@ vi.mock("@/components/ledger-entry/LedgerEntryEditForm", () => ({
     ),
 }));
 
-vi.mock("@/components/ledger-entry/LedgerEntryViewDetails", () => ({
+vi.mock("@/features/ledger/components/LedgerEntryViewDetails", () => ({
     LedgerEntryViewDetails: ({ isEditing, onEditStart, onEditSave, onDelete }: { isEditing: boolean, onEditStart: () => void, onEditSave: () => void, onDelete: () => void }) => (
         <div>
             {isEditing ? (

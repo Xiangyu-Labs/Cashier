@@ -5,7 +5,7 @@ import { getTestDb } from "../../setup";
 import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/actions/service-credentials";
+import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/features/source-document/server/actions";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
@@ -19,7 +19,7 @@ vi.mock("@/lib/flow/producer", () => ({
 }));
 
 // Mock Tasks
-vi.mock("@/lib/tasks", () => ({
+vi.mock("@/features/source-document/server/tasks/parse-source-document", () => ({
     TASK_TYPE_PARSE_SOURCE_DOCUMENT: "parse_source_document",
 }));
 

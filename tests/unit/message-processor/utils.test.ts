@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
-import { ParsedLedgerEntry } from "@/lib/message-processor/types";
-import { getOpenAIClient } from "@/lib/ai/openai";
+import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
+import { ParsedLedgerEntry } from "@/features/ai/server/types";
+import { getOpenAIClient } from "@/features/ai/server/services/openai";
 
-vi.mock("@/lib/ai/openai", () => ({
+vi.mock("@/features/ai/server/services/openai", () => ({
     getOpenAIClient: vi.fn(),
 }));
 

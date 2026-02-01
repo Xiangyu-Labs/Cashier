@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { eventBus } from "@/lib/events/event-bus";
-import { sourceDocumentRepo } from "@/lib/repositories";
+import { sourceDocumentRepo } from "@/features/source-document/server/repository";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

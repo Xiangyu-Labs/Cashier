@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { determineSourceType, SourceDocumentInput } from "@/lib/message-processor/types";
+import { determineSourceType, SourceDocumentInput } from "@/features/ai/server/types";
 
 describe("determineSourceType", () => {
   it('should return "text" for text-only input', () => {

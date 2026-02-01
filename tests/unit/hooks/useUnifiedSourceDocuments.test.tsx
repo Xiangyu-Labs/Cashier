@@ -2,14 +2,14 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnifiedSourceDocuments } from "@/hooks/useUnifiedSourceDocuments";
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
-import { getSourceDocumentsAction } from "@/actions/source-document";
-import { getLedgerEntriesAction } from "@/actions/ledger-entries";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
+import { getLedgerEntriesAction } from "@/features/ledger/server/actions";
 
 // Mock API modules
-vi.mock("@/actions/source-document", () => ({
+vi.mock("@/features/source-document/server/actions", () => ({
     getSourceDocumentsAction: vi.fn(),
 }));
-vi.mock("@/actions/ledger-entries", () => ({
+vi.mock("@/features/ledger/server/actions", () => ({
     getLedgerEntriesAction: vi.fn(),
 }));
 

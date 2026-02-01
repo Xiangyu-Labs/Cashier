@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { OpenAISourceDocumentProcessor } from "@/lib/message-processor/processor";
-import { SourceDocumentInput, ProcessorContext } from "@/lib/message-processor/types";
+import { OpenAISourceDocumentProcessor } from "@/features/ai/server/services/processor";
+import { SourceDocumentInput, ProcessorContext } from "@/features/ai/server/types";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
 // Mock the OpenAI client
-vi.mock("@/lib/ai/openai", () => ({
+vi.mock("@/features/ai/server/services/openai", () => ({
   getOpenAIClient: vi.fn(() => ({
     generateContent: vi.fn(),
   })),
 }));
 
-import { getOpenAIClient } from "@/lib/ai/openai";
+import { getOpenAIClient } from "@/features/ai/server/services/openai";
 
 describe("OpenAIMessageProcessor", () => {
   let processor: OpenAISourceDocumentProcessor;

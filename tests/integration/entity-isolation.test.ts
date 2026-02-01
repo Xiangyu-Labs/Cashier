@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { createTestUserWithLedger } from "../helpers/schema-setup";
-import { LedgerScope } from "@/lib/scope/ledger-scope";
+import { LedgerScope } from "@/features/ledger/server/service";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 

@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from "vitest";
-import { isRegistrationAllowed } from "@/lib/auth/registration";
+import { isRegistrationAllowed } from "@/features/auth/server/services/registration";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 

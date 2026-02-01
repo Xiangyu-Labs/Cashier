@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getLedgerEntriesAction } from "@/actions/ledger-entries";
+import { getLedgerEntriesAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

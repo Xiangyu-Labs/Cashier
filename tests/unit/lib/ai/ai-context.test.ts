@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { withAIContext, getCurrentTaskRunId, getCurrentLedgerId } from '@/lib/ai/ai-context';
+import { withAIContext, getCurrentTaskRunId, getCurrentLedgerId } from '@/features/ai/server/ai-context';
 
 describe('AI Context', () => {
     it('should return undefined when no context is set', () => {

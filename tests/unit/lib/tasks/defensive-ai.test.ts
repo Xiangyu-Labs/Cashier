@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
+import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";

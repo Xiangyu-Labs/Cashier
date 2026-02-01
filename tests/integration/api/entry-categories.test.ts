@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getEntryCategoriesAction, createEntryCategoryAction, reorderEntryCategoriesAction } from "@/actions/categories";
+import { getEntryCategoriesAction, createEntryCategoryAction, reorderEntryCategoriesAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

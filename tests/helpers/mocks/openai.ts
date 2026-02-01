@@ -107,7 +107,7 @@ export function createMockOpenAIClient(mockResponse: string = MOCK_RESPONSES.sin
 export function setupOpenAIMock(mockResponse: string = MOCK_RESPONSES.singleEntry) {
     const mockClient = createMockOpenAIClient(mockResponse);
 
-    vi.doMock("@/lib/ai/openai", () => ({
+    vi.doMock("@/features/ai/server/services/openai", () => ({
         getOpenAIClient: () => mockClient,
         OpenAIClient: vi.fn().mockImplementation(() => mockClient),
     }));

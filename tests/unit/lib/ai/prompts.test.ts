@@ -1,6 +1,6 @@
 
-import { buildLedgerEntryPrompt, buildSummarizationPrompt } from "@/lib/ai/prompts";
-import { CategoryInfo } from "@/lib/message-processor/types";
+import { buildLedgerEntryPrompt, buildSummarizationPrompt } from "@/features/ai/server/services/prompts";
+import { CategoryInfo } from "@/features/ai/server/types";
 
 describe("GPT Prompts", () => {
     describe("buildLedgerEntryPrompt", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { batchUpdateLedgerEntriesAction } from "@/actions/ledger-entries";
+import { batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";

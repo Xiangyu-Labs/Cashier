@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { createSourceDocumentAction, deleteSourceDocumentAction } from "@/actions/source-document";
+import { createSourceDocumentAction, deleteSourceDocumentAction } from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,11 +7,11 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
-vi.mock("@/lib/ai/openai", () => ({
+vi.mock("@/features/ai/server/services/openai", () => ({
   getOpenAIClient: vi.fn(),
 }));
 
-import { getOpenAIClient } from "@/lib/ai/openai";
+import { getOpenAIClient } from "@/features/ai/server/services/openai";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("SourceDocument Actions", () => {

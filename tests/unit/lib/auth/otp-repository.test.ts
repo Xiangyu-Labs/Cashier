@@ -6,9 +6,9 @@ import {
   isAccountLocked,
   deleteOTPToken,
   cleanupExpiredOTPTokens,
-} from "@/lib/auth/otp-repository";
-import { generateOTP, hashOTP } from "@/lib/auth/otp";
-import { otpTokens } from "@/lib/db/schema";
+} from "@/features/auth/server/repositories/otp-repository";
+import { generateOTP, hashOTP } from "@/features/auth/server/services/otp";
+import { otpTokens } from "@/features/auth/server/schema";
 import { sql } from "drizzle-orm";
 
 describe("OTP Repository", () => {

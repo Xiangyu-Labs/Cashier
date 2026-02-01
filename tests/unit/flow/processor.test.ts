@@ -59,7 +59,7 @@ describe('Flow Processor', () => {
             completeTaskRun: vi.fn(),
             failTaskRun: vi.fn()
         }));
-        vi.doMock('@/lib/ai/ai-context', () => ({
+        vi.doMock('@/features/ai/server/ai-context', () => ({
             withAIContext: vi.fn((taskId, ledgerId, fn) => fn())
         }));
         vi.doMock('@/lib/logger', () => ({
@@ -84,7 +84,7 @@ describe('Flow Processor', () => {
         ({ db } = await import('@/lib/db'));
         workers = await import('@/lib/flow/workers');
         taskRunService = await import('@/lib/flow/task-run-service');
-        aiContext = await import('@/lib/ai/ai-context');
+        aiContext = await import('@/features/ai/server/ai-context');
 
         // Register the task handler
         registerFlowTask('test-task', mockHandler as any);

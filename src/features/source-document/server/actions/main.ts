@@ -5,7 +5,7 @@ import { entryCategories, sourceDocuments } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { submitFlowTask } from "@/lib/flow/producer";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "./tasks/parse-source-document";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
 import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
 

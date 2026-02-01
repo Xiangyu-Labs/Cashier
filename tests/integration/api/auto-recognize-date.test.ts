@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
 import { submitFlowTask } from "@/lib/flow/producer";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/lib/tasks/parse-source-document";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
-import * as processorModule from "@/lib/message-processor/processor";
+import * as processorModule from "@/features/ai/server/services/processor";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 // Mock the processor

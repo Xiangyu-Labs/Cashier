@@ -11,11 +11,11 @@ import {
     createTestUserWithLedger,
 } from "../../helpers/schema-setup";
 import { NextRequest } from "next/server";
-import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/actions/ledgers";
-import { getLedgerEntriesAction } from "@/actions/ledger-entries";
-import { getSourceDocumentsAction } from "@/actions/source-document";
-import { getEntryCategoriesAction } from "@/actions/categories";
-import { getServiceCredentialsAction } from "@/actions/service-credentials";
+import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/features/ledger/server/actions";
+import { getLedgerEntriesAction } from "@/features/ledger/server/actions";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions";
+import { getServiceCredentialsAction } from "@/features/source-document/server/actions";
 
 // Mock auth
 import { auth } from "@/auth";

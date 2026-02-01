@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createShareAction, getPublicShareAction, deleteShareAction } from "@/actions/shares";
+import { createShareAction, getPublicShareAction, deleteShareAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { sourceDocuments, shares, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

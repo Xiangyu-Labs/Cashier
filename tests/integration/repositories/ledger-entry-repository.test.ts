@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { ledgerEntryRepo } from "@/lib/repositories/ledger-entry-repository";
+import { ledgerEntryRepo } from "@/features/ledger/server/repository";
 import { getTestDb } from "tests/setup";
 import { ledgers, ledgerEntries } from "@/lib/db/schema";
 import { createLedgerData, createLedgerEntryData } from "tests/helpers/factories";
