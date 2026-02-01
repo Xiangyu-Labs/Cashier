@@ -17,6 +17,7 @@ const withPWA = withPWAInit({
   disable: false,
   workboxOptions: {
     disableDevLogs: false,
+    importScripts: ["/push-worker.js"],
   },
 });
 

@@ -1,6 +1,6 @@
 import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { sourceDocumentRepo } from "../repository";
 import { ledgerEntryRepo } from "@/features/ledger/server/repository";
 import { arbitrate } from "@/features/ai/server/services/arbitration";
+import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -323,6 +324,24 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         // Update title if present
         if (title) {
             await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
+        }
+
+        // Send Push Notification
+        if (context.ledgerId) {
+            // Fetch ledger owner
+            const ledger = await db.query.ledgers.findFirst({
+                where: eq(ledgers.id, context.ledgerId),
+                columns: { userId: true }
+            });
+
+            if (ledger?.userId) {
+                await sendNotificationToUser(ledger.userId, {
+                    title: "Document Processed",
+                    body: `Your document "${title || "untitled"}" has been successfully processed.`,
+                    url: `/ledger/${context.ledgerId}`,
+                    data: { ledgerId: context.ledgerId, sourceDocumentId: input.sourceDocumentId }
+                });
+            }
         }
     },
 

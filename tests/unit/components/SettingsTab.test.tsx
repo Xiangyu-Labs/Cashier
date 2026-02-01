@@ -70,6 +70,7 @@ describe("SettingsTab", () => {
         userId: "u1",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        deletedAt: null // Added missing property
     };
 
     const mockCategories: EntryCategory[] = [];

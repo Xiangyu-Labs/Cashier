@@ -20,6 +20,7 @@ import { CurrencySection } from "@/app/[locale]/ledger/[id]/settings/components/
 import { CategorySection } from "@/app/[locale]/ledger/[id]/settings/components/CategorySection";
 import { ServiceCredentialSection } from "@/app/[locale]/ledger/[id]/settings/components/ServiceCredentialSection";
 import { ProcessingSystemSection } from "@/app/[locale]/ledger/[id]/settings/components/ProcessingSystemSection";
+import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
 import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon } from "lucide-react";
@@ -375,6 +376,14 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                             onReorderCategories={(ids) => reorderCategoriesMutation.mutate(ids)}
                         />
                     )}
+                </div>
+            </section>
+
+            {/* Notification Settings */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
+                <h2 className="text-lg font-medium mb-6">{t('notifications')}</h2>
+                <div className="space-y-6">
+                    <PushNotificationManager />
                 </div>
             </section>
 

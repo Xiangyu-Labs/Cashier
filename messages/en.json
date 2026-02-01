@@ -220,7 +220,15 @@
         "taskCenter": "Task Center",
         "aiPrompt": "Ledger Prompt",
         "aiPromptDesc": "Customize AI recognition with specific preferences (e.g., add more emojis to titles)",
-        "aiPromptPlaceholder": "Enter your custom preferences, e.g., I want the bill summaries to be more casual and include relevant emojis."
+        "aiPromptPlaceholder": "Enter your custom preferences, e.g., I want the bill summaries to be more casual and include relevant emojis.",
+        "notifications": "Notifications",
+        "pushNotifications": "Push Notifications",
+        "pushNotificationsDesc": "Receive real-time updates when your bills are processed.",
+        "notificationsEnabled": "Notifications enabled",
+        "notificationsDisabled": "Notifications disabled",
+        "notificationSubscribeFailed": "Failed to enable notifications",
+        "notificationUnsubscribeFailed": "Failed to disable notifications",
+        "notificationPermissionDenied": "Permission denied. Please enable notifications in your browser settings."
     },
     "ServiceCredentials": {
         "title": "Service Credentials",
