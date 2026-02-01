@@ -48,7 +48,7 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
             data: {
                 ...credential,
                 createdAt: credential.createdAt.toISOString(),
-                lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : undefined
+                lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : null
             }
         };
     } catch (error) {

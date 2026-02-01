@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { ledgers } from "@/features/ledger/server/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";
+import { type InferSelectModel } from "drizzle-orm";
 
 // Shares (分享链接)
 export const shares = pgTable("shares", {
@@ -28,6 +29,8 @@ export const shares = pgTable("shares", {
     index("idx_shares_ledger").on(table.ledgerId),
 ]);
 
+export type Share = InferSelectModel<typeof shares>;
+
 // Share Access Logs (分享访问审计日志)
 export const shareAccessLogs = pgTable("share_access_logs", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -42,3 +45,5 @@ export const shareAccessLogs = pgTable("share_access_logs", {
     index("idx_share_access_logs_share_id").on(table.shareId),
     index("idx_share_access_logs_accessed_at").on(table.accessedAt),
 ]);
+
+export type ShareAccessLog = InferSelectModel<typeof shareAccessLogs>;

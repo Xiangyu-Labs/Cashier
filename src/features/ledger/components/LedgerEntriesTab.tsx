@@ -420,7 +420,7 @@ export function LedgerEntriesTab({
                                                                 status={group.sourceDocument.status || 'processing'}
                                                                 className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                 defaultExpanded={true}
-                                                                mainCurrency={ledger?.mainCurrency}
+                                                                mainCurrency={ledger?.mainCurrency || undefined}
                                                             />
                                                         </motion.div>
                                                     ))}
@@ -464,7 +464,7 @@ export function LedgerEntriesTab({
                                                                 anomalyCodes={group.sourceDocument.anomalyCodes}
                                                                 className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                                                                 defaultExpanded={!ledger?.collapseBillsDefault}
-                                                                mainCurrency={ledger?.mainCurrency}
+                                                                mainCurrency={ledger?.mainCurrency || undefined}
                                                                 onRetry={() => setEditRetryDocument(group.sourceDocument)}
                                                                 onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
                                                             />
@@ -495,7 +495,7 @@ export function LedgerEntriesTab({
                                                 ledgerEntries={group.ledgerEntries}
                                                 categories={categories}
                                                 status="completed"
-                                                mainCurrency={ledger?.mainCurrency}
+                                                mainCurrency={ledger?.mainCurrency || undefined}
                                                 defaultExpanded={!ledger?.collapseBillsDefault}
                                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
                                                 onUpdateLedgerEntry={handleUpdateLedgerEntry}
@@ -533,8 +533,8 @@ export function LedgerEntriesTab({
                 sourceDocument={selectedSourceDocument?.sourceDocument || null}
                 ledgerEntries={selectedSourceDocument?.ledgerEntries || []}
                 categories={categories}
-                preferredCurrencies={ledger?.currencies}
-                mainCurrency={ledger?.mainCurrency}
+                preferredCurrencies={ledger?.currencies || []}
+                mainCurrency={ledger?.mainCurrency || undefined}
                 open={isSourceDetailModalOpen}
                 onClose={handleCloseSourceDetail}
                 onUpdateTitle={handleUpdateTitle}
@@ -552,8 +552,8 @@ export function LedgerEntriesTab({
             <LedgerEntryDetailModal
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
-                preferredCurrencies={ledger?.currencies}
-                mainCurrency={ledger?.mainCurrency}
+                preferredCurrencies={ledger?.currencies || []}
+                mainCurrency={ledger?.mainCurrency || undefined}
                 open={isDetailModalOpen}
                 onClose={handleCloseLedgerDetail}
                 onUpdate={handleUpdateLedgerEntryDetail}

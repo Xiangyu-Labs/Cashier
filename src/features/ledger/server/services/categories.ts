@@ -17,6 +17,7 @@ export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryC
 
     return rows.map(row => ({
         id: row.id,
+        ledgerId: row.ledgerId,
         name: row.name,
         description: row.description || null,
         icon: row.icon || null,

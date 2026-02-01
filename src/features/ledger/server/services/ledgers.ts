@@ -30,6 +30,7 @@ export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefi
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
     return {
         id: row.id,
+        userId: row.userId,
         name: row.name,
         aiLanguage: row.aiLanguage ?? "en", // Default? Schema says string not null usually or default
         currencies: row.currencies || [],

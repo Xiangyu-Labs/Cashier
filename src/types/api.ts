@@ -1,27 +1,26 @@
+import { type Ledger as DbLedger, type EntryCategory as DbEntryCategory, type LedgerEntry as DbLedgerEntry, type ServiceCredential as DbServiceCredential } from "@/features/ledger/server/schema";
+import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
+import { Serialized } from "./utils";
 
+// Re-export Serialized wrapper types
+export type Ledger = Serialized<DbLedger>;
+export type ServiceCredential = Serialized<DbServiceCredential>;
+export type EntryCategory = Serialized<DbEntryCategory>;
+export type SourceDocument = Serialized<DbSourceDocument>;
 
-export interface Ledger {
+// Extended types
+export type LedgerEntry = Serialized<DbLedgerEntry> & {
+  category?: EntryCategory | null;
+  sourceDocument?: SourceDocument | null;
+};
+
+// Derived types (subsets or composites)
+export interface Settings {
   id: string;
-  name: string;
   aiLanguage: string;
   currencies: string[];
-  mainCurrency: string;
-  createdAt: string;
-  updatedAt: string;
-  autoRecognizeDate: boolean;
-  collapseProcessingDefault: boolean;
-  mergeSimilarItems: boolean;
-  collapseBillsDefault: boolean;
-  aiCustomPrompt: string;
-}
-
-
-export interface ServiceCredential {
-  id: string;
-  name: string;
-  key?: string;
-  createdAt: string;
-  lastUsedAt?: string;
+  mainCurrency?: string;
+  autoRecognizeDate?: boolean;
 }
 
 export interface ShareData {
@@ -47,52 +46,6 @@ export interface ShareData {
   }[];
   ledgerId: string;
 }
-
-export interface Settings {
-  id: string;
-  aiLanguage: string;
-  currencies: string[];
-  mainCurrency?: string;
-  autoRecognizeDate?: boolean;
-}
-
-export interface EntryCategory {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  sortOrder: number;
-  isEditable?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SourceDocument {
-  id: string;
-  ledgerId: string;
-  title: string | null;
-  text: string | null;
-  imageUrls: string[];
-  createdAt: string;
-  status?: "queued" | "processing" | "completed" | "anomaly";
-  anomalyCodes?: string[] | null;
-}
-
-export interface LedgerEntry {
-  id: string;
-  ledgerId: string;
-  categoryId: string | null;
-  sourceDocumentId: string | null;
-  amount: string;
-  currency: string | null;
-  itemName: string;
-  description: string | null;
-  entryDate: string | null;
-  createdAt: string;
-  category?: EntryCategory | null;
-  sourceDocument?: SourceDocument | null;
-}
-
 
 export interface LedgerEntrySummary {
   byCategory: {

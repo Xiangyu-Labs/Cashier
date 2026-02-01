@@ -13,9 +13,9 @@ export const getServiceCredentials = cache(async (ledgerId: string): Promise<Ser
     return rows.map(r => ({
         id: r.id,
         name: r.name,
-        // key: r.key, // Typically we don't return the key in a list, or if we do, handle carefully.
-        // API type says key is optional.
+        key: r.key,
+        ledgerId: r.ledgerId,
         createdAt: r.createdAt.toISOString(),
-        lastUsedAt: r.lastUsedAt?.toISOString(),
+        lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null,
     }));
 });

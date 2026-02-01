@@ -8,6 +8,7 @@ import {
     pgEnum,
 } from "drizzle-orm/pg-core";
 import { ledgers } from "@/features/ledger/server/schema";
+import { type InferSelectModel } from "drizzle-orm";
 
 // Enums
 export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
@@ -35,7 +36,8 @@ export const sourceDocuments = pgTable("source_documents", {
     text: text("text"),
     imageUrls: jsonb("image_urls")
         .$type<string[]>()
-        .default([]),
+        .default([])
+        .notNull(),
 
     status: sourceDocumentStatusEnum("status").notNull().default("queued"),
     anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
@@ -45,3 +47,5 @@ export const sourceDocuments = pgTable("source_documents", {
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
     index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),
 ]);
+
+export type SourceDocument = InferSelectModel<typeof sourceDocuments>;

@@ -39,7 +39,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     const { data: summaryData } = useQuery({
         queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.mainCurrency],
-        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency),
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency || undefined),
         enabled: !!startDateStr && !!endDateStr
     });
 
@@ -235,7 +235,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                         <LedgerEntryCard
                                             ledgerEntry={entry}
                                             categories={categories}
-                                            mainCurrency={ledger?.mainCurrency}
+                                            mainCurrency={ledger?.mainCurrency || undefined}
                                             onView={() => {
                                                 setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);
@@ -294,8 +294,8 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             <LedgerEntryDetailModal
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
-                preferredCurrencies={ledger?.currencies}
-                mainCurrency={ledger?.mainCurrency}
+                preferredCurrencies={ledger?.currencies || []}
+                mainCurrency={ledger?.mainCurrency || undefined}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);

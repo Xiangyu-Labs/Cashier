@@ -57,7 +57,17 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
 
     function handleUpdateLedger(data: Partial<Ledger>) {
         startTransition(async () => {
-            const result = await updateLedgerAction(ledgerId, data);
+            const cleanData = {
+                ...data,
+                currencies: data.currencies || undefined,
+                mainCurrency: data.mainCurrency || undefined,
+                autoRecognizeDate: data.autoRecognizeDate === null ? undefined : data.autoRecognizeDate,
+                collapseProcessingDefault: data.collapseProcessingDefault === null ? undefined : data.collapseProcessingDefault,
+                mergeSimilarItems: data.mergeSimilarItems === null ? undefined : data.mergeSimilarItems,
+                collapseBillsDefault: data.collapseBillsDefault === null ? undefined : data.collapseBillsDefault,
+                aiCustomPrompt: data.aiCustomPrompt === null ? undefined : data.aiCustomPrompt,
+            };
+            const result = await updateLedgerAction(ledgerId, cleanData);
             if (result.success) {
                 toast.success("Settings updated");
                 router.refresh(); // Sync server state
@@ -336,7 +346,7 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                 <div className="space-y-8">
                     {/* Currency Settings */}
                     <CurrencySection
-                        settings={ledger as unknown as Ledger}
+                        settings={{ ...ledger, currencies: ledger.currencies || [] } as unknown as any}
                         onUpdateSettings={(data) => handleUpdateLedger(data)}
                     />
 

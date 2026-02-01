@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "@/features/auth/server/schema";
 import { defaultLedger } from "@/config/default-ledger";
+import { type InferSelectModel } from "drizzle-orm";
 
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
@@ -35,6 +36,8 @@ export const ledgers = pgTable("ledgers", {
     index("idx_ledgers_user_id").on(table.userId),
 ]);
 
+export type Ledger = InferSelectModel<typeof ledgers>;
+
 // EntryCategory（分录分类）
 export const entryCategories = pgTable("entry_categories", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -51,6 +54,8 @@ export const entryCategories = pgTable("entry_categories", {
 }, (table) => [
     unique("uniq_category_name_per_ledger").on(table.ledgerId, table.name),
 ]);
+
+export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
 // Note: LedgerEntries depends on SourceDocuments, but SourceDocuments depends on Ledgers
 // We need to verify if we can import SourceDocuments from legacy here.
@@ -96,6 +101,8 @@ export const ledgerEntries = pgTable("ledger_entries", {
     index("idx_ledger_entries_created_at").on(table.createdAt),
 ]);
 
+export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
+
 // ServiceCredentials (服务凭据)
 export const serviceCredentials = pgTable("service_credentials", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -107,3 +114,5 @@ export const serviceCredentials = pgTable("service_credentials", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at"),
 });
+
+export type ServiceCredential = InferSelectModel<typeof serviceCredentials>;

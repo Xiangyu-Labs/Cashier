@@ -52,7 +52,16 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
     const updateLedgerMutation = useMutation({
         mutationFn: async (data: Partial<Ledger>) => {
-            const result = await updateLedgerAction(ledgerId, data);
+            const result = await updateLedgerAction(ledgerId, {
+                ...data,
+                currencies: data.currencies || undefined,
+                mainCurrency: data.mainCurrency || undefined,
+                autoRecognizeDate: data.autoRecognizeDate === null ? undefined : data.autoRecognizeDate,
+                collapseProcessingDefault: data.collapseProcessingDefault === null ? undefined : data.collapseProcessingDefault,
+                mergeSimilarItems: data.mergeSimilarItems === null ? undefined : data.mergeSimilarItems,
+                collapseBillsDefault: data.collapseBillsDefault === null ? undefined : data.collapseBillsDefault,
+                aiCustomPrompt: data.aiCustomPrompt === null ? undefined : data.aiCustomPrompt,
+            });
             if (!result.success) throw new Error(result.error);
             return result.data;
         },

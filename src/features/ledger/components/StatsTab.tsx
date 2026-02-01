@@ -50,7 +50,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
                 ledgerId || "",
                 formatDateForApi(startDate),
                 formatDateForApi(endDate),
-                ledger?.mainCurrency
+                ledger?.mainCurrency || undefined
             ),
         enabled: !!ledgerId,
     });

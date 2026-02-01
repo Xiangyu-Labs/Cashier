@@ -64,11 +64,12 @@ describe("LedgerEntryDetailModal", () => {
         entryDate: "2023-01-01",
         createdAt: "2023-01-01",
         itemName: "Test Item",
-        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
+        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "", ledgerId: "l1", isEditable: true }
     };
 
     const mockCategories: EntryCategory[] = [
-        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "" }
+        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "", ledgerId: "l1", isEditable: true },
+        { id: "c2", name: "Transport", icon: "car", sortOrder: 1, description: null, createdAt: "", updatedAt: "", ledgerId: "l1", isEditable: true }
     ];
 
     const mockOnClose = vi.fn();
