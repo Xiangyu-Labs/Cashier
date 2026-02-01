@@ -4,8 +4,8 @@ import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries
 import { getLedgerStatsAction } from "@/actions/stats"; // New Action
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
-import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
-import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
+import { LedgerEntryCard } from "./LedgerEntryCard";
+import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";

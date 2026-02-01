@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { auth } from "@/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
 export interface LedgerEntrySummary {
     convertedTotal: {

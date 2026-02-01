@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { eventBus } from '@/lib/events/event-bus';
-import { requireLedgerAccess } from '@/lib/auth/helpers';
+import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 
 export const dynamic = 'force-dynamic';
 

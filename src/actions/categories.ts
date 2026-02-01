@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq, asc, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
 const createCategorySchema = z.object({
     name: z.string().min(1),

@@ -11,7 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { OTPInput } from "@/components/auth/otp-input";
 import { ResendCountdown } from "@/components/auth/resend-countdown";
 import { ExpiryTimer } from "@/components/auth/expiry-timer";
-import { sendOTPAction, verifyOTPAction } from "@/actions/auth";
+import { sendOTPAction, verifyOTPAction } from "@/features/auth/server/actions/auth";
 
 type LoginStep = "email" | "otp";
 

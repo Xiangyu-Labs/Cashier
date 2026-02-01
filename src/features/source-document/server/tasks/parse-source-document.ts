@@ -2,12 +2,13 @@ import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getSourceDocumentProcessor } from "@/lib/message-processor/processor";
-import { CategoryInfo, ParsedLedgerEntry } from "@/lib/message-processor/types";
-import { summarizeLedgerEntries } from "@/lib/message-processor/utils";
+import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
+import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
+import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
 import { logger } from "@/lib/logger";
-import { sourceDocumentRepo, ledgerEntryRepo } from "@/lib/repositories";
-import { arbitrate } from "@/lib/ai/arbitration";
+import { sourceDocumentRepo } from "../repository";
+import { ledgerEntryRepo } from "@/features/ledger/server/repository";
+import { arbitrate } from "@/features/ai/server/services/arbitration";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";

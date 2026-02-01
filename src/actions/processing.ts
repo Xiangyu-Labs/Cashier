@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray } from "drizzle-orm";
 
 export async function getProcessingTasksAction(ledgerId: string, params: {

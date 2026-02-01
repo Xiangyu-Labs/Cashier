@@ -5,18 +5,18 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LedgerEntriesTab } from "@/components/ledger/LedgerEntriesTab";
-import { DetailsTab } from "@/components/ledger/DetailsTab";
-import { StatsTab } from "@/components/ledger/StatsTab";
+import { LedgerEntriesTab } from "./LedgerEntriesTab";
+import { DetailsTab } from "./DetailsTab";
+import { StatsTab } from "./StatsTab";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
+import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 import { useLedgerEvents } from "@/lib/events/use-ledger-events";
-import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
+import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
 import { Ledger, EntryCategory, SourceDocument } from "@/types/api";

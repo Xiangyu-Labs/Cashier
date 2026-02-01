@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logger } from "@/lib/logger";
 
-import { getCurrentTaskRunId, getCurrentLedgerId } from "./ai-context";
+import { getCurrentTaskRunId, getCurrentLedgerId } from "../ai-context";
 import { recordTaskRunUsage } from "@/lib/flow/task-run-service";
 
 export class OpenAIClient {

@@ -10,11 +10,11 @@ import {
     retrySourceDocumentAction,
     updateSourceDocumentAction,
     deleteSourceDocumentAction
-} from "@/actions/source-document";
+} from "@/features/source-document/server/actions";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
-import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
-import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
-import { SourceDocumentDetailModal } from "@/components/ledger-entry/SourceDocumentDetailModal";
+import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
+import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
+import { SourceDocumentDetailModal } from "@/features/source-document/components/SourceDocumentDetailModal";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

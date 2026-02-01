@@ -5,7 +5,7 @@ import { completeTaskRun, failTaskRun } from '@/lib/flow/task-run-service';
 import { logger as _logger } from '@/lib/logger';
 import { getFlowProducer } from '@/lib/flow/workers';
 
-import { withAIContext } from '@/lib/ai/ai-context';
+import { withAIContext } from '@/features/ai/server/ai-context';
 import { db } from '@/lib/db';
 import { taskRuns } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';

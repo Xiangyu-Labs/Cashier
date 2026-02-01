@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { SourceDocumentInput } from "./SourceDocumentInput";
+import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 import { SourceDocument } from "@/types/api";
 import { useTranslations } from "next-intl";
 

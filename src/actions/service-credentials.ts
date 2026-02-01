@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";

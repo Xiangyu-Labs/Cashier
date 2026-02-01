@@ -1,9 +1,6 @@
 import { BaseRepository, QueryOptions } from "@/lib/repositories/base-repository";
-import { ledgerEntryRepo } from "./repository";
-import { sourceDocumentRepo } from "@/lib/repositories/source-document-repository";
-import { taskRunRepo } from "@/lib/repositories/task-run-repository";
-import { shareRepo } from "@/lib/repositories/share-repository";
-import { entryCategoryRepo } from "@/lib/repositories/entry-category-repository";
+import { ledgerEntryRepo, entryCategoryRepo } from "./repository";
+import { sourceDocumentRepo, taskRunRepo, shareRepo } from "@/lib/repositories";
 import { PgTable } from "drizzle-orm/pg-core";
 import { InferInsertModel } from "drizzle-orm";
 

@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getLedger, getLedgers } from "@/services/ledgers";
 import { getEntryCategories } from "@/services/categories";
-import { LedgerPageClient } from "@/components/ledger/LedgerPageClient";
+import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
 import { Ledger, EntryCategory, SourceDocument } from "@/types/api";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
-import { getSourceDocumentsAction } from "@/actions/source-document";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;

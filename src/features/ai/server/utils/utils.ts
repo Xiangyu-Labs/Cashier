@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { ParsedLedgerEntry } from "./types";
-import { getOpenAIClient } from "../ai/openai";
-import { buildSummarizationPrompt } from "../ai/prompts";
+import { ParsedLedgerEntry } from "../types";
+import { getOpenAIClient } from "../services/openai";
+import { buildSummarizationPrompt } from "../services/prompts";
 import { logger } from "@/lib/logger";
 
 const summarizationSchema = z.object({

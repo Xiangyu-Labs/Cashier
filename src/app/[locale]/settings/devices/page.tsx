@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
-import { getActiveSessions } from "@/lib/auth/session";
-import { revokeSession } from "@/actions/session";
+import { getActiveSessions } from "@/features/auth/server/services/session";
+import { revokeSession } from "@/features/auth/server/actions/session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Laptop, Smartphone, Globe, LogOut } from "lucide-react";

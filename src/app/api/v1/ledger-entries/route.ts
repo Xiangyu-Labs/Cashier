@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
         // Trigger processing using the processing task system
         const { submitFlowTask } = await import("@/lib/flow/producer");
-        const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/lib/tasks/parse-source-document");
+        const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/features/source-document/server/tasks/parse-source-document");
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
         // Fetch ledger data (still need direct db access for ledgers table as it's not in scope yet)

@@ -1,7 +1,7 @@
 
 import { auth } from "@/auth";
 import { getEntryCategories } from "@/services/categories";
-import { CategoriesPageClient } from "@/components/ledger/CategoriesPageClient";
+import { CategoriesPageClient } from "@/features/ledger/components/CategoriesPageClient";
 import { redirect } from "@/i18n/routing";
 
 export default async function CategoriesPage({ params }: { params: Promise<{ id: string }> }) {

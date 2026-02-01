@@ -1,15 +1,15 @@
 import { ChatCompletionContentPart, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { getOpenAIClient } from "../ai/openai";
-import { buildLedgerEntryPrompt } from "../ai/prompts";
+import { getOpenAIClient } from "./openai";
+import { buildLedgerEntryPrompt } from "./prompts";
 import {
   SourceDocumentInput,
   SourceDocumentProcessor,
   ParsedLedgerEntry,
   ProcessorContext,
   ProcessingResult,
-} from "./types";
+} from "../types";
 
 
 const ledgerEntrySchema = z.object({

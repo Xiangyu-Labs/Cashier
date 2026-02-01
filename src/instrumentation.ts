@@ -7,7 +7,7 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         try {
             // Register task handlers (always needed for producer to work)
-            await import("@/lib/tasks");
+            await import("@/features/source-document/server/tasks/parse-source-document");
 
             // Only initialize workers if enabled via environment variable
             // This prevents double initialization during build/dev and allows separation of concerns

@@ -1,8 +1,8 @@
 'use server';
 
 import { Resend } from "resend";
-import { generateOTP, getOTPExpiration, isValidOTPFormat } from "@/lib/auth/otp";
-import { createOTPToken, verifyOTPToken } from "@/lib/auth/otp-repository";
+import { generateOTP, getOTPExpiration, isValidOTPFormat } from "@/features/auth/server/services/otp";
+import { createOTPToken, verifyOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import {
     checkSendRateLimit,
     checkSendRateLimitByIP,
@@ -10,7 +10,7 @@ import {
     setResendCooldown,
     getCanResendAt,
     checkVerifyRateLimit,
-} from "@/lib/auth/otp-rate-limit";
+} from "@/features/auth/server/services/otp-rate-limit";
 import { logger } from "@/lib/logger";
 import OTPEmail from "@/emails/otp-email";
 import { headers } from "next/headers";

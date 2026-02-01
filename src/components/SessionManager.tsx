@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from "react";
-import { touchSession } from "@/actions/session";
+import { touchSession } from "@/features/auth/server/actions/session";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "@/i18n/routing";
 

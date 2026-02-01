@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { getLedger } from "@/services/ledgers";
 import { getEntryCategories } from "@/services/categories";
 import { getServiceCredentials } from "@/services/credentials";
-import { SettingsPageClient } from "@/components/ledger/SettingsPageClient";
+import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 

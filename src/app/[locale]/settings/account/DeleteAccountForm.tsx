@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { deleteAccount } from "@/actions/account";
+import { deleteAccount } from "@/features/auth/server/actions/account";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,

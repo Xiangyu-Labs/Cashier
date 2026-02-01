@@ -1,8 +1,9 @@
 import { BaseRepository } from "@/lib/repositories/base-repository";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { InferSelectModel } from "drizzle-orm";
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
+export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
 class LedgerEntryRepository extends BaseRepository<LedgerEntry, typeof ledgerEntries> {
     constructor() {
@@ -10,4 +11,11 @@ class LedgerEntryRepository extends BaseRepository<LedgerEntry, typeof ledgerEnt
     }
 }
 
+class EntryCategoryRepository extends BaseRepository<EntryCategory, typeof entryCategories> {
+    constructor() {
+        super(entryCategories, 'category', "ledgerId", "entryCategories");
+    }
+}
+
 export const ledgerEntryRepo = new LedgerEntryRepository();
+export const entryCategoryRepo = new EntryCategoryRepository();

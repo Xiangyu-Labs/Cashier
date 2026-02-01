@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { requireLedgerAccess } from "@/lib/auth/helpers";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { addDays } from "date-fns";
 import crypto from "crypto";
 import { shareRepo } from "@/lib/repositories/share-repository";

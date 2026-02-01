@@ -1,5 +1,5 @@
 import { getOpenAIClient } from "./openai";
-import { ParsedLedgerEntry } from "@/lib/message-processor/types";
+import { ParsedLedgerEntry } from "../types";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 

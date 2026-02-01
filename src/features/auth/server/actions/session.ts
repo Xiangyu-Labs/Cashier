@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from "@/auth";
-import { revokeSession as revokeSessionLib, touchSession as touchSessionLib } from "@/lib/auth/session";
+import { revokeSession as revokeSessionLib, touchSession as touchSessionLib } from "@/features/auth/server/services/session";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { logger } from "@/lib/logger";

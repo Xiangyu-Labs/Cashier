@@ -1,4 +1,4 @@
-import { CategoryInfo } from "../message-processor/types";
+import { CategoryInfo } from "../types";
 
 export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],

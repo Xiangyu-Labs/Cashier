@@ -11,7 +11,7 @@ import {
     index,
     unique,
 } from "drizzle-orm/pg-core";
-import { users } from "@/lib/db/schemas/auth";
+import { users } from "@/features/auth/server/schema";
 import { defaultLedger } from "@/config/default-ledger";
 
 // Ledger（账本）
@@ -70,7 +70,7 @@ export const entryCategories = pgTable("entry_categories", {
 // Actually, I can decouple it? No, FK existence is important for migrations.
 // I will import `sourceDocuments` from "@/lib/db/schemas/legacy".
 
-import { sourceDocuments } from "@/lib/db/schemas/legacy";
+import { sourceDocuments } from "../../../lib/db/schemas/legacy";
 
 // LedgerEntry（账目分录）
 export const ledgerEntries = pgTable("ledger_entries", {

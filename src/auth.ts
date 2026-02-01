@@ -7,12 +7,12 @@ import {
     accounts,
     sessions,
     verificationTokens,
-} from "@/lib/db/schema";
+} from "@/features/auth/server/schema";
 import { eq } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
 import crypto from "crypto";
-import { verifyOTPToken, deleteOTPToken } from "@/lib/auth/otp-repository";
+import { verifyOTPToken, deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
 
                 // Check registration whitelist
-                const { isRegistrationAllowed } = await import("@/lib/auth/registration");
+                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
                 if (!(await isRegistrationAllowed(email))) {
                     return null;
                 }
@@ -70,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                     // Create default ledger for new user
                     // (since Credentials provider doesn't trigger createUser event)
-                    const { createDefaultLedgerForUser } = await import("@/lib/auth/user-setup");
+                    const { createDefaultLedgerForUser } = await import("@/features/auth/server/services/user-setup");
                     await createDefaultLedgerForUser(user.id, user.email || "New User");
                 }
 
@@ -99,7 +99,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ...authConfig.callbacks,
         async signIn({ user }) {
             if (user.email) {
-                const { isRegistrationAllowed } = await import("@/lib/auth/registration");
+                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
                 if (!(await isRegistrationAllowed(user.email))) {
                     return false;
                 }
@@ -137,7 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // When a new user is created, auto-create their default ledger
             if (user.id) {
                 const { createDefaultLedgerForUser } = await import(
-                    "@/lib/auth/user-setup"
+                    "@/features/auth/server/services/user-setup"
                 );
                 await createDefaultLedgerForUser(user.id, user.email || "New User");
             }
@@ -146,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Send login notification for existing users (not on first sign up)
             if (!isNewUser && user.email) {
                 const { sendLoginNotification } = await import(
-                    "@/lib/auth/notifications"
+                    "@/features/auth/server/services/notifications"
                 );
                 await sendLoginNotification(user.email);
             }
