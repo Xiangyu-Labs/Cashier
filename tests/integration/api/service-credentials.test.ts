@@ -5,7 +5,7 @@ import { getTestDb } from "../../setup";
 import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/features/source-document/server/actions";
+import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({

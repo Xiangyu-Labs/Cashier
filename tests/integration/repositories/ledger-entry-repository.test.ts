@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ledgerEntryRepo } from "@/features/ledger/server/repository";
-import { getTestDb } from "tests/setup";
+import { getTestDb } from "../../../tests/setup";
 import { ledgers, ledgerEntries } from "@/lib/db/schema";
-import { createLedgerData, createLedgerEntryData } from "tests/helpers/factories";
+import { createLedgerData, createLedgerEntryData } from "../../../tests/helpers/factories";
 import { eq } from "drizzle-orm";
 
 describe("LedgerEntryRepository Integration", () => {
@@ -44,8 +44,8 @@ describe("LedgerEntryRepository Integration", () => {
     // Setup: Insert directly to ensure data exists
     const db = getTestDb();
     const entryData = createLedgerEntryData(ledgerId, {
-        itemName: "Fetch Me",
-        amount: "50.00"
+      itemName: "Fetch Me",
+      amount: "50.00"
     });
     await db.insert(ledgerEntries).values(entryData);
 
@@ -63,15 +63,15 @@ describe("LedgerEntryRepository Integration", () => {
     // Setup
     const db = getTestDb();
     const entryData = createLedgerEntryData(ledgerId, {
-        itemName: "Old Name",
-        amount: "10.00"
+      itemName: "Old Name",
+      amount: "10.00"
     });
     await db.insert(ledgerEntries).values(entryData);
 
     // Act
     const updated = await ledgerEntryRepo.update(entryData.id, {
-        itemName: "New Name",
-        amount: "20.00"
+      itemName: "New Name",
+      amount: "20.00"
     }, ledgerId);
 
     // Assert

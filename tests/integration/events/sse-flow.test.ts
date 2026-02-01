@@ -139,7 +139,7 @@ describe("SSE Event Flow Integration", () => {
             ledgerId,
             text: "test retry",
             status: "anomaly",
-        });
+        }, ledgerId);
 
         const eventPromise = new Promise<LedgerEvent>((resolve) => {
             const unsubscribe = eventBus.subscribe(ledgerId, (event) => {

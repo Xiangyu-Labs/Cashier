@@ -15,7 +15,7 @@ import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/featu
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions";
-import { getServiceCredentialsAction } from "@/features/source-document/server/actions";
+import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 
 // Mock auth
 import { auth } from "@/auth";

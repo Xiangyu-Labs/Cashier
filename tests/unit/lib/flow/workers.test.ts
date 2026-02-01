@@ -39,7 +39,7 @@ describe('BullMQ Workers Configuration', () => {
         const mainWorkerCall = mockWorker.mock.calls.find(call => call[0] === 'main');
         expect(mainWorkerCall).toBeDefined();
 
-        const options = mainWorkerCall[2];
+        const options = mainWorkerCall![2];
         expect(options.lockDuration).toBe(50000);
         expect(options.stalledInterval).toBe(15000);
         expect(options.concurrency).toBe(5);
@@ -53,7 +53,7 @@ describe('BullMQ Workers Configuration', () => {
         await initializeWorkers();
 
         const mainWorkerCall = mockWorker.mock.calls.find(call => call[0] === 'main');
-        const options = mainWorkerCall[2];
+        const options = mainWorkerCall![2];
 
         // Default values from code
         expect(options.lockDuration).toBe(120000);

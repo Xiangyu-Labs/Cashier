@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { createTestUserWithLedger } from "../helpers/schema-setup";
 import { LedgerScope } from "@/features/ledger/server/service";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries } from "@/features/ledger/server/schema";
 import { eq } from "drizzle-orm";
 
 describe("Entity Isolation (LedgerScope)", () => {
@@ -85,10 +85,10 @@ describe("Entity Isolation (LedgerScope)", () => {
         // Create an entry for User 1
         const created = await scope.entries.create({
             amount: "50.00",
-            currency: "USD",
+            // currency: "USD",
             itemName: "My Own Item",
             entryDate: new Date(),
-        });
+        } as any);
 
         // Should be able to get it
         const fetched = await scope.entries.get(created.id);

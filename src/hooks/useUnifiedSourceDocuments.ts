@@ -2,7 +2,8 @@
 
 import { useMemo, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
+import { getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';

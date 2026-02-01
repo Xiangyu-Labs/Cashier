@@ -1,5 +1,5 @@
 import { BaseRepository } from "@/lib/repositories/base-repository";
-import { ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories } from "@/features/ledger/server/schema";
 import { InferSelectModel } from "drizzle-orm";
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;

@@ -11,6 +11,7 @@ export function createLedgerData(
 ) {
   return {
     id: uuidv4(),
+    userId: uuidv4(),
     name: `Test Ledger ${Date.now()}`,
     aiLanguage: "zh-CN",
     createdAt: new Date(),
