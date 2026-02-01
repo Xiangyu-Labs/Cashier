@@ -44,6 +44,13 @@ export default auth((req) => {
 
     const isPublicPage = isPublicPath(pathname);
 
+    // 4. Redirect authenticated users away from public pages (like /login)
+    if (isPublicPage && req.auth) {
+        const url = req.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+    }
+
     // 4. Handle Auth Redirects BEFORE Intl if not public
     if (!isPublicPage && !req.auth) {
         const url = req.nextUrl.clone();
