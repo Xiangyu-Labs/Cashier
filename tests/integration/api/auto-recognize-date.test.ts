@@ -30,7 +30,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
 
         // Ensure settings are correct for the test
         await db.update(ledgers)
-            .set({ autoRecognizeDate: false })
+            .set({ metadata: { settings: { autoRecognizeDate: false } } })
             .where(eq(ledgers.id, ledgerId));
 
         // Create Category
@@ -106,7 +106,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
 
     it("should use AI date when autoRecognizeDate is TRUE", async () => {
         // Setup: autoRecognizeDate = TRUE
-        await db.update(ledgers).set({ autoRecognizeDate: true }).where(eq(ledgers.id, ledgerId));
+        await db.update(ledgers).set({ metadata: { settings: { autoRecognizeDate: true } } }).where(eq(ledgers.id, ledgerId));
 
         // Mock AI response with a specific date in the past
         const pastDate = "2023-01-01";

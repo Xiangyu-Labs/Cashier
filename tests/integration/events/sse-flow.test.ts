@@ -14,7 +14,7 @@ describe("SSE Event Flow Integration", () => {
     beforeEach(async () => {
         // Create a test ledger
         const { ledgerId: id } = await createTestUserWithLedger(getTestDb(), "test@example.com", "Test Ledger");
-        await getTestDb().update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, id));
+        await getTestDb().update(ledgers).set({ metadata: { settings: { mainCurrency: "USD" } } }).where(eq(ledgers.id, id));
         ledgerId = id;
     });
 

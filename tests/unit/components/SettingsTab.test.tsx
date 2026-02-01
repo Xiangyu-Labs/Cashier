@@ -141,6 +141,7 @@ describe("SettingsTab", () => {
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
         await user.type(textarea, "New Custom Prompt");
+        await user.tab();
         await waitFor(() => {
             expect(mockUpdateLedgerAction).toHaveBeenCalledWith("l1", expect.objectContaining({
                 settings: expect.objectContaining({

@@ -346,7 +346,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        console.error("DEBUG WORKER ERROR:", error);
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
         let anomalyCode = "internal_error";
