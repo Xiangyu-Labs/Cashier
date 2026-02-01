@@ -354,11 +354,11 @@ export function LedgerEntriesTab({
             // except "Delete All" button which we will implement below.
             // If ID is special "ALL_ERRORS", we handle it specifically or use a new mutation.
             // Wait, the previous logic used deleteSourceDocumentMutation in a loop.
-        } else if (deleteConfirm.type === "ledgerEntry") {
-            deleteLedgerEntryMutation.mutate(deleteConfirm.id);
         } else if (deleteConfirm.id === "ALL_ERRORS") {
             const ids = groups.anomaly.map(g => g.sourceDocument.id);
             batchDeleteSourceDocsMutation.mutate(ids);
+        } else if (deleteConfirm.type === "ledgerEntry") {
+            deleteLedgerEntryMutation.mutate(deleteConfirm.id);
         }
 
         setDeleteConfirm({ ...deleteConfirm, open: false });

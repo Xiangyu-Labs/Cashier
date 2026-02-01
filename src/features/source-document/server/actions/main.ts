@@ -365,3 +365,104 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
         };
     }
 }
+
+export interface SourceDocumentGroup {
+    sourceDocument: any;
+    ledgerEntries: any[];
+}
+
+export interface GroupedSourceDocuments {
+    processing: SourceDocumentGroup[];
+    anomaly: SourceDocumentGroup[];
+    completed: SourceDocumentGroup[];
+}
+
+/**
+ * Unified action to fetch grouped source documents.
+ * This moves the grouping logic from client to server for better performance and consistency.
+ */
+export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: {
+    startDate?: string | null;
+    endDate?: string | null;
+    limit?: number;
+    cursor?: string | null;
+}) {
+    const { scope, error } = await requireLedgerAccess(ledgerId);
+    if (error || !scope) throw new Error("Unauthorized");
+
+    const { startDate, endDate, limit = 20, cursor } = params;
+
+    // 1. Fetch active documents (queued, processing, anomaly)
+    // For active docs, we might want to ignore date range if they are "active"
+    // but the plan says "Server-side filtering for ALL sections".
+    // Let's apply date range to all.
+    const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
+        status: 'queued,processing,anomaly',
+        includeLedgerEntries: true,
+        startDate,
+        endDate,
+    });
+
+    // 2. Fetch completed documents (paginated)
+    const completedDocsResult = await getSourceDocumentsAction(ledgerId, {
+        status: 'completed',
+        includeLedgerEntries: true,
+        startDate,
+        endDate,
+        limit,
+        cursor,
+    });
+
+    const groups: GroupedSourceDocuments = {
+        processing: [],
+        anomaly: [],
+        completed: [],
+    };
+
+    activeDocsResult.items.forEach((doc: any) => {
+        const group = {
+            sourceDocument: doc,
+            ledgerEntries: doc.ledgerEntries || [],
+        };
+        if (doc.status === 'anomaly') {
+            groups.anomaly.push(group);
+        } else {
+            groups.processing.push(group);
+        }
+    });
+
+    completedDocsResult.items.forEach((doc: any) => {
+        groups.completed.push({
+            sourceDocument: doc,
+            ledgerEntries: doc.ledgerEntries || [],
+        });
+    });
+
+    return {
+        groups,
+        nextCursor: completedDocsResult.nextCursor,
+        stats: {
+            processingCount: groups.processing.length,
+            anomalyCount: groups.anomaly.length,
+        }
+    };
+}
+
+export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) throw new Error("Unauthorized");
+
+        if (sourceDocumentIds.length === 0) return { success: true };
+
+        await scope.documents.batchUpdate(sourceDocumentIds, data as any);
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true, error: null };
+    } catch (error) {
+        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch update source documents");
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to batch update source documents",
+        };
+    }
+}

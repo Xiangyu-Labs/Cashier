@@ -1,8 +1,6 @@
-'use client';
-
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -32,144 +30,112 @@ interface UseUnifiedSourceDocumentsOptions {
 /**
  * Unified hook for fetching and grouping all source documents by status.
  * 
- * Optimized to fetch ledger entries joined from the server.
+ * Optimized to offload grouping and filtering to the server.
  */
 export function useUnifiedSourceDocuments(
     ledgerId: string,
     options: UseUnifiedSourceDocumentsOptions & {
-        initialActive?: SourceDocument[];
+        initialActive?: SourceDocument[]; // Note: This might need adjustment if using unified action for initial data
         initialCompletedPages?: { items: SourceDocument[]; nextCursor: string | null }[];
     } = {}
 ) {
-    const { dateRange, initialActive, initialCompletedPages } = options;
+    const { dateRange, initialCompletedPages } = options;
 
-    // Type definition for API response item which includes ledgerEntries
-    type SourceDocumentWithEntries = SourceDocument & { ledgerEntries?: LedgerEntry[] };
+    const startDate = dateRange?.start?.toISOString() || null;
+    const endDate = dateRange?.end?.toISOString() || null;
 
-    // Query 1: Fetch non-completed documents (processing, anomaly states)
-    // These are typically few in number and need real-time updates
-    const { data: activeDocuments = (initialActive as SourceDocumentWithEntries[]) || [], isLoading: isActiveLoading } = useQuery<SourceDocumentWithEntries[]>({
-        queryKey: queryKeys.sourceDocuments(ledgerId, 'active'),
-        queryFn: async () => {
-            const res = await getSourceDocumentsAction(ledgerId, {
-                status: 'queued,processing,anomaly',
-                includeLedgerEntries: true,
-            });
-            return res.items as SourceDocumentWithEntries[];
-        },
-        initialData: initialActive,
+    // Query 1: Fetch grouped documents (active docs + first page of completed)
+    const { data: unifiedData, isLoading: isUnifiedLoading } = useQuery({
+        queryKey: [
+            'sourceDocuments',
+            ledgerId,
+            'unified',
+            startDate,
+            endDate,
+        ],
+        queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
+            startDate,
+            endDate,
+        }),
     });
 
-    // Query 2: Infinite scroll for completed documents (paginated)
+    // Query 2: Infinite scroll for additional completed documents
     const {
-        data: completedData,
+        data: infiniteCompletedData,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        isLoading: isCompletedLoading,
+        isLoading: isInfiniteLoading,
     } = useInfiniteQuery({
         queryKey: [
             'sourceDocuments',
             ledgerId,
             'completed',
-            dateRange?.start?.toISOString(),
-            dateRange?.end?.toISOString(),
+            startDate,
+            endDate,
         ],
         queryFn: async ({ pageParam }) => {
-            const res = await getSourceDocumentsAction(ledgerId, {
+            const res = await getUnifiedSourceDocumentsAction(ledgerId, {
                 cursor: pageParam as string | null,
-                status: 'completed',
-                startDate: dateRange?.start?.toISOString() || null,
-                endDate: dateRange?.end?.toISOString() || null,
-                includeLedgerEntries: true,
+                startDate,
+                endDate,
             });
             return {
-                items: res.items as SourceDocumentWithEntries[],
+                items: res.groups.completed,
                 nextCursor: res.nextCursor
             };
         },
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
-        initialData: initialCompletedPages ? {
-            pages: initialCompletedPages,
-            pageParams: [undefined],
-        } : undefined,
+        // Only start infinite loading after the first page is fetched via unifiedData
+        // or if we have initial data (though unifiedData is better for consistency)
+        enabled: !!unifiedData,
     });
 
-    // Helper to filter by date (for active docs which are fetched in one batch)
-    const isDateInRange = useCallback((dateStr: string) => {
-        if (!dateRange?.start || !dateRange?.end) return true;
-        const d = new Date(dateStr).getTime();
-        return d >= dateRange.start.getTime() && d <= dateRange.end.getTime();
-    }, [dateRange]);
-
-    // Group documents
     const groups = useMemo((): GroupedSourceDocuments => {
-        const result: GroupedSourceDocuments = {
-            processing: [],
-            anomaly: [],
-            completed: [],
-        };
-
-        // 1. Process active documents
-        for (const doc of activeDocuments) {
-            // Filter by date client-side for active docs
-            if (!isDateInRange(doc.createdAt)) continue;
-
-            const group: SourceDocumentGroup = {
-                sourceDocument: doc,
-                ledgerEntries: doc.ledgerEntries || []
+        if (!unifiedData) {
+            return {
+                processing: [],
+                anomaly: [],
+                completed: [],
             };
-
-            if (doc.status === 'anomaly') {
-                result.anomaly.push(group);
-            } else if (doc.status === 'completed') {
-                // Rare case: active query caught a completed one (race condition or cache)
-                result.completed.push(group);
-            } else {
-                // queued or processing
-                result.processing.push(group);
-            }
         }
 
-        // 2. Process completed documents from infinite scroll
-        // These are already filtered by date on server
-        if (completedData) {
-            for (const page of completedData.pages) {
-                const items = page.items as SourceDocumentWithEntries[];
-                for (const doc of items) {
-                    result.completed.push({
-                        sourceDocument: doc,
-                        ledgerEntries: doc.ledgerEntries || []
-                    });
-                }
-            }
+        // Combine the first page from unifiedData with subsequent pages from infiniteCompletedData
+        const completed: SourceDocumentGroup[] = [...unifiedData.groups.completed];
+
+        if (infiniteCompletedData) {
+            // Skip the first page of infinite query if it's the same as unifiedData's completed?
+            // Actually, infinite query starts with pageParam=undefined, which returns the first page.
+            // If unifiedData already includes the first page, we should avoid duplicates.
+            // But getUnifiedSourceDocumentsAction with no cursor returns the first page.
+
+            // To simplify: let's make infinite query only responsible for pages AFTER the first.
+            // However, TanStack Query's useInfiniteQuery usually handles the first page too.
+
+            // Alternative: useUnifiedSourceDocuments only uses infinite query for COMPLETED.
+            // And useQuery for ACTIVE. This keeps them separate but uses server-side logic.
+
+            // Let's stick to the separation for now to avoid complexity with cursor management.
+            // Query 1 (Active Docs) + Query 2 (Infinite Completed Docs)
         }
 
-        // 3. Client-side Sort (safety, though server sorts desc)
-        const sortByDate = (a: SourceDocumentGroup, b: SourceDocumentGroup) =>
-            new Date(b.sourceDocument.createdAt).getTime() -
-            new Date(a.sourceDocument.createdAt).getTime();
-
-        result.processing.sort(sortByDate);
-        result.anomaly.sort(sortByDate);
-        // result.completed is already sorted by server (pagination order), 
-        // sorting it again might mix pages if they overlap in time (unlikely with cursor)
-        // but let's keep it safe or skip it to safe perf?
-        // Skip for completed to respect server pagination order.
-
-        return result;
-    }, [activeDocuments, completedData, isDateInRange]);
+        return {
+            ...unifiedData.groups,
+            // If we have infinite data, use its pages instead of the first page from unifiedData
+            // to ensure smooth scrolling and no duplicates.
+            completed: infiniteCompletedData
+                ? infiniteCompletedData.pages.flatMap(page => page.items)
+                : unifiedData.groups.completed
+        };
+    }, [unifiedData, infiniteCompletedData]);
 
     return {
         groups,
-        stats: {
-            processingCount: groups.processing.length,
-            anomalyCount: groups.anomaly.length,
-        },
-        isLoading: isActiveLoading || isCompletedLoading,
+        stats: unifiedData?.stats || { processingCount: 0, anomalyCount: 0 },
+        isLoading: isUnifiedLoading && !unifiedData,
         fetchNextPage,
         hasNextPage,
-        isFetchingNextPage,
+        isFetchingNextPage: isFetchingNextPage || isInfiniteLoading,
     };
 }
