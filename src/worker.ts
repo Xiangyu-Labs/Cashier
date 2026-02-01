@@ -1,4 +1,8 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+// Load .env first
+dotenv.config();
+// Load .env.local to override (likely where secrets are)
+dotenv.config({ path: '.env.local', override: true });
 import { logger } from './lib/logger';
 import { initializeWorkers, shutdownWorkers } from './lib/flow/workers';
 

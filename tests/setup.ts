@@ -38,6 +38,10 @@ beforeAll(async () => {
   process.env.BULLMQ_LOCK_DURATION = "10000"; // Increased for stability
   process.env.BULLMQ_STALLED_INTERVAL = "10000";
 
+  // Dummy VAPID keys for testing to suppress warnings
+  if (!process.env.VAPID_PRIVATE_KEY) process.env.VAPID_PRIVATE_KEY = "test_private_key";
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "test_public_key";
+
   // Initialize workers for integration tests
   await initializeWorkers();
 
