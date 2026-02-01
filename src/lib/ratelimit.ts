@@ -6,29 +6,20 @@
  * like @upstash/ratelimit.
  */
 
-interface RateLimitStore {
-    count: number;
-    resetTime: number;
-}
+import { getRedisConnection } from "@/lib/flow/connection";
 
-class InMemoryRateLimiter {
-    private store: Map<string, RateLimitStore> = new Map();
-    private cleanupInterval: NodeJS.Timeout | null = null;
+/**
+ * Rate Limiting Utilities
+ *
+ * Provides Redis-based rate limiting for API endpoints.
+ * Uses the shared IORedis connection from `src/lib/flow/connection.ts`.
+ */
 
-    constructor() {
-        // Clean up expired entries every minute
-        this.cleanupInterval = setInterval(() => {
-            const now = Date.now();
-            for (const [key, value] of this.store.entries()) {
-                if (now > value.resetTime) {
-                    this.store.delete(key);
-                }
-            }
-        }, 60000);
-    }
-
+class RedisRateLimiter {
     /**
      * Check if a request should be rate limited
+     * Uses a Fixed Window algorithm backed by Redis.
+     *
      * @param key - Unique identifier (e.g., "share_abc123_192.168.1.1")
      * @param limit - Maximum number of requests allowed
      * @param windowMs - Time window in milliseconds
@@ -39,53 +30,53 @@ class InMemoryRateLimiter {
         remaining: number;
         resetTime: number;
     }> {
-        const now = Date.now();
-        const stored = this.store.get(key);
+        const redis = getRedisConnection();
+        const rKey = `ratelimit:${key}`;
+        const windowSeconds = Math.ceil(windowMs / 1000);
 
-        // If no record exists or window has expired, create new record
-        if (!stored || now > stored.resetTime) {
-            const resetTime = now + windowMs;
-            this.store.set(key, { count: 1, resetTime });
-            return {
-                success: true,
-                remaining: limit - 1,
-                resetTime,
-            };
+        // Uses a transaction to ensure atomicity for the increment and expire
+        // However, standard pattern: INCR -> if 1 -> EXPIRE is simple enough.
+        // For strict correctness with pipelines:
+        const attempts = await redis.incr(rKey);
+
+        // If it's the first attempt, set the expiry
+        if (attempts === 1) {
+            await redis.expire(rKey, windowSeconds);
         }
 
-        // Increment counter
-        stored.count += 1;
+        const ttl = await redis.ttl(rKey);
 
-        // Check if limit exceeded
-        if (stored.count > limit) {
+        // Calculate reset time
+        // If ttl is -1 (no expiry) or -2 (not found), default to window
+        // But since we just INCR'd, it should exist.
+        const effectiveTtl = ttl > 0 ? ttl : windowSeconds;
+        const resetTime = Date.now() + (effectiveTtl * 1000);
+
+        if (attempts > limit) {
             return {
                 success: false,
                 remaining: 0,
-                resetTime: stored.resetTime,
+                resetTime,
             };
         }
 
         return {
             success: true,
-            remaining: limit - stored.count,
-            resetTime: stored.resetTime,
+            remaining: Math.max(0, limit - attempts),
+            resetTime,
         };
     }
 
     /**
-     * Clean up and stop the cleanup interval
+     * Clean up - no-op for Redis impl but kept for API compatibility if needed
      */
     destroy() {
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-            this.cleanupInterval = null;
-        }
-        this.store.clear();
+        // No local cleanup needed for Redis
     }
 }
 
 // Create a singleton instance
-const rateLimiter = new InMemoryRateLimiter();
+const rateLimiter = new RedisRateLimiter();
 
 /**
  * Rate limit configurations for different endpoints

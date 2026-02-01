@@ -1,7 +1,7 @@
 "use client";
 
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DateRangeType, addPeriod } from "@/lib/date-utils";
 import { useTranslations } from "next-intl";
@@ -15,6 +15,10 @@ interface StatsHeaderProps {
     totalExpense: number;
     averageDaily: number;
     currencySymbol?: string;
+    trend?: {
+        percent: number;
+        amount: number;
+    };
 }
 
 export function StatsHeader({
@@ -26,10 +30,21 @@ export function StatsHeader({
     totalExpense,
     averageDaily,
     currencySymbol = "CNY",
+    trend,
 }: StatsHeaderProps) {
     const t = useTranslations("StatsTab");
     const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
     const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
+
+    // Trend Logic: Expense Increase = Bad (Red/Danger), Decrease = Good (Green/Primary)
+    // But color perception varies. Let's use:
+    // Increase: destructive (Red)
+    // Decrease: primary (Green/Brand)
+    const isIncrease = trend && trend.amount > 0;
+    const isDecrease = trend && trend.amount < 0;
+
+    // Formatting trend percent
+    const trendPercent = trend ? Math.abs(trend.percent).toFixed(1) : "0.0";
 
     return (
         <div className="flex flex-col gap-6 bg-surface">
@@ -76,13 +91,29 @@ export function StatsHeader({
             </div>
 
             {/* 3. Summary Stats */}
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-2">
                 <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
                 <div className="text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
                     <span className="text-xl text-muted-foreground font-normal">{currencySymbol}</span>
                     {totalExpense.toFixed(2)}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
+
+                {/* Trend Section */}
+                {trend && (
+                    <div className={cn(
+                        "flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full mt-1",
+                        isIncrease ? "bg-destructive/10 text-destructive" :
+                            isDecrease ? "bg-primary/10 text-primary" : "bg-surface2 text-muted-foreground"
+                    )}>
+                        {isIncrease ? <TrendingUp size={14} /> : isDecrease ? <TrendingDown size={14} /> : <Minus size={14} />}
+                        <span>
+                            {isIncrease ? "+" : isDecrease ? "-" : ""}
+                            {trendPercent}% {t("vsPreviousPeriod")}
+                        </span>
+                    </div>
+                )}
+
+                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                     {t("averageDaily")} <span className="font-mono">{averageDaily.toFixed(2)}</span>
                 </div>
             </div>

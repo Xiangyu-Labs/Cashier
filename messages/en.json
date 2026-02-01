@@ -72,7 +72,8 @@
         "totalExpense": "Total Expense",
         "month": "Month",
         "week": "Week",
-        "year": "Year"
+        "year": "Year",
+        "vsPreviousPeriod": "vs previous period"
     },
     "LedgerEntriesTab": {
         "processing": "Processing",

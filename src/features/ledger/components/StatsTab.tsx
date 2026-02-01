@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { getEnhancedStats } from "@/features/stats/server/actions";
 
 
 import {
@@ -51,37 +51,30 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         }
     }, [startDate, endDate, rangeType, format]);
 
-    const { data: summary, isLoading } = useQuery({
+    const { data: stats, isLoading } = useQuery({
         queryKey: [
-            "summary",
+            "enhanced-stats",
             ledgerId,
             formatDateForApi(startDate),
-            formatDateForApi(endDate),
+            rangeType,
             ledger?.metadata?.settings?.mainCurrency,
         ],
         queryFn: () =>
-            getLedgerStatsAction(
-                ledgerId || "",
-                formatDateForApi(startDate),
-                formatDateForApi(endDate),
-                ledger?.metadata?.settings?.mainCurrency || undefined
-            ),
+            getEnhancedStats({
+                ledgerId: ledgerId || "",
+                rangeType,
+                currentDate: startDate.toISOString(),
+            }),
         enabled: !!ledgerId,
     });
 
-    // Sum all totals for the main currency view
-    const totalExpense = summary?.convertedTotal?.total
-        || summary?.totals.reduce((sum, t) => sum + t.total, 0)
-        || 0;
-    const currencySymbol = ledger?.metadata?.settings?.mainCurrency || "CNY";
+    // Note: getEnhancedStats signature: ({ ledgerId, rangeType, currentDate }) -> Promise<EnhancedStats>
+    // I need to import it.
 
-    const daysInPeriod = Math.max(
-        1,
-        Math.ceil(
-            (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
-    );
-    const averageDaily = totalExpense / daysInPeriod;
+    const totalExpense = stats?.summary.total || 0;
+    const currencySymbol = stats?.summary.currency || ledger?.metadata?.settings?.mainCurrency || "CNY";
+    const averageDaily = stats?.summary.dailyAverage || 0;
+    const trend = stats?.summary.trend;
 
     return (
         <div className="space-y-8 pb-24">
@@ -94,6 +87,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
                 totalExpense={totalExpense}
                 averageDaily={averageDaily}
                 currencySymbol={currencySymbol}
+                trend={trend}
             />
 
             <div className="space-y-2">
@@ -101,7 +95,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
                     {t("expenseTrend")}
                 </h3>
                 <StatsChart
-                    data={summary?.trend || []}
+                    data={stats?.chart || []}
                     rangeType={rangeType}
                     startDate={startDate}
                     endDate={endDate}
@@ -110,9 +104,10 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             </div>
 
             <StatsRanking
-                data={summary?.byCategory || []}
+                data={stats?.categories || []}
                 total={totalExpense}
                 isLoading={isLoading}
+                currencySymbol={currencySymbol}
             />
         </div>
     );

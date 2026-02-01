@@ -72,7 +72,8 @@
         "totalExpense": "总支出",
         "month": "月",
         "week": "周",
-        "year": "年"
+        "year": "年",
+        "vsPreviousPeriod": "较上期"
     },
     "LedgerEntriesTab": {
         "processing": "处理中",

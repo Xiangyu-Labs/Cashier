@@ -2,24 +2,31 @@
 
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 
 interface CategoryStat {
-    categoryId: string | null;
-    categoryName: string;
-    categoryIcon: string | null;
-    currency: string | null;
-    total: number;
+    id: string | null;
+    name: string;
+    icon: string | null;
+    totalConverted: number; // Converted Amount
+    percent: number;        // % of total
     count: number;
+    trend?: {
+        percent: number;
+        amount: number;
+    };
 }
 
 interface StatsRankingProps {
     data: CategoryStat[];
     total: number;
     isLoading?: boolean;
+    currencySymbol?: string;
 }
 
-export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
+export function StatsRanking({ data, total, isLoading, currencySymbol = "¥" }: StatsRankingProps) {
     const t = useTranslations("StatsTab");
 
     if (isLoading) {
@@ -43,8 +50,8 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
         return null;
     }
 
-    // Sort descending just in case the API didn't
-    const sorted = [...data].sort((a, b) => b.total - a.total);
+    // Sort descending by converted amount
+    const sorted = [...data].sort((a, b) => b.totalConverted - a.totalConverted);
 
     return (
         <div className="space-y-5 px-2">
@@ -54,30 +61,52 @@ export function StatsRanking({ data, total, isLoading }: StatsRankingProps) {
 
             <div className="space-y-5">
                 {sorted.map((cat, idx) => {
-                    const percent = total > 0 ? (cat.total / total) * 100 : 0;
+                    const percent = cat.percent;
+                    // Trend Highlight
+                    const isIncrease = cat.trend && cat.trend.percent > 20 && cat.trend.amount > 100; // Significant increase
+
                     return (
                         <div key={idx} className="flex items-center gap-3 group">
                             {/* Icon Circle */}
                             <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-lg shrink-0 group-hover:bg-primary/10 transition-colors">
-                                <CategoryIcon iconName={cat.categoryIcon} className="w-5 h-5 text-text/80 group-hover:text-primary transition-colors" />
+                                <CategoryIcon iconName={cat.icon} className="w-5 h-5 text-text/80 group-hover:text-primary transition-colors" />
                             </div>
 
                             {/* Content */}
                             <div className="flex-1 space-y-1.5">
+                                {/* Top Line: Name + Amount */}
                                 <div className="flex justify-between items-center text-sm">
-                                    <div className="font-medium text-text">{cat.categoryName}</div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-mono font-medium">{cat.total.toFixed(2)}</span>
-                                        <span className="text-xs text-muted-foreground w-8 text-right">{percent.toFixed(0)}%</span>
+                                    <div className="font-medium text-text">{cat.name}</div>
+                                    <div className="font-mono font-medium tracking-tight">
+                                        <span className="text-xs text-muted-foreground mr-0.5">{currencySymbol}</span>
+                                        {cat.totalConverted.toFixed(2)}
                                     </div>
                                 </div>
 
-                                {/* Progress Bar */}
-                                <div className="h-1.5 w-full bg-surface2 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                                        style={{ width: `${percent}%` }}
-                                    />
+                                {/* Bottom Line: Progress + Detail */}
+                                <div className="flex items-center gap-3">
+                                    {/* Progress Bar */}
+                                    <div className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                                            style={{ width: `${percent}%` }}
+                                        />
+                                    </div>
+
+                                    {/* Stats Detail */}
+                                    <div className="text-xs text-muted-foreground flex items-center gap-2 shrink-0">
+                                        <span>{percent.toFixed(0)}%</span>
+                                        {/* Show trend if significant */}
+                                        {cat.trend && Math.abs(cat.trend.percent) > 10 && (
+                                            <span className={cn(
+                                                "flex items-center gap-0.5",
+                                                cat.trend.amount > 0 ? "text-destructive" : "text-primary"
+                                            )}>
+                                                {cat.trend.amount > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                {Math.abs(cat.trend.amount).toFixed(0)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
