@@ -52,8 +52,20 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
     const categories = initialCategories;
     const credentials = initialCredentials;
 
-    // Local state for AI Prompt
+    // Local state for AI Prompt - more stable sync
     const [localAiPrompt, setLocalAiPrompt] = useState(ledger.aiCustomPrompt || "");
+    const [isPromptFocused, setIsPromptFocused] = useState(false);
+
+    // Sync from props only when not focused and not pending
+    if (!isPromptFocused && !isPending && localAiPrompt !== (ledger.aiCustomPrompt || "")) {
+        setLocalAiPrompt(ledger.aiCustomPrompt || "");
+    }
+
+    // Optimistic states for better interaction
+    const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.collapseProcessingDefault);
+    const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.collapseBillsDefault);
+    const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.autoRecognizeDate);
+    const [optimisticMergeSimilar, setOptimisticMergeSimilar] = useState(ledger.mergeSimilarItems);
 
     function handleUpdateLedger(data: Partial<Ledger>) {
         startTransition(async () => {
@@ -69,10 +81,15 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
             };
             const result = await updateLedgerAction(ledgerId, cleanData);
             if (result.success) {
-                toast.success("Settings updated");
+                toast.success(t("settingsUpdated"));
                 router.refresh(); // Sync server state
             } else {
-                toast.error("Failed to update settings");
+                toast.error(t("updateFailed"));
+                // Rollback optimistic states on error
+                setOptimisticCollapseProcessing(ledger.collapseProcessingDefault);
+                setOptimisticCollapseBills(ledger.collapseBillsDefault);
+                setOptimisticAutoRecognizeDate(ledger.autoRecognizeDate);
+                setOptimisticMergeSimilar(ledger.mergeSimilarItems);
             }
         });
     }
@@ -84,10 +101,10 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
             if (!result.success) throw new Error(result.error);
         },
         onSuccess: () => {
-            toast.success("Category created");
+            toast.success(t("categoryCreated"));
             router.refresh();
         },
-        onError: () => toast.error("Failed to create category"),
+        onError: () => toast.error(t("createCategoryFailed")),
     });
 
     const updateCategoryMutation = useMutation({
@@ -100,10 +117,10 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
             if (!result.success) throw new Error(result.error);
         },
         onSuccess: () => {
-            toast.success("Category updated");
+            toast.success(t("categoryUpdated"));
             router.refresh();
         },
-        onError: () => toast.error("Failed to update category"),
+        onError: () => toast.error(t("updateCategoryFailed")),
     });
 
     const deleteCategoryMutation = useMutation({
@@ -112,10 +129,10 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
             if (!result.success) throw new Error(result.error);
         },
         onSuccess: () => {
-            toast.success("Category deleted");
+            toast.success(t("categoryDeleted"));
             router.refresh();
         },
-        onError: () => toast.error("Failed to delete category"),
+        onError: () => toast.error(t("deleteCategoryFailed")),
     });
 
     const reorderCategoriesMutation = useMutation({
@@ -181,6 +198,7 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                                 onClick={() => setTheme("system")}
                                 className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeAuto')}
+                                disabled={isPending}
                             >
                                 <Monitor className="h-4 w-4" />
                             </button>
@@ -188,6 +206,7 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                                 onClick={() => setTheme("light")}
                                 className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeLight')}
+                                disabled={isPending}
                             >
                                 <Sun className="h-4 w-4" />
                             </button>
@@ -195,6 +214,7 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                                 onClick={() => setTheme("dark")}
                                 className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeDark')}
+                                disabled={isPending}
                             >
                                 <Moon className="h-4 w-4" />
                             </button>
@@ -223,7 +243,8 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                                     router.push(pathname as any, { locale: newLocale as any });
                                 }
                             }}
-                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                            disabled={isPending}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
                         >
                             {UI_LANGUAGES.map(lang => (
                                 <option key={lang.value} value={lang.value}>
@@ -241,10 +262,12 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             <p className="text-sm text-[var(--muted)]">{t('collapseProcessingDesc')}</p>
                         </div>
                         <Switch
-                            checked={ledger.collapseProcessingDefault || false}
+                            checked={optimisticCollapseProcessing || false}
                             onCheckedChange={(checked: boolean) => {
+                                setOptimisticCollapseProcessing(checked);
                                 handleUpdateLedger({ collapseProcessingDefault: checked });
                             }}
+                            disabled={isPending}
                         />
                     </div>
 
@@ -256,10 +279,12 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
                         </div>
                         <Switch
-                            checked={ledger.collapseBillsDefault || false}
+                            checked={optimisticCollapseBills || false}
                             onCheckedChange={(checked: boolean) => {
+                                setOptimisticCollapseBills(checked);
                                 handleUpdateLedger({ collapseBillsDefault: checked });
                             }}
+                            disabled={isPending}
                         />
                     </div>
                 </div>
@@ -280,7 +305,8 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             onChange={(e) => {
                                 handleUpdateLedger({ aiLanguage: e.target.value });
                             }}
-                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px]"
+                            disabled={isPending}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
                         >
                             {AI_LANGUAGES.map(lang => (
                                 <option key={lang.value} value={lang.value}>{lang.label}</option>
@@ -295,10 +321,12 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             <p className="text-sm text-[var(--muted)]">{t('autoRecognizeDateDesc')}</p>
                         </div>
                         <Switch
-                            checked={ledger.autoRecognizeDate || false}
+                            checked={optimisticAutoRecognizeDate || false}
                             onCheckedChange={(checked: boolean) => {
+                                setOptimisticAutoRecognizeDate(checked);
                                 handleUpdateLedger({ autoRecognizeDate: checked });
                             }}
+                            disabled={isPending}
                         />
                     </div>
 
@@ -310,10 +338,12 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             <p className="text-sm text-[var(--muted)]">{t('mergeSimilarDesc')}</p>
                         </div>
                         <Switch
-                            checked={ledger.mergeSimilarItems || false}
+                            checked={optimisticMergeSimilar || false}
                             onCheckedChange={(checked: boolean) => {
+                                setOptimisticMergeSimilar(checked);
                                 handleUpdateLedger({ mergeSimilarItems: checked });
                             }}
+                            disabled={isPending}
                         />
                     </div>
 
@@ -325,18 +355,20 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
                             <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
                         </div>
                         <textarea
-                            key={ledger.aiCustomPrompt || "default"}
-                            defaultValue={ledger.aiCustomPrompt || ""}
+                            value={localAiPrompt}
                             onChange={(e) => {
                                 setLocalAiPrompt(e.target.value);
                             }}
+                            onFocus={() => setIsPromptFocused(true)}
                             onBlur={(_e) => {
+                                setIsPromptFocused(false);
                                 if (localAiPrompt !== (ledger.aiCustomPrompt || "")) {
                                     handleUpdateLedger({ aiCustomPrompt: localAiPrompt });
                                 }
                             }}
+                            disabled={isPending}
                             placeholder={t('aiPromptPlaceholder')}
-                            className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+                            className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
                         />
                     </div>
                 </div>

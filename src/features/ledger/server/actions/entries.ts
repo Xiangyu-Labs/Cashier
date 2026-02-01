@@ -161,12 +161,28 @@ export async function getLedgerEntriesAction(
 
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));
     if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(params.endDate)));
-    if (params.cursor) conditions.push(lte(ledgerEntries.createdAt, new Date(params.cursor)));
     if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
+
+    // Handle cursor for pagination: (entryDate, createdAt, id)
+    if (params.cursor) {
+        const [cursorDate, cursorCreated, cursorId] = params.cursor.split('|');
+        if (cursorDate && cursorCreated && cursorId) {
+            // This is a bit complex in Drizzle if we want strict (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
+            // For simplicity and correctness in most cases, we'll use a slightly safer approach or raw SQL if needed.
+            // But let's stick to a robust enough version:
+            conditions.push(lte(ledgerEntries.entryDate, new Date(cursorDate)));
+            // Note: Strict tie-breaking is harder with findMany where clause. 
+            // We'll filter the results manually if needed or just use the cursor as is if it's unique enough.
+            // Let's refine the query to be more precise if possible.
+        } else {
+            // Fallback to old behavior if cursor format is wrong
+            conditions.push(lte(ledgerEntries.createdAt, new Date(params.cursor)));
+        }
+    }
 
     const items = await db.query.ledgerEntries.findMany({
         where: and(...conditions),
-        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt)],
+        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
         limit: limit + 1,
         with: {
             category: true,
@@ -174,14 +190,38 @@ export async function getLedgerEntriesAction(
         }
     });
 
+    // Manual tie-breaking filtering if cursor was provided
+    let filteredItems = items;
+    if (params.cursor) {
+        const [cursorDate, cursorCreated, cursorId] = params.cursor.split('|');
+        if (cursorDate && cursorId) {
+            const cursorDateVal = new Date(cursorDate).getTime();
+            const cursorCreatedVal = new Date(cursorCreated).getTime();
+            filteredItems = items.filter(item => {
+                const itemDateVal = item.entryDate ? item.entryDate.getTime() : 0;
+                const itemCreatedVal = item.createdAt.getTime();
+
+                if (itemDateVal < cursorDateVal) return true;
+                if (itemDateVal > cursorDateVal) return false;
+
+                if (itemCreatedVal < cursorCreatedVal) return true;
+                if (itemCreatedVal > cursorCreatedVal) return false;
+
+                return item.id < cursorId;
+            });
+        }
+    }
+
     let nextCursor: string | undefined = undefined;
-    if (items.length > limit) {
-        const nextItem = items.pop();
-        nextCursor = nextItem?.createdAt.toISOString();
+    if (filteredItems.length > limit) {
+        const nextItem = filteredItems[limit];
+        const nextDate = nextItem.entryDate ? nextItem.entryDate.toISOString() : new Date(0).toISOString();
+        nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
+        filteredItems = filteredItems.slice(0, limit);
     }
 
     // Map dates to strings
-    const mappedItems = items.map(item => ({
+    const mappedItems = filteredItems.map(item => ({
         ...item,
         amount: String(item.amount), // Ensure string to match LedgerEntry interface
         createdAt: item.createdAt.toISOString(),

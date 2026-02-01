@@ -206,7 +206,12 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     if (cursor) {
-        conditions.push(lte(sourceDocuments.createdAt, new Date(cursor)));
+        const [cursorCreated, cursorId] = cursor.split('|');
+        if (cursorCreated && cursorId) {
+            conditions.push(lte(sourceDocuments.createdAt, new Date(cursorCreated)));
+        } else {
+            conditions.push(lte(sourceDocuments.createdAt, new Date(cursor)));
+        }
     }
 
     if (startDate) {
@@ -218,20 +223,34 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
 
     const result = await scope.documents.findMany({
         where: and(...conditions),
-        orderBy: [desc(sourceDocuments.createdAt)],
+        orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
         limit: limit + 1,
     });
 
-    let nextCursor = null;
-    if (result.length > limit) {
-        const nextItem = result.pop();
-        if (nextItem) {
-            nextCursor = nextItem.createdAt.toISOString();
+    // Tie-breaking filtering
+    let filteredResult = result;
+    if (cursor) {
+        const [cursorCreated, cursorId] = cursor.split('|');
+        if (cursorCreated && cursorId) {
+            const cursorVal = new Date(cursorCreated).getTime();
+            filteredResult = result.filter(item => {
+                const itemVal = item.createdAt.getTime();
+                if (itemVal < cursorVal) return true;
+                if (itemVal > cursorVal) return false;
+                return item.id < cursorId;
+            });
         }
     }
 
+    let nextCursor = null;
+    if (filteredResult.length > limit) {
+        const nextItem = filteredResult[limit];
+        nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
+        filteredResult = filteredResult.slice(0, limit);
+    }
+
     return {
-        items: result.map(item => ({
+        items: filteredResult.map(item => ({
             ...item,
             createdAt: item.createdAt.toISOString(),
             status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats"; // New Action
@@ -87,8 +87,6 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             breakdown: totals
         };
     }, [summaryData, ledger]);
-
-    const [isPending, startTransition] = useTransition();
 
     const updateMutation = useMutation({
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
