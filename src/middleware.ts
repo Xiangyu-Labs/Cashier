@@ -10,7 +10,7 @@ const intlMiddleware = createMiddleware(routing);
 export default auth((req) => {
     const { pathname } = req.nextUrl;
 
-    // 1. Skip static files and Next.js internals (handled by matcher, but double check)
+    // 1. Skip static files and Next.js internals
     if (
         pathname.startsWith("/_next") ||
         pathname.includes(".")
@@ -23,7 +23,7 @@ export default auth((req) => {
         const isPublicApi =
             pathname.startsWith("/api/auth") ||
             pathname.startsWith("/api/s/") || // Share API
-            pathname.startsWith("/api/v1/");  // Basic V1 might be public? Original code said yes.
+            pathname.startsWith("/api/v1/");
 
         if (!isPublicApi && !req.auth) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -34,29 +34,29 @@ export default auth((req) => {
     // 3. Define Public Pages
     const isPublicPath = (path: string) => {
         const publicPrefixes = ["/login", "/s/"];
-        // Check exact match or startswith for root paths
-        if (publicPrefixes.some(p => path === p || path.startsWith(p))) return true;
 
-        // Check locale prefixed paths
-        return routing.locales.some(locale => {
-            const prefix = `/${locale}`;
-            return publicPrefixes.some(p =>
-                path === `${prefix}${p}` || path.startsWith(`${prefix}${p}/`)
-            );
-        });
+        // Remove locale prefix for checking if the path is public
+        // next-intl middleware will handle the actual prefixing/un-prefixing
+        const pathSegments = path.split('/').filter(Boolean);
+        const firstSegment = pathSegments[0];
+
+        // Check if first segment is a locale
+        let checkPath = path;
+        if (routing.locales.includes(firstSegment as any)) {
+            checkPath = '/' + pathSegments.slice(1).join('/');
+        }
+
+        if (publicPrefixes.some(p => checkPath === p || checkPath.startsWith(p))) return true;
+        return false;
     };
 
     const isPublicPage = isPublicPath(pathname);
 
     // 4. Protected Routes Logic
     if (!isPublicPage && !req.auth) {
-        // Infer locale from path or default
-        const localeMatch = pathname.match(new RegExp(`^/(${routing.locales.join("|")})`));
-        const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
-
-        const loginPath = `/${locale}/login`;
-
-        const loginUrl = new URL(loginPath, req.url);
+        // Redirect to /login. next-intl middleware (called via intlMiddleware) 
+        // will handle adding the locale prefix if needed based on the 'as-needed' rule.
+        const loginUrl = new URL("/login", req.url);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
     }
