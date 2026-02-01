@@ -231,7 +231,8 @@
         "notificationPermissionDenied": "Permission denied. Please enable notifications in your browser settings.",
         "notificationNotSupported": "Not supported on this device",
         "newCategoryPlaceholder": "New Category Name",
-        "addCategory": "Add"
+        "addCategory": "Add",
+        "settingsUpdated": "Settings updated successfully"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

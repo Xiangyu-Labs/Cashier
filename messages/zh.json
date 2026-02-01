@@ -234,7 +234,8 @@
         "notificationPermissionDenied": "权限被拒绝。请在浏览器设置中允许通知。",
         "notificationNotSupported": "当前设备不支持",
         "newCategoryPlaceholder": "新分类名称",
-        "addCategory": "添加"
+        "addCategory": "添加",
+        "settingsUpdated": "设置已更新"
     },
     "ServiceCredentials": {
         "title": "服务凭证",
