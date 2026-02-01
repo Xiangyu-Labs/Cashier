@@ -13,7 +13,7 @@ export async function register() {
             // This prevents double initialization during build/dev and allows separation of concerns
             // Default to true in development if not explicitly set
             const shouldStartWorkers = process.env.ENABLE_WORKERS === 'true' ||
-                                     (process.env.NODE_ENV === 'development' && process.env.ENABLE_WORKERS !== 'false');
+                (process.env.NODE_ENV === 'development' && process.env.ENABLE_WORKERS !== 'false');
 
             if (shouldStartWorkers) {
                 logger.info("Initializing background workers...");
