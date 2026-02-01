@@ -102,6 +102,10 @@ export const ledgerEntries = pgTable("ledger_entries", {
     index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
     index("idx_ledger_entries_created_at").on(table.createdAt),
+    // Optimization for category filtering with date sort
+    index("idx_ledger_entries_category_date").on(table.ledgerId, table.categoryId, table.entryDate),
+    // Optimization for default sort (createdAt) within a ledger
+    index("idx_ledger_entries_ledger_created").on(table.ledgerId, table.createdAt),
 ]);
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
