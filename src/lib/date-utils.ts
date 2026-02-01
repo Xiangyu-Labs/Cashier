@@ -16,7 +16,6 @@ export type DateRangeType = "week" | "month" | "year";
 export interface DateRange {
     startDate: Date;
     endDate: Date;
-    label: string;
 }
 
 export function getStartOfWeek(date: Date): Date {
@@ -46,27 +45,23 @@ export function getEndOfYear(date: Date): Date {
 export function getDateRange(date: Date, type: DateRangeType): DateRange {
     let start: Date;
     let end: Date;
-    let label: string;
 
     switch (type) {
         case "week":
             start = getStartOfWeek(date);
             end = getEndOfWeek(date);
-            label = `${format(start, "M.d")}-${format(end, "M.d")}`;
             break;
         case "month":
             start = getStartOfMonth(date);
             end = getEndOfMonth(date);
-            label = format(start, "yyyy年M月");
             break;
         case "year":
             start = getStartOfYear(date);
             end = getEndOfYear(date);
-            label = format(start, "yyyy年");
             break;
     }
 
-    return { startDate: start, endDate: end, label };
+    return { startDate: start, endDate: end };
 }
 
 export function addPeriod(date: Date, type: DateRangeType, amount: number): Date {

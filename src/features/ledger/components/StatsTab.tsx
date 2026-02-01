@@ -13,7 +13,7 @@ import {
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 
 interface StatsTabProps {
     ledgerId?: string;
@@ -29,13 +29,27 @@ interface StatsTabProps {
 
 export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
     const t = useTranslations("StatsTab");
+    const format = useFormatter();
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    const { startDate, endDate, label } = useMemo(
+    const { startDate, endDate } = useMemo(
         () => getDateRange(currentDate, rangeType),
         [currentDate, rangeType]
     );
+
+    const label = useMemo(() => {
+        switch (rangeType) {
+            case "week":
+                return `${format.dateTime(startDate, { month: "numeric", day: "numeric" })} - ${format.dateTime(endDate, { month: "numeric", day: "numeric" })}`;
+            case "month":
+                return format.dateTime(startDate, { year: "numeric", month: "long" });
+            case "year":
+                return format.dateTime(startDate, { year: "numeric" });
+            default:
+                return "";
+        }
+    }, [startDate, endDate, rangeType, format]);
 
     const { data: summary, isLoading } = useQuery({
         queryKey: [
@@ -43,14 +57,14 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             ledgerId,
             formatDateForApi(startDate),
             formatDateForApi(endDate),
-            ledger?.mainCurrency,
+            ledger?.metadata?.settings?.mainCurrency,
         ],
         queryFn: () =>
             getLedgerStatsAction(
                 ledgerId || "",
                 formatDateForApi(startDate),
                 formatDateForApi(endDate),
-                ledger?.mainCurrency || undefined
+                ledger?.metadata?.settings?.mainCurrency || undefined
             ),
         enabled: !!ledgerId,
     });
@@ -59,7 +73,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
     const totalExpense = summary?.convertedTotal?.total
         || summary?.totals.reduce((sum, t) => sum + t.total, 0)
         || 0;
-    const currencySymbol = ledger?.mainCurrency || "CNY";
+    const currencySymbol = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
     const daysInPeriod = Math.max(
         1,
