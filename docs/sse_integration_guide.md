@@ -41,10 +41,10 @@ eventBus.publish({
 
 #### Repository 模式自动发布
 
-推荐使用 Repository 模式，CRUD 操作会自动发布事件：
+推荐使用 Repository 模式，CRUD 操作会自动发布事件。Repository 通常位于 `src/features/<feature>/server/repository.ts`。
 
 ```typescript
-// src/lib/repositories/ledger-entry-repository.ts
+// src/features/ledger/server/repository.ts
 class LedgerEntryRepository extends BaseRepository<LedgerEntry> {
     constructor() {
         super(ledgerEntries, 'ledger_entry');
@@ -97,24 +97,17 @@ function LedgerPage() {
 
 #### InvalidationHub (`src/lib/events/invalidation-hub.ts`)
 
-自动处理事件并使相关 React Query 缓存失效：
+自动处理事件并使相关 React Query 缓存失效。建议使用 `queryKeys` 工厂来保证 key 的一致性：
 
 ```typescript
+import { queryKeys } from "@/lib/query-keys";
+
 // 事件 -> 缓存失效映射
 const invalidationMap = {
     ledger_entry: [
-        ['ledgerEntries', ledgerId],  // 条目列表
-        ['summary', ledgerId],        // 摘要统计
-        ['ledger', ledgerId],         // 账本详情
-    ],
-    source_document: [
-        ['sourceDocuments', ledgerId],
-        ['ledgerEntries', ledgerId],
-    ],
-    task_run: [
-        ['processingTasks', ledgerId],
-        ['token-stats', ledgerId],
-        ['sourceDocuments', ledgerId],
+        queryKeys.ledgerEntries(ledgerId),  // 条目列表
+        queryKeys.summary(ledgerId),        // 摘要统计
+        queryKeys.ledger(ledgerId),         // 账本详情
     ],
     // ...
 };
@@ -124,12 +117,12 @@ const invalidationMap = {
 
 ### 步骤 1: 使用 Repository 进行数据操作
 
-如果是新实体，创建对应的 Repository：
+如果是新实体，创建对应的 Repository（建议在 `src/features/<feature>/server/` 下）：
 
 ```typescript
-// src/lib/repositories/my-entity-repository.ts
-import { BaseRepository } from './base-repository';
-import { myEntities } from '@/lib/db/schema';
+// src/features/my-feature/server/repository.ts
+import { BaseRepository } from '@/lib/repositories/base-repository';
+import { myEntities } from './schema';
 import { MyEntity } from '@/types/api';
 
 class MyEntityRepository extends BaseRepository<MyEntity, typeof myEntities> {

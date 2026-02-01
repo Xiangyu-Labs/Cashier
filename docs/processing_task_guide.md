@@ -7,7 +7,7 @@ This guide provides a comprehensive overview of the new **async recursive flow t
 The system replaces the legacy database-polling model with a robust message queue architecture:
 
 1.  **Core Engine (`src/lib/flow/`)**: Manages task queuing, execution, recursion, and state persistence.
-2.  **Task Implementations (`src/lib/tasks/`)**: Pure business logic implementing the `FlowTaskHandler` interface.
+2.  **Task Implementations (`src/features/<feature>/server/tasks/`)**: Pure business logic implementing the `FlowTaskHandler` interface.
 3.  **Redis**: Handles job storage, sophisticated rate limiting, and stall prevention.
 
 ### The Data Flow
@@ -27,14 +27,14 @@ graph TD
 
 ## 🛠 Implementing a New Task
 
-To add a new feature, implement the `FlowTaskHandler` interface.
+To add a new feature, implement the `FlowTaskHandler` interface and place it in the appropriate feature directory.
 
 ### 1. Define Types
 
-Create a file in `src/lib/tasks/` (e.g., `my-feature.ts`).
+Create a file in your feature's server tasks directory (e.g., `src/features/my-feature/server/tasks/my-task.ts`).
 
 ```typescript
-export const TASK_TYPE = 'my_feature';
+export const TASK_TYPE = 'my_feature_task';
 
 export interface MyInput {
     entityId: string;
@@ -91,9 +91,9 @@ const handler: FlowTaskHandler<MyInput, MyOutput> = {
 registerFlowTask(TASK_TYPE, handler);
 ```
 
-### 3. Register in Index
+### 3. Ensure Auto-Import
 
-Import your file in `src/lib/tasks/index.ts`.
+Make sure your task file is imported at runtime so `registerFlowTask` is executed. Usually, this is handled by importing the feature's tasks in a central worker entry point or `instrumentation.ts`.
 
 ---
 
@@ -103,7 +103,7 @@ Import your file in `src/lib/tasks/index.ts`.
 
 ```typescript
 import { submitFlowTask } from "@/lib/flow/producer";
-import { TASK_TYPE } from "@/lib/tasks/my-feature";
+import { TASK_TYPE } from "@/features/my-feature/server/tasks/my-task";
 
 await submitFlowTask({
     type: TASK_TYPE,
