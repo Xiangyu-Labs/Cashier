@@ -135,59 +135,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
 
             // 2. Ensuring we have a JTI (Session ID)
-            // NextAuth usually adds 'jti' by default. We use it as our sessionToken.
             if (!token.jti) {
-                const { v4: uuidv4 } = await import("uuid");
-                token.jti = uuidv4();
+                token.jti = crypto.randomUUID();
             }
 
             const userId = token.sub;
             const sessionId = token.jti;
 
             if (userId && sessionId) {
-                // 3. Persist/Update Session in DB
-                // We do this in JWT callback because it runs on every rotation/visit (if updated)
-                // To avoid DB spam, we can throttle updates, but for security (revocation check),
-                // we should at least ensure it EXISTS.
-
-                // Note: We cannot easily use `headers()` inside `jwt` callback in all edge cases,
-                // but usually it works in Next.js Server Components / Actions.
-                // We'll try to capture device info if possible, or leave it merely as ID tracking.
-
                 try {
-                    // Check if session exists
-                    const existingSession = await db.query.sessions.findFirst({
-                        where: eq(sessions.sessionToken, sessionId),
-                        columns: { sessionToken: true, lastActiveAt: true },
-                    });
+                    // 3. Persist/Update Session in DB
 
-                    const now = new Date();
-
-                    if (!existingSession) {
-                        // Create new session record
-                        // We try to get UA/IP if possible (best effort)
-                        /* Note: Getting headers in JWT callback is tricky in some NextAuth versions.
-                           Ideally we do this in a separate server action or middleware, 
-                           but doing it here ensures the "Token" implies "DB Record".
-                        */
+                    if (trigger === "signIn") {
+                        // Create new session record strictly on sign-in
                         const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-                        // Heuristically try to get headers if we are in a context that supports it
-                        // In NextAuth v5 (beta), we might not have direct access to headers() here easily.
-                        // We will insert basic info and let a `touchSession` logic update UA later if needed.
+                        // We do not capture headers here to avoid Edge/Runtime issues.
+                        // Device info will be updated by a separate client-side call or middleware if needed.
                         await db.insert(sessions).values({
                             sessionToken: sessionId,
                             userId: userId,
                             expires: expires,
-                            lastActiveAt: now,
+                            lastActiveAt: new Date(),
+                            userAgent: null,
+                            ipAddress: null,
                         });
                     } else {
-                        // Throttled Update: active touch every 1 hour
-                        const lastActive = existingSession.lastActiveAt ? new Date(existingSession.lastActiveAt).getTime() : 0;
-                        if (Date.now() - lastActive > 60 * 60 * 1000) {
-                            await db.update(sessions)
-                                .set({ lastActiveAt: now })
-                                .where(eq(sessions.sessionToken, sessionId));
+                        // For other triggers: Update lastActiveAt if session exists.
+                        // We DO NOT auto-create sessions here.
+
+                        const existingSession = await db.query.sessions.findFirst({
+                            where: eq(sessions.sessionToken, sessionId),
+                            columns: { sessionToken: true, lastActiveAt: true },
+                        });
+
+                        if (existingSession) {
+                            // Throttled Update: active touch every 1 hour
+                            const now = new Date();
+                            const lastActive = existingSession.lastActiveAt ? new Date(existingSession.lastActiveAt).getTime() : 0;
+                            if (now.getTime() - lastActive > 60 * 60 * 1000) {
+                                await db.update(sessions)
+                                    .set({ lastActiveAt: now })
+                                    .where(eq(sessions.sessionToken, sessionId));
+                            }
                         }
                     }
                 } catch (error) {

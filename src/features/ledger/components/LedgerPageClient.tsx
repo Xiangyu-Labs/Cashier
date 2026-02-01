@@ -113,7 +113,7 @@ export function LedgerPageClient({
                         <LedgerEntriesTab
                             ledgerId={ledgerId}
                             categories={categories || []}
-                            defaultCollapsed={ledger.collapseProcessingDefault || false}
+                            defaultCollapsed={ledger.metadata?.settings?.collapseProcessingDefault || false}
                             ledger={ledger}
                             initialActiveSourceDocuments={initialActiveSourceDocuments}
                             initialCompletedSourceDocuments={initialCompletedSourceDocuments}

@@ -52,16 +52,20 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
     const updateLedgerMutation = useMutation({
         mutationFn: async (data: Partial<Ledger>) => {
-            const result = await updateLedgerAction(ledgerId, {
-                ...data,
-                currencies: data.currencies || undefined,
-                mainCurrency: data.mainCurrency || undefined,
-                autoRecognizeDate: data.autoRecognizeDate === null ? undefined : data.autoRecognizeDate,
-                collapseProcessingDefault: data.collapseProcessingDefault === null ? undefined : data.collapseProcessingDefault,
-                mergeSimilarItems: data.mergeSimilarItems === null ? undefined : data.mergeSimilarItems,
-                collapseBillsDefault: data.collapseBillsDefault === null ? undefined : data.collapseBillsDefault,
-                aiCustomPrompt: data.aiCustomPrompt === null ? undefined : data.aiCustomPrompt,
-            });
+            const settingsUpdate: any = {};
+            if ((data as any).currencies !== undefined) settingsUpdate.currencies = (data as any).currencies;
+            if ((data as any).mainCurrency !== undefined) settingsUpdate.mainCurrency = (data as any).mainCurrency;
+            if ((data as any).autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = (data as any).autoRecognizeDate;
+            if ((data as any).collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = (data as any).collapseProcessingDefault;
+            if ((data as any).mergeSimilarItems !== undefined) settingsUpdate.mergeSimilarItems = (data as any).mergeSimilarItems;
+            if ((data as any).collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = (data as any).collapseBillsDefault;
+            if ((data as any).aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = (data as any).aiCustomPrompt;
+
+            const payload: any = {};
+            if (data.name !== undefined) payload.name = data.name;
+            if (Object.keys(settingsUpdate).length > 0) payload.settings = settingsUpdate;
+
+            const result = await updateLedgerAction(ledgerId, payload);
             if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data;
         },
@@ -214,7 +218,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                             <Switch
                                 checked={ledger?.autoRecognizeDate || false}
                                 onCheckedChange={(checked) => {
-                                    updateLedgerMutation.mutate({ autoRecognizeDate: checked });
+                                    updateLedgerMutation.mutate({ autoRecognizeDate: checked } as any);
                                 }}
                             />
                         </div>
@@ -229,7 +233,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                             <Switch
                                 checked={ledger?.mergeSimilarItems || false}
                                 onCheckedChange={(checked) => {
-                                    updateLedgerMutation.mutate({ mergeSimilarItems: checked });
+                                    updateLedgerMutation.mutate({ mergeSimilarItems: checked } as any);
                                 }}
                             />
                         </div>

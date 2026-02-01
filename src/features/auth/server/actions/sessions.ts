@@ -14,10 +14,10 @@ export interface SessionInfo {
     lastActiveAt: Date | null;
     isCurrent: boolean;
     device: {
-        browser: string;
-        os: string;
-        device: string;
-        type: string;
+        browser: { name?: string; version?: string };
+        os: { name?: string; version?: string };
+        device: { vendor?: string; model?: string; type?: string };
+        userAgent: string;
     };
 }
 
@@ -123,10 +123,10 @@ export async function getActiveSessionsAction(): Promise<{ success: boolean; dat
                 lastActiveAt: s.lastActiveAt,
                 isCurrent: s.sessionToken === currentSessionId,
                 device: {
-                    browser: `${browser.name || 'Unknown Browser'} ${browser.version || ''}`.trim(),
-                    os: `${os.name || 'Unknown OS'} ${os.version || ''}`.trim(),
-                    device: device.vendor ? `${device.vendor} ${device.model}` : (device.type || 'Desktop'),
-                    type: device.type || 'desktop'
+                    browser: { name: browser.name, version: browser.version },
+                    os: { name: os.name, version: os.version },
+                    device: { vendor: device.vendor, model: device.model, type: device.type },
+                    userAgent: s.userAgent || ""
                 }
             };
         });
@@ -169,4 +169,9 @@ export async function revokeSessionAction(sessionToken: string) {
         logger.error({ error, sessionToken }, "Failed to revoke session");
         return { success: false, error: "Failed to revoke session" };
     }
+}
+
+export async function updateSessionInfo() {
+    // Placeholder for now as per code comments about complexity of identifying current session
+    return { success: true };
 }

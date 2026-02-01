@@ -198,7 +198,7 @@ export function LedgerEntriesTab({
             }
         },
         onError: (err, id, ctx) => {
-            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
+            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), (ctx as any)?.prevActive);
             toast.error(tCommon("error"));
         }
     });

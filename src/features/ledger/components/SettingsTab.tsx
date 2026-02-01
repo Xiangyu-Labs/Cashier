@@ -30,7 +30,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { toast } from "sonner";
-import { signOutAction } from "@/features/auth/server/actions/sign-out";
+import { signOut } from "next-auth/react";
 
 interface SettingsTabProps {
     ledger: Ledger;
@@ -76,25 +76,24 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.metadata?.settings?.autoRecognizeDate);
     const [optimisticMergeSimilar, setOptimisticMergeSimilar] = useState(ledger.metadata?.settings?.mergeSimilarItems);
 
-    function handleUpdateLedger(data: any) { // using any to accept flat legacy props from UI controls
+    function handleUpdateLedger(data: any) {
         startTransition(async () => {
-            const cleanSettings = {
-                currencies: data.currencies,
-                mainCurrency: data.mainCurrency,
-                aiLanguage: data.aiLanguage,
-                autoRecognizeDate: data.autoRecognizeDate,
-                collapseProcessingDefault: data.collapseProcessingDefault,
-                mergeSimilarItems: data.mergeSimilarItems,
-                collapseBillsDefault: data.collapseBillsDefault,
-                aiCustomPrompt: data.aiCustomPrompt,
-            };
+            // Construct the settings object
+            // We need to be careful: the action expects `name` at top level, and everything else in `settings`
 
-            // Remove undefined keys
-            Object.keys(cleanSettings).forEach(key => (cleanSettings as any)[key] === undefined && delete (cleanSettings as any)[key]);
+            const settingsUpdate: any = {};
+            if (data.currencies !== undefined) settingsUpdate.currencies = data.currencies;
+            if (data.mainCurrency !== undefined) settingsUpdate.mainCurrency = data.mainCurrency;
+            if (data.aiLanguage !== undefined) settingsUpdate.aiLanguage = data.aiLanguage;
+            if (data.autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = data.autoRecognizeDate;
+            if (data.collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = data.collapseProcessingDefault;
+            if (data.mergeSimilarItems !== undefined) settingsUpdate.mergeSimilarItems = data.mergeSimilarItems;
+            if (data.collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = data.collapseBillsDefault;
+            if (data.aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = data.aiCustomPrompt;
 
             const payload: any = {};
-            if (data.name) payload.name = data.name;
-            if (Object.keys(cleanSettings).length > 0) payload.settings = cleanSettings;
+            if (data.name !== undefined) payload.name = data.name;
+            if (Object.keys(settingsUpdate).length > 0) payload.settings = settingsUpdate;
 
             const result = await updateLedgerAction(ledgerId, payload);
             if (result.success) {
@@ -102,6 +101,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 router.refresh();
             } else {
                 toast.error(t("updateFailed"));
+                // Revert optimistic updates on error
                 setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
                 setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
                 setOptimisticAutoRecognizeDate(ledger.metadata?.settings?.autoRecognizeDate);
@@ -447,9 +447,9 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
 
             {/* Device Management */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">Devices</h2>
+                <h2 className="text-lg font-medium mb-6">{t("Devices.title")}</h2>
                 <div className="space-y-1 mb-4">
-                    <p className="text-sm text-[var(--muted)]">Manage devices that are currently logged in to your account.</p>
+                    <p className="text-sm text-[var(--muted)]">{t("Devices.description")}</p>
                 </div>
                 {/* Need to lazy load or separate component to avoid big bundle? It's fine for now. */}
                 <div className="mt-4">
@@ -466,9 +466,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                         <p className="text-sm text-[var(--muted)]">{t('signOutDesc')}</p>
                     </div>
                     <button
-                        onClick={() => startTransition(async () => {
-                            await signOutAction();
-                        })}
+                        onClick={() => signOut({ callbackUrl: "/login" })}
                         disabled={isPending}
                         className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
                     >

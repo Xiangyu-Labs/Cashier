@@ -38,14 +38,12 @@ export interface EnhancedStats {
 
 export async function getEnhancedStats({
     ledgerId,
-    rangeType,
-    currentDate = new Date().toISOString(),
-    clientTimezoneOffset = 0
+    queryRange,
+    compareRange,
 }: {
     ledgerId: string;
-    rangeType: DateRangeType;
-    currentDate?: string;
-    clientTimezoneOffset?: number;
+    queryRange: { from: string; to: string };
+    compareRange: { from: string; to: string };
 }): Promise<EnhancedStats> {
 
     // 1. Get Ledger Settings (Main Currency)
@@ -58,15 +56,11 @@ export async function getEnhancedStats({
 
     const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
-    // 2. Calculate Dates
-    const parsedDate = new Date(currentDate);
-    // Current Period
-    const { startDate: currentStart, endDate: currentEnd } = getDateRange(parsedDate, rangeType);
-
-    // Previous Period (for trend comparison)
-    // We strictly subtract 1 period: "Last Month" vs "This Month"
-    const prevDate = addPeriod(parsedDate, rangeType, -1);
-    const { startDate: prevStart, endDate: prevEnd } = getDateRange(prevDate, rangeType);
+    // 2. Parse Dates from Props
+    const currentStart = new Date(queryRange.from);
+    const currentEnd = new Date(queryRange.to);
+    const prevStart = new Date(compareRange.from);
+    const prevEnd = new Date(compareRange.to);
 
     // 3. Fetch Entries
     // We need to fetch entries for BOTH periods.

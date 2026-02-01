@@ -38,8 +38,8 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const endDateStr = dateRange.end?.toISOString();
 
     const { data: summaryData } = useQuery({
-        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.mainCurrency],
-        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.mainCurrency || undefined),
+        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency],
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency || undefined),
         enabled: !!startDateStr && !!endDateStr
     });
 
@@ -77,7 +77,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         const totals = summaryData?.totals || [];
 
         const mainTotal = convertedTotal?.total ?? totals.reduce((sum, t) => sum + t.total, 0);
-        const mainCurrency = convertedTotal?.currency || ledger?.mainCurrency || "CNY";
+        const mainCurrency = convertedTotal?.currency || ledger?.metadata?.settings?.mainCurrency || "CNY";
         const hasMultipleCurrencies = totals.length > 1;
 
         return {
@@ -233,7 +233,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                         <LedgerEntryCard
                                             ledgerEntry={entry}
                                             categories={categories}
-                                            mainCurrency={ledger?.mainCurrency || undefined}
+                                            mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
                                             onView={() => {
                                                 setSelectedLedgerEntry(entry);
                                                 setIsDetailModalOpen(true);
@@ -291,8 +291,8 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             <LedgerEntryDetailModal
                 ledgerEntry={selectedLedgerEntry}
                 categories={categories}
-                preferredCurrencies={ledger?.currencies || []}
-                mainCurrency={ledger?.mainCurrency || undefined}
+                preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
+                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
                 open={isDetailModalOpen}
                 onClose={() => {
                     setIsDetailModalOpen(false);

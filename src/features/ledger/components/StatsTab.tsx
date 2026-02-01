@@ -38,6 +38,21 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         [currentDate, rangeType]
     );
 
+    const { startDate: prevDateStart, endDate: prevDateEnd } = useMemo(() => {
+        // Calculate previous period relative to the user's current date
+        // We use the same date utility but shift the anchor date back by 1 period
+        // Because everything is Date objects based on local browser time (or system time), 
+        // this preserves the user's localized view of "Last Month".
+        // e.g. If specific logic for "addPeriod" is used:
+        // We need to import addPeriod first.
+        const prevAnchor = new Date(currentDate);
+        if (rangeType === 'week') prevAnchor.setDate(prevAnchor.getDate() - 7);
+        if (rangeType === 'month') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
+        if (rangeType === 'year') prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
+
+        return getDateRange(prevAnchor, rangeType);
+    }, [currentDate, rangeType]);
+
     const label = useMemo(() => {
         switch (rangeType) {
             case "week":
@@ -62,8 +77,14 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         queryFn: () =>
             getEnhancedStats({
                 ledgerId: ledgerId || "",
-                rangeType,
-                currentDate: startDate.toISOString(),
+                queryRange: {
+                    from: startDate.toISOString(),
+                    to: endDate.toISOString()
+                },
+                compareRange: {
+                    from: prevDateStart.toISOString(),
+                    to: prevDateEnd.toISOString()
+                }
             }),
         enabled: !!ledgerId,
     });
