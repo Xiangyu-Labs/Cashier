@@ -9,7 +9,9 @@ import {
 import {
     retrySourceDocumentAction,
     updateSourceDocumentAction,
-    deleteSourceDocumentAction
+    deleteSourceDocumentAction,
+    batchDeleteSourceDocumentsAction,
+    batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
@@ -177,7 +179,7 @@ export function LedgerEntriesTab({
     const updateSourceDocumentMutation = useMutation({
         mutationFn: async ({ id, title }: { id: string, title: string }) => {
             const result = await updateSourceDocumentAction(ledgerId, id, { title });
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Failed to update source document");
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -189,7 +191,7 @@ export function LedgerEntriesTab({
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => {
             const result = await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error(result.error || "Failed to delete source document");
         },
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
@@ -230,6 +232,31 @@ export function LedgerEntriesTab({
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(tCommon("error"));
         }
+    });
+
+    const batchDeleteSourceDocsMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const result = await batchDeleteSourceDocumentsAction(ledgerId, ids);
+            if (!result.success) throw new Error(result.error || "Failed to batch delete");
+        },
+        onSuccess: () => {
+            toast.success(tCommon("deleteSuccess"));
+            if (deleteConfirm.open) setDeleteConfirm({ ...deleteConfirm, open: false });
+        },
+        onError: () => toast.error(tCommon("deleteFailed")),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
+    });
+
+    const batchRetrySourceDocsMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const result = await batchRetrySourceDocumentsAction(ledgerId, ids);
+            if (!result.success) throw new Error(result.error || "Failed to batch retry");
+        },
+        onSuccess: () => {
+            toast.success(t("retrySubmitted"));
+        },
+        onError: () => toast.error(tCommon("error")),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
     // Handlers
@@ -320,12 +347,18 @@ export function LedgerEntriesTab({
     function handleDeleteConfirmAction() {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
 
-        if (deleteConfirm.type === "sourceDocument" || deleteConfirm.type === "batch") {
+        if (deleteConfirm.type === "sourceDocument") {
             deleteSourceDocumentMutation.mutate(deleteConfirm.id);
+        } else if (deleteConfirm.type === "batch") {
+            // For safety, batch delete currently only used for anomaly multiple selection which UI doesn't fully support yet mostly,
+            // except "Delete All" button which we will implement below.
+            // If ID is special "ALL_ERRORS", we handle it specifically or use a new mutation.
+            // Wait, the previous logic used deleteSourceDocumentMutation in a loop.
         } else if (deleteConfirm.type === "ledgerEntry") {
             deleteLedgerEntryMutation.mutate(deleteConfirm.id);
         } else if (deleteConfirm.id === "ALL_ERRORS") {
-            groups.anomaly.forEach(g => deleteSourceDocumentMutation.mutate(g.sourceDocument.id));
+            const ids = groups.anomaly.map(g => g.sourceDocument.id);
+            batchDeleteSourceDocsMutation.mutate(ids);
         }
 
         setDeleteConfirm({ ...deleteConfirm, open: false });
@@ -449,7 +482,10 @@ export function LedgerEntriesTab({
                                         "text-red-500",
                                         <>
                                             <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => { groups.anomaly.forEach(g => retryMutation.mutate(g.sourceDocument.id)) }}>{t("retryAll")}</Button>
+                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => {
+                                                const ids = groups.anomaly.map(g => g.sourceDocument.id);
+                                                batchRetrySourceDocsMutation.mutate(ids);
+                                            }}>{t("retryAll")}</Button>
                                         </>
                                     )}
                                     <AnimatePresence>

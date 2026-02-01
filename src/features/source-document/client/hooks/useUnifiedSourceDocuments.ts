@@ -2,9 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -34,7 +32,7 @@ interface UseUnifiedSourceDocumentsOptions {
 /**
  * Unified hook for fetching and grouping all source documents by status.
  * 
- * Now all data comes from this single hook, grouped by status.
+ * Optimized to fetch ledger entries joined from the server.
  */
 export function useUnifiedSourceDocuments(
     ledgerId: string,
@@ -45,20 +43,24 @@ export function useUnifiedSourceDocuments(
 ) {
     const { dateRange, initialActive, initialCompletedPages } = options;
 
+    // Type definition for API response item which includes ledgerEntries
+    type SourceDocumentWithEntries = SourceDocument & { ledgerEntries?: LedgerEntry[] };
+
     // Query 1: Fetch non-completed documents (processing, anomaly states)
     // These are typically few in number and need real-time updates
-    const { data: activeDocuments = (initialActive as SourceDocument[]) || [], isLoading: isActiveLoading } = useQuery({
+    const { data: activeDocuments = (initialActive as SourceDocumentWithEntries[]) || [], isLoading: isActiveLoading } = useQuery<SourceDocumentWithEntries[]>({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'active'),
         queryFn: async () => {
             const res = await getSourceDocumentsAction(ledgerId, {
                 status: 'queued,processing,anomaly',
+                includeLedgerEntries: true,
             });
-            return res.items as SourceDocument[];
+            return res.items as SourceDocumentWithEntries[];
         },
         initialData: initialActive,
     });
 
-    // Query 3: Infinite scroll for completed documents (paginated)
+    // Query 2: Infinite scroll for completed documents (paginated)
     const {
         data: completedData,
         fetchNextPage,
@@ -79,9 +81,10 @@ export function useUnifiedSourceDocuments(
                 status: 'completed',
                 startDate: dateRange?.start?.toISOString() || null,
                 endDate: dateRange?.end?.toISOString() || null,
+                includeLedgerEntries: true,
             });
             return {
-                items: res.items as SourceDocument[],
+                items: res.items as SourceDocumentWithEntries[],
                 nextCursor: res.nextCursor
             };
         },
@@ -93,100 +96,76 @@ export function useUnifiedSourceDocuments(
         } : undefined,
     });
 
-    // Query 4: Fetch confirmed entries to match with completed documents
-    const { data: confirmedEntries = [] } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed'),
-        queryFn: async () => {
-            // Fix: Pass object params
-            const res = await getLedgerEntriesAction(ledgerId, { limit: 500 });
-            return res.items as unknown as LedgerEntry[];
-        },
-    });
-
-    // Group and classify all documents
-    const grouped = useMemo((): GroupedSourceDocuments => {
-        const result: GroupedSourceDocuments = {
-            processing: [],
-            anomaly: [],
-            completed: [],
-        };
-
-        // Build a map of sourceDocumentId -> confirmed entries
-        const confirmedEntriesByDoc = new Map<string, LedgerEntry[]>();
-        for (const entry of confirmedEntries) {
-            if (entry.sourceDocumentId) {
-                const existing = confirmedEntriesByDoc.get(entry.sourceDocumentId) || [];
-                existing.push(entry);
-                confirmedEntriesByDoc.set(entry.sourceDocumentId, existing);
-            }
-        }
-
-        // Track which document IDs are already categorized (to avoid duplicates)
-        const categorizedIds = new Set<string>();
-
-        // 1. Process active documents (queued/processing/anomaly)
-        for (const doc of activeDocuments) {
-            categorizedIds.add(doc.id);
-            const entries = confirmedEntriesByDoc.get(doc.id) || [];
-
-            if (doc.status === 'anomaly') {
-                result.anomaly.push({ sourceDocument: doc, ledgerEntries: entries });
-            } else if (doc.status === 'completed') {
-                // Should not happen based on API query, but if it does (e.g. stale cache), put in completed
-                result.completed.push({ sourceDocument: doc, ledgerEntries: entries });
-            } else {
-                // queued or processing
-                result.processing.push({ sourceDocument: doc, ledgerEntries: entries });
-            }
-        }
-
-        // 3. All documents from infinite scroll that are not categorized go to completed
-        const allCompletedDocs = completedData?.pages.flatMap((page) => page.items) || [];
-        for (const doc of allCompletedDocs) {
-            if (!categorizedIds.has(doc.id)) {
-                // Should we include pending entries here? If any pending entries exist, it should have been caught above.
-                // So here we likely only have confirmed entries.
-                const entries = confirmedEntriesByDoc.get(doc.id) || [];
-                result.completed.push({ sourceDocument: doc, ledgerEntries: entries });
-            }
-        }
-
-        // Sort each group by date (newest first)
-        const sortByDate = (a: SourceDocumentGroup, b: SourceDocumentGroup) =>
-            new Date(b.sourceDocument.createdAt).getTime() -
-            new Date(a.sourceDocument.createdAt).getTime();
-
-        result.processing.sort(sortByDate);
-        result.anomaly.sort(sortByDate);
-        result.completed.sort(sortByDate);
-
-        return result;
-    }, [activeDocuments, confirmedEntries, completedData]);
-
-    // Helper to check if date is in range (for filtering)
+    // Helper to filter by date (for active docs which are fetched in one batch)
     const isDateInRange = useCallback((dateStr: string) => {
         if (!dateRange?.start || !dateRange?.end) return true;
         const d = new Date(dateStr).getTime();
         return d >= dateRange.start.getTime() && d <= dateRange.end.getTime();
     }, [dateRange]);
 
-    // Apply date filtering to groups
-    const filteredGroups = useMemo((): GroupedSourceDocuments => {
-        const filterGroup = (groups: SourceDocumentGroup[]) =>
-            groups.filter((g) => isDateInRange(g.sourceDocument.createdAt));
-
-        return {
-            processing: filterGroup(grouped.processing),
-            anomaly: filterGroup(grouped.anomaly),
-            completed: grouped.completed, // Already filtered by API
+    // Group documents
+    const groups = useMemo((): GroupedSourceDocuments => {
+        const result: GroupedSourceDocuments = {
+            processing: [],
+            anomaly: [],
+            completed: [],
         };
-    }, [grouped, isDateInRange]);
+
+        // 1. Process active documents
+        for (const doc of activeDocuments) {
+            // Filter by date client-side for active docs
+            if (!isDateInRange(doc.createdAt)) continue;
+
+            const group: SourceDocumentGroup = {
+                sourceDocument: doc,
+                ledgerEntries: doc.ledgerEntries || []
+            };
+
+            if (doc.status === 'anomaly') {
+                result.anomaly.push(group);
+            } else if (doc.status === 'completed') {
+                // Rare case: active query caught a completed one (race condition or cache)
+                result.completed.push(group);
+            } else {
+                // queued or processing
+                result.processing.push(group);
+            }
+        }
+
+        // 2. Process completed documents from infinite scroll
+        // These are already filtered by date on server
+        if (completedData) {
+            for (const page of completedData.pages) {
+                const items = page.items as SourceDocumentWithEntries[];
+                for (const doc of items) {
+                    result.completed.push({
+                        sourceDocument: doc,
+                        ledgerEntries: doc.ledgerEntries || []
+                    });
+                }
+            }
+        }
+
+        // 3. Client-side Sort (safety, though server sorts desc)
+        const sortByDate = (a: SourceDocumentGroup, b: SourceDocumentGroup) =>
+            new Date(b.sourceDocument.createdAt).getTime() -
+            new Date(a.sourceDocument.createdAt).getTime();
+
+        result.processing.sort(sortByDate);
+        result.anomaly.sort(sortByDate);
+        // result.completed is already sorted by server (pagination order), 
+        // sorting it again might mix pages if they overlap in time (unlikely with cursor)
+        // but let's keep it safe or skip it to safe perf?
+        // Skip for completed to respect server pagination order.
+
+        return result;
+    }, [activeDocuments, completedData, isDateInRange]);
 
     return {
-        groups: filteredGroups,
+        groups,
         stats: {
-            processingCount: filteredGroups.processing.length,
-            anomalyCount: filteredGroups.anomaly.length,
+            processingCount: groups.processing.length,
+            anomalyCount: groups.anomaly.length,
         },
         isLoading: isActiveLoading || isCompletedLoading,
         fetchNextPage,

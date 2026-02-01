@@ -60,24 +60,25 @@ describe("useUnifiedSourceDocuments", () => {
             const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
                 return Promise.resolve({
-                    items: [mockSourceDocs.queued, mockSourceDocs.processing, mockSourceDocs.error]
+                    items: [
+                        { ...mockSourceDocs.queued, ledgerEntries: [] },
+                        { ...mockSourceDocs.processing, ledgerEntries: [] },
+                        { ...mockSourceDocs.error, ledgerEntries: [] }
+                    ]
                 });
             }
             // infinite scroll fetch
             return Promise.resolve({
-                items: [mockSourceDocs.completed, mockSourceDocs.pending],
+                items: [
+                    { ...mockSourceDocs.completed, ledgerEntries: [mockEntries.confirmedForDocCompleted1] },
+                    { ...mockSourceDocs.pending, ledgerEntries: [] }
+                ],
                 nextCursor: null
             });
         });
 
-        // 2. pendingEntries - now returns empty as we don't use it for anomaly detection anymore
-        // or effectively empty for the purpose of this test setup
-        (getLedgerEntriesAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            // confirmed entries
-            return Promise.resolve({
-                items: [mockEntries.confirmedForDocCompleted1]
-            });
-        });
+        // 2. No separate ledger entries fetch anymore
+
 
         const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
 
@@ -120,9 +121,9 @@ describe("useUnifiedSourceDocuments", () => {
         (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
             const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
-                return Promise.resolve({ items: [mockSourceDocs.queued] });
+                return Promise.resolve({ items: [{ ...mockSourceDocs.queued, ledgerEntries: [] }] });
             }
-            return Promise.resolve({ items: [mockSourceDocs.completed] });
+            return Promise.resolve({ items: [{ ...mockSourceDocs.completed, ledgerEntries: [] }] });
         });
 
         const dateRange = {
@@ -171,7 +172,7 @@ describe("useUnifiedSourceDocuments", () => {
         (getSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
             const p = params as { status?: string };
             if (p?.status?.includes('queued')) {
-                return Promise.resolve({ items: [mockSourceDocs.queued, docOutOfRange] });
+                return Promise.resolve({ items: [{ ...mockSourceDocs.queued, ledgerEntries: [] }, { ...docOutOfRange, ledgerEntries: [] }] });
             }
             return Promise.resolve({ items: [] });
         });

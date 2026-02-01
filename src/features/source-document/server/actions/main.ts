@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { entryCategories, sourceDocuments } from "@/lib/db/schema";
+import { entryCategories, sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { submitFlowTask } from "@/lib/flow/producer";
@@ -197,6 +197,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     cursor?: string | null;
     startDate?: string | null;
     endDate?: string | null;
+    includeLedgerEntries?: boolean;
 }) {
     const { scope, error } = await requireLedgerAccess(ledgerId);
     if (error || !scope) throw new Error("Unauthorized");
@@ -248,6 +249,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         }
     }
 
+
     let nextCursor = null;
     if (filteredResult.length > limit) {
         const nextItem = filteredResult[limit];
@@ -255,11 +257,36 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         filteredResult = filteredResult.slice(0, limit);
     }
 
+    // Fetch ledger entries if requested
+    let entriesByDocId = new Map<string, any[]>();
+    if (params.includeLedgerEntries && filteredResult.length > 0) {
+        const docIds = filteredResult.map(d => d.id);
+        const entries = await scope.entries.findMany({
+            where: inArray(ledgerEntries.sourceDocumentId, docIds),
+            with: { category: true }
+        });
+
+        entries.forEach(entry => {
+            const docId = entry.sourceDocumentId;
+            if (docId) {
+                const existing = entriesByDocId.get(docId) || [];
+                existing.push({
+                    ...entry,
+                    amount: String(entry.amount),
+                    createdAt: entry.createdAt.toISOString(),
+                    entryDate: entry.entryDate ? entry.entryDate.toISOString() : null,
+                });
+                entriesByDocId.set(docId, existing);
+            }
+        });
+    }
+
     return {
         items: filteredResult.map(item => ({
             ...item,
             createdAt: item.createdAt.toISOString(),
             status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+            ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
         })),
         nextCursor,
     };
@@ -277,4 +304,64 @@ export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId
         createdAt: doc.createdAt.toISOString(),
         status: doc.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
     };
+}
+
+export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) throw new Error("Unauthorized");
+
+        if (sourceDocumentIds.length === 0) return { success: true };
+
+        await scope.documents.batchDelete(sourceDocumentIds);
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true, error: null };
+    } catch (error) {
+        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch delete source documents");
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to batch delete source documents",
+        };
+    }
+}
+
+export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
+    try {
+        const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) throw new Error("Unauthorized");
+
+        if (sourceDocumentIds.length === 0) return { success: true };
+
+        // 1. Fetch all docs to get their current text/images
+        const docs = await scope.documents.findMany({
+            where: inArray(sourceDocuments.id, sourceDocumentIds)
+        });
+
+        // 2. Update status to queued
+        await scope.documents.batchUpdate(sourceDocumentIds, { status: "queued" });
+
+        // 3. Retrigger tasks for each
+        await Promise.all(docs.map(async (doc) => {
+            // Re-prepare task. 
+            // Note: We are not changing text/images here, just re-running with existing data.
+            // We need to convert existing imageUrls back to format needed? 
+            // Actually prepareSourceDocumentAction can handle existing URLs if we structure it right, 
+            // but prepareSourceDocumentTask implementation expects {data, mimeType}.
+
+            // However, look at retrySourceDocumentAction:
+            // const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
+            // We should do similar.
+            const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
+            await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
+        }));
+
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true, error: null };
+    } catch (error) {
+        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch retry source documents");
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to batch retry source documents",
+        };
+    }
 }

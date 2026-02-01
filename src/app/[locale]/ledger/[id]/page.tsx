@@ -27,8 +27,8 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
     getLedger(ledgerId),
     getEntryCategories(ledgerId),
     getLedgers(session!.user!.id!),
-    getSourceDocumentsAction(ledgerId, { status: 'queued,processing,anomaly' }),
-    getSourceDocumentsAction(ledgerId, { status: 'completed' }),
+    getSourceDocumentsAction(ledgerId, { status: 'queued,processing,anomaly', includeLedgerEntries: true }),
+    getSourceDocumentsAction(ledgerId, { status: 'completed', includeLedgerEntries: true }),
     getServiceCredentials(ledgerId),
   ]);
 
