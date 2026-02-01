@@ -1,13 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-    updateLedgerEntry,
-    deleteLedgerEntry,
-    deleteSourceDocument,
-    batchUpdateLedgerEntries,
-    batchDeleteLedgerEntries,
-} from "@/lib/api";
-import { retrySourceDocumentAction, updateSourceDocumentAction } from "@/actions/source-document";
+    updateLedgerEntryAction,
+    deleteLedgerEntryAction,
+    batchUpdateLedgerEntriesAction,
+    batchDeleteLedgerEntriesAction,
+} from "@/actions/ledger-entries";
+import {
+    retrySourceDocumentAction,
+    updateSourceDocumentAction,
+    deleteSourceDocumentAction
+} from "@/actions/source-document";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/components/ledger-entry/SourceDocumentCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
@@ -91,8 +94,11 @@ export function LedgerEntriesTab({
     // --- Mutations ---
 
     const updateMutation = useMutation({
-        mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
-            updateLedgerEntry(ledgerId, ledgerEntryId, data),
+        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
+            const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
+            if (!result.success) throw new Error(result.error);
+            return result.data as LedgerEntry;
+        },
         onSuccess: (updatedEntry) => {
             toast.success(tCommon("saveSuccess"));
             if (selectedLedgerEntry?.id === updatedEntry.id) {
@@ -113,11 +119,19 @@ export function LedgerEntriesTab({
             }
         },
         onError: () => toast.error(tCommon("saveFailed")),
+        // Invalidation handled by Server Action revalidatePath + SSE (if enabled) but here we rely on revalidatePath
+        // However, useUnifiedSourceDocuments uses useInfiniteQuery which might not be automatically invalidated by revalidatePath if it's client-side fetch.
+        // Wait, useUnifiedSourceDocuments fetches via API route /api/ledgers/.../source-documents?
+        // Let's check matching grep. useUnifiedSourceDocuments usually calls an API.
+        // If so, revalidatePath won't update client cache unless we use queryClient.invalidateQueries.
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
     const deleteLedgerEntryMutation = useMutation({
-        mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
+        mutationFn: async (ledgerEntryId: string) => {
+            const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
+            if (!result.success) throw new Error(result.error);
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             setIsDetailModalOpen(false);
@@ -135,7 +149,10 @@ export function LedgerEntriesTab({
     });
 
     const batchDeleteLedgerEntriesMutation = useMutation({
-        mutationFn: (ledgerEntryIds: string[]) => batchDeleteLedgerEntries(ledgerId, ledgerEntryIds),
+        mutationFn: async (ledgerEntryIds: string[]) => {
+            const result = await batchDeleteLedgerEntriesAction(ledgerId, ledgerEntryIds);
+            if (!result.success) throw new Error(result.error);
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
         },
@@ -144,7 +161,10 @@ export function LedgerEntriesTab({
     });
 
     const batchUpdateLedgerEntriesMutation = useMutation({
-        mutationFn: ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: Record<string, unknown> }) => batchUpdateLedgerEntries(ledgerId, { ledgerEntryIds, ...data }),
+        mutationFn: async ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: any }) => {
+            const result = await batchUpdateLedgerEntriesAction(ledgerId, ledgerEntryIds, data);
+            if (!result.success) throw new Error(result.error);
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
         },
@@ -153,20 +173,22 @@ export function LedgerEntriesTab({
     });
 
     const updateSourceDocumentMutation = useMutation({
-        mutationFn: ({ id, title }: { id: string, title: string }) => updateSourceDocumentAction(ledgerId, id, { title }),
-        onSuccess: (res) => {
-            if (res.success) {
-                toast.success(tCommon("saveSuccess"));
-            } else {
-                toast.error(res.error || tCommon("saveFailed"));
-            }
+        mutationFn: async ({ id, title }: { id: string, title: string }) => {
+            const result = await updateSourceDocumentAction(ledgerId, id, { title });
+            if (!result.success) throw new Error(result.error);
+        },
+        onSuccess: () => {
+            toast.success(tCommon("saveSuccess"));
         },
         onError: () => toast.error(tCommon("saveFailed")),
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
     const deleteSourceDocumentMutation = useMutation({
-        mutationFn: async (sourceDocumentId: string) => deleteSourceDocument(ledgerId, sourceDocumentId),
+        mutationFn: async (sourceDocumentId: string) => {
+            const result = await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
+            if (!result.success) throw new Error(result.error);
+        },
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
             const prevActive = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, "active"));

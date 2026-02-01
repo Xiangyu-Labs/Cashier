@@ -1,7 +1,7 @@
 import { shareRepo } from "@/lib/repositories/share-repository";
 import { notFound } from "next/navigation";
 import { ShareReceipt } from "./components/ShareReceipt";
-import { ShareData } from "@/lib/api";
+import { ShareData } from "@/types/api";
 
 type RouteParams = { params: Promise<{ shareId: string; locale: string }> };
 

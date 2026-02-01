@@ -15,6 +15,39 @@ export interface Ledger {
   aiCustomPrompt: string;
 }
 
+
+export interface ServiceCredential {
+  id: string;
+  name: string;
+  key?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+export interface ShareData {
+  sourceDocument: {
+    id: string;
+    title: string | null;
+    text: string | null;
+    imageUrls: string[];
+    createdAt: string;
+  };
+  entries: {
+    id: string;
+    amount: string;
+    currency: string | null;
+    itemName: string;
+    description: string | null;
+    entryDate: string | null;
+    category: {
+      id: string;
+      name: string;
+      icon: string | null;
+    } | null;
+  }[];
+  ledgerId: string;
+}
+
 export interface Settings {
   id: string;
   aiLanguage: string;

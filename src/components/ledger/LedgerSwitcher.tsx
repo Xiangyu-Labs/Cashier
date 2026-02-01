@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/routing";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Plus, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,57 +18,52 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { fetchLedgers, createLedger } from "@/lib/api";
+import { createLedgerAction } from "@/actions/ledgers"; // Use Server Action
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { Ledger } from "@/types/api";
 
 interface LedgerSwitcherProps {
     currentLedgerId: string;
     currentLedgerName?: string;
+    ledgers?: Ledger[]; // Accept ledgers as prop
 }
 
-export function LedgerSwitcher({ currentLedgerId, currentLedgerName }: LedgerSwitcherProps) {
+export function LedgerSwitcher({ currentLedgerId, currentLedgerName, ledgers = [] }: LedgerSwitcherProps) {
     const t = useTranslations("LedgerSwitcher");
     const tCommon = useTranslations("Common");
     const router = useRouter();
-    const queryClient = useQueryClient();
+    const [isPending, startTransition] = useTransition();
 
     const [open, setOpen] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newLedgerName, setNewLedgerName] = useState("");
 
-    const { data: ledgers } = useQuery({
-        queryKey: ["ledgers"],
-        queryFn: fetchLedgers,
-    });
-
+    // Use passed ledgers or empty array
     const currentLedger = ledgers?.find((l) => l.id === currentLedgerId);
 
-    const createMutation = useMutation({
-        mutationFn: createLedger,
-        onSuccess: (newLedger) => {
-            queryClient.invalidateQueries({ queryKey: ["ledgers"] });
-            setShowCreateModal(false);
-            setNewLedgerName("");
-            setOpen(false);
-            toast.success(t("createSuccess"), {
-                description: t("createSuccessDesc"),
-            });
-            router.push(`/ledger/${newLedger.id}`);
-        },
-        onError: () => {
-            toast.error(t("createFailed"), {
-                description: t("createFailedDesc"),
-            });
-        },
-    });
+    async function handleCreate() {
+        if (!newLedgerName.trim()) return;
 
-    function handleCreate() {
-        if (newLedgerName.trim()) {
-            createMutation.mutate({
-                name: newLedgerName.trim(),
+        startTransition(async () => {
+            const result = await createLedgerAction({
+                name: newLedgerName.trim()
             });
-        }
+
+            if (result.success && result.data) {
+                setShowCreateModal(false);
+                setNewLedgerName("");
+                setOpen(false);
+                toast.success(t("createSuccess"), {
+                    description: t("createSuccessDesc"),
+                });
+                router.push(`/ledger/${result.data.id}`);
+            } else {
+                toast.error(t("createFailed"), {
+                    description: result.error || t("createFailedDesc"),
+                });
+            }
+        });
     }
 
     return (
@@ -102,9 +96,11 @@ export function LedgerSwitcher({ currentLedgerId, currentLedgerName }: LedgerSwi
                             >
                                 <Book className="h-4 w-4 text-muted-foreground" />
                                 <span className="flex-1 truncate">{ledger.name}</span>
-                                {currentLedgerId === ledger.id && (
-                                    <Check className="h-4 w-4 text-primary" />
-                                )}
+                                <span className="w-4">
+                                    {currentLedgerId === ledger.id && (
+                                        <Check className="h-4 w-4 text-primary" />
+                                    )}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -155,9 +151,9 @@ export function LedgerSwitcher({ currentLedgerId, currentLedgerName }: LedgerSwi
                         </Button>
                         <Button
                             onClick={handleCreate}
-                            disabled={!newLedgerName.trim() || createMutation.isPending}
+                            disabled={!newLedgerName.trim() || isPending}
                         >
-                            {createMutation.isPending ? t("creating") : t("create")}
+                            {isPending ? t("creating") : t("create")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -165,3 +161,4 @@ export function LedgerSwitcher({ currentLedgerId, currentLedgerName }: LedgerSwi
         </>
     );
 }
+

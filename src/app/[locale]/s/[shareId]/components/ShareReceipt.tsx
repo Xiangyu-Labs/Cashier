@@ -1,6 +1,6 @@
 "use client";
 
-import { ShareData } from "@/lib/api";
+import { ShareData } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { format } from "date-fns";

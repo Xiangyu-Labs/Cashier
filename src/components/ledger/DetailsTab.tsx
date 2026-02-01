@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { fetchLedgerEntries, updateLedgerEntry, deleteLedgerEntry, fetchLedgerEntrySummary } from "@/lib/api";
+import { fetchLedgerEntries, fetchLedgerEntrySummary } from "@/lib/api"; // Keep fetch for now as it's GET
+import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/actions/ledger-entries";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "@/components/ledger-entry/LedgerEntryCard";
 import { LedgerEntryDetailModal } from "@/components/ledger-entry/LedgerEntryDetailModal";
@@ -80,11 +81,16 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         };
     }, [summaryData, ledger]);
 
+    const [isPending, startTransition] = useTransition();
+
     const updateMutation = useMutation({
-        mutationFn: ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Parameters<typeof updateLedgerEntry>[2] }) =>
-            updateLedgerEntry(ledgerId, ledgerEntryId, data),
+        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
+            const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
+            if (!result.success) throw new Error(result.error);
+            return result.data as LedgerEntry;
+        },
         onSuccess: (updatedEntry) => {
-            // Invalidation handled by SSE
+            // Invalidation handled by Server Action revalidatePath + SSE
             toast.success(tCommon("saveSuccess"));
             // Update selected entry if it's the one being edited to reflect changes in modal
             if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
@@ -101,9 +107,12 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (ledgerEntryId: string) => deleteLedgerEntry(ledgerId, ledgerEntryId),
+        mutationFn: async (ledgerEntryId: string) => {
+            const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
+            if (!result.success) throw new Error(result.error);
+        },
         onSuccess: () => {
-            // Invalidation handled by SSE
+            // Invalidation handled by Server Action revalidatePath + SSE
             toast.success(tLedger("deleteSuccess"));
         },
     });

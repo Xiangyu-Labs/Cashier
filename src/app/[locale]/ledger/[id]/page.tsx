@@ -1,66 +1,30 @@
-"use client";
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { getLedger, getLedgers } from "@/services/ledgers";
+import { getEntryCategories } from "@/services/categories";
+import { LedgerPageClient } from "@/components/ledger/LedgerPageClient";
+import { getTranslations } from "next-intl/server";
+import { redirect } from "@/i18n/routing";
 
-import { useState, useEffect } from "react";
-import { useParams, notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Plus, Settings } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LedgerEntriesTab } from "@/components/ledger/LedgerEntriesTab";
-import { DetailsTab } from "@/components/ledger/DetailsTab";
-import { StatsTab } from "@/components/ledger/StatsTab";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SourceDocumentInput } from "@/components/ledger/SourceDocumentInput";
-import { useLedgerEvents } from "@/lib/events/use-ledger-events";
+export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: ledgerId } = await params;
+  const session = await auth();
+  const t = await getTranslations("LedgerPage");
 
-import { LedgerSwitcher } from "@/components/ledger/LedgerSwitcher";
-import { useTranslations } from "next-intl";
-import { Link as I18nLink } from "@/i18n/routing";
-import { useQuery } from "@tanstack/react-query";
-import { fetchEntryCategories, fetchLedger, ApiError } from "@/lib/api";
-
-export default function LedgerPage() {
-  const params = useParams();
-  const t = useTranslations("LedgerPage");
-  const ledgerId = params.id as string;
-  const [activeTab, setActiveTab] = useState("history");
-  const [isInputOpen, setIsInputOpen] = useState(false);
-
-  const { data: ledger, isLoading: isLedgerLoading, error: ledgerError } = useQuery({
-    queryKey: ["ledger", ledgerId],
-    queryFn: () => fetchLedger(ledgerId),
-    retry: (failureCount, error) => {
-      if (error instanceof ApiError && error.status === 404) return false;
-      return failureCount < 3;
-    }
-  });
-
-  useEffect(() => {
-    if (ledgerError instanceof ApiError && ledgerError.status === 404) {
-      notFound();
-    }
-  }, [ledgerError]);
-
-  const { data: categories } = useQuery({
-    queryKey: ["entryCategories", ledgerId],
-    queryFn: () => fetchEntryCategories(ledgerId),
-  });
-
-  // Enable real-time updates only after ledger is loaded
-  useLedgerEvents(ledgerId, !!ledger);
-
-
-  if (isLedgerLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (!session?.user?.id) {
+    redirect({ href: "/login", locale: "en" }); // Locale hardcoded? No, use getLocale()
   }
+
+  if (!session?.user?.id) {
+    redirect({ href: "/login", locale: "en" });
+  }
+
+  // Parallel data fetching
+  const [ledger, categories, allLedgers] = await Promise.all([
+    getLedger(ledgerId),
+    getEntryCategories(ledgerId),
+    getLedgers(session!.user!.id!),
+  ]);
 
   if (!ledger) {
     return (
@@ -71,92 +35,11 @@ export default function LedgerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg text-text">
-      {/* Top Navigation */}
-      <header className="bg-surface border-b border-border sticky top-0 z-50 backdrop-blur-md bg-surface/80 supports-[backdrop-filter]:bg-surface/60">
-        <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
-          <div className="flex items-center gap-3">
-            <LedgerSwitcher currentLedgerId={ledgerId} currentLedgerName={ledger.name} />
-          </div>
-          <div className="flex items-center gap-2">
-            <I18nLink href={`/ledger/${ledgerId}/settings`}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-text h-8 w-8 sm:h-9 sm:w-9"
-                title={t("settings")}
-              >
-                <Settings className="h-5 w-5" />
-              </Button>
-            </I18nLink>
-            <Button
-              size="sm"
-              onClick={() => setIsInputOpen(true)}
-              className="hidden md:flex rounded-full h-8 w-8 p-0"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header >
-
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 transition-all duration-300">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full space-y-4"
-        >
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="history">{t("history")}</TabsTrigger>
-            <TabsTrigger value="details">{t("details")}</TabsTrigger>
-            <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="history" className="mt-0">
-            <LedgerEntriesTab
-              ledgerId={ledgerId}
-              categories={categories || []}
-              defaultCollapsed={ledger.collapseProcessingDefault}
-              ledger={ledger}
-            />
-          </TabsContent>
-
-          <TabsContent value="details" className="mt-0">
-            <DetailsTab
-              ledgerId={ledgerId}
-              categories={categories || []}
-              ledger={ledger}
-            />
-          </TabsContent>
-
-          <TabsContent value="stats" className="mt-0">
-            <StatsTab ledgerId={ledgerId} ledger={ledger} />
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
-        <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle>{t("newRecord")}</DialogTitle>
-          </DialogHeader>
-          <SourceDocumentInput
-            ledgerId={ledgerId}
-            onSuccess={() => setIsInputOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Mobile Floating Action Button (FAB) */}
-      <div className="fixed bottom-6 right-6 z-50 md:hidden">
-        <Button
-          size="lg"
-          onClick={() => setIsInputOpen(true)}
-          className="rounded-full h-14 w-14 p-0 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      </div>
-    </div >
+    <LedgerPageClient
+      initialLedger={ledger}
+      initialCategories={categories}
+      allLedgers={allLedgers}
+      ledgerId={ledgerId}
+    />
   );
 }

@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
@@ -162,6 +162,23 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to update source document",
+        };
+    }
+}
+
+export async function deleteSourceDocumentAction(ledgerId: string, sourceId: string) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) throw new Error("Unauthorized");
+
+        await scope.documents.delete(sourceId);
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error({ error, ledgerId, sourceId }, "Failed to delete source document via action");
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to delete source document",
         };
     }
 }

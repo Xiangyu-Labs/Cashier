@@ -1,0 +1,105 @@
+"use server";
+
+import { db } from "@/lib/db";
+import { ledgerEntries } from "@/lib/db/schema";
+import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { eq, inArray } from "drizzle-orm";
+import { logger } from "@/lib/logger";
+import { requireLedgerAccess } from "@/lib/auth/helpers";
+
+const updateLedgerEntrySchema = z.object({
+    categoryId: z.string().nullable().optional(),
+    amount: z.number().optional(),
+    currency: z.string().nullable().optional(),
+    itemName: z.string().optional(),
+    description: z.string().nullable().optional(),
+    entryDate: z.string().nullable().optional(),
+});
+
+export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return { success: false, error: "Unauthorized" };
+
+        const validated = updateLedgerEntrySchema.parse(data);
+
+        // Filter out undefined values
+        const updateData: any = {};
+        if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
+        if (validated.amount !== undefined) updateData.amount = validated.amount.toString();
+        if (validated.currency !== undefined) updateData.currency = validated.currency;
+        if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
+        if (validated.description !== undefined) updateData.description = validated.description;
+        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate ? new Date(validated.entryDate) : null;
+
+        const updatedEntry = await scope.entries.update(ledgerEntryId, updateData);
+
+        revalidatePath(`/ledger/${ledgerId}`);
+
+        // Map back to API type
+        return {
+            success: true,
+            data: {
+                ...updatedEntry,
+                amount: updatedEntry.amount,
+                createdAt: updatedEntry.createdAt.toISOString(),
+                entryDate: updatedEntry.entryDate ? updatedEntry.entryDate.toISOString() : null,
+            }
+        };
+    } catch (error) {
+        logger.error({ error, ledgerId, ledgerEntryId }, "Failed to update ledger entry via action");
+        return { success: false, error: "Failed to update ledger entry" };
+    }
+}
+
+export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return { success: false, error: "Unauthorized" };
+
+        await scope.entries.delete(ledgerEntryId);
+
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error({ error, ledgerId, ledgerEntryId }, "Failed to delete ledger entry via action");
+        return { success: false, error: "Failed to delete ledger entry" };
+    }
+}
+
+export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[]) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return { success: false, error: "Unauthorized" };
+
+        await scope.entries.batchDelete(ledgerEntryIds);
+
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch delete ledger entries");
+        return { success: false, error: "Failed to batch delete" };
+    }
+}
+
+export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: any) {
+    try {
+        const { scope, error } = await requireLedgerAccess(ledgerId);
+        if (error || !scope) return { success: false, error: "Unauthorized" };
+
+        // Basic validation or casting
+        const updateData: any = {};
+        if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+        // Add other fields as needed
+
+        await scope.entries.batchUpdate(ledgerEntryIds, updateData);
+
+        revalidatePath(`/ledger/${ledgerId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch update ledger entries");
+        return { success: false, error: "Failed to batch update" };
+    }
+}

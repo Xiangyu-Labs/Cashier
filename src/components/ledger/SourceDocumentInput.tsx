@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLedger } from "@/lib/api";
+import { updateLedgerAction, getLedgerAction } from "@/actions/ledgers";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/actions/source-document";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,12 +46,15 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
     const { data: ledger } = useQuery({
         queryKey: ["ledger", ledgerId],
-        queryFn: () => import("@/lib/api").then(mod => mod.fetchLedger(ledgerId)),
+        queryFn: () => getLedgerAction(ledgerId),
     });
 
-
     const updateLedgerMutation = useMutation({
-        mutationFn: (data: Partial<Ledger>) => updateLedger(ledgerId, data),
+        mutationFn: async (data: Partial<Ledger>) => {
+            const result = await updateLedgerAction(ledgerId, data);
+            if (!result.success) throw new Error(result.error);
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ledger", ledgerId] });
         },

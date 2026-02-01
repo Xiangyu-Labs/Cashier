@@ -1,15 +1,18 @@
+
 import {
   Ledger,
-  EntryCategory,
   LedgerEntry,
-  LedgerEntrySummary,
-  SourceDocumentResponse,
+  EntryCategory,
   SourceDocument,
+  LedgerEntrySummary,
+  ShareData,
 } from "@/types/api";
 
 const API_BASE = "/api";
+// Note: We use relative path /api which works for Client Components.
+// For Server Components/Actions, we should use direct DB calls or internal URL if unavoidable.
+// But this file seems mostly used by Client Components (Legacy).
 
-// Custom error class that includes HTTP status code
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -21,146 +24,44 @@ export class ApiError extends Error {
 
 async function request<T>(
   url: string,
-  options?: RequestInit,
-  errorMessage = "Request failed"
+  config?: RequestInit,
+  errorMessage = "Something went wrong"
 ): Promise<T> {
-  const res = await fetch(url, options);
-  if (!res.ok) throw new ApiError(errorMessage, res.status);
+  // Ensure we don't double slash if url starts with / and API_BASE has /
+  // API_BASE is /api.
+  // If url is /ledgers, final is /api/ledgers.
+  const finalUrl = url.startsWith("http") ? url : `${API_BASE}${url.startsWith("/") ? url : `/${url}`}`;
+
+  const res = await fetch(finalUrl, config);
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new ApiError(error.message || errorMessage, res.status);
+  }
   if (res.status === 204) return {} as T;
   return res.json();
 }
 
-
-
-
-// Ledger API
-export function fetchLedgers(): Promise<Ledger[]> {
-  return request(`${API_BASE}/ledgers`, undefined, "Failed to fetch ledgers");
-}
-
-export function fetchLedger(id: string): Promise<Ledger> {
-  return request(`${API_BASE}/ledgers/${id}`, undefined, "Failed to fetch ledger");
-}
-
-export function createLedger(data: { name: string; aiLanguage?: string }): Promise<Ledger> {
+// Ledgers
+export function createLedger(data: {
+  name: string;
+  aiLanguage: string;
+  currencies: string[];
+  mainCurrency: string;
+  autoRecognizeDate: boolean;
+  collapseProcessingDefault: boolean;
+  mergeSimilarItems: boolean;
+  collapseBillsDefault: boolean;
+  aiCustomPrompt: string;
+}): Promise<Ledger> {
   return request(
-    `${API_BASE}/ledgers`,
+    `/ledgers`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
     "Failed to create ledger"
-  );
-}
-
-export function updateLedger(
-  id: string,
-  data: {
-    name?: string;
-    aiLanguage?: string;
-    currencies?: string[];
-    mainCurrency?: string;
-    autoRecognizeDate?: boolean;
-    collapseProcessingDefault?: boolean;
-    mergeSimilarItems?: boolean;
-    collapseBillsDefault?: boolean;
-    aiCustomPrompt?: string;
-  }
-): Promise<Ledger> {
-  return request(
-    `${API_BASE}/ledgers/${id}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to update ledger"
-  );
-}
-
-export function deleteLedger(id: string): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${id}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete ledger"
-  );
-}
-
-// EntryCategory API
-const GLOBAL_ID = "global";
-
-export function fetchEntryCategories(ledgerId: string = GLOBAL_ID): Promise<EntryCategory[]> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/entry-categories`,
-    undefined,
-    "Failed to fetch categories"
-  );
-}
-
-export function createEntryCategory(
-  ledgerId: string = GLOBAL_ID,
-  data: { name: string; description?: string; icon?: string }
-): Promise<EntryCategory> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/entry-categories`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to create category"
-  );
-}
-
-export function updateEntryCategory(
-  ledgerId: string = GLOBAL_ID,
-  categoryId: string,
-  data: {
-    name?: string;
-    description?: string;
-    icon?: string;
-    sortOrder?: number;
-  }
-): Promise<EntryCategory> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/entry-categories/${categoryId}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to update category"
-  );
-}
-
-export function deleteEntryCategory(
-  ledgerId: string = GLOBAL_ID,
-  categoryId: string
-): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/entry-categories/${categoryId}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete category"
-  );
-}
-
-export function reorderEntryCategories(
-  ledgerId: string = GLOBAL_ID,
-  categoryIds: string[]
-): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/entry-categories/reorder`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryIds }),
-    },
-    "Failed to reorder categories"
   );
 }
 
@@ -188,68 +89,15 @@ export function fetchLedgerEntries(
   if (params?.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries?${searchParams}`,
+    `/ledgers/${ledgerId}/ledger-entries?${searchParams}`,
     undefined,
     "Failed to fetch ledger entries"
   );
 }
 
-export function updateLedgerEntry(
-  ledgerId: string,
-  ledgerEntryId: string,
-  data: {
-    categoryId?: string | null;
-    amount?: number;
-    currency?: string | null;
-    itemName?: string;
-    description?: string | null;
-    entryDate?: string | null;
-  }
-): Promise<LedgerEntry> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/${ledgerEntryId}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to update ledger entry"
-  );
+export function fetchLedgerEntrySummary(ledgerId: string): Promise<LedgerEntrySummary> {
+  return request(`/ledgers/${ledgerId}/summary`, undefined, "Failed to fetch summary");
 }
-
-export function deleteLedgerEntry(
-  ledgerId: string,
-  ledgerEntryId: string
-): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/${ledgerEntryId}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete ledger entry"
-  );
-}
-
-
-
-export function fetchLedgerEntrySummary(
-  ledgerId: string,
-  startDate?: string,
-  endDate?: string,
-  mainCurrency?: string
-): Promise<LedgerEntrySummary> {
-  const searchParams = new URLSearchParams();
-  if (startDate) searchParams.set("startDate", startDate);
-  if (endDate) searchParams.set("endDate", endDate);
-  if (mainCurrency) searchParams.set("mainCurrency", mainCurrency);
-
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/summary?${searchParams}`,
-    undefined,
-    "Failed to fetch summary"
-  );
-}
-
 
 export function fetchSourceDocuments(
   ledgerId: string,
@@ -269,95 +117,9 @@ export function fetchSourceDocuments(
   if (params.endDate) searchParams.set("endDate", params.endDate);
 
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/source-documents?${searchParams}`,
+    `/ledgers/${ledgerId}/source-documents?${searchParams}`,
     undefined,
     "Failed to fetch source documents"
-  );
-}
-
-
-export function deleteSourceDocument(
-  ledgerId: string,
-  sourceDocumentId: string
-): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete source document"
-  );
-}
-
-
-export function batchUpdateLedgerEntries(
-  ledgerId: string,
-  data: {
-    ledgerEntryIds: string[];
-    categoryId?: string;
-    currency?: string;
-    entryDate?: string;
-    description?: string;
-  }
-): Promise<{ success: boolean; updatedCount: number }> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/batch-update`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-    "Failed to batch update ledger entries"
-  );
-}
-
-export function batchDeleteLedgerEntries(
-  ledgerId: string,
-  ledgerEntryIds: string[]
-): Promise<{ success: boolean; deletedCount: number }> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/ledger-entries/batch-delete`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ledgerEntryIds }),
-    },
-    "Failed to batch delete ledger entries"
-  );
-}
-
-// ServiceCredentials API
-export interface ServiceCredential {
-  id: string;
-  name: string;
-  key?: string;
-  createdAt: string;
-  lastUsedAt?: string;
-}
-
-export function fetchServiceCredentials(ledgerId: string): Promise<ServiceCredential[]> {
-  return request(`${API_BASE}/ledgers/${ledgerId}/service-credentials`, undefined, "Failed to fetch service credentials");
-}
-
-export function createServiceCredential(ledgerId: string, name: string): Promise<ServiceCredential> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/service-credentials`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    },
-    "Failed to create service credential"
-  );
-}
-
-export function deleteServiceCredential(ledgerId: string, credentialId: string): Promise<void> {
-  return request(
-    `${API_BASE}/ledgers/${ledgerId}/service-credentials/${credentialId}`,
-    {
-      method: "DELETE",
-    },
-    "Failed to delete service credential"
   );
 }
 
@@ -386,7 +148,7 @@ export function fetchProcessingTasks(
   if (params.limit) searchParams.set("limit", params.limit.toString());
 
   return request(
-    `${API_BASE}/processing-tasks?${searchParams}`,
+    `/processing-tasks?${searchParams}`,
     undefined,
     "Failed to fetch processing tasks"
   );
@@ -394,37 +156,13 @@ export function fetchProcessingTasks(
 
 
 // Share API
-export interface ShareData {
-  sourceDocument: {
-    id: string;
-    title: string | null;
-    text: string | null;
-    imageUrls: string[];
-    createdAt: string;
-  };
-  entries: {
-    id: string;
-    amount: string;
-    currency: string | null;
-    itemName: string;
-    description: string | null;
-    entryDate: string | null;
-    category: {
-      id: string;
-      name: string;
-      icon: string | null;
-    } | null;
-  }[];
-  ledgerId: string;
-}
-
 export function createShare(
   ledgerId: string,
   sourceDocumentId: string,
   expiresIn: "1d" | "7d" | "30d" | "never" = "7d"
 ): Promise<{ id: string; shareUrl: string; expiresAt: string | null }> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares`,
+    `/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -440,7 +178,7 @@ export function deleteShare(
   shareId: string
 ): Promise<void> {
   return request(
-    `${API_BASE}/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares/${shareId}`,
+    `/ledgers/${ledgerId}/source-documents/${sourceDocumentId}/shares/${shareId}`,
     {
       method: "DELETE",
     },
@@ -449,5 +187,5 @@ export function deleteShare(
 }
 
 export function fetchShareData(shareId: string): Promise<ShareData> {
-  return request(`${API_BASE}/s/${shareId}`, undefined, "Failed to fetch share data");
+  return request(`/s/${shareId}`, undefined, "Failed to fetch share data");
 }
