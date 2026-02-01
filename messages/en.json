@@ -76,7 +76,7 @@
     },
     "LedgerEntriesTab": {
         "processing": "Processing",
-        "abnormal": "Abnormal Entries",
+        "abnormal": "Abnormal Bills",
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDeleteSuccessCount": "Successfully deleted {count} items",
         "deleteAll": "Delete All",
@@ -93,8 +93,8 @@
         "confirmFailed": "Confirm failed",
         "retrySubmitted": "Retry submitted",
         "retryAllDesc": "Retrying all failed records",
-        "deleteAllConfirmTitle": "Delete All Abnormal Records",
-        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal records? This action cannot be undone."
+        "deleteAllConfirmTitle": "Delete All Abnormal Bills",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
     },
     "SourceDocumentCard": {
         "collapseContent": "Collapse Content",
@@ -143,7 +143,7 @@
         "confirmed": "Confirmed",
         "description": "Description",
         "createdAt": "Created At",
-        "originalInput": "Original Stream",
+        "originalInput": "Evidence",
         "noOriginal": "No original record",
         "edit": "Edit",
         "itemName": "Item Name",

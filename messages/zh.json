@@ -1,9 +1,9 @@
 {
     "AnomalyCode": {
         "internal_error": "系统内部错误",
-        "invalid_content": "非有效流水",
+        "invalid_content": "非有效账单内容",
         "rate_limit_exceeded": "请求过于频繁",
-        "evidence_anomaly": "流水证据异常",
+        "evidence_anomaly": "原始凭证异常",
         "unknown_currency": "货币未知"
     },
     "HomePage": {
@@ -76,9 +76,9 @@
     },
     "LedgerEntriesTab": {
         "processing": "处理中",
-        "abnormal": "异常凭证",
+        "abnormal": "异常账单",
         "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
-        "batchDeleteSuccessCount": "已成功删除 {count} 项流水",
+        "batchDeleteSuccessCount": "已成功删除 {count} 项明细",
         "deleteAll": "全部删除",
         "retryAll": "全部重试",
         "noRecords": "暂无记录",
@@ -93,8 +93,8 @@
         "confirmFailed": "确认失败",
         "retrySubmitted": "重试已提交",
         "retryAllDesc": "正在重试所有失败的记录",
-        "deleteAllConfirmTitle": "删除所有异常凭证",
-        "deleteAllConfirmDesc": "确定要删除所有异常记录吗？此操作无法撤销。"
+        "deleteAllConfirmTitle": "删除所有异常账单",
+        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
     },
     "SourceDocumentCard": {
         "collapseContent": "折叠内容",
@@ -146,7 +146,7 @@
         "confirmed": "已确认",
         "description": "备注",
         "createdAt": "创建时间",
-        "originalInput": "原始流水",
+        "originalInput": "原始凭证",
         "noOriginal": "无原始记录",
         "edit": "编辑",
         "itemName": "商品名称",
@@ -177,7 +177,7 @@
         "rawContent": "原始输入",
         "rawEvidence": "原始凭证",
         "translation": "翻译",
-        "originalText": "原文"
+        "originalText": "识别原文"
     },
     "ImageViewer": {
         "clickToZoom": "点击放大",
@@ -242,23 +242,23 @@
         "settingsUpdated": "设置已更新"
     },
     "ServiceCredentials": {
-        "title": "服务凭证",
-        "description": "管理用于外部集成的服务凭证 (API Keys)",
-        "newCredential": "新建凭证",
-        "noCredentials": "暂无服务凭证",
+        "title": "服务密钥",
+        "description": "管理用于外部集成的服务密钥 (API Keys)",
+        "newCredential": "新建密钥",
+        "noCredentials": "暂无服务密钥",
         "createdAt": "创建于 {date}",
-        "createTitle": "新建服务凭证",
-        "createDesc": "创建一个新的服务凭证用于外部系统访问此账本。",
-        "namePlaceholder": "凭证名称 (例如: 自动记账脚本)",
-        "createSuccessTitle": "服务凭证创建成功",
-        "createSuccessDesc": "这是您唯一一次查看完整凭证密钥的机会。请立即复制并妥善保存。",
+        "createTitle": "新建服务密钥",
+        "createDesc": "创建一个新的服务密钥用于外部系统访问此账本。",
+        "namePlaceholder": "密钥名称 (例如: 自动记账脚本)",
+        "createSuccessTitle": "服务密钥创建成功",
+        "createSuccessDesc": "这是您唯一一次查看完整密钥的机会。请立即复制并妥善保存。",
         "copy": "复制",
-        "copyCredential": "复制凭证",
+        "copyCredential": "复制密钥",
         "saved": "我已保存",
-        "deleteTitle": "删除服务凭证",
-        "deleteDesc": "确定要删除这个凭证吗？删除后使用此凭证的外部应用将无法访问。此操作无法撤销。",
-        "createFailed": "创建凭证失败",
-        "copied": "凭证已复制到剪贴板"
+        "deleteTitle": "删除服务密钥",
+        "deleteDesc": "确定要删除这个密钥吗？删除后使用此密钥的外部应用将无法访问。此操作无法撤销。",
+        "createFailed": "创建密钥失败",
+        "copied": "密钥已复制到剪贴板"
     },
     "DateRangeFilter": {
         "selectRange": "选择日期范围",
