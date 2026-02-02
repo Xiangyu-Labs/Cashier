@@ -1037,6 +1037,45 @@ code:not(.code-block code) {
 }
 ```
 
+
+### 5.15 Pull-to-Refresh（下拉刷新）
+
+用于移动端手势触发数据刷新。
+
+#### 基础样式
+
+```tsx
+<PullToRefresh onRefresh={handleRefresh}>
+  {children}
+</PullToRefresh>
+```
+
+#### 指示器设计
+
+- **下拉阶段（0-60px）**：圆环指示器从小到大
+- **释放刷新（60+px）**：圆环旋转，提示释放
+- **刷新中**：持续旋转动画
+
+#### 样式规范
+
+```css
+.pull-indicator {
+  border: 2px solid var(--primary-a20);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+}
+```
+
+#### 行为规范
+
+| 属性 | 值 |
+|------|------|
+| **触发阈值** | 60px |
+| **最大拉动距离** | 80px |
+| **动画缓动** | `ease-out` |
+| **防抖间隔** | 500ms |
+| **桌面端** | 自动禁用 |
+
 ---
 
 ## 6. 状态设计（States）

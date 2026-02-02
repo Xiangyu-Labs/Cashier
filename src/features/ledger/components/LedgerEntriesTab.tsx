@@ -30,6 +30,7 @@ import { useTranslations } from "next-intl";
 import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { queryKeys } from "@/lib/query-keys";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -365,165 +366,171 @@ export function LedgerEntriesTab({
 
 
 
+    const handleRefresh = useCallback(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+    }, [queryClient, ledgerId]);
+
     return (
         <LayoutGroup id={layoutGroupId}>
-            <div className="space-y-4" {...containerProps}>
+            <PullToRefresh onRefresh={handleRefresh}>
+                <div className="space-y-4" {...containerProps}>
 
-                {/* Date Filter */}
-                <div className="px-2 mb-2 sm:mb-4">
-                    <DateRangeFilter
-                        startDate={dateRange.start}
-                        endDate={dateRange.end}
-                        onRangeChange={({ start, end }) => setDateRange({ start, end })}
-                        className="w-full sm:w-auto"
-                    />
-                </div>
-
-                {/* Unified Loading State */}
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground-foreground animate-in fade-in duration-300">
-                        <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mb-4"></div>
-                        <p className="text-sm font-medium">{tCommon("loading")}</p>
+                    {/* Date Filter */}
+                    <div className="px-2 mb-2 sm:mb-4">
+                        <DateRangeFilter
+                            startDate={dateRange.start}
+                            endDate={dateRange.end}
+                            onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                            className="w-full sm:w-auto"
+                        />
                     </div>
-                ) : (
-                    <>
-                        {/* Processing Section */}
-                        <AnimatePresence mode="wait">
-                            {groups.processing.length > 0 && (
-                                <motion.div className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                    {renderSectionHeader(
-                                        t("processing"),
-                                        groups.processing.length,
-                                        isProcessingCollapsed,
-                                        () => setIsProcessingCollapsed(!isProcessingCollapsed),
-                                        "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/20",
-                                        "text-primary"
-                                    )}
-                                    <AnimatePresence>
-                                        {!isProcessingCollapsed && (
-                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                <AnimatePresence mode="wait">
-                                                    {groups.processing.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                                            <SourceDocumentCard
-                                                                sourceDocument={group.sourceDocument}
-                                                                ledgerEntries={group.ledgerEntries}
-                                                                categories={categories}
-                                                                status={group.sourceDocument.status || 'processing'}
-                                                                className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
-                                                                defaultExpanded={true}
-                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                                onRetry={() => setRetrySourceDocument(group.sourceDocument)}
-                                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                            />
-                                                        </motion.div>
-                                                    ))}
-                                                </AnimatePresence>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                    <div className="h-px bg-border/50 mt-4 mx-2" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
 
-
-                        {/* Anomaly Section */}
-                        <AnimatePresence mode="wait">
-                            {groups.anomaly.length > 0 && (
-                                <motion.div className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                    {renderSectionHeader(
-                                        t("abnormal"),
-                                        groups.anomaly.length,
-                                        isErrorCollapsed,
-                                        () => setIsErrorCollapsed(!isErrorCollapsed),
-                                        "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
-                                        "text-red-500",
-                                        <>
-                                            <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                            <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => {
-                                                const ids = groups.anomaly.map(g => g.sourceDocument.id);
-                                                batchRetrySourceDocsMutation.mutate(ids);
-                                            }}>{t("retryAll")}</Button>
-                                        </>
-                                    )}
-                                    <AnimatePresence>
-                                        {!isErrorCollapsed && (
-                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                <AnimatePresence mode="wait">
-                                                    {groups.anomaly.map(group => (
-                                                        <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                                            <SourceDocumentCard
-                                                                sourceDocument={group.sourceDocument}
-                                                                ledgerEntries={group.ledgerEntries}
-                                                                categories={categories}
-                                                                status="anomaly"
-                                                                anomalyCodes={group.sourceDocument.anomalyCodes}
-                                                                className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
-                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                                onRetry={() => setRetrySourceDocument(group.sourceDocument)}
-                                                                onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                            />
-                                                        </motion.div>
-                                                    ))}
-                                                </AnimatePresence>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                    <div className="h-px bg-border/50 mt-4 mx-2" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Completed (Formal) Section */}
-                        <div className="space-y-6 px-2">
-                            {groups.completed.length === 0 ? (
-                                <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                                    <span>{tCommon("noRecords")}</span>
-                                </div>
-                            ) : (
-                                <AnimatePresence mode="wait">
-                                    {groups.completed.map(group => (
-                                        <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                            <SourceDocumentCard
-                                                sourceDocument={group.sourceDocument}
-                                                ledgerEntries={group.ledgerEntries}
-                                                categories={categories}
-                                                status="completed"
-                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
-                                                onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
-                                                onUpdateLedgerEntry={handleUpdateLedgerEntry}
-                                                onRetry={() => handleRetry(group.sourceDocument)}
-                                                onViewDetails={() => handleViewSourceDetail(group)}
-                                                onViewLedgerEntry={handleViewLedgerEntry}
-                                            />
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            )}
-
-                            {/* Infinite Scroll Sentinel */}
-                            <div className="h-10 flex items-center justify-center text-muted-foreground text-sm pb-4">
-                                {isFetchingNextPage ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
-                                        <span>{tCommon("loading")}</span>
-                                    </div>
-                                ) : hasNextPage ? (
-                                    <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                        <span>{t("loadMore")}</span>
-                                    </motion.div>
-                                ) : (
-                                    <span className="opacity-50 text-xs">{tCommon("noMore")}</span>
-                                )}
-                            </div>
+                    {/* Unified Loading State */}
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground-foreground animate-in fade-in duration-300">
+                            <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mb-4"></div>
+                            <p className="text-sm font-medium">{tCommon("loading")}</p>
                         </div>
-                    </>
-                )}
+                    ) : (
+                        <>
+                            {/* Processing Section */}
+                            <AnimatePresence mode="wait">
+                                {groups.processing.length > 0 && (
+                                    <motion.div className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        {renderSectionHeader(
+                                            t("processing"),
+                                            groups.processing.length,
+                                            isProcessingCollapsed,
+                                            () => setIsProcessingCollapsed(!isProcessingCollapsed),
+                                            "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/20",
+                                            "text-primary"
+                                        )}
+                                        <AnimatePresence>
+                                            {!isProcessingCollapsed && (
+                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                                    <AnimatePresence mode="wait">
+                                                        {groups.processing.map(group => (
+                                                            <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
+                                                                <SourceDocumentCard
+                                                                    sourceDocument={group.sourceDocument}
+                                                                    ledgerEntries={group.ledgerEntries}
+                                                                    categories={categories}
+                                                                    status={group.sourceDocument.status || 'processing'}
+                                                                    className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
+                                                                    defaultExpanded={true}
+                                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
+                                                                    onRetry={() => setRetrySourceDocument(group.sourceDocument)}
+                                                                    onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                                                                />
+                                                            </motion.div>
+                                                        ))}
+                                                    </AnimatePresence>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                        <div className="h-px bg-border/50 mt-4 mx-2" />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-            </div>
+
+                            {/* Anomaly Section */}
+                            <AnimatePresence mode="wait">
+                                {groups.anomaly.length > 0 && (
+                                    <motion.div className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        {renderSectionHeader(
+                                            t("abnormal"),
+                                            groups.anomaly.length,
+                                            isErrorCollapsed,
+                                            () => setIsErrorCollapsed(!isErrorCollapsed),
+                                            "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
+                                            "text-red-500",
+                                            <>
+                                                <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
+                                                <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => {
+                                                    const ids = groups.anomaly.map(g => g.sourceDocument.id);
+                                                    batchRetrySourceDocsMutation.mutate(ids);
+                                                }}>{t("retryAll")}</Button>
+                                            </>
+                                        )}
+                                        <AnimatePresence>
+                                            {!isErrorCollapsed && (
+                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
+                                                    <AnimatePresence mode="wait">
+                                                        {groups.anomaly.map(group => (
+                                                            <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
+                                                                <SourceDocumentCard
+                                                                    sourceDocument={group.sourceDocument}
+                                                                    ledgerEntries={group.ledgerEntries}
+                                                                    categories={categories}
+                                                                    status="anomaly"
+                                                                    anomalyCodes={group.sourceDocument.anomalyCodes}
+                                                                    className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+                                                                    defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
+                                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
+                                                                    onRetry={() => setRetrySourceDocument(group.sourceDocument)}
+                                                                    onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
+                                                                />
+                                                            </motion.div>
+                                                        ))}
+                                                    </AnimatePresence>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                        <div className="h-px bg-border/50 mt-4 mx-2" />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Completed (Formal) Section */}
+                            <div className="space-y-6 px-2">
+                                {groups.completed.length === 0 ? (
+                                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
+                                        <span>{tCommon("noRecords")}</span>
+                                    </div>
+                                ) : (
+                                    <AnimatePresence mode="wait">
+                                        {groups.completed.map(group => (
+                                            <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout layoutId={group.sourceDocument.id} {...getItemProps()}>
+                                                <SourceDocumentCard
+                                                    sourceDocument={group.sourceDocument}
+                                                    ledgerEntries={group.ledgerEntries}
+                                                    categories={categories}
+                                                    status="completed"
+                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
+                                                    defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
+                                                    onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
+                                                    onUpdateLedgerEntry={handleUpdateLedgerEntry}
+                                                    onRetry={() => handleRetry(group.sourceDocument)}
+                                                    onViewDetails={() => handleViewSourceDetail(group)}
+                                                    onViewLedgerEntry={handleViewLedgerEntry}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                )}
+
+                                {/* Infinite Scroll Sentinel */}
+                                <div className="h-10 flex items-center justify-center text-muted-foreground text-sm pb-4">
+                                    {isFetchingNextPage ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
+                                            <span>{tCommon("loading")}</span>
+                                        </div>
+                                    ) : hasNextPage ? (
+                                        <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
+                                            <span>{t("loadMore")}</span>
+                                        </motion.div>
+                                    ) : (
+                                        <span className="opacity-50 text-xs">{tCommon("noMore")}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                </div>
+            </PullToRefresh>
 
             {/* Global Modal Stack Renderer */}
 

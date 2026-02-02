@@ -365,5 +365,10 @@
         "title": "Error Loading Ledger",
         "description": "An error occurred while loading the ledger data. This might be due to a network issue or the ledger no longer exists.",
         "backToHome": "Back to Home"
+    },
+    "PullToRefresh": {
+        "pullToRefresh": "Pull to refresh",
+        "releaseToRefresh": "Release to refresh",
+        "refreshing": "Refreshing..."
     }
 }

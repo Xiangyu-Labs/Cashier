@@ -10,9 +10,10 @@ import {
     jsonb,
     index,
     unique,
+    uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { users } from "@/features/auth/server/schema";
-import { type InferSelectModel } from "drizzle-orm";
+import { type InferSelectModel, sql } from "drizzle-orm";
 
 // Ledger（账本）
 export const ledgers = pgTable("ledgers", {
@@ -65,7 +66,7 @@ export const entryCategories = pgTable("entry_categories", {
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     deletedAt: timestamp("deleted_at"),
 }, (table) => [
-    unique("uniq_category_name_per_ledger").on(table.ledgerId, table.name),
+    uniqueIndex("uniq_category_name_per_ledger").on(table.ledgerId, table.name).where(sql`${table.deletedAt} IS NULL`),
 ]);
 
 export type EntryCategory = InferSelectModel<typeof entryCategories>;

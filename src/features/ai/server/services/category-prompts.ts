@@ -36,7 +36,7 @@ ${COMMON_LUCIDE_ICONS.join(", ")}
 
 Requirements:
 1. Icon: Choose strictly from the provided list. If nothing fits perfectly, choose "Package" or "Tag".
-2. Description: Write a short, consistent description (similar style to existing ones). Language should be ${lang === "zh-CN" ? "Chinese" : "English"}.
+2. Description: STRICTLY mimic the style, structure, and length of the existing category descriptions provided above. If they are concise (e.g., "Food and drinks"), be concise. If they are detailed lists (e.g., "Includes x, y, z"), follow that format. Language should be ${lang === "zh-CN" ? "Chinese" : "English"}.
 3. Return specifically in JSON format.
 
 JSON Format:

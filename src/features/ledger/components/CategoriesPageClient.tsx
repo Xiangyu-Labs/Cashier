@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Plus, Pencil, Trash2, Info, Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import {
     createEntryCategoryAction,
     updateEntryCategoryAction,
     deleteEntryCategoryAction,
+    getEntryCategoriesAction
 } from "@/features/ledger/server/actions/categories";
 import { EntryCategory } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,10 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface CategoriesPageClientProps {
     ledgerId: string;
@@ -35,23 +40,138 @@ interface CreateCategoryData {
     icon?: string;
 }
 
-import { useTranslations } from "next-intl";
-import { useSmartPolling } from "@/hooks/use-smart-polling";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
-
 export function CategoriesPageClient({ ledgerId, categories: initialCategories }: CategoriesPageClientProps): React.ReactElement {
     const router = useRouter();
     const t = useTranslations();
+    const queryClient = useQueryClient();
+    const queryKey = ["ledger-categories", ledgerId];
 
-    // Smart polling for AI updates
-    const { data: categories } = useSmartPolling<EntryCategory[]>({
-        queryKey: ["ledger-categories", ledgerId],
+    // --- Data Fetching & Polling ---
+
+    // Use Smart Polling to handle both initial fetch and background updates for AI generation
+    // This replaces a standard useQuery but serves the same purpose + polling logic
+    const { data: categories = [] } = useSmartPolling<EntryCategory[]>({
+        queryKey: queryKey,
         queryFn: () => getEntryCategoriesAction(ledgerId),
         isActive: (data) => data?.some((c) => !c.icon && !c.description) ?? false,
         interval: 3000,
         initialData: initialCategories
     });
 
+    // --- Mutations with Optimistic Updates ---
+
+    const createMutation = useMutation({
+        mutationFn: async (data: CreateCategoryData) => {
+            const result = await createEntryCategoryAction(ledgerId, data);
+            if (result.success) {
+                return result.data;
+            }
+            throw new Error(result.error || "Failed to create category");
+        },
+        onMutate: async (newData) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey });
+
+            // Snapshot previous value
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            // Optimistically update
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) => {
+                const tempCategory: EntryCategory = {
+                    id: `temp-${Date.now()}`,
+                    ledgerId,
+                    name: newData.name,
+                    description: newData.description || null,
+                    icon: newData.icon || null,
+                    sortOrder: 0,
+                    isEditable: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    deletedAt: null
+                };
+                return [...old, tempCategory];
+            });
+
+            return { previousCategories };
+        },
+        onSuccess: () => {
+            toast.success("Category created successfully");
+            handleClose();
+        },
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(queryKey, context?.previousCategories);
+            toast.error(err.message);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
+        }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: CreateCategoryData }) => {
+            const result = await updateEntryCategoryAction(ledgerId, id, data);
+            if (result.success) {
+                // Ensure we return something consistent, though we might not use it in onSettled
+                // updateEntryCategoryAction returns { success: true } without data usually
+                // but let's check carefully. If it returns { success: true }, we can return null or the ID.
+                return { id, ...data };
+            }
+            throw new Error(result.error || "Failed to update category");
+        },
+        onMutate: async ({ id, data }) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
+                old.map(c => c.id === id ? { ...c, ...data, description: data.description || null, icon: data.icon || null } : c)
+            );
+
+            return { previousCategories };
+        },
+        onSuccess: () => {
+            toast.success("Updated successfully");
+            handleClose();
+        },
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(queryKey, context?.previousCategories);
+            toast.error(err.message);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const result = await deleteEntryCategoryAction(ledgerId, id);
+            if (!result.success) throw new Error(result.error || "Failed to delete category");
+            return id;
+        },
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
+                old.filter(c => c.id !== id)
+            );
+
+            return { previousCategories };
+        },
+        onSuccess: () => {
+            toast.success("Deleted successfully");
+            setDeleteConfirm({ ...deleteConfirm, open: false });
+        },
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(queryKey, context?.previousCategories);
+            toast.error(err.message);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
+        }
+    });
+
+
+    // --- Local State ---
 
     const [isOpen, setIsOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<EntryCategory | null>(null);
@@ -69,8 +189,6 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
         id: null,
         name: "",
     });
-
-    const [isPending, startTransition] = useTransition();
 
     const resetForm = () => {
         setFormData({ name: "", description: "", icon: "" });
@@ -91,25 +209,11 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             icon: formData.icon.trim() || undefined,
         };
 
-        startTransition(async () => {
-            if (editingCategory) {
-                const result = await updateEntryCategoryAction(ledgerId, editingCategory.id, data);
-                if (result.success) {
-                    toast.success("Updated successfully");
-                    handleClose();
-                } else {
-                    toast.error("Update failed");
-                }
-            } else {
-                const result = await createEntryCategoryAction(ledgerId, data);
-                if (result.success) {
-                    toast.success("Created successfully");
-                    handleClose();
-                } else {
-                    toast.error("Creation failed");
-                }
-            }
-        });
+        if (editingCategory) {
+            updateMutation.mutate({ id: editingCategory.id, data });
+        } else {
+            createMutation.mutate(data);
+        }
     };
 
     const handleDelete = (category: EntryCategory) => {
@@ -122,15 +226,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
 
     const handleConfirmDelete = () => {
         if (deleteConfirm.id) {
-            startTransition(async () => {
-                const result = await deleteEntryCategoryAction(ledgerId, deleteConfirm.id!);
-                if (result.success) {
-                    toast.success("Deleted successfully");
-                    setDeleteConfirm({ ...deleteConfirm, open: false });
-                } else {
-                    toast.error("Deletion failed");
-                }
-            });
+            deleteMutation.mutate(deleteConfirm.id);
         }
     };
 
@@ -150,6 +246,8 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
         setIsOpen(true);
     };
 
+    const isPending = createMutation.isPending || updateMutation.isPending;
+
     return (
         <div className="min-h-screen bg-bg text-text font-sans">
             {/* 顶部导航 */}
@@ -166,7 +264,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                     </div>
                     <Button onClick={openCreateModal}>
                         <Plus className="w-4 h-4 mr-2" />
-                        新建分类
+                        New Category
                     </Button>
                 </div>
             </header>
@@ -183,14 +281,21 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-xl shrink-0">
+                                                {/* 如果正在生成中(无icon且无描述)，显示Loading。否则显示icon或默认文件夹 */}
                                                 {(!category.icon && !category.description) ? (
                                                     <Loader2 className="w-5 h-5 animate-spin text-primary" />
                                                 ) : (
-                                                    category.icon || "📁"
+                                                    <CategoryIcon iconName={category.icon} className="w-5 h-5" />
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="font-medium">{category.name}</p>
+                                                <p className="font-medium flex items-center gap-2">
+                                                    {category.name}
+                                                    {/* 只有当这是临时创建的条目时，才显示保存中状态 */}
+                                                    {category.id.startsWith("temp-") && (
+                                                        <span className="text-xs text-muted font-normal">(Saving...)</span>
+                                                    )}
+                                                </p>
                                                 {(!category.icon && !category.description) ? (
                                                     <p className="text-sm text-muted mt-0.5 animate-pulse">
                                                         {t("Settings.categories.generating")}
@@ -207,6 +312,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => openEditModal(category)}
+                                                disabled={category.id.startsWith("temp-")}
                                             >
                                                 <Pencil className="w-4 h-4 text-muted hover:text-primary" />
                                             </Button>
@@ -214,6 +320,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleDelete(category)}
+                                                disabled={category.id.startsWith("temp-")}
                                             >
                                                 <Trash2 className="w-4 h-4 text-muted hover:text-danger" />
                                             </Button>

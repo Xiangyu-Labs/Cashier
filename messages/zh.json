@@ -368,5 +368,10 @@
         "title": "加载账本出错",
         "description": "加载账本数据时发生错误。这可能是由于网络问题或账本不存在导致。",
         "backToHome": "返回主页"
+    },
+    "PullToRefresh": {
+        "pullToRefresh": "下拉刷新",
+        "releaseToRefresh": "释放刷新",
+        "refreshing": "刷新中..."
     }
 }
