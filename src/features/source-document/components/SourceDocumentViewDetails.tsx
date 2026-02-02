@@ -206,14 +206,14 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     <TabsContent value="raw" className="flex-1 min-h-0 m-0 p-0 overflow-y-auto focus-visible:outline-none scrollbar-none">
                         <div className="space-y-6 pb-20 sm:pb-10">
                             {/* 1. Visual Evidence: Compact Grid of Images */}
-                            {sourceDocument.imageUrls.length > 0 && (
+                            {(sourceDocument.imageUrls?.length ?? 0) > 0 && (
                                 <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
                                     <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                         <ImagePlay className="h-3 w-3 text-primary" />
                                         {tCard("image") || "Images"}
                                     </h5>
                                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                                        {sourceDocument.imageUrls.map((url, idx) => (
+                                        {(sourceDocument.imageUrls || []).map((url, idx) => (
                                             <div
                                                 key={idx}
                                                 className="aspect-square relative rounded-xl overflow-hidden border border-border/60 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
@@ -253,7 +253,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
                         {/* Shared Gallery Viewer */}
                         <ImageViewer
-                            images={sourceDocument.imageUrls}
+                            images={sourceDocument.imageUrls || []}
                             initialIndex={viewerIndex ?? 0}
                             open={viewerIndex !== null}
                             onOpenChange={(open: boolean) => !open && setViewerIndex(null)}

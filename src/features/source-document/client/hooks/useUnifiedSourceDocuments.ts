@@ -101,7 +101,7 @@ export function useUnifiedSourceDocuments(
         }),
         isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
-        initialData: initialUnifiedData,
+        initialData: initialUnifiedData as any,
     });
 
     // Invalidate infinite completed list if processing count drops (transition to completed/anomaly)

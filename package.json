@@ -63,6 +63,7 @@
     "tailwind-merge": "^3.4.0",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7",
+    "drizzle-kit": "^0.31.8",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
@@ -82,7 +83,6 @@
     "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^4.0.18",
     "dotenv": "^17.2.3",
-    "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "happy-dom": "^20.3.9",

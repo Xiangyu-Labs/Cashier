@@ -24,6 +24,10 @@ test_output*.txt
 # misc
 .DS_Store
 *.pem
+/data/
+*.db
+*.db-journal
+*.db-wal
 
 # debug
 npm-debug.log*
@@ -48,4 +52,3 @@ docker-compose.yml
 public/sw.js
 public/workbox-*.js
 public/swe-worker-*.js
-

@@ -314,7 +314,7 @@ export function LedgerEntriesTab({
                                                                     sourceDocument={group.sourceDocument}
                                                                     ledgerEntries={group.ledgerEntries}
                                                                     categories={categories}
-                                                                    status={group.sourceDocument.status || 'processing'}
+                                                                    status={(group.sourceDocument.status as "queued" | "processing" | "completed" | "anomaly") || 'processing'}
                                                                     className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
                                                                     defaultExpanded={true}
                                                                     mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
