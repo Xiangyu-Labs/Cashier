@@ -11,6 +11,7 @@ import {
     createEntryCategoryAction,
     updateEntryCategoryAction,
     deleteEntryCategoryAction,
+    reorderEntryCategoriesAction,
 } from "@/features/ledger/server/actions/categories";
 import {
     createServiceCredentialAction,
@@ -110,6 +111,9 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
         });
     }
 
+    // Track category creation success to clear input
+    const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => { });
+
     const createCategoryMutation = useMutation({
         mutationFn: async (data: { name: string }) => {
             const result = await createEntryCategoryAction(ledgerId, data);
@@ -117,6 +121,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
         },
         onSuccess: () => {
             toast.success(t("categoryCreated"));
+            setCategoryCreatedTrigger(() => () => { }); // Trigger state change
             router.refresh();
         },
         onError: () => toast.error(t("createCategoryFailed")),
@@ -152,8 +157,14 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
 
     const reorderCategoriesMutation = useMutation({
         mutationFn: async (categoryIds: string[]) => {
-            console.warn("Reorder not implemented yet");
+            const result = await reorderEntryCategoriesAction(ledgerId, categoryIds);
+            if (!result.success) throw new Error(result.error || "Unknown error");
         },
+        onSuccess: () => {
+            toast.success(t("categoriesReordered"));
+            router.refresh();
+        },
+        onError: () => toast.error(t("reorderCategoriesFailed")),
     });
 
     const createCredentialMutation = useMutation({
@@ -405,6 +416,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                             onUpdateCategory={(id, data) => updateCategoryMutation.mutate({ id, data })}
                             onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
                             onReorderCategories={(ids) => reorderCategoriesMutation.mutate(ids)}
+                            onCategoryCreated={categoryCreatedTrigger}
                         />
                     )}
                 </div>

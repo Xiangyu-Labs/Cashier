@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -30,6 +30,7 @@ interface CategorySectionProps {
     onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
     onDeleteCategory: (id: string) => void;
     onReorderCategories: (ids: string[]) => void;
+    onCategoryCreated?: () => void;
 }
 
 interface SortableItemProps {
@@ -136,7 +137,8 @@ export function CategorySection({
     onCreateCategory,
     onUpdateCategory,
     onDeleteCategory,
-    onReorderCategories
+    onReorderCategories,
+    onCategoryCreated
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
@@ -153,8 +155,14 @@ export function CategorySection({
     const handleCreate = () => {
         if (!newCategoryName.trim()) return;
         onCreateCategory(newCategoryName.trim());
-        setNewCategoryName("");
     };
+
+    // Clear input on successful creation - listen to onCategoryCreated change
+    useEffect(() => {
+        if (onCategoryCreated) {
+            setNewCategoryName("");
+        }
+    }, [onCategoryCreated]);
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
