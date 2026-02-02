@@ -27,7 +27,7 @@ describe("Ledger Entry Update Action", () => {
             .insert(ledgerEntries)
             .values({
                 ledgerId: testLedgerId,
-                amount: "100",
+                amount: "100.00",
                 itemName: "Test Item",
                 description: "Initial description",
                 categoryId: testCategoryId,

@@ -1,50 +1,47 @@
 import {
-    pgTable,
-    uuid,
+    sqliteTable,
     text,
-    timestamp,
-    jsonb,
+    integer,
     index,
-    pgEnum,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { ledgers } from "@/features/ledger/server/schema";
 import { type InferSelectModel } from "drizzle-orm";
 
-// Enums
-export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
-    "queued",
-    "processing",
-    "completed",
-    "anomaly",
-]);
+// Enums (Managed in application layer for SQLite)
+export const SourceDocumentStatus = {
+    Queued: "queued",
+    Processing: "processing",
+    Completed: "completed",
+    Anomaly: "anomaly",
+} as const;
 
-export const anomalyCodeEnum = pgEnum("anomaly_code", [
-    "internal_error",
-    "invalid_content",
-    "evidence_anomaly",
-    "unknown_currency",
-]);
+export const AnomalyCode = {
+    InternalError: "internal_error",
+    InvalidContent: "invalid_content",
+    EvidenceAnomaly: "evidence_anomaly",
+    UnknownCurrency: "unknown_currency",
+} as const;
 
 // SourceDocuments (原始凭证)
-export const sourceDocuments = pgTable("source_documents", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ledgerId: uuid("ledger_id")
+export const sourceDocuments = sqliteTable("source_documents", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    ledgerId: text("ledger_id")
         .notNull()
         .references(() => ledgers.id, { onDelete: "cascade" }),
 
     title: text("title"),
     text: text("text"),
-    imageUrls: jsonb("image_urls")
+    imageUrls: text("image_urls", { mode: "json" })
         .$type<string[]>()
-        .default([])
-        .notNull(),
+        .default([]),
+    // .notNull(), // Removing notNull to be safe with default, or keep it? json "[]" matches default.
 
-    status: sourceDocumentStatusEnum("status").notNull().default("queued"),
-    anomalyCodes: jsonb("anomaly_codes").$type<string[]>().default([]),
-    metadata: jsonb("metadata").$type<SourceDocMetadata>().default({}),
+    status: text("status").notNull().default("queued"), // Check constraint could be added here manually
+    anomalyCodes: text("anomaly_codes", { mode: "json" }).$type<string[]>().default([]),
+    metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
 
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
     index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),

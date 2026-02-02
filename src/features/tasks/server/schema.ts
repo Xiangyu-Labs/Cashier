@@ -1,19 +1,16 @@
 import {
-    pgTable,
-    uuid,
+    sqliteTable,
     text,
-    timestamp,
     integer,
-    jsonb,
     index,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 import { ledgers } from "@/features/ledger/server/schema";
 
 // TaskRuns (任务运行记录 - 仅用于审计和前端展示)
-export const taskRuns = pgTable("task_runs", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ledgerId: uuid("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
+export const taskRuns = sqliteTable("task_runs", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    ledgerId: text("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
 
     // Task identification
     type: text("type").notNull(),               // System Name: 'parse_source_document'
@@ -22,7 +19,7 @@ export const taskRuns = pgTable("task_runs", {
 
     // Result
     status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
-    output: jsonb("output").$type<unknown>(),
+    output: text("output", { mode: "json" }).$type<unknown>(),
     error: text("error"),
 
     // Statistics
@@ -31,13 +28,13 @@ export const taskRuns = pgTable("task_runs", {
     failedJobs: integer("failed_jobs").default(0),
 
     // Token usage (aggregated)
-    usage: jsonb("usage").$type<{ inputTokens: number; outputTokens: number; totalTokens: number }>(),
+    usage: text("usage", { mode: "json" }).$type<{ inputTokens: number; outputTokens: number; totalTokens: number }>(),
 
     // Timestamps
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    startedAt: timestamp("started_at"),
-    completedAt: timestamp("completed_at"),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_task_runs_ledger_status").on(table.ledgerId, table.status),
     index("idx_task_runs_created_at").on(table.createdAt),

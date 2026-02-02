@@ -1,11 +1,11 @@
 import { and, eq, isNull, SQL } from "drizzle-orm";
-import { PgTable } from "drizzle-orm/pg-core";
+import { SQLiteTable } from "drizzle-orm/sqlite-core";
 
 /**
  * 为指定 ledgerId 创建作用域查询条件
  * 自动添加租户隔离 + 软删除过滤
  */
-export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
+export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
     return {
         /**
          * 生成标准的 WHERE 条件 (租户隔离 + 软删除)

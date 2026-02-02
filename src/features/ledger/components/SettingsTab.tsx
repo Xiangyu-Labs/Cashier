@@ -24,7 +24,7 @@ import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
 import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
-import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
+
 import { queryKeys } from "@/lib/query-keys";
 
 import { EntryCategory, Ledger, ServiceCredential, Settings } from "@/types/api";
@@ -496,14 +496,6 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                             onCategoryCreated={categoryCreatedTrigger}
                         />
                     )}
-                </div>
-            </section>
-
-            {/* Notification Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('notifications')}</h2>
-                <div className="space-y-6">
-                    <PushNotificationManager />
                 </div>
             </section>
 

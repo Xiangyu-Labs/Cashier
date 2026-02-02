@@ -1,13 +1,10 @@
 import {
-    pgTable,
-    uuid,
+    sqliteTable,
     text,
-    timestamp,
     integer,
-    jsonb,
     primaryKey,
     index,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 
 // ==========================================
@@ -15,18 +12,18 @@ import { type InferSelectModel } from "drizzle-orm";
 // ==========================================
 
 // Users - 用户表
-export const users = pgTable("users", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const users = sqliteTable("users", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name"),
     email: text("email").notNull().unique(),
-    emailVerified: timestamp("email_verified"),
+    emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
     image: text("image"),
     // Default ledger will be set after ledger is created (no FK to avoid circular type dependency)
-    defaultLedgerId: uuid("default_ledger_id"),
-    metadata: jsonb("metadata").$type<UserMetadata>().default({}),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    defaultLedgerId: text("default_ledger_id"),
+    metadata: text("metadata", { mode: "json" }).$type<UserMetadata>().default({}),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 });
 
 export interface UserMetadata {
@@ -44,8 +41,8 @@ export interface UserMetadata {
 export type User = InferSelectModel<typeof users>;
 
 // Accounts - OAuth 账户关联
-export const accounts = pgTable("accounts", {
-    userId: uuid("user_id")
+export const accounts = sqliteTable("accounts", {
+    userId: text("user_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
@@ -62,32 +59,50 @@ export const accounts = pgTable("accounts", {
     primaryKey({ columns: [table.provider, table.providerAccountId] }),
 ]);
 
-export type Account = InferSelectModel<typeof accounts>; // Added this type export
+export type Account = InferSelectModel<typeof accounts>;
+
+// Sessions - 会话表
+export const sessions = sqliteTable("sessions", {
+    sessionToken: text("session_token").primaryKey(),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    userAgent: text("user_agent"),
+    ipAddress: text("ip_address"),
+    deviceName: text("device_name"),
+    lastActiveAt: integer("last_active_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+}, (table) => [
+    index("idx_sessions_user_id").on(table.userId),
+]);
+
+export type Session = InferSelectModel<typeof sessions>;
 
 // Verification Tokens - Magic Link 验证令牌
-export const verificationTokens = pgTable("verification_tokens", {
+export const verificationTokens = sqliteTable("verification_tokens", {
     identifier: text("identifier").notNull(),
     token: text("token").notNull().unique(),
-    expires: timestamp("expires").notNull(),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [
     primaryKey({ columns: [table.identifier, table.token] }),
 ]);
 
 // OTP Tokens - 验证码登录令牌
-export const otpTokens = pgTable("otp_tokens", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const otpTokens = sqliteTable("otp_tokens", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     email: text("email").notNull(),
     tokenHash: text("token_hash").notNull().unique(),  // SHA-256 哈希
-    expires: timestamp("expires").notNull(),            // 5 分钟 TTL
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),            // 5 分钟 TTL
 
     // 安全控制
     attempts: integer("attempts").notNull().default(0),
-    lockedUntil: timestamp("locked_until"),             // 锁定至某时刻
+    lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),             // 锁定至某时刻
 
     // 审计字段
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    lastAttemptAt: timestamp("last_attempt_at"),
-    verifiedAt: timestamp("verified_at"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    lastAttemptAt: integer("last_attempt_at", { mode: "timestamp_ms" }),
+    verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
     ipAddress: text("ip_address"),
 }, (table) => [
     index("idx_otp_tokens_email").on(table.email),

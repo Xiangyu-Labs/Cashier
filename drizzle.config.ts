@@ -24,15 +24,13 @@ export default defineConfig({
     "./src/features/auth/server/schema.ts",
     "./src/features/currency/server/schema.ts",
     "./src/features/ledger/server/schema.ts",
-    "./src/features/share/server/schema.ts",
     "./src/features/source-document/server/schema.ts",
     "./src/features/tasks/server/schema.ts",
-    "./src/features/notifications/server/schema.ts",
     "./src/lib/db/relations.ts"
   ],
   out: "./src/lib/db/migrations",
-  dialect: "postgresql",
+  dialect: "sqlite",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    url: process.env.DATABASE_URL || "sqlite.db",
   },
 });

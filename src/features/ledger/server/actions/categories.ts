@@ -125,12 +125,14 @@ export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds
         if (error) return { success: false, error: "Unauthorized" };
 
         // Transaction for reordering
-        await db.transaction(async (tx) => {
+        // Transaction for reordering
+        db.transaction((tx) => {
             for (let i = 0; i < categoryIds.length; i++) {
                 // Ensure we only update categories belonging to this ledger
-                await tx.update(entryCategories)
+                tx.update(entryCategories)
                     .set({ sortOrder: i })
-                    .where(and(eq(entryCategories.id, categoryIds[i]), eq(entryCategories.ledgerId, ledgerId)));
+                    .where(and(eq(entryCategories.id, categoryIds[i]), eq(entryCategories.ledgerId, ledgerId)))
+                    .run();
             }
         });
 

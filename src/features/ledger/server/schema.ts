@@ -1,31 +1,24 @@
 import {
-    pgTable,
-    uuid,
+    sqliteTable,
     text,
-    timestamp,
-    boolean,
     integer,
-    decimal,
-    date,
-    jsonb,
     index,
-
     uniqueIndex,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { users } from "@/features/auth/server/schema";
 import { type InferSelectModel, sql } from "drizzle-orm";
 
 // Ledger（账本）
-export const ledgers = pgTable("ledgers", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+export const ledgers = sqliteTable("ledgers", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    metadata: jsonb("metadata").$type<LedgerMetadata>().default({}),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    metadata: text("metadata", { mode: "json" }).$type<LedgerMetadata>().default({}),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_ledgers_user_id").on(table.userId),
 ]);
@@ -51,65 +44,48 @@ export interface LedgerMetadata {
 export type Ledger = InferSelectModel<typeof ledgers>;
 
 // EntryCategory（分录分类）
-export const entryCategories = pgTable("entry_categories", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ledgerId: uuid("ledger_id")
+export const entryCategories = sqliteTable("entry_categories", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    ledgerId: text("ledger_id")
         .notNull()
         .references(() => ledgers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
     icon: text("icon"),
     sortOrder: integer("sort_order").notNull().default(0),
-    isEditable: boolean("is_editable").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    isEditable: integer("is_editable", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     uniqueIndex("uniq_category_name_per_ledger").on(table.ledgerId, table.name).where(sql`${table.deletedAt} IS NULL`),
 ]);
 
 export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
-// Note: LedgerEntries depends on SourceDocuments, but SourceDocuments depends on Ledgers
-// We need to verify if we can import SourceDocuments from legacy here.
-// But legacy imports ledgers. 
-// If we import sourceDocuments here, legacy imports ledgers -> cycle.
-// However, LedgerEntries NEEDS SourceDocumentId.
-// We can use a workaround: defined the column but referencing lazily?
-// Drizzle references are lazy functions: references(() => sourceDocuments.id)
-// So we can import sourceDocuments from legacy.ts.
-// legacy.ts imports ledgers from here.
-// Is this safe?
-// legacy.ts is NOT created yet.
-// let's create the file assuming the import will work.
-
-// We will add the import at the top after creating legacy.ts logic.
-// For now, I'll comment out the reference or assume I can import it.
-// Actually, I can decouple it? No, FK existence is important for migrations.
-// I will import `sourceDocuments` from "@/lib/db/schemas/legacy".
-
+// sourceDocuments is imported safely
 import { sourceDocuments } from "@/features/source-document/server/schema";
 
 // LedgerEntry（账目分录）
-export const ledgerEntries = pgTable("ledger_entries", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ledgerId: uuid("ledger_id")
+export const ledgerEntries = sqliteTable("ledger_entries", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    ledgerId: text("ledger_id")
         .notNull()
         .references(() => ledgers.id, { onDelete: "cascade" }),
-    categoryId: uuid("category_id").references(() => entryCategories.id, {
+    categoryId: text("category_id").references(() => entryCategories.id, {
         onDelete: "set null",
     }),
-    sourceDocumentId: uuid("source_document_id").references(() => sourceDocuments.id, {
+    sourceDocumentId: text("source_document_id").references(() => sourceDocuments.id, {
         onDelete: "set null",
     }),
-    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    amount: text("amount").notNull(), // SQLite has no decimal, use text
     currency: text("currency"),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    entryDate: date("entry_date", { mode: "date" }),
-    metadata: jsonb("metadata").$type<LedgerEntryMetadata>().default({}),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    entryDate: integer("entry_date", { mode: "timestamp_ms" }), // Using timestamp to mock Date
+    metadata: text("metadata", { mode: "json" }).$type<LedgerEntryMetadata>().default({}),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
@@ -136,16 +112,16 @@ export interface LedgerEntryMetadata {
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 
 // ServiceCredentials (服务凭据)
-export const serviceCredentials = pgTable("service_credentials", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const serviceCredentials = sqliteTable("service_credentials", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     key: text("key").notNull().unique(),
-    ledgerId: uuid("ledger_id")
+    ledgerId: text("ledger_id")
         .notNull()
         .references(() => ledgers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    lastUsedAt: timestamp("last_used_at"),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 });
 
 export type ServiceCredential = InferSelectModel<typeof serviceCredentials>;

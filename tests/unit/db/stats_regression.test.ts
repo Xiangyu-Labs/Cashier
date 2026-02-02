@@ -40,8 +40,8 @@ describe("Stats Regression Test", () => {
         const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-        // SQL logic mirrored from route.ts
-        const dateCol = sql<string>`COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}::date)`;
+        // SQLite logic for date extraction from timestamp_ms
+        const dateCol = sql<string>`date(COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}) / 1000, 'unixepoch')`;
 
         // Construct query with the coalesced date filter
         const found = await db
@@ -53,8 +53,8 @@ describe("Stats Regression Test", () => {
             .where(
                 and(
                     eq(ledgerEntries.ledgerId, ledger.id),
-                    sql`${dateCol} >= ${startDate.toISOString().split('T')[0]}::date`,
-                    sql`${dateCol} <= ${endDate.toISOString().split('T')[0]}::date`
+                    sql`${dateCol} >= ${startDate.toISOString().split('T')[0]}`,
+                    sql`${dateCol} <= ${endDate.toISOString().split('T')[0]}`
                 )
             );
 

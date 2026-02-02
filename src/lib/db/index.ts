@@ -1,18 +1,16 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL!;
+const sqlitePath = process.env.DATABASE_URL || "sqlite.db";
 
-// Singleton pattern for database connection to prevent multiple instances
-// during hot-reloading in development.
-// See: https://github.com/vercel/next.js/issues/7811#issuecomment-715259370
+// Singleton pattern for database connection
 const globalForDb = global as unknown as {
-    conn: postgres.Sql | undefined;
+    conn: Database.Database | undefined;
 };
 
-const client = globalForDb.conn ?? postgres(connectionString);
+const client = globalForDb.conn ?? new Database(sqlitePath);
 
 if (process.env.NODE_ENV !== "production") {
     globalForDb.conn = client;

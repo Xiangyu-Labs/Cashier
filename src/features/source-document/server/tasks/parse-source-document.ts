@@ -6,7 +6,6 @@ import { getSourceDocumentProcessor } from "@/features/ai/server/services/proces
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { logger } from "@/lib/logger";
 import { arbitrate } from "@/features/ai/server/services/arbitration";
-import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
 import { forLedger } from "@/lib/db/scoped-query";
 
 // Task type constant
@@ -279,7 +278,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 ledgerId: context.ledgerId!,
                 categoryId,
                 sourceDocumentId: input.sourceDocumentId,
-                amount: entry.amount.toString(),
+                amount: entry.amount.toFixed(2),
                 currency: entry.currency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
@@ -312,22 +311,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
 
         // Send Push Notification
-        if (context.ledgerId) {
-            // Fetch ledger owner
-            const ledger = await db.query.ledgers.findFirst({
-                where: eq(ledgers.id, context.ledgerId),
-                columns: { userId: true }
-            });
-
-            if (ledger?.userId) {
-                await sendNotificationToUser(ledger.userId, {
-                    title: "Document Processed",
-                    body: `Your document "${title || "untitled"}" has been successfully processed.`,
-                    url: `/ledger/${context.ledgerId}`,
-                    data: { ledgerId: context.ledgerId, sourceDocumentId: input.sourceDocumentId }
-                });
-            }
-        }
+        // Send Push Notification (Removed)
+        // if (context.ledgerId) {
+        // ...
+        // }
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {

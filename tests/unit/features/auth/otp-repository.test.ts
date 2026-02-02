@@ -9,7 +9,7 @@ import {
 } from "@/features/auth/server/repositories/otp-repository";
 import { generateOTP, hashOTP } from "@/features/auth/server/services/otp";
 import { otpTokens } from "@/features/auth/server/schema";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 
 describe("OTP Repository", () => {
   const testEmail = "otp-test@example.com";
@@ -18,7 +18,7 @@ describe("OTP Repository", () => {
   beforeEach(async () => {
     db = getTestDb();
     // Clean OTP tokens before each test
-    await db.execute(sql`TRUNCATE otp_tokens CASCADE`);
+    await db.delete(otpTokens);
   });
 
   describe("createOTPToken", () => {
@@ -141,9 +141,10 @@ describe("OTP Repository", () => {
       await createOTPToken(testEmail, otp, "127.0.0.1");
 
       // Manually set expiration to past
-      await db.execute(
-        sql`UPDATE otp_tokens SET expires = NOW() - INTERVAL '1 hour' WHERE email = ${testEmail.toLowerCase()}`
-      );
+      // Manually set expiration to past
+      await db.update(otpTokens)
+        .set({ expires: new Date(Date.now() - 1000 * 60 * 60) })
+        .where(eq(otpTokens.email, testEmail.toLowerCase()));
 
       const result = await verifyOTPToken(testEmail, otp);
 
@@ -202,9 +203,10 @@ describe("OTP Repository", () => {
       await createOTPToken(testEmail, otp, "127.0.0.1");
 
       // Set lockout to past
-      await db.execute(
-        sql`UPDATE otp_tokens SET locked_until = NOW() - INTERVAL '1 hour' WHERE email = ${testEmail.toLowerCase()}`
-      );
+      // Set lockout to past
+      await db.update(otpTokens)
+        .set({ lockedUntil: new Date(Date.now() - 1000 * 60 * 60) })
+        .where(eq(otpTokens.email, testEmail.toLowerCase()));
 
       const result = await isAccountLocked(testEmail);
       expect(result.locked).toBe(false);
@@ -236,9 +238,10 @@ describe("OTP Repository", () => {
       await createOTPToken("user2@example.com", otp2, "127.0.0.1");
 
       // Expire first token - use a fixed past date to be absolutely sure
-      await db.execute(
-        sql`UPDATE otp_tokens SET expires = '2000-01-01 00:00:00' WHERE email = 'user1@example.com'`
-      );
+      // Expire first token - use a fixed past date to be absolutely sure
+      await db.update(otpTokens)
+        .set({ expires: new Date("2000-01-01") })
+        .where(eq(otpTokens.email, "user1@example.com"));
 
       const deleted = await cleanupExpiredOTPTokens();
 

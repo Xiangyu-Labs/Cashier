@@ -1,18 +1,16 @@
 import {
-    pgTable,
+    sqliteTable,
     text,
-    timestamp,
-    jsonb,
-    date,
-} from "drizzle-orm/pg-core";
+    integer,
+} from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 
 // CurrencyRates (汇率缓存 - Daily Snapshot)
-export const currencyRates = pgTable("currency_rates", {
-    date: date("date", { mode: "string" }).primaryKey(), // YYYY-MM-DD
+export const currencyRates = sqliteTable("currency_rates", {
+    date: text("date").primaryKey(), // YYYY-MM-DD
     base: text("base").notNull().default("EUR"), // Always EUR from Frankfurter
-    rates: jsonb("rates").$type<Record<string, number>>().notNull(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    rates: text("rates", { mode: "json" }).$type<Record<string, number>>().notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
 
 export type CurrencyRate = InferSelectModel<typeof currencyRates>;

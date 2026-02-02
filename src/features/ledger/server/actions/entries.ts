@@ -41,7 +41,7 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
 
         const [entry] = await db.insert(ledgerEntries).values({
             ...validated,
-            amount: validated.amount.toString(),
+            amount: validated.amount.toFixed(2),
             ledgerId: ledgerId,
             currency: validated.currency || "CNY",
             entryDate: validated.entryDate ? new Date(validated.entryDate) : undefined,
@@ -65,7 +65,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
         const updateData: Record<string, unknown> = {};
         if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
-        if (validated.amount !== undefined) updateData.amount = validated.amount.toString();
+        if (validated.amount !== undefined) updateData.amount = validated.amount.toFixed(2);
         if (validated.currency !== undefined) updateData.currency = validated.currency;
         if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
         if (validated.description !== undefined) updateData.description = validated.description;
