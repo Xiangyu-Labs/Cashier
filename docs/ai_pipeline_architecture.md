@@ -1,24 +1,23 @@
 # AI Pipeline Architecture
 
-Cashier uses an asynchronous, message-queue-based architecture to process receipts and invoices. This ensures that long-running AI tasks do not block the user interface and provides robustness against failures.
+Cashier uses a simplified asynchronous architecture to process receipts and invoices. This ensures that long-running AI tasks do not block the user interface.
 
 ## 1. High-Level Flow Overview
 
 1.  **User Action**: User uploads a file/text via the UI.
-2.  **API Layer**: Server Action creates a `source_documents` record with status `queued` and adds a job to the **Redis Queue** (BullMQ).
-3.  **Worker Process**: A separate Node.js process picks up the job.
-4.  **AI Processing**: The worker calls OpenAI (or other LLMs) to parse the document.
+2.  **API Layer**: Server Action creates a `source_documents` record with status `queued` and submits it to the **In-Process Task Runner**.
+3.  **Async Execution**: The task runner picks up the job immediately in the background (within the same Node.js process).
+4.  **AI Processing**: The runner calls OpenAI (or other LLMs) to parse the document.
 5.  **Verification & Arbitration**: The system runs checks (Dual GPT) and arbitrates if results conflict.
 6.  **Result Persistence**: Valid results are saved to `ledger_entries`; the document status is updated to `completed`.
 7.  **Real-time Updates**:
-    - **UI Update**: The frontend uses **Smart Polling** (via TanStack Query) to refresh the status every few seconds while any document is in `processing` or `queued` state.
-    - **Background Notification**: The system sends a **Web Push Notification** to the user's subscribed devices upon completion or anomaly detection.
+    - **UI Update**: The frontend uses **Smart Polling** (via TanStack Query) to refresh the status every few seconds.
 
 ```mermaid
 graph TD
     A[User Upload] -->|Server Action| B(Create source_documents Record)
-    B -->|Add Job| C[Redis Queue]
-    C -->|Pick Job| D[Worker Process]
+    B -->|Submit Task| C[In-Process Runner]
+    C -->|Execute Async| D[Task Handler]
     D -->|Request| E[OpenAI / LLM]
     E -->|Response| D
     D -->|Verify| F{Checks Pass?}
@@ -31,19 +30,17 @@ graph TD
     J -.->|Smart Polling| H
 ```
 
-## 2. The Worker Infrastructure
+## 2. The Task Runner
 
-The worker is a standalone Node.js process defined in `src/worker.ts`. It runs independently from the Next.js web server but shares the same code for database access and business logic.
+Tasks are executed using a lightweight **SimpleTaskRunner** (`src/lib/flow/runner.ts`).
 
--   **Entry Point**: `src/worker.ts`
--   **Infrastructure**: `src/lib/flow/workers.ts` (manages BullMQ Workers)
--   **Queues**:
-    -   `main`: For heavy processing tasks (e.g., parsing documents).
-    -   `api`: For rate-limited external API calls (reserved).
+-   **Execution Model**: "Fire-and-forget" asynchronous execution within the main application process.
+-   **Lifecycle**:
+    -   `validate`: Checks inputs (e.g. document exists).
+    -   `execute`: Runs the core business logic.
+    -   `onComplete` / `onError`: Handles status updates and notifications.
 
--   **Concurrency Limits**:
-    -   The system applies **global concurrency limits** across all users. 
-    -   `FLOW_MAIN_QUEUE_CONCURRENCY` and `FLOW_API_QUEUE_CONCURRENCY` determine the total simultaneous processing capacity of the entire project.
+**Note**: Since tasks run in-memory, they will be interrupted if the server restarts.
 
 ## 3. The Parsing Task: "Dual GPT + Arbitration"
 
@@ -76,26 +73,12 @@ This significantly reduces "silent failures" where an LLM confidently outputs wr
 
 ## 4. Idempotency & Error Handling
 
--   **Idempotency**: The worker performs an "upsert-like" operation: it soft-deletes any existing entries for the source document before inserting new ones. This ensures retry operations work correctly and prevents duplicates.
+-   **Idempotency**: The handler performs an "upsert-like" operation: it soft-deletes any existing entries for the source document before inserting new ones.
 -   **Anomalies**: If the document cannot be parsed (e.g., blurred image, unrelated text), it is not "Failed" (which implies a system crash) but set to `anomaly` status. This prompts the user to review it manually.
--   **Retries**: BullMQ handles transient failures (e.g., OpenAI network timeout) with exponential backoff.
-
-## 5. 添加后台任务
-
-本文档聚焦于 AI Pipeline 的架构设计。如需了解如何开发新的后台任务，请参考：
-
-📖 **[后台任务开发 SOP](./backend_task_development_sop.md)** - 完整的开发流程和最佳实践
-
-该文档包含：
-- 任务创建的 5 步流程
-- 队列选择决策表
-- 完整代码示例
-- 常见错误和检查清单
 
 ---
 
-## 📚 相关文档
+## 📚 Related Documentation
 
-- [Backend Task Development SOP](./backend_task_development_sop.md) - 后台任务开发指南
-- [Frontend Data Sync SOP](./frontend_data_sync_sop.md) - 前端数据同步模式
-- [Architecture Overview](./architecture_overview.md) - 整体架构概览
+- [Backend Task Development SOP](./backend_task_development_sop.md) - How to write new tasks
+- [Architecture Overview](./architecture_overview.md) - High-level system design

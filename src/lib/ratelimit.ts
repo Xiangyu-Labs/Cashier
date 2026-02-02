@@ -6,19 +6,19 @@
  * like @upstash/ratelimit.
  */
 
-import { getRedisConnection } from "@/lib/flow/connection";
+import { memoryStore } from "@/lib/memory-store";
 
 /**
  * Rate Limiting Utilities
  *
- * Provides Redis-based rate limiting for API endpoints.
- * Uses the shared IORedis connection from `src/lib/flow/connection.ts`.
+ * Provides in-memory rate limiting for API endpoints.
+ * Replaces previous Redis-based implementation.
  */
 
-class RedisRateLimiter {
+class MemoryRateLimiter {
     /**
      * Check if a request should be rate limited
-     * Uses a Fixed Window algorithm backed by Redis.
+     * Uses a Fixed Window algorithm backed by in-memory store.
      *
      * @param key - Unique identifier (e.g., "share_abc123_192.168.1.1")
      * @param limit - Maximum number of requests allowed
@@ -30,25 +30,20 @@ class RedisRateLimiter {
         remaining: number;
         resetTime: number;
     }> {
-        const redis = getRedisConnection();
+        const store = memoryStore;
         const rKey = `ratelimit:${key}`;
         const windowSeconds = Math.ceil(windowMs / 1000);
 
-        // Uses a transaction to ensure atomicity for the increment and expire
-        // However, standard pattern: INCR -> if 1 -> EXPIRE is simple enough.
-        // For strict correctness with pipelines:
-        const attempts = await redis.incr(rKey);
+        const attempts = await store.incr(rKey);
 
         // If it's the first attempt, set the expiry
         if (attempts === 1) {
-            await redis.expire(rKey, windowSeconds);
+            await store.expire(rKey, windowSeconds);
         }
 
-        const ttl = await redis.ttl(rKey);
+        const ttl = await store.ttl(rKey);
 
         // Calculate reset time
-        // If ttl is -1 (no expiry) or -2 (not found), default to window
-        // But since we just INCR'd, it should exist.
         const effectiveTtl = ttl > 0 ? ttl : windowSeconds;
         const resetTime = Date.now() + (effectiveTtl * 1000);
 
@@ -67,16 +62,13 @@ class RedisRateLimiter {
         };
     }
 
-    /**
-     * Clean up - no-op for Redis impl but kept for API compatibility if needed
-     */
     destroy() {
-        // No local cleanup needed for Redis
+        // No-op
     }
 }
 
 // Create a singleton instance
-const rateLimiter = new RedisRateLimiter();
+const rateLimiter = new MemoryRateLimiter();
 
 /**
  * Rate limit configurations for different endpoints

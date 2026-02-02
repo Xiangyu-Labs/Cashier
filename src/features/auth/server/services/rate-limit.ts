@@ -1,4 +1,4 @@
-import { getRedisConnection } from "@/lib/flow/connection";
+import { memoryStore } from "@/lib/memory-store";
 import { logger } from "@/lib/logger";
 
 const RATE_LIMIT_PREFIX = "auth:rate:";
@@ -12,12 +12,12 @@ const WINDOW_SECONDS = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW || "60");
  */
 export async function checkRateLimit(identifier: string): Promise<boolean> {
     try {
-        const redis = getRedisConnection();
+        const store = memoryStore;
         const key = `${RATE_LIMIT_PREFIX}${identifier}`;
 
-        const attempts = await redis.incr(key);
+        const attempts = await store.incr(key);
         if (attempts === 1) {
-            await redis.expire(key, WINDOW_SECONDS);
+            await store.expire(key, WINDOW_SECONDS);
         }
 
         if (attempts > MAX_ATTEMPTS) {
@@ -27,7 +27,7 @@ export async function checkRateLimit(identifier: string): Promise<boolean> {
 
         return true;
     } catch (error) {
-        // If Redis fails, allow the request but log the error
+        // Log the error but allow request (fail open)
         logger.error({ error, identifier }, "Rate limit check failed");
         return true;
     }
@@ -38,9 +38,9 @@ export async function checkRateLimit(identifier: string): Promise<boolean> {
  */
 export async function getRemainingAttempts(identifier: string): Promise<number> {
     try {
-        const redis = getRedisConnection();
+        const store = memoryStore;
         const key = `${RATE_LIMIT_PREFIX}${identifier}`;
-        const attempts = await redis.get(key);
+        const attempts = await store.get(key);
         return Math.max(0, MAX_ATTEMPTS - (parseInt(attempts || "0")));
     } catch {
         return MAX_ATTEMPTS;

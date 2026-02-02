@@ -76,4 +76,4 @@ We use **Drizzle ORM** for data access.
 - **ORM**: Drizzle ORM
 - **Authentication**: Auth.js (NextAuth) v5
 - **UI System**: Tailwind CSS + Shadcn/ui (Radix Primitives)
-- **Async Processing**: Redis + BullMQ (see [AI Pipeline Documentation](./ai_pipeline_architecture.md))
+- **Async Processing**: In-Process Task Runner (Simple, memory-based)

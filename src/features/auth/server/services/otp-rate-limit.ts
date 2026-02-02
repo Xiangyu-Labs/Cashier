@@ -1,4 +1,4 @@
-import { getRedisConnection } from "@/lib/flow/connection";
+import { memoryStore } from "@/lib/memory-store";
 import { logger } from "@/lib/logger";
 import { getResendCooldown } from "./otp";
 
@@ -26,16 +26,16 @@ export async function checkSendRateLimit(email: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_SEND_PREFIX}${email.toLowerCase()}`;
 
-    const attempts = await redis.incr(key);
+    const attempts = await store.incr(key);
     if (attempts === 1) {
-      await redis.expire(key, SEND_WINDOW_SECONDS);
+      await store.expire(key, SEND_WINDOW_SECONDS);
     }
 
     if (attempts > SEND_MAX_ATTEMPTS) {
-      const ttl = await redis.ttl(key);
+      const ttl = await store.ttl(key);
       logger.warn({ email, attempts }, "OTP send rate limit exceeded for email");
       return {
         allowed: false,
@@ -65,16 +65,16 @@ export async function checkSendRateLimitByIP(ip: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_SEND_IP_PREFIX}${ip}`;
 
-    const attempts = await redis.incr(key);
+    const attempts = await store.incr(key);
     if (attempts === 1) {
-      await redis.expire(key, IP_WINDOW_SECONDS);
+      await store.expire(key, IP_WINDOW_SECONDS);
     }
 
     if (attempts > IP_MAX_ATTEMPTS) {
-      const ttl = await redis.ttl(key);
+      const ttl = await store.ttl(key);
       logger.warn({ ip, attempts }, "OTP send rate limit exceeded for IP");
       return {
         allowed: false,
@@ -103,10 +103,10 @@ export async function checkResendCooldown(email: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
 
-    const ttl = await redis.ttl(key);
+    const ttl = await store.ttl(key);
 
     // If key doesn't exist (ttl = -2) or expired (ttl = -1), allow
     if (ttl <= 0) {
@@ -131,11 +131,11 @@ export async function checkResendCooldown(email: string): Promise<{
  */
 export async function setResendCooldown(email: string): Promise<void> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
     const cooldown = getResendCooldown();
 
-    await redis.setex(key, cooldown, "1");
+    await store.setex(key, cooldown, "1");
   } catch (error) {
     logger.error({ error, email }, "Failed to set OTP resend cooldown");
   }
@@ -148,9 +148,9 @@ export async function setResendCooldown(email: string): Promise<void> {
  */
 export async function getCanResendAt(email: string): Promise<number | null> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
-    const ttl = await redis.ttl(key);
+    const ttl = await store.ttl(key);
 
     if (ttl <= 0) {
       return null; // Can resend now
@@ -170,12 +170,12 @@ export async function getCanResendAt(email: string): Promise<number | null> {
  */
 export async function checkVerifyRateLimit(ip: string): Promise<boolean> {
   try {
-    const redis = getRedisConnection();
+    const store = memoryStore;
     const key = `${OTP_VERIFY_PREFIX}${ip}`;
 
-    const attempts = await redis.incr(key);
+    const attempts = await store.incr(key);
     if (attempts === 1) {
-      await redis.expire(key, VERIFY_WINDOW_SECONDS);
+      await store.expire(key, VERIFY_WINDOW_SECONDS);
     }
 
     if (attempts > VERIFY_MAX_ATTEMPTS) {
