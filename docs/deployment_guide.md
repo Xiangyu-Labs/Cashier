@@ -36,6 +36,10 @@ Security critical variables must be set in your CI/CD or production secrets mana
 | `DATABASE_URL` | Production DB connection string. |
 | `REDIS_URL` | Production Redis connection string. |
 | `OPENAI_API_KEY` | Your AI provider key. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Public key for Web Push notifications. |
+| `VAPID_PRIVATE_KEY` | Private key for Web Push notifications. |
+| `FLOW_API_QUEUE_CONCURRENCY` | Max simultaneous GPT requests (Global). |
+| `PROCESSING_WORKER_COUNT` | Number of worker threads per container. |
 | `DISABLE_REGISTRATION` | Set to `true` if this is a private instance. |
 
 ## 3. Deployment with Docker Compose

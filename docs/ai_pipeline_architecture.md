@@ -36,6 +36,10 @@ The worker is a standalone Node.js process defined in `src/worker.ts`. It runs i
     -   `main`: For heavy processing tasks (e.g., parsing documents).
     -   `api`: For rate-limited external API calls (reserved).
 
+-   **Concurrency Limits**:
+    -   The system applies **global concurrency limits** across all users. 
+    -   `FLOW_MAIN_QUEUE_CONCURRENCY` and `FLOW_API_QUEUE_CONCURRENCY` determine the total simultaneous processing capacity of the entire project.
+
 ## 3. The Parsing Task: "Dual GPT + Arbitration"
 
 The core logic resides in `src/features/source-document/server/tasks/parse-source-document.ts`. We use a sophisticated **"Consensus & Arbitration"** strategy to ensure accuracy.

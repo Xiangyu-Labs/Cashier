@@ -118,6 +118,14 @@ await submitFlowTask({
 
 ## ⚙️ Key Concepts
 
+### Global Concurrency (Shared Resources)
+
+The system uses a **Global Resource Pool** model. All tasks from all users are managed in shared queues. Concurrency limits are applied at the worker/system level, not per user.
+
+- **Main Queue Concurrency**: Controlled by `FLOW_MAIN_QUEUE_CONCURRENCY`. Limits total simultaneous business logic executions.
+- **API Queue Concurrency**: Controlled by `FLOW_API_QUEUE_CONCURRENCY`. Limits simultaneous outgoing calls to AI models to prevent provider-side rate limiting.
+- **Global Rate Limiting**: `FLOW_API_QUEUE_RATE_MAX` and `FLOW_API_QUEUE_RATE_DURATION` provide an extra layer of protection (e.g., max 10 requests per minute project-wide).
+
 ### Recursion & Flow Definitions
 Instead of linear steps, a task can return a `FlowDefinition` (or array of them). The system will:
 1.  Pause the parent task.
@@ -137,3 +145,4 @@ Instead of linear steps, a task can return a `FlowDefinition` (or array of them)
 1.  **Strict Typing**: Always define Input/Output interfaces.
 2.  **Graceful Cancellation**: Implement `onCancel` to clean up resources if a user cancels a long-running task.
 3.  **Defensive AI**: Never trust AI output. Validate schema in `execute` before returning.
+4.  **Resource Aware**: Be mindful that increasing concurrency variables in `.env` affects memory and API billing globally.
