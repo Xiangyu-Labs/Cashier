@@ -97,7 +97,7 @@ Make sure your task file is imported at runtime so `registerFlowTask` is execute
 
 ---
 
-## 📡 Using Tasks
+## 🛰 Using Tasks
 
 ### Submit a Task
 
@@ -113,6 +113,13 @@ await submitFlowTask({
     queueName: 'main' // or 'api'
 });
 ```
+
+### Monitoring from Frontend
+
+Currently, we use a **Smart Polling** strategy combined with **Web Push Notifications** instead of SSE to track background task completion:
+
+1.  **Smart Polling**: Use the `useSmartPolling` hook (or `useUnifiedSourceDocuments` if applicable). It polls the server at a set interval (e.g., 3s) only while there are active tasks.
+2.  **Web Push**: In the task's `onComplete` or `onError` lifecycle hooks, call `sendNotificationToUser` to signal completion to all of the user's subscribed devices.
 
 ---
 

@@ -5,16 +5,18 @@ Cashier uses an asynchronous, message-queue-based architecture to process receip
 ## 1. High-Level Flow Overview
 
 1.  **User Action**: User uploads a file/text via the UI.
-2.  **API Layer**: Server Action creates a `scanned_documents` record with status `processing` and adds a job to the **Redis Queue** (BullMQ).
+2.  **API Layer**: Server Action creates a `source_documents` record with status `queued` and adds a job to the **Redis Queue** (BullMQ).
 3.  **Worker Process**: A separate Node.js process picks up the job.
 4.  **AI Processing**: The worker calls OpenAI (or other LLMs) to parse the document.
 5.  **Verification & Arbitration**: The system runs checks (Dual GPT) and arbitrates if results conflict.
 6.  **Result Persistence**: Valid results are saved to `ledger_entries`; the document status is updated to `completed`.
-7.  **Notification**: The user receives a Push Notification or UI update via SSE.
+7.  **Real-time Updates**:
+    - **UI Update**: The frontend uses **Smart Polling** (via TanStack Query) to refresh the status every few seconds while any document is in `processing` or `queued` state.
+    - **Background Notification**: The system sends a **Web Push Notification** to the user's subscribed devices upon completion or anomaly detection.
 
 ```mermaid
 graph TD
-    A[User Upload] -->|Server Action| B(Create DB Record)
+    A[User Upload] -->|Server Action| B(Create source_documents Record)
     B -->|Add Job| C[Redis Queue]
     C -->|Pick Job| D[Worker Process]
     D -->|Request| E[OpenAI / LLM]
@@ -22,8 +24,11 @@ graph TD
     D -->|Verify| F{Checks Pass?}
     F -->|Yes| G[Save Ledger Entries]
     F -->|No| H[Set Anomaly Status]
-    G --> I[Notify User]
+    G --> I[Notify User via Web Push]
     H --> I
+    J[Frontend UI] -.->|Smart Polling| B
+    J -.->|Smart Polling| G
+    J -.->|Smart Polling| H
 ```
 
 ## 2. The Worker Infrastructure

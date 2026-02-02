@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo, useEffect, useRef } from 'react';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { SourceDocument, LedgerEntry } from '@/types/api';
@@ -45,6 +45,9 @@ export function useUnifiedSourceDocuments(
     const startDate = dateRange?.start?.toISOString() || null;
     const endDate = dateRange?.end?.toISOString() || null;
 
+    const queryClient = useQueryClient();
+    const prevProcessingCount = useRef<number | null>(null);
+
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
         queryKey: [
@@ -61,6 +64,24 @@ export function useUnifiedSourceDocuments(
         isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
     });
+
+    // Invalidate infinite completed list if processing count drops (transition to completed/anomaly)
+    const currentProcessingCount = unifiedData?.groups?.processing?.length || 0;
+    useEffect(() => {
+        if (prevProcessingCount.current !== null && currentProcessingCount < prevProcessingCount.current) {
+            // Document finished processing - invalidate the completed infinite list
+            queryClient.invalidateQueries({
+                queryKey: [
+                    'sourceDocuments',
+                    ledgerId,
+                    'completed',
+                    startDate,
+                    endDate,
+                ]
+            });
+        }
+        prevProcessingCount.current = currentProcessingCount;
+    }, [currentProcessingCount, ledgerId, startDate, endDate, queryClient]);
 
     // Query 2: Infinite scroll for additional completed documents
     const {

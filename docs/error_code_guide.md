@@ -70,6 +70,7 @@ async execute(input, context) {
 
 ## 测试建议
 
-增加新错误码后，请更新以下测试文件以确保逻辑正确：
--   `tests/unit/components/SourceDocumentCard.test.tsx`: 验证 UI 能够正确显示新翻译。
--   `tests/helpers/schema-setup.ts`: 确保测试数据库也能识别新的 Enum 值。
+增加新错误码后，请通过以下测试确保逻辑正确：
+- **Hook 测试**: `tests/unit/hooks/useUnifiedSourceDocuments.test.tsx` - 验证前端 Hook 能正确处理新的状态和错误码组合。
+- **Action 测试**: `tests/integration/source-document-actions.test.ts` - 验证后端存储和检索错误码的逻辑。
+- **Schema 验证**: 确保 `tests/helpers/schema-setup.ts`（如果存在）或测试环境已同步最新的 Enum 定义。
