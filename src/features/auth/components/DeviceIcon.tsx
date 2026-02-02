@@ -1,4 +1,4 @@
-import { Monitor, Smartphone, Globe, Laptop, Tablet } from "lucide-react";
+import { Smartphone, Laptop, Tablet } from "lucide-react";
 
 interface DeviceIconProps {
     type: string;

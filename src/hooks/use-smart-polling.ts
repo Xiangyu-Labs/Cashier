@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions, QueryKey } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions, QueryKey as _QueryKey } from "@tanstack/react-query";
 
 interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError>, 'refetchInterval'> {
     isActive: (data: TData | undefined) => boolean;

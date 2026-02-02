@@ -353,7 +353,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                                 }
                                 if (newLocale !== locale) {
                                     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-                                    router.push(`${pathname}${query}`, { locale: newLocale as any });
+                                    router.push(`${pathname}${query}`, { locale: newLocale as "en-US" | "zh-CN" });
                                 }
                             }}
                             disabled={isPending}

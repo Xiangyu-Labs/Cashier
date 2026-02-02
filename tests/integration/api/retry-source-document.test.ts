@@ -15,7 +15,7 @@ vi.mock("@/features/ai/server/services/openai", () => ({
 
 describe("SourceDocument Retry Action", () => {
     let testLedgerId: string;
-    let testCategoryId: string;
+    let _testCategoryId: string;
 
     beforeEach(async () => {
         // Reset mock to default
@@ -37,7 +37,7 @@ describe("SourceDocument Retry Action", () => {
                 ledgerId: testLedgerId,
             })
             .returning();
-        testCategoryId = category.id;
+        _testCategoryId = category.id;
     });
 
     it("should retry a document and re-process it", async () => {

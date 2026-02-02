@@ -55,7 +55,7 @@ describe("parseSourceDocumentHandler.execute", () => {
     });
 
     it("should pass settings and preferredCurrencies correctly to the processor", async () => {
-        const input: ParseSourceDocumentInput = {
+        const _input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             aiLanguage: "en-US",
@@ -78,12 +78,12 @@ describe("parseSourceDocumentHandler.execute", () => {
             ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = (await parseSourceDocumentHandler.execute(_input, context)) as ParseSourceDocumentOutput;
 
         expect(mockProcessor.process).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({
-                categories: input.categories,
+                categories: _input.categories,
                 aiLanguage: "en-US",
                 preferredCurrencies: ["USD"],
             })
@@ -360,7 +360,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             status: "processing"
         }).returning();
 
-        const input: ParseSourceDocumentInput = {
+        const _input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: { autoRecognizeDate: true }

@@ -5,7 +5,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, inArray, and, gte, lte, desc, isNull } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -36,7 +36,7 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
         if (error) return { success: false, error: "Unauthorized" };
 
         const validated = createLedgerEntrySchema.parse(data);
-        const q = forLedger(ledgerEntries, ledgerId);
+        const _q = forLedger(ledgerEntries, ledgerId);
 
         const [entry] = await db.insert(ledgerEntries).values({
             ...validated,
@@ -60,9 +60,9 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
         if (error) return { success: false, error: "Unauthorized" };
 
         const validated = updateLedgerEntrySchema.parse(data);
-        const q = forLedger(ledgerEntries, ledgerId);
+        const _q = forLedger(ledgerEntries, ledgerId);
 
-        const updateData: any = {};
+        const updateData: Record<string, unknown> = {};
         if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
         if (validated.amount !== undefined) updateData.amount = validated.amount.toString();
         if (validated.currency !== undefined) updateData.currency = validated.currency;
@@ -72,7 +72,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
         const [updatedEntry] = await db.update(ledgerEntries)
             .set(updateData)
-            .where(q.whereId(ledgerEntryId))
+            .where(_q.whereId(ledgerEntryId))
             .returning();
 
         if (!updatedEntry) throw new Error("Entry not found or access denied");
@@ -134,7 +134,7 @@ export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEnt
     }
 }
 
-export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: any) {
+export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: Record<string, unknown>) {
     try {
         const { error } = await requireLedgerAccess(ledgerId);
         if (error) return { success: false, error: "Unauthorized" };
@@ -144,7 +144,7 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         if (data.currency !== undefined) updateData.currency = data.currency;
         if (data.description !== undefined) updateData.description = data.description;
         if (data.itemName !== undefined) updateData.itemName = data.itemName;
-        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? new Date(data.entryDate) : null;
+        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? new Date(data.entryDate as string) : null;
 
         const q = forLedger(ledgerEntries, ledgerId);
 

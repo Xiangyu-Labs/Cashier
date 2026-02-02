@@ -1,4 +1,4 @@
-export const safeError = (error: any): string => {
+export const safeError = (error: unknown): string => {
     // Log the full error for server-side debugging
     console.error("SERVER ERROR:", error);
 

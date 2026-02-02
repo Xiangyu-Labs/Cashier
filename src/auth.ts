@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
@@ -134,7 +134,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
 
                 if (!dbUser) {
-                    return null as unknown as any;
+                    return null as unknown as Session;
                 }
 
                 session.user.id = dbUser.id;

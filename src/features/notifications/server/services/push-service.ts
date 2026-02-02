@@ -19,7 +19,7 @@ export interface NotificationPayload {
     body: string;
     icon?: string;
     url?: string;
-    data?: any;
+    data?: Record<string, unknown>;
 }
 
 /**
@@ -51,9 +51,10 @@ export async function sendNotificationToUser(userId: string, payload: Notificati
                         notificationData
                     );
                     return { success: true, id: sub.id };
-                } catch (error: any) {
+                } catch (error: unknown) {
+                    const err = error as { statusCode?: number };
                     // 410 Gone or 404 Not Found means subscription is dead
-                    if (error.statusCode === 410 || error.statusCode === 404) {
+                    if (err.statusCode === 410 || err.statusCode === 404) {
                         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
                         return { success: false, id: sub.id, reason: "expired" };
                     }

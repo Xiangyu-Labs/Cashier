@@ -1,7 +1,7 @@
 import { FlowProgress } from "@/lib/flow/types";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**

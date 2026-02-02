@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, memo } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -105,7 +105,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         )
     }
 
-    const handleSaveTitle = async () => {
+    const _handleSaveTitle = async () => {
         setIsSaving(true)
         try {
             await onUpdateTitle(title)

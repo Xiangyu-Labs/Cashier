@@ -19,7 +19,7 @@ describe("getSourceDocumentByIdAction", () => {
     beforeEach(() => {
         vi.mocked(auth).mockResolvedValue({
             user: { id: testUserId, email: "test@example.com" }
-        } as any);
+        } as unknown as any);
     });
 
     it("should return the source document when it exists and user has access", async () => {

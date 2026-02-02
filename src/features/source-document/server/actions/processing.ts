@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
+import { taskRuns, type TaskRun } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import { desc, eq, and, inArray } from "drizzle-orm";
 
 import { forLedger } from "@/lib/db/scoped-query";
 
@@ -31,7 +31,8 @@ export async function getProcessingTasksAction(ledgerId: string, params: {
         limit: limit,
     });
 
-    return tasks.map((t: any) => ({
+
+    return tasks.map((t: TaskRun) => ({
         ...t,
         createdAt: t.createdAt.toISOString(),
         startedAt: t.startedAt ? t.startedAt.toISOString() : null,

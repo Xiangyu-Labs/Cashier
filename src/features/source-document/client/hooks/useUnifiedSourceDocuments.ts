@@ -122,7 +122,7 @@ export function useUnifiedSourceDocuments(
         }
 
         // Combine the first page from unifiedData with subsequent pages from infiniteCompletedData
-        const completed: SourceDocumentGroup[] = [...unifiedData.groups.completed];
+        const _completed: SourceDocumentGroup[] = unifiedData.groups.completed as unknown as SourceDocumentGroup[];
 
         if (infiniteCompletedData) {
             // Skip the first page of infinite query if it's the same as unifiedData's completed?
@@ -141,12 +141,11 @@ export function useUnifiedSourceDocuments(
         }
 
         return {
-            ...unifiedData.groups,
-            // If we have infinite data, use its pages instead of the first page from unifiedData
-            // to ensure smooth scrolling and no duplicates.
-            completed: infiniteCompletedData
+            processing: unifiedData.groups.processing as unknown as SourceDocumentGroup[],
+            anomaly: unifiedData.groups.anomaly as unknown as SourceDocumentGroup[],
+            completed: (infiniteCompletedData
                 ? infiniteCompletedData.pages.flatMap(page => page.items)
-                : unifiedData.groups.completed
+                : unifiedData.groups.completed) as unknown as SourceDocumentGroup[]
         };
     }, [unifiedData, infiniteCompletedData]);
 

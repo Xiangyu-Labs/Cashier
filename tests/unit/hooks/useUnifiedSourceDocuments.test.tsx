@@ -57,8 +57,8 @@ describe("useUnifiedSourceDocuments", () => {
     it("correctly groups documents into processing, error, and completed", async () => {
         // Setup Mocks
         // 1. Unified Action Mock
-        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string, cursor?: string };
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, _params: unknown) => {
+            const p = _params as { status?: string, cursor?: string };
 
             // If it's an infinite scroll fetch (cursor provided)
             if (p?.cursor) {
@@ -143,8 +143,8 @@ describe("useUnifiedSourceDocuments", () => {
         // doc_q1: 2024-01-04 (Jan 4)
 
         // Let's reuse the mocks implementation pattern
-        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
-            const p = params as { status?: string };
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, _params: unknown) => {
+            const _p = _params as { status?: string };
             return Promise.resolve({
                 groups: {
                     processing: [{ sourceDocument: mockSourceDocs.queued, ledgerEntries: [] }],
@@ -199,7 +199,7 @@ describe("useUnifiedSourceDocuments", () => {
         // Let's assume doc_out_range
         const docOutOfRange = { ...mockSourceDocs.queued, id: "doc_out", createdAt: "2024-01-01T10:00:00Z" };
 
-        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, _params: unknown) => {
             return Promise.resolve({
                 groups: {
                     processing: [

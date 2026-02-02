@@ -13,7 +13,6 @@ import {
 } from "@/features/ledger/server/actions/entries";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -42,7 +41,7 @@ export function SourceDocumentDetailWrapper({
         queryKey: queryKeys.sourceDocument(id),
         queryFn: async () => {
             const result = await getSourceDocumentByIdAction(id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            if (!result.success) throw new Error(String(result.error || "Unknown error"));
             return result.data;
         },
         enabled: open && !!id,
@@ -125,16 +124,17 @@ export function SourceDocumentDetailWrapper({
     // Cast or ensuring non-null for the component
     if (!sourceDocument) return null;
 
-    const currentLedgerEntries: LedgerEntry[] = (sourceDocument as any).ledgerEntries || initialLedgerEntries || [];
+    const currentLedgerEntries: LedgerEntry[] = (sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries || initialLedgerEntries || [];
 
-    // Ensure status is valid for the component
-    if (!sourceDocument.status) {
-        (sourceDocument as any).status = "queued";
-    }
+    // Ensure status is valid for the component safely
+    const safeSourceDocument = {
+        ...sourceDocument,
+        status: sourceDocument.status || "queued"
+    } as unknown as SourceDocument;
 
     return (
         <SourceDocumentDetailModal
-            sourceDocument={sourceDocument}
+            sourceDocument={safeSourceDocument}
             ledgerEntries={currentLedgerEntries}
             categories={categories}
             open={open}

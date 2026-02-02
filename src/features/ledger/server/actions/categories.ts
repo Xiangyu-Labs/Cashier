@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
-import { auth } from "@/auth";
+//
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq, asc, and, isNull } from "drizzle-orm";

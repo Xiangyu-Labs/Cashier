@@ -1,11 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
-import { auth } from "@/auth";
+import { ledgers, ledgerEntries, currencyRates } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { ledgers, currencyRates } from "@/lib/db/schema";
 import { convertAmount } from "@/features/stats/server/utils";
 import { formatDateForApi } from "@/lib/date-utils";
 
@@ -57,7 +55,7 @@ export async function getLedgerStatsAction(
         .groupBy(ledgerEntries.entryDate)
         .orderBy(ledgerEntries.entryDate);
 
-    // @ts-ignore - Drizzle entryDate mapping might vary, assuming Date object or string
+    // Drizzle entryDate mapping might vary, assuming Date object or string
     const trend = trendQuery
         .filter(t => t.date)
         .map(t => ({

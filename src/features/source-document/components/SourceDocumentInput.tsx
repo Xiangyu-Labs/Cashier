@@ -36,11 +36,13 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     const [isTransitionPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Reset state when initialData changes (for retry mode)
+    // Reset state when initialData changes (for retry mode) using a custom ref-based synchronization or simply conditional rendering
     useEffect(() => {
         if (initialData) {
-            setText(initialData.text || "");
-            setImages(initialData.images || []);
+            startTransition(() => {
+                setText(initialData.text || "");
+                setImages(initialData.images || []);
+            });
         }
     }, [initialData]);
 
@@ -50,10 +52,10 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     });
 
     const updateLedgerMutation = useMutation({
-        mutationFn: async (data: Partial<Ledger> & { name?: string; settings?: any }) => {
-            const settingsUpdate: any = data.settings || {};
+        mutationFn: async (data: Partial<Ledger> & { name?: string; settings?: Record<string, unknown> }) => {
+            const settingsUpdate: Record<string, unknown> = data.settings || {};
 
-            const payload: Partial<Ledger> & { settings?: any } = {
+            const payload: Partial<Ledger> & { settings?: Record<string, unknown> } = {
                 name: data.name,
                 settings: Object.keys(settingsUpdate).length > 0 ? settingsUpdate : undefined
             };

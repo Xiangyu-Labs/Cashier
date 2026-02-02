@@ -1,5 +1,5 @@
 import { and, eq, isNull, SQL } from "drizzle-orm";
-import { PgTable, PgColumn } from "drizzle-orm/pg-core";
+import { PgTable } from "drizzle-orm/pg-core";
 
 /**
  * 为指定 ledgerId 创建作用域查询条件
@@ -13,12 +13,12 @@ export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
          * - automatically checks deletedAt is null (if exists)
          */
         get whereActive() {
-            const t = table as any;
-            const conditions: SQL<unknown>[] = [eq(t.ledgerId, ledgerId)];
+            const t = table as unknown as PgTable & { ledgerId: unknown; deletedAt?: unknown };
+            const conditions: SQL<unknown>[] = [eq(t.ledgerId as any, ledgerId)];
 
             // Drizzle table columns are available as properties on the table object
             if (t.deletedAt) {
-                conditions.push(isNull(t.deletedAt));
+                conditions.push(isNull(t.deletedAt as any));
             }
 
             return and(...conditions);
@@ -34,7 +34,7 @@ export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
          * - automatically ensures the entity belongs to the ledger and is active
          */
         whereId(id: string) {
-            return and(eq((table as any).id, id), this.whereActive);
+            return and(eq((table as unknown as PgTable & { id: unknown }).id as any, id), this.whereActive);
         },
 
         /**

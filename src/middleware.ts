@@ -1,6 +1,6 @@
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 

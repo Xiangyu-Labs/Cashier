@@ -1,8 +1,5 @@
 import { auth, signOut } from "@/auth";
-import { redirect } from "next/navigation"; // Use standard redirect for server components or the intl one?
-// Usually for server actions or server components, standard redirect works but might miss locale.
-// However, if we are just guarding, we usually redirect to /login.
-import { getLocale } from "next-intl/server";
+//
 
 /**
  * Enforces authentication for Server Components.

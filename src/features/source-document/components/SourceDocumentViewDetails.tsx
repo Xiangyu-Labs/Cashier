@@ -5,18 +5,15 @@ import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Receipt, Wallet, FileText, Share2, AlignLeft, ImagePlay, Maximize2, Calendar } from "lucide-react";
+import { Wallet, FileText, ImagePlay, Maximize2, Calendar } from "lucide-react";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import {
-    updateSourceDocumentAction,
-    deleteSourceDocumentAction
-} from "@/features/source-document/server/actions/main";
-import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
+    convertCurrencyAction
+} from "@/features/ledger/server/actions/currency";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -63,7 +60,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     onViewEntry,
 }: SourceDocumentViewDetailsProps): ReactNode {
     // The component expects string dates, ensure our data matches
-    const safeSourceDocument = sourceDocument;
+    const _safeSourceDocument = sourceDocument;
     const t = useTranslations("SourceDocumentDetail");
     const tCard = useTranslations("SourceDocumentCard");
     const locale = useLocale();

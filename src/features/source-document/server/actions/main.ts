@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { entryCategories, sourceDocuments, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
-import { desc, lte, gte, inArray, and, eq, isNull } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 
@@ -19,7 +19,12 @@ export interface SourceDocumentActionInput {
 /**
  * Common logic to normalize images and prepare task data
  */
-async function prepareSourceDocumentTask(ledgerId: string, ledger: any, text: string | undefined, images: { data: string; mimeType: string }[] | undefined, sourceDocumentId: string) {
+import { type Ledger, type LedgerEntry, type SourceDocument } from "@/lib/db/schema";
+
+/**
+ * Common logic to normalize images and prepare task data
+ */
+async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text: string | undefined, images: { data: string; mimeType: string }[] | undefined, sourceDocumentId: string) {
     const imageUrls: string[] = [];
     if (images) {
         images.forEach((img) => {
@@ -133,7 +138,7 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         const images = input?.images;
 
         // Update status to queued
-        const updatePayload: any = { status: "queued" };
+        const updatePayload: Partial<SourceDocument> = { status: "queued" };
 
         // If new text/images provided, update the document record
         if (input) {
@@ -257,7 +262,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     if (status) {
         const statuses = status.split(",").filter(Boolean);
         if (statuses.length > 0) {
-            conditions.push(inArray(sourceDocuments.status, statuses as any[]));
+            conditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
         }
     }
 
@@ -309,7 +314,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     // Fetch ledger entries if requested
-    const entriesByDocId = new Map<string, any[]>();
+    const entriesByDocId = new Map<string, SourceDocumentGroup['ledgerEntries']>();
     if (params.includeLedgerEntries && filteredResult.length > 0) {
         const docIds = filteredResult.map(d => d.id);
         const qEntries = forLedger(ledgerEntries, ledgerId);
@@ -331,7 +336,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     amount: String(entry.amount),
                     createdAt: entry.createdAt.toISOString(),
                     entryDate: entry.entryDate ? entry.entryDate.toISOString() : null,
-                });
+                } as unknown as SourceDocumentGroup['ledgerEntries'][number]);
                 entriesByDocId.set(docId, existing);
             }
         });
@@ -445,8 +450,18 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
 }
 
 export interface SourceDocumentGroup {
-    sourceDocument: any;
-    ledgerEntries: any[];
+    sourceDocument: Omit<SourceDocument, 'createdAt' | 'deletedAt' | 'status'> & {
+        createdAt: string;
+        deletedAt?: string | null;
+        status: "queued" | "processing" | "completed" | "anomaly" | undefined;
+        ledgerEntries?: SourceDocumentGroup['ledgerEntries'];
+    };
+    ledgerEntries: (Omit<LedgerEntry, 'amount' | 'createdAt' | 'entryDate' | 'deletedAt'> & {
+        amount: string;
+        createdAt: string;
+        entryDate: string | null;
+        deletedAt?: string | null;
+    })[];
 }
 
 export interface GroupedSourceDocuments {
@@ -494,10 +509,10 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             completed: [],
         };
 
-        activeDocsResult.items.forEach((doc: any) => {
-            const group = {
-                sourceDocument: doc,
-                ledgerEntries: doc.ledgerEntries || [],
+        activeDocsResult.items.forEach((doc) => {
+            const group: SourceDocumentGroup = {
+                sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
+                ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
             };
             if (doc.status === 'anomaly') {
                 groups.anomaly.push(group);
@@ -506,10 +521,10 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             }
         });
 
-        completedDocsResult.items.forEach((doc: any) => {
+        completedDocsResult.items.forEach((doc) => {
             groups.completed.push({
-                sourceDocument: doc,
-                ledgerEntries: doc.ledgerEntries || [],
+                sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
+                ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
             });
         });
 
@@ -537,7 +552,7 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
         const q = forLedger(sourceDocuments, ledgerId);
 
         await db.update(sourceDocuments)
-            .set(data as any)
+            .set(data as Partial<SourceDocument>)
             .where(and(
                 q.whereActive,
                 inArray(sourceDocuments.id, sourceDocumentIds)

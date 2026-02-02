@@ -45,7 +45,7 @@ export async function getSourceDocumentByIdAction(id: string) {
                 }))
             }
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: (e as Error).message };
     }
 }

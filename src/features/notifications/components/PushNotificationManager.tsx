@@ -84,9 +84,10 @@ export function PushNotificationManager() {
             } else {
                 throw new Error(result.error);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Subscription failed:", error);
-            if (error.message?.includes('Permission denied')) {
+            const err = error as Error;
+            if (err.message?.includes('Permission denied')) {
                 toast.error(t("notificationPermissionDenied"));
             } else {
                 toast.error(t("notificationSubscribeFailed"));
