@@ -175,9 +175,17 @@ export function LedgerEntriesTab({
 
             return { prevActive };
         },
+        onSuccess: () => {
+            toast.success(tCommon("deleteSuccess"));
+            setDeleteConfirm({ ...deleteConfirm, open: false });
+        },
         onError: (err, id, ctx) => {
             queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
             toast.error(t("deleteFailed"));
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
         }
     });
 

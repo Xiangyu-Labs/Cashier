@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats"; // New Action
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
+import { queryKeys } from "@/lib/query-keys";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
@@ -23,7 +24,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const tLedger = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
-    useQueryClient();
+    const queryClient = useQueryClient();
 
 
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
@@ -109,6 +110,10 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         onError: () => {
             toast.error(tCommon("saveFailed"));
         },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: ['ledgerEntries', ledgerId] });
+        },
     });
 
     const deleteMutation = useMutation({
@@ -117,8 +122,14 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
-            // Invalidation handled by Server Action revalidatePath + SSE
             toast.success(tLedger("deleteSuccess"));
+            setIsDetailModalOpen(false);
+            setSelectedLedgerEntry(null);
+        },
+        onError: () => toast.error(tCommon("deleteFailed")),
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: ['ledgerEntries', ledgerId] });
         },
     });
 
