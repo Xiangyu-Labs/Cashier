@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
@@ -112,19 +113,28 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
     const tCommon = useTranslations("Common");
     const tSettings = useTranslations("Settings");
 
-    const { data: stats, isLoading: isStatsLoading } = useQuery({
-        queryKey: queryKeys.tokenStats(ledgerId),
-        queryFn: () => getProcessingStatsAction(ledgerId),
-    });
-
-    const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
+    // Use Smart Polling for tasks - poll when there are active tasks
+    const { data: tasks = [], isLoading: isTasksLoading } = useSmartPolling({
         queryKey: queryKeys.processingTasks(ledgerId),
-        queryFn: () => getProcessingTasksAction(ledgerId, { limit: 20 }), // Show last 20 tasks
+        queryFn: () => getProcessingTasksAction(ledgerId, { limit: 20 }),
+        // Keep polling while there are running or queued tasks
+        isActive: (data) => data?.some((t: any) => t.status === "running" || t.status === "queued") ?? false,
+        interval: 3000, // Poll every 3 seconds
         enabled: !!ledgerId,
     });
 
     // Filter only active tasks (running or queued)
     const activeTasks = tasks.filter((t: any) => t.status === "running" || t.status === "queued");
+
+    // Use Smart Polling for stats - poll when there are active tasks
+    // This ensures token stats update when tasks complete
+    const { data: stats, isLoading: isStatsLoading } = useSmartPolling({
+        queryKey: queryKeys.tokenStats(ledgerId),
+        queryFn: () => getProcessingStatsAction(ledgerId),
+        // Poll stats when there are active tasks (to catch completion updates)
+        isActive: () => activeTasks.length > 0,
+        interval: 3000,
+    });
 
     if (isStatsLoading && !stats) {
         return (

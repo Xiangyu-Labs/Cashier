@@ -1,11 +1,24 @@
-# Frontend Optimistic Updates SOP
+# Frontend Data Sync SOP
 
 ## 📋 目的
 
-本文档定义了前端乐观更新（Optimistic Updates）的标准操作流程，确保：
-- 用户体验流畅（无需等待服务器响应即可看到 UI 更新）
-- 错误处理一致（失败时正确回滚）
-- 代码质量可维护（遵循统一模式）
+本文档定义了前端数据同步的标准操作流程，涵盖两种核心机制：
+
+### 🔄 智能轮询（Smart Polling）
+- 自动检测服务器端数据变化
+- 只在必要时轮询，节省资源
+- 适用于后台任务监控、异步操作状态跟踪
+
+### ⚡ 乐观更新（Optimistic Updates）
+- 用户操作立即反馈到 UI
+- 失败时自动回滚
+- 适用于用户主动的 CRUD 操作
+
+通过规范这两种机制的使用，确保：
+- ✅ 用户体验流畅（即时反馈 + 自动同步）
+- ✅ 错误处理一致（失败时正确回滚）
+- ✅ 代码质量可维护（遵循统一模式）
+- ✅ 网络资源高效利用（智能停止轮询）
 
 ---
 
@@ -324,6 +337,75 @@ UI 自动更新为最终状态 ✅
 | 文档解析 | `doc.status === 'processing'` | 等待后台 Worker 处理 |
 | 文件上传 | `file.uploadProgress < 100` | 等待上传完成 |
 | 支付状态 | `payment.status === 'pending'` | 等待支付确认 |
+
+---
+
+## 🔍 纯 Smart Polling 模式
+
+**适用场景**：监控后台任务、查看异步操作状态等"只读"场景
+
+### 典型案例：任务中心监控
+
+```typescript
+// ✅ 只监控任务状态，无需乐观更新
+const { data: tasks = [] } = useSmartPolling({
+  queryKey: ['processingTasks', ledgerId],
+  queryFn: () => getProcessingTasksAction(ledgerId),
+  // 只要有正在运行的任务，就持续轮询
+  isActive: (data) => data?.some(t => t.status === "running" || t.status === "queued") ?? false,
+  interval: 3000 // 每 3 秒检查一次
+});
+
+// Token 统计也跟随任务状态轮询
+const activeTasks = tasks.filter(t => t.status === "running" || t.status === "queued");
+
+const { data: stats } = useSmartPolling({
+  queryKey: ['tokenStats', ledgerId],
+  queryFn: () => getTokenStatsAction(ledgerId),
+  // 当有活动任务时轮询（确保任务完成时统计数据更新）
+  isActive: () => activeTasks.length > 0,
+  interval: 3000
+});
+```
+
+### 工作流程
+
+```
+后台任务开始（由其他操作触发）
+    ↓
+Smart Polling 检测到任务状态 = "running"
+    ↓
+开始每 3 秒轮询任务列表和统计数据
+    ↓
+UI 实时显示：
+  - 任务进度（运行时间）
+  - Token 消耗统计
+    ↓
+任务完成 → 状态变为 "completed"
+    ↓
+Smart Polling 检测到无活动任务 → 自动停止轮询
+    ↓
+最终数据已更新 ✅
+```
+
+### 与协同模式的区别
+
+| 维度 | 协同模式 | 纯 Smart Polling |
+|------|----------|------------------|
+| **用户操作** | 创建/编辑数据 | 查看/监控状态 |
+| **乐观更新** | ✅ 需要（onMutate） | ❌ 不需要 |
+| **Smart Polling** | ✅ 监听数据完整性 | ✅ 监听任务状态 |
+| **触发方式** | mutation → invalidate → polling | 直接 polling |
+| **适用场景** | 分类管理、条目编辑 | 任务中心、进度监控 |
+
+### 其他适用场景
+
+| 场景 | isActive 条件 | 说明 |
+|------|---------------|------|
+| 任务中心 | `tasks.some(t => t.status === "running")` | 监控后台任务进度 |
+| 文件上传列表 | `files.some(f => f.progress < 100)` | 等待所有文件上传完成 |
+| 审批流程 | `approval.status === "pending"` | 等待审批结果 |
+| 数据导出 | `export.status === "processing"` | 等待导出完成 |
 
 ---
 
@@ -655,8 +737,17 @@ const { data } = useQuery({ queryKey });
 
 ## 📚 参考资料
 
-- [React Query Optimistic Updates 官方文档](https://tanstack.com/query/latest/docs/react/guides/optimistic-updates)
-- 项目内参考实现: `src/features/ledger/components/CategoriesPageClient.tsx`
+### 官方文档
+- [React Query Optimistic Updates](https://tanstack.com/query/latest/docs/react/guides/optimistic-updates)
+- [React Query Polling](https://tanstack.com/query/latest/docs/react/guides/window-focus-refetching)
+
+### 项目内参考实现
+
+| 场景 | 文件路径 | 说明 |
+|------|---------|------|
+| **协同模式** | `src/features/ledger/components/CategoriesPageClient.tsx` | 乐观更新 + Smart Polling 完整示例 |
+| **纯 Smart Polling** | `src/features/ledger/components/settings/ProcessingSystemSection.tsx` | 任务中心监控示例 |
+| **Smart Polling Hook** | `src/hooks/use-smart-polling.ts` | 核心实现 |
 
 ---
 
