@@ -12,39 +12,29 @@ export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
          * - automatically checks ledgerId
          * - automatically checks deletedAt is null (if exists)
          */
-        whereActive: (() => {
-            // Need to cast table to any or specific shape to access columns safely in generic context without strict type checks on T
-            // Drizzle types are complex. 
-            // We assume T has ledgerId and deletedAt if we use this.
+        get whereActive() {
             const t = table as any;
             const conditions: SQL<unknown>[] = [eq(t.ledgerId, ledgerId)];
-            if (t.deletedAt) {
-                conditions.push(isNull(t.deletedAt));
-            }
-            return and(...conditions);
-        })(), // Wait, better to be a function or a value? 
-        // If it's a value, it's computed once. But table is an object.
-        // Actually, db.update(table).where(...) expects a SQL object.
-        // So `whereActive` should be a getter or a property? 
-        // Or method: `whereActive()` -> SQL.
 
-        // Let's make them properties or 0-arg functions.
-        get active() {
-            const t = table as any;
-            const conditions: SQL<unknown>[] = [eq(t.ledgerId, ledgerId)];
+            // Drizzle table columns are available as properties on the table object
             if (t.deletedAt) {
                 conditions.push(isNull(t.deletedAt));
             }
+
             return and(...conditions);
+        },
+
+        // Alias for convenience
+        get active() {
+            return this.whereActive;
         },
 
         /**
          * 生成精确匹配条件 (用于 update/delete by ID)
-         * - automatically ensures the entity belongs to the ledger
+         * - automatically ensures the entity belongs to the ledger and is active
          */
-        whereId: (id: string) => {
-            const t = table as any;
-            return and(eq(t.id, id), eq(t.ledgerId, ledgerId));
+        whereId(id: string) {
+            return and(eq((table as any).id, id), this.whereActive);
         },
 
         /**

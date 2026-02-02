@@ -6,6 +6,7 @@ import { currencyRates } from "@/features/currency/server/schema";
 import { and, eq, gte, lte, sql, desc } from "drizzle-orm";
 import { DateRangeType, getDateRange, addPeriod, formatDateForApi } from "@/lib/date-utils";
 import { convertAmount, calculateGrowth } from "./utils";
+import { forLedger } from "@/lib/db/scoped-query";
 
 export interface EnhancedCategoryStat {
     id: string | null;
@@ -63,13 +64,12 @@ export async function getEnhancedStats({
     const prevEnd = new Date(compareRange.to);
 
     // 3. Fetch Entries
-    // We need to fetch entries for BOTH periods.
-    // Optimization: Fetch in one go or two? Two is simpler to manage.
+    const q = forLedger(ledgerEntries, ledgerId);
 
     const fetchEntries = async (start: Date, end: Date) => {
         return await db.query.ledgerEntries.findMany({
             where: and(
-                eq(ledgerEntries.ledgerId, ledgerId),
+                q.active, // This includes ledgerId and deletedAt is null
                 gte(ledgerEntries.entryDate, start),
                 lte(ledgerEntries.entryDate, end)
             ),
