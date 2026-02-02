@@ -3,12 +3,12 @@ import { taskRuns } from "./src/lib/db/schema";
 import { desc } from "drizzle-orm";
 
 async function checkFailedTasks() {
-    const failedTasks = await db.query.taskRuns.findMany({
+    const tasks = await db.query.taskRuns.findMany({
         orderBy: [desc(taskRuns.createdAt)],
-        limit: 5,
+        limit: 20,
     });
 
-    console.log(JSON.stringify(failedTasks, null, 2));
+    console.log(JSON.stringify(tasks, null, 2));
     process.exit(0);
 }
 

@@ -42,7 +42,8 @@ interface CreateCategoryData {
 
 export function CategoriesPageClient({ ledgerId, categories: initialCategories }: CategoriesPageClientProps): React.ReactElement {
     const router = useRouter();
-    const t = useTranslations();
+    const t = useTranslations("CategoriesPage");
+    const tSettings = useTranslations("Settings");
     const queryClient = useQueryClient();
     const queryKey = ["ledger-categories", ledgerId];
 
@@ -66,7 +67,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             if (result.success) {
                 return result.data;
             }
-            throw new Error(result.error || "Failed to create category");
+            throw new Error(result.error || tSettings("createCategoryFailed"));
         },
         onMutate: async (newData) => {
             // Cancel outgoing refetches
@@ -95,7 +96,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             return { previousCategories };
         },
         onSuccess: () => {
-            toast.success("Category created successfully");
+            toast.success(tSettings("categoryCreated"));
             handleClose();
         },
         onError: (err, variables, context) => {
@@ -111,12 +112,9 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
         mutationFn: async ({ id, data }: { id: string; data: CreateCategoryData }) => {
             const result = await updateEntryCategoryAction(ledgerId, id, data);
             if (result.success) {
-                // Ensure we return something consistent, though we might not use it in onSettled
-                // updateEntryCategoryAction returns { success: true } without data usually
-                // but let's check carefully. If it returns { success: true }, we can return null or the ID.
                 return { id, ...data };
             }
-            throw new Error(result.error || "Failed to update category");
+            throw new Error(result.error || tSettings("updateCategoryFailed"));
         },
         onMutate: async ({ id, data }) => {
             await queryClient.cancelQueries({ queryKey });
@@ -129,7 +127,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             return { previousCategories };
         },
         onSuccess: () => {
-            toast.success("Updated successfully");
+            toast.success(tSettings("categoryUpdated"));
             handleClose();
         },
         onError: (err, variables, context) => {
@@ -144,7 +142,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             const result = await deleteEntryCategoryAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || "Failed to delete category");
+            if (!result.success) throw new Error(result.error || tSettings("deleteCategoryFailed"));
             return id;
         },
         onMutate: async (id) => {
@@ -158,7 +156,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             return { previousCategories };
         },
         onSuccess: () => {
-            toast.success("Deleted successfully");
+            toast.success(tSettings("categoryDeleted"));
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
         onError: (err, variables, context) => {
@@ -260,11 +258,11 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
-                        <h1 className="text-xl font-bold">分类管理</h1>
+                        <h1 className="text-xl font-bold">{t("title")}</h1>
                     </div>
                     <Button onClick={openCreateModal}>
                         <Plus className="w-4 h-4 mr-2" />
-                        New Category
+                        {t("newCategory")}
                     </Button>
                 </div>
             </header>
@@ -293,12 +291,12 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                                     {category.name}
                                                     {/* 只有当这是临时创建的条目时，才显示保存中状态 */}
                                                     {category.id.startsWith("temp-") && (
-                                                        <span className="text-xs text-muted font-normal">(Saving...)</span>
+                                                        <span className="text-xs text-muted font-normal">{tSettings("saving")}</span>
                                                     )}
                                                 </p>
                                                 {(!category.icon || !category.description) ? (
                                                     <p className="text-sm text-muted mt-0.5 animate-pulse">
-                                                        {t("Settings.categories.generating")}
+                                                        {tSettings("generating")}
                                                     </p>
                                                 ) : category.description && (
                                                     <p className="text-sm text-muted mt-0.5">
@@ -333,7 +331,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                 <div className="w-16 h-16 rounded-full bg-surface2 flex items-center justify-center text-2xl">
                                     📭
                                 </div>
-                                <p>暂无分类，点击右上角新建</p>
+                                <p>{t("noCategories")}</p>
                             </div>
                         )}
                     </CardContent>
@@ -342,8 +340,8 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                 <div className="flex gap-3 p-4 bg-info/10 rounded-lg text-sm text-info items-start">
                     <Info className="w-5 h-5 shrink-0" />
                     <p>
-                        <strong>提示：</strong>
-                        分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。
+                        <strong>{t("tipTitle")}</strong>
+                        {t("tipDesc")}
                     </p>
                 </div>
             </main>
@@ -351,19 +349,19 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingCategory ? "编辑分类" : "新建分类"}</DialogTitle>
+                        <DialogTitle>{editingCategory ? t("editCategory") : t("newCategory")}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-text">
-                                分类名称 <span className="text-danger">*</span>
+                                {t("name")} <span className="text-danger">*</span>
                             </label>
                             <Input
                                 value={formData.name}
                                 onChange={(e) =>
                                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                                 }
-                                placeholder="例如：餐饮"
+                                placeholder={t("namePlaceholder")}
                                 autoFocus
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter") handleSave();
@@ -371,18 +369,18 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-text">图标</label>
+                            <label className="text-sm font-medium text-text">{t("icon")}</label>
                             <Input
                                 value={formData.icon}
                                 onChange={(e) =>
                                     setFormData((prev) => ({ ...prev, icon: e.target.value }))
                                 }
-                                placeholder="例如：🍽️"
+                                placeholder={t("iconPlaceholder")}
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-text">
-                                描述（帮助 AI 识别）
+                                {t("description")}
                             </label>
                             <Textarea
                                 value={formData.description}
@@ -392,14 +390,14 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                         description: e.target.value,
                                     }))
                                 }
-                                placeholder="例如：外卖、堂食、食材采购"
+                                placeholder={t("descriptionPlaceholder")}
                                 rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleClose}>
-                            取消
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleSave}
@@ -409,8 +407,8 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                             }
                         >
                             {isPending
-                                ? "保存中..."
-                                : "保存"}
+                                ? tSettings("saving").replace(/^\(|\)$/g, '')
+                                : t("save")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -419,11 +417,11 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             <ConfirmDialog
                 open={deleteConfirm.open}
                 onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title="确认删除"
-                description={`确定要删除分类「${deleteConfirm.name}」吗？相关记录将变为未分类。`}
+                title={t("confirmDelete")}
+                description={t("confirmDeleteDesc", { name: deleteConfirm.name })}
                 onConfirm={handleConfirmDelete}
                 variant="destructive"
-                confirmLabel="删除"
+                confirmLabel={t("delete")}
             />
         </div>
     );
