@@ -153,3 +153,4 @@ Instead of linear steps, a task can return a `FlowDefinition` (or array of them)
 2.  **Graceful Cancellation**: Implement `onCancel` to clean up resources if a user cancels a long-running task.
 3.  **Defensive AI**: Never trust AI output. Validate schema in `execute` before returning.
 4.  **Resource Aware**: Be mindful that increasing concurrency variables in `.env` affects memory and API billing globally.
+5.  **禁止使用 Next.js 缓存 API**: 后台任务运行在 Worker 进程中，不在 HTTP 请求上下文内，因此**禁止**调用 `revalidatePath`、`revalidateTag` 等 Next.js 缓存相关 API。前端通过 **Smart Polling**（轮询）和 **Web Push Notifications**（推送通知）感知数据变化并自动更新界面。任务只需在 `onComplete` 中更新数据库和发送通知即可。

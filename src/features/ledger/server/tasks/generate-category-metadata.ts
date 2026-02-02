@@ -7,7 +7,6 @@ import { buildCategoryMetadataPrompt, COMMON_LUCIDE_ICONS } from "@/features/ai/
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
-import { revalidatePath } from "next/cache";
 
 export const TASK_TYPE_GENERATE_CATEGORY_METADATA = "generate_category_metadata";
 
