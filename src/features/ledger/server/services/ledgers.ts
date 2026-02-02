@@ -27,7 +27,8 @@ export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefi
     return mapLedgerToApi(row);
 });
 
-import { logger } from "@/lib/logger";
+// logger is unused here
+
 
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
     return {

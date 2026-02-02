@@ -19,6 +19,7 @@ export async function getVapidPublicKeyAction() {
 }
 
 export async function subscribeToPushAction(subscription: z.infer<typeof subscriptionSchema>) {
+    subscriptionSchema.parse(subscription);
     const session = await auth();
     if (!session?.user?.id) {
         return { success: false, error: "Unauthorized" };

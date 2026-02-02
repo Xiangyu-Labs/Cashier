@@ -13,12 +13,12 @@ export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
          * - automatically checks deletedAt is null (if exists)
          */
         get whereActive() {
-            const t = table as unknown as PgTable & { ledgerId: unknown; deletedAt?: unknown };
-            const conditions: SQL<unknown>[] = [eq(t.ledgerId as any, ledgerId)];
+            const t = table as unknown as Record<string, SQL>;
+            const conditions: SQL[] = [eq(t.ledgerId, ledgerId as unknown as SQL)];
 
             // Drizzle table columns are available as properties on the table object
             if (t.deletedAt) {
-                conditions.push(isNull(t.deletedAt as any));
+                conditions.push(isNull(t.deletedAt));
             }
 
             return and(...conditions);
@@ -34,7 +34,8 @@ export function forLedger<T extends PgTable>(table: T, ledgerId: string) {
          * - automatically ensures the entity belongs to the ledger and is active
          */
         whereId(id: string) {
-            return and(eq((table as unknown as PgTable & { id: unknown }).id as any, id), this.whereActive);
+            const t = table as unknown as Record<string, SQL>;
+            return and(eq(t.id, id as unknown as SQL), this.whereActive);
         },
 
         /**

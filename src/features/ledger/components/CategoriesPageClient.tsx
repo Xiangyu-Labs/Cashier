@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Plus, Pencil, Trash2, Info, Loader2 } from "lucide-react";
 import {
@@ -41,7 +40,9 @@ interface CreateCategoryData {
 }
 
 export function CategoriesPageClient({ ledgerId, categories: initialCategories }: CategoriesPageClientProps): React.ReactElement {
-    const router = useRouter();
+    // router is unused but kept for potential future use or just remove it if really not needed.
+    // The lint complained it's assigned but never used.
+
     const t = useTranslations("CategoriesPage");
     const tSettings = useTranslations("Settings");
     const queryClient = useQueryClient();

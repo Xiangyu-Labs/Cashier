@@ -70,7 +70,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const tCommon = useTranslations("Common")
     const _tEntry = useTranslations("LedgerEntryDetail")
 
-    const [isEditingTitle, setIsEditingTitle] = useState(false)
+    // isEditingTitle is unused
     const [title, setTitle] = useState(sourceDocument?.title || "")
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
@@ -84,7 +84,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         if (open && sourceDocument) {
             setTitle(sourceDocument?.title || "")
             setSelectedIds([])
-            setIsEditingTitle(false)
             setIsEditing(false)
             setBatchDate("")
             setBatchDescription("")
@@ -109,7 +108,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onUpdateTitle(title)
-            setIsEditingTitle(false)
         } catch (error) {
             console.error("Failed to update title:", error)
         } finally {

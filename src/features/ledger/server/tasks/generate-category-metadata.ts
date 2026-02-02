@@ -40,7 +40,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
     },
 
     // 1. Main execution
-    async execute(input: GenerateCategoryMetadataInput, context: FlowContext): Promise<GenerateCategoryMetadataOutput> {
+    async execute(input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<GenerateCategoryMetadataOutput> {
         const client = getOpenAIClient();
 
         const prompt = buildCategoryMetadataPrompt(
@@ -109,7 +109,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
     },
 
     // 3. Error handling
-    async onError(error: Error, input: GenerateCategoryMetadataInput, context: FlowContext): Promise<void> {
+    async onError(error: Error, input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
         logger.error({ err: error, categoryId: input.categoryId }, "Generate category metadata task failed");
         // No side effects needed, category stays as is (empty metadata)
     }

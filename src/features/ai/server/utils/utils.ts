@@ -1,6 +1,4 @@
-import { z } from "zod";
+// This file is empty after removing unused schema
 
-const summarizationSchema = z.object({
-    item_name: z.string(),
-    notes: z.string().nullable().optional(),
-});
+export { };
+

@@ -2,10 +2,11 @@
 
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
-import { auth } from "@/auth";
+// auth is unused here
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, inArray, and, gte, lte, isNull } from "drizzle-orm";
+import { eq, inArray, and, gte, lte } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -139,7 +140,7 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         const { error } = await requireLedgerAccess(ledgerId);
         if (error) return { success: false, error: "Unauthorized" };
 
-        const updateData: any = {};
+        const updateData: Record<string, unknown> = {};
         if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
         if (data.currency !== undefined) updateData.currency = data.currency;
         if (data.description !== undefined) updateData.description = data.description;

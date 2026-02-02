@@ -28,7 +28,8 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
         if (error) return { success: false, error: "Unauthorized" };
 
         const validated = createCategorySchema.parse(data);
-        const q = forLedger(entryCategories, ledgerId);
+        // q is only used for updates/deletes with scoped query, insert uses plain schema
+
 
         const [category] = await db.insert(entryCategories).values({
             ...validated,

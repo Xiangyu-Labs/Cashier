@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
 import { usePathname, useRouter } from "@/i18n/routing";

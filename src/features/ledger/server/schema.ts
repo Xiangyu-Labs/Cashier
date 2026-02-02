@@ -9,7 +9,7 @@ import {
     date,
     jsonb,
     index,
-    unique,
+
     uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { users } from "@/features/auth/server/schema";

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import crypto from "crypto";

@@ -1,7 +1,7 @@
 'use server';
 
 import { Resend } from "resend";
-import { generateOTP, getOTPExpiration, isValidOTPFormat } from "@/features/auth/server/services/otp";
+import { generateOTP, isValidOTPFormat } from "@/features/auth/server/services/otp";
 import { createOTPToken, verifyOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import {
     checkSendRateLimit,
@@ -17,7 +17,7 @@ import { headers } from "next/headers";
 
 const resend = new Resend(process.env.AUTH_RESEND_KEY);
 
-export async function sendOTPAction(email: string, locale: string = "en") {
+export async function sendOTPAction(email: string, _locale: string = "en") {
     try {
         // Validate email format
         if (!email || typeof email !== "string") {
