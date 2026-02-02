@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Check, X, Pencil, GripVertical } from "lucide-react";
+import { Trash2, Check, X, Pencil, GripVertical, Loader2 } from "lucide-react";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useTranslations } from "next-intl";
@@ -104,11 +104,24 @@ function SortableItem({
             ) : (
                 <>
                     <div className="w-8 flex justify-center text-xl">
-                        <CategoryIcon iconName={category.icon} className="w-6 h-6" />
+                        {(!category.icon || !category.description) ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        ) : (
+                            <CategoryIcon iconName={category.icon} className="w-6 h-6" />
+                        )}
                     </div>
                     <div className="flex-1">
-                        <div className="font-medium text-sm">{category.name}</div>
-                        {category.description && <div className="text-xs text-[var(--muted)]">{category.description}</div>}
+                        <div className="font-medium text-sm flex items-center gap-2">
+                            {category.name}
+                            {category.id.toString().startsWith('temp-') && (
+                                <span className="text-[10px] text-muted font-normal animate-pulse">(Saving...)</span>
+                            )}
+                        </div>
+                        {(!category.icon || !category.description) ? (
+                            <div className="text-xs text-primary animate-pulse">{t("categories.generating")}</div>
+                        ) : category.description && (
+                            <div className="text-xs text-[var(--muted)]">{category.description}</div>
+                        )}
                     </div>
                     {category.isEditable !== false && (
                         <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">

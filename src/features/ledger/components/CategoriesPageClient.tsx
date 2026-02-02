@@ -53,7 +53,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
     const { data: categories = [] } = useSmartPolling<EntryCategory[]>({
         queryKey: queryKey,
         queryFn: () => getEntryCategoriesAction(ledgerId),
-        isActive: (data) => data?.some((c) => !c.icon && !c.description) ?? false,
+        isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
         interval: 3000,
         initialData: initialCategories
     });
@@ -281,8 +281,8 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-xl shrink-0">
-                                                {/* 如果正在生成中(无icon且无描述)，显示Loading。否则显示icon或默认文件夹 */}
-                                                {(!category.icon && !category.description) ? (
+                                                {/* 如果正在生成中(缺少icon或描述)，显示Loading。否则显示icon */}
+                                                {(!category.icon || !category.description) ? (
                                                     <Loader2 className="w-5 h-5 animate-spin text-primary" />
                                                 ) : (
                                                     <CategoryIcon iconName={category.icon} className="w-5 h-5" />
@@ -296,7 +296,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
                                                         <span className="text-xs text-muted font-normal">(Saving...)</span>
                                                     )}
                                                 </p>
-                                                {(!category.icon && !category.description) ? (
+                                                {(!category.icon || !category.description) ? (
                                                     <p className="text-sm text-muted mt-0.5 animate-pulse">
                                                         {t("Settings.categories.generating")}
                                                     </p>

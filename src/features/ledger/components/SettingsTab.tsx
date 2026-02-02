@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
 import {
     updateLedgerAction,
 } from "@/features/ledger/server/actions/ledgers";
@@ -12,6 +13,7 @@ import {
     updateEntryCategoryAction,
     deleteEntryCategoryAction,
     reorderEntryCategoriesAction,
+    getEntryCategoriesAction,
 } from "@/features/ledger/server/actions/categories";
 import {
     createServiceCredentialAction,
@@ -49,8 +51,17 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
 
-    // Categories - Use props directly
-    const categories = initialCategories;
+    const queryClient = useQueryClient();
+    const queryKey = ["categories", ledgerId];
+
+    // Categories - Use smart polling
+    const { data: categories = [] } = useSmartPolling<EntryCategory[]>({
+        queryKey,
+        queryFn: () => getEntryCategoriesAction(ledgerId),
+        isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
+        interval: 3000,
+        initialData: initialCategories
+    });
     const credentials = initialCredentials;
 
     // Local state for Ledger Name
@@ -118,13 +129,40 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
         mutationFn: async (data: { name: string }) => {
             const result = await createEntryCategoryAction(ledgerId, data);
             if (!result.success) throw new Error(result.error || "Unknown error");
+            return result.data;
+        },
+        onMutate: async (newCategory) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) => [
+                ...old,
+                {
+                    id: `temp-${Date.now()}`,
+                    name: newCategory.name,
+                    icon: null,
+                    description: null,
+                    isEditable: true,
+                    sortOrder: categories.length,
+                    ledgerId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                } as any
+            ]);
+
+            return { previousCategories };
         },
         onSuccess: () => {
             toast.success(t("categoryCreated"));
-            setCategoryCreatedTrigger(() => () => { }); // Trigger state change
-            router.refresh();
+            setCategoryCreatedTrigger(() => () => { });
+            queryClient.invalidateQueries({ queryKey });
         },
-        onError: () => toast.error(t("createCategoryFailed")),
+        onError: (err, _, context: any) => {
+            toast.error(t("createCategoryFailed"));
+            if (context?.previousCategories) {
+                queryClient.setQueryData(queryKey, context.previousCategories);
+            }
+        },
     });
 
     const updateCategoryMutation = useMutation({
@@ -136,11 +174,26 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             });
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
+        onMutate: async ({ id, data }) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
+                old.map(c => c.id === id ? { ...c, ...data } : c)
+            );
+
+            return { previousCategories };
+        },
         onSuccess: () => {
             toast.success(t("categoryUpdated"));
-            router.refresh();
+            queryClient.invalidateQueries({ queryKey });
         },
-        onError: () => toast.error(t("updateCategoryFailed")),
+        onError: (err, _, context: any) => {
+            toast.error(t("updateCategoryFailed"));
+            if (context?.previousCategories) {
+                queryClient.setQueryData(queryKey, context.previousCategories);
+            }
+        },
     });
 
     const deleteCategoryMutation = useMutation({
@@ -148,11 +201,26 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             const result = await deleteEntryCategoryAction(ledgerId, id);
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
+                old.filter(c => c.id !== id)
+            );
+
+            return { previousCategories };
+        },
         onSuccess: () => {
             toast.success(t("categoryDeleted"));
-            router.refresh();
+            queryClient.invalidateQueries({ queryKey });
         },
-        onError: () => toast.error(t("deleteCategoryFailed")),
+        onError: (err, _, context: any) => {
+            toast.error(t("deleteCategoryFailed"));
+            if (context?.previousCategories) {
+                queryClient.setQueryData(queryKey, context.previousCategories);
+            }
+        },
     });
 
     const reorderCategoriesMutation = useMutation({

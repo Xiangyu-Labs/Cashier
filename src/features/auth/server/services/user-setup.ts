@@ -9,6 +9,8 @@ export async function createDefaultLedgerForUser(
     userId: string,
     userEmail: string
 ): Promise<string> {
+    const { defaultLedger } = await import("@/config/default-ledger");
+
     // Create the default ledger
     const [newLedger] = await db
         .insert(ledgers)
@@ -17,14 +19,12 @@ export async function createDefaultLedgerForUser(
             name: `${userEmail.split("@")[0]}'s Ledger`,
             metadata: {
                 settings: {
-                    aiLanguage: "zh", // Default to Chinese, user can change later
+                    ...defaultLedger.settings,
                 }
             }
         })
         .returning();
 
-    // Seed categories for the new ledger
-    const { defaultLedger } = await import("@/config/default-ledger");
     const { entryCategories } = await import("@/lib/db/schema");
 
     if (defaultLedger.categories.length > 0) {

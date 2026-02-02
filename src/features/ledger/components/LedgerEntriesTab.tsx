@@ -374,9 +374,8 @@ export function LedgerEntriesTab({
         <LayoutGroup id={layoutGroupId}>
             <PullToRefresh onRefresh={handleRefresh}>
                 <div className="space-y-4" {...containerProps}>
-
                     {/* Date Filter */}
-                    <div className="px-2 mb-2 sm:mb-4">
+                    <div className="px-2 mb-2 sm:mb-4 pt-1">
                         <DateRangeFilter
                             startDate={dateRange.start}
                             endDate={dateRange.end}

@@ -8,7 +8,10 @@ interface CategoryIconProps {
 }
 
 export function CategoryIcon({ iconName, className }: CategoryIconProps) {
-    if (!iconName) return <span className={className}>📝</span>;
+    if (!iconName) {
+        const PackageIcon = icons.Package;
+        return <PackageIcon className={className} />;
+    }
 
     // Check if it's a specific emoji we want to fallback (optional)
     // or checks if it is a valid Lucide icon name

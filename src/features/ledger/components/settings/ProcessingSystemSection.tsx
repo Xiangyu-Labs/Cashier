@@ -69,6 +69,44 @@ function ElapsedTime({ startedAt }: { startedAt: string | null }) {
     return <span>{elapsed}</span>;
 }
 
+function TaskItem({ task }: { task: any }) {
+    const statusColors: Record<string, string> = {
+        queued: "border-l-muted/30",
+        running: "border-l-primary",
+        failed: "border-l-danger",
+        completed: "border-l-primary",
+        cancelled: "border-l-muted/20"
+    };
+
+    return (
+        <div
+            className={`group flex items-start gap-3 p-3 rounded-md transition-all bg-surface2/20 hover:bg-surface2/50 border-l-4 ${statusColors[task.status] || "border-l-transparent"}`}
+        >
+            <div className="mt-0.5 bg-surface rounded-full p-1.5 border border-border/50 shadow-sm">
+                <TaskStatusIcon status={task.status} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 justify-between mb-0.5">
+                    <span className="text-sm font-medium text-text truncate tracking-tight" title={task.title}>
+                        {task.title}
+                    </span>
+                    <TaskStatusBadge status={task.status} />
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    <Clock className="w-3 h-3 text-muted/50" />
+                    <span className="text-[10px] text-muted font-medium uppercase tracking-wider">
+                        {task.status === 'running' && task.startedAt ? (
+                            <ElapsedTime startedAt={task.startedAt} />
+                        ) : (
+                            new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        )}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
     const t = useTranslations("TaskCenter");
     const tCommon = useTranslations("Common");
@@ -81,12 +119,13 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
     const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
         queryKey: queryKeys.processingTasks(ledgerId),
-        queryFn: () => getProcessingTasksAction(ledgerId, { limit: 10 }), // Show last 10 tasks in settings
+        queryFn: () => getProcessingTasksAction(ledgerId, { limit: 20 }), // Show last 20 tasks
         enabled: !!ledgerId,
     });
 
-    // Only show running tasks as "active" in the list below stats
-    const activeTasks = tasks.filter((t: any) => t.status === "running");
+    // Separate tasks by status
+    const activeTasks = tasks.filter((t: any) => t.status === "running" || t.status === "queued");
+    const recentTasks = tasks.filter((t: any) => t.status === "completed" || t.status === "failed");
 
     if (isStatsLoading && !stats) {
         return (
@@ -137,69 +176,58 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
 
 
-            <div className="mt-8 pt-6 border-t border-border">
-                <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-base font-medium">{t("activeTasks")}</h3>
-                    {activeTasks.length > 0 && (
-                        <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full leading-none font-bold">
-                            {activeTasks.length}
-                        </span>
-                    )}
+            <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Active Tasks Section */}
+                <div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <h3 className="text-base font-medium">{t("activeTasks")}</h3>
+                        {activeTasks.length > 0 && (
+                            <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full leading-none font-bold">
+                                {activeTasks.length}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        {isTasksLoading && tasks.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-muted">
+                                <Loader2 className="w-6 h-6 animate-spin mb-2 opacity-50" />
+                                <p className="text-xs">{tCommon("loading")}</p>
+                            </div>
+                        ) : activeTasks.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 gap-2 bg-surface2/30 rounded-lg">
+                                <Inbox className="w-6 h-6 text-muted opacity-30" />
+                                <p className="text-xs text-muted">{t("noActiveTasks")}</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                {activeTasks.map((task: any) => (
+                                    <TaskItem key={task.id} task={task} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="space-y-2">
-                    {isTasksLoading && tasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-muted">
-                            <Loader2 className="w-6 h-6 animate-spin mb-2 opacity-50" />
-                            <p className="text-xs">{tCommon("loading")}</p>
-                        </div>
-                    ) : activeTasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 gap-2 bg-surface2/30 rounded-lg">
-                            <Inbox className="w-6 h-6 text-muted opacity-30" />
-                            <p className="text-xs text-muted">{t("noActiveTasks")}</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1">
-                            {activeTasks.map((task: any) => {
-                                const statusColors: Record<string, string> = {
-                                    queued: "border-l-muted/30",
-                                    running: "border-l-primary",
-                                    failed: "border-l-danger",
-                                    completed: "border-l-primary",
-                                    cancelled: "border-l-muted/20"
-                                };
+                {/* Recent Tasks Section */}
+                <div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <h3 className="text-base font-medium">{t("recentTasks")}</h3>
+                    </div>
 
-                                return (
-                                    <div
-                                        key={task.id}
-                                        className={`group flex items-start gap-3 p-3 rounded-md transition-all bg-surface2/20 hover:bg-surface2/50 border-l-4 ${statusColors[task.status] || "border-l-transparent"}`}
-                                    >
-                                        <div className="mt-0.5 bg-surface rounded-full p-1.5 border border-border/50 shadow-sm">
-                                            <TaskStatusIcon status={task.status} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 justify-between mb-0.5">
-                                                <span className="text-sm font-medium text-text truncate tracking-tight" title={task.title}>
-                                                    {task.title}
-                                                </span>
-                                                <TaskStatusBadge status={task.status} />
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Clock className="w-3 h-3 text-muted/50" />
-                                                <span className="text-[10px] text-muted font-medium uppercase tracking-wider">
-                                                    {task.status === 'running' && task.startedAt ? (
-                                                        <ElapsedTime startedAt={task.startedAt} />
-                                                    ) : (
-                                                        new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        {recentTasks.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 gap-2 bg-surface2/30 rounded-lg">
+                                <p className="text-xs text-muted">{t("noRecentTasks")}</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                {recentTasks.map((task: any) => (
+                                    <TaskItem key={task.id} task={task} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </section>

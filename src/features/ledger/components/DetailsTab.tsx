@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
@@ -186,9 +188,10 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
-            <div className="space-y-0">
-                <div className="sticky top-[3.5rem] z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3 sm:py-4 mb-2 border-b border-border/40">
-                    <div className="flex justify-between items-center px-2">
+            <div className="space-y-4">
+                {/* Header Section - Aligned with LedgerEntriesTab */}
+                <div className="px-2 mb-2 sm:mb-4 pt-1">
+                    <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <DateRangeFilter
                                 startDate={dateRange.start}
@@ -222,7 +225,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     </div>
                 </div>
 
-                <div className="space-y-8 pt-2">
+                <div className="space-y-6 pt-2">
                     <AnimatePresence mode="popLayout">
                         {groupedItems.map((group) => (
                             <motion.div

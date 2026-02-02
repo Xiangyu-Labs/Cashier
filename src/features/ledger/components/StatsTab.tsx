@@ -87,7 +87,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
-            <div className="space-y-8 pb-24">
+            <div className="space-y-6 pb-24">
                 <StatsHeader
                     rangeType={rangeType}
                     setRangeType={setRangeType}

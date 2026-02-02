@@ -118,7 +118,7 @@ export function PullToRefresh({
 
     // 如果禁用或非触摸设备，直接渲染子元素
     if (disabled || !isTouchDevice) {
-        return <div className={cn("h-full overflow-auto", className)}>{children}</div>;
+        return <div className={className}>{children}</div>;
     }
 
     // 计算指示器状态
@@ -129,7 +129,7 @@ export function PullToRefresh({
     return (
         <div
             ref={containerRef}
-            className={cn("h-full overflow-auto", className)}
+            className={className}
         >
             {/* 下拉指示器 */}
             <AnimatePresence>
