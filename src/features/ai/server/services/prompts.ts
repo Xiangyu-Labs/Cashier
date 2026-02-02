@@ -32,7 +32,7 @@ ${aiCustomPrompt ? `- **Custom Rules**: ${aiCustomPrompt}` : ""}
 2. **Split**: Separate receipts into individual items. Ignore totals/subtotals.
 3. **Fields**:
    - \`title\`: "Merchant - Core Item" (Translated).
-   - \`currency\`: ONLY infer if obvious (e.g. explicit symbol $, £, €, or code USD). DO NOT guess based on locale/language. If not explicitly clear, perform no reasoning and return "unknown".
+   - \`currency\`: ONLY infer if obvious (e.g. explicit symbol $, £, €, or code USD). Use "Pref Currencies" as hints but DO NOT guess solely based on locale. If not explicitly clear, return "unknown".
    - \`category\`: STRICTLY match a provided Category name.
    - \`date\`: Resolve relative to Ref Date.
 4. **Translation**: Translate 'title', 'item_name', 'notes' to Target Lang.
@@ -63,33 +63,6 @@ Output:
     { "item_name": "Latte", "amount": 3.5, "currency": "USD", "category": "<Category_Name_From_List>", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" },
     { "item_name": "Sandwich", "amount": 4.5, "currency": "USD", "category": "<Category_Name_From_List>", "entry_date": "2025-05-19", "notes": "Merchant: 7-11" }
   ]
-}
-`;
-}
-
-export function buildSummarizationPrompt(
-  items: { itemName: string; amount: number; notes?: string | null }[],
-  targetLanguage: string = "zh-CN",
-  originalText?: string
-): string {
-  return `You are a bookkeeping AI. Merge items into a single summary.
-
-### Context
-- **Target Lang**: ${targetLanguage}
-- **Original Input**: ${originalText || "N/A"}
-- **Items**:
-${JSON.stringify(items)}
-
-### Rules
-1. **Summary Name**: Concise (<10 chars) summary (e.g. "Taxi", "Breakfast Set").
-2. **Notes**: Combine original notes/names. Deduplicate. Keep merchant/quantity.
-3. **Translation**: All text to Target Lang.
-4. **Format**: Output raw JSON ONLY. DO NOT wrap with markdown backticks or \` \` \` json.
-
-### Output Schema (strict JSON)
-interface Output {
-  item_name: string;
-  notes: string;
 }
 `;
 }

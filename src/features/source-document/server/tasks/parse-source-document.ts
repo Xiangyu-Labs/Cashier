@@ -4,7 +4,6 @@ import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
-import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
 import { logger } from "@/lib/logger";
 import { arbitrate } from "@/features/ai/server/services/arbitration";
 import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
@@ -145,7 +144,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 entries1,
                 entries2,
                 input.text,
-                input.aiLanguage
+                input.aiLanguage,
+                input.imageUrls,
+                input.preferredCurrencies
             );
 
             if (arbitrationResult.choice === 0) {
@@ -188,7 +189,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 entries1,
                 entries2,
                 input.text,
-                input.aiLanguage
+                input.aiLanguage,
+                input.imageUrls,
+                input.preferredCurrencies
             );
 
             if (arbitrationResult.choice === 0) {

@@ -2,6 +2,7 @@ import { getOpenAIClient } from "./openai";
 import { ParsedLedgerEntry } from "../types";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { ChatCompletionContentPart } from "openai/resources/chat/completions";
 
 /**
  * Arbitration result schema
@@ -24,7 +25,9 @@ function buildArbitrationPrompt(
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[],
     originalContent?: string,
-    aiLanguage?: string
+    aiLanguage?: string,
+    hasImages?: boolean,
+    preferredCurrencies: string[] = []
 ): string {
     const languageInstruction = aiLanguage === "en" || aiLanguage === "en-US"
         ? "Respond in English."
@@ -39,7 +42,7 @@ function buildArbitrationPrompt(
         return `You are a financial document arbitration AI. Two independent AI systems processed the same document and produced different results.
 
 ### Original Content
-${originalContent || "(Image-based content)"}
+${originalContent || (hasImages ? "Provided via attached images." : "(No original content provided)")}
 
 ### GPT Result #1 (Total: ${total1.toFixed(2)})
 ${formatEntries(entries1)}
@@ -56,6 +59,7 @@ Determine if the discrepancy is due to:
 - If the document itself is ambiguous or contains errors, return choice=0 with a reason
 - If one GPT result is clearly correct, return choice=1 or choice=2
 - Prefer the result that matches the document's stated total (if visible)
+- **Preferred Currencies**: ${preferredCurrencies.join(", ") || "None"}
 - When in doubt about which is correct, return choice=0
 
 ### Output (raw JSON only, no markdown)
@@ -90,6 +94,7 @@ Determine if the currency can be identified from the document and which result i
 - If the currency genuinely cannot be determined even with reasonable inference, return choice=0
 - If you can confidently infer the currency, return choice=1 or choice=2 depending on which result is more accurate.
 - If you infer the currency, provide the 3-letter ISO currency code in the "currency" field (e.g. "CNY", "USD", "MYR").
+- **Preferred Currencies**: ${preferredCurrencies.join(", ") || "None"}
 - Common patterns: Chinese merchants usually use CNY, US merchants use USD, etc.
 
 ### Output (raw JSON only, no markdown)
@@ -110,15 +115,38 @@ export async function arbitrate(
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[],
     originalContent?: string,
-    aiLanguage?: string
+    aiLanguage?: string,
+    imageUrls?: string[],
+    preferredCurrencies?: string[]
 ): Promise<ArbitrationResult> {
     const client = getOpenAIClient();
 
-    const systemPrompt = buildArbitrationPrompt(scenario, entries1, entries2, originalContent, aiLanguage);
+    const systemPrompt = buildArbitrationPrompt(
+        scenario,
+        entries1,
+        entries2,
+        originalContent,
+        aiLanguage,
+        imageUrls && imageUrls.length > 0,
+        preferredCurrencies
+    );
+
+    const contentParts: ChatCompletionContentPart[] = [
+        { type: "text", text: "Please analyze and provide your arbitration decision." }
+    ];
+
+    if (imageUrls && imageUrls.length > 0) {
+        imageUrls.forEach(url => {
+            contentParts.push({
+                type: "image_url",
+                image_url: { url }
+            });
+        });
+    }
 
     try {
         const { content } = await client.generateContent(systemPrompt, [
-            { role: "user", content: "Please analyze and provide your arbitration decision." }
+            { role: "user", content: contentParts }
         ]);
 
         const cleaned = content.replace(/^```(?:json)?|```$/g, "").trim();
