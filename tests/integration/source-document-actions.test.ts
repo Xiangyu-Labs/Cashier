@@ -17,9 +17,9 @@ describe("getSourceDocumentByIdAction", () => {
     const testUserId = "00000000-0000-0000-0000-000000000000";
 
     beforeEach(() => {
-        (auth as any).mockResolvedValue({
+        vi.mocked(auth).mockResolvedValue({
             user: { id: testUserId, email: "test@example.com" }
-        });
+        } as any);
     });
 
     it("should return the source document when it exists and user has access", async () => {

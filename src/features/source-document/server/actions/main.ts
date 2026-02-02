@@ -141,7 +141,7 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
 
             if (images) {
                 const newImageUrls = images.map(img => {
-                    let data = img.data;
+                    const data = img.data;
                     if (!data.startsWith("data:") && !data.startsWith("http")) {
                         return `data:${img.mimeType};base64,${data}`;
                     }
@@ -309,7 +309,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     // Fetch ledger entries if requested
-    let entriesByDocId = new Map<string, any[]>();
+    const entriesByDocId = new Map<string, any[]>();
     if (params.includeLedgerEntries && filteredResult.length > 0) {
         const docIds = filteredResult.map(d => d.id);
         const qEntries = forLedger(ledgerEntries, ledgerId);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { Clock, Inbox, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -17,7 +16,7 @@ interface ProcessingTask {
     createdAt: string;
 }
 
-function TaskStatusIcon({ status }: { status: any }) {
+function TaskStatusIcon({ status }: { status: string }) {
     switch (status) {
         case "running":
             return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
@@ -30,7 +29,7 @@ function TaskStatusIcon({ status }: { status: any }) {
     }
 }
 
-function TaskStatusBadge({ status }: { status: any }) {
+function TaskStatusBadge({ status }: { status: string }) {
     const t = useTranslations("TaskCenter");
     const statusConfig: Record<string, { label: string; className: string }> = {
         running: { label: t("statusRunning"), className: "bg-primary/10 text-primary" },
@@ -70,7 +69,7 @@ function ElapsedTime({ startedAt }: { startedAt: string | null }) {
     return <span>{elapsed}</span>;
 }
 
-function TaskItem({ task }: { task: any }) {
+function TaskItem({ task }: { task: ProcessingTask }) {
     const statusColors: Record<string, string> = {
         queued: "border-l-muted/30",
         running: "border-l-primary",
@@ -118,13 +117,13 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
         queryKey: queryKeys.processingTasks(ledgerId),
         queryFn: () => getProcessingTasksAction(ledgerId, { limit: 20 }),
         // Keep polling while there are running or queued tasks
-        isActive: (data) => data?.some((t: any) => t.status === "running" || t.status === "queued") ?? false,
+        isActive: (data) => data?.some((t: ProcessingTask) => t.status === "running" || t.status === "queued") ?? false,
         interval: 3000, // Poll every 3 seconds
         enabled: !!ledgerId,
     });
 
     // Filter only active tasks (running or queued)
-    const activeTasks = tasks.filter((t: any) => t.status === "running" || t.status === "queued");
+    const activeTasks = tasks.filter((t: ProcessingTask) => t.status === "running" || t.status === "queued");
 
     // Use Smart Polling for stats - poll when there are active tasks
     // This ensures token stats update when tasks complete
@@ -210,7 +209,7 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                             </div>
                         ) : (
                             <div className="space-y-1">
-                                {activeTasks.map((task: any) => (
+                                {activeTasks.map((task: ProcessingTask) => (
                                     <TaskItem key={task.id} task={task} />
                                 ))}
                             </div>

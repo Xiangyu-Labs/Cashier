@@ -134,7 +134,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
 
                 if (!dbUser) {
-                    return null as any;
+                    return null as unknown as any;
                 }
 
                 session.user.id = dbUser.id;

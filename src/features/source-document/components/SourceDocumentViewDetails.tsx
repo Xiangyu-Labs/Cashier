@@ -1,6 +1,7 @@
 "use client";
 
 import { SourceDocument, LedgerEntry } from "@/types/api";
+import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     mainCurrency = "CNY",
     onViewEntry,
 }: SourceDocumentViewDetailsProps): ReactNode {
+    // The component expects string dates, ensure our data matches
+    const safeSourceDocument = sourceDocument;
     const t = useTranslations("SourceDocumentDetail");
     const tCard = useTranslations("SourceDocumentCard");
     const locale = useLocale();
@@ -85,7 +88,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         queries: uniqueCurrencies.map(currency => {
             const amount = subtotalsByCurrency[currency];
             const date = ledgerEntries.find(e => e.currency === currency)?.entryDate || sourceDocument.createdAt;
-            const dateStr = typeof date === 'string' ? date : (date as any).toISOString();
+            const dateStr = date;
 
             return {
                 queryKey: ["convert", amount, currency, mainCurrency, dateStr],
@@ -219,10 +222,11 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                                 className="aspect-square relative rounded-xl overflow-hidden border border-border/60 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
                                                 onClick={() => setViewerIndex(idx)}
                                             >
-                                                <img
+                                                <Image
                                                     src={url}
                                                     alt={tCard("imageAlt", { index: idx + 1 })}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    fill
+                                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
                                                 />
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <div className="bg-black/40 text-white h-7 w-7 rounded-full flex items-center justify-center backdrop-blur-md translate-y-2 group-hover:translate-y-0 transition-all">

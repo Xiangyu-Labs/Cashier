@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-
 import { Ledger } from "@/types/api";
 
 import { useTranslations } from "next-intl";
@@ -51,19 +50,13 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     });
 
     const updateLedgerMutation = useMutation({
-        mutationFn: async (data: Partial<Ledger>) => {
-            const settingsUpdate: any = {};
-            if ((data as any).currencies !== undefined) settingsUpdate.currencies = (data as any).currencies;
-            if ((data as any).mainCurrency !== undefined) settingsUpdate.mainCurrency = (data as any).mainCurrency;
-            if ((data as any).autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = (data as any).autoRecognizeDate;
-            if ((data as any).collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = (data as any).collapseProcessingDefault;
+        mutationFn: async (data: Partial<Ledger> & { name?: string; settings?: any }) => {
+            const settingsUpdate: any = data.settings || {};
 
-            if ((data as any).collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = (data as any).collapseBillsDefault;
-            if ((data as any).aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = (data as any).aiCustomPrompt;
-
-            const payload: any = {};
-            if (data.name !== undefined) payload.name = data.name;
-            if (Object.keys(settingsUpdate).length > 0) payload.settings = settingsUpdate;
+            const payload: Partial<Ledger> & { settings?: any } = {
+                name: data.name,
+                settings: Object.keys(settingsUpdate).length > 0 ? settingsUpdate : undefined
+            };
 
             const result = await updateLedgerAction(ledgerId, payload);
             if (!result.success) throw new Error(result.error || "Unknown error");
@@ -217,8 +210,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                             </div>
                             <Switch
                                 checked={ledger?.autoRecognizeDate || false}
-                                onCheckedChange={(checked) => {
-                                    updateLedgerMutation.mutate({ autoRecognizeDate: checked } as any);
+                                onCheckedChange={(checked: boolean) => {
+                                    updateLedgerMutation.mutate({ settings: { autoRecognizeDate: checked } });
                                 }}
                             />
                         </div>

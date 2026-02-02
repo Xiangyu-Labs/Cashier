@@ -55,7 +55,7 @@ export async function getProcessingStatsAction(ledgerId: string) {
     let totalTokens = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
-    let taskCount = tasks.length;
+    const taskCount = tasks.length;
 
     for (const task of tasks) {
         if (task.usage) {

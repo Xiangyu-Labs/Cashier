@@ -304,7 +304,7 @@ describe("SourceDocument Actions", () => {
       includeLedgerEntries: true
     });
 
-    const foundDoc = result.items.find(d => d.id === docId) as any;
+    const foundDoc = result.items.find(d => d.id === docId) as unknown as { id: string, ledgerEntries: { category?: { id: string } }[] };
     expect(foundDoc).toBeDefined();
     expect(foundDoc?.ledgerEntries).toHaveLength(1);
     expect(foundDoc?.ledgerEntries?.[0].category).toBeDefined();

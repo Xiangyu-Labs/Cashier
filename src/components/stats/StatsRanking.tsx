@@ -26,7 +26,7 @@ interface StatsRankingProps {
     currencySymbol?: string;
 }
 
-export function StatsRanking({ data, total, isLoading, currencySymbol = "¥" }: StatsRankingProps) {
+export function StatsRanking({ data, isLoading, currencySymbol = "¥" }: Omit<StatsRankingProps, 'total'>) {
     const t = useTranslations("StatsTab");
 
     if (isLoading) {
@@ -62,8 +62,6 @@ export function StatsRanking({ data, total, isLoading, currencySymbol = "¥" }: 
             <div className="space-y-5">
                 {sorted.map((cat, idx) => {
                     const percent = cat.percent;
-                    // Trend Highlight
-                    const isIncrease = cat.trend && cat.trend.percent > 20 && cat.trend.amount > 100; // Significant increase
 
                     return (
                         <div key={idx} className="flex items-center gap-3 group">

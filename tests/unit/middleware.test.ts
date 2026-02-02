@@ -14,7 +14,7 @@ vi.mock('next-intl/middleware', () => ({
 // Mock next-auth
 vi.mock('next-auth', () => ({
   default: () => ({
-    auth: (cb: (req: any) => any) => cb,
+    auth: (cb: (req: NextRequest & { auth: unknown }) => Promise<Response | void> | Response | void) => cb,
   }),
 }));
 

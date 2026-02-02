@@ -10,8 +10,8 @@ describe("Ledger Actions", () => {
     try {
       await getLedgerAction("00000000-0000-0000-0000-000000000000");
       expect.fail("Should throw error");
-    } catch (e: any) {
-      expect(e.message).toContain("Unauthorized");
+    } catch (e: unknown) {
+      expect((e as Error).message).toContain("Unauthorized");
     }
   });
 

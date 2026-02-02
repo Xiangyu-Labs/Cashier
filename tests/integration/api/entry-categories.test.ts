@@ -72,8 +72,8 @@ describe("createEntryCategoryAction", () => {
     // If I didn't port that logic, this test will fail (both will be 0).
 
     // Let's create two and see.
-    const r1 = await createEntryCategoryAction(testLedgerId, { name: "First" });
-    const r2 = await createEntryCategoryAction(testLedgerId, { name: "Second" });
+    await createEntryCategoryAction(testLedgerId, { name: "First" });
+    await createEntryCategoryAction(testLedgerId, { name: "Second" });
 
     // Assuming we want to keep Feature Parity, I should fix the Action if it fails.
     // But testing Action:
@@ -91,20 +91,19 @@ describe("createEntryCategoryAction", () => {
   it("should return error for missing name (Zod parsing)", async () => {
     // Calling with invalid type? TS prevents this.
     // But if we bypass TS:
-    // @ts-ignore
+    // @ts-expect-error - testing invalid input
     const promise = createEntryCategoryAction(testLedgerId, {});
     // Usually it throws or returns error? 
     // My action catches error and returns { success: false }.
     // Zod throws inside try/catch.
 
-    const result = await promise.catch(e => ({ success: false })); // In case it throws before catch block?
+    await promise.catch(() => ({ success: false })); // In case it throws before catch block?
     // Actually action has try/catch.
 
     // Using simple expect
     try {
-      await createEntryCategoryAction(testLedgerId, { name: "" }); // Empty string fails min(1)
-    } catch (e) {
-      // It might not throw, but return success:false
+    } catch (_e) {
+      // Success
     }
     const res = await createEntryCategoryAction(testLedgerId, { name: "" });
     expect(res.success).toBe(false);

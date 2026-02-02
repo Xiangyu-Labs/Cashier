@@ -34,11 +34,13 @@ export async function getSourceDocumentByIdAction(id: string) {
             data: {
                 ...doc,
                 createdAt: doc.createdAt.toISOString(),
-                status: doc.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
+                status: doc.status as "queued" | "processing" | "completed" | "anomaly",
                 ledgerEntries: doc.ledgerEntries.map(entry => ({
                     ...entry,
                     amount: String(entry.amount),
                     createdAt: entry.createdAt.toISOString(),
+                    deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
                     entryDate: entry.entryDate ? entry.entryDate.toISOString() : null
                 }))
             }

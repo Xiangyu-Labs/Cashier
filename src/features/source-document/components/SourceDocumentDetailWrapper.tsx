@@ -17,12 +17,14 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
+import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
+
 interface SourceDocumentDetailWrapperProps {
     id: string;
     open: boolean;
     onClose: () => void;
-    categories: any[];
-    ledgerEntries?: any[]; // Allow override if we already have data (optional optimization)
+    categories: EntryCategory[];
+    ledgerEntries?: LedgerEntry[]; // Allow override if we already have data (optional optimization)
 }
 
 export function SourceDocumentDetailWrapper({
@@ -63,7 +65,7 @@ export function SourceDocumentDetailWrapper({
     });
 
     const batchUpdateMutation = useMutation({
-        mutationFn: async ({ ids, data }: { ids: string[], data: any }) => {
+        mutationFn: async ({ ids, data }: { ids: string[], data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             if (!ledgerId) return;
             const result = await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
             if (!result.success) throw new Error(result.error || "Unknown error");
@@ -123,15 +125,17 @@ export function SourceDocumentDetailWrapper({
     // Cast or ensuring non-null for the component
     if (!sourceDocument) return null;
 
-    // The component expects string dates, ensure our data matches
-    // getSourceDocumentByIdAction returns strings for dates, so we just need to ensure TYPES match
-    // SourceDocument interface usually expects strings for dates in this project
-    const safeSourceDocument: any = sourceDocument;
+    const currentLedgerEntries: LedgerEntry[] = (sourceDocument as any).ledgerEntries || initialLedgerEntries || [];
+
+    // Ensure status is valid for the component
+    if (!sourceDocument.status) {
+        (sourceDocument as any).status = "queued";
+    }
 
     return (
         <SourceDocumentDetailModal
-            sourceDocument={safeSourceDocument}
-            ledgerEntries={safeSourceDocument.ledgerEntries || initialLedgerEntries || []}
+            sourceDocument={sourceDocument}
+            ledgerEntries={currentLedgerEntries}
             categories={categories}
             open={open}
             onClose={onClose}

@@ -15,12 +15,17 @@ export function ExpiryTimer({
   onExpired,
   className,
 }: ExpiryTimerProps) {
-  const [remaining, setRemaining] = useState(0);
+  const calculateRemaining = () => {
+    if (!expiresAt) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    return Math.max(0, expiresAt - now);
+  };
+
+  const [remaining, setRemaining] = useState(calculateRemaining);
   const [hasExpired, setHasExpired] = useState(false);
 
   useEffect(() => {
     if (!expiresAt) {
-      setRemaining(0);
       return;
     }
 

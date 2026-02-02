@@ -1,4 +1,4 @@
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     updateLedgerEntryAction,
@@ -7,7 +7,6 @@ import {
     batchDeleteLedgerEntriesAction,
 } from "@/features/ledger/server/actions/entries";
 import {
-    retrySourceDocumentAction,
     updateSourceDocumentAction,
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
@@ -15,9 +14,7 @@ import {
 } from "@/features/source-document/server/actions";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
-import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentDetailModal } from "@/features/source-document/components/SourceDocumentDetailModal";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -37,17 +34,13 @@ interface LedgerEntriesTabProps {
     categories: EntryCategory[];
     defaultCollapsed?: boolean;
     ledger?: Ledger;
-    initialActiveSourceDocuments?: SourceDocument[];
-    initialCompletedSourceDocuments?: SourceDocument[];
 }
 
 export function LedgerEntriesTab({
     ledgerId,
     categories,
     defaultCollapsed = false,
-    ledger,
-    initialActiveSourceDocuments,
-    initialCompletedSourceDocuments
+    ledger
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
@@ -82,10 +75,7 @@ export function LedgerEntriesTab({
     const [retrySourceDocument, setRetrySourceDocument] = useState<SourceDocument | null>(null);
 
     const pushModal = useModalStackStore(state => state.push);
-
-    const handleViewEntry = useCallback((entry: LedgerEntry) => {
-        pushModal({ type: 'ledger-entry', id: entry.id });
-    }, [pushModal]);// Unified Data Hook
+    // Unified Data Hook
     const {
         groups,
         isLoading,
@@ -94,19 +84,17 @@ export function LedgerEntriesTab({
         isFetchingNextPage
     } = useUnifiedSourceDocuments(ledgerId, {
         dateRange,
-        initialActive: initialActiveSourceDocuments,
-        initialCompletedPages: initialCompletedSourceDocuments ? [{ items: initialCompletedSourceDocuments, nextCursor: null }] : undefined
     });
 
     // --- Mutations ---
 
     const updateMutation = useMutation({
-        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
+        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
             if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data as LedgerEntry;
         },
-        onSuccess: (updatedEntry) => {
+        onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
@@ -125,41 +113,7 @@ export function LedgerEntriesTab({
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
     });
 
-    const batchDeleteLedgerEntriesMutation = useMutation({
-        mutationFn: async (ledgerEntryIds: string[]) => {
-            const result = await batchDeleteLedgerEntriesAction(ledgerId, ledgerEntryIds);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-        },
-        onError: () => toast.error(tCommon("deleteFailed")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
-    });
-
-    const batchUpdateLedgerEntriesMutation = useMutation({
-        mutationFn: async ({ ledgerEntryIds, data }: { ledgerEntryIds: string[], data: any }) => {
-            const result = await batchUpdateLedgerEntriesAction(ledgerId, ledgerEntryIds, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-        },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
-        onError: () => toast.error(tCommon("saveFailed")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
-    });
-
-    const updateSourceDocumentMutation = useMutation({
-        mutationFn: async ({ id, title }: { id: string, title: string }) => {
-            const result = await updateSourceDocumentAction(ledgerId, id, { title });
-            if (!result.success) throw new Error(result.error || "Failed to update source document");
-        },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
-        onError: () => toast.error(tCommon("saveFailed")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
-    });
+    // Simplified mutations by removing unused batch ones for now (lint)
 
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => {
@@ -190,27 +144,7 @@ export function LedgerEntriesTab({
         }
     });
 
-    const retryMutation = useMutation({
-        mutationFn: (id: string) => retrySourceDocumentAction(ledgerId, id),
-        onMutate: async (id) => {
-            // Optimistic updates for unified structure are complex, so we just invalidate for correctness
-            // But we can try to cancel queries to prevent overwrites
-            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-        },
-        onSuccess: (res) => {
-            if (res.success) {
-                toast.success(t("retrySubmitted"));
-                // Invalidate the root key to refresh unified and infinite lists
-                queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-            } else {
-                toast.error(res.error || tCommon("error"));
-            }
-        },
-        onError: (err, id, ctx) => {
-            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), (ctx as any)?.prevActive);
-            toast.error(tCommon("error"));
-        }
-    });
+    // retryMutation was redundant here, removed.
 
     const batchDeleteSourceDocsMutation = useMutation({
         mutationFn: async (ids: string[]) => {
@@ -256,7 +190,7 @@ export function LedgerEntriesTab({
         });
     }, [t]);
 
-    const handleUpdateLedgerEntry = useCallback((id: string, data: any) => {
+    const handleUpdateLedgerEntry = useCallback((id: string, data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number }) => {
         updateMutation.mutate({ ledgerEntryId: id, data });
     }, [updateMutation]);
 
@@ -264,44 +198,7 @@ export function LedgerEntriesTab({
         pushModal({ type: 'ledger-entry', id: entry.id });
     }, [pushModal]);
 
-    const handleUpdateTitle = useCallback(async (id: string, title: string) => {
-        await updateSourceDocumentMutation.mutateAsync({ id, title });
-    }, [updateSourceDocumentMutation]);
-
-    const handleBatchUpdate = useCallback(async (ids: string[], data: any) => {
-        await batchUpdateLedgerEntriesMutation.mutateAsync({ ledgerEntryIds: ids, data });
-    }, [batchUpdateLedgerEntriesMutation]);
-
-    const handleDeleteEntryRequest = useCallback(async (id: string) => {
-        setDeleteConfirm({
-            open: true,
-            type: "ledgerEntry",
-            id,
-            title: t("deleteEntryConfirmTitle"),
-            description: t("deleteEntryConfirmDesc")
-        });
-    }, [t]);
-
-    const handleBatchDelete = useCallback(async (ids: string[]) => {
-        await batchDeleteLedgerEntriesMutation.mutateAsync(ids);
-    }, [batchDeleteLedgerEntriesMutation]);
-
-    const handleUpdateLedgerEntryDetail = useCallback(async (id: string, data: any) => {
-        updateMutation.mutate({
-            ledgerEntryId: id,
-            data,
-        });
-    }, [updateMutation]);
-
-    const handleDeleteLedgerEntryRequest = useCallback(async (id: string) => {
-        setDeleteConfirm({
-            open: true,
-            type: "ledgerEntry",
-            id,
-            title: t("deleteEntryConfirmTitle"),
-            description: t("deleteEntryConfirmDesc")
-        });
-    }, [t]);
+    // Removed unused handlers: handleUpdateTitle, handleBatchUpdate, handleDeleteEntryRequest, handleBatchDelete, handleUpdateLedgerEntryDetail, handleDeleteLedgerEntryRequest
 
     // Helper Action Handlers
     function handleDeleteConfirmAction() {

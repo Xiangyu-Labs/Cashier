@@ -14,7 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
-            retry: (failureCount, error) => {
+            retry: (failureCount, _error) => {
               // Basic retry logic for server actions/fetching
               return failureCount < 3;
             },

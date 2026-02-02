@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
 
 interface PullToRefreshProps {
     onRefresh: () => Promise<void>;

@@ -7,11 +7,13 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
+import type { EntryCategory, LedgerEntry } from "@/types/api";
+
 interface LedgerEntryDetailWrapperProps {
     id: string;
     open: boolean;
     onClose: () => void;
-    categories: any[];
+    categories: EntryCategory[];
 }
 
 export function LedgerEntryDetailWrapper({
@@ -31,7 +33,10 @@ export function LedgerEntryDetailWrapper({
             // Assuming getLedgerEntryAction exists or we need to add it.
             // For now, I'll assume we can fetch it. If not I'll add the server action.
             const result = await getLedgerEntryAction(id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            if (!result.success) {
+                const errorMsg = typeof result.error === 'string' ? result.error : "Unknown error";
+                throw new Error(errorMsg);
+            }
             const data = result.data; // Correctly assign result.data to a local variable 'data'
             if (!data) return null;
             return {
@@ -59,7 +64,7 @@ export function LedgerEntryDetailWrapper({
     const ledgerId = ledgerEntry?.ledgerId;
 
     const updateMutation = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number }) => {
             if (!ledgerId) return;
             const result = await updateLedgerEntryAction(ledgerId, id, data);
             if (!result.success) throw new Error(result.error || "Unknown error");

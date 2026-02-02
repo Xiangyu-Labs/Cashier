@@ -27,7 +27,7 @@ import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
 import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
 import { queryKeys } from "@/lib/query-keys";
 
-import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
+import { EntryCategory, Ledger, ServiceCredential, Settings } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
@@ -89,12 +89,21 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.metadata?.settings?.autoRecognizeDate);
 
 
-    function handleUpdateLedger(data: any) {
+    function handleUpdateLedger(data: {
+        name?: string;
+        currencies?: string[];
+        mainCurrency?: string;
+        aiLanguage?: string;
+        autoRecognizeDate?: boolean;
+        collapseProcessingDefault?: boolean;
+        collapseBillsDefault?: boolean;
+        aiCustomPrompt?: string;
+    }) {
         startTransition(async () => {
             // Construct the settings object
             // We need to be careful: the action expects `name` at top level, and everything else in `settings`
 
-            const settingsUpdate: any = {};
+            const settingsUpdate: Parameters<typeof updateLedgerAction>[1]["settings"] = {};
             if (data.currencies !== undefined) settingsUpdate.currencies = data.currencies;
             if (data.mainCurrency !== undefined) settingsUpdate.mainCurrency = data.mainCurrency;
             if (data.aiLanguage !== undefined) settingsUpdate.aiLanguage = data.aiLanguage;
@@ -104,7 +113,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             if (data.collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = data.collapseBillsDefault;
             if (data.aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = data.aiCustomPrompt;
 
-            const payload: any = {};
+            const payload: Parameters<typeof updateLedgerAction>[1] = {};
             if (data.name !== undefined) payload.name = data.name;
             if (Object.keys(settingsUpdate).length > 0) payload.settings = settingsUpdate;
 
@@ -148,7 +157,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                     ledgerId,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
-                } as any
+                } as EntryCategory
             ]);
 
             return { previousCategories };
@@ -159,7 +168,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             queryClient.invalidateQueries({ queryKey });
             queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
         },
-        onError: (err, _, context: any) => {
+        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
             toast.error(t("createCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -176,21 +185,16 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             });
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
-        onMutate: async ({ id, data }) => {
+        onMutate: async ({ id: _id, data: _data }) => {
             await queryClient.cancelQueries({ queryKey });
             const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
-
-            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
-                old.map(c => c.id === id ? { ...c, ...data } : c)
-            );
-
             return { previousCategories };
         },
         onSuccess: () => {
             toast.success(t("categoryUpdated"));
             queryClient.invalidateQueries({ queryKey });
         },
-        onError: (err, _, context: any) => {
+        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
             toast.error(t("updateCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -217,7 +221,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             toast.success(t("categoryDeleted"));
             queryClient.invalidateQueries({ queryKey });
         },
-        onError: (err, _, context: any) => {
+        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
             toast.error(t("deleteCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -349,7 +353,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                                 }
                                 if (newLocale !== locale) {
                                     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-                                    router.push(`${pathname}${query}` as any, { locale: newLocale as any });
+                                    router.push(`${pathname}${query}`, { locale: newLocale as any });
                                 }
                             }}
                             disabled={isPending}
@@ -475,7 +479,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 <div className="space-y-8">
                     {/* Currency Settings */}
                     <CurrencySection
-                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as any}
+                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
                         onUpdateSettings={(data) => handleUpdateLedger(data)}
                     />
 

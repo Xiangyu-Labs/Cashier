@@ -7,13 +7,11 @@ import { eq } from "drizzle-orm";
 
 describe("Stats Currency Conversion", () => {
     let ledgerId: string;
-    let userId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
         const setup = await createTestUserWithLedger(db, "converter-test@example.com", "Converter Ledger");
         ledgerId = setup.ledgerId;
-        userId = setup.userId;
 
         // Set Main Currency to CNY
         await db.update(ledgers)
@@ -47,7 +45,7 @@ describe("Stats Currency Conversion", () => {
         });
     });
 
-    it("should convert a single non-main currency to main currency", async () => {
+    it("should convert multiple currencies to primary currency in stats", async () => {
         const db = getTestDb();
 
         // 1. Insert an entry in MYR

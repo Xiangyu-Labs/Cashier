@@ -8,13 +8,11 @@ import { eq } from "drizzle-orm";
 
 describe("Stats Soft Delete Filtering Regression", () => {
     let ledgerId: string;
-    let userId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
         const setup = await createTestUserWithLedger(db, "stats-test@example.com", "Stats Ledger");
         ledgerId = setup.ledgerId;
-        userId = setup.userId;
 
         // Cleanup entries for this ledger
         await db.delete(ledgerEntries).where(eq(ledgerEntries.ledgerId, ledgerId));

@@ -6,7 +6,6 @@ export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
   // Use a different lock ID for "is creation done" check
-  const CHECK_LOCK_ID = 1234568;
 
   // Try to acquire a session-level advisory lock. 
   // If we can't get it immediately, it means someone else is creating or already created it.
@@ -26,7 +25,7 @@ export async function createTestSchema(db: PostgresJsDatabase<typeof schema>) {
       LIMIT 1
     `);
 
-    if ((tableCheck as any).length > 0) {
+    if ((tableCheck as unknown as unknown[]).length > 0) {
       // Schema already exists, skip creation
       return;
     }

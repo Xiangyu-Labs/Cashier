@@ -91,7 +91,7 @@ export async function getEnhancedStats({
     const uniqueDates = Array.from(new Set(allEntries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
 
     // Fetch rates from DB
-    let ratesMap: Record<string, any> = {};
+    const ratesMap: Record<string, any> = {};
     if (uniqueDates.length > 0) {
         const ratesData = await db.query.currencyRates.findMany({
             where: inArray(currencyRates.date, uniqueDates)

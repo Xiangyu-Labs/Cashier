@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { useTranslations } from "next-intl";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils";
 
 interface ServiceCredentialSectionProps {
     credentials: ServiceCredential[];

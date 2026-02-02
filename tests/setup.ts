@@ -187,7 +187,7 @@ vi.mock("next-intl", async () => {
 vi.mock("next/image", () => ({
   __esModule: true,
   default: (props: { src: string; alt: string;[key: string]: unknown }) => {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return React.createElement("img", { ...props, src: props.src });
   },
 }));

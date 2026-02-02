@@ -93,7 +93,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [summaryData, ledger]);
 
     const updateMutation = useMutation({
-        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: any }) => {
+        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
             if (!result.success) throw new Error(result.error || "Unknown error");
             return result.data as LedgerEntry;

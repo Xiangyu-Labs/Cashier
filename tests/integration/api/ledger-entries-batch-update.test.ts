@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 describe("Batch Update Ledger Entries Action", () => {

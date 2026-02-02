@@ -8,7 +8,6 @@ import { useSearchParams } from "next/navigation";
 
 export function LanguageSwitcher() {
     const locale = useLocale();
-    const t = useTranslations("Settings");
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();

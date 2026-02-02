@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
-import { sourceDocuments, ledgerEntries, taskRuns, entryCategories as categories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { MOCK_RESPONSES } from "../../helpers/mocks/openai";

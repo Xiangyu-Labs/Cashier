@@ -1,10 +1,7 @@
-
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronRight, LogOut, Smartphone } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";

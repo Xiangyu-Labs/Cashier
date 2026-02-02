@@ -21,7 +21,7 @@ export async function getLedgerEntryAction(id: string) {
         // Verify access to the ledger this entry belongs to
         // We do this AFTER fetching because we need the ledgerId
         const { error } = await requireLedgerAccess(entry.ledgerId);
-        if (error) return { success: false, error };
+        if (error) return { success: false, error: "Unauthorized" };
 
         return { success: true, data: entry };
     } catch (e) {

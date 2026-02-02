@@ -1,12 +1,10 @@
-"use client";
-
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentDetailWrapper } from "@/features/source-document/components/SourceDocumentDetailWrapper";
 import { LedgerEntryDetailWrapper } from "@/features/ledger/components/LedgerEntryDetailWrapper";
-import { AnimatePresence } from "framer-motion";
+import type { EntryCategory } from "@/types/api";
 
 interface ModalStackRendererProps {
-    categories: any[];
+    categories: EntryCategory[];
 }
 
 export function ModalStackRenderer({

@@ -17,9 +17,9 @@ describe("getLedgerEntryAction", () => {
 
     beforeEach(() => {
         // Default mock implementation
-        (auth as any).mockResolvedValue({
+        vi.mocked(auth).mockResolvedValue({
             user: { id: testUserId, email: "test@example.com" }
-        });
+        } as any);
     });
 
     it("should return the ledger entry when it exists and user has access", async () => {
