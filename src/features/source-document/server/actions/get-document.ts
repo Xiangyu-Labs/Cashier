@@ -15,6 +15,7 @@ export async function getSourceDocumentByIdAction(id: string) {
             where: eq(sourceDocuments.id, id),
             with: {
                 ledgerEntries: {
+                    where: (entries, { isNull }) => isNull(entries.deletedAt),
                     with: { category: true }
                 }
             }

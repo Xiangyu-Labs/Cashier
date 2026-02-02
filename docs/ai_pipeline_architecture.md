@@ -76,7 +76,7 @@ This significantly reduces "silent failures" where an LLM confidently outputs wr
 
 ## 4. Idempotency & Error Handling
 
--   **Idempotency**: The worker checks if `ledger_entries` already exist for a document ID before saving. If the job runs twice by accident, it won't duplicate data.
+-   **Idempotency**: The worker performs an "upsert-like" operation: it soft-deletes any existing entries for the source document before inserting new ones. This ensures retry operations work correctly and prevents duplicates.
 -   **Anomalies**: If the document cannot be parsed (e.g., blurred image, unrelated text), it is not "Failed" (which implies a system crash) but set to `anomaly` status. This prompts the user to review it manually.
 -   **Retries**: BullMQ handles transient failures (e.g., OpenAI network timeout) with exponential backoff.
 

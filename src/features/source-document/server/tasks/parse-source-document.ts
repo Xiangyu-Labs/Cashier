@@ -266,25 +266,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const q = forLedger(sourceDocuments, context.ledgerId);
         const qEntries = forLedger(ledgerEntries, context.ledgerId);
 
-        // 1. Check if entries already exist (Idempotency)
-        const [existingEntries] = await db.select().from(ledgerEntries).where(eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)).limit(1);
-
-        if (existingEntries) {
-            logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, ensuring status is completed");
-            // Still need to mark as completed and update title even if entries exist (idempotency)
-
-            await db.update(sourceDocuments)
-                .set({ status: 'completed' })
-                .where(q.whereId(input.sourceDocumentId));
-
-            if (title) {
-                await db.update(sourceDocuments)
-                    .set({ title })
-                    .where(q.whereId(input.sourceDocumentId));
-            }
-            return;
-        }
-
         // Handle anomaly - do NOT save entries, just update document status
         if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
             const anomalyCode = verificationStatus === 'invalid' ? 'invalid_content' : 'evidence_anomaly';
@@ -342,6 +323,14 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
             };
         });
+
+        // Delete existing entries for this source document (enables retry)
+        await db.update(ledgerEntries)
+            .set({ deletedAt: new Date() })
+            .where(and(
+                eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+                qEntries.whereActive
+            ));
 
         if (entriesToInsert.length > 0) {
             await db.insert(ledgerEntries).values(entriesToInsert);

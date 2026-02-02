@@ -158,15 +158,7 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         // Use the updated doc we just potentially patched, or logic:
         const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
 
-        // Delete existing ledger entries to prevent idempotency check from blocking new results
-        // Note: ledgerEntries table check
-        const qEntries = forLedger(ledgerEntries, ledgerId);
-        await db.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(and(
-                qEntries.whereActive, // Ensure entries belong to ledger
-                eq(ledgerEntries.sourceDocumentId, sourceDocumentId)
-            ));
+
 
         await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 

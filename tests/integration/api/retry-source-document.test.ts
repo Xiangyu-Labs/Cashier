@@ -71,6 +71,19 @@ describe("SourceDocument Retry Action", () => {
             where: eq(sourceDocuments.id, docId),
         });
         expect(docFinal?.status).toBe("completed");
+
+        // Verify entries
+        const entries = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, docId),
+        });
+
+        // Should have active entries
+        const activeEntries = entries.filter(e => !e.deletedAt);
+        expect(activeEntries.length).toBeGreaterThan(0);
+
+        // Should have soft-deleted entries (from the first run)
+        const deletedEntries = entries.filter(e => e.deletedAt);
+        expect(deletedEntries.length).toBeGreaterThan(0);
     });
 
     it("should retry an anomaly document", async () => {
@@ -101,5 +114,78 @@ describe("SourceDocument Retry Action", () => {
         });
 
         expect(docFinal?.status).toBe("completed");
+    });
+
+    it("should replace old entries with new entries on retry", async () => {
+        const db = getTestDb();
+
+        // Mock first response: "午餐 25元"
+        const firstResponse = JSON.stringify({
+            is_valid: true,
+            ledger_entries: [{
+                item_name: "午餐",
+                amount: 25,
+                currency: "CNY",
+                category: "餐饮",
+                entry_date: "2025-01-25",
+            }],
+            title: "午餐消费",
+        });
+
+        // Mock second response: "晚餐 50元" (same category, different item and amount)
+        const secondResponse = JSON.stringify({
+            is_valid: true,
+            ledger_entries: [{
+                item_name: "晚餐",
+                amount: 50,
+                currency: "CNY",
+                category: "餐饮",
+                entry_date: "2025-01-25",
+            }],
+            title: "晚餐费用",
+        });
+
+        // First processing
+        vi.mocked(getOpenAIClient).mockReturnValue({
+            generateContent: vi.fn().mockResolvedValue({ content: firstResponse }),
+        } as unknown as ReturnType<typeof getOpenAIClient>);
+
+        const createRes = await createSourceDocumentAction(testLedgerId, { text: "午餐 25元" });
+        const docId = createRes.sourceDocumentId!;
+        await processAllPendingTasks();
+
+        // Verify first entry
+        const entriesBeforeRetry = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, docId),
+        });
+        const activeBeforeRetry = entriesBeforeRetry.filter(e => !e.deletedAt);
+        expect(activeBeforeRetry.length).toBe(1);
+        expect(activeBeforeRetry[0].itemName).toBe("午餐");
+        expect(activeBeforeRetry[0].amount).toBe("25.00");
+
+        // Switch to second response for retry
+        vi.mocked(getOpenAIClient).mockReturnValue({
+            generateContent: vi.fn().mockResolvedValue({ content: secondResponse }),
+        } as unknown as ReturnType<typeof getOpenAIClient>);
+
+        // Retry with new text
+        await retrySourceDocumentAction(testLedgerId, docId, { text: "晚餐 50元" });
+        await processAllPendingTasks();
+
+        // Verify entries after retry
+        const entriesAfterRetry = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, docId),
+        });
+
+        // Old entry should be soft-deleted
+        const deletedEntries = entriesAfterRetry.filter(e => e.deletedAt);
+        expect(deletedEntries.length).toBe(1);
+        expect(deletedEntries[0].itemName).toBe("午餐");
+
+        // New entry should be active
+        const activeAfterRetry = entriesAfterRetry.filter(e => !e.deletedAt);
+        expect(activeAfterRetry.length).toBe(1);
+        expect(activeAfterRetry[0].itemName).toBe("晚餐");
+        expect(activeAfterRetry[0].amount).toBe("50.00");
     });
 });
