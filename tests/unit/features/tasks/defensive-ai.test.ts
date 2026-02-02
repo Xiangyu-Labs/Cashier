@@ -9,7 +9,7 @@ import { FlowContext } from "@/lib/flow";
 describe("parseSourceDocumentHandler.onError", () => {
     it("should map schema validation errors (zod) to 'invalid_content'", async () => {
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db);
+        const { ledgerId } = await createTestUserWithLedger(db, "err1@example.com");
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
@@ -39,7 +39,7 @@ describe("parseSourceDocumentHandler.onError", () => {
 
     it("should map JSON parsing errors to 'internal_error'", async () => {
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db);
+        const { ledgerId } = await createTestUserWithLedger(db, "err2@example.com");
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {

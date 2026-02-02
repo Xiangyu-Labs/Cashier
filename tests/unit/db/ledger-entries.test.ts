@@ -143,12 +143,11 @@ describe("LedgerEntries Database Operations", () => {
     it("should update ledger entry description", async () => {
       const db = getTestDb();
       const { ledgerId: id } = await createTestUserWithLedger(db, "test6@example.com", "Test Ledger");
-      const ledger = { id };
 
       const [created] = await db
         .insert(ledgerEntries)
         .values({
-          ledgerId: ledger.id,
+          ledgerId: id,
           amount: "25.00",
           itemName: "午餐",
         })

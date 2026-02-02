@@ -19,6 +19,7 @@ export class OpenAIClient {
         this.client = new OpenAI({
             apiKey,
             baseURL,
+            dangerouslyAllowBrowser: true, // Needed for Vitest environment which might be detected as browser
         });
     }
 

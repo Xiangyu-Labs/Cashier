@@ -100,6 +100,9 @@ describe("Recursive Flow Integration", () => {
         // L0: 25, 25, 25, 25
         // Sum should be 100
 
+        const { ledgerId: currentLedgerId } = await createTestUserWithLedger(db, "recursive@example.com", "Recursive Ledger");
+        ledgerId = currentLedgerId;
+
         const taskRunId = await submitFlowTask({
             type: RECURSIVE_TASK_TYPE,
             title: "Recursive Root",
@@ -110,21 +113,15 @@ describe("Recursive Flow Integration", () => {
 
         expect(taskRunId).toBeDefined();
 
-        await db.query.taskRuns.findFirst({
-            where: eq(taskRuns.id, taskRunId)
-        });
-
-
         // 2. Poll for Completion
         // Recursive tasks take longer due to multiple queue roundtrips
-        // Max wait 10s
         let run;
-        for (let i = 0; i < 600; i++) {
-            await new Promise(r => setTimeout(r, 100));
+        for (let i = 0; i < 200; i++) {
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)
             });
             if (run?.status === 'completed' || run?.status === 'failed') break;
+            await new Promise(r => setTimeout(r, 200));
         }
 
         expect(run?.status).toBe('completed');

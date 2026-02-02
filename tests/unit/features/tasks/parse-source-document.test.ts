@@ -256,7 +256,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     it("should NOT save entries when status is anomaly", async () => {
         const db = getTestDb();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger");
+        const { ledgerId } = await createTestUserWithLedger(db, `test-anomaly-${Date.now()}@example.com`, "Test Ledger");
         const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
 
@@ -301,7 +301,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     it("should save entries and use 'completed' status if verification passed", async () => {
         const db = getTestDb();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test2@example.com", "Test Ledger");
+        const { ledgerId } = await createTestUserWithLedger(db, `test-completed-${Date.now()}@example.com`, "Test Ledger");
         const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
         const [category] = await db.insert(entryCategories).values({ ledgerId: ledger.id, name: "餐饮", description: "餐饮" }).returning();
@@ -354,10 +354,17 @@ describe("parseSourceDocumentHandler.onComplete", () => {
 
     it("should be idempotent (not create duplicates) if called multiple times", async () => {
         const db = getTestDb();
+        const { ledgerId } = await createTestUserWithLedger(db, `idemp-${Date.now()}@example.com`, "Idemp Ledger");
+        const [sourceDoc] = await db.insert(sourceDocuments).values({
+            ledgerId: ledgerId,
+            status: "processing"
+        }).returning();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test3@example.com", "Test Ledger");
-        const ledger = { id: ledgerId };
-        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
+        const input: ParseSourceDocumentInput = {
+            sourceDocumentId: sourceDoc.id,
+            categories: [],
+            settings: { autoRecognizeDate: true }
+        };
 
         const output: ParseSourceDocumentOutput = {
             ledgerEntries: [
@@ -376,7 +383,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const context = {
             id: "task-idempotent",
             type: "parse_source_document",
-            ledgerId: ledger.id,
+            ledgerId: ledgerId,
             input: {
                 sourceDocumentId: sourceDoc.id,
                 categories: [],

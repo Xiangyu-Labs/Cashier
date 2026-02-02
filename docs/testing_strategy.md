@@ -71,15 +71,19 @@ describe("Create Transaction", () => {
 ```
 
 ## 5. Mocking AI
-Never hit the real OpenAI API in tests. Use `vi.mock`:
+Never hit the real OpenAI API in tests. We provide a **global mock** in `tests/setup.ts` to cover both foreground actions and background workers.
 
+If you need to customize the mock for a specific test:
 ```typescript
-vi.mock("@/features/ai/server/services/openai", () => ({
-    generateCompletion: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: "Parsed Result" } }]
-    }),
-}));
+import { getOpenAIClient } from "@/features/ai/server/services/openai";
+
+vi.mocked(getOpenAIClient).mockReturnValue({
+    generateContent: vi.fn().mockResolvedValue({ content: "Custom Result" })
+} as any);
 ```
+
+> [!IMPORTANT]
+> Since we use background workers, an action might trigger a task that runs *after* your test finishes or during your test. Always ensure OpenAI is mocked globally to prevent `OPENAI_API_KEY is required` errors in worker threads.
 
 ## 6. Continuous Integration (CI)
 Our CI pipeline automatically runs `test:db:up` -> `test` -> `test:db:down` on every PR.

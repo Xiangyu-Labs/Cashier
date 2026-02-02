@@ -103,6 +103,8 @@ describe("OpenAIClient Retry Logic", () => {
         const error = new (mockOpenAI as unknown as { APIError: new (status: number, message: string) => Error }).APIError(400, "Bad Request");
         mockCreate.mockRejectedValueOnce(error);
 
+        // My client might be using the global mock if not careful, 
+        // but beforeEach creates a new OpenAIClient() which should use the mocked 'openai' package.
         await expect(client.generateContent("prompt", [])).rejects.toThrow("Bad Request");
         expect(mockCreate).toHaveBeenCalledTimes(1);
     });

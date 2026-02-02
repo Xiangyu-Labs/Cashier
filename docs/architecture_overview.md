@@ -53,11 +53,11 @@ The `src/app` directory (Next.js App Router) should be kept "thin". It serves as
 
 **Example Page (`src/app/(dashboard)/ledger/page.tsx`):**
 ```tsx
-import { LedgerContainer } from "@/features/ledger/components/ledger-container";
+import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
 
 export default function LedgerPage() {
   // The page just mounts the feature container
-  return <LedgerContainer />;
+  return <LedgerPageClient />;
 }
 ```
 

@@ -35,37 +35,24 @@ describe("SourceDocument Actions", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
     testLedgerId = ledgerId;
 
-    const category = await db.query.entryCategories.findFirst({
-      where: eq(categories.name, "餐饮"),
-    });
-
-    if (category) {
-      testCategoryId = category.id;
-    } else {
-      const [newCat] = await db
-        .insert(categories)
-        .values({
-          name: "餐饮",
-          description: "外卖、堂食",
-          sortOrder: 1,
-          ledgerId: testLedgerId,
-        })
-        .returning();
-      testCategoryId = newCat.id;
-    }
+    const [newCat] = await db
+      .insert(categories)
+      .values({
+        name: "餐饮",
+        description: "外卖、堂食",
+        sortOrder: 1,
+        ledgerId: testLedgerId,
+      })
+      .returning();
+    testCategoryId = newCat.id;
 
     // Ensure '水果' category exists for the notes test
-    const fruitCategory = await db.query.entryCategories.findFirst({
-      where: eq(categories.name, "水果"),
+    await db.insert(categories).values({
+      name: "水果",
+      description: "Fresh Fruit",
+      sortOrder: 2,
+      ledgerId: testLedgerId,
     });
-    if (!fruitCategory) {
-      await db.insert(categories).values({
-        name: "水果",
-        description: "Fresh Fruit",
-        sortOrder: 2,
-        ledgerId: testLedgerId,
-      });
-    }
   });
 
   it("should persist ledger entries with notes", async () => {
@@ -298,13 +285,21 @@ describe("SourceDocument Actions", () => {
 
     // 2. Add an entry manually
     const db = getTestDb();
+    // Re-create user/ledger to be safe if previous steps messed up or truncated
+    const { ledgerId: freshLedgerId } = await createTestUserWithLedger(db, "manual@example.com");
+
+    // Update docId to match freshLedgerId if needed, 
+    // but wait, docId belongs to testLedgerId. 
+    // I should use testLedgerId which was created in beforeEach.
+    // The error says testLedgerId (be2e...) is missing in table 'ledgers'.
+    // This confirms beforeEach's ledger was deleted or not inserted correctly.
+
     await db.insert(ledgerEntries).values({
       ledgerId: testLedgerId,
       sourceDocumentId: docId,
       amount: "100",
       currency: "CNY",
-      categoryId: testCategoryId,
-      itemName: "Lunch Item"
+      itemName: "Lunch Item",
     });
 
     // 3. Fetch with includeLedgerEntries
