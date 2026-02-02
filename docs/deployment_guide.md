@@ -55,13 +55,21 @@ We provide a production-ready `docker-compose.yml`.
 
 ### Automatic Migrations
 The `app` container is configured to run database migrations automatically on startup via `docker-entrypoint.sh`.
+-   It executes `npm run db:migrate`, which applies SQL scripts from `src/lib/db/migrations`.
 -   The `worker` container has `SKIP_MIGRATIONS=true` to prevent race conditions.
+
+### 2.4 Database Backup
+Automatic backups are handled by a dedicated `db-backup` container.
+-   **Schedule**: Once every day (`@daily`).
+-   **Storage**: Backups are saved as compressed `.sql.gz` files in the `./backups` directory on the host.
+-   **Retention**: Keeps the last 7 days, 4 weeks, and 6 months of backups by default.
 
 ## 4. Updates & Rollbacks
 To update the application:
 
-1.  `git pull`
-2.  `docker compose up -d --build` (Zero-downtime is achievable if you use a reverse proxy like Traefik/Nginx in front).
+1.  **Local**: Run `npm run db:generate` if there are schema changes, and commit the generated SQL files.
+2.  **Server**: `git pull`
+3.  **Deploy**: `docker compose up -d --build` (Zero-downtime is achievable if you use a reverse proxy like Traefik/Nginx in front).
 
 ## 5. Troubleshooting in Production
 
