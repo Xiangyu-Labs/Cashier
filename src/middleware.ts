@@ -1,16 +1,14 @@
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 
 const { auth } = NextAuth(authConfig);
 const intlMiddleware = createMiddleware(routing);
 
 export default auth((req) => {
     const { pathname } = req.nextUrl;
-    const referer = req.headers.get("referer");
-    const acceptLanguage = req.headers.get("accept-language");
 
     // 1. Skip static files
     if (pathname.startsWith("/_next") || pathname.includes(".")) {
@@ -19,6 +17,7 @@ export default auth((req) => {
 
     // 2. Handle API Routes
     if (pathname.startsWith("/api/")) {
+        // Exclude public APIs
         const isPublicApi =
             pathname.startsWith("/api/auth") ||
             pathname.startsWith("/api/s/") ||
@@ -30,40 +29,10 @@ export default auth((req) => {
         return NextResponse.next();
     }
 
-    // 3. Define Public Pages
-    const isPublicPath = (path: string) => {
-        const publicPrefixes = ["/login", "/s/"];
-        const pathSegments = path.split('/').filter(Boolean);
-        const firstSegment = pathSegments[0];
-        let checkPath = path;
-        if (routing.locales.includes(firstSegment as any)) {
-            checkPath = '/' + pathSegments.slice(1).join('/');
-        }
-        return publicPrefixes.some(p => checkPath === p || checkPath.startsWith(p));
-    };
-
-    const isPublicPage = isPublicPath(pathname);
-
-    // 4. Redirect authenticated users away from public pages (like /login)
-    if (isPublicPage && req.auth) {
-        const url = req.nextUrl.clone();
-        url.pathname = "/";
-        return NextResponse.redirect(url);
-    }
-
-    // 4. Handle Auth Redirects BEFORE Intl if not public
-    if (!isPublicPage && !req.auth) {
-        const url = req.nextUrl.clone();
-        url.pathname = "/login";
-        url.searchParams.set("callbackUrl", pathname);
-        return NextResponse.redirect(url);
-    }
-
-    // 5. Run Intl Middleware
+    // 3. For all other routes (pages), run Intl Middleware
+    // Auth protection for pages is handled by (protected) layout
     return intlMiddleware(req);
 });
-
-// };
 
 export const config = {
     // Matcher ignoring static files

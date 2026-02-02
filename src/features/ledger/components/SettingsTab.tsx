@@ -17,12 +17,12 @@ import {
     deleteServiceCredentialAction,
 } from "@/features/ledger/server/actions/credentials";
 import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
-import { CurrencySection } from "@/app/[locale]/ledger/[id]/settings/components/CurrencySection";
-import { CategorySection } from "@/app/[locale]/ledger/[id]/settings/components/CategorySection";
-import { ServiceCredentialSection } from "@/app/[locale]/ledger/[id]/settings/components/ServiceCredentialSection";
-import { ProcessingSystemSection } from "@/app/[locale]/ledger/[id]/settings/components/ProcessingSystemSection";
+import { CurrencySection } from "./settings/CurrencySection";
+import { CategorySection } from "./settings/CategorySection";
+import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
+import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
 import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
-import { DeviceManagementSection } from "@/app/[locale]/ledger/[id]/settings/components/DeviceManagementSection";
+
 import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";
@@ -445,17 +445,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 />
             </section>
 
-            {/* Device Management */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t("Devices.title")}</h2>
-                <div className="space-y-1 mb-4">
-                    <p className="text-sm text-[var(--muted)]">{t("Devices.description")}</p>
-                </div>
-                {/* Need to lazy load or separate component to avoid big bundle? It's fine for now. */}
-                <div className="mt-4">
-                    <DeviceManagementSection />
-                </div>
-            </section>
+
 
             {/* Account Settings (Sign Out) */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">

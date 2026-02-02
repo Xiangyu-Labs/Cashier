@@ -142,8 +142,8 @@ describe('getEnhancedStats', () => {
 
         const stats = await getEnhancedStats({
             ledgerId: 'test-ledger',
-            rangeType: 'month',
-            currentDate: '2023-10-15'
+            queryRange: { from: '2023-10-01', to: '2023-10-31' },
+            compareRange: { from: '2023-09-01', to: '2023-09-30' }
         });
 
         expect(stats.summary.currency).toBe('CNY');

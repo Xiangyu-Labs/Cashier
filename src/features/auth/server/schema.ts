@@ -64,25 +64,6 @@ export const accounts = pgTable("accounts", {
 
 export type Account = InferSelectModel<typeof accounts>; // Added this type export
 
-// Sessions - 数据库 Session
-export const sessions = pgTable("sessions", {
-    sessionToken: text("session_token").primaryKey(),
-    userId: uuid("user_id")
-        .notNull()
-        .references(() => users.id, { onDelete: "cascade" }),
-    expires: timestamp("expires").notNull(),
-    // Extended fields for device management
-    userAgent: text("user_agent"),
-    ipAddress: text("ip_address"),
-    deviceName: text("device_name"),
-    lastActiveAt: timestamp("last_active_at").defaultNow(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => [
-    index("idx_sessions_user_id").on(table.userId),
-]);
-
-export type Session = InferSelectModel<typeof sessions>;
-
 // Verification Tokens - Magic Link 验证令牌
 export const verificationTokens = pgTable("verification_tokens", {
     identifier: text("identifier").notNull(),

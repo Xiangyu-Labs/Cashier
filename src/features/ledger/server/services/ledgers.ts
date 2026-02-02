@@ -30,7 +30,6 @@ export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefi
 import { logger } from "@/lib/logger";
 
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
-    logger.info({ ledgerId: row.id, metadata: row.metadata }, "Mapping ledger to API");
     return {
         id: row.id,
         userId: row.userId,

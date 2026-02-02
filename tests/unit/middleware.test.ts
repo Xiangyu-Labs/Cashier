@@ -85,20 +85,17 @@ describe('Middleware Logic', () => {
       const req = createRequest('/dashboard');
       const res = await (middleware as any)(req);
 
-      // Should be a redirect to /login (no locale prefix)
-      expect(res.status).toBe(307);
-      const location = res.headers.get('location');
-      expect(location).toBe('http://localhost:3000/login?callbackUrl=%2Fdashboard');
+      // Pages are no longer protected by middleware, so it should call intlMiddleware and return 200
+      expect(res.status).toBe(200);
+      expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it('should redirect unauthenticated user to login from /en/dashboard', async () => {
       const req = createRequest('/en/dashboard');
       const res = await (middleware as any)(req);
 
-      expect(res.status).toBe(307);
-      const location = res.headers.get('location');
-      // Should redirect to /login, not /en/login (since we simplified it)
-      expect(location).toBe('http://localhost:3000/login?callbackUrl=%2Fen%2Fdashboard');
+      expect(res.status).toBe(200);
+      expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it('should allow authenticated user to access /dashboard', async () => {

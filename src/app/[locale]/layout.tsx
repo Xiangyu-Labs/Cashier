@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/components/providers";
-import { SessionManager } from "@/components/SessionManager";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -61,7 +61,7 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>
-            <SessionManager />
+
             <main className="max-w-screen-2xl mx-auto min-h-screen pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
               {children}
             </main>

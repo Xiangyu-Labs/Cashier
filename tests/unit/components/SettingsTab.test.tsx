@@ -11,7 +11,7 @@ const mockRefresh = vi.fn();
 const mockPush = vi.fn();
 const mockSetTheme = vi.fn();
 const mockUpdateLedgerAction = vi.fn((id: string, data: any) => Promise.resolve({ success: true }));
-const mockSignOutAction = vi.fn();
+const mockSignOut = vi.fn();
 
 // Mock Redis to prevent connection attempts
 vi.mock("ioredis", () => {
@@ -54,6 +54,9 @@ vi.mock("next-intl", () => ({
 vi.mock("next-themes", () => ({
     useTheme: () => ({ theme: "light", setTheme: mockSetTheme }),
 }));
+vi.mock("next-auth/react", () => ({
+    signOut: (...args: any[]) => mockSignOut(...args),
+}));
 
 vi.mock("sonner", () => ({
     toast: {
@@ -78,7 +81,7 @@ vi.mock("@/features/ledger/server/actions/credentials", () => ({
 }));
 
 vi.mock("@/features/auth/server/actions/sign-out", () => ({
-    signOutAction: () => mockSignOutAction(),
+    signOutAction: () => mockSignOut(),
 }));
 
 vi.mock("@/features/ledger/client/hooks/use-ledger-events", () => ({
@@ -90,19 +93,19 @@ vi.mock("@/features/notifications/components/PushNotificationManager", () => ({
 }));
 
 // Mock components
-vi.mock("@/app/[locale]/ledger/[id]/settings/components/CurrencySection", () => ({
+vi.mock("./settings/CurrencySection", () => ({
     CurrencySection: () => <div>CurrencySection</div>,
 }));
 
-vi.mock("@/app/[locale]/ledger/[id]/settings/components/CategorySection", () => ({
+vi.mock("./settings/CategorySection", () => ({
     CategorySection: () => <div>CategorySection</div>,
 }));
 
-vi.mock("@/app/[locale]/ledger/[id]/settings/components/ServiceCredentialSection", () => ({
+vi.mock("./settings/ServiceCredentialSection", () => ({
     ServiceCredentialSection: () => <div>ServiceCredentialSection</div>,
 }));
 
-vi.mock("@/app/[locale]/ledger/[id]/settings/components/ProcessingSystemSection", () => ({
+vi.mock("./settings/ProcessingSystemSection", () => ({
     ProcessingSystemSection: () => <div>ProcessingSystemSection</div>,
 }));
 
@@ -248,7 +251,7 @@ describe("SettingsTab", () => {
         await user.click(signOutButton);
 
         await waitFor(() => {
-            expect(mockSignOutAction).toHaveBeenCalled();
+            expect(mockSignOut).toHaveBeenCalled();
         });
     });
 });

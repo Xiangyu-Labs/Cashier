@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, accounts, sessions } from "@/features/auth/server/schema";
+import { users, accounts } from "@/features/auth/server/schema";
 import { ledgers, entryCategories, ledgerEntries, serviceCredentials } from "@/features/ledger/server/schema";
 import { taskRuns } from "@/features/tasks/server/schema";
 import { sourceDocuments, sourceDocumentStatusEnum, anomalyCodeEnum } from "@/features/source-document/server/schema";
@@ -7,7 +7,6 @@ import { sourceDocuments, sourceDocumentStatusEnum, anomalyCodeEnum } from "@/fe
 // Auth relations
 export const usersRelations = relations(users, ({ many }) => ({
     accounts: many(accounts),
-    sessions: many(sessions),
     ledgers: many(ledgers),
 }));
 
@@ -18,12 +17,7 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
     }),
 }));
 
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-    user: one(users, {
-        fields: [sessions.userId],
-        references: [users.id],
-    }),
-}));
+
 
 // Business relations
 export const ledgersRelations = relations(ledgers, ({ one, many }) => ({
