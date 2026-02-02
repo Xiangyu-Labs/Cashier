@@ -26,6 +26,19 @@ export function getTestDb() {
 import { createTestSchema } from "./helpers/schema-setup";
 
 beforeAll(async () => {
+  // 1. Safety Check: Never run tests against production ports
+  const redisUrl = process.env.REDIS_URL || "redis://localhost:6380";
+  const dbUrl = TEST_DATABASE_URL;
+
+  if (redisUrl.includes(":6379")) {
+    console.error("\x1b[31mCRITICAL ERROR: Tests attempted to connect to PRODUCTION REDIS (6379)!\x1b[0m");
+    process.exit(1);
+  }
+  if (dbUrl.includes(":5432")) {
+    console.error("\x1b[31mCRITICAL ERROR: Tests attempted to connect to PRODUCTION DATABASE (5432)!\x1b[0m");
+    process.exit(1);
+  }
+
   // Set Redis URL explicitly before anything else
   process.env.REDIS_URL = "redis://localhost:6380";
 

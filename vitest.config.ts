@@ -8,6 +8,10 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     exclude: ["node_modules", ".next"],
     setupFiles: ["./tests/setup.ts"],
+    env: {
+      NODE_ENV: "test",
+      REDIS_URL: "redis://127.0.0.1:6380",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -15,9 +19,6 @@ export default defineConfig({
     },
     fileParallelism: false,
     testTimeout: 30000,
-    env: {
-      REDIS_URL: "redis://127.0.0.1:6380",
-    },
   },
   resolve: {
     alias: {
