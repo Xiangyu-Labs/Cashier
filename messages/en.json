@@ -60,6 +60,8 @@
         "tokenStatsDesc": "AI processing system consumption overview based on gpt-tokenizer",
         "tokenStatsFootnote": "* Stats only include tasks completed via the Processing System. Uses gpt-tokenizer for precision.",
         "activeTasks": "Active Tasks",
+        "recentTasks": "Recent History",
+        "noRecentTasks": "No recent tasks",
         "totalConsumption": "Total Consumption",
         "inputTokens": "Input Tokens",
         "outputTokens": "Output Tokens",
@@ -249,6 +251,7 @@
         "reorderCategoriesFailed": "Failed to reorder categories",
         "categoryDescription": "Category Description",
         "generating": "AI generating...",
+        "saving": "(Saving...)",
         "ledgerName": "Ledger Name",
         "ledgerNameDesc": "The name of the ledger displayed on the home page",
         "ledgerNamePlaceholder": "e.g., My Ledger",
@@ -370,5 +373,24 @@
         "pullToRefresh": "Pull to refresh",
         "releaseToRefresh": "Release to refresh",
         "refreshing": "Refreshing..."
+    },
+    "CategoriesPage": {
+        "title": "Category Management",
+        "newCategory": "New Category",
+        "editCategory": "Edit Category",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "name": "Category Name",
+        "icon": "Icon",
+        "description": "Description (Helping AI)",
+        "namePlaceholder": "e.g., Dining",
+        "iconPlaceholder": "e.g., 🍽️",
+        "descriptionPlaceholder": "e.g., Delivery, Dine-in, Groceries",
+        "confirmDelete": "Confirm Delete",
+        "confirmDeleteDesc": "Are you sure you want to delete the category \"{name}\"? Related records will become uncategorized.",
+        "noCategories": "No categories yet, click New Category to create",
+        "tipTitle": "Tip: ",
+        "tipDesc": "Category descriptions help AI more accurately identify and classify spending. For example, the description for \"Dining\" could be \"Delivery, Dine-in, Groceries\"."
     }
 }

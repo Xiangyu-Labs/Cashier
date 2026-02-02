@@ -107,7 +107,6 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
 
         // Note: No push notification needed here as valid-invalidation/smart-polling handles the UI update
         // But if we want to be fancy we could send one. For now, keep it simple.
-        revalidatePath(`/ledger/${context.ledgerId}`);
         logger.info({ categoryId: input.categoryId, icon: output.icon }, "Updated category metadata from AI");
     },
 

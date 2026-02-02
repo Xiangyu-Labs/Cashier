@@ -25,6 +25,7 @@ import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
 import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
 import { PushNotificationManager } from "@/features/notifications/components/PushNotificationManager";
+import { queryKeys } from "@/lib/query-keys";
 
 import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
@@ -156,6 +157,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             toast.success(t("categoryCreated"));
             setCategoryCreatedTrigger(() => () => { });
             queryClient.invalidateQueries({ queryKey });
+            queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
         },
         onError: (err, _, context: any) => {
             toast.error(t("createCategoryFailed"));

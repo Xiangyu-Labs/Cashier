@@ -60,6 +60,8 @@
         "tokenStatsDesc": "基于 gpt-tokenizer 精确计算的 AI 处理系统消耗概览",
         "tokenStatsFootnote": "* 统计范围仅包含通过处理系统（Processing System）完成的任务。采用成熟的 `gpt-tokenizer` 精确计算。",
         "activeTasks": "正在处理的任务",
+        "recentTasks": "最近历史",
+        "noRecentTasks": "暂无最近记录",
         "totalConsumption": "总消耗",
         "inputTokens": "输入 Tokens",
         "outputTokens": "输出 Tokens",
@@ -252,6 +254,7 @@
         "reorderCategoriesFailed": "更新分类顺序失败",
         "categoryDescription": "分类描述",
         "generating": "AI 生成中...",
+        "saving": "(保存中...)",
         "ledgerName": "账本名称",
         "ledgerNameDesc": "在首页显示的账本名称",
         "ledgerNamePlaceholder": "例如：我的账本",
@@ -373,5 +376,24 @@
         "pullToRefresh": "下拉刷新",
         "releaseToRefresh": "释放刷新",
         "refreshing": "刷新中..."
+    },
+    "CategoriesPage": {
+        "title": "分类管理",
+        "newCategory": "新建分类",
+        "editCategory": "编辑分类",
+        "save": "保存",
+        "cancel": "取消",
+        "delete": "删除",
+        "name": "分类名称",
+        "icon": "图标",
+        "description": "描述（帮助 AI 识别）",
+        "namePlaceholder": "例如：餐饮",
+        "iconPlaceholder": "例如：🍽️",
+        "descriptionPlaceholder": "例如：外卖、堂食、食材采购",
+        "confirmDelete": "确认删除",
+        "confirmDeleteDesc": "确定要删除分类「{name}」吗？相关记录将变为未分类。",
+        "noCategories": "暂无分类，点击右上角新建",
+        "tipTitle": "提示：",
+        "tipDesc": "分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。"
     }
 }

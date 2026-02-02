@@ -114,11 +114,11 @@ function SortableItem({
                         <div className="font-medium text-sm flex items-center gap-2">
                             {category.name}
                             {category.id.toString().startsWith('temp-') && (
-                                <span className="text-[10px] text-muted font-normal animate-pulse">(Saving...)</span>
+                                <span className="text-[10px] text-muted font-normal animate-pulse">{t("saving")}</span>
                             )}
                         </div>
                         {(!category.icon || !category.description) ? (
-                            <div className="text-xs text-primary animate-pulse">{t("categories.generating")}</div>
+                            <div className="text-xs text-primary animate-pulse">{t("generating")}</div>
                         ) : category.description && (
                             <div className="text-xs text-[var(--muted)]">{category.description}</div>
                         )}
