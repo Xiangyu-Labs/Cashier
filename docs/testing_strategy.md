@@ -85,5 +85,26 @@ vi.mocked(getOpenAIClient).mockReturnValue({
 > [!IMPORTANT]
 > Since we use background workers, an action might trigger a task that runs *after* your test finishes or during your test. Always ensure OpenAI is mocked globally to prevent `OPENAI_API_KEY is required` errors in worker threads.
 
-## 6. Continuous Integration (CI)
+## 7. Performance & Concurrency
+
+By default, Vitest runs test files in parallel. However, in this project, we have **explicitly disabled** file parallelism in `vitest.config.ts`:
+
+```typescript
+fileParallelism: false
+```
+
+### Why is it disabled?
+Our integration tests share a single PostgreSQL database (`cashier_test`) and a single Redis instance. The `tests/setup.ts` file performs a `TRUNCATE` on all tables and a `flushall` on Redis before each test to ensure a clean state.
+
+If multiple test files were to run simultaneously, they would interfere with each other's data, leading to flaky tests and race conditions.
+
+### How to enable parallelism in the future
+To enable parallel testing, we would need to implement **isolation per worker**:
+1.  **Database Isolation**: Use different database schemas or separate databases for each Vitest worker thread (using the `VITEST_POOL_ID` environment variable).
+2.  **Redis Isolation**: Use different Redis database indices (e.g., `SELECT 1`, `SELECT 2`) or key prefixes per worker.
+
+Currently, sequential execution is preferred for simplicity and reliability given the size of the test suite.
+
+## 8. Continuous Integration (CI)
+
 Our CI pipeline automatically runs `test:db:up` -> `test` -> `test:db:down` on every PR.
