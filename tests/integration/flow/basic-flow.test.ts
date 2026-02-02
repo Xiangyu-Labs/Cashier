@@ -83,8 +83,8 @@ describe("Flow System Integration", () => {
         expect(run?.status).toBe('running');
 
         // 3. Poll for Completion (Wait for worker)
-        // Max wait 5s
-        for (let i = 0; i < 300; i++) {
+        // Max wait 15s
+        for (let i = 0; i < 150; i++) {
             await new Promise(r => setTimeout(r, 100)); // 100ms
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)

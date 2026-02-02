@@ -235,9 +235,9 @@ describe("OTP Repository", () => {
       await createOTPToken("user1@example.com", otp1, "127.0.0.1");
       await createOTPToken("user2@example.com", otp2, "127.0.0.1");
 
-      // Expire first token - use a larger interval to be safe
+      // Expire first token - use a fixed past date to be absolutely sure
       await db.execute(
-        sql`UPDATE otp_tokens SET expires = NOW() - INTERVAL '24 hours' WHERE email = 'user1@example.com'`
+        sql`UPDATE otp_tokens SET expires = '2000-01-01 00:00:00' WHERE email = 'user1@example.com'`
       );
 
       const deleted = await cleanupExpiredOTPTokens();

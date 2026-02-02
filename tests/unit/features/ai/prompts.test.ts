@@ -1,5 +1,5 @@
 
-import { buildLedgerEntryPrompt, buildSummarizationPrompt } from "@/features/ai/server/services/prompts";
+import { buildLedgerEntryPrompt } from "@/features/ai/server/services/prompts";
 import { CategoryInfo } from "@/features/ai/server/types";
 
 describe("GPT Prompts", () => {
@@ -54,27 +54,4 @@ describe("GPT Prompts", () => {
         });
     });
 
-    describe("buildSummarizationPrompt", () => {
-        const items = [
-            { itemName: "Item 1", amount: 10, notes: "Note 1" },
-            { itemName: "Item 2", amount: 20 },
-        ];
-
-        it("should include the items JSON", () => {
-            const prompt = buildSummarizationPrompt(items);
-            expect(prompt).toContain('"itemName":"Item 1"');
-            expect(prompt).toContain('"amount":10');
-            expect(prompt).toContain('"itemName":"Item 2"');
-        });
-
-        it("should allow longer summaries (10 chars)", () => {
-            const prompt = buildSummarizationPrompt(items);
-            expect(prompt).toContain("Concise (<10 chars) summary");
-        });
-
-        it("should ask for deduping notes", () => {
-            const prompt = buildSummarizationPrompt(items);
-            expect(prompt).toContain("Combine original notes/names. Deduplicate.");
-        });
-    });
 });

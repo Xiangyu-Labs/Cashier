@@ -279,27 +279,24 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should fetch ledger entries with relations when requested", async () => {
-    // 1. Create a doc
-    const res = await createSourceDocumentAction(testLedgerId, { text: "Lunch" });
-    const docId = res.sourceDocumentId!;
+    // 1. Create a doc manually to avoid background processing
+    const db = getTestDb();
+    const [doc] = await db.insert(sourceDocuments).values({
+      ledgerId: testLedgerId,
+      text: "Lunch",
+      status: "completed",
+      imageUrls: []
+    }).returning();
+    const docId = doc.id;
 
     // 2. Add an entry manually
-    const db = getTestDb();
-    // Re-create user/ledger to be safe if previous steps messed up or truncated
-    const { ledgerId: freshLedgerId } = await createTestUserWithLedger(db, "manual@example.com");
-
-    // Update docId to match freshLedgerId if needed, 
-    // but wait, docId belongs to testLedgerId. 
-    // I should use testLedgerId which was created in beforeEach.
-    // The error says testLedgerId (be2e...) is missing in table 'ledgers'.
-    // This confirms beforeEach's ledger was deleted or not inserted correctly.
-
     await db.insert(ledgerEntries).values({
       ledgerId: testLedgerId,
       sourceDocumentId: docId,
       amount: "100",
       currency: "CNY",
       itemName: "Lunch Item",
+      categoryId: testCategoryId, // Fixed: Added categoryId
     });
 
     // 3. Fetch with includeLedgerEntries
@@ -307,10 +304,10 @@ describe("SourceDocument Actions", () => {
       includeLedgerEntries: true
     });
 
-    const doc = result.items.find(d => d.id === docId);
-    expect(doc).toBeDefined();
-    expect(doc?.ledgerEntries).toHaveLength(1);
-    expect(doc?.ledgerEntries?.[0].category).toBeDefined();
-    expect(doc?.ledgerEntries?.[0].category?.id).toBe(testCategoryId);
+    const foundDoc = result.items.find(d => d.id === docId) as any;
+    expect(foundDoc).toBeDefined();
+    expect(foundDoc?.ledgerEntries).toHaveLength(1);
+    expect(foundDoc?.ledgerEntries?.[0].category).toBeDefined();
+    expect(foundDoc?.ledgerEntries?.[0].category?.id).toBe(testCategoryId);
   });
 });
