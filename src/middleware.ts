@@ -20,7 +20,6 @@ export default auth((req) => {
         // Exclude public APIs
         const isPublicApi =
             pathname.startsWith("/api/auth") ||
-            pathname.startsWith("/api/s/") ||
             pathname.startsWith("/api/v1/");
 
         if (!isPublicApi && !req.auth) {
