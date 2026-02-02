@@ -145,6 +145,14 @@ export function CategorySection({
     const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
 
+    // 本地状态管理分类顺序（乐观更新）
+    const [localCategories, setLocalCategories] = useState<EntryCategory[]>(categories);
+
+    // 同步 props 到本地状态
+    useEffect(() => {
+        setLocalCategories(categories);
+    }, [categories]);
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -168,10 +176,14 @@ export function CategorySection({
         const { active, over } = event;
 
         if (over && active.id !== over.id) {
-            const oldIndex = categories.findIndex((c) => c.id === active.id);
-            const newIndex = categories.findIndex((c) => c.id === over.id);
+            const oldIndex = localCategories.findIndex((c) => c.id === active.id);
+            const newIndex = localCategories.findIndex((c) => c.id === over.id);
 
-            const newOrderedCategories = arrayMove(categories, oldIndex, newIndex);
+            // 乐观更新：立即更新本地状态
+            const newOrderedCategories = arrayMove(localCategories, oldIndex, newIndex);
+            setLocalCategories(newOrderedCategories);
+
+            // 异步调用后端API
             onReorderCategories(newOrderedCategories.map(c => c.id));
         }
     };
@@ -190,10 +202,10 @@ export function CategorySection({
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
-                        items={categories.map(c => c.id)}
+                        items={localCategories.map(c => c.id)}
                         strategy={verticalListSortingStrategy}
                     >
-                        {categories.map(category => (
+                        {localCategories.map(category => (
                             <SortableItem
                                 key={category.id}
                                 category={category}

@@ -162,9 +162,12 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
         },
         onSuccess: () => {
             toast.success(t("categoriesReordered"));
-            router.refresh();
+            // 不调用 router.refresh()，使用乐观更新避免UI闪烁
         },
-        onError: () => toast.error(t("reorderCategoriesFailed")),
+        onError: () => {
+            toast.error(t("reorderCategoriesFailed"));
+            router.refresh(); // 仅失败时refresh恢复状态
+        },
     });
 
     const createCredentialMutation = useMutation({
