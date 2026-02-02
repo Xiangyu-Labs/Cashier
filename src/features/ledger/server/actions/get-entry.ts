@@ -1,7 +1,6 @@
 "use server";
-
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers, entryCategories, sourceDocuments } from "@/lib/db/schema";
+import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -25,7 +24,7 @@ export async function getLedgerEntryAction(id: string) {
         if (error) return { success: false, error };
 
         return { success: true, data: entry };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e) {
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }

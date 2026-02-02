@@ -10,7 +10,7 @@ const mockBack = vi.fn();
 const mockRefresh = vi.fn();
 const mockPush = vi.fn();
 const mockSetTheme = vi.fn();
-const mockUpdateLedgerAction = vi.fn((id: string, data: any) => Promise.resolve({ success: true }));
+const mockUpdateLedgerAction = vi.fn((_id: string, _data: Partial<Ledger>) => Promise.resolve({ success: true }));
 const mockSignOut = vi.fn();
 
 // Mock Redis to prevent connection attempts
@@ -55,7 +55,7 @@ vi.mock("next-themes", () => ({
     useTheme: () => ({ theme: "light", setTheme: mockSetTheme }),
 }));
 vi.mock("next-auth/react", () => ({
-    signOut: (...args: any[]) => mockSignOut(...args),
+    signOut: (...args: unknown[]) => mockSignOut(...args),
 }));
 
 vi.mock("sonner", () => ({
@@ -66,7 +66,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/features/ledger/server/actions/ledgers", () => ({
-    updateLedgerAction: (id: string, data: any) => mockUpdateLedgerAction(id, data),
+    updateLedgerAction: (id: string, data: Partial<Ledger>) => mockUpdateLedgerAction(id, data),
 }));
 
 vi.mock("@/features/ledger/server/actions/categories", () => ({

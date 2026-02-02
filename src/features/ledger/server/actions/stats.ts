@@ -91,13 +91,13 @@ export async function getLedgerStatsAction(
         const uniqueDates = Array.from(new Set(entries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
 
         // Fetch rates
-        let ratesMap: Record<string, any> = {};
+        const ratesMap: Record<string, Record<string, number>> = {};
         if (uniqueDates.length > 0) {
             const ratesData = await db.query.currencyRates.findMany({
                 where: inArray(currencyRates.date, uniqueDates)
             });
             ratesData.forEach(r => {
-                ratesMap[r.date] = r.rates;
+                ratesMap[r.date] = r.rates as Record<string, number>;
             });
         }
 

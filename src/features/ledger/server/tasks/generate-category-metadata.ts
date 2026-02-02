@@ -6,7 +6,6 @@ import { getOpenAIClient } from "@/features/ai/server/services/openai";
 import { buildCategoryMetadataPrompt, COMMON_LUCIDE_ICONS } from "@/features/ai/server/services/category-prompts";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
 
 export const TASK_TYPE_GENERATE_CATEGORY_METADATA = "generate_category_metadata";
 

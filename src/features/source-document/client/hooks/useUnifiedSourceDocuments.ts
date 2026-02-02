@@ -1,9 +1,8 @@
 import { useMemo, useEffect, useRef } from 'react';
-import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { SourceDocument, LedgerEntry } from '@/types/api';
-import { queryKeys } from '@/lib/query-keys';
 
 export type SourceDocumentStatus = 'processing' | 'anomaly' | 'completed';
 
@@ -35,12 +34,9 @@ interface UseUnifiedSourceDocumentsOptions {
  */
 export function useUnifiedSourceDocuments(
     ledgerId: string,
-    options: UseUnifiedSourceDocumentsOptions & {
-        initialActive?: SourceDocument[]; // Note: This might need adjustment if using unified action for initial data
-        initialCompletedPages?: { items: SourceDocument[]; nextCursor: string | null }[];
-    } = {}
+    options: UseUnifiedSourceDocumentsOptions = {}
 ) {
-    const { dateRange, initialCompletedPages } = options;
+    const { dateRange } = options;
 
     const startDate = dateRange?.start?.toISOString() || null;
     const endDate = dateRange?.end?.toISOString() || null;

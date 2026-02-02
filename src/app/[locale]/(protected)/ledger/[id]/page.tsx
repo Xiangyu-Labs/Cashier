@@ -1,9 +1,8 @@
-import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getLedger, getLedgers } from "@/features/ledger/server/services/ledgers";
 import { getEntryCategories } from "@/features/ledger/server/services/categories";
 import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
-import { Ledger, EntryCategory, SourceDocument, ServiceCredential } from "@/types/api";
+import { SourceDocument, ServiceCredential } from "@/types/api";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
@@ -13,10 +12,6 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
   const { id: ledgerId } = await params;
   const session = await auth();
   const t = await getTranslations("LedgerPage");
-
-  if (!session?.user?.id) {
-    redirect({ href: "/login", locale: "en" }); // Locale hardcoded? No, use getLocale()
-  }
 
   if (!session?.user?.id) {
     redirect({ href: "/login", locale: "en" });

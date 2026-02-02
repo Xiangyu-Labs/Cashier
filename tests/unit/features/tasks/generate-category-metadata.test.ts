@@ -37,7 +37,7 @@ describe("generateCategoryMetadataHandler", () => {
             });
 
             const context = { ledgerId: "ledger-1" } as FlowContext;
-            const result = await generateCategoryMetadataHandler.execute(input, context);
+            const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.success).toBe(true);
             expect(result.icon).toBe("Dog");
@@ -59,7 +59,7 @@ describe("generateCategoryMetadataHandler", () => {
             });
 
             const context = { ledgerId: "ledger-1" } as FlowContext;
-            const result = await generateCategoryMetadataHandler.execute(input, context);
+            const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.icon).toBe("Package");
         });
@@ -74,7 +74,7 @@ describe("generateCategoryMetadataHandler", () => {
             mockGenerateContent.mockResolvedValue({ content: "Not JSON" });
 
             const context = { ledgerId: "ledger-1" } as FlowContext;
-            const result = await generateCategoryMetadataHandler.execute(input, context);
+            const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.success).toBe(false);
             expect(result.icon).toBe("Package");
@@ -104,7 +104,6 @@ describe("generateCategoryMetadataHandler", () => {
 
             const context = { ledgerId } as FlowContext;
 
-            // @ts-ignore
             if (generateCategoryMetadataHandler.onComplete) {
                 await generateCategoryMetadataHandler.onComplete(output, input, context);
             }

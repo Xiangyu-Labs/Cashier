@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getEnhancedStats } from '@/features/stats/server/actions';
 import { db } from '@/lib/db';
-import * as dateUtils from '@/lib/date-utils';
 import { convertAmount, calculateGrowth } from '@/features/stats/server/utils';
 
 // Mock Redis to prevent connection attempts
@@ -116,6 +115,8 @@ describe('getEnhancedStats', () => {
 
     it('should aggregate stats correctly with simplified mocks', async () => {
         // Setup Mocks
+        // Setup Mocks
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (db.query.ledgers.findFirst as any).mockResolvedValue({
             metadata: { settings: { mainCurrency: 'CNY' } }
         });
@@ -131,11 +132,13 @@ describe('getEnhancedStats', () => {
             { id: '3', amount: 50, currency: 'CNY', entryDate: '2023-09-01', categoryId: 'cat1', category: { name: 'Food', icon: 'food' } }
         ];
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (db.query.ledgerEntries.findMany as any)
             .mockResolvedValueOnce(mockCurrentEntries) // First call: current
             .mockResolvedValueOnce(mockPrevEntries);   // Second call: prev
 
         // Mock Rates
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (db.query.currencyRates.findMany as any).mockResolvedValue([
             { date: '2023-10-02', rates: { USD: 1.1, CNY: 8.0 } }
         ]);

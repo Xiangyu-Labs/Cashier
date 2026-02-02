@@ -33,7 +33,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             process: vi.fn(),
         };
         // Mock processor to return identical results for dual call by default
-        vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as never);
+        vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as ReturnType<typeof getSourceDocumentProcessor>);
 
         // Setup real DB data
         const db = getTestDb();

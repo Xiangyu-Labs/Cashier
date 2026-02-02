@@ -40,11 +40,15 @@ describe('Flow Processor', () => {
         add: vi.fn()
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let processJob: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let registerFlowTask: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let db: any;
-    let workers: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let taskRunService: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let aiContext: any;
 
     beforeEach(async () => {
@@ -60,7 +64,7 @@ describe('Flow Processor', () => {
             failTaskRun: vi.fn()
         }));
         vi.doMock('@/features/ai/server/ai-context', () => ({
-            withAIContext: vi.fn((taskId, ledgerId, fn) => fn())
+            withAIContext: vi.fn((_taskId, _ledgerId, fn) => fn())
         }));
         vi.doMock('@/lib/logger', () => ({
             logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() }
@@ -82,11 +86,11 @@ describe('Flow Processor', () => {
         ({ processJob } = await import('@/lib/flow/processor'));
         ({ registerFlowTask } = await import('@/lib/flow/registry'));
         ({ db } = await import('@/lib/db'));
-        workers = await import('@/lib/flow/workers');
         taskRunService = await import('@/features/tasks/server/services/task-run-service');
         aiContext = await import('@/features/ai/server/ai-context');
 
         // Register the task handler
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         registerFlowTask('test-task', mockHandler as any);
 
         // Default: Mock DB finding the task run
@@ -185,6 +189,7 @@ describe('Flow Processor', () => {
         } as unknown as Job;
 
         const childrenResults = { 'child-job-1': 'result1', 'child-job-2': 'result2' };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (resumingJob.getChildrenValues as any).mockResolvedValue(childrenResults);
         mockHandler.onChildrenCompleted.mockResolvedValue('final-result');
 

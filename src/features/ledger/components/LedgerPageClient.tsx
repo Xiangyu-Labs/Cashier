@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { notFound, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -20,7 +20,6 @@ import { SourceDocumentInput } from "@/features/source-document/components/Sourc
 // import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
-import { Link as I18nLink } from "@/i18n/routing";
 import { Ledger, EntryCategory, SourceDocument, ServiceCredential } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 

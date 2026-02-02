@@ -10,6 +10,7 @@ import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
 import { cleanup } from "@testing-library/react";
 import { initializeWorkers, shutdownWorkers } from "@/lib/flow/workers";
+import type { Mock } from "vitest";
 
 // Test database connection
 const TEST_DATABASE_URL =
@@ -101,9 +102,9 @@ afterEach(() => {
 
 // Mock window.confirm
 if (typeof window !== "undefined") {
-  (window as any).confirm = vi.fn(() => true);
+  (window as unknown as Window & { confirm: Mock }).confirm = vi.fn(() => true);
 } else {
-  (global as any).confirm = vi.fn(() => true);
+  (global as unknown as { confirm: Mock }).confirm = vi.fn(() => true);
 }
 
 // Mock the db module globally
@@ -143,12 +144,13 @@ vi.mock("@/auth", () => ({
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof import("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const messages = require("../messages/zh.json");
 
   return {
     useTranslations: (namespace?: string) => {
       const nsMessages = namespace ? messages[namespace] : messages;
-      return (key: string, values?: any) => {
+      return (key: string, values?: Record<string, unknown>) => {
         let msg = nsMessages?.[key];
 
         // Absolute fallback: search all namespaces
@@ -162,7 +164,6 @@ vi.mock("next-intl", async () => {
         }
 
         if (!msg) return key;
-        return key; // Always return key for predictable testing
 
         let translated = msg;
         if (values && typeof translated === "string") {
@@ -185,7 +186,7 @@ vi.mock("next-intl", async () => {
 // Mock next/image
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: (props: { src: string; alt: string;[key: string]: unknown }) => {
     // eslint-disable-next-line @next/next/no-img-element
     return React.createElement("img", { ...props, src: props.src });
   },
@@ -195,5 +196,5 @@ vi.mock("next/image", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
-  unstable_cache: (fn: any) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
