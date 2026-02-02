@@ -14,9 +14,9 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export async function runTask(taskDef: FlowDefinition): Promise<void> {
     const { name, data } = taskDef;
-    const taskInput = data as any;
-    const taskRunId = taskInput?.__taskRunId;
-    const ledgerId = taskInput?.__ledgerId;
+    const taskInput = data as Record<string, unknown> & { __taskRunId?: string; __ledgerId?: string };
+    const taskRunId = taskInput?.__taskRunId as string | undefined;
+    const ledgerId = taskInput?.__ledgerId as string | undefined;
 
     // Create a unique job ID for this execution (since we don't have BullMQ job IDs anymore)
     const jobId = `job_${uuidv4()}`;
@@ -79,12 +79,9 @@ export async function runTask(taskDef: FlowDefinition): Promise<void> {
             await handler.validate(taskInput, context);
         }
 
-        // --- Step 2: Execute ---
-        let result: unknown;
-
         // Wrap in AI Context
-        result = await withAIContext(taskRunId || 'unknown', ledgerId || '', async () => {
-            return handler.execute(taskInput, context);
+        const result = await withAIContext(taskRunId || 'unknown', ledgerId || '', async () => {
+            return handler.execute(taskInput as unknown, context);
         });
 
         // --- Step 3: Handle Recursion / Children (Mock implementation) ---
@@ -113,7 +110,7 @@ export async function runTask(taskDef: FlowDefinition): Promise<void> {
         // Call onError handler
         if (handler.onError) {
             try {
-                await handler.onError(error as Error, taskInput, context);
+                await handler.onError(error as Error, taskInput as unknown, context);
             } catch (handlerError) {
                 logger.error({ error: handlerError }, "Error in task onError handler");
             }

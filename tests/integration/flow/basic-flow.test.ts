@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { processAllPendingTasks } from "../../helpers/processing";
 
 // 1. Define Test Task
 const TEST_TASK_TYPE = "integration_test_task";
