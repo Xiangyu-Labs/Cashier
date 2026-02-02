@@ -22,7 +22,6 @@ const updateLedgerSchema = z.object({
         mainCurrency: z.string().optional(),
         autoRecognizeDate: z.boolean().optional(),
         collapseProcessingDefault: z.boolean().optional(),
-        mergeSimilarItems: z.boolean().optional(),
         collapseBillsDefault: z.boolean().optional(),
         aiCustomPrompt: z.string().optional(),
     }).optional(),
@@ -49,7 +48,7 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
                         currencies: defaultLedger.settings.currencies,
                         autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
                         collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
-                        mergeSimilarItems: defaultLedger.settings.mergeSimilarItems,
+
                     }
                 }
             })
@@ -189,7 +188,7 @@ export async function getLedgerAction(id: string) {
         updatedAt: existing.updatedAt.toISOString(),
         autoRecognizeDate: settings.autoRecognizeDate || false,
         collapseProcessingDefault: settings.collapseProcessingDefault || false,
-        mergeSimilarItems: settings.mergeSimilarItems || false,
+
         collapseBillsDefault: settings.collapseBillsDefault || false,
         aiCustomPrompt: settings.aiCustomPrompt || "",
     };

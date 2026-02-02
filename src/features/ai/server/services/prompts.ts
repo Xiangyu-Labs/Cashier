@@ -6,7 +6,7 @@ export function buildLedgerEntryPrompt(
   currentDate?: string,
   preferredCurrencies: string[] = [],
   aiCustomPrompt: string = "",
-  mergeSimilarItems: boolean = false
+
 ): string {
   const categoryList = categories
     .map((c) => `- ${c.name}${c.description ? `: ${c.description}` : ""}`)
@@ -14,16 +14,14 @@ export function buildLedgerEntryPrompt(
 
   const today = currentDate || new Date().toISOString().split('T')[0];
 
-  const processingStrategy = mergeSimilarItems
-    ? `2. **Merge**: If multiple items belong to the same category and context (e.g. multiple taxi rides, dining items), SUM their amounts and COMBINE descriptions into 'notes'.`
-    : `2. **Split**: Separate receipts into individual items. Ignore totals/subtotals.`;
+
 
   return `You are an expert bookkeeping AI. Parse user input into structured JSON.
 
 ### Context
 - **Ref Date**: ${today} (Base for relative dates)
 - **Target Lang**: ${targetLanguage}
-- **Strategy**: ${mergeSimilarItems ? "Merge similar items" : "Split individual items"}
+- **Strategy**: Split individual items
 - **Categories**:
 ${categoryList}
 - **Pref Currencies**: ${preferredCurrencies.join(", ") || "None"}
@@ -31,7 +29,7 @@ ${aiCustomPrompt ? `- **Custom Rules**: ${aiCustomPrompt}` : ""}
 
 ### Rules
 1. **Validation**: Return \`is_valid: false\` for non-financial input.
-${processingStrategy}
+2. **Split**: Separate receipts into individual items. Ignore totals/subtotals.
 3. **Fields**:
    - \`title\`: "Merchant - Core Item" (Translated).
    - \`currency\`: ONLY infer if obvious (e.g. explicit symbol $, £, €, or code USD). DO NOT guess based on locale/language. If not explicitly clear, perform no reasoning and return "unknown".

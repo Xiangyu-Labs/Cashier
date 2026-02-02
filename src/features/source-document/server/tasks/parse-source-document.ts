@@ -20,7 +20,7 @@ export interface ParseSourceDocumentInput {
     categories: CategoryInfo[];
     aiLanguage?: string;
     settings: {
-        mergeSimilarItems: boolean;
+
         autoRecognizeDate: boolean;
         aiCustomPrompt?: string;
     };
@@ -97,13 +97,13 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         await context.updateProgress({
             currentStep: "parse",
             completedSteps: [],
-            totalSteps: input.settings.mergeSimilarItems ? 2 : 1,
+            totalSteps: 1,
         });
 
         const processor = getSourceDocumentProcessor();
         const processOptions = {
             categories: input.categories,
-            mergeSimilarItems: false, // Handle merge manually
+
             aiLanguage: input.aiLanguage,
             preferredCurrencies: input.preferredCurrencies,
             aiCustomPrompt: input.settings.aiCustomPrompt
@@ -206,53 +206,13 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             logger.info({ choice: arbitrationResult.choice }, "Arbitration resolved - using chosen result");
         }
 
-        // 4. Merge Similar Items (Optional)
-        let finalEntries = entries1;
-        if (input.settings.mergeSimilarItems && entries1.length > 1) {
-            await context.updateProgress({
-                currentStep: "merge",
-                completedSteps: ["parse"],
-                totalSteps: 2,
-                data: { parseResult: finalEntries },
-            });
+        // 4. Merge Similar Items (Deleted)
+        // Feature removed in favor of custom prompt instructions
 
-            // Save pre-merge entries for verification
-            const preMergeEntries = finalEntries;
-
-            finalEntries = await summarizeLedgerEntries(finalEntries, input.aiLanguage, input.text);
-
-            // 5. Merge Verification - also use arbitration
-            if (!verifyAmounts(preMergeEntries, finalEntries)) {
-                logger.info({
-                    ledgerId: context.ledgerId,
-                    docId: input.sourceDocumentId,
-                }, "Merge verification failed, invoking arbitration");
-
-                const arbitrationResult = await arbitrate(
-                    "total_mismatch",
-                    preMergeEntries,
-                    finalEntries,
-                    input.text,
-                    input.aiLanguage
-                );
-
-                if (arbitrationResult.choice === 0) {
-                    return {
-                        ledgerEntries: [],
-                        title,
-                        anomalyReason: arbitrationResult.reason || "合并后金额不一致",
-                        verificationStatus: 'anomaly'
-                    };
-                }
-
-                // Use pre-merge or post-merge based on choice
-                finalEntries = arbitrationResult.choice === 1 ? preMergeEntries : finalEntries;
-            }
-        }
 
         // Passed all checks
         return {
-            ledgerEntries: finalEntries,
+            ledgerEntries: entries1,
             title,
             verificationStatus: 'passed'
         };

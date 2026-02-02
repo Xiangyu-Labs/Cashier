@@ -83,7 +83,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: false,
-                    mergeSimilarItems: false
+
                 }
             }
         });
@@ -140,7 +140,7 @@ describe("Auto-recognize Ledger Entry Time", () => {
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: true,
-                    mergeSimilarItems: false
+
                 }
             }
         });

@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
                     preferredCurrencies: ledger.metadata?.settings?.currencies || undefined,
                     categories: allCategories,
                     settings: {
-                        mergeSimilarItems: ledger.metadata?.settings?.mergeSimilarItems,
+
                         autoRecognizeDate: ledger.metadata?.settings?.autoRecognizeDate,
                         aiCustomPrompt: ledger.metadata?.settings?.aiCustomPrompt,
                     },

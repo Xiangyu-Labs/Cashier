@@ -57,7 +57,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             if ((data as any).mainCurrency !== undefined) settingsUpdate.mainCurrency = (data as any).mainCurrency;
             if ((data as any).autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = (data as any).autoRecognizeDate;
             if ((data as any).collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = (data as any).collapseProcessingDefault;
-            if ((data as any).mergeSimilarItems !== undefined) settingsUpdate.mergeSimilarItems = (data as any).mergeSimilarItems;
+
             if ((data as any).collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = (data as any).collapseBillsDefault;
             if ((data as any).aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = (data as any).aiCustomPrompt;
 
@@ -223,20 +223,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                             />
                         </div>
 
-                        <div className="h-px bg-border" />
 
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <div className="text-sm font-medium">{tSettings("mergeSimilar")}</div>
-                                <div className="text-xs text-muted-foreground leading-tight">{tSettings("mergeSimilarDesc")}</div>
-                            </div>
-                            <Switch
-                                checked={ledger?.mergeSimilarItems || false}
-                                onCheckedChange={(checked) => {
-                                    updateLedgerMutation.mutate({ mergeSimilarItems: checked } as any);
-                                }}
-                            />
-                        </div>
                     </div>
                 )}
             </div>

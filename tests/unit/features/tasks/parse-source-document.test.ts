@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
@@ -11,16 +11,14 @@ vi.mock("@/features/ai/server/services/processor", () => ({
     getSourceDocumentProcessor: vi.fn(),
 }));
 
-vi.mock("@/features/ai/server/utils/utils", () => ({
-    summarizeLedgerEntries: vi.fn(),
-}));
+
 
 vi.mock("@/features/ai/server/services/arbitration", () => ({
     arbitrate: vi.fn(),
 }));
 
 import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
-import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
+
 import { arbitrate } from "@/features/ai/server/services/arbitration";
 
 describe("parseSourceDocumentHandler.execute", () => {
@@ -63,7 +61,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             aiLanguage: "en-US",
             preferredCurrencies: ["USD"],
             settings: {
-                mergeSimilarItems: false,
                 autoRecognizeDate: true,
             }
         };
@@ -100,7 +97,6 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                mergeSimilarItems: false,
                 autoRecognizeDate: false,
             }
         };
@@ -123,46 +119,14 @@ describe("parseSourceDocumentHandler.execute", () => {
         expect(result.ledgerEntries[0].entryDate).toBe(today);
     });
 
-    it("should call summarizeLedgerEntries if mergeSimilarItems is true", async () => {
-        const input: ParseSourceDocumentInput = {
-            sourceDocumentId: sourceDocId,
-            categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: {
-                mergeSimilarItems: true,
-                autoRecognizeDate: true,
-            }
-        };
 
-        mockProcessor.process.mockResolvedValue({
-            ledgerEntries: [
-                { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" },
-                { itemName: "Dinner", amount: 20, currency: "USD", category: "Food", entryDate: "2024-01-01" }
-            ],
-            isValid: true
-        });
-
-        vi.mocked(summarizeLedgerEntries).mockResolvedValue([
-            { itemName: "Summary", amount: 30, currency: "USD", category: "Food", entryDate: "2024-01-01" }
-        ]);
-
-        const context = {
-            updateProgress: vi.fn(),
-            ledgerId: currentLedgerId,
-        } as unknown as FlowContext;
-
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
-
-        expect(summarizeLedgerEntries).toHaveBeenCalled();
-        expect(result.ledgerEntries).toHaveLength(1);
-        expect(result.ledgerEntries[0].itemName).toBe("Summary");
-    });
 
     it("should return empty ledgerEntries if isValid is false", async () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true,
             }
         };
@@ -188,7 +152,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true,
             }
         };
@@ -224,7 +188,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true,
             }
         };
@@ -259,7 +223,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true,
             }
         };
@@ -300,7 +264,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true
             }
         };
@@ -346,7 +310,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             sourceDocumentId: sourceDoc.id,
             categories: [{ id: category.id, name: "餐饮", description: "餐饮" }],
             settings: {
-                mergeSimilarItems: false,
+
                 autoRecognizeDate: true
             }
         };
@@ -416,7 +380,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             input: {
                 sourceDocumentId: sourceDoc.id,
                 categories: [],
-                settings: { mergeSimilarItems: false, autoRecognizeDate: true }
+                settings: { autoRecognizeDate: true }
             },
         };
 
@@ -428,7 +392,10 @@ describe("parseSourceDocumentHandler.onComplete", () => {
 
         // 3. Verify
         const entries = await db.query.ledgerEntries.findMany({
-            where: eq(ledgerEntries.sourceDocumentId, sourceDoc.id)
+            where: and(
+                eq(ledgerEntries.sourceDocumentId, sourceDoc.id),
+                isNull(ledgerEntries.deletedAt)
+            )
         });
 
         expect(entries).toHaveLength(1);

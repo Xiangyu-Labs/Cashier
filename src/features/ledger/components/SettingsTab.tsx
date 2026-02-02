@@ -74,7 +74,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.metadata?.settings?.collapseProcessingDefault);
     const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
     const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.metadata?.settings?.autoRecognizeDate);
-    const [optimisticMergeSimilar, setOptimisticMergeSimilar] = useState(ledger.metadata?.settings?.mergeSimilarItems);
+
 
     function handleUpdateLedger(data: any) {
         startTransition(async () => {
@@ -87,7 +87,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
             if (data.aiLanguage !== undefined) settingsUpdate.aiLanguage = data.aiLanguage;
             if (data.autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = data.autoRecognizeDate;
             if (data.collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = data.collapseProcessingDefault;
-            if (data.mergeSimilarItems !== undefined) settingsUpdate.mergeSimilarItems = data.mergeSimilarItems;
+
             if (data.collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = data.collapseBillsDefault;
             if (data.aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = data.aiCustomPrompt;
 
@@ -105,7 +105,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                 setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
                 setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
                 setOptimisticAutoRecognizeDate(ledger.metadata?.settings?.autoRecognizeDate);
-                setOptimisticMergeSimilar(ledger.metadata?.settings?.mergeSimilarItems);
+
             }
         });
     }
@@ -355,22 +355,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
                         />
                     </div>
 
-                    <div className="h-px bg-[var(--border)]" />
 
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('mergeSimilar')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('mergeSimilarDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={optimisticMergeSimilar || false}
-                            onCheckedChange={(checked: boolean) => {
-                                setOptimisticMergeSimilar(checked);
-                                handleUpdateLedger({ mergeSimilarItems: checked });
-                            }}
-                            disabled={isPending}
-                        />
-                    </div>
 
                     <div className="h-px bg-[var(--border)]" />
 

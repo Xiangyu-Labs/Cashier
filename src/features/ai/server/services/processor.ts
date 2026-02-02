@@ -47,7 +47,7 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
       currentDate,
       context.preferredCurrencies,
       context.aiCustomPrompt,
-      context.mergeSimilarItems
+
     );
 
     const contentParts: ChatCompletionContentPart[] = [];

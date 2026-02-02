@@ -32,7 +32,7 @@ export interface CategoryInfo {
 
 export interface ProcessorContext {
     categories: CategoryInfo[];
-    mergeSimilarItems?: boolean;
+
     aiLanguage?: string;
     preferredCurrencies?: string[];
     aiCustomPrompt?: string;

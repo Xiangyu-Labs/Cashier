@@ -5,7 +5,7 @@ export const defaultLedger = {
         mainCurrency: "CNY",
         autoRecognizeDate: false,
         collapseProcessingDefault: false,
-        mergeSimilarItems: false,
+
         collapseBillsDefault: false,
         aiCustomPrompt: "",
     },

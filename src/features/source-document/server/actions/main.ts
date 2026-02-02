@@ -52,7 +52,7 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: any, text: st
             preferredCurrencies: settings.currencies || undefined,
             categories: categories,
             settings: {
-                mergeSimilarItems: settings.mergeSimilarItems,
+
                 autoRecognizeDate: settings.autoRecognizeDate,
                 aiCustomPrompt: settings.aiCustomPrompt,
             },

@@ -122,7 +122,7 @@ describe("SettingsTab", () => {
                 autoRecognizeDate: true,
                 collapseProcessingDefault: false,
                 collapseBillsDefault: false,
-                mergeSimilarItems: false,
+
                 aiCustomPrompt: "Custom Prompt",
             }
         },
