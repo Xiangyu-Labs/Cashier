@@ -8,6 +8,7 @@ export async function register() {
         try {
             // Register task handlers (always needed for producer to work)
             await import("@/features/source-document/server/tasks/parse-source-document");
+            await import("@/features/ledger/server/tasks/generate-category-metadata");
 
             // Only initialize workers if enabled via environment variable
             // This prevents double initialization during build/dev and allows separation of concerns

@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
-import { ArrowLeft, Plus, Pencil, Trash2, Info } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Info, Loader2 } from "lucide-react";
 import {
     createEntryCategoryAction,
     updateEntryCategoryAction,
@@ -35,8 +35,22 @@ interface CreateCategoryData {
     icon?: string;
 }
 
-export function CategoriesPageClient({ ledgerId, categories }: CategoriesPageClientProps): React.ReactElement {
+import { useTranslations } from "next-intl";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+
+export function CategoriesPageClient({ ledgerId, categories: initialCategories }: CategoriesPageClientProps): React.ReactElement {
     const router = useRouter();
+    const t = useTranslations();
+
+    // Smart polling for AI updates
+    const { data: categories } = useSmartPolling<EntryCategory[]>({
+        queryKey: ["ledger-categories", ledgerId],
+        queryFn: () => getEntryCategoriesAction(ledgerId),
+        isActive: (data) => data?.some((c) => !c.icon && !c.description) ?? false,
+        interval: 3000,
+        initialData: initialCategories
+    });
 
 
     const [isOpen, setIsOpen] = useState(false);
@@ -169,11 +183,19 @@ export function CategoriesPageClient({ ledgerId, categories }: CategoriesPageCli
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-xl shrink-0">
-                                                {category.icon || "📁"}
+                                                {(!category.icon && !category.description) ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                                ) : (
+                                                    category.icon || "📁"
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="font-medium">{category.name}</p>
-                                                {category.description && (
+                                                {(!category.icon && !category.description) ? (
+                                                    <p className="text-sm text-muted mt-0.5 animate-pulse">
+                                                        {t("Settings.categories.generating")}
+                                                    </p>
+                                                ) : category.description && (
                                                     <p className="text-sm text-muted mt-0.5">
                                                         {category.description}
                                                     </p>

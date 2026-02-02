@@ -251,6 +251,7 @@
         "categoriesReordered": "分类顺序已更新",
         "reorderCategoriesFailed": "更新分类顺序失败",
         "categoryDescription": "分类描述",
+        "generating": "AI 生成中...",
         "ledgerName": "账本名称",
         "ledgerNameDesc": "在首页显示的账本名称",
         "ledgerNamePlaceholder": "例如：我的账本",

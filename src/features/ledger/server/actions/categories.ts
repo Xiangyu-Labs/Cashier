@@ -5,7 +5,7 @@ import { entryCategories } from "@/lib/db/schema";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -34,6 +34,42 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
             ...validated,
             ledgerId: ledgerId,
         }).returning();
+
+        // Trigger AI to generate metadata (async)
+        // Only if icon or description is missing
+        if (!validated.icon || !validated.description) {
+            try {
+                // Fetch existing categories for context
+                const existing = await db.query.entryCategories.findMany({
+                    where: and(
+                        eq(entryCategories.ledgerId, ledgerId),
+                        isNull(entryCategories.deletedAt)
+                    ),
+                    columns: { name: true, description: true, icon: true }
+                });
+
+                // Dynamically import to avoid circular dependency issues or server/client boundary issues
+                const { submitFlowTask } = await import("@/lib/flow/producer");
+                const { TASK_TYPE_GENERATE_CATEGORY_METADATA } = await import("@/features/ledger/server/tasks/generate-category-metadata");
+
+                await submitFlowTask({
+                    type: TASK_TYPE_GENERATE_CATEGORY_METADATA,
+                    title: `Generate metadata for category: ${validated.name}`,
+                    ledgerId: ledgerId,
+                    data: {
+                        categoryId: category.id,
+                        categoryName: category.name,
+                        existingCategories: existing,
+                        aiLanguage: "zh-CN", // Default to ZH for now, could fetch from ledger settings
+                    },
+                    queueName: 'api', // Use API queue for GPT calls
+                });
+            } catch (err) {
+                logger.error({ err, ledgerId }, "Failed to submit category metadata task");
+                // Don't fail the request, just log
+            }
+        }
+
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, data: category };

@@ -248,6 +248,7 @@
         "categoriesReordered": "Categories reordered successfully",
         "reorderCategoriesFailed": "Failed to reorder categories",
         "categoryDescription": "Category Description",
+        "generating": "AI generating...",
         "ledgerName": "Ledger Name",
         "ledgerNameDesc": "The name of the ledger displayed on the home page",
         "ledgerNamePlaceholder": "e.g., My Ledger",
