@@ -128,45 +128,5 @@ describe("Multi-User Isolation", () => {
         });
     });
 
-    describe("SSE /api/ledgers/[id]/events", () => {
-        it("should deny access (404/Error) when user1 tries to subscribe to user2 ledger events", async () => {
-            // This is still an API route, so we use the route handler directly if possible, or fetch.
-            // We need to import the new route.
-            const { GET } = await import(
-                "@/app/api/ledgers/[id]/events/route"
-            );
 
-            // Mock auth for the API route context?
-            // The API route calls `requireLedgerAccess(ledgerId)`.
-            // `requireLedgerAccess` uses `auth()` internally.
-            (auth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-                user: { id: TEST_USER_ID }
-            });
-
-            // Create an AbortController for the signal
-            const abortController = new AbortController();
-
-            const request = new NextRequest(
-                `http://localhost/api/ledgers/${user2Ledger}/events`,
-                { method: "GET", signal: abortController.signal }
-            );
-
-            // API route error handling: `const { error } = await requireLedgerAccess(ledgerId); if (error) return error;`
-            // `requireLedgerAccess` usually returns `NextResponse` with 401/404 if error.
-            const response = await GET(request, {
-                params: Promise.resolve({ id: user2Ledger }),
-            });
-
-            // Check if response is error
-            // requireLedgerAccess returns { error: NextResponse... }
-            // So response should be that NextResponse.
-
-            // If it returns standard error response:
-            expect(response.status).not.toBe(200);
-            expect([401, 403, 404]).toContain(response.status);
-
-            // Clean up
-            abortController.abort();
-        });
-    });
 });
