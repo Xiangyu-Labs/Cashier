@@ -21,7 +21,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations } from "next-intl";
-import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
+import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -31,13 +31,17 @@ interface LedgerEntriesTabProps {
     categories: EntryCategory[];
     defaultCollapsed?: boolean;
     ledger?: Ledger;
+    initialActiveSourceDocuments?: SourceDocument[];
+    initialCompletedSourceDocuments?: SourceDocument[];
 }
 
 export function LedgerEntriesTab({
     ledgerId,
     categories,
     defaultCollapsed = false,
-    ledger
+    ledger,
+    initialActiveSourceDocuments,
+    initialCompletedSourceDocuments
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
@@ -81,6 +85,8 @@ export function LedgerEntriesTab({
         isFetchingNextPage
     } = useUnifiedSourceDocuments(ledgerId, {
         dateRange,
+        initialActiveSourceDocuments,
+        initialCompletedSourceDocuments
     });
 
     // --- Mutations ---
@@ -209,7 +215,7 @@ export function LedgerEntriesTab({
             // If ID is special "ALL_ERRORS", we handle it specifically or use a new mutation.
             // Wait, the previous logic used deleteSourceDocumentMutation in a loop.
         } else if (deleteConfirm.id === "ALL_ERRORS") {
-            const ids = groups.anomaly.map(g => g.sourceDocument.id);
+            const ids = groups.anomaly.map((g: SourceDocumentGroup) => g.sourceDocument.id);
             batchDeleteSourceDocsMutation.mutate(ids);
         } else if (deleteConfirm.type === "ledgerEntry") {
             deleteLedgerEntryMutation.mutate(deleteConfirm.id);
@@ -302,7 +308,7 @@ export function LedgerEntriesTab({
                                             {!isProcessingCollapsed && (
                                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                     <AnimatePresence mode="wait">
-                                                        {groups.processing.map(group => (
+                                                        {groups.processing.map((group: SourceDocumentGroup) => (
                                                             <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                                                 <SourceDocumentCard
                                                                     sourceDocument={group.sourceDocument}
@@ -350,14 +356,14 @@ export function LedgerEntriesTab({
                                             {!isErrorCollapsed && (
                                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
                                                     <AnimatePresence mode="wait">
-                                                        {groups.anomaly.map(group => (
+                                                        {groups.anomaly.map((group: SourceDocumentGroup) => (
                                                             <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                                                 <SourceDocumentCard
                                                                     sourceDocument={group.sourceDocument}
                                                                     ledgerEntries={group.ledgerEntries}
                                                                     categories={categories}
                                                                     status="anomaly"
-                                                                    anomalyCodes={group.sourceDocument.anomalyCodes}
+                                                                    anomalyCodes={group.sourceDocument.anomalyCodes as string[]}
                                                                     className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                                                                     defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
                                                                     mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
@@ -383,7 +389,7 @@ export function LedgerEntriesTab({
                                     </div>
                                 ) : (
                                     <AnimatePresence mode="wait">
-                                        {groups.completed.map(group => (
+                                        {groups.completed.map((group: SourceDocumentGroup) => (
                                             <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout layoutId={group.sourceDocument.id} {...getItemProps()}>
                                                 <SourceDocumentCard
                                                     sourceDocument={group.sourceDocument}

@@ -11,6 +11,10 @@ export interface SourceDocumentGroup {
     ledgerEntries: LedgerEntry[];
 }
 
+export type SourceDocumentWithEntries = SourceDocument & {
+    ledgerEntries?: LedgerEntry[];
+};
+
 export interface GroupedSourceDocuments {
     /** Documents currently being processed (queued + processing) */
     processing: SourceDocumentGroup[];
@@ -25,6 +29,8 @@ interface UseUnifiedSourceDocumentsOptions {
         start?: Date;
         end?: Date;
     };
+    initialActiveSourceDocuments?: SourceDocumentWithEntries[];
+    initialCompletedSourceDocuments?: SourceDocumentWithEntries[];
 }
 
 /**
@@ -36,13 +42,49 @@ export function useUnifiedSourceDocuments(
     ledgerId: string,
     options: UseUnifiedSourceDocumentsOptions = {}
 ) {
-    const { dateRange } = options;
+    const { dateRange, initialActiveSourceDocuments, initialCompletedSourceDocuments } = options;
 
     const startDate = dateRange?.start?.toISOString() || null;
     const endDate = dateRange?.end?.toISOString() || null;
 
     const queryClient = useQueryClient();
     const prevProcessingCount = useRef<number | null>(null);
+
+    // Prepare initial data if provided
+    const initialUnifiedData = useMemo(() => {
+        if (!initialActiveSourceDocuments && !initialCompletedSourceDocuments) return undefined;
+
+        const processing: SourceDocumentGroup[] = [];
+        const anomaly: SourceDocumentGroup[] = [];
+
+        initialActiveSourceDocuments?.forEach(doc => {
+            const group = {
+                sourceDocument: doc,
+                ledgerEntries: doc.ledgerEntries || []
+            };
+            if (doc.status === 'anomaly') {
+                anomaly.push(group);
+            } else {
+                processing.push(group);
+            }
+        });
+
+        return {
+            groups: {
+                processing,
+                anomaly,
+                completed: initialCompletedSourceDocuments?.map(doc => ({
+                    sourceDocument: doc,
+                    ledgerEntries: doc.ledgerEntries || []
+                })) || []
+            },
+            nextCursor: null,
+            stats: {
+                processingCount: processing.length,
+                anomalyCount: anomaly.length
+            }
+        };
+    }, [initialActiveSourceDocuments, initialCompletedSourceDocuments]);
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
@@ -59,6 +101,7 @@ export function useUnifiedSourceDocuments(
         }),
         isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
+        initialData: initialUnifiedData,
     });
 
     // Invalidate infinite completed list if processing count drops (transition to completed/anomaly)

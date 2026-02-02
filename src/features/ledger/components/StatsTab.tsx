@@ -115,7 +115,6 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
 
                 <StatsRanking
                     data={stats?.categories || []}
-                    total={totalExpense}
                     isLoading={isLoading}
                     currencySymbol={currencySymbol}
                 />
