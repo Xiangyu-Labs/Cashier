@@ -123,9 +123,8 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
         enabled: !!ledgerId,
     });
 
-    // Separate tasks by status
+    // Filter only active tasks (running or queued)
     const activeTasks = tasks.filter((t: any) => t.status === "running" || t.status === "queued");
-    const recentTasks = tasks.filter((t: any) => t.status === "completed" || t.status === "failed");
 
     if (isStatsLoading && !stats) {
         return (
@@ -176,7 +175,7 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
 
 
 
-            <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="mt-8 pt-6 border-t border-border">
                 {/* Active Tasks Section */}
                 <div>
                     <div className="flex items-center gap-2 mb-4">
@@ -202,27 +201,6 @@ export function ProcessingSystemSection({ ledgerId }: { ledgerId: string }) {
                         ) : (
                             <div className="space-y-1">
                                 {activeTasks.map((task: any) => (
-                                    <TaskItem key={task.id} task={task} />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Recent Tasks Section */}
-                <div>
-                    <div className="flex items-center gap-2 mb-4">
-                        <h3 className="text-base font-medium">{t("recentTasks")}</h3>
-                    </div>
-
-                    <div className="space-y-2">
-                        {recentTasks.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 gap-2 bg-surface2/30 rounded-lg">
-                                <p className="text-xs text-muted">{t("noRecentTasks")}</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-1">
-                                {recentTasks.map((task: any) => (
                                     <TaskItem key={task.id} task={task} />
                                 ))}
                             </div>
