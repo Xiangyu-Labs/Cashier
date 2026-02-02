@@ -20,35 +20,41 @@ const updateCategorySchema = createCategorySchema.partial().extend({
     sortOrder: z.number().optional(),
 });
 
+import { forLedger } from "@/lib/db/scoped-query";
+
 export async function createEntryCategoryAction(ledgerId: string, data: z.infer<typeof createCategorySchema>) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const validated = createCategorySchema.parse(data);
+        const q = forLedger(entryCategories, ledgerId);
 
-        const category = await scope.categories.create({
+        const [category] = await db.insert(entryCategories).values({
             ...validated,
             ledgerId: ledgerId,
-        });
+        }).returning();
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, data: category };
     } catch (error) {
         logger.error({ err: error, ledgerId }, "Failed to create category");
-        console.error("Create Category Error:", error); // Direct console log for test debugging
+        console.error("Create Category Error:", error);
         return { success: false, error: "Failed to create category" };
     }
 }
 
 export async function updateEntryCategoryAction(ledgerId: string, categoryId: string, data: z.infer<typeof updateCategorySchema>) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const validated = updateCategorySchema.parse(data);
+        const q = forLedger(entryCategories, ledgerId);
 
-        await scope.categories.update(categoryId, validated);
+        await db.update(entryCategories)
+            .set(validated)
+            .where(q.whereId(categoryId));
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
@@ -60,10 +66,13 @@ export async function updateEntryCategoryAction(ledgerId: string, categoryId: st
 
 export async function deleteEntryCategoryAction(ledgerId: string, categoryId: string) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
-        await scope.categories.delete(categoryId);
+        const q = forLedger(entryCategories, ledgerId);
+        await db.update(entryCategories)
+            .set(q.softDelete)
+            .where(q.whereId(categoryId));
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
@@ -73,25 +82,15 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
     }
 }
 
-
 export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds: string[]) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
-        // Verify all categories belong to ledger
-        const categories = await scope.categories.findMany({});
-        if (categories.length !== categoryIds.length) {
-            // Or looser check: just update those that exist?
-            // Legacy API was strict?
-            // Let's rely on repo or strict check. 
-            // Ideally we shouldn't allow reordering IDs that aren't in the ledger.
-        }
-
-        // Use transaction via repo if available, or direct DB update loop
-        // Ensure sortOrder matches array index
+        // Transaction for reordering
         await db.transaction(async (tx) => {
             for (let i = 0; i < categoryIds.length; i++) {
+                // Ensure we only update categories belonging to this ledger
                 await tx.update(entryCategories)
                     .set({ sortOrder: i })
                     .where(and(eq(entryCategories.id, categoryIds[i]), eq(entryCategories.ledgerId, ledgerId)));
@@ -107,10 +106,14 @@ export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds
 }
 
 export async function getEntryCategoriesAction(ledgerId: string) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) throw new Error("Unauthorized");
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
 
-    const categories = await scope.categories.findMany({
+    const q = forLedger(entryCategories, ledgerId);
+
+    // Note: Use db.query for findMany to match return type structure if needed, or normal select
+    const categories = await db.query.entryCategories.findMany({
+        where: q.whereActive,
         orderBy: asc(entryCategories.sortOrder),
     });
 
@@ -118,5 +121,7 @@ export async function getEntryCategoriesAction(ledgerId: string) {
         ...c,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
+        // deletedAt is excluded by whereActive but type definition has it
+        deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
     }));
 }

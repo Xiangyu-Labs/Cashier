@@ -8,18 +8,21 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
 import { LedgerEntrySummary } from "@/types/api";
 
+import { forLedger } from "@/lib/db/scoped-query";
+
 export async function getLedgerStatsAction(
     ledgerId: string,
     startDate?: string,
     endDate?: string,
     mainCurrency?: string
 ): Promise<LedgerEntrySummary> {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) {
         throw new Error("Unauthorized");
     }
 
-    const conditions = [eq(ledgerEntries.ledgerId, ledgerId)];
+    const q = forLedger(ledgerEntries, ledgerId);
+    const conditions = [q.whereActive];
     if (startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(startDate)));
     if (endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(endDate)));
 

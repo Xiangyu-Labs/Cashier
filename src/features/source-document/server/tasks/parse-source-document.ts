@@ -6,10 +6,9 @@ import { getSourceDocumentProcessor } from "@/features/ai/server/services/proces
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { summarizeLedgerEntries } from "@/features/ai/server/utils/utils";
 import { logger } from "@/lib/logger";
-import { sourceDocumentRepo } from "../repository";
-import { ledgerEntryRepo } from "@/features/ledger/server/repository";
 import { arbitrate } from "@/features/ai/server/services/arbitration";
 import { sendNotificationToUser } from "@/features/notifications/server/services/push-service";
+import { forLedger } from "@/lib/db/scoped-query";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -86,8 +85,13 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     // 1. Main execution
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
         if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
+
+        const q = forLedger(sourceDocuments, context.ledgerId);
+
         // Update status to processing
-        await sourceDocumentRepo.setProcessing(input.sourceDocumentId, context.ledgerId);
+        await db.update(sourceDocuments)
+            .set({ status: 'processing' })
+            .where(q.whereId(input.sourceDocumentId));
 
         // Step 1: Dual GPT Processing
         await context.updateProgress({
@@ -259,15 +263,24 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
         const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
+        const q = forLedger(sourceDocuments, context.ledgerId);
+        const qEntries = forLedger(ledgerEntries, context.ledgerId);
+
         // 1. Check if entries already exist (Idempotency)
         const [existingEntries] = await db.select().from(ledgerEntries).where(eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId)).limit(1);
 
         if (existingEntries) {
             logger.info({ sourceDocumentId: input.sourceDocumentId }, "Ledger entries already exist, ensuring status is completed");
             // Still need to mark as completed and update title even if entries exist (idempotency)
-            await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
+
+            await db.update(sourceDocuments)
+                .set({ status: 'completed' })
+                .where(q.whereId(input.sourceDocumentId));
+
             if (title) {
-                await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
+                await db.update(sourceDocuments)
+                    .set({ title })
+                    .where(q.whereId(input.sourceDocumentId));
             }
             return;
         }
@@ -275,12 +288,20 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         // Handle anomaly - do NOT save entries, just update document status
         if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
             const anomalyCode = verificationStatus === 'invalid' ? 'invalid_content' : 'evidence_anomaly';
-            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
+
+            await db.update(sourceDocuments)
+                .set({
+                    status: 'anomaly',
+                    anomalyCodes: [anomalyCode]
+                })
+                .where(q.whereId(input.sourceDocumentId));
 
             // Save anomaly reason as title for user visibility
             const displayTitle = anomalyReason || title;
             if (displayTitle) {
-                await sourceDocumentRepo.update(input.sourceDocumentId, { title: displayTitle }, context.ledgerId);
+                await db.update(sourceDocuments)
+                    .set({ title: displayTitle })
+                    .where(q.whereId(input.sourceDocumentId));
             }
             return;
         }
@@ -289,9 +310,17 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         // Handle empty valid entries
         if (validEntries.length === 0) {
-            await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, ["invalid_content"], context.ledgerId);
+            await db.update(sourceDocuments)
+                .set({
+                    status: 'anomaly',
+                    anomalyCodes: ['invalid_content']
+                })
+                .where(q.whereId(input.sourceDocumentId));
+
             if (title) {
-                await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
+                await db.update(sourceDocuments)
+                    .set({ title })
+                    .where(q.whereId(input.sourceDocumentId));
             }
             return;
         }
@@ -315,15 +344,19 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         });
 
         if (entriesToInsert.length > 0) {
-            await ledgerEntryRepo.batchCreate(entriesToInsert, context.ledgerId);
+            await db.insert(ledgerEntries).values(entriesToInsert);
         }
 
         // Update document status to completed
-        await sourceDocumentRepo.batchComplete([input.sourceDocumentId], context.ledgerId!);
+        await db.update(sourceDocuments)
+            .set({ status: 'completed' })
+            .where(q.whereId(input.sourceDocumentId));
 
         // Update title if present
         if (title) {
-            await sourceDocumentRepo.update(input.sourceDocumentId, { title }, context.ledgerId);
+            await db.update(sourceDocuments)
+                .set({ title })
+                .where(q.whereId(input.sourceDocumentId));
         }
 
         // Send Push Notification
@@ -358,8 +391,15 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return;
         }
 
+        const q = forLedger(sourceDocuments, context.ledgerId);
+
         // Update source document status to anomaly via Repo
-        await sourceDocumentRepo.setAnomaly(input.sourceDocumentId, [anomalyCode], context.ledgerId);
+        await db.update(sourceDocuments)
+            .set({
+                status: 'anomaly',
+                anomalyCodes: [anomalyCode]
+            })
+            .where(q.whereId(input.sourceDocumentId));
     },
 };
 

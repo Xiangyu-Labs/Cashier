@@ -16,7 +16,7 @@ import {
     createServiceCredentialAction,
     deleteServiceCredentialAction,
 } from "@/features/ledger/server/actions/credentials";
-import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
+// import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";

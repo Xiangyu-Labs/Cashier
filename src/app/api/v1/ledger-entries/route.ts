@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { LedgerScope } from "@/features/ledger/server/service";
+// import { LedgerScope } from "@/features/ledger/server/service";
 
 import { eq, and, isNull } from "drizzle-orm";
 
@@ -51,9 +51,6 @@ export async function POST(request: NextRequest) {
 
     // 3. Construct Message Content
     try {
-        // Create LedgerScope from validated credential
-        const scope = LedgerScope.fromCredential(credential);
-
         const imageUrls: string[] = [];
         if (images && images.length > 0) {
             images.forEach(img => {
@@ -65,12 +62,14 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Save source document with 'queued' status using scoped repository
-        const savedDoc = await scope.documents.create({
+        // Save source document with 'queued' status directly
+        const { sourceDocuments } = await import("@/lib/db/schema");
+        const [savedDoc] = await db.insert(sourceDocuments).values({
+            ledgerId: credential.ledgerId,
             text: text || null,
             imageUrls: imageUrls,
             status: "queued",
-        } as any);
+        }).returning();
 
         // Update last used at
         try {
@@ -84,14 +83,13 @@ export async function POST(request: NextRequest) {
         const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/features/source-document/server/tasks/parse-source-document");
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
-        // Fetch ledger data (still need direct db access for ledgers table as it's not in scope yet)
+        // Fetch ledger data
         const ledger = await db.query.ledgers.findFirst({
             where: and(eq(ledgerTable.id, credential.ledgerId), isNull(ledgerTable.deletedAt)),
         });
 
         if (ledger) {
-            // Fetch categories using scoped repository
-            // Include both ledger-specific and global (null ledgerId) categories
+            // Fetch categories
             const allCategories = await db.query.entryCategories.findMany({
                 where: (c, { eq, or, isNull, and }) => and(
                     or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId)),

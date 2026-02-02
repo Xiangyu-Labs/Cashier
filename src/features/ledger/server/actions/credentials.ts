@@ -13,12 +13,15 @@ const createCredentialSchema = z.object({
     name: z.string().min(1),
 });
 
-export async function getServiceCredentialsAction(ledgerId: string) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) throw new Error("Unauthorized");
+import { forLedger } from "@/lib/db/scoped-query";
 
+export async function getServiceCredentialsAction(ledgerId: string) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
+
+    const q = forLedger(serviceCredentials, ledgerId);
     const credentials = await db.query.serviceCredentials.findMany({
-        where: and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt)),
+        where: q.whereActive,
         orderBy: [desc(serviceCredentials.createdAt)],
     });
 
@@ -32,8 +35,8 @@ export async function getServiceCredentialsAction(ledgerId: string) {
 
 export async function createServiceCredentialAction(ledgerId: string, data: z.infer<typeof createCredentialSchema>) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const validated = createCredentialSchema.parse(data);
 
@@ -65,18 +68,16 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
 
 export async function deleteServiceCredentialAction(ledgerId: string, credentialId: string) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
+
+        const q = forLedger(serviceCredentials, ledgerId);
 
         // Verify ownership and delete
         const result = await db.update(serviceCredentials)
-            .set({ deletedAt: new Date() })
-            .where(
-                and(
-                    eq(serviceCredentials.id, credentialId),
-                    eq(serviceCredentials.ledgerId, ledgerId)
-                )
-            ).returning();
+            .set(q.softDelete)
+            .where(q.whereId(credentialId))
+            .returning();
 
         if (result.length === 0) return { success: false, error: "Not found" };
 

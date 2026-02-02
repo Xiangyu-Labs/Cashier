@@ -7,8 +7,9 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { submitFlowTask } from "@/lib/flow/producer";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
-import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, isNull } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
+import { forLedger } from "@/lib/db/scoped-query";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -71,21 +72,26 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
             throw new Error("At least one input (text or images) is required");
         }
 
-        const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized or Ledger not found");
+        const { ledger, error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized or Ledger not found");
 
-        // Save source document with 'queued' status using scope repository
-        const savedDoc = await scope.documents.create({
+        const q = forLedger(sourceDocuments, ledgerId);
+
+        // Save source document with 'queued' status
+        const [savedDoc] = await db.insert(sourceDocuments).values({
+            ledgerId: ledgerId, // Explicitly set ledgerId
             text: text || null,
-            imageUrls: [], // Will update after normalization if needed, though prepare handles it for the task
+            imageUrls: [], // Will update after normalized
             status: "queued",
-        } as any);
+        }).returning();
 
         const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
 
         // Update with normalized image URLs if any
         if (imageUrls.length > 0) {
-            await scope.documents.update(savedDoc.id, { imageUrls });
+            await db.update(sourceDocuments)
+                .set({ imageUrls })
+                .where(q.whereId(savedDoc.id));
         }
 
         revalidatePath(`/ledger/${ledgerId}`);
@@ -112,36 +118,28 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
  */
 export async function retrySourceDocumentAction(ledgerId: string, sourceDocumentId: string, input?: SourceDocumentActionInput) {
     try {
-        const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized or Ledger not found");
+        const { ledger, error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized or Ledger not found");
+
+        const q = forLedger(sourceDocuments, ledgerId);
 
         // Verify document belongs to ledger
-        const existingDoc = await scope.documents.get(sourceDocumentId);
+        const existingDoc = await db.query.sourceDocuments.findFirst({
+            where: q.whereId(sourceDocumentId)
+        });
         if (!existingDoc) throw new Error("Source document not found");
 
         const text = input?.text || existingDoc.text || undefined;
-        // If new images provided, use them, otherwise use existing ones (converting URLs back to data if necessary is not ideal, 
-        // but here we expect input to be provided if images are changing)
         const images = input?.images;
 
         // Update status to queued
-        await scope.documents.update(sourceDocumentId, { status: "queued" });
+        const updatePayload: any = { status: "queued" };
 
         // If new text/images provided, update the document record
         if (input) {
-            const updatePayload: any = {};
             if (input.text !== undefined) updatePayload.text = input.text;
 
-            // Fix: Store updated images in DB if provided
             if (images) {
-                // Convert input images to imageUrls format (data URI) for storage/usage
-                // Note: DB usually stores array of strings. 
-                // The normalize happens in prepareSourceDocumentTask but meaningful persistence should happen here.
-                // However, scope.documents.update expects the schema format.
-
-                // We need to map images {data, mimeType} to string[] usually. 
-                // Assuming data is arguably the URL/Base64.
-
                 const newImageUrls = images.map(img => {
                     let data = img.data;
                     if (!data.startsWith("data:") && !data.startsWith("http")) {
@@ -151,18 +149,24 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
                 });
                 updatePayload.imageUrls = newImageUrls;
             }
-
-            await scope.documents.update(sourceDocumentId, updatePayload);
         }
 
-        // We use the existing imageUrls if no new ones are provided
+        await db.update(sourceDocuments)
+            .set(updatePayload)
+            .where(q.whereId(sourceDocumentId));
+
         // Use the updated doc we just potentially patched, or logic:
         const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
 
-        // Fix: Delete existing ledger entries to prevent idempotency check from blocking new results
-        await scope.entries.deleteMany({
-            where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId)
-        });
+        // Delete existing ledger entries to prevent idempotency check from blocking new results
+        // Note: ledgerEntries table check
+        const qEntries = forLedger(ledgerEntries, ledgerId);
+        await db.update(ledgerEntries)
+            .set(qEntries.softDelete)
+            .where(and(
+                qEntries.whereActive, // Ensure entries belong to ledger
+                eq(ledgerEntries.sourceDocumentId, sourceDocumentId)
+            ));
 
         await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 
@@ -190,10 +194,15 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
  */
 export async function updateSourceDocumentAction(ledgerId: string, sourceId: string, data: { title: string }) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized");
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized");
 
-        await scope.documents.update(sourceId, data);
+        const q = forLedger(sourceDocuments, ledgerId);
+
+        await db.update(sourceDocuments)
+            .set(data)
+            .where(q.whereId(sourceId));
+
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
@@ -207,14 +216,24 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
 
 export async function deleteSourceDocumentAction(ledgerId: string, sourceId: string) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized");
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized");
+
+        const q = forLedger(sourceDocuments, ledgerId);
+        const qEntries = forLedger(ledgerEntries, ledgerId);
 
         // Cascade soft delete to ledger entries
-        await scope.entries.deleteMany({
-            where: eq(ledgerEntries.sourceDocumentId, sourceId)
-        });
-        await scope.documents.delete(sourceId);
+        await db.update(ledgerEntries)
+            .set(qEntries.softDelete)
+            .where(and(
+                qEntries.whereActive,
+                eq(ledgerEntries.sourceDocumentId, sourceId)
+            ));
+
+        await db.update(sourceDocuments)
+            .set(q.softDelete)
+            .where(q.whereId(sourceId));
+
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
@@ -234,11 +253,14 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     endDate?: string | null;
     includeLedgerEntries?: boolean;
 }) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) throw new Error("Unauthorized");
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
 
     const { status, limit = 20, cursor, startDate, endDate } = params;
-    const conditions = [];
+    const q = forLedger(sourceDocuments, ledgerId);
+
+    // Base condition: Active documents in this ledger
+    const conditions = [q.whereActive];
 
     if (status) {
         const statuses = status.split(",").filter(Boolean);
@@ -263,7 +285,10 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         conditions.push(lte(sourceDocuments.createdAt, new Date(endDate)));
     }
 
-    const result = await scope.documents.findMany({
+    // Use db.query for relation fetching if strict type safety needed, but manual join/separate query 
+    // is often better for complex filtering. Here we used findMany in repo.
+    // Drizzle query builder findMany:
+    const result = await db.query.sourceDocuments.findMany({
         where: and(...conditions),
         orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
         limit: limit + 1,
@@ -284,7 +309,6 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         }
     }
 
-
     let nextCursor = null;
     if (filteredResult.length > limit) {
         const nextItem = filteredResult[limit];
@@ -296,8 +320,13 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     let entriesByDocId = new Map<string, any[]>();
     if (params.includeLedgerEntries && filteredResult.length > 0) {
         const docIds = filteredResult.map(d => d.id);
-        const entries = await scope.entries.findMany({
-            where: inArray(ledgerEntries.sourceDocumentId, docIds),
+        const qEntries = forLedger(ledgerEntries, ledgerId);
+
+        const entries = await db.query.ledgerEntries.findMany({
+            where: and(
+                qEntries.whereActive,
+                inArray(ledgerEntries.sourceDocumentId, docIds)
+            ),
             with: { category: true }
         });
 
@@ -328,10 +357,14 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
 }
 
 export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId: string) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) throw new Error("Unauthorized");
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
 
-    const doc = await scope.documents.get(sourceDocumentId);
+    const q = forLedger(sourceDocuments, ledgerId);
+    const doc = await db.query.sourceDocuments.findFirst({
+        where: q.whereId(sourceDocumentId)
+    });
+
     if (!doc) return null;
 
     return {
@@ -343,16 +376,29 @@ export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId
 
 export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized");
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized");
 
         if (sourceDocumentIds.length === 0) return { success: true };
 
+        const q = forLedger(sourceDocuments, ledgerId);
+        const qEntries = forLedger(ledgerEntries, ledgerId);
+
         // Cascade soft delete to associated ledger entries
-        await scope.entries.deleteMany({
-            where: inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
-        });
-        await scope.documents.batchDelete(sourceDocumentIds);
+        await db.update(ledgerEntries)
+            .set(qEntries.softDelete)
+            .where(and(
+                qEntries.whereActive,
+                inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
+            ));
+
+        await db.update(sourceDocuments)
+            .set(q.softDelete)
+            .where(and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            ));
+
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
@@ -366,30 +412,31 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
 
 export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
     try {
-        const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized");
+        const { ledger, error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized");
 
         if (sourceDocumentIds.length === 0) return { success: true };
 
+        const q = forLedger(sourceDocuments, ledgerId);
+
         // 1. Fetch all docs to get their current text/images
-        const docs = await scope.documents.findMany({
-            where: inArray(sourceDocuments.id, sourceDocumentIds)
+        const docs = await db.query.sourceDocuments.findMany({
+            where: and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            )
         });
 
         // 2. Update status to queued
-        await scope.documents.batchUpdate(sourceDocumentIds, { status: "queued" });
+        await db.update(sourceDocuments)
+            .set({ status: "queued" })
+            .where(and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            ));
 
         // 3. Retrigger tasks for each
         await Promise.all(docs.map(async (doc) => {
-            // Re-prepare task. 
-            // Note: We are not changing text/images here, just re-running with existing data.
-            // We need to convert existing imageUrls back to format needed? 
-            // Actually prepareSourceDocumentAction can handle existing URLs if we structure it right, 
-            // but prepareSourceDocumentTask implementation expects {data, mimeType}.
-
-            // However, look at retrySourceDocumentAction:
-            // const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
-            // We should do similar.
             const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
             await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
         }));
@@ -418,7 +465,6 @@ export interface GroupedSourceDocuments {
 
 /**
  * Unified action to fetch grouped source documents.
- * This moves the grouping logic from client to server for better performance and consistency.
  */
 export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: {
     startDate?: string | null;
@@ -426,17 +472,13 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     limit?: number;
     cursor?: string | null;
 }) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) throw new Error("Unauthorized");
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
 
     try {
-
         const { startDate, endDate, limit = 20, cursor } = params;
 
         // 1. Fetch active documents (queued, processing, anomaly)
-        // For active docs, we might want to ignore date range if they are "active"
-        // but the plan says "Server-side filtering for ALL sections".
-        // Let's apply date range to all.
         const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
             status: 'queued,processing,anomaly',
             includeLedgerEntries: true,
@@ -495,12 +537,20 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
 
 export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) throw new Error("Unauthorized");
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) throw new Error("Unauthorized");
 
         if (sourceDocumentIds.length === 0) return { success: true };
 
-        await scope.documents.batchUpdate(sourceDocumentIds, data as any);
+        const q = forLedger(sourceDocuments, ledgerId);
+
+        await db.update(sourceDocuments)
+            .set(data as any)
+            .where(and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            ));
+
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {

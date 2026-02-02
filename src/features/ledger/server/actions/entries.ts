@@ -28,22 +28,23 @@ const updateLedgerEntrySchema = z.object({
     entryDate: z.string().nullable().optional(),
 });
 
+import { forLedger } from "@/lib/db/scoped-query";
+
 export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const validated = createLedgerEntrySchema.parse(data);
+        const q = forLedger(ledgerEntries, ledgerId);
 
-        // Cast to any to avoid "unknown property" error if Repo type doesn't include currency yet
-        const entry = await scope.entries.create({
+        const [entry] = await db.insert(ledgerEntries).values({
             ...validated,
             amount: validated.amount.toString(),
             ledgerId: ledgerId,
             currency: validated.currency || "CNY",
-            // entryDate handled by scope? or need validation?
             entryDate: validated.entryDate ? new Date(validated.entryDate) : undefined,
-        } as any);
+        }).returning();
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, data: entry };
@@ -55,12 +56,12 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
 
 export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const validated = updateLedgerEntrySchema.parse(data);
+        const q = forLedger(ledgerEntries, ledgerId);
 
-        // Filter out undefined values
         const updateData: any = {};
         if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
         if (validated.amount !== undefined) updateData.amount = validated.amount.toString();
@@ -69,11 +70,15 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
         if (validated.description !== undefined) updateData.description = validated.description;
         if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate ? new Date(validated.entryDate) : null;
 
-        const updatedEntry = await scope.entries.update(ledgerEntryId, updateData);
+        const [updatedEntry] = await db.update(ledgerEntries)
+            .set(updateData)
+            .where(q.whereId(ledgerEntryId))
+            .returning();
+
+        if (!updatedEntry) throw new Error("Entry not found or access denied");
 
         revalidatePath(`/ledger/${ledgerId}`);
 
-        // Map back to API type
         return {
             success: true,
             data: {
@@ -91,10 +96,13 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
 export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
-        await scope.entries.delete(ledgerEntryId);
+        const q = forLedger(ledgerEntries, ledgerId);
+        await db.update(ledgerEntries)
+            .set(q.softDelete)
+            .where(q.whereId(ledgerEntryId));
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
@@ -106,10 +114,17 @@ export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
 export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[]) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
-        await scope.entries.batchDelete(ledgerEntryIds);
+        const q = forLedger(ledgerEntries, ledgerId);
+
+        await db.update(ledgerEntries)
+            .set(q.softDelete)
+            .where(and(
+                q.whereActive,
+                inArray(ledgerEntries.id, ledgerEntryIds)
+            ));
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
@@ -121,8 +136,8 @@ export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEnt
 
 export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: any) {
     try {
-        const { scope, error } = await requireLedgerAccess(ledgerId);
-        if (error || !scope) return { success: false, error: "Unauthorized" };
+        const { error } = await requireLedgerAccess(ledgerId);
+        if (error) return { success: false, error: "Unauthorized" };
 
         const updateData: any = {};
         if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
@@ -131,7 +146,14 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         if (data.itemName !== undefined) updateData.itemName = data.itemName;
         if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? new Date(data.entryDate) : null;
 
-        await scope.entries.batchUpdate(ledgerEntryIds, updateData);
+        const q = forLedger(ledgerEntries, ledgerId);
+
+        await db.update(ledgerEntries)
+            .set(updateData)
+            .where(and(
+                q.whereActive,
+                inArray(ledgerEntries.id, ledgerEntryIds)
+            ));
 
         revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
@@ -151,15 +173,16 @@ export async function getLedgerEntriesAction(
         categoryId?: string | null;
     }
 ) {
-    const { scope, error } = await requireLedgerAccess(ledgerId);
-    if (error || !scope) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) {
         throw new Error("Unauthorized");
     }
 
+    const q = forLedger(ledgerEntries, ledgerId);
+
     const limit = params.limit ?? 20;
     const conditions = [
-        eq(ledgerEntries.ledgerId, ledgerId),
-        isNull(ledgerEntries.deletedAt)
+        q.whereActive
     ];
 
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));

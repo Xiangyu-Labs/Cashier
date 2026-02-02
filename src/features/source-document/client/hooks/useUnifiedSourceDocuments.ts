@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { SourceDocument, LedgerEntry } from '@/types/api';
 import { queryKeys } from '@/lib/query-keys';
@@ -45,7 +46,7 @@ export function useUnifiedSourceDocuments(
     const endDate = dateRange?.end?.toISOString() || null;
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
-    const { data: unifiedData, isLoading: isUnifiedLoading } = useQuery({
+    const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
         queryKey: [
             'sourceDocuments',
             ledgerId,
@@ -57,6 +58,8 @@ export function useUnifiedSourceDocuments(
             startDate,
             endDate,
         }),
+        isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
+        interval: 3000,
     });
 
     // Query 2: Infinite scroll for additional completed documents

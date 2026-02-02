@@ -1,6 +1,8 @@
 import { getMainQueue, getApiQueue } from "./queues";
 import { logger } from "@/lib/logger";
-import { taskRunRepo } from "@/features/tasks/server/repositories/task-run-repository";
+import { db } from "@/lib/db";
+import { taskRuns } from "@/lib/db/schema";
+import { forLedger } from "@/lib/db/scoped-query";
 
 interface SubmitTaskOptions {
     type: string;
@@ -14,13 +16,15 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
     const { type, title, ledgerId, data, queueName = 'main' } = options;
 
     // 1. Create task_run record
-    const run = await taskRunRepo.create({
+    const [run] = await db.insert(taskRuns).values({
+        ledgerId,
         type,
         title,
-        ledgerId,
         status: 'running',
         usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-    }, ledgerId);
+    }).returning();
+
+    const q = forLedger(taskRuns, ledgerId);
 
     try {
         // 2. Add to BullMQ
@@ -41,7 +45,9 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
         });
 
         // 3. Update task_run with BullMQ ID
-        await taskRunRepo.update(run.id, { bullFlowId: job.id }, ledgerId);
+        await db.update(taskRuns)
+            .set({ bullFlowId: job.id })
+            .where(q.whereId(run.id));
 
         logger.info({ taskRunId: run.id, bullJobId: job.id, type }, "Task submitted successfully");
 
@@ -50,7 +56,13 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
         logger.error({ err: error, taskRunId: run.id }, "Failed to submit task to queue");
 
         // Mark as failed immediately
-        await taskRunRepo.fail(run.id, (error as Error).message, ledgerId);
+        await db.update(taskRuns)
+            .set({
+                status: 'failed',
+                error: (error as Error).message,
+                completedAt: new Date()
+            })
+            .where(q.whereId(run.id));
 
         throw error;
     }

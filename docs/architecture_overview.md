@@ -27,9 +27,8 @@ src/features/ledger/
 │   ├── transaction-list.tsx
 │   └── transaction-form.tsx
 ├── server/         # Server-side logic
-│   ├── actions.ts  # Server Actions (callable from UI)
-│   ├── schema.ts   # Database Schema for this feature
-│   └── service.ts  # Business Logic & DB queries
+│   ├── actions/    # Server Actions (callable from UI)
+│   └── schema.ts   # Database Schema for this feature
 └── client/         # Client-side specific logic (hooks, stores)
 ```
 
@@ -41,7 +40,7 @@ src/features/ledger/
 
 The `src/lib/` directory contains code that is truly generic or infrastructural, shared across multiple features.
 
-- **`lib/db`**: Database connection and Drizzle ORM configuration.
+- **`lib/db`**: Database connection, Drizzle ORM configuration, and Scoped Query Helpers (`scoped-query.ts`).
 - **`lib/auth.ts`**: Authentication configuration.
 - **`lib/utils.ts`**: low-level helpers.
 - **`lib/flow`**: Workflow orchestration for processing tasks.
@@ -68,7 +67,7 @@ We use **Drizzle ORM** for data access.
 
 - **Schema Definition**: Schemas are defined inside `src/features/*/server/schema.ts` to keep data definition close to usage.
 - **Schema Aggregation**: `drizzle.config.ts` imports all these schemas to generate migrations.
-- **Queries**: Queries should generally live in Server Actions or Services within the feature.
+- **Queries**: Queries live directly in **Server Actions**. We use a helper (`forLedger` / `scoped-query`) to ensure tenant isolation and handle soft deletes consistently without a heavy Repository layer.
 
 ## 5. Key Technologies
 

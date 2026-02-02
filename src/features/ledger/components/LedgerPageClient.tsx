@@ -17,7 +17,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
+// import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Link as I18nLink } from "@/i18n/routing";
@@ -59,8 +59,7 @@ export function LedgerPageClient({
 
     const [isInputOpen, setIsInputOpen] = useState(false);
 
-    // Enable real-time updates only after ledger is loaded
-    useLedgerEvents(ledgerId, !!ledger);
+    // Enable real-time updates not needed here anymore, rely on smart polling in tabs
 
     if (!ledger) {
         return (
