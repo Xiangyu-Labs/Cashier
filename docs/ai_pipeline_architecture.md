@@ -80,16 +80,22 @@ This significantly reduces "silent failures" where an LLM confidently outputs wr
 -   **Anomalies**: If the document cannot be parsed (e.g., blurred image, unrelated text), it is not "Failed" (which implies a system crash) but set to `anomaly` status. This prompts the user to review it manually.
 -   **Retries**: BullMQ handles transient failures (e.g., OpenAI network timeout) with exponential backoff.
 
-## 5. Adding New Tasks
+## 5. 添加后台任务
 
-To add a new background task:
+本文档聚焦于 AI Pipeline 的架构设计。如需了解如何开发新的后台任务，请参考：
 
-1.  Define the Task Handler in `src/features/[feature]/server/tasks/`.
-2.  Register it using `registerFlowTask`.
-3.  Import the file in `src/worker.ts` to ensure it executes in the worker process.
+📖 **[后台任务开发 SOP](./backend_task_development_sop.md)** - 完整的开发流程和最佳实践
 
-```typescript
-// Example Registration
-import { registerFlowTask } from '@/lib/flow';
-registerFlowTask("my_new_task", myTaskHandler);
-```
+该文档包含：
+- 任务创建的 5 步流程
+- 队列选择决策表
+- 完整代码示例
+- 常见错误和检查清单
+
+---
+
+## 📚 相关文档
+
+- [Backend Task Development SOP](./backend_task_development_sop.md) - 后台任务开发指南
+- [Frontend Data Sync SOP](./frontend_data_sync_sop.md) - 前端数据同步模式
+- [Architecture Overview](./architecture_overview.md) - 整体架构概览
