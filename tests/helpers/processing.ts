@@ -4,8 +4,8 @@ import { eq, or } from "drizzle-orm";
 
 /**
  * Polls for all pending task runs to complete.
- * In a real BullMQ environment, the workers are running separately.
- * In integration tests, we wait for the database to reflect completion.
+ * Tasks run asynchronously in-process.
+ * We wait for the database to reflect completion.
  */
 export async function processAllPendingTasks(timeoutMs: number = 10000) {
     const start = Date.now();

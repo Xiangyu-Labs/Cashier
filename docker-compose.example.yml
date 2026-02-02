@@ -18,8 +18,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - AI_MAX_RETRIES=${AI_MAX_RETRIES:-3}
       - AI_RETRY_DELAY_MS=${AI_RETRY_DELAY_MS:-1000}
-      - PROCESSING_WORKER_COUNT=${PROCESSING_WORKER_COUNT:-1}
-      - PROCESSING_WORKER_COUNT=${PROCESSING_WORKER_COUNT:-1}
+      - AI_RETRY_DELAY_MS=${AI_RETRY_DELAY_MS:-1000}
     depends_on:
       db:
         condition: service_healthy

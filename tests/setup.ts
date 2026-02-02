@@ -44,12 +44,8 @@ beforeAll(async () => {
 
   if (process.env.NO_DB) return;
 
-  // Enable background workers in tests with low concurrency
-  process.env.FLOW_MAIN_QUEUE_CONCURRENCY = "1";
-  process.env.FLOW_API_QUEUE_CONCURRENCY = "1";
-  process.env.PROCESSING_WORKER_COUNT = "1";
-  process.env.BULLMQ_LOCK_DURATION = "10000"; // Increased for stability
-  process.env.BULLMQ_STALLED_INTERVAL = "10000";
+
+  if (process.env.NO_DB) return;
 
   // Dummy VAPID keys for testing to suppress warnings
   if (!process.env.VAPID_PRIVATE_KEY) process.env.VAPID_PRIVATE_KEY = "test_private_key";
