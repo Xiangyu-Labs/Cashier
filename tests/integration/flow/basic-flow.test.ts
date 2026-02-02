@@ -1,12 +1,11 @@
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { registerFlowTask, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { submitFlowTask } from "@/lib/flow/producer";
-import { getMainWorker, getApiWorker, initializeWorkers } from "@/lib/flow/workers";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getMainQueue, getApiQueue } from "@/lib/flow/queues";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { processAllPendingTasks } from "../../helpers/processing";
 
 // 1. Define Test Task
 const TEST_TASK_TYPE = "integration_test_task";
@@ -41,20 +40,6 @@ registerFlowTask(TEST_TASK_TYPE, testHandler);
 describe("Flow System Integration", () => {
     let ledgerId: string;
 
-    beforeAll(async () => {
-        // Ensure workers are ready (they start on import, but we can wait for ready)
-        await initializeWorkers();
-        await getMainWorker().waitUntilReady();
-        await getApiWorker().waitUntilReady();
-    });
-
-    afterAll(async () => {
-        await getMainWorker().close();
-        await getApiWorker().close();
-        await getMainQueue().close();
-        await getApiQueue().close();
-    });
-
     // Mock fetch for API calls if needed by tasks
     beforeEach(async () => {
         vi.stubGlobal('fetch', vi.fn());
@@ -64,28 +49,37 @@ describe("Flow System Integration", () => {
         ledgerId = id;
     });
 
+    afterAll(() => {
+        vi.unstubAllGlobals();
+    });
+
     it("should execute a basic task successfully", async () => {
         // 1. Submit Task
+        // Note: submitFlowTask in the new architecture calls runTask asynchronously.
+        // In a real environment this happens in background.
+        // In test environment, we might experience race conditions if we check DB immediately?
+        // Actually, submitFlowTask invokes runTask *without awaiting it*.
+        // So for the test to be deterministic, we might need a small wait loop or helpers.
+
         const taskRunId = await submitFlowTask({
             type: TEST_TASK_TYPE,
             title: "Test Task",
             ledgerId: ledgerId,
             data: { value: 21 },
-            queueName: 'main'
         });
 
         expect(taskRunId).toBeDefined();
 
         // 2. Verify Initial State
+        // It might be running or completed depending on speed
         let run = await db.query.taskRuns.findFirst({
             where: eq(taskRuns.id, taskRunId)
         });
-        expect(run?.status).toBe('running');
+        expect(run).toBeDefined();
 
-        // 3. Poll for Completion (Wait for worker)
-        // Max wait 15s
-        for (let i = 0; i < 150; i++) {
-            await new Promise(r => setTimeout(r, 100)); // 100ms
+        // 3. Poll for Completion (Wait for in-process runner)
+        for (let i = 0; i < 50; i++) {
+            await new Promise(r => setTimeout(r, 50)); // 50ms wait
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)
             });
@@ -108,13 +102,12 @@ describe("Flow System Integration", () => {
             title: "Failing Task",
             ledgerId: ledgerId,
             data: { value: 0, shouldFail: true },
-            queueName: 'main'
         });
 
         // Wait for completion
         let run;
-        for (let i = 0; i < 300; i++) {
-            await new Promise(r => setTimeout(r, 100));
+        for (let i = 0; i < 50; i++) {
+            await new Promise(r => setTimeout(r, 50));
             run = await db.query.taskRuns.findFirst({
                 where: eq(taskRuns.id, taskRunId)
             });

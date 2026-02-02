@@ -1,4 +1,4 @@
-import { getMainQueue, getApiQueue } from "./queues";
+import { runTask } from "./runner";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
@@ -9,11 +9,11 @@ interface SubmitTaskOptions {
     title: string;
     ledgerId: string;
     data: unknown;
-    queueName?: 'main' | 'api';
+    queueName?: 'main' | 'api'; // Parameter kept for backward compatibility (ignored internally)
 }
 
 export async function submitFlowTask(options: SubmitTaskOptions): Promise<string> {
-    const { type, title, ledgerId, data, queueName = 'main' } = options;
+    const { type, title, ledgerId, data } = options;
 
     // 1. Create task_run record
     const [run] = await db.insert(taskRuns).values({
@@ -27,33 +27,33 @@ export async function submitFlowTask(options: SubmitTaskOptions): Promise<string
     const q = forLedger(taskRuns, ledgerId);
 
     try {
-        // 2. Add to BullMQ
-        const queue = queueName === 'api' ? getApiQueue() : getMainQueue();
-
-        // Explicitly casting data to object to satisfy BullMQ types if needed, though 'unknown' might be strict
-        const jobData = {
+        // 2. Prepare task payload
+        const taskData = {
             ...data as object,
             __taskRunId: run.id,
             __ledgerId: ledgerId,
         };
 
-        const job = await queue.add(type, jobData, {
-            // Job options
-            attempts: 1,
-            removeOnComplete: 100,
-            removeOnFail: 500,
+        const taskDefinition = {
+            name: type,
+            title,
+            queueName: 'main' as const, // Ignored
+            data: taskData
+        };
+
+        // 3. Fire and forget - execute asynchronously
+        // We do NOT await this. It runs in the background.
+        // Node.js will keep the process alive for this promise in most server environments.
+        // In Serverless (Vercel), this might be cut short, but user is on Docker/VPS.
+        runTask(taskDefinition).catch(err => {
+            logger.error({ err, taskRunId: run.id }, "Unhandled error in background task runner");
         });
 
-        // 3. Update task_run with BullMQ ID
-        await db.update(taskRuns)
-            .set({ bullFlowId: job.id })
-            .where(q.whereId(run.id));
-
-        logger.info({ taskRunId: run.id, bullJobId: job.id, type }, "Task submitted successfully");
+        logger.info({ taskRunId: run.id, type }, "Task submitted for background execution");
 
         return run.id;
     } catch (error) {
-        logger.error({ err: error, taskRunId: run.id }, "Failed to submit task to queue");
+        logger.error({ err: error, taskRunId: run.id }, "Failed to submit task");
 
         // Mark as failed immediately
         await db.update(taskRuns)

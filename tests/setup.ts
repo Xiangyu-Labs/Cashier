@@ -9,7 +9,6 @@ import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
 import { cleanup } from "@testing-library/react";
-import { initializeWorkers, shutdownWorkers } from "@/lib/flow/workers";
 import type { Mock } from "vitest";
 
 // Test database connection
@@ -56,8 +55,12 @@ beforeAll(async () => {
   if (!process.env.VAPID_PRIVATE_KEY) process.env.VAPID_PRIVATE_KEY = "test_private_key";
   if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "test_public_key";
 
-  // Initialize workers for integration tests
-  await initializeWorkers();
+
+  // Initialize BullMQ workers for integration tests that need them
+  // Note: In unit tests we often mock this, but for integration we might want real processing
+  // However, to keep tests fast we often mock OpenAI and just test the queue mechanism
+  // For now, let's skip worker initialization here to avoid Redis connection issues if not needed
+  // await initializeWorkers();
 
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });
@@ -67,7 +70,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await shutdownWorkers();
+  // await shutdownWorkers();
   if (testClient) {
     await testClient.end();
   }
@@ -187,7 +190,7 @@ vi.mock("next-intl", async () => {
 vi.mock("next/image", () => ({
   __esModule: true,
   default: (props: { src: string; alt: string;[key: string]: unknown }) => {
-     
+
     return React.createElement("img", { ...props, src: props.src });
   },
 }));
