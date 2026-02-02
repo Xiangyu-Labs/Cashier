@@ -9,7 +9,7 @@ import {
 } from "@/features/auth/server/repositories/otp-repository";
 import { generateOTP, hashOTP } from "@/features/auth/server/services/otp";
 import { otpTokens } from "@/features/auth/server/schema";
-import { sql, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 describe("OTP Repository", () => {
   const testEmail = "otp-test@example.com";

@@ -1,6 +1,6 @@
 import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";

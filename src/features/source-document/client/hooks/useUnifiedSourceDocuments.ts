@@ -101,6 +101,7 @@ export function useUnifiedSourceDocuments(
         }),
         isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         initialData: initialUnifiedData as any,
     });
 

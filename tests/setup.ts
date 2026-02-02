@@ -5,7 +5,6 @@ import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import React from "react";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
 import { cleanup } from "@testing-library/react";
 import type { Mock } from "vitest";
@@ -74,7 +73,7 @@ beforeEach(async () => {
         emailVerified: new Date(),
         metadata: {},
       });
-    } catch (e) {
+    } catch (_e) {
       // Ignore unique constraint violation if exists
     }
   }
