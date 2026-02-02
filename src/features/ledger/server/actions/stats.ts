@@ -3,8 +3,11 @@
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { auth } from "@/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { ledgers, currencyRates } from "@/lib/db/schema";
+import { convertAmount } from "@/features/stats/server/utils";
+import { formatDateForApi } from "@/lib/date-utils";
 
 import { LedgerEntrySummary } from "@/types/api";
 
@@ -66,25 +69,58 @@ export async function getLedgerStatsAction(
     // TODO: Implement full join with entryCategories
     const byCategory: LedgerEntrySummary['byCategory'] = [];
 
-    // 4. Converted Total Logic
-    let convertedTotal = null;
-    if (formattedTotals.length === 1) {
-        convertedTotal = {
-            total: formattedTotals[0].total,
-            currency: formattedTotals[0].currency
-        };
-    } else if (mainCurrency) {
-        const main = formattedTotals.find(t => t.currency === mainCurrency);
-        if (main) {
-            convertedTotal = {
-                total: main.total,
-                currency: mainCurrency
-            };
+    // 4. Converted Total Logic - Accurate conversion by date
+    let convertedTotalValue = 0;
+    const effectiveMainCurrency = mainCurrency || (await db.query.ledgers.findFirst({
+        where: eq(ledgers.id, ledgerId),
+        columns: { metadata: true }
+    }))?.metadata?.settings?.mainCurrency || "CNY";
+
+    // Fetch entries with their dates to get matching rates
+    const entries = await db.query.ledgerEntries.findMany({
+        where: and(...conditions),
+        columns: {
+            amount: true,
+            currency: true,
+            entryDate: true,
+        }
+    });
+
+    if (entries.length > 0) {
+        // Collect unique dates
+        const uniqueDates = Array.from(new Set(entries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
+
+        // Fetch rates
+        let ratesMap: Record<string, any> = {};
+        if (uniqueDates.length > 0) {
+            const ratesData = await db.query.currencyRates.findMany({
+                where: inArray(currencyRates.date, uniqueDates)
+            });
+            ratesData.forEach(r => {
+                ratesMap[r.date] = r.rates;
+            });
+        }
+
+        // Calculate converted total
+        for (const entry of entries) {
+            const dateStr = entry.entryDate ? formatDateForApi(entry.entryDate) : "";
+            const dayRates = ratesMap[dateStr] || null;
+
+            const converted = convertAmount({
+                amount: Number(entry.amount),
+                fromCurrency: entry.currency || effectiveMainCurrency,
+                toCurrency: effectiveMainCurrency,
+                rates: dayRates
+            });
+            convertedTotalValue += converted;
         }
     }
 
     return {
-        convertedTotal,
+        convertedTotal: {
+            total: convertedTotalValue,
+            currency: effectiveMainCurrency
+        },
         totals: formattedTotals,
         trend,
         byCategory

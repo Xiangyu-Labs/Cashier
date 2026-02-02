@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries, ledgers, entryCategories, serviceCredentials } from "@/features/ledger/server/schema";
 import { currencyRates } from "@/features/currency/server/schema";
-import { and, eq, gte, lte, sql, desc } from "drizzle-orm";
+import { and, eq, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import { DateRangeType, getDateRange, addPeriod, formatDateForApi } from "@/lib/date-utils";
 import { convertAmount, calculateGrowth } from "./utils";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -91,13 +91,10 @@ export async function getEnhancedStats({
     const uniqueDates = Array.from(new Set(allEntries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
 
     // Fetch rates from DB
-    // Ideally use `inArray` but if list is huge it might break. 
-    // For personal finance, thousands of entries is rare in a view, but let's be safe.
-    // If uniqueDates is empty, we skip.
     let ratesMap: Record<string, any> = {};
     if (uniqueDates.length > 0) {
         const ratesData = await db.query.currencyRates.findMany({
-            where: sql`${currencyRates.date} IN ${uniqueDates}`
+            where: inArray(currencyRates.date, uniqueDates)
         });
         ratesData.forEach(r => {
             ratesMap[r.date] = r.rates; // r.rates is JSON

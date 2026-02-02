@@ -44,6 +44,13 @@ erDiagram
         string currency
         timestamp entry_date
     }
+
+    CurrencyRates {
+        date date PK
+        string base
+        jsonb rates
+        timestamp updated_at
+    }
 ```
 
 ## 2. Table References
@@ -69,6 +76,12 @@ The structured financial record.
 -   **Relationships**:
     -   `source_document_id`: Links back to the original proof. If a document is re-parsed, these entries may be deleted and recreated.
     -   `category_id`: Optional link to user-defined categories.
+
+### `currency_rates` (The Cache)
+Daily exchange rates used for stats conversion.
+-   **`date`**: Primary key (YYYY-MM-DD).
+-   **`rates`**: JSONB containing rate mappings (e.g., `{"USD": 1.1, "CNY": 7.8}`).
+-   **`base`**: The base currency for these rates (usually `EUR`).
 
 ## 3. Metadata & Flexibility
 We use `jsonb` columns extensively to avoid strictly coupled schema migrations for minor feature additions.
