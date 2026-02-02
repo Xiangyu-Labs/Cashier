@@ -1,5 +1,4 @@
-// Set Redis URL for tests
-process.env.REDIS_URL = "redis://127.0.0.1:6380";
+// Setup for Vitest integration tests
 
 
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
@@ -25,38 +24,22 @@ export function getTestDb() {
 
 import { createTestSchema } from "./helpers/schema-setup";
 
+import { memoryStore } from "@/lib/memory-store";
+
 beforeAll(async () => {
   // 1. Safety Check: Never run tests against production ports
-  const redisUrl = process.env.REDIS_URL || "redis://localhost:6380";
   const dbUrl = TEST_DATABASE_URL;
 
-  if (redisUrl.includes(":6379")) {
-    console.error("\x1b[31mCRITICAL ERROR: Tests attempted to connect to PRODUCTION REDIS (6379)!\x1b[0m");
-    process.exit(1);
-  }
   if (dbUrl.includes(":5432")) {
     console.error("\x1b[31mCRITICAL ERROR: Tests attempted to connect to PRODUCTION DATABASE (5432)!\x1b[0m");
     process.exit(1);
   }
-
-  // Set Redis URL explicitly before anything else
-  process.env.REDIS_URL = "redis://localhost:6380";
-
-  if (process.env.NO_DB) return;
-
 
   if (process.env.NO_DB) return;
 
   // Dummy VAPID keys for testing to suppress warnings
   if (!process.env.VAPID_PRIVATE_KEY) process.env.VAPID_PRIVATE_KEY = "test_private_key";
   if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "test_public_key";
-
-
-  // Initialize BullMQ workers for integration tests that need them
-  // Note: In unit tests we often mock this, but for integration we might want real processing
-  // However, to keep tests fast we often mock OpenAI and just test the queue mechanism
-  // For now, let's skip worker initialization here to avoid Redis connection issues if not needed
-  // await initializeWorkers();
 
   testClient = postgres(TEST_DATABASE_URL);
   testDb = drizzle(testClient, { schema });
@@ -66,17 +49,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // await shutdownWorkers();
   if (testClient) {
     await testClient.end();
   }
 });
 
 beforeEach(async () => {
-  // Clean Redis before each test to prevent cross-test contamination
-  const { getRedisConnection } = await import("@/lib/flow/connection");
-  const redis = getRedisConnection();
-  await redis.flushall();
+  // Clean memory store before each test
+  await memoryStore.flushall();
 
   // Clean all tables before each test
   if (getTestDb()) {

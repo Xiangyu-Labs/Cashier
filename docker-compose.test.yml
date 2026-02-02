@@ -18,15 +18,7 @@ services:
     networks:
       - test-network
 
-  test-redis:
-    container_name: cashier-test-redis
-    image: redis:7-alpine
-    ports:
-      - "127.0.0.1:6380:6379"
-    tmpfs:
-      - /data
-    networks:
-      - test-network
+
 
 networks:
   test-network:
