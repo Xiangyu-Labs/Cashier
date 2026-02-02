@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { getLedger } from "@/features/ledger/server/services/ledgers";
 import { getEntryCategories } from "@/features/ledger/server/services/categories";
-import { getServiceCredentials } from "@/features/ledger/server/services/credentials";
+import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
 import { redirect } from "@/i18n/routing";
 
@@ -17,7 +17,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     const [ledger, categories, credentials] = await Promise.all([
         getLedger(ledgerId),
         getEntryCategories(ledgerId),
-        getServiceCredentials(ledgerId),
+        getServiceCredentialsAction(ledgerId),
     ]);
 
     if (!ledger) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateServiceCredential } from "@/features/ledger/server/service-credentials";
+import { validateServiceCredential } from "@/features/ledger/server/actions/credentials";
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";

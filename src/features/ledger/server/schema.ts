@@ -37,7 +37,6 @@ export interface LedgerMetadata {
         mainCurrency?: string;
         autoRecognizeDate?: boolean;
         collapseProcessingDefault?: boolean;
-        mergeSimilarItems?: boolean;
         collapseBillsDefault?: boolean;
         aiCustomPrompt?: string;
         // Future expansion

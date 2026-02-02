@@ -6,7 +6,7 @@ import { SourceDocument, ServiceCredential } from "@/types/api";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
-import { getServiceCredentials } from "@/features/ledger/server/services/credentials";
+import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;
@@ -24,7 +24,7 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
     getLedgers(session!.user!.id!),
     getSourceDocumentsAction(ledgerId, { status: 'queued,processing,anomaly', includeLedgerEntries: true }),
     getSourceDocumentsAction(ledgerId, { status: 'completed', includeLedgerEntries: true }),
-    getServiceCredentials(ledgerId),
+    getServiceCredentialsAction(ledgerId),
   ]);
 
   if (!ledger) {

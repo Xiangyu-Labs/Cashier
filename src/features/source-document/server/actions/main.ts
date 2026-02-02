@@ -353,24 +353,6 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     };
 }
 
-export async function getSourceDocumentAction(ledgerId: string, sourceDocumentId: string) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
-    const q = forLedger(sourceDocuments, ledgerId);
-    const doc = await db.query.sourceDocuments.findFirst({
-        where: q.whereId(sourceDocumentId)
-    });
-
-    if (!doc) return null;
-
-    return {
-        ...doc,
-        createdAt: doc.createdAt.toISOString(),
-        status: doc.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
-    };
-}
-
 export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
     try {
         const { error } = await requireLedgerAccess(ledgerId);

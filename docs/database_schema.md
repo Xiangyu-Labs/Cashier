@@ -7,9 +7,12 @@ Cashier uses **PostgreSQL** as its primary database, with **Drizzle ORM** for sc
 ```mermaid
 erDiagram
     Users ||--o{ Ledgers : owns
+    Users ||--o{ PushSubscriptions : has
     Ledgers ||--o{ SourceDocuments : contains
     Ledgers ||--o{ LedgerEntries : tracks
     Ledgers ||--o{ EntryCategories : defines
+    Ledgers ||--o{ ServiceCredentials : has
+    Ledgers ||--o{ TaskRuns : triggers
     SourceDocuments ||--o{ LedgerEntries : generates
     EntryCategories ||--o{ LedgerEntries : classifies
 
@@ -17,6 +20,8 @@ erDiagram
         uuid id PK
         string email
         string name
+        timestamp email_verified
+        string image
     }
 
     Ledgers {
@@ -24,6 +29,9 @@ erDiagram
         uuid user_id FK
         string name
         jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
     }
 
     SourceDocuments {
@@ -33,6 +41,8 @@ erDiagram
         text text
         string[] image_urls
         jsonb anomaly_codes
+        timestamp created_at
+        timestamp deleted_at
     }
 
     LedgerEntries {
@@ -42,7 +52,22 @@ erDiagram
         uuid category_id FK
         decimal amount
         string currency
-        timestamp entry_date
+        string item_name
+        text description
+        date entry_date
+        jsonb metadata
+        timestamp created_at
+        timestamp deleted_at
+    }
+
+    EntryCategories {
+        uuid id PK
+        uuid ledger_id FK
+        string name
+        text description
+        string icon
+        integer sort_order
+        boolean is_editable
     }
 
     CurrencyRates {
@@ -50,6 +75,25 @@ erDiagram
         string base
         jsonb rates
         timestamp updated_at
+    }
+
+    ServiceCredentials {
+        uuid id PK
+        uuid ledger_id FK
+        string name
+        string key
+        timestamp created_at
+        timestamp last_used_at
+        timestamp deleted_at
+    }
+
+    PushSubscriptions {
+        uuid id PK
+        uuid user_id FK
+        text endpoint
+        text p256dh
+        text auth
+        text user_agent
     }
 ```
 
@@ -61,6 +105,7 @@ Every piece of financial data belongs to a Ledger.
     -   `settings.mainCurrency`: The default currency.
     -   `settings.aiLanguage`: Preferred language for AI response.
     -   `settings.autoRecognizeDate`: Boolean to enable/disable date extraction.
+    -   `settings.aiCustomPrompt`: Custom instructions for AI processing.
 
 ### `source_documents` (The Input)
 Represents a raw upload (image or text) waiting to be processed.
@@ -68,41 +113,31 @@ Represents a raw upload (image or text) waiting to be processed.
     -   `queued`: Waiting for worker.
     -   `processing`: Worker has picked it up.
     -   `completed`: Successfully parsed.
-    -   `anomaly`: Parsed but flagged for review (e.g., mismatch, unknown currency).
--   **`anomaly_codes`**: Array of reasons why it was flagged (`invalid_content`, `evidence_anomaly`).
+    -   `anomaly`: Parsed but flagged for review.
 
 ### `ledger_entries` (The Output)
 The structured financial record.
 -   **Relationships**:
-    -   `source_document_id`: Links back to the original proof. If a document is re-parsed, these entries may be deleted and recreated.
+    -   `source_document_id`: Links back to the original proof. 
     -   `category_id`: Optional link to user-defined categories.
+
+### `entry_categories`
+User-defined or system-provided categories for classifying expenses.
+
+### `service_credentials`
+API keys (`sk_live_...`) used for external service integrations.
+
+### `push_subscriptions`
+Standard Web Push subscription data for browser notifications.
 
 ### `currency_rates` (The Cache)
 Daily exchange rates used for stats conversion.
--   **`date`**: Primary key (YYYY-MM-DD).
--   **`rates`**: JSONB containing rate mappings (e.g., `{"USD": 1.1, "CNY": 7.8}`).
--   **`base`**: The base currency for these rates (usually `EUR`).
 
 ## 3. Metadata & Flexibility
-We use `jsonb` columns extensively to avoid strictly coupled schema migrations for minor feature additions.
-
-**Example: `SourceDocMetadata`**
-```typescript
-interface SourceDocMetadata {
-    rawOcrText?: string;      // Debugging data
-    emailHeaders?: {          // If uploaded via email
-        from?: string;
-        subject?: string;
-    };
-    fileMeta?: {
-        mimeType?: string;
-        sizeBytes?: number;
-    };
-}
-```
+We use `jsonb` columns extensively (in `ledgers`, `ledger_entries`, `source_documents`) to avoid strictly coupled schema migrations for minor feature additions.
 
 ## 4. Migration Workflow
 Since we use Drizzle ORM:
 1.  **Edit Schema**: Modify the `schema.ts` file in the relevant feature folder.
 2.  **Generate Migration**: Run `npx drizzle-kit generate`.
-3.  **Apply Migration**: This happens automatically on app startup (via `npm run db:push` in dev, or migration scripts in prod).
+3.  **Apply Migration**: This happens via `npx drizzle-kit push` in dev or migration scripts in prod.

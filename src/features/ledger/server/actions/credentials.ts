@@ -2,9 +2,9 @@
 
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import crypto from "crypto";
@@ -87,4 +87,18 @@ export async function deleteServiceCredentialAction(ledgerId: string, credential
         logger.error({ error, ledgerId, credentialId }, "Failed to delete service credential");
         return { success: false, error: "Failed to delete service credential" };
     }
+}
+
+export async function validateServiceCredential(key: string) {
+    const existingKey = await db.query.serviceCredentials.findFirst({
+        where: and(eq(serviceCredentials.key, key), isNull(serviceCredentials.deletedAt)),
+    });
+
+    if (existingKey) {
+        // Update last used asynchronously
+        await db.update(serviceCredentials).set({ lastUsedAt: new Date() }).where(eq(serviceCredentials.id, existingKey.id));
+        return existingKey;
+    }
+
+    return null;
 }
