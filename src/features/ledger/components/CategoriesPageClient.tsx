@@ -27,6 +27,7 @@ import { useTranslations } from "next-intl";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { queryKeys } from "@/lib/query-keys";
 
 interface CategoriesPageClientProps {
     ledgerId: string;
@@ -46,7 +47,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
     const t = useTranslations("CategoriesPage");
     const tSettings = useTranslations("Settings");
     const queryClient = useQueryClient();
-    const queryKey = ["ledger-categories", ledgerId];
+    const queryKey = queryKeys.entryCategories(ledgerId);
 
     // --- Data Fetching & Polling ---
 

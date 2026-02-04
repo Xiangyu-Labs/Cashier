@@ -31,6 +31,11 @@ export const queryKeys = {
     summary: (ledgerId: string, ...params: (string | undefined)[]) =>
         ['summary', ledgerId, ...params.filter(Boolean)] as const,
     tokenStats: (ledgerId: string) => ['token-stats', ledgerId] as const,
+    enhancedStats: (ledgerId: string) => ['enhanced-stats', ledgerId] as const,
+
+    // === Currency ===
+    convert: (amount: number, from: string, to: string, date?: string) =>
+        ['convert', amount, from, to, date] as const,
 
     // === Tasks ===
     processingTasks: (ledgerId: string) => ['processingTasks', ledgerId] as const,

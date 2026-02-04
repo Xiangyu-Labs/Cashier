@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/routing";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { queryKeys } from "@/lib/query-keys";
 
 
 import { Ledger } from "@/types/api";
@@ -23,7 +24,7 @@ export function LedgerItem({ ledger, onEdit, onDelete }: LedgerItemProps) {
     const router = useRouter();
 
     const { data: summary } = useQuery({
-        queryKey: ["summary", ledger.id],
+        queryKey: queryKeys.summary(ledger.id),
         queryFn: () => getLedgerStatsAction(ledger.id),
     });
 

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/features/stats/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import {
     DateRangeType,
@@ -53,14 +54,9 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         }
     }, [startDate, endDate, rangeType, format]);
 
+    const enhancedStatsKey = [...queryKeys.enhancedStats(ledgerId || ''), formatDateForApi(startDate), rangeType, ledger?.metadata?.settings?.mainCurrency];
     const { data: stats, isLoading } = useQuery({
-        queryKey: [
-            "enhanced-stats",
-            ledgerId,
-            formatDateForApi(startDate),
-            rangeType,
-            ledger?.metadata?.settings?.mainCurrency,
-        ],
+        queryKey: enhancedStatsKey,
         queryFn: () =>
             getEnhancedStats({
                 ledgerId: ledgerId || "",
@@ -82,7 +78,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
     const trend = stats?.summary.trend;
 
     const handleRefresh = async () => {
-        await queryClient.invalidateQueries({ queryKey: ["enhanced-stats", ledgerId] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.enhancedStats(ledgerId || '') });
     };
 
     return (

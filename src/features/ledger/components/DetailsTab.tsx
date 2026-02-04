@@ -42,7 +42,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const endDateStr = dateRange.end?.toISOString();
 
     const { data: summaryData } = useQuery({
-        queryKey: ["ledgerEntries", ledgerId, "summary", startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency],
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency),
         queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency || undefined),
         enabled: !!startDateStr && !!endDateStr
     });
@@ -54,7 +54,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         isFetchingNextPage,
         isLoading,
     } = useInfiniteQuery({
-        queryKey: ["ledgerEntries", ledgerId, "confirmed", startDateStr, endDateStr],
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed', startDateStr, endDateStr),
         queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
             limit: 20,
             startDate: startDateStr,
@@ -115,7 +115,6 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: ['ledgerEntries', ledgerId] });
         },
     });
 
@@ -132,7 +131,6 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: ['ledgerEntries', ledgerId] });
         },
     });
 
@@ -183,7 +181,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [monthEntries, t, locale]);
 
     const handleRefresh = async () => {
-        await queryClient.invalidateQueries({ queryKey: ["ledgerEntries", ledgerId] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
     };
 
     return (

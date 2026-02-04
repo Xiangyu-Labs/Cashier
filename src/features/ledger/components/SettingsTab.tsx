@@ -53,7 +53,7 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
     const [isPending, startTransition] = useTransition();
 
     const queryClient = useQueryClient();
-    const queryKey = ["categories", ledgerId];
+    const queryKey = queryKeys.entryCategories(ledgerId);
 
     // Categories - Use smart polling
     const { data: categories = [] } = useSmartPolling<EntryCategory[]>({

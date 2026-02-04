@@ -2,6 +2,7 @@ import { useMemo, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { queryKeys } from '@/lib/query-keys';
 import { SourceDocument, LedgerEntry } from '@/types/api';
 
 export type SourceDocumentStatus = 'processing' | 'anomaly' | 'completed';
@@ -88,13 +89,7 @@ export function useUnifiedSourceDocuments(
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
-        queryKey: [
-            'sourceDocuments',
-            ledgerId,
-            'unified',
-            startDate,
-            endDate,
-        ],
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate ?? undefined, endDate ?? undefined),
         queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
             startDate,
             endDate,
@@ -111,13 +106,7 @@ export function useUnifiedSourceDocuments(
         if (prevProcessingCount.current !== null && currentProcessingCount < prevProcessingCount.current) {
             // Document finished processing - invalidate the completed infinite list
             queryClient.invalidateQueries({
-                queryKey: [
-                    'sourceDocuments',
-                    ledgerId,
-                    'completed',
-                    startDate,
-                    endDate,
-                ]
+                queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined)
             });
         }
         prevProcessingCount.current = currentProcessingCount;
@@ -131,13 +120,7 @@ export function useUnifiedSourceDocuments(
         isFetchingNextPage,
         isLoading: isInfiniteLoading,
     } = useInfiniteQuery({
-        queryKey: [
-            'sourceDocuments',
-            ledgerId,
-            'completed',
-            startDate,
-            endDate,
-        ],
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined),
         queryFn: async ({ pageParam }) => {
             const res = await getUnifiedSourceDocumentsAction(ledgerId, {
                 cursor: pageParam as string | null,
