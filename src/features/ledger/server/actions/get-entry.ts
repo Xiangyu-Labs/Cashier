@@ -23,8 +23,36 @@ export async function getLedgerEntryAction(id: string) {
         const { error } = await requireLedgerAccess(entry.ledgerId);
         if (error) return { success: false, error: "Unauthorized" };
 
-        return { success: true, data: entry };
+        // Strip large metadata fields from sourceDocument to reduce payload size
+        let cleanedSourceDocument = null;
+        if (entry.sourceDocument) {
+            const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
+            cleanedSourceDocument = {
+                ...entry.sourceDocument,
+                metadata: lightMetadata,
+                createdAt: entry.sourceDocument.createdAt.toISOString(),
+                deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
+            };
+        }
+
+        return {
+            success: true,
+            data: {
+                ...entry,
+                amount: String(entry.amount),
+                createdAt: entry.createdAt.toISOString(),
+                deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
+                category: entry.category ? {
+                    ...entry.category,
+                    createdAt: entry.category.createdAt.toISOString(),
+                    updatedAt: entry.category.updatedAt.toISOString(),
+                    deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
+                } : null,
+                sourceDocument: cleanedSourceDocument,
+            }
+        };
     } catch (e) {
         return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
+

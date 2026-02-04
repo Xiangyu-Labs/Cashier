@@ -29,33 +29,13 @@ export function LedgerEntryDetailWrapper({
     const { data: ledgerEntry, isLoading, error } = useQuery({
         queryKey: queryKeys.ledgerEntry(id),
         queryFn: async () => {
-            // We need a specific action for fetching a single entry, if not exists we might need to expose it
-            // Assuming getLedgerEntryAction exists or we need to add it.
-            // For now, I'll assume we can fetch it. If not I'll add the server action.
             const result = await getLedgerEntryAction(id);
             if (!result.success) {
                 const errorMsg = typeof result.error === 'string' ? result.error : "Unknown error";
                 throw new Error(errorMsg);
             }
-            const data = result.data; // Correctly assign result.data to a local variable 'data'
-            if (!data) return null;
-            return {
-                ...data,
-                createdAt: data.createdAt.toISOString(),
-                entryDate: data.entryDate,
-                deletedAt: data.deletedAt ? data.deletedAt.toISOString() : null,
-                category: data.category ? {
-                    ...data.category,
-                    createdAt: data.category.createdAt.toISOString(),
-                    updatedAt: data.category.updatedAt.toISOString(),
-                    deletedAt: data.category.deletedAt ? data.category.deletedAt.toISOString() : null,
-                } : null,
-                sourceDocument: data.sourceDocument ? {
-                    ...data.sourceDocument,
-                    createdAt: data.sourceDocument.createdAt.toISOString(),
-                    deletedAt: data.sourceDocument.deletedAt ? data.sourceDocument.deletedAt.toISOString() : null,
-                } : null,
-            };
+            // Data is already formatted with ISO string dates from the server action
+            return result.data ?? null;
         },
         enabled: open && !!id,
         retry: false

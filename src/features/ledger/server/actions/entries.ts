@@ -262,13 +262,16 @@ export async function getLedgerEntriesAction(
             updatedAt: item.category.updatedAt.toISOString(),
             deletedAt: item.category.deletedAt ? item.category.deletedAt.toISOString() : null,
         } : null,
-        sourceDocument: item.sourceDocument ? {
-            ...item.sourceDocument,
-            createdAt: item.sourceDocument.createdAt.toISOString(),
-            deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
-            // Map text/title etc. ImageUrls is json, auto-parsed? Drizzle JSONB is usually parsed.
-            // Check TS types if needed.
-        } : null,
+        sourceDocument: item.sourceDocument ? (() => {
+            // Strip large metadata fields to reduce payload size
+            const { aiRawResponse, rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
+            return {
+                ...item.sourceDocument,
+                metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
+                createdAt: item.sourceDocument.createdAt.toISOString(),
+                deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
+            };
+        })() : null,
     }));
 
     return {
