@@ -71,10 +71,8 @@ export class OpenAISourceDocumentProcessor implements SourceDocumentProcessor {
     const { content: rawResponse, usage } = await client.generateContent(systemPrompt, messages);
     const { ledgerEntries: data, isValid, title } = this.parseResponse(rawResponse, context.categories.map(c => c.name));
 
-    const ledgerEntries = data;
-
     return {
-      ledgerEntries,
+      ledgerEntries: data,
       isValid,
       title,
       rawResponse,

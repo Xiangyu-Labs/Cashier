@@ -42,7 +42,7 @@ export class OpenAIClient {
                         { role: "system", content: systemPrompt },
                         ...messages,
                     ],
-                    max_tokens: 4096,
+                    max_tokens: 16384, // Increased to handle multi-image requests
                 });
 
                 if (!response.choices || !Array.isArray(response.choices) || response.choices.length === 0) {
@@ -50,7 +50,17 @@ export class OpenAIClient {
                     throw new Error("Invalid OpenAI response: missing choices");
                 }
 
-                const content = response.choices[0]?.message?.content || "";
+                const choice = response.choices[0];
+                const content = choice?.message?.content || "";
+
+                // Handle empty response with specific finish reasons
+                if (!content && choice?.finish_reason) {
+                    if (choice.finish_reason === 'content_filter') {
+                        throw new Error('Content was filtered by OpenAI safety systems. The image may contain content that cannot be processed.');
+                    } else if (choice.finish_reason === 'length') {
+                        throw new Error('Input too large: The images consume too many tokens, leaving no space for output. Try with fewer or smaller images.');
+                    }
+                }
 
                 // Extract token usage from OpenAI response
                 const usage = response.usage ? {
