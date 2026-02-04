@@ -252,7 +252,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                 exit={{ opacity: 0 }}
                                 className="space-y-2"
                             >
-                                <div className="sticky top-[7.5rem] sm:top-[8rem] z-10 bg-bg/95 backdrop-blur py-2 px-2">
+                                <div className="py-2 px-2">
                                     <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
                                         {group.title}
