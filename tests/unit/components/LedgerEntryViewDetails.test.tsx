@@ -53,12 +53,14 @@ describe("LedgerEntryViewDetails", () => {
         description: "Test description",
         entryDate: "2023-01-28T10:00:00Z",
         createdAt: "2023-01-28T10:00:00Z",
+        deletedAt: null,
+        metadata: null,
         itemName: "Test Item",
-        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", ledgerId: "l1" }
+        category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" }
     };
 
     const mockCategories: EntryCategory[] = [
-        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", ledgerId: "l1" }
+        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" }
     ];
 
     const mockEditData: LedgerEntryEditFormData = {

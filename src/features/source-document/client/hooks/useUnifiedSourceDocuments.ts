@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { queryKeys } from '@/lib/query-keys';
+import { formatDateTimeForApi } from '@/lib/date-utils';
 import { SourceDocument, LedgerEntry } from '@/types/api';
 
 export type SourceDocumentStatus = 'processing' | 'anomaly' | 'completed';
@@ -45,8 +46,8 @@ export function useUnifiedSourceDocuments(
 ) {
     const { dateRange, initialActiveSourceDocuments, initialCompletedSourceDocuments } = options;
 
-    const startDate = dateRange?.start?.toISOString() || null;
-    const endDate = dateRange?.end?.toISOString() || null;
+    const startDate = formatDateTimeForApi(dateRange?.start) || null;
+    const endDate = formatDateTimeForApi(dateRange?.end) || null;
 
     const queryClient = useQueryClient();
     const prevProcessingCount = useRef<number | null>(null);

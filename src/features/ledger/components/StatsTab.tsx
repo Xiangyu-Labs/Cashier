@@ -9,6 +9,7 @@ import {
     DateRangeType,
     getDateRange,
     formatDateForApi,
+    formatDateTimeForApi,
 } from "@/lib/date-utils";
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
@@ -61,12 +62,12 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
             getEnhancedStats({
                 ledgerId: ledgerId || "",
                 queryRange: {
-                    from: startDate.toISOString(),
-                    to: endDate.toISOString()
+                    from: formatDateTimeForApi(startDate),
+                    to: formatDateTimeForApi(endDate)
                 },
                 compareRange: {
-                    from: prevDateStart.toISOString(),
-                    to: prevDateEnd.toISOString()
+                    from: formatDateTimeForApi(prevDateStart),
+                    to: formatDateTimeForApi(prevDateEnd)
                 }
             }),
         enabled: !!ledgerId,

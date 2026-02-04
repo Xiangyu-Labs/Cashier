@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -38,8 +39,8 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         };
     });
 
-    const startDateStr = dateRange.start?.toISOString();
-    const endDateStr = dateRange.end?.toISOString();
+    const startDateStr = formatDateTimeForApi(dateRange.start);
+    const endDateStr = formatDateTimeForApi(dateRange.end);
 
     const { data: summaryData } = useQuery({
         queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency),

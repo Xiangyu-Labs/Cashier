@@ -78,3 +78,22 @@ export function addPeriod(date: Date, type: DateRangeType, amount: number): Date
 export function formatDateForApi(date: Date): string {
     return format(date, "yyyy-MM-dd");
 }
+
+/**
+ * Format date to full ISO-like string using LOCAL time (not UTC).
+ * This avoids timezone issues where toISOString() would convert to UTC
+ * (e.g., Feb 1 00:00 CST -> Jan 31 16:00 UTC).
+ */
+export function formatDateTimeForApi(date: Date): string;
+export function formatDateTimeForApi(date: Date | undefined): string | undefined;
+export function formatDateTimeForApi(date: Date | undefined): string | undefined {
+    if (!date) return undefined;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const ms = String(date.getMilliseconds()).padStart(3, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}Z`;
+}
