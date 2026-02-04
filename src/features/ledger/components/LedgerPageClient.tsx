@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useRouter, usePathname } from "@/i18n/routing";
+import { usePathname } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,17 +43,21 @@ export function LedgerPageClient({
     initialCredentials
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Get active tab from URL or default to "history"
-    const activeTab = searchParams.get("tab") || "history";
+    // Initialize from URL, then manage with state for instant switching
+    const [activeTab, setActiveTab] = useState(
+        () => searchParams.get("tab") || "history"
+    );
 
     const handleTabChange = (value: string) => {
+        // Instant client-side update
+        setActiveTab(value);
+        // Update URL without triggering navigation (preserves state on refresh)
         const params = new URLSearchParams(searchParams.toString());
         params.set("tab", value);
-        router.push(`${pathname}?${params.toString()}`);
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     };
 
     const [isInputOpen, setIsInputOpen] = useState(false);
