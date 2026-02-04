@@ -368,9 +368,40 @@ export function LedgerEntriesTab({
 
                     {/* Unified Loading State */}
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-muted-foreground-foreground animate-in fade-in duration-300">
-                            <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mb-4"></div>
-                            <p className="text-sm font-medium">{tCommon("loading")}</p>
+                        <div className="space-y-6 px-1 animate-pulse">
+                            {/* Skeleton for source document cards */}
+                            {[1, 2, 3].map((idx) => (
+                                <div key={idx} className="bg-surface rounded-xl border border-border overflow-hidden">
+                                    {/* Card header skeleton */}
+                                    <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-4 w-4 bg-muted rounded" />
+                                            <div className="h-3 w-28 bg-muted rounded" />
+                                            <div className="h-3 w-1 bg-muted rounded" />
+                                            <div className="h-3 w-20 bg-muted rounded" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-4 w-16 bg-muted rounded" />
+                                            <div className="h-7 w-7 bg-muted rounded" />
+                                        </div>
+                                    </div>
+                                    {/* Card content skeleton - entries */}
+                                    <div className="border-t border-border p-3 space-y-3 bg-surface2/30">
+                                        {[1, 2].map((entryIdx) => (
+                                            <div key={entryIdx} className="flex items-center justify-between py-1">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-muted" />
+                                                    <div className="space-y-1">
+                                                        <div className="h-4 w-24 bg-muted rounded" />
+                                                        <div className="h-3 w-16 bg-muted rounded" />
+                                                    </div>
+                                                </div>
+                                                <div className="h-4 w-14 bg-muted rounded" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <>
