@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
@@ -17,11 +17,14 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
+import { PendingBillsModal } from "@/features/source-document/components/PendingBillsModal";
+import { usePendingSourceDocuments } from "@/features/source-document/client/hooks/usePendingSourceDocuments";
 // import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
+import { cn } from "@/lib/utils";
 
 interface LedgerPageClientProps {
     initialLedger: Ledger;
@@ -37,6 +40,7 @@ export function LedgerPageClient({
     ledgerId,
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
+    const tPending = useTranslations("PendingBills");
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
@@ -55,6 +59,11 @@ export function LedgerPageClient({
     };
 
     const [isInputOpen, setIsInputOpen] = useState(false);
+    const [isPendingOpen, setIsPendingOpen] = useState(false);
+
+    // Fetch pending bills count for the header button
+    const { stats: pendingStats } = usePendingSourceDocuments(ledgerId);
+    const pendingCount = pendingStats.total;
 
     // Enable real-time updates not needed here anymore, rely on smart polling in tabs
 
@@ -71,13 +80,36 @@ export function LedgerPageClient({
             {/* Top Navigation */}
             <header className="bg-surface border-b border-border sticky top-0 z-50 backdrop-blur-md bg-surface/80 supports-[backdrop-filter]:bg-surface/60">
                 <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         {/* Pass ledgers to Switcher to avoid internal fetching */}
                         <LedgerSwitcher
                             currentLedgerId={ledgerId}
                             currentLedgerName={ledger.name}
                             ledgers={allLedgers}
                         />
+
+                        {/* Pending Bills Button */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsPendingOpen(true)}
+                            className={cn(
+                                "h-8 px-2.5 gap-1.5 text-xs font-medium rounded-full transition-all",
+                                pendingCount > 0
+                                    ? "text-primary hover:text-primary bg-primary/10 hover:bg-primary/20"
+                                    : "text-muted-foreground hover:text-text"
+                            )}
+                        >
+                            <Clock className={cn(
+                                "h-3.5 w-3.5",
+                                pendingCount > 0 && "animate-pulse"
+                            )} />
+                            {pendingCount > 0 ? (
+                                <span>{pendingCount}</span>
+                            ) : (
+                                <span className="hidden sm:inline">{tPending("viewButton")}</span>
+                            )}
+                        </Button>
                     </div>
                     <div className="flex items-center gap-2">
 
@@ -148,6 +180,13 @@ export function LedgerPageClient({
                 </DialogContent>
             </Dialog>
 
+            {/* Pending Bills Modal */}
+            <PendingBillsModal
+                ledgerId={ledgerId}
+                open={isPendingOpen}
+                onOpenChange={setIsPendingOpen}
+            />
+
             {/* Mobile Floating Action Button (FAB) */}
             <div className="fixed bottom-6 right-6 z-50 md:hidden">
                 <Button
@@ -163,3 +202,4 @@ export function LedgerPageClient({
         </div >
     );
 }
+

@@ -396,5 +396,20 @@
         "noCategories": "No categories yet, click New Category to create",
         "tipTitle": "Tip: ",
         "tipDesc": "Category descriptions help AI more accurately identify and classify spending. For example, the description for \"Dining\" could be \"Delivery, Dine-in, Groceries\"."
+    },
+    "PendingBills": {
+        "title": "Pending Bills",
+        "processing": "Processing",
+        "anomaly": "Anomaly",
+        "empty": "No pending bills",
+        "emptyDesc": "All bills have been processed",
+        "retryAll": "Retry All",
+        "deleteAll": "Delete All",
+        "reason": "Reason",
+        "viewButton": "Pending",
+        "deleteConfirmTitle": "Confirm Delete",
+        "deleteConfirmDesc": "Are you sure you want to delete this pending bill?",
+        "deleteAllConfirmTitle": "Delete All Anomalous Bills",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all anomalous bills? This action cannot be undone."
     }
 }

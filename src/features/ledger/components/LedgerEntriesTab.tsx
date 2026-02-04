@@ -7,18 +7,14 @@ import {
 import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
-    batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
@@ -50,9 +46,6 @@ export function LedgerEntriesTab({
     const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
     // Local State
-
-    const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
-    const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
     // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
     const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
 
@@ -162,18 +155,6 @@ export function LedgerEntriesTab({
         onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
     });
 
-    const batchRetrySourceDocsMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            const result = await batchRetrySourceDocumentsAction(ledgerId, ids);
-            if (!result.success) throw new Error(result.error || "Failed to batch retry");
-        },
-        onSuccess: () => {
-            toast.success(t("retrySubmitted"));
-        },
-        onError: () => toast.error(tCommon("error")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
-    });
-
     // Handlers
     const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
         pushModal({ type: 'source-document', id: group.sourceDocument.id });
@@ -222,44 +203,6 @@ export function LedgerEntriesTab({
         }
 
         setDeleteConfirm({ ...deleteConfirm, open: false });
-    }
-
-    // --- Render Helpers ---
-
-    function renderSectionHeader(
-        title: string,
-        count: number,
-        isCollapsed: boolean,
-        onToggle: () => void,
-        colorClass: string,
-        iconColorClass: string,
-        actions?: React.ReactNode
-    ) {
-        return (
-            <div
-                onClick={onToggle}
-                className={cn(
-                    "flex justify-between items-center min-h-[44px] px-3 border rounded-xl transition-all cursor-pointer select-none",
-                    colorClass,
-                    "hover:brightness-95 dark:hover:brightness-110 active:scale-[0.99]"
-                )}
-            >
-                <div className="flex items-center gap-2">
-                    <h3 className={cn("text-sm font-medium flex items-center gap-2", iconColorClass)}>
-                        <span className={cn("w-2 h-2 rounded-full animate-pulse", iconColorClass.replace("text-", "bg-"))}></span>
-                        {title} ({count})
-                    </h3>
-                    <motion.div animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown className={cn("w-4 h-4", iconColorClass)} />
-                    </motion.div>
-                </div>
-                {actions && (
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        {actions}
-                    </div>
-                )}
-            </div>
-        );
     }
 
     // --- Date Grouping for Completed Documents ---
@@ -399,96 +342,7 @@ export function LedgerEntriesTab({
                         </div>
                     ) : (
                         <>
-                            {/* Processing Section */}
-                            <AnimatePresence mode="wait">
-                                {groups.processing.length > 0 && (
-                                    <motion.div className="space-y-3 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                        {renderSectionHeader(
-                                            t("processing"),
-                                            groups.processing.length,
-                                            isProcessingCollapsed,
-                                            () => setIsProcessingCollapsed(!isProcessingCollapsed),
-                                            "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/20",
-                                            "text-primary"
-                                        )}
-                                        <AnimatePresence>
-                                            {!isProcessingCollapsed && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                    <AnimatePresence mode="wait">
-                                                        {groups.processing.map((group: SourceDocumentGroup) => (
-                                                            <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                                                <SourceDocumentCard
-                                                                    sourceDocument={group.sourceDocument}
-                                                                    ledgerEntries={group.ledgerEntries}
-                                                                    categories={categories}
-                                                                    status={(group.sourceDocument.status as "queued" | "processing" | "completed" | "anomaly") || 'processing'}
-                                                                    className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30"
-                                                                    defaultExpanded={true}
-                                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                                    onRetry={() => setRetrySourceDocument(group.sourceDocument)}
-                                                                    onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                                />
-                                                            </motion.div>
-                                                        ))}
-                                                    </AnimatePresence>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                        <div className="h-px bg-border/50 mt-4 mx-2" />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-
-                            {/* Anomaly Section */}
-                            <AnimatePresence mode="wait">
-                                {groups.anomaly.length > 0 && (
-                                    <motion.div className="space-y-4 px-1 mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                        {renderSectionHeader(
-                                            t("abnormal"),
-                                            groups.anomaly.length,
-                                            isErrorCollapsed,
-                                            () => setIsErrorCollapsed(!isErrorCollapsed),
-                                            "bg-red-50/40 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20 hover:bg-red-50/60 dark:hover:bg-red-900/20",
-                                            "text-red-500",
-                                            <>
-                                                <Button variant="outline" size="sm" className="h-7 px-3 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200" onClick={() => setDeleteConfirm({ open: true, id: "ALL_ERRORS", type: "sourceDocument", title: t("deleteAllConfirmTitle"), description: t("deleteAllConfirmDesc") })}>{t("deleteAll")}</Button>
-                                                <Button variant="destructive" size="sm" className="h-7 px-3 text-xs shadow-sm" onClick={() => {
-                                                    const ids = groups.anomaly.map(g => g.sourceDocument.id);
-                                                    batchRetrySourceDocsMutation.mutate(ids);
-                                                }}>{t("retryAll")}</Button>
-                                            </>
-                                        )}
-                                        <AnimatePresence>
-                                            {!isErrorCollapsed && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-4 overflow-hidden">
-                                                    <AnimatePresence mode="wait">
-                                                        {groups.anomaly.map((group: SourceDocumentGroup) => (
-                                                            <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                                                <SourceDocumentCard
-                                                                    sourceDocument={group.sourceDocument}
-                                                                    ledgerEntries={group.ledgerEntries}
-                                                                    categories={categories}
-                                                                    status="anomaly"
-                                                                    anomalyCodes={group.sourceDocument.anomalyCodes as string[]}
-                                                                    className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                                                                    defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
-                                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                                    onRetry={() => setRetrySourceDocument(group.sourceDocument)}
-                                                                    onDelete={() => setDeleteConfirm({ open: true, type: "sourceDocument", id: group.sourceDocument.id, title: t("deleteConfirmTitle"), description: t("deleteConfirmDesc") })}
-                                                                />
-                                                            </motion.div>
-                                                        ))}
-                                                    </AnimatePresence>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                        <div className="h-px bg-border/50 mt-4 mx-2" />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* Completed (Formal) Section - Grouped by Date */}
+                            {/* Completed Section - Only show processed bills */}
                             <div className="space-y-6 px-2">
                                 {groupedCompletedByDate.length === 0 ? (
                                     <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">

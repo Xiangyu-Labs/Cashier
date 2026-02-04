@@ -579,3 +579,51 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
         };
     }
 }
+
+/**
+ * Get all pending source documents (processing + anomaly) without date filtering.
+ * Used for the pending bills modal that should always show ALL pending items.
+ */
+export async function getPendingSourceDocumentsAction(ledgerId: string) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
+
+    try {
+        // Fetch active documents (queued, processing, anomaly) WITHOUT date filtering
+        const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
+            status: 'queued,processing,anomaly',
+            includeLedgerEntries: true,
+            // No date filters - show ALL pending items
+        });
+
+        const groups = {
+            processing: [] as SourceDocumentGroup[],
+            anomaly: [] as SourceDocumentGroup[],
+        };
+
+        activeDocsResult.items.forEach((doc) => {
+            const group: SourceDocumentGroup = {
+                sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
+                ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
+            };
+            if (doc.status === 'anomaly') {
+                groups.anomaly.push(group);
+            } else {
+                groups.processing.push(group);
+            }
+        });
+
+        return {
+            groups,
+            stats: {
+                processingCount: groups.processing.length,
+                anomalyCount: groups.anomaly.length,
+                total: groups.processing.length + groups.anomaly.length,
+            }
+        };
+    } catch (error) {
+        logger.error({ error, ledgerId }, "Failed to get pending source documents");
+        throw new Error(safeError(error));
+    }
+}
+
