@@ -5,7 +5,7 @@ import { ledgers, ledgerEntries, currencyRates } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { convertAmount } from "@/features/stats/server/utils";
-import { formatDateForApi, parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
+import { formatDateForApi } from "@/lib/date-utils";
 
 import { LedgerEntrySummary } from "@/types/api";
 
@@ -24,10 +24,9 @@ export async function getLedgerStatsAction(
 
     const q = forLedger(ledgerEntries, ledgerId);
     const conditions = [q.whereActive];
-    const parsedStart = parseDateRangeStart(startDate);
-    const parsedEnd = parseDateRangeEnd(endDate);
-    if (parsedStart) conditions.push(gte(ledgerEntries.entryDate, parsedStart));
-    if (parsedEnd) conditions.push(lte(ledgerEntries.entryDate, parsedEnd));
+    // Direct string comparison for date range (entryDate is now yyyy-MM-dd string)
+    if (startDate) conditions.push(gte(ledgerEntries.entryDate, startDate));
+    if (endDate) conditions.push(lte(ledgerEntries.entryDate, endDate));
 
     // 1. Totals by Currency
     const totalsQuery = await db
@@ -57,11 +56,11 @@ export async function getLedgerStatsAction(
         .groupBy(ledgerEntries.entryDate)
         .orderBy(ledgerEntries.entryDate);
 
-    // Drizzle entryDate mapping might vary, assuming Date object or string
+    // entryDate is now a yyyy-MM-dd string, no conversion needed
     const trend = trendQuery
         .filter(t => t.date)
         .map(t => ({
-            date: t.date ? new Date(t.date).toISOString().split('T')[0] : "",
+            date: t.date || "",
             total: Number(t.total) || 0
         }));
 
@@ -87,8 +86,8 @@ export async function getLedgerStatsAction(
     });
 
     if (entries.length > 0) {
-        // Collect unique dates
-        const uniqueDates = Array.from(new Set(entries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
+        // entryDate is now a yyyy-MM-dd string, use directly
+        const uniqueDates = Array.from(new Set(entries.map(e => e.entryDate).filter((d): d is string => !!d)));
 
         // Fetch rates
         const ratesMap: Record<string, Record<string, number>> = {};
@@ -103,7 +102,7 @@ export async function getLedgerStatsAction(
 
         // Calculate converted total
         for (const entry of entries) {
-            const dateStr = entry.entryDate ? formatDateForApi(entry.entryDate) : "";
+            const dateStr = entry.entryDate || "";
             const dayRates = ratesMap[dateStr] || null;
 
             const converted = convertAmount({

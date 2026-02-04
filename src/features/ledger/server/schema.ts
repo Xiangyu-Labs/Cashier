@@ -82,7 +82,7 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     currency: text("currency"),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    entryDate: integer("entry_date", { mode: "timestamp_ms" }), // Using timestamp to mock Date
+    entryDate: text("entry_date"), // yyyy-MM-dd format, no timezone ambiguity
     metadata: text("metadata", { mode: "json" }).$type<LedgerEntryMetadata>().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),

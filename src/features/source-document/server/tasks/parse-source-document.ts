@@ -282,7 +282,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 currency: entry.currency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
-                entryDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
+                // entryDate is already yyyy-MM-dd string from AI, use directly
+                entryDate: entry.entryDate || new Date().toISOString().split('T')[0],
             };
         });
 

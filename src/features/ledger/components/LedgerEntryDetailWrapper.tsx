@@ -42,7 +42,7 @@ export function LedgerEntryDetailWrapper({
             return {
                 ...data,
                 createdAt: data.createdAt.toISOString(),
-                entryDate: data.entryDate ? data.entryDate.toISOString() : null,
+                entryDate: data.entryDate,
                 deletedAt: data.deletedAt ? data.deletedAt.toISOString() : null,
                 category: data.category ? {
                     ...data.category,

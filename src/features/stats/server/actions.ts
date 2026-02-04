@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { ledgerEntries, ledgers } from "@/features/ledger/server/schema";
 import { currencyRates } from "@/features/currency/server/schema";
 import { and, eq, gte, lte, inArray } from "drizzle-orm";
-import { formatDateForApi } from "@/lib/date-utils";
 import { convertAmount, calculateGrowth } from "./utils";
 import { forLedger } from "@/lib/db/scoped-query";
 
@@ -57,21 +56,19 @@ export async function getEnhancedStats({
 
     const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
-    // 2. Parse Dates from Props
+    // 2. Parse Dates for daily average calculation
     const currentStart = new Date(queryRange.from);
     const currentEnd = new Date(queryRange.to);
-    const prevStart = new Date(compareRange.from);
-    const prevEnd = new Date(compareRange.to);
 
     // 3. Fetch Entries
     const q = forLedger(ledgerEntries, ledgerId);
 
-    const fetchEntries = async (start: Date, end: Date) => {
+    const fetchEntries = async (startStr: string, endStr: string) => {
         return await db.query.ledgerEntries.findMany({
             where: and(
                 q.active, // This includes ledgerId and deletedAt is null
-                gte(ledgerEntries.entryDate, start),
-                lte(ledgerEntries.entryDate, end)
+                gte(ledgerEntries.entryDate, startStr),
+                lte(ledgerEntries.entryDate, endStr)
             ),
             with: {
                 category: true
@@ -80,15 +77,16 @@ export async function getEnhancedStats({
     };
 
     const [currentEntries, prevEntries] = await Promise.all([
-        fetchEntries(currentStart, currentEnd),
-        fetchEntries(prevStart, prevEnd)
+        fetchEntries(queryRange.from, queryRange.to),
+        fetchEntries(compareRange.from, compareRange.to)
     ]);
 
     // 4. Fetch Currency Rates (Optimization: Only fetch distinct dates needed)
     // We need rates for every unique date in the entries.
     const allEntries = [...currentEntries, ...prevEntries];
     // Collect unique dates (as strings YYYY-MM-DD)
-    const uniqueDates = Array.from(new Set(allEntries.map(e => e.entryDate ? formatDateForApi(e.entryDate) : null).filter(Boolean))) as string[];
+    // entryDate is now a yyyy-MM-dd string, use directly
+    const uniqueDates = Array.from(new Set(allEntries.map(e => e.entryDate).filter((d): d is string => !!d)));
 
     // Fetch rates from DB
     const ratesMap: Record<string, Record<string, number>> = {};
@@ -117,7 +115,7 @@ export async function getEnhancedStats({
         const dailyMap = new Map<string, number>();
 
         for (const entry of entries) {
-            const dateStr = entry.entryDate ? formatDateForApi(entry.entryDate) : "";
+            const dateStr = entry.entryDate || "";
             // Use rates for that specific day
             const dayRates = ratesMap[dateStr] || null;
 

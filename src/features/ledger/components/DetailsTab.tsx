@@ -140,29 +140,41 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     const groupedItems = useMemo(() => {
+        // Helper to get date string (yyyy-MM-dd) from entry
+        const getDateStr = (entry: LedgerEntry) => {
+            if (entry.entryDate) return entry.entryDate; // Already yyyy-MM-dd
+            // Fallback to createdAt, extract date portion in local time
+            return new Date(entry.createdAt).toLocaleDateString('sv'); // 'sv' locale gives yyyy-MM-dd
+        };
+
         const sortedEntries = [...monthEntries].sort((a, b) => {
-            const dateA = new Date(a.entryDate || a.createdAt).getTime();
-            const dateB = new Date(b.entryDate || b.createdAt).getTime();
-            return dateB - dateA;
+            const dateA = getDateStr(a);
+            const dateB = getDateStr(b);
+            return dateB.localeCompare(dateA); // String comparison for descending order
         });
 
         const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[] }> = {};
 
+        // Today and yesterday in yyyy-MM-dd format (local time)
+        const todayStr = new Date().toLocaleDateString('sv');
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = yesterdayDate.toLocaleDateString('sv');
+
         sortedEntries.forEach(entry => {
-            const date = new Date(entry.entryDate || entry.createdAt);
-            const today = new Date();
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
+            const dateStr = getDateStr(entry);
 
             let dateKey = "";
             let sortTimestamp = 0;
 
-            const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            sortTimestamp = midnight.getTime();
+            // Parse yyyy-MM-dd as local date for display
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
+            sortTimestamp = date.getTime();
 
-            if (date.toDateString() === today.toDateString()) {
+            if (dateStr === todayStr) {
                 dateKey = t("today");
-            } else if (date.toDateString() === yesterday.toDateString()) {
+            } else if (dateStr === yesterdayStr) {
                 dateKey = t("yesterday");
             } else {
                 dateKey = date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });

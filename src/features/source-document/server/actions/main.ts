@@ -338,7 +338,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     ...entry,
                     amount: String(entry.amount),
                     createdAt: entry.createdAt.toISOString(),
-                    entryDate: entry.entryDate ? entry.entryDate.toISOString() : null,
+                    entryDate: entry.entryDate,
                 } as unknown as SourceDocumentGroup['ledgerEntries'][number]);
                 entriesByDocId.set(docId, existing);
             }

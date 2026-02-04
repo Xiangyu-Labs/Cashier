@@ -56,7 +56,7 @@ export function createLedgerEntryData(
     currency: string | null;
     itemName: string;
     description: string | null;
-    entryDate: Date | null;
+    entryDate: string | null; // yyyy-MM-dd format
     createdAt: Date;
   }> = {}
 ) {

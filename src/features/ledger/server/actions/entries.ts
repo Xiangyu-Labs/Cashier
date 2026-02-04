@@ -30,7 +30,7 @@ const updateLedgerEntrySchema = z.object({
 });
 
 import { forLedger } from "@/lib/db/scoped-query";
-import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
+// Date string comparison - no need for date parsing utilities
 
 export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>) {
     try {
@@ -45,7 +45,7 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
             amount: validated.amount.toFixed(2),
             ledgerId: ledgerId,
             currency: validated.currency || "CNY",
-            entryDate: validated.entryDate ? new Date(validated.entryDate) : undefined,
+            entryDate: validated.entryDate || null,
         }).returning();
 
         revalidatePath(`/ledger/${ledgerId}`);
@@ -70,7 +70,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
         if (validated.currency !== undefined) updateData.currency = validated.currency;
         if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
         if (validated.description !== undefined) updateData.description = validated.description;
-        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate ? new Date(validated.entryDate) : null;
+        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
 
         const [updatedEntry] = await db.update(ledgerEntries)
             .set(updateData)
@@ -87,7 +87,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
                 ...updatedEntry,
                 amount: updatedEntry.amount,
                 createdAt: updatedEntry.createdAt.toISOString(),
-                entryDate: updatedEntry.entryDate ? updatedEntry.entryDate.toISOString() : null,
+                entryDate: updatedEntry.entryDate,
             }
         };
     } catch (error) {
@@ -146,7 +146,7 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
         if (data.currency !== undefined) updateData.currency = data.currency;
         if (data.description !== undefined) updateData.description = data.description;
         if (data.itemName !== undefined) updateData.itemName = data.itemName;
-        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? new Date(data.entryDate as string) : null;
+        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? (data.entryDate as string).split('T')[0] : null;
 
         const q = forLedger(ledgerEntries, ledgerId);
 
@@ -187,10 +187,9 @@ export async function getLedgerEntriesAction(
         q.whereActive
     ];
 
-    const parsedStart = parseDateRangeStart(params.startDate);
-    const parsedEnd = parseDateRangeEnd(params.endDate);
-    if (parsedStart) conditions.push(gte(ledgerEntries.entryDate, parsedStart));
-    if (parsedEnd) conditions.push(lte(ledgerEntries.entryDate, parsedEnd));
+    // Direct string comparison for date range (entryDate is now yyyy-MM-dd string)
+    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));
+    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, params.endDate));
     if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
 
     // Handle cursor for pagination: (entryDate, createdAt, id)
@@ -200,7 +199,7 @@ export async function getLedgerEntriesAction(
             // This is a bit complex in Drizzle if we want strict (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
             // For simplicity and correctness in most cases, we'll use a slightly safer approach or raw SQL if needed.
             // But let's stick to a robust enough version:
-            conditions.push(lte(ledgerEntries.entryDate, new Date(cursorDate)));
+            conditions.push(lte(ledgerEntries.entryDate, cursorDate));
             // Note: Strict tie-breaking is harder with findMany where clause. 
             // We'll filter the results manually if needed or just use the cursor as is if it's unique enough.
             // Let's refine the query to be more precise if possible.
@@ -225,14 +224,13 @@ export async function getLedgerEntriesAction(
     if (params.cursor) {
         const [cursorDate, cursorCreated, cursorId] = params.cursor.split('|');
         if (cursorDate && cursorId) {
-            const cursorDateVal = new Date(cursorDate).getTime();
             const cursorCreatedVal = new Date(cursorCreated).getTime();
             filteredItems = items.filter(item => {
-                const itemDateVal = item.entryDate ? item.entryDate.getTime() : 0;
+                const itemDate = item.entryDate || '';
                 const itemCreatedVal = item.createdAt.getTime();
 
-                if (itemDateVal < cursorDateVal) return true;
-                if (itemDateVal > cursorDateVal) return false;
+                if (itemDate < cursorDate) return true;
+                if (itemDate > cursorDate) return false;
 
                 if (itemCreatedVal < cursorCreatedVal) return true;
                 if (itemCreatedVal > cursorCreatedVal) return false;
@@ -245,7 +243,7 @@ export async function getLedgerEntriesAction(
     let nextCursor: string | undefined = undefined;
     if (filteredItems.length > limit) {
         const nextItem = filteredItems[limit];
-        const nextDate = nextItem.entryDate ? nextItem.entryDate.toISOString() : new Date(0).toISOString();
+        const nextDate = nextItem.entryDate || '0000-00-00';
         nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
         filteredItems = filteredItems.slice(0, limit);
     }
@@ -256,7 +254,7 @@ export async function getLedgerEntriesAction(
         amount: String(item.amount), // Ensure string to match LedgerEntry interface
         createdAt: item.createdAt.toISOString(),
         deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-        entryDate: item.entryDate ? item.entryDate.toISOString() : null,
+        entryDate: item.entryDate,
         // Map relations if they exist (they should with query builder)
         category: item.category ? {
             ...item.category,

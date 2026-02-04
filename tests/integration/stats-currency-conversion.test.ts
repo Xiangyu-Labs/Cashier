@@ -54,7 +54,7 @@ describe("Stats Currency Conversion", () => {
             amount: "100.00",
             currency: "MYR",
             itemName: "MYR Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
         });
 
         // 2. Call action
@@ -76,7 +76,7 @@ describe("Stats Currency Conversion", () => {
             amount: "100.00",
             currency: "MYR",
             itemName: "MYR Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
         });
 
         // 50 USD = (50 / 1.08) * 7.8 = 46.296 * 7.8 = 361.111
@@ -85,7 +85,7 @@ describe("Stats Currency Conversion", () => {
             amount: "50.00",
             currency: "USD",
             itemName: "USD Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
         });
 
         // 100 CNY = 100 CNY
@@ -94,7 +94,7 @@ describe("Stats Currency Conversion", () => {
             amount: "100.00",
             currency: "CNY",
             itemName: "CNY Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
         });
 
         // 2. Call action

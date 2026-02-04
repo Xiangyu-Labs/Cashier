@@ -110,8 +110,8 @@ describe("Batch Update Ledger Entries Action", () => {
         expect(updatedEntries).toHaveLength(2);
         updatedEntries.forEach(entry => {
             expect(entry.description).toBe(newDescription);
-            // entryDate might be Date object
-            expect(entry.entryDate?.toISOString().split('T')[0]).toBe(newDate.split('T')[0]);
+            // entryDate is now a string in yyyy-MM-dd format
+            expect(entry.entryDate).toBe(newDate.split('T')[0]);
         });
     });
 });

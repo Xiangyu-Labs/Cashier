@@ -27,7 +27,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
             amount: "100.00",
             currency: "CNY",
             itemName: "Active Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
         });
 
         // 2. Insert a deleted entry
@@ -36,7 +36,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
             amount: "500.00",
             currency: "CNY",
             itemName: "Deleted Item",
-            entryDate: new Date("2024-01-01"),
+            entryDate: "2024-01-01",
             deletedAt: new Date(),
         });
 
@@ -58,7 +58,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
             amount: "200.00",
             currency: "CNY",
             itemName: "Active Enhanced",
-            entryDate: new Date("2024-02-01"),
+            entryDate: "2024-02-01",
         });
 
         // 2. Insert a deleted entry
@@ -67,7 +67,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
             amount: "1000.00",
             currency: "CNY",
             itemName: "Deleted Enhanced",
-            entryDate: new Date("2024-02-01"),
+            entryDate: "2024-02-01",
             deletedAt: new Date(),
         });
 
