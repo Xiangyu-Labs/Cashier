@@ -347,12 +347,18 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     return {
-        items: filteredResult.map(item => ({
-            ...item,
-            createdAt: item.createdAt.toISOString(),
-            status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
-            ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
-        })),
+        items: filteredResult.map(item => {
+            // Strip large metadata fields to reduce payload size
+            const { aiRawResponse, rawOcrText, ...lightMetadata } = item.metadata || {};
+
+            return {
+                ...item,
+                metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
+                createdAt: item.createdAt.toISOString(),
+                status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
+            };
+        }),
         nextCursor,
     };
 }
