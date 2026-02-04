@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 interface SourceDocumentDetailModalProps {
     sourceDocument: SourceDocument | null
+    isLoading?: boolean
     ledgerEntries: LedgerEntry[]
     categories: EntryCategory[]
     preferredCurrencies?: string[]
@@ -53,6 +54,7 @@ interface SourceDocumentDetailModalProps {
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
     sourceDocument,
+    isLoading = false,
     ledgerEntries,
     categories,
     preferredCurrencies = [],
@@ -193,8 +195,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         return [...preferred, ...remaining.sort()]
     }, [preferredCurrencies])
 
-    if (!sourceDocument) return null
-
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
             <DialogContent className="w-full sm:w-[calc(100vw-2rem)] sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-2xl border-none sm:border">
@@ -204,258 +204,290 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     </div>
                     <div className="flex-1 min-w-0">
                         <DialogTitle className="text-base font-bold truncate">
-                            {sourceDocument.title || t("titlePlaceholder")}
+                            {isLoading ? (
+                                <div className="h-5 w-40 bg-muted rounded animate-pulse" />
+                            ) : (
+                                sourceDocument?.title || t("titlePlaceholder")
+                            )}
                         </DialogTitle>
                     </div>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-6">
-                    <AnimatePresence mode="wait">
-                        {!isEditing ? (
-                            <motion.div
-                                key="view"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                            >
-                                <SourceDocumentViewDetails
-                                    sourceDocument={sourceDocument}
-                                    ledgerEntries={ledgerEntries}
-                                    mainCurrency={_mainCurrency}
-                                    onViewEntry={(entry) => onViewLedgerEntry?.(entry)}
-                                />
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="edit"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <h4 className="font-medium flex items-center gap-2">
-                                        {t("entries")}
-                                        <Badge variant="default" className="bg-surface2 text-text border-none">{ledgerEntries.length}</Badge>
-                                    </h4>
-
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleToggleSelectAll}
-                                            className="text-xs h-8"
-                                        >
-                                            {selectedIds.length === ledgerEntries.length ? t("deselectAll") : t("selectAll")}
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Batch Actions Toolbar */}
-                                <AnimatePresence>
-                                    {selectedIds.length > 0 && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="mb-4 p-3 bg-surface2/50 rounded-lg border border-primary/20 flex flex-wrap items-center gap-2"
-                                        >
-                                            <span className="text-sm font-medium text-primary w-full sm:w-auto mb-2 sm:mb-0">
-                                                {t("selectedCount", { count: selectedIds.length })}
-                                            </span>
-
-                                            <div className="hidden sm:block h-4 w-px bg-border mx-1" />
-
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
-                                                            <Tag className="h-3 w-3" />
-                                                            {t("batchCategory")}
-                                                            <ChevronDown className="h-3 w-3 opacity-50" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-56 p-1" align="start">
-                                                        <div className="max-h-60 overflow-y-auto">
-                                                            {categories.map(cat => (
-                                                                <Button
-                                                                    key={cat.id}
-                                                                    variant="ghost"
-                                                                    className="w-full justify-start text-xs h-9 gap-2 px-2"
-                                                                    onClick={() => handleBatchCategory(cat.id)}
-                                                                >
-                                                                    <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
-                                                                    {cat.name}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
-                                                            <Coins className="h-3 w-3" />
-                                                            {t("batchCurrency")}
-                                                            <ChevronDown className="h-3 w-3 opacity-50" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-40 p-1" align="start">
-                                                        <div className="max-h-60 overflow-y-auto">
-                                                            {sortedCurrencies.map(curr => (
-                                                                <Button
-                                                                    key={curr}
-                                                                    variant="ghost"
-                                                                    className="w-full justify-start text-xs h-9 px-2"
-                                                                    onClick={() => handleBatchCurrency(curr)}
-                                                                >
-                                                                    {curr}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
-                                                            <Calendar className="h-3 w-3" />
-                                                            {t("batchDate")}
-                                                            <ChevronDown className="h-3 w-3 opacity-50" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-56 p-3" align="start">
-                                                        <div className="space-y-3">
-                                                            <div className="space-y-1">
-                                                                <label className="text-xs font-medium text-muted-foreground">{t("batchDate")}</label>
-                                                                <Input
-                                                                    type="date"
-                                                                    value={batchDate}
-                                                                    onChange={(e) => setBatchDate(e.target.value)}
-                                                                    className="h-8 text-xs"
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                size="sm"
-                                                                className="w-full h-8 text-xs"
-                                                                onClick={handleBatchDate}
-                                                                disabled={!batchDate || isSaving}
-                                                            >
-                                                                {tCommon("confirm")}
-                                                            </Button>
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
-                                                            <AlignLeft className="h-3 w-3" />
-                                                            {t("batchDescription")}
-                                                            <ChevronDown className="h-3 w-3 opacity-50" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-64 p-3" align="start">
-                                                        <div className="space-y-3">
-                                                            <div className="space-y-1">
-                                                                <label className="text-xs font-medium text-muted-foreground">{t("batchDescription")}</label>
-                                                                <Textarea
-                                                                    value={batchDescription}
-                                                                    onChange={(e) => setBatchDescription(e.target.value)}
-                                                                    placeholder={_tEntry("description")}
-                                                                    className="min-h-[80px] text-xs"
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                size="sm"
-                                                                className="w-full h-8 text-xs"
-                                                                onClick={handleBatchDescription}
-                                                                disabled={isSaving}
-                                                            >
-                                                                {tCommon("confirm")}
-                                                            </Button>
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-8 text-[11px] px-2 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                                                    onClick={handleBatchDelete}
-                                                    disabled={isSaving}
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                    {tCommon("delete")}
-                                                </Button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                <div className="space-y-3">
-                                    {ledgerEntries.length === 0 ? (
-                                        <div className="text-center py-12 bg-surface2/30 rounded-xl border border-dashed text-muted-foreground">
-                                            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                            <p>{t("noEntries")}</p>
+                    {/* Loading Skeleton State */}
+                    {isLoading && !sourceDocument && (
+                        <div className="space-y-6 animate-pulse">
+                            {/* Image placeholders */}
+                            <div className="grid gap-2 grid-cols-3 sm:grid-cols-4">
+                                {[1, 2].map(i => (
+                                    <div key={i} className="aspect-square rounded-lg bg-muted" />
+                                ))}
+                            </div>
+                            {/* Entry placeholders */}
+                            <div className="space-y-3">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl border border-border">
+                                        <div className="h-10 w-10 rounded-full bg-muted" />
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 w-32 bg-muted rounded" />
+                                            <div className="h-3 w-20 bg-muted rounded" />
                                         </div>
-                                    ) : (
-                                        ledgerEntries.map(entry => (
-                                            <div
-                                                key={entry.id}
-                                                className={cn(
-                                                    "group relative flex items-center gap-4 p-3 rounded-xl border transition-all",
-                                                    selectedIds.includes(entry.id)
-                                                        ? "bg-primary/5 border-primary/30 shadow-sm"
-                                                        : "bg-surface hover:border-border-hover border-border"
-                                                )}
+                                        <div className="h-4 w-16 bg-muted rounded" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Actual Content */}
+                    {sourceDocument && (
+                        <AnimatePresence mode="wait">
+                            {!isEditing ? (
+                                <motion.div
+                                    key="view"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <SourceDocumentViewDetails
+                                        sourceDocument={sourceDocument}
+                                        ledgerEntries={ledgerEntries}
+                                        mainCurrency={_mainCurrency}
+                                        onViewEntry={(entry) => onViewLedgerEntry?.(entry)}
+                                    />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="edit"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="font-medium flex items-center gap-2">
+                                            {t("entries")}
+                                            <Badge variant="default" className="bg-surface2 text-text border-none">{ledgerEntries.length}</Badge>
+                                        </h4>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleToggleSelectAll}
+                                                className="text-xs h-8"
                                             >
-                                                <Checkbox
-                                                    checked={selectedIds.includes(entry.id)}
-                                                    onCheckedChange={() => handleToggleSelect(entry.id)}
-                                                    className="h-5 w-5"
-                                                />
+                                                {selectedIds.length === ledgerEntries.length ? t("deselectAll") : t("selectAll")}
+                                            </Button>
+                                        </div>
+                                    </div>
 
-                                                <div className="h-10 w-10 rounded-full bg-surface2 flex items-center justify-center shrink-0">
-                                                    <CategoryIcon iconName={entry.category?.icon} className="h-5 w-5" />
+                                    {/* Batch Actions Toolbar */}
+                                    <AnimatePresence>
+                                        {selectedIds.length > 0 && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="mb-4 p-3 bg-surface2/50 rounded-lg border border-primary/20 flex flex-wrap items-center gap-2"
+                                            >
+                                                <span className="text-sm font-medium text-primary w-full sm:w-auto mb-2 sm:mb-0">
+                                                    {t("selectedCount", { count: selectedIds.length })}
+                                                </span>
+
+                                                <div className="hidden sm:block h-4 w-px bg-border mx-1" />
+
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
+                                                                <Tag className="h-3 w-3" />
+                                                                {t("batchCategory")}
+                                                                <ChevronDown className="h-3 w-3 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-56 p-1" align="start">
+                                                            <div className="max-h-60 overflow-y-auto">
+                                                                {categories.map(cat => (
+                                                                    <Button
+                                                                        key={cat.id}
+                                                                        variant="ghost"
+                                                                        className="w-full justify-start text-xs h-9 gap-2 px-2"
+                                                                        onClick={() => handleBatchCategory(cat.id)}
+                                                                    >
+                                                                        <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
+                                                                        {cat.name}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
+                                                                <Coins className="h-3 w-3" />
+                                                                {t("batchCurrency")}
+                                                                <ChevronDown className="h-3 w-3 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-40 p-1" align="start">
+                                                            <div className="max-h-60 overflow-y-auto">
+                                                                {sortedCurrencies.map(curr => (
+                                                                    <Button
+                                                                        key={curr}
+                                                                        variant="ghost"
+                                                                        className="w-full justify-start text-xs h-9 px-2"
+                                                                        onClick={() => handleBatchCurrency(curr)}
+                                                                    >
+                                                                        {curr}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
+                                                                <Calendar className="h-3 w-3" />
+                                                                {t("batchDate")}
+                                                                <ChevronDown className="h-3 w-3 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-56 p-3" align="start">
+                                                            <div className="space-y-3">
+                                                                <div className="space-y-1">
+                                                                    <label className="text-xs font-medium text-muted-foreground">{t("batchDate")}</label>
+                                                                    <Input
+                                                                        type="date"
+                                                                        value={batchDate}
+                                                                        onChange={(e) => setBatchDate(e.target.value)}
+                                                                        className="h-8 text-xs"
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="w-full h-8 text-xs"
+                                                                    onClick={handleBatchDate}
+                                                                    disabled={!batchDate || isSaving}
+                                                                >
+                                                                    {tCommon("confirm")}
+                                                                </Button>
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 gap-1.5">
+                                                                <AlignLeft className="h-3 w-3" />
+                                                                {t("batchDescription")}
+                                                                <ChevronDown className="h-3 w-3 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-64 p-3" align="start">
+                                                            <div className="space-y-3">
+                                                                <div className="space-y-1">
+                                                                    <label className="text-xs font-medium text-muted-foreground">{t("batchDescription")}</label>
+                                                                    <Textarea
+                                                                        value={batchDescription}
+                                                                        onChange={(e) => setBatchDescription(e.target.value)}
+                                                                        placeholder={_tEntry("description")}
+                                                                        className="min-h-[80px] text-xs"
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="w-full h-8 text-xs"
+                                                                    onClick={handleBatchDescription}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    {tCommon("confirm")}
+                                                                </Button>
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 text-[11px] px-2 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                                                        onClick={handleBatchDelete}
+                                                        disabled={isSaving}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        {tCommon("delete")}
+                                                    </Button>
                                                 </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                                <div className="flex-1 min-w-0" onClick={() => onViewLedgerEntry?.(entry)}>
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <p className="font-medium text-sm truncate">{entry.itemName}</p>
-                                                        <p className="font-bold text-sm">
-                                                            <span className="text-[10px] text-muted-foreground mr-1">{entry.currency}</span>
-                                                            {parseFloat(entry.amount).toFixed(2)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="outline" className="text-[10px] h-4 font-normal py-0">
-                                                            {entry.category?.name || tCommon("unclassified")}
-                                                        </Badge>
-                                                        {entry.entryDate && (
-                                                            <span className="text-[10px] text-muted-foreground">
-                                                                {new Date(entry.entryDate).toLocaleDateString()}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    className="opacity-0 group-hover:opacity-100 text-muted-foreground-foreground hover:text-destructive transition-opacity"
-                                                    onClick={() => onDeleteEntry(entry.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                    <div className="space-y-3">
+                                        {ledgerEntries.length === 0 ? (
+                                            <div className="text-center py-12 bg-surface2/30 rounded-xl border border-dashed text-muted-foreground">
+                                                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                                <p>{t("noEntries")}</p>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                        ) : (
+                                            ledgerEntries.map(entry => (
+                                                <div
+                                                    key={entry.id}
+                                                    className={cn(
+                                                        "group relative flex items-center gap-4 p-3 rounded-xl border transition-all",
+                                                        selectedIds.includes(entry.id)
+                                                            ? "bg-primary/5 border-primary/30 shadow-sm"
+                                                            : "bg-surface hover:border-border-hover border-border"
+                                                    )}
+                                                >
+                                                    <Checkbox
+                                                        checked={selectedIds.includes(entry.id)}
+                                                        onCheckedChange={() => handleToggleSelect(entry.id)}
+                                                        className="h-5 w-5"
+                                                    />
+
+                                                    <div className="h-10 w-10 rounded-full bg-surface2 flex items-center justify-center shrink-0">
+                                                        <CategoryIcon iconName={entry.category?.icon} className="h-5 w-5" />
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0" onClick={() => onViewLedgerEntry?.(entry)}>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <p className="font-medium text-sm truncate">{entry.itemName}</p>
+                                                            <p className="font-bold text-sm">
+                                                                <span className="text-[10px] text-muted-foreground mr-1">{entry.currency}</span>
+                                                                {parseFloat(entry.amount).toFixed(2)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <Badge variant="outline" className="text-[10px] h-4 font-normal py-0">
+                                                                {entry.category?.name || tCommon("unclassified")}
+                                                            </Badge>
+                                                            {entry.entryDate && (
+                                                                <span className="text-[10px] text-muted-foreground">
+                                                                    {new Date(entry.entryDate).toLocaleDateString()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground-foreground hover:text-destructive transition-opacity"
+                                                        onClick={() => onDeleteEntry(entry.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    )}
                 </div>
 
                 {/* Actions Bottom - Removed fixed to avoid containing block issues with transform */}

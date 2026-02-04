@@ -735,6 +735,61 @@ const { data } = useQuery({ queryKey });
 
 ---
 
+## 🔲 Level 4: Modal Detail Pages 响应优化
+
+### 问题描述
+
+当用户点击卡片打开详情 Modal 时，如果 Wrapper 组件在数据加载期间返回 `null`，会导致用户在高延迟网络下无法获得任何视觉反馈，必须等待服务器响应后 Modal 才会显示。
+
+### ❌ 反模式
+
+```typescript
+// Wrapper 组件中
+if (isLoading && !data) {
+    return null; // ❌ 用户点击后无任何反馈
+}
+```
+
+### ✅ 正确模式：立即显示 Modal + 骨架屏
+
+```typescript
+// Wrapper 组件
+return (
+    <DetailModal
+        data={data ?? null}
+        isLoading={isLoading}  // 传递加载状态
+        ...
+    />
+);
+
+// Modal 组件
+{isLoading && !data && (
+    <div className="p-6 space-y-4 animate-pulse">
+        {/* 骨架屏内容 */}
+    </div>
+)}
+
+{data && (
+    <ActualContent data={data} />
+)}
+```
+
+### 适用场景
+
+| 组件类型 | 示例 |
+|---------|------|
+| Detail Modals | `LedgerEntryDetailModal`, `SourceDocumentDetailModal` |
+| Edit Dialogs | 编辑表单对话框 |
+| Preview Modals | 图片/文件预览 |
+
+### 关键原则
+
+1. **Wrapper 组件永远不返回 null**（除非是错误或数据被删除的情况）
+2. **Modal 组件接收 `isLoading` prop**
+3. **加载时显示骨架屏**，保持 Modal 结构完整
+
+---
+
 ## 📚 参考资料
 
 ### 官方文档
@@ -748,12 +803,14 @@ const { data } = useQuery({ queryKey });
 | **协同模式** | `src/features/ledger/components/CategoriesPageClient.tsx` | 乐观更新 + Smart Polling 完整示例 |
 | **纯 Smart Polling** | `src/features/ledger/components/settings/ProcessingSystemSection.tsx` | 任务中心监控示例 |
 | **Smart Polling Hook** | `src/hooks/use-smart-polling.ts` | 核心实现 |
+| **Modal 响应优化** | `src/features/ledger/components/LedgerEntryDetailWrapper.tsx` | Modal 立即显示 + 骨架屏示例 |
+| **Modal 响应优化** | `src/features/source-document/components/SourceDocumentDetailWrapper.tsx` | Modal 立即显示 + 骨架屏示例 |
 
 ---
 
 ## 🔄 文档维护
 
 - **创建时间**: 2026-02-02
-- **最后更新**: 2026-02-02
+- **最后更新**: 2026-02-04
 - **维护者**: 开发团队
-- **更新策略**: 遇到新场景时补充到 Level 2/3
+- **更新策略**: 遇到新场景时补充到 Level 2/3/4

@@ -103,38 +103,33 @@ export function SourceDocumentDetailWrapper({
     });
 
 
-    // Handle deletion case (data becomes null/undefined after cache invalidation)
-    if (!isLoading && !sourceDocument && open) {
-        // Automatically close if data disappears 
-        // We use a timeout to avoid strict mode double-invoke issues
+    // Handle error state
+    if (error) {
+        toast.error(tCommon("error"));
         setTimeout(onClose, 0);
         return null;
     }
 
-    if (isLoading && !sourceDocument) {
-        return null; // Or a loading spinner if desired, but modal usually animates in
-    }
-
-    if (error) {
-        toast.error(tCommon("error"));
-        onClose();
+    // Handle deleted/not-found case (after loading completes)
+    if (!isLoading && !sourceDocument && open) {
+        setTimeout(onClose, 0);
         return null;
     }
 
-    // Cast or ensuring non-null for the component
-    if (!sourceDocument) return null;
-
-    const currentLedgerEntries: LedgerEntry[] = (sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries || initialLedgerEntries || [];
+    const currentLedgerEntries: LedgerEntry[] = sourceDocument
+        ? ((sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries || initialLedgerEntries || [])
+        : [];
 
     // Ensure status is valid for the component safely
-    const safeSourceDocument = {
+    const safeSourceDocument = sourceDocument ? {
         ...sourceDocument,
         status: sourceDocument.status || "queued"
-    } as unknown as SourceDocument;
+    } as unknown as SourceDocument : null;
 
     return (
         <SourceDocumentDetailModal
             sourceDocument={safeSourceDocument}
+            isLoading={isLoading}
             ledgerEntries={currentLedgerEntries}
             categories={categories}
             open={open}

@@ -99,32 +99,30 @@ export function LedgerEntryDetailWrapper({
     });
 
 
+    // Handle error state
+    if (error) {
+        toast.error(tCommon("error"));
+        setTimeout(onClose, 0);
+        return null;
+    }
+
+    // Handle deleted/not-found case (after loading completes)
     if (!isLoading && !ledgerEntry && open) {
         setTimeout(onClose, 0);
         return null;
     }
 
-    if (isLoading && !ledgerEntry) {
-        return null;
-    }
-
-    if (error) {
-        toast.error(tCommon("error"));
-        onClose();
-        return null;
-    }
-
-    if (!ledgerEntry) return null;
-
+    // Always render Modal - pass isLoading for skeleton state
     return (
         <LedgerEntryDetailModal
-            ledgerEntry={ledgerEntry}
+            ledgerEntry={ledgerEntry ?? null}
+            isLoading={isLoading}
             categories={categories}
             open={open}
             onClose={onClose}
             onUpdate={async (data) => await updateMutation.mutateAsync(data)}
             onDelete={async () => await deleteMutation.mutateAsync()}
-            onViewSourceDocument={ledgerEntry.sourceDocumentId ? () => push({ type: 'source-document', id: ledgerEntry.sourceDocumentId! }) : undefined}
+            onViewSourceDocument={ledgerEntry?.sourceDocumentId ? () => push({ type: 'source-document', id: ledgerEntry.sourceDocumentId! }) : undefined}
         />
     );
 }

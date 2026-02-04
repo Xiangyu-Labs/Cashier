@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
+  isLoading?: boolean;
   categories: EntryCategory[];
   preferredCurrencies?: string[];
   mainCurrency?: string;
@@ -30,6 +31,7 @@ interface LedgerEntryDetailModalProps {
 
 export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   ledgerEntry,
+  isLoading = false,
   categories,
   preferredCurrencies,
   mainCurrency = "CNY",
@@ -96,63 +98,85 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     onClose();
   }, [onClose]);
 
-  if (!ledgerEntry) return null;
-
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg">
 
+          {/* Loading Skeleton State */}
+          {isLoading && !ledgerEntry && (
+            <div className="p-6 space-y-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-muted rounded" />
+                  <div className="h-3 w-24 bg-muted rounded" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="h-4 w-full bg-muted rounded" />
+                <div className="h-4 w-3/4 bg-muted rounded" />
+                <div className="h-4 w-1/2 bg-muted rounded" />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <div className="h-9 w-20 bg-muted rounded" />
+                <div className="h-9 w-20 bg-muted rounded" />
+              </div>
+            </div>
+          )}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={isEditing ? "edit" : "view"}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
-              <LedgerEntryViewDetails
-                ledgerEntry={ledgerEntry}
-                isEditing={isEditing}
-                editData={editData}
-                categories={categories}
-                preferredCurrencies={preferredCurrencies}
-                mainCurrency={mainCurrency}
-                onEditStart={() => {
-                  if (ledgerEntry) {
-                    setEditData({
-                      itemName: ledgerEntry.itemName,
-                      amount: parseFloat(ledgerEntry.amount),
-                      currency: ledgerEntry.currency || "",
-                      categoryId: ledgerEntry.categoryId || "",
-                      entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                      description: ledgerEntry.description || "",
-                    });
-                  }
-                  setIsEditing(true);
-                }}
-                onEditChange={setEditData}
-                onEditSave={handleSave}
-                onEditCancel={() => {
-                  setIsEditing(false);
-                  if (ledgerEntry) {
-                    setEditData({
-                      itemName: ledgerEntry.itemName,
-                      amount: parseFloat(ledgerEntry.amount),
-                      currency: ledgerEntry.currency || "",
-                      categoryId: ledgerEntry.categoryId || "",
-                      entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                      description: ledgerEntry.description || "",
-                    });
-                  }
-                }}
-                onDelete={() => setShowDeleteConfirm(true)}
-                onViewSourceDocument={onViewSourceDocument ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!) : undefined}
-              />
-            </motion.div>
-          </AnimatePresence>
+          {/* Actual Content */}
+          {ledgerEntry && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isEditing ? "edit" : "view"}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <LedgerEntryViewDetails
+                  ledgerEntry={ledgerEntry}
+                  isEditing={isEditing}
+                  editData={editData}
+                  categories={categories}
+                  preferredCurrencies={preferredCurrencies}
+                  mainCurrency={mainCurrency}
+                  onEditStart={() => {
+                    if (ledgerEntry) {
+                      setEditData({
+                        itemName: ledgerEntry.itemName,
+                        amount: parseFloat(ledgerEntry.amount),
+                        currency: ledgerEntry.currency || "",
+                        categoryId: ledgerEntry.categoryId || "",
+                        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
+                        description: ledgerEntry.description || "",
+                      });
+                    }
+                    setIsEditing(true);
+                  }}
+                  onEditChange={setEditData}
+                  onEditSave={handleSave}
+                  onEditCancel={() => {
+                    setIsEditing(false);
+                    if (ledgerEntry) {
+                      setEditData({
+                        itemName: ledgerEntry.itemName,
+                        amount: parseFloat(ledgerEntry.amount),
+                        currency: ledgerEntry.currency || "",
+                        categoryId: ledgerEntry.categoryId || "",
+                        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
+                        description: ledgerEntry.description || "",
+                      });
+                    }
+                  }}
+                  onDelete={() => setShowDeleteConfirm(true)}
+                  onViewSourceDocument={onViewSourceDocument ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!) : undefined}
+                />
+              </motion.div>
+            </AnimatePresence>
+          )}
         </DialogContent>
       </Dialog >
 
