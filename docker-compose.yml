@@ -1,0 +1,28 @@
+# Production Docker Compose with Traefik
+# Usage: docker compose up -d --build
+#
+# Prerequisites:
+#   1. Copy .env.example to .env
+#   2. Edit with your production values
+
+services:
+  app:
+    build: .
+    restart: always
+    networks:
+      - server-internal-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cashier.rule=Host(`cashier.xiangyu.pro`)"
+      - "traefik.http.routers.cashier.entrypoints=websecure"
+      - "traefik.http.routers.cashier.tls=true"
+      - "traefik.http.routers.cashier.tls.certresolver=myresolver"
+      - "traefik.http.services.cashier.loadbalancer.server.port=3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+
+networks:
+  server-internal-net:
+    external: true
