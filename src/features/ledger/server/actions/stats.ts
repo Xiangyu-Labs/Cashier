@@ -5,7 +5,7 @@ import { ledgers, ledgerEntries, currencyRates } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { convertAmount } from "@/features/stats/server/utils";
-import { formatDateForApi } from "@/lib/date-utils";
+import { formatDateForApi, parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 
 import { LedgerEntrySummary } from "@/types/api";
 
@@ -24,8 +24,10 @@ export async function getLedgerStatsAction(
 
     const q = forLedger(ledgerEntries, ledgerId);
     const conditions = [q.whereActive];
-    if (startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(startDate)));
-    if (endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(endDate)));
+    const parsedStart = parseDateRangeStart(startDate);
+    const parsedEnd = parseDateRangeEnd(endDate);
+    if (parsedStart) conditions.push(gte(ledgerEntries.entryDate, parsedStart));
+    if (parsedEnd) conditions.push(lte(ledgerEntries.entryDate, parsedEnd));
 
     // 1. Totals by Currency
     const totalsQuery = await db

@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
+import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -276,10 +277,12 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     if (startDate) {
-        conditions.push(gte(sourceDocuments.createdAt, new Date(startDate)));
+        const parsedStart = parseDateRangeStart(startDate);
+        if (parsedStart) conditions.push(gte(sourceDocuments.createdAt, parsedStart));
     }
     if (endDate) {
-        conditions.push(lte(sourceDocuments.createdAt, new Date(endDate)));
+        const parsedEnd = parseDateRangeEnd(endDate);
+        if (parsedEnd) conditions.push(lte(sourceDocuments.createdAt, parsedEnd));
     }
 
     // Use db.query for relation fetching if strict type safety needed, but manual join/separate query 

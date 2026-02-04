@@ -30,6 +30,7 @@ const updateLedgerEntrySchema = z.object({
 });
 
 import { forLedger } from "@/lib/db/scoped-query";
+import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 
 export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>) {
     try {
@@ -186,8 +187,10 @@ export async function getLedgerEntriesAction(
         q.whereActive
     ];
 
-    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, new Date(params.startDate)));
-    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, new Date(params.endDate)));
+    const parsedStart = parseDateRangeStart(params.startDate);
+    const parsedEnd = parseDateRangeEnd(params.endDate);
+    if (parsedStart) conditions.push(gte(ledgerEntries.entryDate, parsedStart));
+    if (parsedEnd) conditions.push(lte(ledgerEntries.entryDate, parsedEnd));
     if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
 
     // Handle cursor for pagination: (entryDate, createdAt, id)

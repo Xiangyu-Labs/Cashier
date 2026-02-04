@@ -9,6 +9,9 @@ import {
     addMonths,
     addYears,
     format,
+    startOfDay,
+    endOfDay,
+    parseISO,
 } from "date-fns";
 
 export type DateRangeType = "week" | "month" | "year";
@@ -80,9 +83,16 @@ export function formatDateForApi(date: Date): string {
 }
 
 /**
- * Format date to full ISO-like string using LOCAL time (not UTC).
- * This avoids timezone issues where toISOString() would convert to UTC
- * (e.g., Feb 1 00:00 CST -> Jan 31 16:00 UTC).
+ * Format date to yyyy-MM-dd string using LOCAL time (not UTC).
+ * 
+ * This completely avoids timezone issues by only transmitting the date portion.
+ * The backend is responsible for interpreting startDate as "start of day" 
+ * and endDate as "end of day" when constructing queries.
+ * 
+ * Why not include time? Because:
+ * 1. User selects dates in their local timezone
+ * 2. Server may run in a different timezone (e.g., UTC in Docker)
+ * 3. Using just the date makes the intention unambiguous
  */
 export function formatDateTimeForApi(date: Date): string;
 export function formatDateTimeForApi(date: Date | undefined): string | undefined;
@@ -91,9 +101,37 @@ export function formatDateTimeForApi(date: Date | undefined): string | undefined
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    const ms = String(date.getMilliseconds()).padStart(3, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}Z`;
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parse a date string as the START of day (00:00:00.000).
+ * Used by backend to construct query conditions for startDate parameters.
+ * 
+ * Uses date-fns for reliable parsing and day boundary calculation.
+ */
+export function parseDateRangeStart(dateStr: string | null | undefined): Date | null {
+    if (!dateStr) return null;
+
+    // parseISO handles both "yyyy-MM-dd" and full ISO strings
+    const parsed = parseISO(dateStr);
+    if (isNaN(parsed.getTime())) return null;
+
+    return startOfDay(parsed);
+}
+
+/**
+ * Parse a date string as the END of day (23:59:59.999).
+ * Used by backend to construct query conditions for endDate parameters.
+ * 
+ * Uses date-fns for reliable parsing and day boundary calculation.
+ */
+export function parseDateRangeEnd(dateStr: string | null | undefined): Date | null {
+    if (!dateStr) return null;
+
+    // parseISO handles both "yyyy-MM-dd" and full ISO strings
+    const parsed = parseISO(dateStr);
+    if (isNaN(parsed.getTime())) return null;
+
+    return endOfDay(parsed);
 }
