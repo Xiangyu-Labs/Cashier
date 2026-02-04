@@ -159,7 +159,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             return dateB.localeCompare(dateA); // String comparison for descending order
         });
 
-        const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[] }> = {};
+        const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[]; total: number }> = {};
 
         // Today and yesterday in yyyy-MM-dd format (local time)
         const todayStr = new Date().toLocaleDateString('sv');
@@ -190,9 +190,11 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 groups[dateKey] = {
                     title: dateKey,
                     timestamp: sortTimestamp,
-                    items: []
+                    items: [],
+                    total: 0
                 };
             }
+            groups[dateKey].total += Number(entry.amount);
             groups[dateKey].items.push(entry);
         });
 
@@ -252,11 +254,15 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                 exit={{ opacity: 0 }}
                                 className="space-y-2"
                             >
-                                <div className="py-2 px-2">
+                                <div className="py-2 px-2 flex items-center gap-3">
                                     <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
                                         {group.title}
                                     </h3>
+                                    <span className="text-[10px] sm:text-xs text-muted-foreground/50">·</span>
+                                    <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
+                                        {monthStats.mainCurrency} {group.total.toFixed(2)}
+                                    </span>
                                 </div>
                                 <div className="space-y-4 px-2">
                                     {group.items.map((entry) => (
