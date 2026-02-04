@@ -17,6 +17,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useModalStackStore } from "@/lib/store/modal-stack";
+import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -145,23 +146,40 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-    const groupedItems = useMemo(() => {
-        // Helper to get date string (yyyy-MM-dd) from entry
-        const getDateStr = (entry: LedgerEntry) => {
-            if (entry.entryDate) return entry.entryDate; // Already yyyy-MM-dd
-            // Fallback to createdAt, extract date portion in local time
-            return new Date(entry.createdAt).toLocaleDateString('sv'); // 'sv' locale gives yyyy-MM-dd
-        };
+    // Helper to get date string (yyyy-MM-dd) from entry
+    const getDateStr = (entry: LedgerEntry) => {
+        if (entry.entryDate) return entry.entryDate;
+        return new Date(entry.createdAt).toLocaleDateString('sv');
+    };
 
+    // Prepare batch conversion items for all entries
+    const conversionItems = useMemo(() =>
+        monthEntries.map(entry => ({
+            amount: Number(entry.amount),
+            currency: entry.currency || monthStats.mainCurrency,
+            date: getDateStr(entry)
+        })),
+        [monthEntries, monthStats.mainCurrency]
+    );
+
+    // Batch convert all amounts to main currency
+    const { results: convertedAmounts } = useBatchConvertedAmounts(
+        conversionItems,
+        monthStats.mainCurrency
+    );
+
+    const groupedItems = useMemo(() => {
         const sortedEntries = [...monthEntries].sort((a, b) => {
             const dateA = getDateStr(a);
             const dateB = getDateStr(b);
-            return dateB.localeCompare(dateA); // String comparison for descending order
+            return dateB.localeCompare(dateA);
         });
+
+        // Build index map: entry id -> original index in monthEntries (for converted amounts)
+        const indexMap = new Map(monthEntries.map((e, i) => [e.id, i]));
 
         const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[]; total: number }> = {};
 
-        // Today and yesterday in yyyy-MM-dd format (local time)
         const todayStr = new Date().toLocaleDateString('sv');
         const yesterdayDate = new Date();
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
@@ -169,15 +187,11 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
         sortedEntries.forEach(entry => {
             const dateStr = getDateStr(entry);
-
-            let dateKey = "";
-            let sortTimestamp = 0;
-
-            // Parse yyyy-MM-dd as local date for display
             const [year, month, day] = dateStr.split('-').map(Number);
             const date = new Date(year, month - 1, day);
-            sortTimestamp = date.getTime();
+            const sortTimestamp = date.getTime();
 
+            let dateKey = "";
             if (dateStr === todayStr) {
                 dateKey = t("today");
             } else if (dateStr === yesterdayStr) {
@@ -194,12 +208,16 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     total: 0
                 };
             }
-            groups[dateKey].total += Number(entry.amount);
+
+            // Use converted amount for total calculation
+            const originalIndex = indexMap.get(entry.id);
+            const convertedAmount = originalIndex !== undefined ? convertedAmounts[originalIndex] : Number(entry.amount);
+            groups[dateKey].total += convertedAmount;
             groups[dateKey].items.push(entry);
         });
 
         return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [monthEntries, t, locale]);
+    }, [monthEntries, t, locale, convertedAmounts]);
 
     const handleRefresh = async () => {
         await queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
