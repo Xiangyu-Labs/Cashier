@@ -102,8 +102,8 @@ export function StatsHeader({
             {/* 3. Summary Stats */}
             <div className="flex flex-col items-center gap-2">
                 <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
-                <div className="text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
-                    <span className="text-xl text-muted-foreground font-normal">{currencySymbol}</span>
+                <div className="text-2xl sm:text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
+                    <span className="text-base sm:text-xl text-muted-foreground font-normal">{currencySymbol}</span>
                     {totalExpense.toFixed(2)}
                 </div>
 

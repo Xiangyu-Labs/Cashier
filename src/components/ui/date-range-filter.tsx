@@ -28,6 +28,18 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className, 
     const format = useFormatter();
     const [open, setOpen] = React.useState(false);
 
+    // Auto-detect very small screen for compact mode (only for extremely narrow screens)
+    const [isSmallScreen, setIsSmallScreen] = React.useState(false);
+    React.useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 400px)');
+        setIsSmallScreen(mediaQuery.matches);
+        const handler = (e: MediaQueryListEvent) => setIsSmallScreen(e.matches);
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+    }, []);
+
+    const useCompactMode = compact || isSmallScreen;
+
     // Internal state for manual inputs to allow typing before committing
     const [tempStart, setTempStart] = React.useState<string>(startDate ? formatDateInput(startDate) : "");
     const [tempEnd, setTempEnd] = React.useState<string>(endDate ? formatDateInput(endDate) : "");
@@ -84,7 +96,7 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className, 
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">
                         {startDate && endDate ? (
-                            compact ? (
+                            useCompactMode ? (
                                 // Compact format: M/D - M/D (or M/D/Y if different years)
                                 startDate.getFullYear() === endDate.getFullYear() ? (
                                     `${startDate.getMonth() + 1}/${startDate.getDate()} - ${endDate.getMonth() + 1}/${endDate.getDate()}`

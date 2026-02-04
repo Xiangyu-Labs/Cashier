@@ -308,7 +308,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
                 <div className="space-y-6">
                     {/* Theme Setting */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('theme')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('themeDescription')}</p>
@@ -344,7 +344,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     <div className="h-px bg-[var(--border)]" />
 
                     {/* UI Language Setting */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('uiLanguage')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('uiLanguageDesc')}</p>
@@ -376,7 +376,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
                     <div className="h-px bg-[var(--border)]" />
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('collapseProcessing')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('collapseProcessingDesc')}</p>
@@ -393,7 +393,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
                     <div className="h-px bg-[var(--border)]" />
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('collapseBills')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
@@ -415,7 +415,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 <h2 className="text-lg font-medium mb-6">{t('assistant')}</h2>
                 <div className="space-y-6">
                     {/* AI Language Setting */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
@@ -435,7 +435,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     </div>
 
                     <div className="h-px bg-[var(--border)]" />
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('autoRecognizeDate')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('autoRecognizeDateDesc')}</p>
@@ -523,7 +523,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             {/* Account Settings (Sign Out) */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h3 className="text-base font-medium">{t('signOut')}</h3>
                         <p className="text-sm text-[var(--muted)]">{t('signOutDesc')}</p>

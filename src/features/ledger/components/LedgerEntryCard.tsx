@@ -79,12 +79,12 @@ export function LedgerEntryCard({
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
                       <span className="shrink-0">{ledgerEntry.category.name}</span>
                       {ledgerEntry.description && (
-                        <>
+                        <span className="hidden sm:contents">
                           <span className="text-muted-foreground/30 ml-0.5 shrink-0">·</span>
                           <span className="truncate text-muted-foreground/50 text-[11px] italic flex-1">
                             {ledgerEntry.description}
                           </span>
-                        </>
+                        </span>
                       )}
                     </div>
                   ) : (
