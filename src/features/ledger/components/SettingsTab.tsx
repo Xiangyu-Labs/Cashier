@@ -25,6 +25,8 @@ import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
 import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
 
+import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 
 import { EntryCategory, Ledger, ServiceCredential, Settings } from "@/types/api";
@@ -39,11 +41,10 @@ import { signOut } from "next-auth/react";
 interface SettingsTabProps {
     ledger: Ledger;
     initialCategories: EntryCategory[];
-    initialCredentials: ServiceCredential[];
     ledgerId: string;
 }
 
-export function SettingsTab({ ledger, initialCategories, initialCredentials, ledgerId }: SettingsTabProps) {
+export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTabProps) {
     const router = useRouter();
     const pathname = usePathname();
     const locale = useLocale();
@@ -63,7 +64,13 @@ export function SettingsTab({ ledger, initialCategories, initialCredentials, led
         interval: 3000,
         initialData: initialCategories
     });
-    const credentials = initialCredentials;
+
+    // Credentials - fetch client-side with long staleTime
+    const { data: credentials = [] } = useQuery<ServiceCredential[]>({
+        queryKey: queryKeys.serviceCredentials(ledgerId),
+        queryFn: () => getServiceCredentialsAction(ledgerId) as Promise<ServiceCredential[]>,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
     // Local state for Ledger Name
     const [localLedgerName, setLocalLedgerName] = useState(ledger.name);

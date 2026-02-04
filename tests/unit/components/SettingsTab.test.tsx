@@ -152,7 +152,6 @@ describe("SettingsTab", () => {
                 <SettingsTab
                     ledger={mockLedger}
                     initialCategories={mockCategories}
-                    initialCredentials={mockCredentials}
                     ledgerId="l1"
                 />
             </QueryClientProvider>
@@ -169,7 +168,6 @@ describe("SettingsTab", () => {
                 <SettingsTab
                     ledger={mockLedger}
                     initialCategories={mockCategories}
-                    initialCredentials={mockCredentials}
                     ledgerId="l1"
                 />
             </QueryClientProvider>
@@ -187,7 +185,6 @@ describe("SettingsTab", () => {
                 <SettingsTab
                     ledger={mockLedger}
                     initialCategories={mockCategories}
-                    initialCredentials={mockCredentials}
                     ledgerId="l1"
                 />
             </QueryClientProvider>
@@ -212,7 +209,6 @@ describe("SettingsTab", () => {
                 <SettingsTab
                     ledger={mockLedger}
                     initialCategories={mockCategories}
-                    initialCredentials={mockCredentials}
                     ledgerId="l1"
                 />
             </QueryClientProvider>
@@ -239,7 +235,6 @@ describe("SettingsTab", () => {
                 <SettingsTab
                     ledger={mockLedger}
                     initialCategories={mockCategories}
-                    initialCredentials={mockCredentials}
                     ledgerId="l1"
                 />
             </QueryClientProvider>

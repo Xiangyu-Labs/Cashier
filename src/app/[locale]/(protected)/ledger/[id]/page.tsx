@@ -1,12 +1,9 @@
 import { auth } from "@/auth";
-import { getLedger, getLedgers } from "@/features/ledger/server/services/ledgers";
-import { getEntryCategories } from "@/features/ledger/server/services/categories";
+import { getCachedLedger, getCachedLedgers } from "@/features/ledger/server/services/ledgers";
+import { getCachedEntryCategories } from "@/features/ledger/server/services/categories";
 import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
-import { SourceDocument, ServiceCredential } from "@/types/api";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
-import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;
@@ -17,14 +14,12 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
     redirect({ href: "/login", locale: "en" });
   }
 
-  // Parallel data fetching
-  const [ledger, categories, allLedgers, activeDocs, completedDocs, credentials] = await Promise.all([
-    getLedger(ledgerId),
-    getEntryCategories(ledgerId),
-    getLedgers(session!.user!.id!),
-    getSourceDocumentsAction(ledgerId, { status: 'queued,processing,anomaly', includeLedgerEntries: true }),
-    getSourceDocumentsAction(ledgerId, { status: 'completed', includeLedgerEntries: true }),
-    getServiceCredentialsAction(ledgerId),
+  // Optimized: Only fetch core data (3 queries instead of 6)
+  // Source documents and credentials now fetched client-side
+  const [ledger, categories, allLedgers] = await Promise.all([
+    getCachedLedger(ledgerId),
+    getCachedEntryCategories(ledgerId),
+    getCachedLedgers(session!.user!.id!),
   ]);
 
   if (!ledger) {
@@ -41,9 +36,7 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
       initialCategories={categories}
       allLedgers={allLedgers}
       ledgerId={ledgerId}
-      initialActiveSourceDocuments={activeDocs.items as SourceDocument[]}
-      initialCompletedSourceDocuments={completedDocs.items as SourceDocument[]}
-      initialCredentials={credentials as ServiceCredential[]}
     />
   );
 }
+

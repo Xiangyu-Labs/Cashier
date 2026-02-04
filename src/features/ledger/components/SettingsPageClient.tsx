@@ -2,7 +2,7 @@
 
 import { useRouter } from "@/i18n/routing";
 import { SettingsTab } from "./SettingsTab";
-import { EntryCategory, Ledger, ServiceCredential } from "@/types/api";
+import { EntryCategory, Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
@@ -10,11 +10,10 @@ import { useTranslations } from 'next-intl';
 interface SettingsPageClientProps {
     ledger: Ledger;
     initialCategories: EntryCategory[];
-    initialCredentials: ServiceCredential[];
     ledgerId: string;
 }
 
-export function SettingsPageClient({ ledger, initialCategories, initialCredentials, ledgerId }: SettingsPageClientProps) {
+export function SettingsPageClient({ ledger, initialCategories, ledgerId }: SettingsPageClientProps) {
     const router = useRouter();
     const t = useTranslations('Settings');
 
@@ -30,7 +29,6 @@ export function SettingsPageClient({ ledger, initialCategories, initialCredentia
             <SettingsTab
                 ledger={ledger}
                 initialCategories={initialCategories}
-                initialCredentials={initialCredentials}
                 ledgerId={ledgerId}
             />
         </div>

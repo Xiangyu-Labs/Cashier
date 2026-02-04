@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
-import { getLedger } from "@/features/ledger/server/services/ledgers";
-import { getEntryCategories } from "@/features/ledger/server/services/categories";
-import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
+import { getCachedLedger } from "@/features/ledger/server/services/ledgers";
+import { getCachedEntryCategories } from "@/features/ledger/server/services/categories";
 import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
 import { redirect } from "@/i18n/routing";
 
@@ -13,11 +12,10 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         redirect({ href: "/login", locale: "en" });
     }
 
-    // Parallel data fetching
-    const [ledger, categories, credentials] = await Promise.all([
-        getLedger(ledgerId),
-        getEntryCategories(ledgerId),
-        getServiceCredentialsAction(ledgerId),
+    // Optimized: Only fetch core data, credentials now fetched client-side
+    const [ledger, categories] = await Promise.all([
+        getCachedLedger(ledgerId),
+        getCachedEntryCategories(ledgerId),
     ]);
 
     if (!ledger) {
@@ -28,8 +26,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         <SettingsPageClient
             ledger={ledger}
             initialCategories={categories}
-            initialCredentials={credentials}
             ledgerId={ledgerId}
         />
     );
 }
+

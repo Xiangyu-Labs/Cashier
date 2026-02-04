@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { Ledger } from "@/types/api";
+import { cacheConfig } from "@/lib/cache-config";
 
 /**
  * Data Access Layer for Ledgers
@@ -41,3 +43,28 @@ function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
         deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     };
 }
+
+/**
+ * Cached versions for cross-request caching
+ * Use these in page.tsx for improved performance
+ */
+export const getCachedLedger = (ledgerId: string) =>
+    unstable_cache(
+        () => getLedger(ledgerId),
+        [`ledger-${ledgerId}`],
+        {
+            revalidate: cacheConfig.ledger.revalidate,
+            tags: cacheConfig.ledger.tags(ledgerId),
+        }
+    )();
+
+export const getCachedLedgers = (userId: string) =>
+    unstable_cache(
+        () => getLedgers(userId),
+        [`ledger-list-${userId}`],
+        {
+            revalidate: cacheConfig.ledgerList.revalidate,
+            tags: cacheConfig.ledgerList.tags(userId),
+        }
+    )();
+

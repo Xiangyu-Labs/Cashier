@@ -20,7 +20,7 @@ import { SourceDocumentInput } from "@/features/source-document/components/Sourc
 // import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
-import { Ledger, EntryCategory, SourceDocument, ServiceCredential } from "@/types/api";
+import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 
 interface LedgerPageClientProps {
@@ -28,9 +28,6 @@ interface LedgerPageClientProps {
     initialCategories: EntryCategory[];
     allLedgers: Ledger[];
     ledgerId: string;
-    initialActiveSourceDocuments?: SourceDocument[];
-    initialCompletedSourceDocuments?: SourceDocument[];
-    initialCredentials: ServiceCredential[];
 }
 
 export function LedgerPageClient({
@@ -38,9 +35,6 @@ export function LedgerPageClient({
     initialCategories: categories,
     allLedgers,
     ledgerId,
-    initialActiveSourceDocuments,
-    initialCompletedSourceDocuments,
-    initialCredentials
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const pathname = usePathname();
@@ -117,8 +111,6 @@ export function LedgerPageClient({
                             categories={categories || []}
                             defaultCollapsed={ledger.metadata?.settings?.collapseProcessingDefault || false}
                             ledger={ledger}
-                            initialActiveSourceDocuments={initialActiveSourceDocuments}
-                            initialCompletedSourceDocuments={initialCompletedSourceDocuments}
                         />
                     </TabsContent>
 
@@ -139,7 +131,6 @@ export function LedgerPageClient({
                             ledgerId={ledgerId}
                             ledger={ledger}
                             initialCategories={categories}
-                            initialCredentials={initialCredentials}
                         />
                     </TabsContent>
                 </Tabs>
