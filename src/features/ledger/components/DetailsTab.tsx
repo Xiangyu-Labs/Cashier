@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { useModalStackStore } from "@/lib/store/modal-stack";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -29,6 +30,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
+    const push = useModalStackStore(state => state.push);
 
 
     // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
@@ -346,6 +348,11 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                             deleteMutation.mutate(selectedLedgerEntry.id);
                         }
                     }}
+                    onViewSourceDocument={selectedLedgerEntry?.sourceDocumentId ? (sourceDocumentId) => {
+                        setIsDetailModalOpen(false);
+                        setSelectedLedgerEntry(null);
+                        push({ type: 'source-document', id: sourceDocumentId });
+                    } : undefined}
                 />
             </div>
         </PullToRefresh>
