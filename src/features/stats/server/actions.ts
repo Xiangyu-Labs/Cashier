@@ -199,10 +199,13 @@ export async function getEnhancedStats({
     // Daily Average
     // Days elapsed? Or total days in range?
     // Usually "Daily Average" = Total / Days In Range (or Days Elapsed if current month?)
-    // Let's use total days in range for consistency, or days elapsed if today is inside range?
-    // For simplicity: Days in Range.
+    // For current/ongoing periods: use days elapsed up to today
+    // For past periods: use total days in range
+    const today = new Date();
+    const effectiveEnd = currentEnd > today ? today : currentEnd;
+
     const oneDay = 24 * 60 * 60 * 1000;
-    const daysDiff = Math.round(Math.abs((currentEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
+    const daysDiff = Math.round(Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
     const dailyAvg = daysDiff > 0 ? currentStats.total / daysDiff : 0;
 
     return {

@@ -3,7 +3,7 @@
 
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DateRangeType, addPeriod } from "@/lib/date-utils";
+import { DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
 import { useTranslations } from "next-intl";
 
 interface StatsHeaderProps {
@@ -35,6 +35,11 @@ export function StatsHeader({
     const t = useTranslations("StatsTab");
     const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
     const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
+
+    // Check if navigating to next period would exceed today's date
+    const today = new Date();
+    const { startDate: nextStart } = getDateRange(addPeriod(currentDate, rangeType, 1), rangeType);
+    const canGoNext = nextStart <= today;
 
     // Trend Logic: Expense Increase = Bad (Red/Danger), Decrease = Good (Green/Primary)
     // But color perception varies. Let's use:
@@ -83,7 +88,11 @@ export function StatsHeader({
                     </div>
                     <button
                         onClick={handleNext}
-                        className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
+                        disabled={!canGoNext}
+                        className={cn(
+                            "p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors",
+                            !canGoNext && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
+                        )}
                     >
                         <ChevronRight size={20} />
                     </button>
