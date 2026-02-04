@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
@@ -31,13 +31,17 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const queryClient = useQueryClient();
 
 
-    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
+    // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
+    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+
+    // Initialize date range on client side to avoid SSR timezone issues
+    useEffect(() => {
         const now = new Date();
-        return {
+        setDateRange({
             start: new Date(now.getFullYear(), now.getMonth(), 1),
             end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        };
-    });
+        });
+    }, []);
 
     const startDateStr = formatDateTimeForApi(dateRange.start);
     const endDateStr = formatDateTimeForApi(dateRange.end);

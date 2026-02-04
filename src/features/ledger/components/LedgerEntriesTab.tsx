@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     updateLedgerEntryAction,
@@ -55,13 +55,17 @@ export function LedgerEntriesTab({
 
     const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
     const [isErrorCollapsed, setIsErrorCollapsed] = useState(defaultCollapsed || (ledger?.metadata?.settings?.collapseProcessingDefault ?? false));
-    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>(() => {
+    // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
+    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+
+    // Initialize date range on client side to avoid SSR timezone issues
+    useEffect(() => {
         const now = new Date();
-        return {
+        setDateRange({
             start: new Date(now.getFullYear(), now.getMonth(), 1),
             end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        };
-    });
+        });
+    }, []);
 
     // Modals State
     const [deleteConfirm, setDeleteConfirm] = useState<{
