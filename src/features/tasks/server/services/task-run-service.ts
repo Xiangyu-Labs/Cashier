@@ -1,7 +1,7 @@
 import { FlowProgress } from "@/lib/flow/types";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**
@@ -48,13 +48,23 @@ export async function recordTaskRunUsage(taskRunId: string, usage: { inputTokens
         whereClause = eq(taskRuns.id, taskRunId);
     }
 
+    // SQLite compatible: Read current usage, accumulate, then write back
+    // Using json() function for SQLite JSON manipulation
+    const existingTask = await db.query.taskRuns.findFirst({
+        where: whereClause,
+        columns: { usage: true }
+    });
+
+    const currentUsage = existingTask?.usage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    const newUsage = {
+        inputTokens: (currentUsage.inputTokens || 0) + usage.inputTokens,
+        outputTokens: (currentUsage.outputTokens || 0) + usage.outputTokens,
+        totalTokens: (currentUsage.totalTokens || 0) + usage.totalTokens
+    };
+
     await db.update(taskRuns)
         .set({
-            usage: sql`jsonb_build_object(
-                'inputTokens', COALESCE((usage->>'inputTokens')::int, 0) + ${usage.inputTokens},
-                'outputTokens', COALESCE((usage->>'outputTokens')::int, 0) + ${usage.outputTokens},
-                'totalTokens', COALESCE((usage->>'totalTokens')::int, 0) + ${usage.totalTokens}
-            )`
+            usage: newUsage
         })
         .where(whereClause);
 }
