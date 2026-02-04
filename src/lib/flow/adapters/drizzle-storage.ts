@@ -34,7 +34,9 @@ export function createDrizzleStorage(): StorageAdapter {
     },
 
     async update(id: string, data: Partial<TaskRecord>): Promise<void> {
-      const updateData: Record<string, unknown> = {}
+      const updateData: Record<string, unknown> = {
+        updatedAt: new Date(), // Always update timestamp on any change
+      }
 
       if (data.status !== undefined) {
         updateData.status = data.status
@@ -131,6 +133,6 @@ function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
     tokenUsage: record.tokenUsage as TokenUsageRecord | null,
     ledgerId: record.ledgerId,
     createdAt: record.createdAt,
-    updatedAt: record.completedAt ?? record.createdAt,
+    updatedAt: record.updatedAt,
   }
 }
