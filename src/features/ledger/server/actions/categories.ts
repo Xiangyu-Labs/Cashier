@@ -49,22 +49,23 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
                     columns: { name: true, description: true, icon: true }
                 });
 
-                // Dynamically import to avoid circular dependency issues or server/client boundary issues
-                const { submitFlowTask } = await import("@/lib/flow/producer");
+                // Dynamically import to avoid circular dependency issues
+                const { flowEngine } = await import("@/lib/flow");
                 const { TASK_TYPE_GENERATE_CATEGORY_METADATA } = await import("@/features/ledger/server/tasks/generate-category-metadata");
 
-                await submitFlowTask({
-                    type: TASK_TYPE_GENERATE_CATEGORY_METADATA,
-                    title: `Generate metadata for category: ${validated.name}`,
-                    ledgerId: ledgerId,
-                    data: {
+                await flowEngine.submit(
+                    TASK_TYPE_GENERATE_CATEGORY_METADATA,
+                    {
                         categoryId: category.id,
                         categoryName: category.name,
                         existingCategories: existing,
-                        aiLanguage: "zh-CN", // Default to ZH for now, could fetch from ledger settings
+                        aiLanguage: "zh-CN",
                     },
-                    queueName: 'api', // Use API queue for GPT calls
-                });
+                    {
+                        title: `Generate metadata for category: ${validated.name}`,
+                        ledgerId: ledgerId,
+                    }
+                );
             } catch (err) {
                 logger.error({ err, ledgerId }, "Failed to submit category metadata task");
                 // Don't fail the request, just log

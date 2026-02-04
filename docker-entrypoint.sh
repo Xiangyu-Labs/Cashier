@@ -25,13 +25,9 @@ if [ "$SKIP_MIGRATIONS" != "true" ]; then
     if npm run db:migrate; then
         echo "[INIT] Migrations completed successfully"
     else
-        echo "[WARN] Migration failed, attempting schema push..."
-        if npm run db:push; then
-            echo "[INIT] Schema push completed successfully"
-        else
-            echo "[ERROR] Both migration and schema push failed!"
-            exit 1
-        fi
+        echo "[ERROR] Migration failed!"
+        echo "[HINT] If this is a fresh database, ensure migration files are generated with 'npm run db:generate'"
+        exit 1
     fi
 else
     echo "[INIT] Skipping database migrations (SKIP_MIGRATIONS=true)"

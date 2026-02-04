@@ -36,7 +36,7 @@ describe("Processing Stats Actions", () => {
                 type: "parse_source_document",
                 title: "Task 1",
                 status: "completed",
-                usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+                tokenUsage: { total: { input: 100, output: 50 } },
                 createdAt: new Date(),
             },
             {
@@ -44,7 +44,7 @@ describe("Processing Stats Actions", () => {
                 type: "parse_source_document",
                 title: "Task 2",
                 status: "completed",
-                usage: { inputTokens: 200, outputTokens: 100, totalTokens: 300 },
+                tokenUsage: { total: { input: 200, output: 100 } },
                 createdAt: new Date(),
             },
             // This task should be ignored because it's not completed
@@ -53,7 +53,7 @@ describe("Processing Stats Actions", () => {
                 type: "parse_source_document",
                 title: "Task 3",
                 status: "running",
-                usage: { inputTokens: 500, outputTokens: 500, totalTokens: 1000 },
+                tokenUsage: { total: { input: 500, output: 500 } },
                 createdAt: new Date(),
             },
             // This task should be ignored because it belongs to another ledger
@@ -62,7 +62,7 @@ describe("Processing Stats Actions", () => {
                 type: "parse_source_document",
                 title: "Other Ledger Task",
                 status: "completed",
-                usage: { inputTokens: 1000, outputTokens: 1000, totalTokens: 2000 },
+                tokenUsage: { total: { input: 1000, output: 1000 } },
                 createdAt: new Date(),
             }
         ]);

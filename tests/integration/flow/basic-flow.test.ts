@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
-import { registerFlowTask, FlowTaskHandler, FlowContext } from "@/lib/flow";
-import { submitFlowTask } from "@/lib/flow/producer";
+import { flowEngine, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -20,7 +19,7 @@ interface TestOutput {
 
 const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
     async execute(input, context) {
-        await context.updateProgress({ currentStep: "processing", totalSteps: 1 });
+        await context.updateProgress("processing");
 
         if (input.shouldFail) {
             throw new Error("Simulated Failure");
@@ -34,7 +33,7 @@ const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
     },
 };
 
-registerFlowTask(TEST_TASK_TYPE, testHandler);
+flowEngine.register(TEST_TASK_TYPE, testHandler);
 
 describe("Flow System Integration", () => {
     let ledgerId: string;
@@ -53,24 +52,15 @@ describe("Flow System Integration", () => {
     });
 
     it("should execute a basic task successfully", async () => {
-        // 1. Submit Task
-        // Note: submitFlowTask in the new architecture calls runTask asynchronously.
-        // In a real environment this happens in background.
-        // In test environment, we might experience race conditions if we check DB immediately?
-        // Actually, submitFlowTask invokes runTask *without awaiting it*.
-        // So for the test to be deterministic, we might need a small wait loop or helpers.
-
-        const taskRunId = await submitFlowTask({
-            type: TEST_TASK_TYPE,
-            title: "Test Task",
-            ledgerId: ledgerId,
-            data: { value: 21 },
-        });
+        const taskRunId = await flowEngine.submit(
+            TEST_TASK_TYPE,
+            { value: 21 },
+            { title: "Test Task", ledgerId }
+        );
 
         expect(taskRunId).toBeDefined();
 
         // 2. Verify Initial State
-        // It might be running or completed depending on speed
         let run = await db.query.taskRuns.findFirst({
             where: eq(taskRuns.id, taskRunId)
         });
@@ -96,12 +86,11 @@ describe("Flow System Integration", () => {
     });
 
     it("should handle task failure", async () => {
-        const taskRunId = await submitFlowTask({
-            type: TEST_TASK_TYPE,
-            title: "Failing Task",
-            ledgerId: ledgerId,
-            data: { value: 0, shouldFail: true },
-        });
+        const taskRunId = await flowEngine.submit(
+            TEST_TASK_TYPE,
+            { value: 0, shouldFail: true },
+            { title: "Failing Task", ledgerId }
+        );
 
         // Wait for completion
         let run;

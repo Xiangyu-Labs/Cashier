@@ -1,75 +1,55 @@
-import { FlowProgress } from "@/lib/flow/types";
+/**
+ * Task run service - simplified for new Flow Engine architecture
+ *
+ * Most database operations are now handled by the Flow Engine's storage adapter.
+ * This service provides additional utilities for querying and managing task runs.
+ */
+
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**
- * Update task run progress in database
+ * Get a task run by ID (with optional ledger scoping for security)
  */
-export async function updateTaskRunProgress(_taskRunId: string, _progress: FlowProgress): Promise<void> {
-    // Progress update logic remains placeholder/optional as discussed
-}
-
-export async function completeTaskRun(taskRunId: string, output: unknown, ledgerId?: string): Promise<void> {
-    if (!ledgerId) throw new Error("ledgerId is required to complete task run");
-    const q = forLedger(taskRuns, ledgerId);
-
-    await db.update(taskRuns)
-        .set({
-            status: 'completed',
-            output: output as unknown,
-            completedAt: new Date()
-        })
-        .where(q.whereId(taskRunId));
-}
-
-export async function failTaskRun(taskRunId: string, error: string, ledgerId?: string): Promise<void> {
-    if (!ledgerId) throw new Error("ledgerId is required to fail task run");
-    const q = forLedger(taskRuns, ledgerId);
-
-    await db.update(taskRuns)
-        .set({
-            status: 'failed',
-            error,
-            completedAt: new Date()
-        })
-        .where(q.whereId(taskRunId));
-}
-
-export async function recordTaskRunUsage(taskRunId: string, usage: { inputTokens: number; outputTokens: number; totalTokens: number }, ledgerId?: string): Promise<void> {
-    let whereClause;
-
+export async function getTaskRun(taskRunId: string, ledgerId?: string) {
     if (ledgerId) {
         const q = forLedger(taskRuns, ledgerId);
-        whereClause = q.whereId(taskRunId);
-    } else {
-        // Fallback if no ledgerId provided (though it should be for safety)
-        whereClause = eq(taskRuns.id, taskRunId);
+        return db.query.taskRuns.findFirst({
+            where: q.whereId(taskRunId),
+        });
     }
 
-    // SQLite compatible: Read current usage, accumulate, then write back
-    // Using json() function for SQLite JSON manipulation
-    const existingTask = await db.query.taskRuns.findFirst({
-        where: whereClause,
-        columns: { usage: true }
+    return db.query.taskRuns.findFirst({
+        where: eq(taskRuns.id, taskRunId),
     });
+}
 
-    const currentUsage = existingTask?.usage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
-    const newUsage = {
-        inputTokens: (currentUsage.inputTokens || 0) + usage.inputTokens,
-        outputTokens: (currentUsage.outputTokens || 0) + usage.outputTokens,
-        totalTokens: (currentUsage.totalTokens || 0) + usage.totalTokens
-    };
+/**
+ * Soft delete a task run
+ */
+export async function deleteTaskRun(taskRunId: string, ledgerId: string): Promise<void> {
+    const q = forLedger(taskRuns, ledgerId);
 
     await db.update(taskRuns)
-        .set({
-            usage: newUsage
-        })
-        .where(whereClause);
+        .set({ deletedAt: new Date() })
+        .where(q.whereId(taskRunId));
 }
 
-export async function incrementTaskRunStats(_taskRunId: string, _type: 'completed' | 'failed'): Promise<void> {
-    // Atomic increment would be ideal, leaving placeholder
-}
+/**
+ * Get task runs for a ledger with pagination
+ */
+export async function getTaskRunsForLedger(
+    ledgerId: string,
+    options?: { limit?: number; offset?: number }
+) {
+    const q = forLedger(taskRuns, ledgerId);
 
+    return db.query.taskRuns.findMany({
+        where: q.whereActive,
+        orderBy: (t, { desc }) => [desc(t.createdAt)],
+        limit: options?.limit ?? 50,
+        offset: options?.offset ?? 0,
+    });
+}

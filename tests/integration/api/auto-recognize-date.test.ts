@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
-import { submitFlowTask } from "@/lib/flow/producer";
+import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
 import * as processorModule from "@/features/ai/server/services/processor";
@@ -73,20 +73,18 @@ describe("Auto-recognize Ledger Entry Time", () => {
         }).returning();
 
         // Submit Flow Task
-        await submitFlowTask({
-            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            title: "Test Task",
-            ledgerId,
-            data: {
+        await flowEngine.submit(
+            TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            {
                 sourceDocumentId: sourceDocument.id,
                 text: sourceDocument.text || undefined,
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: false,
-
                 }
-            }
-        });
+            },
+            { title: "Test Task", ledgerId }
+        );
 
         // Process
         const { processAllPendingTasks } = await import("../../helpers/processing");
@@ -130,20 +128,18 @@ describe("Auto-recognize Ledger Entry Time", () => {
         }).returning();
 
         // Submit Flow Task
-        await submitFlowTask({
-            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            title: "Test Task 2",
-            ledgerId,
-            data: {
+        await flowEngine.submit(
+            TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            {
                 sourceDocumentId: sourceDocument2.id,
                 text: sourceDocument2.text || undefined,
                 categories: await db.query.entryCategories.findMany({ where: eq(categories.ledgerId, ledgerId) }),
                 settings: {
                     autoRecognizeDate: true,
-
                 }
-            }
-        });
+            },
+            { title: "Test Task 2", ledgerId }
+        );
 
         // Process
         const { processAllPendingTasks } = await import("../../helpers/processing");

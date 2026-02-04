@@ -1,55 +1,169 @@
+/**
+ * Flow Engine - A lightweight async task manager for AI workloads
+ *
+ * The engine only manages task lifecycle, not internal implementation details.
+ * Tasks are responsible for their own multi-stage logic, model selection, etc.
+ */
 
+// ===== Engine Layer Interfaces =====
 
 /**
- * Core interface for task handlers.
- * Supports both direct results and recursive flow definitions.
+ * Storage adapter interface (injected by the consumer)
+ */
+export interface StorageAdapter {
+  create(task: TaskInput): Promise<string>
+  update(id: string, data: Partial<TaskRecord>): Promise<void>
+  get(id: string): Promise<TaskRecord | null>
+  list(filter?: TaskFilter): Promise<TaskRecord[]>
+}
+
+/**
+ * Input for creating a new task
+ */
+export interface TaskInput {
+  type: string
+  title?: string | null
+  ledgerId?: string
+  input?: unknown
+}
+
+/**
+ * Query filter for listing tasks
+ */
+export interface TaskFilter {
+  type?: string           // Filter by task type
+  status?: TaskStatus     // Filter by status
+  ledgerId?: string       // Filter by ledger
+  limit?: number          // Result count limit
+  offset?: number         // Pagination offset
+}
+
+/**
+ * Task record stored in database
+ */
+export interface TaskRecord {
+  id: string
+  type: string                              // Task type, e.g., 'parse-document'
+  title: string | null                      // Task title (optional)
+  status: TaskStatus                        // pending / running / completed / failed / cancelled
+  progress: string | null                   // "Processing image..."
+  result: unknown | null                    // Result after completion
+  error: string | null                      // Error message on failure
+  tokenUsage: TokenUsageRecord | null       // Token statistics by model
+  ledgerId: string | null                   // Scoping for multi-tenant
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * Task status enum
+ */
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+/**
+ * Token usage record with per-model breakdown
+ */
+export interface TokenUsageRecord {
+  [model: string]: { input: number; output: number }
+  // 'total' key is computed and added by the engine
+}
+
+/**
+ * Engine configuration
+ */
+export interface FlowEngineConfig {
+  storage: StorageAdapter
+}
+
+// ===== Task Layer Interfaces =====
+
+/**
+ * Execution context passed to task handlers
+ */
+export interface FlowContext {
+  taskId: string
+  ledgerId: string | null
+  signal: AbortSignal                              // Cancellation signal
+  reportTokens(usage: TokenUsage): void            // Report token usage
+  updateProgress(message: string): Promise<void>   // Update progress message
+}
+
+/**
+ * Token usage reported by tasks
+ */
+export interface TokenUsage {
+  model: string    // Model name, e.g., 'gpt-4o', 'gemini-2.5-flash'
+  input: number    // Input token count
+  output: number   // Output token count
+}
+
+/**
+ * Task handler interface
+ *
+ * The engine doesn't care about internal implementation.
+ * Tasks manage their own multi-stage logic, model selection, arbitration, etc.
  */
 export interface FlowTaskHandler<TInput, TOutput> {
-    /** Pre-execution validation (optional) */
-    validate?(input: TInput, context: FlowContext): Promise<void>;
+  /**
+   * Main execution logic (required)
+   */
+  execute(input: TInput, context: FlowContext): Promise<TOutput>
 
-    /** Main execution - returns result OR new FlowDefinition for recursion */
-    execute(input: TInput, context: FlowContext): Promise<TOutput | FlowDefinition>;
+  /**
+   * Called on completion (optional)
+   * Use for side effects like updating related records
+   */
+  onComplete?(output: TOutput, input: TInput, context: FlowContext): Promise<void>
 
-    /** Called when all children complete (for parent tasks) */
-    onChildrenCompleted?(results: unknown[], context: FlowContext): Promise<TOutput>;
+  /**
+   * Called on error (optional)
+   * Use for cleanup and error logging
+   */
+  onError?(error: Error, input: TInput, context: FlowContext): Promise<void>
 
-    /** Final step - only Root task runs this. MUST be idempotent. */
-    onComplete?(output: TOutput, input: TInput, context: FlowContext): Promise<void>;
-
-    /** Called on final failure (after retries exhausted) */
-    onError?(error: Error, input: TInput, context: FlowContext): Promise<void>;
-
-    /** Called when task is cancelled */
-    onCancel?(input: TInput, context: FlowContext): Promise<void>;
+  /**
+   * Called on cancellation (optional)
+   * Use for cleanup when task is cancelled
+   */
+  onCancel?(input: TInput, context: FlowContext): Promise<void>
 }
 
-export interface FlowDefinition {
-    name: string;         // System Name - determines handler
-    title: string;        // Display Title - for UI (REQUIRED)
-    queueName: 'main' | 'api'; // Queue assignment
-    data: unknown;           // Task input data
-    children?: FlowDefinition[];
-    opts?: FlowJobOptions;
-}
+/**
+ * Flow engine instance type
+ */
+export interface FlowEngine {
+  /**
+   * Register a task handler
+   */
+  register<TInput, TOutput>(name: string, handler: FlowTaskHandler<TInput, TOutput>): void
 
-export interface FlowJobOptions {
-    priority?: number;
-    attempts?: number;
-    backoff?: { type: 'exponential' | 'fixed'; delay: number };
-}
+  /**
+   * Submit a task for background execution
+   * Returns taskId immediately, task runs in background
+   */
+  submit<TInput>(
+    name: string,
+    input: TInput,
+    meta?: { title?: string; ledgerId?: string }
+  ): Promise<string>
 
-export interface FlowContext {
-    jobId: string;
-    taskRunId?: string;      // DB task_runs.id for Root task
-    ledgerId?: string;
-    updateProgress: (progress: FlowProgress) => Promise<void>;
-    isCancelled: () => Promise<boolean>;
-}
+  /**
+   * Cancel a running task
+   */
+  cancel(taskId: string): Promise<void>
 
-export interface FlowProgress {
-    currentStep?: string;
-    completedSteps?: string[];
-    totalSteps?: number;
-    data?: unknown;
+  /**
+   * Get task status by ID
+   */
+  getStatus(taskId: string): Promise<TaskRecord | null>
+
+  /**
+   * List tasks with optional filter
+   */
+  listTasks(filter?: TaskFilter): Promise<TaskRecord[]>
+
+  /**
+   * Get all currently running tasks
+   */
+  getRunningTasks(): Promise<TaskRecord[]>
 }

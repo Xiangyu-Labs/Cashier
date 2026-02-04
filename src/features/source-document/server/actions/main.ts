@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { submitFlowTask } from "@/lib/flow/producer";
+import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import { revalidatePath } from "next/cache";
 import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
@@ -46,11 +46,9 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
 
     const settings = ledger.metadata?.settings || {};
 
-    await submitFlowTask({
-        type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-        title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
-        ledgerId: ledgerId,
-        data: {
+    await flowEngine.submit(
+        TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+        {
             sourceDocumentId: sourceDocumentId,
             text: text,
             imageUrls: imageUrls,
@@ -58,12 +56,15 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
             preferredCurrencies: settings.currencies || undefined,
             categories: categories,
             settings: {
-
                 autoRecognizeDate: settings.autoRecognizeDate,
                 aiCustomPrompt: settings.aiCustomPrompt,
             },
         },
-    });
+        {
+            title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
+            ledgerId: ledgerId,
+        }
+    );
 
     return imageUrls;
 }

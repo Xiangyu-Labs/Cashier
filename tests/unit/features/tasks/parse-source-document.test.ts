@@ -76,6 +76,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(_input, context)) as ParseSourceDocumentOutput;
@@ -111,6 +112,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -139,6 +141,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -174,6 +177,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -209,6 +213,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
@@ -241,7 +246,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const context = {
             updateProgress: vi.fn(),
-            ledgerId: currentLedgerId
+            ledgerId: currentLedgerId,
+            signal: { aborted: false },
         } as unknown as FlowContext;
 
         const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;

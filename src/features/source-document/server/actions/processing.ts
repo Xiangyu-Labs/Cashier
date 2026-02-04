@@ -59,12 +59,13 @@ export async function getProcessingStatsAction(ledgerId: string) {
     const taskCount = tasks.length;
 
     for (const task of tasks) {
-        if (task.usage) {
-            // usage is jsonb, cast it
-            const u = task.usage as { totalTokens?: number; inputTokens?: number; outputTokens?: number };
-            totalTokens += u.totalTokens || 0;
-            totalInputTokens += u.inputTokens || 0;
-            totalOutputTokens += u.outputTokens || 0;
+        if (task.tokenUsage) {
+            // tokenUsage is jsonb with per-model breakdown and 'total' key
+            const u = task.tokenUsage as { total?: { input?: number; output?: number }; [model: string]: { input?: number; output?: number } | undefined };
+            const total = u.total || { input: 0, output: 0 };
+            totalInputTokens += total.input || 0;
+            totalOutputTokens += total.output || 0;
+            totalTokens += (total.input || 0) + (total.output || 0);
         }
     }
 

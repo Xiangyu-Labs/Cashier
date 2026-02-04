@@ -1,4 +1,4 @@
-import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
+import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -32,15 +32,12 @@ const aiResponseSchema = z.object({
 });
 
 export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMetadataInput, GenerateCategoryMetadataOutput> = {
-    // 0. Pre-validations
-    async validate(input: GenerateCategoryMetadataInput, context: FlowContext) {
+    // 1. Main execution (validation moved inline)
+    async execute(input: GenerateCategoryMetadataInput, context: FlowContext): Promise<GenerateCategoryMetadataOutput> {
         if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
         if (!input.categoryId) throw new Error("Missing categoryId");
         if (!input.categoryName) throw new Error("Missing categoryName");
-    },
 
-    // 1. Main execution
-    async execute(input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<GenerateCategoryMetadataOutput> {
         const client = getOpenAIClient();
 
         const prompt = buildCategoryMetadataPrompt(
@@ -116,4 +113,4 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
 };
 
 // Register the task
-registerFlowTask(TASK_TYPE_GENERATE_CATEGORY_METADATA, generateCategoryMetadataHandler);
+flowEngine.register(TASK_TYPE_GENERATE_CATEGORY_METADATA, generateCategoryMetadataHandler);

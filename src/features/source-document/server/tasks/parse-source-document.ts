@@ -1,4 +1,4 @@
-import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
+import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -18,13 +18,11 @@ export interface ParseSourceDocumentInput {
     categories: CategoryInfo[];
     aiLanguage?: string;
     settings: {
-
         autoRecognizeDate: boolean;
         aiCustomPrompt?: string;
     };
     preferredCurrencies?: string[];
 }
-
 
 export interface ParseSourceDocumentOutput {
     ledgerEntries: ParsedLedgerEntry[];
@@ -43,9 +41,7 @@ function verifyAmounts(
     const groupTotals = (entries: ParsedLedgerEntry[]) => {
         const map = new Map<string, number>();
         for (const e of entries) {
-            // Group by currency and date (if date missing, use 'null')
             const key = `${e.currency}|${e.entryDate || 'null'}`;
-            // Use fixed precision to avoid floating point issues
             const current = map.get(key) || 0;
             map.set(key, Math.round((current + e.amount) * 100) / 100);
         }
@@ -60,7 +56,6 @@ function verifyAmounts(
     for (const [key, sum1] of totals1) {
         const sum2 = totals2.get(key);
         if (sum2 === undefined) return false;
-        // Strict equality check (floating point handled by rounding above)
         if (Math.abs(sum1 - sum2) > 0.001) return false;
     }
     return true;
@@ -70,38 +65,37 @@ function verifyAmounts(
  * Parse Source Document Task Handler
  */
 export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
-    // 0. Pre-validations
-    async validate(input: ParseSourceDocumentInput) {
+    async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
+        const { signal, updateProgress, ledgerId } = context;
+
+        if (!ledgerId) throw new Error("Missing ledgerId in task context");
+
+        // Validate document exists
         const doc = await db.query.sourceDocuments.findFirst({
             where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
         });
         if (!doc) {
             throw new Error(`Source document not found: ${input.sourceDocumentId}`);
         }
-    },
 
-    // 1. Main execution
-    async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
-        if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
-
-        const q = forLedger(sourceDocuments, context.ledgerId);
+        const q = forLedger(sourceDocuments, ledgerId);
 
         // Update status to processing
         await db.update(sourceDocuments)
             .set({ status: 'processing' })
             .where(q.whereId(input.sourceDocumentId));
 
-        // Step 1: Dual GPT Processing
-        await context.updateProgress({
-            currentStep: "parse",
-            completedSteps: [],
-            totalSteps: 1,
-        });
+        // ===== Stage 1: Dual GPT Processing (parallel) =====
+        await updateProgress('正在识别图片...');
+
+        // Check for cancellation before heavy operation
+        if (signal.aborted) {
+            throw new Error('Task cancelled');
+        }
 
         const processor = getSourceDocumentProcessor();
         const processOptions = {
             categories: input.categories,
-
             aiLanguage: input.aiLanguage,
             preferredCurrencies: input.preferredCurrencies,
             aiCustomPrompt: input.settings.aiCustomPrompt
@@ -117,6 +111,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             processor.process(processPayload, processOptions),
             processor.process(processPayload, processOptions)
         ]);
+
+        // TODO: Report token usage when processor supports it
+        // context.reportTokens({ model: 'gpt-4o', input: result1.usage.input, output: result1.usage.output });
 
         // Helper to apply date override
         const applyDateOverride = (entries: ParsedLedgerEntry[]) => {
@@ -134,8 +131,14 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return { ledgerEntries: [], title, verificationStatus: 'invalid' };
         }
 
-        // 2. Check for unknown currency - use arbitration
+        // ===== Stage 2: Handle unknown currency =====
         if (entries1.some(e => e.currency === "unknown")) {
+            await updateProgress('正在识别币种...');
+
+            if (signal.aborted) {
+                throw new Error('Task cancelled');
+            }
+
             logger.info({ docId: input.sourceDocumentId }, "Unknown currency detected, invoking arbitration");
 
             const arbitrationResult = await arbitrate(
@@ -149,7 +152,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             );
 
             if (arbitrationResult.choice === 0) {
-                // Genuinely unidentifiable
                 return {
                     ledgerEntries: [],
                     title,
@@ -158,7 +160,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 };
             }
 
-            // Pick the better result and apply the arbitrated currency
             let chosenEntries = arbitrationResult.choice === 2 ? entries2 : entries1;
 
             if (arbitrationResult.currency) {
@@ -166,20 +167,22 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 const fixedCurrency = arbitrationResult.currency;
                 entries1 = entries1.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
                 entries2 = entries2.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
-                // Also update the chosen entries to make sure we don't return 'unknown'
                 chosenEntries = chosenEntries.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
             }
 
-            // Re-assign to entries1 so following checks (e.g. verifyAmounts) use the fixed version
             entries1 = chosenEntries;
-            // Also need to ensure entries2 is somewhat sane for verifyAmounts if arbitration worked
-            // but we'll let verifyAmounts handle potential mismatches next.
         }
 
-        // 3. First Batch Verification - use arbitration if mismatch
+        // ===== Stage 3: Verification / Arbitration =====
         if (!verifyAmounts(entries1, entries2)) {
+            await updateProgress('正在校验结果...');
+
+            if (signal.aborted) {
+                throw new Error('Task cancelled');
+            }
+
             logger.info({
-                ledgerId: context.ledgerId,
+                ledgerId,
                 docId: input.sourceDocumentId,
             }, "Dual GPT verification failed, invoking arbitration");
 
@@ -194,7 +197,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             );
 
             if (arbitrationResult.choice === 0) {
-                // Genuinely ambiguous document
                 return {
                     ledgerEntries: [],
                     title,
@@ -203,14 +205,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 };
             }
 
-            // Use the chosen result
             entries1 = arbitrationResult.choice === 1 ? entries1 : entries2;
             logger.info({ choice: arbitrationResult.choice }, "Arbitration resolved - using chosen result");
         }
-
-        // 4. Merge Similar Items (Deleted)
-        // Feature removed in favor of custom prompt instructions
-
 
         // Passed all checks
         return {
@@ -220,13 +217,14 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         };
     },
 
-    // 3. Final completion (IDEMPOTENT)
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
+        const { ledgerId } = context;
+        if (!ledgerId) throw new Error("Missing ledgerId in task context");
+
         const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
-        const q = forLedger(sourceDocuments, context.ledgerId);
-        const qEntries = forLedger(ledgerEntries, context.ledgerId);
+        const q = forLedger(sourceDocuments, ledgerId);
+        const qEntries = forLedger(ledgerEntries, ledgerId);
 
         // Handle anomaly - do NOT save entries, just update document status
         if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
@@ -239,7 +237,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 })
                 .where(q.whereId(input.sourceDocumentId));
 
-            // Save anomaly reason as title for user visibility
             const displayTitle = anomalyReason || title;
             if (displayTitle) {
                 await db.update(sourceDocuments)
@@ -268,21 +265,20 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return;
         }
 
-        // Save entries (no anomalyCodes field anymore)
+        // Save entries
         const entriesToInsert = validEntries.map(entry => {
             const categoryId = entry.category
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
 
             return {
-                ledgerId: context.ledgerId!,
+                ledgerId: ledgerId!,
                 categoryId,
                 sourceDocumentId: input.sourceDocumentId,
                 amount: entry.amount.toFixed(2),
                 currency: entry.currency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
-                // entryDate is already yyyy-MM-dd string from AI, use directly
                 entryDate: entry.entryDate || new Date().toISOString().split('T')[0],
             };
         });
@@ -310,12 +306,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 .set({ title })
                 .where(q.whereId(input.sourceDocumentId));
         }
-
-        // Send Push Notification
-        // Send Push Notification (Removed)
-        // if (context.ledgerId) {
-        // ...
-        // }
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
@@ -333,7 +323,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, context.ledgerId);
 
-        // Update source document status to anomaly via Repo
         await db.update(sourceDocuments)
             .set({
                 status: 'anomaly',
@@ -341,8 +330,22 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             })
             .where(q.whereId(input.sourceDocumentId));
     },
+
+    async onCancel(input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+        logger.info({ sourceDocumentId: input.sourceDocumentId }, "Parse source document task cancelled");
+
+        if (!context.ledgerId) {
+            return;
+        }
+
+        const q = forLedger(sourceDocuments, context.ledgerId);
+
+        // Reset document status back to pending on cancellation
+        await db.update(sourceDocuments)
+            .set({ status: 'pending' })
+            .where(q.whereId(input.sourceDocumentId));
+    }
 };
 
-
 // Register the task handler
-registerFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler);
+flowEngine.register(TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler);

@@ -13,10 +13,17 @@ vi.mock("@/lib/processing", () => ({
     createTask: vi.fn(),
 }));
 
-// Mock Tasks
-vi.mock("@/lib/flow/producer", () => ({
-    submitFlowTask: vi.fn(),
-}));
+// Mock Flow Engine
+vi.mock("@/lib/flow", async (importOriginal) => {
+    const original = await importOriginal<typeof import("@/lib/flow")>();
+    return {
+        ...original,
+        flowEngine: {
+            ...original.flowEngine,
+            submit: vi.fn().mockResolvedValue("mock-task-id"),
+        },
+    };
+});
 
 // Mock Tasks
 vi.mock("@/features/source-document/server/tasks/parse-source-document", () => ({

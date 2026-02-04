@@ -2,9 +2,6 @@ import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logger } from "@/lib/logger";
 
-import { getCurrentTaskRunId, getCurrentLedgerId } from "../ai-context";
-import { recordTaskRunUsage } from "@/features/tasks/server/services/task-run-service";
-
 export class OpenAIClient {
     private client: OpenAI;
 
@@ -55,20 +52,8 @@ export class OpenAIClient {
 
                 const content = response.choices[0]?.message?.content || "";
 
-                if (response.usage) {
-                    const taskRunId = getCurrentTaskRunId();
-                    const ledgerId = getCurrentLedgerId();
-                    if (taskRunId) {
-                        // Fire and forget - don't block the response
-                        recordTaskRunUsage(taskRunId, {
-                            inputTokens: response.usage.prompt_tokens,
-                            outputTokens: response.usage.completion_tokens,
-                            totalTokens: response.usage.total_tokens
-                        }, ledgerId).catch(err => {
-                            logger.error({ err, taskRunId }, "Failed to record token usage");
-                        });
-                    }
-                }
+                // Note: Token usage is now reported via FlowContext.reportTokens() in task handlers
+                // The old ai-context based tracking has been removed in favor of the new Flow Engine architecture
 
                 return { content };
             } catch (error) {

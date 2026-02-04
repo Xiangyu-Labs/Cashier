@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Trigger processing using the processing task system
-        const { submitFlowTask } = await import("@/lib/flow/producer");
+        const { flowEngine } = await import("@/lib/flow");
         const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } = await import("@/features/source-document/server/tasks/parse-source-document");
         const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
@@ -97,11 +97,9 @@ export async function POST(request: NextRequest) {
                 )
             });
 
-            await submitFlowTask({
-                type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-                title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
-                ledgerId: credential.ledgerId,
-                data: {
+            await flowEngine.submit(
+                TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+                {
                     sourceDocumentId: savedDoc.id,
                     text: text || undefined,
                     imageUrls: imageUrls,
@@ -109,12 +107,15 @@ export async function POST(request: NextRequest) {
                     preferredCurrencies: ledger.metadata?.settings?.currencies || undefined,
                     categories: allCategories,
                     settings: {
-
                         autoRecognizeDate: ledger.metadata?.settings?.autoRecognizeDate,
                         aiCustomPrompt: ledger.metadata?.settings?.aiCustomPrompt,
                     },
                 },
-            });
+                {
+                    title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
+                    ledgerId: credential.ledgerId,
+                }
+            );
         }
 
         return NextResponse.json({

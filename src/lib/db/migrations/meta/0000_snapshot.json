@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7b36ecb1-9ae8-47de-a8d9-4e71745b069b",
+  "id": "6092f3b2-ca45-4e80-9db3-8aa91c89248d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -558,7 +558,7 @@
         },
         "entry_date": {
           "name": "entry_date",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -981,20 +981,13 @@
           "notNull": true,
           "autoincrement": false
         },
-        "bull_flow_id": {
-          "name": "bull_flow_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'running'"
+          "default": "'pending'"
         },
         "output": {
           "name": "output",
@@ -1005,6 +998,13 @@
         },
         "error": {
           "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "progress": {
+          "name": "progress",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -1034,8 +1034,8 @@
           "autoincrement": false,
           "default": 0
         },
-        "usage": {
-          "name": "usage",
+        "token_usage": {
+          "name": "token_usage",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
