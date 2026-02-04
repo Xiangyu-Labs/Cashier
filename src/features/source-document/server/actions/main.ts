@@ -627,3 +627,43 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
     }
 }
 
+/**
+ * Get a single source document with full data (including imageUrls).
+ * Used for edit-retry when the list view has stripped imageUrls.
+ */
+export async function getSourceDocumentFullAction(ledgerId: string, sourceDocumentId: string) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
+
+    try {
+        const q = forLedger(sourceDocuments, ledgerId);
+
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: q.whereId(sourceDocumentId),
+        });
+
+        if (!doc) {
+            return { success: false, error: "Source document not found", data: null };
+        }
+
+        return {
+            success: true,
+            error: null,
+            data: {
+                id: doc.id,
+                text: doc.text,
+                imageUrls: doc.imageUrls,
+                status: doc.status,
+                createdAt: doc.createdAt.toISOString(),
+            }
+        };
+    } catch (error) {
+        logger.error({ error, ledgerId, sourceDocumentId }, "Failed to get full source document");
+        return {
+            success: false,
+            error: safeError(error),
+            data: null,
+        };
+    }
+}
+
