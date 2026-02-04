@@ -350,10 +350,14 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         items: filteredResult.map(item => {
             // Strip large metadata fields to reduce payload size
             const { aiRawResponse, rawOcrText, ...lightMetadata } = item.metadata || {};
+            // Strip imageUrls (Base64 encoded images) - this is the main source of 3.5MB payload!
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { imageUrls, ...itemWithoutImages } = item;
 
             return {
-                ...item,
+                ...itemWithoutImages,
                 metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
+                hasImages: (imageUrls?.length || 0) > 0, // Keep a flag for UI to know if there are images
                 createdAt: item.createdAt.toISOString(),
                 status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
                 ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,

@@ -265,9 +265,13 @@ export async function getLedgerEntriesAction(
         sourceDocument: item.sourceDocument ? (() => {
             // Strip large metadata fields to reduce payload size
             const { aiRawResponse, rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
+            // Strip imageUrls (Base64 encoded images)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { imageUrls, ...docWithoutImages } = item.sourceDocument;
             return {
-                ...item.sourceDocument,
+                ...docWithoutImages,
                 metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
+                hasImages: (imageUrls?.length || 0) > 0,
                 createdAt: item.sourceDocument.createdAt.toISOString(),
                 deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
             };

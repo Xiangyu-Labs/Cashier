@@ -27,9 +27,13 @@ export async function getLedgerEntryAction(id: string) {
         let cleanedSourceDocument = null;
         if (entry.sourceDocument) {
             const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
+            // Strip imageUrls (Base64 encoded images)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { imageUrls, ...docWithoutImages } = entry.sourceDocument;
             cleanedSourceDocument = {
-                ...entry.sourceDocument,
+                ...docWithoutImages,
                 metadata: lightMetadata,
+                hasImages: (imageUrls?.length || 0) > 0,
                 createdAt: entry.sourceDocument.createdAt.toISOString(),
                 deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
             };

@@ -1,4 +1,4 @@
-import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
+import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText } from "lucide-react";
@@ -89,7 +89,7 @@ const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries
 });
 
 interface SourceDocumentCardProps {
-  sourceDocument: SourceDocument;
+  sourceDocument: SourceDocument | SourceDocumentLight;
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
   mainCurrency?: string;
@@ -159,9 +159,11 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   }, [ledgerEntries]);
 
   const { text, images } = useMemo(() => {
+    // imageUrls may not exist in SourceDocumentLight
+    const imageUrls = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls : undefined;
     return {
       text: sourceDocument.text,
-      images: sourceDocument.imageUrls || [],
+      images: imageUrls || [],
     };
   }, [sourceDocument]);
 
