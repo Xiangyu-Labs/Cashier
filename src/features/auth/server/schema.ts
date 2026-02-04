@@ -61,23 +61,7 @@ export const accounts = sqliteTable("accounts", {
 
 export type Account = InferSelectModel<typeof accounts>;
 
-// Sessions - 会话表
-export const sessions = sqliteTable("sessions", {
-    sessionToken: text("session_token").primaryKey(),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id, { onDelete: "cascade" }),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
-    userAgent: text("user_agent"),
-    ipAddress: text("ip_address"),
-    deviceName: text("device_name"),
-    lastActiveAt: integer("last_active_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
-}, (table) => [
-    index("idx_sessions_user_id").on(table.userId),
-]);
 
-export type Session = InferSelectModel<typeof sessions>;
 
 // Verification Tokens - Magic Link 验证令牌
 export const verificationTokens = sqliteTable("verification_tokens", {

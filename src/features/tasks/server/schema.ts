@@ -15,7 +15,6 @@ export const taskRuns = sqliteTable("task_runs", {
     // Task identification
     type: text("type").notNull(),               // System Name: 'parse_source_document'
     title: text("title").notNull(),             // Display Title: '解析：星巴克小票'
-    bullFlowId: text("bull_flow_id"),           // BullMQ Flow ID (Root Job)
 
     // Result
     status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
