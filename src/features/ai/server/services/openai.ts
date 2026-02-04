@@ -23,7 +23,7 @@ export class OpenAIClient {
     async generateContent(
         systemPrompt: string,
         messages: ChatCompletionMessageParam[]
-    ): Promise<{ content: string }> {
+    ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
         const model = process.env.OPENAI_MODEL;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
@@ -52,10 +52,13 @@ export class OpenAIClient {
 
                 const content = response.choices[0]?.message?.content || "";
 
-                // Note: Token usage is now reported via FlowContext.reportTokens() in task handlers
-                // The old ai-context based tracking has been removed in favor of the new Flow Engine architecture
+                // Extract token usage from OpenAI response
+                const usage = response.usage ? {
+                    promptTokens: response.usage.prompt_tokens,
+                    completionTokens: response.usage.completion_tokens,
+                } : undefined;
 
-                return { content };
+                return { content, usage };
             } catch (error) {
                 lastError = error;
 

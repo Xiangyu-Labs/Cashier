@@ -112,8 +112,14 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             processor.process(processPayload, processOptions)
         ]);
 
-        // TODO: Report token usage when processor supports it
-        // context.reportTokens({ model: 'gpt-4o', input: result1.usage.input, output: result1.usage.output });
+        // Report token usage from both AI calls
+        const model = process.env.OPENAI_MODEL || 'gpt-4o';
+        if (result1.usage) {
+            context.reportTokens({ model, input: result1.usage.promptTokens, output: result1.usage.completionTokens });
+        }
+        if (result2.usage) {
+            context.reportTokens({ model, input: result2.usage.promptTokens, output: result2.usage.completionTokens });
+        }
 
         // Helper to apply date override
         const applyDateOverride = (entries: ParsedLedgerEntry[]) => {
