@@ -53,7 +53,6 @@ beforeEach(async () => {
       "service_credentials",
       "task_runs",
       "currency_rates",
-      "sessions",
       "accounts",
       "verification_tokens",
       "otp_tokens",

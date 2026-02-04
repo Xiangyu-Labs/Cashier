@@ -1,0 +1,25 @@
+# Development Docker Compose with Hot Reload
+# Usage: docker compose -f docker-compose.dev.yml up --build
+#
+# Prerequisites:
+#   1. Copy .env.example to .env.local
+#   2. Edit .env.local with your API keys
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules and .next from mount
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true

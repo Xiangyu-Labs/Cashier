@@ -4,19 +4,18 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 
 ## Features
 
-- **AI-Powered Entry**: simply upload a receipt or type a natural language description, and Cashier will extract date, amount, merchants, and items.
+- **AI-Powered Entry**: Simply upload a receipt or type a natural language description, and Cashier will extract date, amount, merchants, and items.
 - **Multi-User Support**: Secure email-based authentication (Magic Links) supporting multiple users with isolated data.
-- **Device Management**: detailed session tracking with ability to revoke specific devices.
+- **Device Management**: Detailed session tracking with ability to revoke specific devices.
 - **Multi-Currency**: Automatic currency conversion and management.
 - **Global Search**: Unified search across all your documents and transactions.
 
 ## Tech Stack
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
-- **Database**: PostgreSQL (via [Drizzle ORM](https://orm.drizzle.team/))
+- **Database**: SQLite (via [Drizzle ORM](https://orm.drizzle.team/) + better-sqlite3)
 - **Auth**: [Auth.js v5](https://authjs.dev/) (NextAuth)
 - **UI**: Tailwind CSS, Radix UI, Shadcn/ui
-- **Async Jobs**: BullMQ + Redis
 - **AI**: OpenAI / LLM Integration
 
 ## Getting Started
@@ -24,27 +23,28 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 ### Prerequisites
 
 - Node.js 20+
-- PostgreSQL
-- Redis (for rate limiting and job queues)
+- npm or pnpm
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and fill in the required values:
+Copy `.env.example` to `.env.local` and fill in the required values:
 
 ```bash
-# Database
-DATABASE_URL="postgres://user:pass@localhost:5432/cashier"
-REDIS_URL="redis://localhost:6379"
+cp .env.example .env.local
+```
+
+Key variables:
+```bash
+# Database (SQLite file path)
+DATABASE_URL="file:./data/sqlite.db"
 
 # Auth
-AUTH_SECRET="your-secret-key" # Generate with `npx auth secret`
+AUTH_SECRET="your-secret-key"  # Generate with `openssl rand -base64 32`
 AUTH_URL="http://localhost:3000"
-AUTH_RESEND_KEY="re_..." # Resend API Key for emails
-AUTH_EMAIL_FROM="Login <login@yourdomain.com>"
+AUTH_RESEND_KEY="re_..."       # Resend API Key for emails
 
-# App Settings
-DISABLE_REGISTRATION="false" # Set to "true" to disable new signups
-MAGIC_LINK_EXPIRES_SECONDS="900"
+# AI
+OPENAI_API_KEY="sk-..."
 ```
 
 ### Installation
@@ -66,10 +66,51 @@ MAGIC_LINK_EXPIRES_SECONDS="900"
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
+## Docker Deployment
+
+### Development (with hot reload)
+
+```bash
+cp .env.example .env.local
+# Edit .env.local with your API keys
+npm run docker:dev
+```
+
+### Production
+
+```bash
+cp .env.example .env.production
+# Edit .env.production with production values
+npm run docker:prod
+```
+
+Or manually:
+```bash
+docker compose up -d --build
+```
+
+### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run docker:dev` | Start dev container with hot reload |
+| `npm run docker:prod` | Build and start production container |
+| `npm run docker:build` | Build production image only |
+| `npm run docker:down` | Stop and remove containers |
+
+## Testing
+
+Tests use in-memory SQLite, no external database required.
+
+```bash
+npm run test        # Watch mode
+npm run test:run    # Single run
+npm run test:coverage  # With coverage
+```
+
 ## Documentation
 
 - [Future Plan](./future_plan.md) - Roadmap and upcoming features.
-- [Task List](./task.md) - Current development progress.
 
 ## License
 

@@ -1,110 +1,105 @@
 # Testing Strategy
 
-We use **Vitest** for testing and a dedicated ephemeral infrastructure stack for integration tests.
+We use **Vitest** for testing with **in-memory SQLite** for fast, isolated tests.
 
 ## 1. Test Types
 
-### 1.1 Unit Tests (`src/**/*.test.ts`)
--   **Focus**: Single function logic (e.g., date parsing helper).
--   **Deps**: No database, no network. Mock everything.
--   **Speed**: < 10ms.
+### 1.1 Unit Tests (`tests/unit/**/*.test.ts`)
+- **Focus**: Single function logic (e.g., date parsing, OTP generation)
+- **Deps**: No database, no network. Mock everything
+- **Speed**: < 10ms
 
 ### 1.2 Integration Tests (`tests/integration/**/*.test.ts`)
--   **Focus**: Server Actions, Database Queries, API Endpoints.
--   **Deps**: Real Postgres DB and Real Redis (running in Docker).
--   **OpenAI**: ALWAYS MOCKED.
--   **Speed**: ~100-500ms.
+- **Focus**: Server Actions, Database Queries, API Endpoints
+- **Deps**: In-memory SQLite (created fresh for each test run)
+- **OpenAI**: ALWAYS MOCKED
+- **Speed**: ~100-500ms
 
 ## 2. Test Infrastructure
 
-We use a separate `docker-compose.test.yml` to spin up a clean environment for testing. This prevents your development data from being wiped during tests.
+Tests use **in-memory SQLite** (`:memory:`), so no external database setup is required.
 
--   **Test DB Port**: 5433 (to avoid conflict with dev 5432).
--   **Test Redis Port**: 6380 (to avoid conflict with dev 6379).
--   **Storage**: `tmpfs` (RAM) for maximum speed.
+- **No Docker needed** for tests
+- Each test run gets a fresh database
+- Database is created and migrated in `tests/setup.ts`
 
 ## 3. How to Run Tests
 
-### Step 1: Start Test Infra
-Spin up the test database and redis containers:
+### Run All Tests
 ```bash
-npm run test:db:up
+npm run test:run
 ```
-*You only need to do this once before your coding session.*
 
-### Step 2: Run Tests
+### Watch Mode
 ```bash
 npm test
 ```
-Or run a specific file:
+
+### Run Specific File
 ```bash
 npx vitest tests/path/to/file.test.ts
 ```
 
-### Step 3: Cleanup
-To stop the test containers:
+### With Coverage
 ```bash
-npm run test:db:down
+npm run test:coverage
 ```
 
 ## 4. Writing Integration Tests
 
-We provide helpers in `tests/setup.ts` to clear the database between tests.
+We provide helpers in `tests/setup.ts` and `tests/helpers/`.
 
 ```typescript
-import { db } from "@/lib/db";
-import { createTestUser } from "tests/helpers/user";
+import { getTestDb } from "tests/setup";
+import { createTestUser, createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 describe("Create Transaction", () => {
     it("should save to database", async () => {
-        const user = await createTestUser();
+        const { userId, ledgerId } = await createTestUserWithLedger(getTestDb());
         
         // Act
-        const result = await createTransactionAction(user.id, { amount: 100 });
+        const result = await createTransactionAction(ledgerId, { amount: 100 });
         
         // Assert
-        const inDb = await db.query.transactions.findFirst();
-        expect(inDb).toBeDefined();
-        expect(inDb.amount).toBe(100);
+        expect(result).toBeDefined();
     });
 });
 ```
 
 ## 5. Mocking AI
-Never hit the real OpenAI API in tests. We provide a **global mock** in `tests/setup.ts` to cover both foreground actions and background workers.
+
+Never hit the real OpenAI API in tests. We provide a **global mock** in `tests/setup.ts`.
 
 If you need to customize the mock for a specific test:
 ```typescript
-import { getOpenAIClient } from "@/features/ai/server/services/openai";
+import { vi } from "vitest";
 
 vi.mocked(getOpenAIClient).mockReturnValue({
     generateContent: vi.fn().mockResolvedValue({ content: "Custom Result" })
 } as any);
 ```
 
-> [!IMPORTANT]
-> Since we use background workers, an action might trigger a task that runs *after* your test finishes or during your test. Always ensure OpenAI is mocked globally to prevent `OPENAI_API_KEY is required` errors in worker threads.
+## 6. Performance & Concurrency
 
-## 7. Performance & Concurrency
-
-By default, Vitest runs test files in parallel. However, in this project, we have **explicitly disabled** file parallelism in `vitest.config.ts`:
+File parallelism is **disabled** in `vitest.config.ts`:
 
 ```typescript
 fileParallelism: false
 ```
 
-### Why is it disabled?
-Our integration tests share a single PostgreSQL database (`cashier_test`) and a single Redis instance. The `tests/setup.ts` file performs a `TRUNCATE` on all tables and a `flushall` on Redis before each test to ensure a clean state.
+### Why?
+Tests share the same in-memory database. Running in parallel would cause race conditions.
 
-If multiple test files were to run simultaneously, they would interfere with each other's data, leading to flaky tests and race conditions.
+### Future: Enabling Parallelism
+To enable parallel testing, each worker would need its own SQLite instance.
 
-### How to enable parallelism in the future
-To enable parallel testing, we would need to implement **isolation per worker**:
-1.  **Database Isolation**: Use different database schemas or separate databases for each Vitest worker thread (using the `VITEST_POOL_ID` environment variable).
-2.  **Redis Isolation**: Use different Redis database indices (e.g., `SELECT 1`, `SELECT 2`) or key prefixes per worker.
+## 7. Test Structure
 
-Currently, sequential execution is preferred for simplicity and reliability given the size of the test suite.
-
-## 8. Continuous Integration (CI)
-
-Our CI pipeline automatically runs `test:db:up` -> `test` -> `test:db:down` on every PR.
+```
+tests/
+├── setup.ts           # Global setup, mocks, test DB
+├── helpers/           # Test utilities
+│   └── schema-setup.ts
+├── unit/              # Unit tests (no DB)
+└── integration/       # Integration tests (uses DB)
+```

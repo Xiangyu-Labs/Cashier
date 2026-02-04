@@ -1,16 +1,17 @@
 # Development Setup Guide
 
-Cashier uses a **Hybrid Development Environment**.
--   **Infrastructure**: Database and Redis run in Docker.
--   **Application**: Next.js runs natively on your host machine (for fast HMR).
+Cashier uses a **simple development environment** with SQLite (no external database required).
 
 ## Prerequisites
 
-1.  **Node.js**: v20 or higher.
-2.  **Docker Desktop** (or Docker Engine).
-3.  **Corepack**: Enable pnpm/yarn if preferred (project uses `npm` by default).
+1. **Node.js**: v20 or higher
+2. **npm**: Comes with Node.js
 
-## Step 1: Clone and Install
+> **Optional**: Docker Desktop for containerized development
+
+## Quick Start
+
+### 1. Clone and Install
 
 ```bash
 git clone <repo-url>
@@ -18,74 +19,70 @@ cd cashier
 npm install
 ```
 
-## Step 2: Environment Configuration
+### 2. Environment Configuration
 
-We have two main config files:
--   `.env` -> Used by Docker Compose.
--   `.env.local` -> Used by Next.js locally.
-
-### 2.1 Setup `.env` (Infra)
-Copy the example file:
 ```bash
-cp .env.example .env
-```
-This configures the Postgres/Redis passwords that Docker will use to *spin up* the containers. **You rarely need to change this.**
-
-### 2.2 Setup `.env.local` (App)
-Copy the example file:
-```bash
-cp .env.local.example .env.local
-```
-This configures how your local Next.js app connects to those containers.
-
-> **Important**:
-> If you change `POSTGRES_PASSWORD` in `.env`, you MUST update `DATABASE_URL` in `.env.local` to match!
-
-## Step 3: Start Infrastructure
-
-Start Postgres and Redis in the background:
-```bash
-npm run db:up
-# Or manually: docker compose up -d db redis
+cp .env.example .env.local
 ```
 
-Wait for them to be healthy:
+Edit `.env.local` with your API keys:
+
 ```bash
-docker compose ps
+# Required
+AUTH_SECRET=your-secret-key    # Generate: openssl rand -base64 32
+OPENAI_API_KEY=sk-...          # Your OpenAI key
+AUTH_RESEND_KEY=re_...         # Resend API key for emails
+
+# Optional
+DATABASE_URL=file:./data/sqlite.db  # Default SQLite path
 ```
 
-## Step 4: Initialize Database
+### 3. Initialize Database
 
-Push the schema to your local database:
 ```bash
 npm run db:push
 ```
 
-## Step 5: Start Development Server
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
+
 Open [http://localhost:3000](http://localhost:3000).
+
+## Docker Development (Alternative)
+
+For isolated development with Docker:
+
+```bash
+npm run docker:dev
+```
+
+This mounts your source code with hot reload support.
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run test` | Run tests in watch mode |
+| `npm run test:run` | Run tests once |
+| `npm run db:push` | Push schema to database |
+| `npm run db:studio` | Open Drizzle Studio |
+| `npm run docker:dev` | Start Docker dev environment |
 
 ## Troubleshooting
 
-### "P3000: Database Error"
--   Ensure Docker container is running: `docker ps`.
--   Check if `DATABASE_URL` in `.env.local` matches the ports mapped in `docker-compose.yml` (default 5432).
-
-### "Redis Connection Refused"
--   Ensure Redis is running on port 6379.
--   If you changed ports in `.env`, update `REDIS_URL` in `.env.local`.
+### "Database Error"
+- Database file is created automatically in `./data/sqlite.db`
+- Ensure the `./data` directory is writable
 
 ### "Auth.js Error"
--   Generate a new secret: `npx auth secret`.
--   Add it to `AUTH_SECRET` in `.env.local`.
+- Generate a new secret: `openssl rand -base64 32`
+- Add it to `AUTH_SECRET` in `.env.local`
 
-## Running Workers Locally
-
-By default, the web process handles simple tasks. To test the full AI pipeline:
-1.  Run the standalone worker:
-    ```bash
-    npx tsx src/worker.ts
-    ```
+### "OPENAI_API_KEY not set"
+- Ensure you've added your API key to `.env.local`
+- Check the key is valid and has credits
