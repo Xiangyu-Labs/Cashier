@@ -51,9 +51,9 @@ export function LedgerEntryCard({
         className
       )}
     >
-      <CardContent className="p-4">
+      <CardContent className="py-2.5 px-3">
         <div
-          className={cn("space-y-2", onView && "cursor-pointer hover:opacity-80 transition-opacity")}
+          className={cn(onView && "cursor-pointer hover:opacity-80 transition-opacity")}
           onClick={(e) => {
             if (onView) {
               // Prevent detail view when clicking interactive elements if any were added
@@ -65,16 +65,16 @@ export function LedgerEntryCard({
           }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
-              <div className="h-10 w-10 flex items-center justify-center bg-surface2 rounded-full text-xl text-text">
+            <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+              <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg text-text shrink-0">
                 <CategoryIcon
                   iconName={ledgerEntry.category?.icon}
-                  className="w-6 h-6"
+                  className="w-4 h-4"
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-text truncate">{ledgerEntry.itemName}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <p className="font-medium text-sm text-text truncate">{ledgerEntry.itemName}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
                   {ledgerEntry.category ? (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
                       <span className="shrink-0">{ledgerEntry.category.name}</span>
