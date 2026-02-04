@@ -10,8 +10,12 @@ RUN npm ci
 # Copy source (will be overwritten by volume mount)
 COPY . .
 
+# Copy and set up entrypoint
+COPY docker-entrypoint.dev.sh ./
+RUN chmod +x docker-entrypoint.dev.sh
+
 # Expose Next.js dev server port
 EXPOSE 3000
 
-# Start development server
-CMD ["npm", "run", "dev"]
+# Start with entrypoint (runs migrations before dev server)
+CMD ["./docker-entrypoint.dev.sh"]
