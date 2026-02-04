@@ -48,7 +48,7 @@ export function LedgerPageClient({
 
     // Initialize from URL, then manage with state for instant switching
     const [activeTab, setActiveTab] = useState(
-        () => searchParams.get("tab") || "history"
+        () => searchParams.get("tab") || "details"
     );
 
     const handleTabChange = (value: string) => {
@@ -105,11 +105,19 @@ export function LedgerPageClient({
                     className="w-full space-y-4"
                 >
                     <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="history">{t("history")}</TabsTrigger>
                         <TabsTrigger value="details">{t("details")}</TabsTrigger>
+                        <TabsTrigger value="history">{t("history")}</TabsTrigger>
                         <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
                         <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="details" className="mt-0">
+                        <DetailsTab
+                            ledgerId={ledgerId}
+                            categories={categories || []}
+                            ledger={ledger}
+                        />
+                    </TabsContent>
 
                     <TabsContent value="history" className="mt-0">
                         <LedgerEntriesTab
@@ -119,14 +127,6 @@ export function LedgerPageClient({
                             ledger={ledger}
                             initialActiveSourceDocuments={initialActiveSourceDocuments}
                             initialCompletedSourceDocuments={initialCompletedSourceDocuments}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="details" className="mt-0">
-                        <DetailsTab
-                            ledgerId={ledgerId}
-                            categories={categories || []}
-                            ledger={ledger}
                         />
                     </TabsContent>
 
