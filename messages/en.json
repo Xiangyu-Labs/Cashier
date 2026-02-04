@@ -112,7 +112,7 @@
     "Common": {
         "confirm": "Confirm",
         "delete": "Delete",
-        "retry": "Retry",
+        "retry": "Edit & Retry",
         "cancel": "Cancel",
         "save": "Save",
         "saveSuccess": "Saved successfully",

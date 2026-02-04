@@ -112,7 +112,7 @@
     "Common": {
         "confirm": "确认",
         "delete": "删除",
-        "retry": "重试",
+        "retry": "编辑重试",
         "cancel": "取消",
         "save": "保存",
         "saveSuccess": "保存成功",

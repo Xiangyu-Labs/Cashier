@@ -123,7 +123,7 @@ export const PendingBillCard = memo(function PendingBillCard({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="ghost"
@@ -189,14 +189,6 @@ export const PendingBillCard = memo(function PendingBillCard({
                             {text && (
                                 <div className="text-xs text-muted-foreground bg-surface2/50 p-2 rounded text-ellipsis overflow-hidden whitespace-pre-wrap max-h-20 line-clamp-3">
                                     {text}
-                                </div>
-                            )}
-
-                            {/* Full anomaly reason */}
-                            {status === "anomaly" && displayReason && (
-                                <div className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1.5 bg-red-50/50 dark:bg-red-900/20 p-2 rounded">
-                                    <span className="font-medium shrink-0">{t("reason")}:</span>
-                                    <span>{displayReason}</span>
                                 </div>
                             )}
                         </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
@@ -24,7 +24,6 @@ import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
-import { cn } from "@/lib/utils";
 
 interface LedgerPageClientProps {
     initialLedger: Ledger;
@@ -40,7 +39,6 @@ export function LedgerPageClient({
     ledgerId,
 }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
-    const tPending = useTranslations("PendingBills");
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
@@ -63,7 +61,6 @@ export function LedgerPageClient({
 
     // Fetch pending bills count for the header button
     const { stats: pendingStats } = usePendingSourceDocuments(ledgerId);
-    const pendingCount = pendingStats.total;
 
     // Enable real-time updates not needed here anymore, rely on smart polling in tabs
 
@@ -88,28 +85,31 @@ export function LedgerPageClient({
                             ledgers={allLedgers}
                         />
 
-                        {/* Pending Bills Button */}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsPendingOpen(true)}
-                            className={cn(
-                                "h-8 px-2.5 gap-1.5 text-xs font-medium rounded-full transition-all",
-                                pendingCount > 0
-                                    ? "text-primary hover:text-primary bg-primary/10 hover:bg-primary/20"
-                                    : "text-muted-foreground hover:text-text"
-                            )}
-                        >
-                            <Clock className={cn(
-                                "h-3.5 w-3.5",
-                                pendingCount > 0 && "animate-pulse"
-                            )} />
-                            {pendingCount > 0 ? (
-                                <span>{pendingCount}</span>
-                            ) : (
-                                <span className="hidden sm:inline">{tPending("viewButton")}</span>
-                            )}
-                        </Button>
+                        {/* Processing Bills Button - Only show if there are processing items */}
+                        {pendingStats.processingCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsPendingOpen(true)}
+                                className="h-8 px-2 gap-1 text-xs font-medium rounded-full text-primary hover:bg-primary/10"
+                            >
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <span>{pendingStats.processingCount}</span>
+                            </Button>
+                        )}
+
+                        {/* Anomaly Bills Button - Only show if there are anomaly items */}
+                        {pendingStats.anomalyCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsPendingOpen(true)}
+                                className="h-8 px-2 gap-1 text-xs font-medium rounded-full text-red-500 hover:bg-red-500/10"
+                            >
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                <span>{pendingStats.anomalyCount}</span>
+                            </Button>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
 
