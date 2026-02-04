@@ -10,7 +10,7 @@ import { useConvertedAmount } from "@/features/currency/client/hooks/useConverte
  * The bill container determines the variant, and entries inherit the theme.
  */
 const itemVariants = cva(
-    "flex items-center justify-between py-3 px-3 rounded-lg transition-all cursor-pointer hover:opacity-80",
+    "flex items-center justify-between py-2 px-3 rounded-lg transition-all cursor-pointer hover:opacity-80",
     {
         variants: {
             variant: {
@@ -68,7 +68,7 @@ export const BillEntryItem = memo(function BillEntryItem({
                 <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg shrink-0">
                     <CategoryIcon
                         iconName={ledgerEntry.category?.icon}
-                        className="w-5 h-5"
+                        className="w-4 h-4"
                     />
                 </div>
 
