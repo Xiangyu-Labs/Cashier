@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     updateLedgerEntryAction,
@@ -20,7 +20,7 @@ import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { queryKeys } from "@/lib/query-keys";
@@ -44,7 +44,9 @@ export function LedgerEntriesTab({
     initialCompletedSourceDocuments
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
+    const tDetails = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
+    const locale = useLocale();
     const queryClient = useQueryClient();
 
 
@@ -266,6 +268,82 @@ export function LedgerEntriesTab({
         );
     }
 
+    // --- Date Grouping for Completed Documents ---
+
+    // Helper to get date string from source document (using its ledger entries or createdAt)
+    const getSourceDocDateStr = useCallback((group: SourceDocumentGroup): string => {
+        // Use the first ledger entry's entryDate if available, otherwise use sourceDocument createdAt
+        const firstEntry = group.ledgerEntries[0];
+        if (firstEntry?.entryDate) {
+            return firstEntry.entryDate;
+        }
+        // Fallback to sourceDocument createdAt
+        const createdAt = group.sourceDocument.createdAt;
+        if (createdAt) {
+            const date = new Date(createdAt);
+            return date.toLocaleDateString('sv'); // Returns YYYY-MM-DD
+        }
+        return new Date().toLocaleDateString('sv');
+    }, []);
+
+    // Group completed documents by date
+    const groupedCompletedByDate = useMemo(() => {
+        const todayStr = new Date().toLocaleDateString('sv');
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = yesterdayDate.toLocaleDateString('sv');
+
+        const dateGroups: Record<string, {
+            title: string;
+            timestamp: number;
+            items: SourceDocumentGroup[];
+            total: number;
+        }> = {};
+
+        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
+
+        groups.completed.forEach(group => {
+            const dateStr = getSourceDocDateStr(group);
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
+            const sortTimestamp = date.getTime();
+
+            let dateKey = "";
+            if (dateStr === todayStr) {
+                dateKey = tDetails("today");
+            } else if (dateStr === yesterdayStr) {
+                dateKey = tDetails("yesterday");
+            } else {
+                dateKey = date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
+            }
+
+            if (!dateGroups[dateKey]) {
+                dateGroups[dateKey] = {
+                    title: dateKey,
+                    timestamp: sortTimestamp,
+                    items: [],
+                    total: 0
+                };
+            }
+
+            // Calculate total for this source document (sum of all ledger entries)
+            const docTotal = group.ledgerEntries.reduce((sum, entry) => {
+                // For now, just sum amounts directly (currency conversion would need more work)
+                // If entry currency matches main currency, add directly
+                if (entry.currency === mainCurrency || !entry.currency) {
+                    return sum + Number(entry.amount);
+                }
+                // For different currencies, just add the amount (proper conversion would need batch conversion)
+                return sum + Number(entry.amount);
+            }, 0);
+
+            dateGroups[dateKey].total += docTotal;
+            dateGroups[dateKey].items.push(group);
+        });
+
+        return Object.values(dateGroups).sort((a, b) => b.timestamp - a.timestamp);
+    }, [groups.completed, getSourceDocDateStr, tDetails, locale, ledger?.metadata?.settings?.mainCurrency]);
+
     // --- Main Render ---
 
 
@@ -385,29 +463,58 @@ export function LedgerEntriesTab({
                                 )}
                             </AnimatePresence>
 
-                            {/* Completed (Formal) Section */}
+                            {/* Completed (Formal) Section - Grouped by Date */}
                             <div className="space-y-6 px-2">
-                                {groups.completed.length === 0 ? (
+                                {groupedCompletedByDate.length === 0 ? (
                                     <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                                         <span>{tCommon("noRecords")}</span>
                                     </div>
                                 ) : (
-                                    <AnimatePresence mode="wait">
-                                        {groups.completed.map((group: SourceDocumentGroup) => (
-                                            <motion.div key={group.sourceDocument.id} className="mb-4 sm:mb-6" layout layoutId={group.sourceDocument.id} {...getItemProps()}>
-                                                <SourceDocumentCard
-                                                    sourceDocument={group.sourceDocument}
-                                                    ledgerEntries={group.ledgerEntries}
-                                                    categories={categories}
-                                                    status="completed"
-                                                    mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                    defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
-                                                    onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
-                                                    onUpdateLedgerEntry={handleUpdateLedgerEntry}
-                                                    onRetry={() => handleRetry(group.sourceDocument)}
-                                                    onViewDetails={() => handleViewSourceDetail(group)}
-                                                    onViewLedgerEntry={handleViewLedgerEntry}
-                                                />
+                                    <AnimatePresence mode="popLayout">
+                                        {groupedCompletedByDate.map((dateGroup) => (
+                                            <motion.div
+                                                key={dateGroup.title}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="space-y-2"
+                                            >
+                                                {/* Date Header with indicator and daily total */}
+                                                <div className="py-2 px-2 flex items-center gap-3">
+                                                    <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
+                                                        {dateGroup.title}
+                                                    </h3>
+                                                    <span className="text-[10px] sm:text-xs text-muted-foreground/50">·</span>
+                                                    <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
+                                                        {ledger?.metadata?.settings?.mainCurrency || 'CNY'} {dateGroup.total.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                {/* Documents for this date */}
+                                                <div className="space-y-4">
+                                                    {dateGroup.items.map((group: SourceDocumentGroup) => (
+                                                        <motion.div
+                                                            key={group.sourceDocument.id}
+                                                            layout
+                                                            layoutId={group.sourceDocument.id}
+                                                            {...getItemProps()}
+                                                        >
+                                                            <SourceDocumentCard
+                                                                sourceDocument={group.sourceDocument}
+                                                                ledgerEntries={group.ledgerEntries}
+                                                                categories={categories}
+                                                                status="completed"
+                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
+                                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
+                                                                onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
+                                                                onUpdateLedgerEntry={handleUpdateLedgerEntry}
+                                                                onRetry={() => handleRetry(group.sourceDocument)}
+                                                                onViewDetails={() => handleViewSourceDetail(group)}
+                                                                onViewLedgerEntry={handleViewLedgerEntry}
+                                                            />
+                                                        </motion.div>
+                                                    ))}
+                                                </div>
                                             </motion.div>
                                         ))}
                                     </AnimatePresence>
