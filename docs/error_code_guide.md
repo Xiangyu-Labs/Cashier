@@ -19,12 +19,12 @@
 
 ```typescript
 // src/features/source-document/server/schema.ts
-export const anomalyCodeEnum = pgEnum("anomaly_code", [
-  "internal_error",
-  "invalid_content",
-  "evidence_anomaly",
-  "rate_limit_exceeded", // 新增
-]);
+// SQLite 使用 text 类型存储枚举值，在 TypeScript 层面定义类型
+export type AnomalyCode = 
+  | "internal_error" 
+  | "invalid_content" 
+  | "evidence_anomaly"
+  | "rate_limit_exceeded"; // 新增
 ```
 
 > [!IMPORTANT]

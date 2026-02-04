@@ -16,7 +16,7 @@
 
 ```mermaid
 graph TD
-    A[Action / API] -- submitFlowTask --> B[Promise (Async)]
+    A[Action / API] -- flowEngine.submit --> B[Promise (Async)]
     A -- insert --> C[task_runs DB]
     B -- execute --> D[Task Handler]
     D -- update status --> C
@@ -56,37 +56,45 @@ export interface MyTaskOutput {
 ```
 
 #### 2.2 实现 Handler
-使用 `FlowTaskHandler` 接口（和之前保持兼容）：
+使用 `FlowTaskHandler` 接口并通过 `flowEngine` 注册：
 
 ```typescript
-import { registerFlowTask, FlowTaskHandler, FlowContext } from '@/lib/flow';
+import { flowEngine, type FlowTaskHandler, type FlowContext } from '@/lib/flow';
 
-export const myTaskHandler: FlowTaskHandler<MyTaskInput, MyTaskOutput> = {
-    // 1. 验证 (可选)
-    async validate(input, context) {
-        if (!input.id) throw new Error("Missing ID");
-    },
-
-    // 2. 执行核心逻辑
+const myTaskHandler: FlowTaskHandler<MyTaskInput, MyTaskOutput> = {
+    // 1. 执行核心逻辑
     async execute(input, context) {
+        // 验证逻辑（在 execute 内部处理）
+        if (!input.id) throw new Error("Missing ID");
+        
         // 调用 AI 或 复杂计算
+        await context.updateProgress('Processing...');
         const result = await someService.process(input.id);
+        
+        // 上报 token 消耗（可选）
+        context.reportTokens({ model: 'gpt-4o', input: 100, output: 50 });
+        
         return { result };
     },
 
-    // 3. 完成回调 (写入 DB，发送通知)
+    // 2. 完成回调 (可选，写入 DB，发送通知)
     async onComplete(output, input, context) {
         await db.update(...).set({ status: 'done' });
     },
 
-    // 4. 错误回调 (可选)
+    // 3. 错误回调 (可选)
     async onError(error, input, context) {
         console.error("Task failed", error);
+    },
+
+    // 4. 取消回调 (可选)
+    async onCancel(input, context) {
+        console.log("Task cancelled");
     }
 };
 
 // 注册任务
-registerFlowTask(TASK_TYPE, myTaskHandler);
+flowEngine.register(TASK_TYPE, myTaskHandler);
 ```
 
 ### Step 3: 确保注册
@@ -103,23 +111,25 @@ if (process.env.NEXT_RUNTIME === 'nodejs') {
 
 ### Step 4: 触发任务
 
-在 Server Action 中调用 `submitFlowTask`：
+在 Server Action 中调用 `flowEngine.submit`：
 
 ```typescript
-import { submitFlowTask } from '@/lib/flow/producer';
+import { flowEngine } from '@/lib/flow';
 
 export async function myAction(data: any) {
     // ... DB 操作 ...
 
     // 触发后台任务 (立即返回，不会 await 任务完成)
-    await submitFlowTask({
-        type: 'my_task_name',
-        title: 'Processing Data',
-        ledgerId: '...',
-        data: { id: '...' }
-    });
+    const taskId = await flowEngine.submit(
+        'my_task_name',           // 任务类型 (必须已注册)
+        { id: '...' },            // 输入数据
+        {
+            title: 'Processing Data',
+            ledgerId: '...',      // 可选：关联账本
+        }
+    );
 
-    return { success: true };
+    return { success: true, taskId };
 }
 ```
 
@@ -135,4 +145,4 @@ export async function myAction(data: any) {
 
 ## 🔄 文档维护
 - **创建时间**: 2026-02-02
-- **最后更新**: 2026-02-02 (Removed BullMQ)
+- **最后更新**: 2026-02-04 (Updated to FlowEngine API)

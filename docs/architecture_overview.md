@@ -72,7 +72,7 @@ We use **Drizzle ORM** for data access.
 ## 5. Key Technologies
 
 - **Framework**: Next.js 16 (App Router)
-- **Database**: PostgreSQL
+- **Database**: SQLite
 - **ORM**: Drizzle ORM
 - **Authentication**: Auth.js (NextAuth) v5
 - **UI System**: Tailwind CSS + Shadcn/ui (Radix Primitives)

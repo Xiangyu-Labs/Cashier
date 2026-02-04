@@ -32,7 +32,7 @@ graph TD
 
 ## 2. The Task Runner
 
-Tasks are executed using a lightweight **SimpleTaskRunner** (`src/lib/flow/runner.ts`).
+Tasks are executed using a lightweight **FlowEngine** (`src/lib/flow/engine.ts`).
 
 -   **Execution Model**: "Fire-and-forget" asynchronous execution within the main application process.
 -   **Lifecycle**:

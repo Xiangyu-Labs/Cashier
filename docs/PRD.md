@@ -241,7 +241,7 @@ v2.0
 
 - 使用 Auth.js (NextAuth) v5
 - 邮件发送服务：Resend
-- 会话存储：数据库 (PostgreSQL)
+- 会话存储：数据库 (SQLite)
 
 ### 3.3 F-LEDGER：账本模块
 
@@ -809,7 +809,7 @@ erDiagram
 |-----|---------|------|
 | **框架** | Next.js 16 (App Router) | React 全栈框架 |
 | **语言** | TypeScript | 类型安全 |
-| **数据库** | PostgreSQL | 关系型数据库 |
+| **数据库** | SQLite | 嵌入式关系型数据库 |
 | **ORM** | Drizzle ORM | 类型安全的 SQL |
 | **认证** | Auth.js v5 | 无密码认证 |
 | **邮件** | Resend | Magic Link 发送 |

@@ -1,6 +1,6 @@
 # Database Schema Documentation
 
-Cashier uses **PostgreSQL** as its primary database, with **Drizzle ORM** for schema definition and migrations. The schema is optimized for multi-tenancy (via `ledgers`) and flexible metadata storage.
+Cashier uses **SQLite** as its primary database, with **Drizzle ORM** for schema definition and migrations. The schema is optimized for multi-tenancy (via `ledgers`) and flexible metadata storage.
 
 ## 1. Core Entity Relationship Diagram (ERD)
 
