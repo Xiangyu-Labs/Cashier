@@ -9,6 +9,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DateFilter } from "@/components/ui/date-filter";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useMemo } from "react";
@@ -103,6 +104,14 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         return new Date(dateStr).toLocaleString(locale);
     };
 
+    // Format date for input (yyyy-MM-dd)
+    const formatDateForInput = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
     const handleFieldChange = <K extends keyof LedgerEntryEditFormData>(
         field: K,
         value: LedgerEntryEditFormData[K]
@@ -192,36 +201,37 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface2/30 p-4">
-                    <div className="flex justify-between items-center h-10">
-                        {/* Date on the left */}
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground mr-1">{t("entryDate")}:</span>
+                <div className="rounded-lg border border-border bg-surface2/30 p-4 space-y-4">
+                    {/* Date and Category - responsive grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Date */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
                             {isEditing ? (
-                                <Input
-                                    type="date"
+                                <DateFilter
                                     value={editData.entryDate}
-                                    onChange={(e) => handleFieldChange("entryDate", e.target.value)}
-                                    className="w-[140px] h-8 text-xs"
+                                    onChange={(date) => handleFieldChange("entryDate", date ? formatDateForInput(date) : "")}
+                                    size="sm"
+                                    className="flex-1 min-w-0"
                                 />
                             ) : (
-                                <span className="text-sm text-text">
+                                <span className="text-sm text-text truncate">
                                     {formatDate(ledgerEntry.entryDate)}
                                 </span>
                             )}
                         </div>
 
-                        {/* Category on the right */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground mr-1">{t("category")}:</span>
+                        {/* Category */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm text-muted-foreground shrink-0">{t("category")}:</span>
                             {isEditing ? (
-                                <Popover>
+                                <Popover modal={true}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             role="combobox"
-                                            className="h-8 w-[140px] justify-between px-2 py-1 text-xs font-normal border-border bg-surface"
+                                            className="h-8 flex-1 min-w-0 justify-between px-2 py-1 text-xs font-normal border-border bg-surface"
                                         >
                                             <div className="flex items-center gap-1.5 overflow-hidden">
                                                 {editData.categoryId ? (
@@ -235,27 +245,27 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-muted-foreground-foreground">{t("selectCategory")}</span>
+                                                    <span className="text-muted-foreground">{t("selectCategory")}</span>
                                                 )}
                                             </div>
                                             <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[180px] p-1" align="end">
-                                        <div className="max-h-[200px] overflow-y-auto">
+                                    <PopoverContent className="w-[200px] p-1" align="end" sideOffset={4}>
+                                        <div className="max-h-[250px] overflow-y-auto subtle-scrollbar">
                                             {categories.map((cat) => (
                                                 <button
                                                     key={cat.id}
                                                     onClick={() => handleFieldChange("categoryId", cat.id)}
                                                     className={cn(
-                                                        "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                                                        "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-left",
                                                         editData.categoryId === cat.id ? "bg-accent text-accent-foreground" : "text-text"
                                                     )}
                                                 >
-                                                    <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
+                                                    <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
                                                     <span className="flex-1 truncate">{cat.name}</span>
                                                     {editData.categoryId === cat.id && (
-                                                        <Check className="h-3 w-3" />
+                                                        <Check className="h-4 w-4" />
                                                     )}
                                                 </button>
                                             ))}

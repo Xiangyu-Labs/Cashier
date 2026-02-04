@@ -8,11 +8,26 @@ import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
 vi.mock("next-intl", () => ({
     useTranslations: (_key: string) => (s: string) => s,
     useLocale: () => "en",
+    useFormatter: () => ({
+        dateTime: (date: Date) => date.toLocaleDateString("en-US")
+    }),
 }));
 
 // Mock currencies config
 vi.mock("@/config/currencies", () => ({
     SUPPORTED_CURRENCIES: ["USD", "EUR", "CNY", "HKD", "JPY"]
+}));
+
+// Mock DateFilter component
+vi.mock("@/components/ui/date-filter", () => ({
+    DateFilter: ({ value, onChange }: { value?: string | Date | null, onChange: (date: Date | null) => void }) => (
+        <input
+            type="date"
+            data-testid="date-filter"
+            value={typeof value === 'string' ? value : (value instanceof Date ? value.toISOString().split('T')[0] : '')}
+            onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+        />
+    ),
 }));
 
 // Mock child components

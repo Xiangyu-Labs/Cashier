@@ -296,6 +296,12 @@
         "customRange": "自定义区间",
         "apply": "应用"
     },
+    "DateFilter": {
+        "selectDate": "选择日期",
+        "today": "今天",
+        "clear": "清除",
+        "apply": "确定"
+    },
     "NotFound": {
         "title": "页面未找到",
         "description": "抱歉，您访问的页面不存在或已被移除。",
