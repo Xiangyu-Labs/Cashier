@@ -19,9 +19,11 @@ interface DateRangeFilterProps {
     endDate?: Date;
     onRangeChange: (range: { start?: Date; end?: Date }) => void;
     className?: string;
+    /** Use compact date format (e.g., 2/1 - 2/28) */
+    compact?: boolean;
 }
 
-export function DateRangeFilter({ startDate, endDate, onRangeChange, className }: DateRangeFilterProps) {
+export function DateRangeFilter({ startDate, endDate, onRangeChange, className, compact = false }: DateRangeFilterProps) {
     const t = useTranslations("DateRangeFilter");
     const format = useFormatter();
     const [open, setOpen] = React.useState(false);
@@ -77,14 +79,23 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className }
                 <Button
                     variant="outline"
                     size="sm"
-                    className={cn("h-8 justify-start text-left font-normal w-full sm:w-[240px]", !startDate && "text-muted-foreground", className)}
+                    className={cn("h-8 justify-start text-left font-normal", !startDate && "text-muted-foreground", className)}
                 >
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">
                         {startDate && endDate ? (
-                            <>
-                                {format.dateTime(startDate, { year: 'numeric', month: 'short', day: 'numeric' })} - {format.dateTime(endDate, { year: 'numeric', month: 'short', day: 'numeric' })}
-                            </>
+                            compact ? (
+                                // Compact format: M/D - M/D (or M/D/Y if different years)
+                                startDate.getFullYear() === endDate.getFullYear() ? (
+                                    `${startDate.getMonth() + 1}/${startDate.getDate()} - ${endDate.getMonth() + 1}/${endDate.getDate()}`
+                                ) : (
+                                    `${startDate.getMonth() + 1}/${startDate.getDate()}/${startDate.getFullYear()} - ${endDate.getMonth() + 1}/${endDate.getDate()}/${endDate.getFullYear()}`
+                                )
+                            ) : (
+                                <>
+                                    {format.dateTime(startDate, { year: 'numeric', month: 'short', day: 'numeric' })} - {format.dateTime(endDate, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </>
+                            )
                         ) : (
                             t("selectRange")
                         )}

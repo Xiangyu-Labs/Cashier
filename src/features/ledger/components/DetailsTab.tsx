@@ -226,36 +226,46 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-4">
-                {/* Header Section - Aligned with LedgerEntriesTab */}
+                {/* Header Section - Responsive layout */}
                 <div className="px-2 mb-2 sm:mb-4 pt-1">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <DateRangeFilter
-                                startDate={dateRange.start}
-                                endDate={dateRange.end}
-                                onRangeChange={({ start, end }) => setDateRange({ start, end })}
-                            />
-                        </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+                        {/* Date Range Filter - Full width on mobile */}
+                        <DateRangeFilter
+                            startDate={dateRange.start}
+                            endDate={dateRange.end}
+                            onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                            className="w-full sm:w-auto"
+                        />
 
-                        <div className="flex flex-col items-end">
-                            <div className="text-muted-foreground-foreground text-[10px] mb-0.5">{t("expenseSummary")}</div>
-                            <div className="flex flex-col items-end">
-                                <div className="text-xl font-bold font-mono tracking-tight leading-none">
-                                    {monthStats.hasMultipleCurrencies && (
-                                        <span className="text-sm font-normal text-muted-foreground-foreground mr-1">≈</span>
-                                    )}
-                                    <span className="text-xs text-muted-foreground-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
-                                    {monthStats.mainTotal.toFixed(2)}
-                                </div>
-                                {monthStats.hasMultipleCurrencies && (
-                                    <div className="text-[10px] text-muted-foreground-foreground font-mono mt-1 opacity-80">
-                                        {monthStats.breakdown.map((b, idx) => (
-                                            <span key={b.currency}>
-                                                {idx > 0 && <span className="mx-1 opacity-50">·</span>}
-                                                {b.currency || "?"} {b.total.toFixed(0)}
-                                            </span>
-                                        ))}
-                                    </div>
+                        {/* Expense Summary - Right aligned on desktop, full width on mobile */}
+                        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1 py-1 sm:py-0">
+                            <div className="text-muted-foreground text-xs sm:text-[10px]">{t("expenseSummary")}</div>
+                            <div className="flex items-baseline gap-1.5 flex-wrap justify-end">
+                                {monthStats.hasMultipleCurrencies ? (
+                                    <>
+                                        {/* Original currencies breakdown - small text */}
+                                        <span className="text-[10px] font-mono text-muted-foreground opacity-80">
+                                            {monthStats.breakdown.map((b, idx) => (
+                                                <span key={b.currency}>
+                                                    {idx > 0 && <span className="mx-0.5 opacity-50">·</span>}
+                                                    {b.currency || "?"} {b.total.toFixed(0)}
+                                                </span>
+                                            ))}
+                                        </span>
+                                        {/* Approximately equals */}
+                                        <span className="text-sm text-muted-foreground">≈</span>
+                                        {/* Main currency total */}
+                                        <span className="text-lg sm:text-xl font-bold font-mono tracking-tight leading-none">
+                                            <span className="text-xs text-muted-foreground font-normal mr-0.5">{monthStats.mainCurrency}</span>
+                                            {monthStats.mainTotal.toFixed(2)}
+                                        </span>
+                                    </>
+                                ) : (
+                                    /* Single currency - just show total */
+                                    <span className="text-lg sm:text-xl font-bold font-mono tracking-tight leading-none">
+                                        <span className="text-xs text-muted-foreground font-normal mr-0.5">{monthStats.mainCurrency}</span>
+                                        {monthStats.mainTotal.toFixed(2)}
+                                    </span>
                                 )}
                             </div>
                         </div>
