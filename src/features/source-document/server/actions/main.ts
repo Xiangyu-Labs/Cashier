@@ -350,18 +350,33 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
         items: filteredResult.map(item => {
             // Strip large metadata fields to reduce payload size
             const { aiRawResponse, rawOcrText, ...lightMetadata } = item.metadata || {};
-            // Strip imageUrls (Base64 encoded images) - this is the main source of 3.5MB payload!
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { imageUrls, ...itemWithoutImages } = item;
 
-            return {
-                ...itemWithoutImages,
-                metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
-                hasImages: (imageUrls?.length || 0) > 0, // Keep a flag for UI to know if there are images
-                createdAt: item.createdAt.toISOString(),
-                status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
-                ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
-            };
+            // For active documents (queued, processing, anomaly), keep imageUrls for display
+            // For completed documents, strip imageUrls to reduce payload (they have many more items)
+            const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly';
+
+            if (isActiveDocument) {
+                // Keep imageUrls for active documents (user needs to see original input)
+                return {
+                    ...item,
+                    metadata: lightMetadata,
+                    createdAt: item.createdAt.toISOString(),
+                    status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                    ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
+                };
+            } else {
+                // Strip imageUrls for completed documents (saves ~500KB-2MB per document)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { imageUrls, ...itemWithoutImages } = item;
+                return {
+                    ...itemWithoutImages,
+                    metadata: lightMetadata,
+                    hasImages: (imageUrls?.length || 0) > 0,
+                    createdAt: item.createdAt.toISOString(),
+                    status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                    ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
+                };
+            }
         }),
         nextCursor,
     };
