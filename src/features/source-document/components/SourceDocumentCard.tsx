@@ -190,7 +190,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       >
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted-foreground group-hover:text-text", isItemsExpanded && "rotate-180")} />
-          <span className="text-sm font-medium text-muted-foreground shrink-0">
+          <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
             {new Date(sourceDocument.createdAt).toLocaleString(locale, {
               month: "long",
               day: "numeric",
@@ -200,7 +200,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           </span>
           {status !== "processing" && status !== "queued" && sourceDocument.title && (
             <>
-              <span className="text-muted-foreground/30 shrink-0">·</span>
+              <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
               <span className="text-sm font-semibold text-text truncate">
                 {sourceDocument.title}
               </span>
