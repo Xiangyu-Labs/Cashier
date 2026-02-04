@@ -107,20 +107,20 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
           {isLoading && !ledgerEntry && (
             <div className="p-6 space-y-4 animate-pulse">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-muted" />
+                <div className="h-10 w-10 rounded-full bg-border" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-muted rounded" />
-                  <div className="h-3 w-24 bg-muted rounded" />
+                  <div className="h-4 w-32 bg-border rounded" />
+                  <div className="h-3 w-24 bg-border rounded" />
                 </div>
               </div>
               <div className="space-y-3">
-                <div className="h-4 w-full bg-muted rounded" />
-                <div className="h-4 w-3/4 bg-muted rounded" />
-                <div className="h-4 w-1/2 bg-muted rounded" />
+                <div className="h-4 w-full bg-border rounded" />
+                <div className="h-4 w-3/4 bg-border rounded" />
+                <div className="h-4 w-1/2 bg-border rounded" />
               </div>
               <div className="flex justify-end gap-2 pt-4">
-                <div className="h-9 w-20 bg-muted rounded" />
-                <div className="h-9 w-20 bg-muted rounded" />
+                <div className="h-9 w-20 bg-border rounded" />
+                <div className="h-9 w-20 bg-border rounded" />
               </div>
             </div>
           )}

@@ -341,10 +341,10 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                 <div key={groupIdx} className="space-y-2">
                                     {/* Date header skeleton */}
                                     <div className="py-2 px-2 flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-muted" />
-                                        <div className="h-3 w-24 bg-muted rounded" />
-                                        <div className="h-3 w-1 bg-muted rounded" />
-                                        <div className="h-3 w-16 bg-muted rounded" />
+                                        <div className="w-1.5 h-1.5 rounded-full bg-border" />
+                                        <div className="h-3 w-24 bg-border rounded" />
+                                        <div className="h-3 w-1 bg-border rounded" />
+                                        <div className="h-3 w-16 bg-border rounded" />
                                     </div>
                                     {/* Entry card skeletons */}
                                     <div className="space-y-4 px-2">
@@ -352,13 +352,13 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                             <div key={idx} className="rounded-xl border border-border bg-surface p-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-full bg-muted" />
+                                                        <div className="h-8 w-8 rounded-full bg-border" />
                                                         <div className="space-y-1.5">
-                                                            <div className="h-4 w-28 bg-muted rounded" />
-                                                            <div className="h-3 w-20 bg-muted rounded" />
+                                                            <div className="h-4 w-28 bg-border rounded" />
+                                                            <div className="h-3 w-20 bg-border rounded" />
                                                         </div>
                                                     </div>
-                                                    <div className="h-4 w-16 bg-muted rounded" />
+                                                    <div className="h-4 w-16 bg-border rounded" />
                                                 </div>
                                             </div>
                                         ))}
