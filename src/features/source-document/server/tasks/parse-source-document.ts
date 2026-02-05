@@ -95,8 +95,25 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return { ledgerEntries: [], verificationStatus: 'invalid' };
         }
 
+        // Check for unknown currency from Stage 1 - intercept early
+        const currencies = stage1Result.results.currency.currencies;
+        const hasUnknownCurrency = currencies.some(c =>
+            !c || c.toLowerCase() === 'unknown' || c.toLowerCase() === 'undefined'
+        );
+        if (hasUnknownCurrency) {
+            logger.info({
+                docId: input.sourceDocumentId,
+                currencies,
+            }, "Stage 1: Unknown currency detected");
+            return {
+                ledgerEntries: [],
+                anomalyReason: "无法识别货币类型",
+                verificationStatus: 'anomaly'
+            };
+        }
+
         // ===== Stage 1.5: Validation =====
-        await setProgress('正在校验预分析结果...');
+        await setProgress('正在校验货币与类别...');
 
         if (signal.aborted) {
             throw new Error('Task cancelled');
@@ -123,7 +140,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
 
         // ===== Stage 2: Detailed Parsing =====
-        await setProgress('正在详细解析...');
+        await setProgress('正在解析账单条目...');
 
         if (signal.aborted) {
             throw new Error('Task cancelled');
