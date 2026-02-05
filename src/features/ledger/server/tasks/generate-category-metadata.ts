@@ -43,50 +43,36 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
             input.aiLanguage
         );
 
-        try {
-            // Use context.ai instead of direct OpenAI client
-            // Use a cheaper model since this is text-only
-            const { content } = await context.ai.generate({
-                prompt,
-                messages: [{ role: 'user', content: 'Generate the category metadata as specified.' }],
-                model: 'gpt-4o-mini', // Cheaper model for text-only task
-                responseFormat: 'json_object',
-            });
+        // Use context.ai - uses environment default model (OPENAI_MODEL)
+        // Any errors (network, API key, model not found, etc.) will propagate to onError
+        const { content } = await context.ai.generate({
+            prompt,
+            messages: [{ role: 'user', content: 'Generate the category metadata as specified.' }],
+            responseFormat: 'json_object',
+        });
 
-            // Basic JSON extraction
-            const jsonStart = content.indexOf('{');
-            const jsonEnd = content.lastIndexOf('}');
-            let jsonStr = content;
-            if (jsonStart !== -1 && jsonEnd !== -1) {
-                jsonStr = content.substring(jsonStart, jsonEnd + 1);
-            }
-
-            const parsed = JSON.parse(jsonStr);
-            const validated = aiResponseSchema.parse(parsed);
-
-            // Validate icon existence
-            let icon = validated.icon;
-            if (!COMMON_LUCIDE_ICONS.includes(icon)) {
-                // Fallback if AI hallucinates an icon not in our list
-                // Double check if it's a valid string, otherwise use default
-                icon = "Package";
-            }
-
-            return {
-                icon,
-                description: validated.description,
-                success: true
-            };
-
-        } catch (error) {
-            logger.error({ err: error, categoryName: input.categoryName }, "Failed to generate category metadata");
-            // Return failure but don't throw, to allow graceful degradation (empty icon/desc)
-            return {
-                icon: "Package",
-                description: "",
-                success: false
-            };
+        // Basic JSON extraction
+        const jsonStart = content.indexOf('{');
+        const jsonEnd = content.lastIndexOf('}');
+        let jsonStr = content;
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            jsonStr = content.substring(jsonStart, jsonEnd + 1);
         }
+
+        const parsed = JSON.parse(jsonStr);
+        const validated = aiResponseSchema.parse(parsed);
+
+        // Validate icon existence
+        let icon = validated.icon;
+        if (!COMMON_LUCIDE_ICONS.includes(icon)) {
+            icon = "Package";
+        }
+
+        return {
+            icon,
+            description: validated.description,
+            success: true
+        };
     },
 
     // 2. Completion
@@ -109,10 +95,23 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
         logger.info({ categoryId: input.categoryId, icon: output.icon }, "Updated category metadata from AI");
     },
 
-    // 3. Error handling
-    async onError(error: Error, input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
+    // 3. Error handling - set default values to stop "generating" state in UI
+    async onError(error: Error, input: GenerateCategoryMetadataInput, context: FlowContext): Promise<void> {
         logger.error({ err: error, categoryId: input.categoryId }, "Generate category metadata task failed");
-        // No side effects needed, category stays as is (empty metadata)
+
+        // Set default values to prevent UI from showing "generating" forever
+        if (context.ledgerId && input.categoryId) {
+            const q = forLedger(entryCategories, context.ledgerId);
+            await db.update(entryCategories)
+                .set({
+                    icon: "Package", // Default icon
+                    description: "", // Empty description
+                    updatedAt: new Date(),
+                })
+                .where(q.whereId(input.categoryId));
+
+            logger.info({ categoryId: input.categoryId }, "Set default metadata after task failure");
+        }
     }
 };
 

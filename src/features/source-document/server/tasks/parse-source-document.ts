@@ -217,17 +217,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         ]);
         // Token usage is automatically reported by context.ai
 
-        // Parse responses
-        let result1: { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string };
-        let result2: { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string };
-
-        try {
-            result1 = parseAIResponse(rawResult1.content, allowedCategories);
-            result2 = parseAIResponse(rawResult2.content, allowedCategories);
-        } catch (error) {
-            logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Failed to parse AI response");
-            throw error;
-        }
+        // Parse responses - errors propagate to onError
+        const result1 = parseAIResponse(rawResult1.content, allowedCategories);
+        const result2 = parseAIResponse(rawResult2.content, allowedCategories);
 
         // Helper to apply date override
         const applyDateOverride = (entries: ParsedLedgerEntry[]) => {

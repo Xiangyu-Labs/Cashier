@@ -62,7 +62,7 @@ describe("generateCategoryMetadataHandler", () => {
             expect(result.icon).toBe("Package");
         });
 
-        it("should handle JSON parsing errors", async () => {
+        it("should throw on JSON parsing errors (triggers onError)", async () => {
             const input: GenerateCategoryMetadataInput = {
                 categoryId: "cat-1",
                 categoryName: "Bad JSON",
@@ -70,10 +70,10 @@ describe("generateCategoryMetadataHandler", () => {
             };
 
             const context = createMockContext("ledger-1", { content: "Not JSON" });
-            const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
-            expect(result.success).toBe(false);
-            expect(result.icon).toBe("Package");
+            // Should throw, not return success: false
+            await expect(generateCategoryMetadataHandler.execute(input, context))
+                .rejects.toThrow();
         });
     });
 

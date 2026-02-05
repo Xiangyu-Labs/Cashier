@@ -143,11 +143,59 @@ export async function myAction(data: any) {
 ## ⚠️ 注意事项
 
 1.  **重启即丢失**：正在执行的任务如果遇到服务重启（部署），会被中断且不会自动重试。
-2.  **错误处理**：确保 `execute` 内部做好 try-catch，虽然 Runner 会兜底捕获并标记为 Failed，但业务逻辑最好自己处理预期内的错误。
-3.  **超时问题**：虽然不会阻塞 HTTP，但如果任务运行时间极长（>几分钟），Node.js 进程本身可能被 Serverless 平台杀掉（如果是 Vercel）。但在 Docker/VPS 环境下通常没问题。
+2.  **超时问题**：虽然不会阻塞 HTTP，但如果任务运行时间极长（>几分钟），Node.js 进程本身可能被 Serverless 平台杀掉（如果是 Vercel）。但在 Docker/VPS 环境下通常没问题。
+
+---
+
+## 🚨 错误处理最佳实践
+
+### ❌ 不要做：在业务层 try-catch 底层错误
+
+```typescript
+// ❌ 错误示范
+async execute(input, context) {
+    try {
+        const result = await context.ai.generate({...});
+        return { ...result };
+    } catch (error) {
+        logger.error({ error }, "AI failed");
+        throw error;  // 这个 try-catch 毫无意义
+    }
+}
+```
+
+**原因**：
+- 底层错误（网络、API Key、模型不存在、余额不足）业务层无法处理
+- 框架会自动捕获异常并调用 `onError`
+- 手动 try-catch 再 throw 毫无意义
+
+### ✅ 应该做：让异常自然传播
+
+```typescript
+// ✅ 正确示范
+async execute(input, context) {
+    // 直接调用，异常自动传播到 onError
+    const { content } = await context.ai.generate({...});
+    const parsed = JSON.parse(content);
+    return { result: parsed };
+},
+
+// onError 处理业务层的回退逻辑
+async onError(error, input, context) {
+    logger.error({ err: error }, "Task failed");
+    // 设置默认状态，避免 UI 卡住
+    await db.update(...)
+        .set({ status: 'failed', icon: 'Package' });
+}
+```
+
+**原则**：
+- `execute` 只做正常逻辑，不处理异常
+- `onError` 处理失败后的业务回退（如设置默认值）
+- 框架负责状态转换（Running → Failed）
 
 ---
 
 ## 🔄 文档维护
 - **创建时间**: 2026-02-02
-- **最后更新**: 2026-02-04 (Updated to FlowEngine API)
+- **最后更新**: 2026-02-05 (添加错误处理最佳实践)
