@@ -99,31 +99,18 @@ export const PendingBillCard = memo(function PendingBillCard({
                         })}
                     </span>
 
-                    {/* Status */}
+                    {/* Status with dynamic label */}
                     <ProcessingStatus
                         status={status === "anomaly" ? "error" : "processing"}
+                        label={
+                            status === "processing" && 'progressMessage' in sourceDocument && sourceDocument.progressMessage
+                                ? sourceDocument.progressMessage
+                                : status === "anomaly" && displayReason
+                                    ? displayReason
+                                    : undefined  // fallback to default label
+                        }
                         className="scale-90"
                     />
-
-                    {/* Progress message for processing */}
-                    {status === "processing" && 'progressMessage' in sourceDocument && sourceDocument.progressMessage && (
-                        <>
-                            <span className="text-muted-foreground/30 shrink-0">·</span>
-                            <span className="text-xs text-primary truncate">
-                                {sourceDocument.progressMessage}
-                            </span>
-                        </>
-                    )}
-
-                    {/* Anomaly reason preview (truncated) */}
-                    {status === "anomaly" && displayReason && (
-                        <>
-                            <span className="text-muted-foreground/30 shrink-0">·</span>
-                            <span className="text-xs text-red-500 dark:text-red-400 truncate">
-                                {displayReason}
-                            </span>
-                        </>
-                    )}
                 </div>
 
                 {/* Actions */}
