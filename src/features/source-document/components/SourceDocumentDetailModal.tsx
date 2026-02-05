@@ -197,7 +197,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="w-full sm:w-[calc(100vw-2rem)] sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-2xl border-none sm:border">
+            <DialogContent className="w-full sm:w-[calc(100vw-2rem)] sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-2xl border-none sm:border">
                 <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         <FileText className="h-5 w-5" />
@@ -213,26 +213,30 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-6">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
                     {/* Loading Skeleton State */}
                     {isLoading && !sourceDocument && (
-                        <div className="space-y-6 animate-pulse">
-                            {/* Image placeholders */}
-                            <div className="grid gap-2 grid-cols-3 sm:grid-cols-4">
-                                {[1, 2].map(i => (
-                                    <div key={i} className="aspect-square rounded-lg bg-border" />
-                                ))}
+                        <div className="space-y-3 animate-pulse">
+                            {/* Header skeleton */}
+                            <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded bg-border" />
+                                <div className="h-3 w-24 bg-border rounded" />
+                            </div>
+                            {/* Summary card skeleton */}
+                            <div className="rounded-xl border border-border p-3 space-y-2">
+                                <div className="h-3 w-16 bg-border rounded" />
+                                <div className="h-6 w-28 bg-border rounded" />
                             </div>
                             {/* Entry placeholders */}
-                            <div className="space-y-3">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl border border-border">
-                                        <div className="h-10 w-10 rounded-full bg-border" />
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-4 w-32 bg-border rounded" />
-                                            <div className="h-3 w-20 bg-border rounded" />
+                            <div className="space-y-2">
+                                {[1, 2].map(i => (
+                                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                                        <div className="h-8 w-8 rounded-full bg-border" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-3.5 w-28 bg-border rounded" />
+                                            <div className="h-2.5 w-16 bg-border rounded" />
                                         </div>
-                                        <div className="h-4 w-16 bg-border rounded" />
+                                        <div className="h-3.5 w-14 bg-border rounded" />
                                     </div>
                                 ))}
                             </div>
@@ -491,7 +495,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 </div>
 
                 {/* Actions Bottom - Removed fixed to avoid containing block issues with transform */}
-                <div className="shrink-0 px-6 py-4 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-3 z-50">
+                <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-50">
                     <div className="hidden sm:block">
                         {!isEditing && (
                             <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onClose}>

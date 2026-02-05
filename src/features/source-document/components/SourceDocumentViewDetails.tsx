@@ -121,11 +121,11 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     const isAnomaly = sourceDocument.status === "anomaly";
 
     return (
-        <div className="h-full flex flex-col max-w-5xl mx-auto lg:h-[calc(100vh-140px)]">
+        <div className="h-full flex flex-col mx-auto lg:h-[calc(100vh-140px)]">
             {/* Integrated Workspace - Now full width for better focus */}
             <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-                <Tabs defaultValue="entries" className="h-full flex flex-col gap-3 lg:gap-4">
-                    <div className="shrink-0 flex items-center justify-between gap-3 px-1 sm:px-0">
+                <Tabs defaultValue="entries" className="h-full flex flex-col gap-2">
+                    <div className="shrink-0 flex items-center justify-between gap-2">
                         {/* Header: Focused metadata for mobile */}
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground font-medium">
@@ -159,28 +159,28 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         </TabsList>
                     </div>
 
-                    <TabsContent value="entries" className="flex-1 min-h-0 m-0 p-0 flex flex-col gap-3 md:gap-4 focus-visible:outline-none">
-                        {/* Financial Summary: Compact for mobile, spacious for desktop */}
-                        <div className="rounded-xl md:rounded-2xl border border-border/80 bg-surface shadow-sm p-4 md:p-5 space-y-3 md:space-y-4">
-                            <div className="flex flex-col gap-0.5 md:gap-1">
-                                <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-60">
-                                    <Wallet className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                    <TabsContent value="entries" className="flex-1 min-h-0 m-0 p-0 flex flex-col gap-2 focus-visible:outline-none">
+                        {/* Financial Summary: Compact */}
+                        <div className="rounded-lg border border-border/80 bg-surface shadow-sm p-3 space-y-2">
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em] opacity-60">
+                                    <Wallet className="h-2.5 w-2.5" />
                                     {t("totalAmount")}
                                 </div>
-                                <div className="flex items-baseline gap-1.5 md:gap-2">
-                                    <span className="text-3xl md:text-4xl font-black text-primary tabular-nums tracking-tighter">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-black text-primary tabular-nums tracking-tight">
                                         {isLoadingConverted ? (
                                             <span className="animate-pulse opacity-50">...</span>
                                         ) : (
                                             totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                         )}
                                     </span>
-                                    <span className="text-lg md:text-xl font-black text-primary/40 leading-none">{mainCurrency}</span>
+                                    <span className="text-base font-bold text-primary/40 leading-none">{mainCurrency}</span>
                                 </div>
                             </div>
 
                             {uniqueCurrencies.length > 0 && (
-                                <div className="pt-3 md:pt-4 border-t border-border/40 flex flex-col gap-2 md:gap-2.5">
+                                <div className="pt-2 border-t border-border/40 flex flex-col gap-1.5">
                                     {uniqueCurrencies.map(curr => (
                                         <CurrencyBreakdownItem
                                             key={curr}
@@ -196,7 +196,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
                         {/* Entries List: Optimized for touch */}
                         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                            <div className="flex-1 overflow-y-auto pr-1 space-y-2 pb-4 scrollbar-none">
+                            <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 pb-2 scrollbar-none">
                                 {sortedEntries.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
                                         <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
