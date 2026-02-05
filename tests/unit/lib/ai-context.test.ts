@@ -11,13 +11,14 @@ vi.mock('@/features/ai/server/services/openai', () => ({
 }))
 
 import { createAIContext } from '@/lib/flow/ai-context'
+import type { TokenUsage } from '@/lib/flow/types'
 
 describe('AI Context', () => {
-    let reportTokensSpy: ReturnType<typeof vi.fn>
+    let reportTokensSpy: ReturnType<typeof vi.fn<(usage: TokenUsage) => void>>
     let abortController: AbortController
 
     beforeEach(() => {
-        reportTokensSpy = vi.fn()
+        reportTokensSpy = vi.fn<(usage: TokenUsage) => void>()
         abortController = new AbortController()
         vi.clearAllMocks()
     })

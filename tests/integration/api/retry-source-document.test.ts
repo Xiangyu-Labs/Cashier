@@ -4,7 +4,7 @@ import { getTestDb } from "../../setup";
 import { sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
+import { createMultiStageMock } from "../../helpers/mocks/openai";
 import { getOpenAIClient } from "@/features/ai/server/services/openai";
 import { processAllPendingTasks } from "../../helpers/processing";
 
@@ -18,10 +18,10 @@ describe("SourceDocument Retry Action", () => {
     let _testCategoryId: string;
 
     beforeEach(async () => {
-        // Reset mock to default
-        vi.mocked(getOpenAIClient).mockReturnValue({
-            generateContent: vi.fn().mockResolvedValue({ content: MOCK_RESPONSES.singleEntry }),
-        } as unknown as ReturnType<typeof getOpenAIClient>);
+        // Reset mock to use multi-stage mock by default
+        vi.mocked(getOpenAIClient).mockReturnValue(
+            createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
+        );
 
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
@@ -119,36 +119,19 @@ describe("SourceDocument Retry Action", () => {
     it("should replace old entries with new entries on retry", async () => {
         const db = getTestDb();
 
-        // Mock first response: "午餐 25元"
-        const firstResponse = JSON.stringify({
-            is_valid: true,
-            ledger_entries: [{
-                item_name: "午餐",
-                amount: 25,
-                currency: "CNY",
-                category: "餐饮",
-                entry_date: "2025-01-25",
-            }],
-            title: "午餐消费",
-        });
-
-        // Mock second response: "晚餐 50元" (same category, different item and amount)
-        const secondResponse = JSON.stringify({
-            is_valid: true,
-            ledger_entries: [{
-                item_name: "晚餐",
-                amount: 50,
-                currency: "CNY",
-                category: "餐饮",
-                entry_date: "2025-01-25",
-            }],
-            title: "晚餐费用",
-        });
-
-        // First processing
-        vi.mocked(getOpenAIClient).mockReturnValue({
-            generateContent: vi.fn().mockResolvedValue({ content: firstResponse }),
-        } as unknown as ReturnType<typeof getOpenAIClient>);
+        // First processing: "午餐 25元"
+        vi.mocked(getOpenAIClient).mockReturnValue(
+            createMultiStageMock({
+                entries: [{
+                    item_name: "午餐",
+                    amount: 25,
+                    currency: "CNY",
+                    category: "餐饮",
+                    entry_date: "2025-01-25",
+                }],
+                title: "午餐消费"
+            }) as unknown as ReturnType<typeof getOpenAIClient>
+        );
 
         const createRes = await createSourceDocumentAction(testLedgerId, { text: "午餐 25元" });
         const docId = createRes.sourceDocumentId!;
@@ -163,10 +146,19 @@ describe("SourceDocument Retry Action", () => {
         expect(activeBeforeRetry[0].itemName).toBe("午餐");
         expect(activeBeforeRetry[0].amount).toBe("25.00");
 
-        // Switch to second response for retry
-        vi.mocked(getOpenAIClient).mockReturnValue({
-            generateContent: vi.fn().mockResolvedValue({ content: secondResponse }),
-        } as unknown as ReturnType<typeof getOpenAIClient>);
+        // Switch to second response for retry: "晚餐 50元"
+        vi.mocked(getOpenAIClient).mockReturnValue(
+            createMultiStageMock({
+                entries: [{
+                    item_name: "晚餐",
+                    amount: 50,
+                    currency: "CNY",
+                    category: "餐饮",
+                    entry_date: "2025-01-25",
+                }],
+                title: "晚餐费用"
+            }) as unknown as ReturnType<typeof getOpenAIClient>
+        );
 
         // Retry with new text
         await retrySourceDocumentAction(testLedgerId, docId, { text: "晚餐 50元" });

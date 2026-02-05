@@ -53,6 +53,7 @@ export function useUnifiedSourceDocuments(
     const prevProcessingCount = useRef<number | null>(null);
 
     // Prepare initial data if provided
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const initialUnifiedData = useMemo(() => {
         if (!initialActiveSourceDocuments && !initialCompletedSourceDocuments) return undefined;
 

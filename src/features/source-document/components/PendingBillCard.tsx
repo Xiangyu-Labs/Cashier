@@ -37,7 +37,7 @@ export const PendingBillCard = memo(function PendingBillCard({
     onDelete,
     className,
 }: PendingBillCardProps) {
-    const t = useTranslations("PendingBills");
+    const _t = useTranslations("PendingBills");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
 

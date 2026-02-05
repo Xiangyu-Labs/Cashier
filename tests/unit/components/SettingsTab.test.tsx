@@ -132,7 +132,7 @@ describe("SettingsTab", () => {
     };
 
     const mockCategories: EntryCategory[] = [];
-    const mockCredentials: ServiceCredential[] = [];
+    const _mockCredentials: ServiceCredential[] = [];
 
     let queryClient: QueryClient;
     beforeEach(() => {

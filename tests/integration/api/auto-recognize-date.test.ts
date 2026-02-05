@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
-import { flowEngine, AIContext } from "@/lib/flow";
+import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
@@ -15,18 +15,101 @@ vi.mock("@/lib/flow/ai-context", () => ({
 
 import { createAIContext } from "@/lib/flow/ai-context";
 
-// Helper to create a valid AI response
-function createAIResponse(entries: Array<{ amount: number; currency: string; itemName: string; category: string; entryDate: string }>) {
-    return JSON.stringify({
-        is_valid: true,
-        ledger_entries: entries.map(e => ({
-            item_name: e.itemName,
-            amount: e.amount,
-            currency: e.currency,
-            category: e.category,
-            entry_date: e.entryDate,
-            notes: null,
-        })),
+// Helper to create a smart mock generate function that handles multi-stage AI calls
+function createMultiStageGenerate(entry: { amount: number; currency: string; itemName: string; category: string; entryDate: string }) {
+    return vi.fn().mockImplementation(({ prompt }: { prompt: string }) => {
+        const promptLower = prompt.toLowerCase();
+
+        // Stage 1.5: Validation
+        if ((promptLower.includes('validation') && promptLower.includes('reviews')) || promptLower.includes('veto power')) {
+            return Promise.resolve({
+                content: JSON.stringify({
+                    is_reasonable: true,
+                    summary: {
+                        title: "测试账单",
+                        currencies: [{ code: entry.currency, hint: `Identified ${entry.currency}` }],
+                        categories: [{ name: entry.category, hint: "Category matches content" }],
+                        rules: []
+                    }
+                })
+            });
+        }
+
+        // Stage 2: Detailed Parse
+        if (promptLower.includes('detailed financial document parser') ||
+            promptLower.includes('ledger_entries') ||
+            promptLower.includes('pre-analysis context')) {
+            return Promise.resolve({
+                content: JSON.stringify({
+                    ledger_entries: [{
+                        item_name: entry.itemName,
+                        amount: entry.amount,
+                        currency: entry.currency,
+                        category: entry.category,
+                        entry_date: entry.entryDate,
+                        notes: null
+                    }],
+                    reasoning: "Parsed expense entry"
+                })
+            });
+        }
+
+        // Stage 1.1: Validity
+        if (promptLower.includes('validity') || promptLower.includes('valid financial')) {
+            return Promise.resolve({
+                content: JSON.stringify({ is_valid: true, reasoning: "Valid document" })
+            });
+        }
+
+        // Stage 1.2: Completeness
+        if (promptLower.includes('complete') || promptLower.includes('missing content')) {
+            return Promise.resolve({
+                content: JSON.stringify({ is_complete: true })
+            });
+        }
+
+        // Stage 1.3: Currency
+        if (promptLower.includes('currency') || promptLower.includes('currencies')) {
+            return Promise.resolve({
+                content: JSON.stringify({ currencies: [entry.currency], reasoning: `Detected ${entry.currency}` })
+            });
+        }
+
+        // Stage 1.4: Category
+        if (promptLower.includes('category') || promptLower.includes('categories')) {
+            return Promise.resolve({
+                content: JSON.stringify({ categories: [entry.category], reasoning: `Matched ${entry.category}` })
+            });
+        }
+
+        // Stage 1.5: Title
+        if (promptLower.includes('title') || promptLower.includes('concise summary')) {
+            return Promise.resolve({
+                content: JSON.stringify({ title: "测试账单" })
+            });
+        }
+
+        // Arbitration
+        if (promptLower.includes('arbitration')) {
+            return Promise.resolve({
+                content: JSON.stringify({ choice: 1, reason: "First result is acceptable" })
+            });
+        }
+
+        // Default: Stage 2 response
+        return Promise.resolve({
+            content: JSON.stringify({
+                ledger_entries: [{
+                    item_name: entry.itemName,
+                    amount: entry.amount,
+                    currency: entry.currency,
+                    category: entry.category,
+                    entry_date: entry.entryDate,
+                    notes: null
+                }],
+                reasoning: "Parsed expense entry"
+            })
+        });
     });
 }
 
@@ -70,16 +153,14 @@ describe("Auto-recognize Ledger Entry Time", () => {
         const pastDate = "2023-01-01";
         const today = new Date().toISOString().split('T')[0];
 
-        const aiResponse = createAIResponse([{
+        // Setup smart mock that handles multi-stage AI calls
+        const mockGenerate = createMultiStageGenerate({
             amount: 100,
             currency: "CNY",
             itemName: "Lunch",
             category: "Food",
             entryDate: pastDate
-        }]);
-
-        // Setup mock to return consistent responses for dual GPT
-        const mockGenerate = vi.fn().mockResolvedValue({ content: aiResponse });
+        });
         vi.mocked(createAIContext).mockReturnValue({ generate: mockGenerate });
 
         // Insert Source Document
@@ -126,16 +207,14 @@ describe("Auto-recognize Ledger Entry Time", () => {
         // Mock AI response with a specific date in the past
         const pastDate = "2023-01-01";
 
-        const aiResponse = createAIResponse([{
+        // Setup smart mock that handles multi-stage AI calls
+        const mockGenerate = createMultiStageGenerate({
             amount: 100,
             currency: "CNY",
             itemName: "Lunch",
             category: "Food",
             entryDate: pastDate
-        }]);
-
-        // Setup mock to return consistent responses for dual GPT
-        const mockGenerate = vi.fn().mockResolvedValue({ content: aiResponse });
+        });
         vi.mocked(createAIContext).mockReturnValue({ generate: mockGenerate });
 
         // Insert Source Document

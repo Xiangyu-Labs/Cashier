@@ -348,7 +348,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
-        await parseSourceDocumentHandler.onComplete(output, input, context);
+        await parseSourceDocumentHandler.onComplete?.(output, input, context);
 
         // Check document status
         const doc = await db.query.sourceDocuments.findFirst({
@@ -384,7 +384,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             ledgerId: currentLedgerId,
         } as unknown as FlowContext;
 
-        await parseSourceDocumentHandler.onComplete(output, input, context);
+        await parseSourceDocumentHandler.onComplete?.(output, input, context);
 
         const doc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, sourceDocId),

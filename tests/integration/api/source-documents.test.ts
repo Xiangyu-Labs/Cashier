@@ -10,7 +10,7 @@ import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { MOCK_RESPONSES } from "../../helpers/mocks/openai";
+import { createMultiStageMock } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
 vi.mock("@/features/ai/server/services/openai", () => ({
@@ -25,10 +25,10 @@ describe("SourceDocument Actions", () => {
   let testCategoryId: string;
 
   beforeEach(async () => {
-    // Reset mock to default
-    vi.mocked(getOpenAIClient).mockReturnValue({
-      generateContent: vi.fn().mockResolvedValue({ content: MOCK_RESPONSES.singleEntry }),
-    } as unknown as ReturnType<typeof getOpenAIClient>);
+    // Reset mock to use multi-stage mock by default
+    vi.mocked(getOpenAIClient).mockReturnValue(
+      createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
+    );
 
     const db = getTestDb();
 
@@ -56,10 +56,19 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should persist ledger entries with notes", async () => {
-    // Override mock for this test
-    vi.mocked(getOpenAIClient).mockReturnValue({
-      generateContent: vi.fn().mockResolvedValue({ content: MOCK_RESPONSES.entryWithMetadata }),
-    } as unknown as ReturnType<typeof getOpenAIClient>);
+    // Override mock for this test with custom entries
+    vi.mocked(getOpenAIClient).mockReturnValue(
+      createMultiStageMock({
+        categories: ["水果"],
+        entries: [{
+          item_name: "苹果",
+          amount: 20,
+          currency: "CNY",
+          category: "水果",
+          notes: "2kg * 10元/kg, 红富士苹果"
+        }]
+      }) as unknown as ReturnType<typeof getOpenAIClient>
+    );
 
     const result = await createSourceDocumentAction(testLedgerId, { text: "苹果2公斤，每公斤10元" });
 

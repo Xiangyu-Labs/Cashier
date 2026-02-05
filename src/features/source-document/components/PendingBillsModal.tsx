@@ -21,7 +21,7 @@ import {
 import { SourceDocument } from "@/types/api";
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+
 import { ChevronDown, Inbox } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";

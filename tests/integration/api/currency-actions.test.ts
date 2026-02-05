@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getTestDb } from "tests/setup";
+import { getTestDb } from "../../setup";
 import { currencyRates } from "@/features/currency/server/schema";
 import {
     convertCurrencyAction,

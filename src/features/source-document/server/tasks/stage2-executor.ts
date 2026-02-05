@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import type { AIContext } from "@/lib/flow/types";
-import type { ValidationSummary, ParsedEntry, DetailedParseOutput } from "./types";
+import type { ValidationSummary, ParsedEntry } from "./types";
 import { buildDetailedParsePrompt } from "./stage2-prompts";
 
 // ===== Zod Schema for Output =====

@@ -349,7 +349,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     return {
         items: filteredResult.map(item => {
             // Strip large metadata fields to reduce payload size
-            const { aiRawResponse, rawOcrText, ...lightMetadata } = item.metadata || {};
+            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.metadata || {};
 
             // For active documents (queued, processing, anomaly), keep imageUrls for display
             // For completed documents, strip imageUrls to reduce payload (they have many more items)
@@ -366,7 +366,6 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                 };
             } else {
                 // Strip imageUrls for completed documents (saves ~500KB-2MB per document)
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { imageUrls, ...itemWithoutImages } = item;
                 return {
                     ...itemWithoutImages,
