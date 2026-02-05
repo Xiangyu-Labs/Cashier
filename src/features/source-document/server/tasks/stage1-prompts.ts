@@ -27,36 +27,28 @@ export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): stri
     return `You are a financial document completeness checker.
 
 ### Task
-Determine if the financial record appears to be COMPLETE, with no obvious missing or unreadable content.
+Determine if the financial record has obvious MISSING or UNREADABLE content
+that would prevent accurate parsing.
 
-### Detection Dimensions
+### What IS an incompleteness issue (should report)
+1. A visible row/item is partially cut off, making the amount unreadable
+2. There are blurred, obscured, or heavily pixelated areas containing financial data
+3. Text is visibly truncated at edges where a row clearly continues but is cut
 
-1. **Visual Completeness** (for images/screenshots):
-   - Is there text or content visibly cut off at the edges?
-   - Are there blurred, obscured, or unreadable areas containing financial data?
-   - Is the image quality too poor to read key information?
+### What is NOT an incompleteness issue (should NOT report)
+1. Missing total/sum line - some receipts simply don't have one
+2. Missing date, time, or merchant name - these are optional fields
+3. Edge content that appears to be unrelated (e.g., ads, recommendations, decorations)
+4. Low image quality that still allows reading the amounts
+5. Simple/minimal format - as long as each identifiable item has an amount, it's complete
 
-2. **Structural Completeness**:
-   - If it's a table/list: are there rows missing amounts or key values?
-   - If there's a total/sum line: does the sum of visible items approximately match the total?
-   - Is there an obvious break or gap in the content?
-
-3. **Semantic Completeness**:
-   - Does it look like a complete, self-contained record?
-   - Are there indicators of continuation like "Page 1/2", "continued...", "see next page"?
-
-### Important Rules
-- Only report OBVIOUS issues that a user would clearly notice
-- Minor blur that doesn't affect readability → treat as complete
-- When uncertain → treat as complete (err on the side of accepting)
-- Focus on issues that would make the user say "How did you miss this?"
+### Core Rule
+Focus ONLY on items that the user clearly intends to record.
+If every identifiable item has a readable amount → treat as complete.
 
 ### Output (raw JSON only, no markdown)
-If COMPLETE:
-{"is_complete": true}
-
-If INCOMPLETE:
-{"is_complete": false, "issue": "Brief description in ${aiLanguage}"}`;
+If COMPLETE: {"is_complete": true}
+If INCOMPLETE: {"is_complete": false, "issue": "Description in ${aiLanguage}"}`;
 }
 
 export function buildCurrencyRecognitionPrompt(
