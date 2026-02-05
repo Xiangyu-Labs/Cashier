@@ -6,19 +6,21 @@ import { eq } from "drizzle-orm";
 import { FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
-// Mock OpenAI
-const mockGenerateContent = vi.fn();
-vi.mock("@/features/ai/server/services/openai", () => ({
-    getOpenAIClient: () => ({
-        generateContent: mockGenerateContent
-    })
-}));
-
 describe("generateCategoryMetadataHandler", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
     });
+
+    // Helper to create a mock context with ai.generate
+    function createMockContext(ledgerId: string, generateResponse: { content: string }) {
+        return {
+            ledgerId,
+            ai: {
+                generate: vi.fn().mockResolvedValue(generateResponse),
+            },
+        } as unknown as FlowContext;
+    }
 
     describe("execute", () => {
         it("should parse valid JSON response and return icon/description", async () => {
@@ -29,14 +31,12 @@ describe("generateCategoryMetadataHandler", () => {
                 aiLanguage: "zh-CN"
             };
 
-            mockGenerateContent.mockResolvedValue({
+            const context = createMockContext("ledger-1", {
                 content: JSON.stringify({
                     icon: "Dog",
                     description: "宠物相关的支出"
                 })
             });
-
-            const context = { ledgerId: "ledger-1" } as FlowContext;
             const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.success).toBe(true);
@@ -51,14 +51,12 @@ describe("generateCategoryMetadataHandler", () => {
                 existingCategories: [],
             };
 
-            mockGenerateContent.mockResolvedValue({
+            const context = createMockContext("ledger-1", {
                 content: JSON.stringify({
                     icon: "NonExistentIconXYZ",
                     description: "Description"
                 })
             });
-
-            const context = { ledgerId: "ledger-1" } as FlowContext;
             const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.icon).toBe("Package");
@@ -71,9 +69,7 @@ describe("generateCategoryMetadataHandler", () => {
                 existingCategories: [],
             };
 
-            mockGenerateContent.mockResolvedValue({ content: "Not JSON" });
-
-            const context = { ledgerId: "ledger-1" } as FlowContext;
+            const context = createMockContext("ledger-1", { content: "Not JSON" });
             const result = await generateCategoryMetadataHandler.execute(input, context) as GenerateCategoryMetadataOutput;
 
             expect(result.success).toBe(false);

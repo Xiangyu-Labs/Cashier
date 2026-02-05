@@ -2,11 +2,12 @@ import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
-import { logger } from "@/lib/logger";
+import { buildLedgerEntryPrompt } from "@/features/ai/server/services/prompts";
 import { arbitrate } from "@/features/ai/server/services/arbitration";
+import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
+import { z } from "zod";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -31,9 +32,75 @@ export interface ParseSourceDocumentOutput {
     verificationStatus: 'passed' | 'anomaly' | 'invalid';
 }
 
-/**
- * Verify consistency between two sets of ledger entries
- */
+// ===== Schema for AI response validation =====
+const ledgerEntrySchema = z.object({
+    item_name: z.string().min(1, "Item name cannot be empty"),
+    amount: z.number().min(0, "Amount must be non-negative"),
+    currency: z.string().nullable().optional(),
+    category: z.string().min(1, "Category cannot be empty"),
+    entry_date: z.string().nullable(),
+    notes: z.string().nullable().optional(),
+});
+
+const aiResponseSchema = z.object({
+    ledger_entries: z.array(ledgerEntrySchema),
+    title: z.string().optional(),
+    is_valid: z.boolean(),
+});
+
+const VALID_CURRENCIES = new Set([
+    "USD", "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
+    "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
+    "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR"
+]);
+
+// ===== Helper: Parse AI response =====
+function parseAIResponse(
+    response: string,
+    allowedCategories: string[]
+): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
+    // Robust JSON extraction: look for the first { and last }
+    const jsonStart = response.indexOf('{');
+    const jsonEnd = response.lastIndexOf('}');
+
+    let cleaned = response;
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleaned = response.substring(jsonStart, jsonEnd + 1);
+    } else {
+        cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
+    }
+
+    const parsed = JSON.parse(cleaned);
+    const validated = aiResponseSchema.parse(parsed);
+
+    if (validated.is_valid === false) {
+        return { ledgerEntries: [], isValid: false };
+    }
+
+    const ledgerEntries = validated.ledger_entries.map((t, index) => {
+        if (!t.category || !allowedCategories.includes(t.category)) {
+            throw new Error(`Entry #${index + 1}: Invalid or missing category "${t.category}". Must be one of: ${allowedCategories.join(", ")}`);
+        }
+
+        const currency = t.currency || "unknown";
+        if (currency !== "unknown" && !VALID_CURRENCIES.has(currency.toUpperCase())) {
+            throw new Error(`Entry #${index + 1}: Invalid currency code "${currency}"`);
+        }
+
+        return {
+            itemName: t.item_name,
+            amount: t.amount,
+            currency: currency,
+            category: t.category,
+            entryDate: t.entry_date,
+            notes: t.notes || null,
+        };
+    });
+
+    return { ledgerEntries, isValid: true, title: validated.title };
+}
+
+// ===== Helper: Verify amounts between two results =====
 function verifyAmounts(
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[]
@@ -61,12 +128,42 @@ function verifyAmounts(
     return true;
 }
 
+// ===== Helper: Build message content for AI =====
+function buildMessageContent(
+    text?: string,
+    imageUrls?: string[]
+): Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> {
+    const content: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
+
+    if (text) {
+        content.push({ type: "text", text });
+    }
+
+    if (imageUrls && imageUrls.length > 0) {
+        imageUrls.forEach(url => {
+            // Handle both base64 and URL formats
+            const imageUrl = url.startsWith("data:")
+                ? url
+                : url.startsWith("http")
+                    ? url
+                    : `data:image/jpeg;base64,${url}`;
+            content.push({ type: "image_url", image_url: { url: imageUrl } });
+        });
+    }
+
+    if (content.length === 0) {
+        content.push({ type: "text", text: "（无输入内容）" });
+    }
+
+    return content;
+}
+
 /**
  * Parse Source Document Task Handler
  */
 export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
-        const { signal, updateProgress, ledgerId } = context;
+        const { signal, updateProgress, ledgerId, ai } = context;
 
         if (!ledgerId) throw new Error("Missing ledgerId in task context");
 
@@ -93,32 +190,43 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             throw new Error('Task cancelled');
         }
 
-        const processor = getSourceDocumentProcessor();
-        const processOptions = {
-            categories: input.categories,
-            aiLanguage: input.aiLanguage,
-            preferredCurrencies: input.preferredCurrencies,
-            aiCustomPrompt: input.settings.aiCustomPrompt
-        };
+        const currentDate = new Date().toISOString().split("T")[0];
+        const systemPrompt = buildLedgerEntryPrompt(
+            input.categories,
+            input.aiLanguage,
+            currentDate,
+            input.preferredCurrencies,
+            input.settings.aiCustomPrompt
+        );
 
-        const processPayload = {
-            text: input.text,
-            images: input.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }))
-        };
+        const messageContent = buildMessageContent(input.text, input.imageUrls);
+        const allowedCategories = input.categories.map(c => c.name);
 
-        // Parallel execution
-        const [result1, result2] = await Promise.all([
-            processor.process(processPayload, processOptions),
-            processor.process(processPayload, processOptions)
+        // Parallel execution - dual GPT for verification
+        const [rawResult1, rawResult2] = await Promise.all([
+            ai.generate({
+                prompt: systemPrompt,
+                messages: [{ role: 'user', content: messageContent }],
+                responseFormat: 'json_object',
+            }),
+            ai.generate({
+                prompt: systemPrompt,
+                messages: [{ role: 'user', content: messageContent }],
+                responseFormat: 'json_object',
+            }),
         ]);
+        // Token usage is automatically reported by context.ai
 
-        // Report token usage from both AI calls
-        const model = process.env.OPENAI_MODEL || 'gpt-4o';
-        if (result1.usage) {
-            context.reportTokens({ model, input: result1.usage.promptTokens, output: result1.usage.completionTokens });
-        }
-        if (result2.usage) {
-            context.reportTokens({ model, input: result2.usage.promptTokens, output: result2.usage.completionTokens });
+        // Parse responses
+        let result1: { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string };
+        let result2: { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string };
+
+        try {
+            result1 = parseAIResponse(rawResult1.content, allowedCategories);
+            result2 = parseAIResponse(rawResult2.content, allowedCategories);
+        } catch (error) {
+            logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Failed to parse AI response");
+            throw error;
         }
 
         // Helper to apply date override
@@ -154,7 +262,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 input.text,
                 input.aiLanguage,
                 input.imageUrls,
-                input.preferredCurrencies
+                input.preferredCurrencies,
+                ai
             );
 
             if (arbitrationResult.choice === 0) {
@@ -199,7 +308,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 input.text,
                 input.aiLanguage,
                 input.imageUrls,
-                input.preferredCurrencies
+                input.preferredCurrencies,
+                ai
             );
 
             if (arbitrationResult.choice === 0) {

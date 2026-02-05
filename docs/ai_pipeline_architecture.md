@@ -36,11 +36,24 @@ Tasks are executed using a lightweight **FlowEngine** (`src/lib/flow/engine.ts`)
 
 -   **Execution Model**: "Fire-and-forget" asynchronous execution within the main application process.
 -   **Lifecycle**:
-    -   `validate`: Checks inputs (e.g. document exists).
     -   `execute`: Runs the core business logic.
-    -   `onComplete` / `onError`: Handles status updates and notifications.
+    -   `onComplete`: Handles success (save results, notify user).
+    -   `onError`: Handles errors.
+    -   `onCancel`: Handles user-initiated cancellation.
+
+-   **AI Context**: Tasks have built-in AI capabilities via `context.ai`:
+    ```typescript
+    const result = await context.ai.generate({
+        prompt: "System prompt here",
+        messages: [{ role: 'user', content: '...' }],
+        model: 'gpt-4o-mini',  // Optional, defaults to OPENAI_MODEL env
+        responseFormat: 'json_object',  // Optional
+    });
+    // Token usage is automatically tracked!
+    ```
 
 **Note**: Since tasks run in-memory, they will be interrupted if the server restarts.
+
 
 ## 3. The Parsing Task: "Dual GPT + Arbitration"
 

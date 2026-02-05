@@ -393,4 +393,43 @@ describe("FlowEngine", () => {
             await waitForTaskCompletion(storage, taskId);
         });
     });
+
+    describe("AI context integration", () => {
+        it("provides ai context with generate method", async () => {
+            const engine = createFlowEngine({ storage });
+            let hasAIContext = false;
+            let hasGenerateMethod = false;
+
+            engine.register("ai_context_task", {
+                execute: async (_input: unknown, ctx: FlowContext) => {
+                    hasAIContext = ctx.ai !== undefined;
+                    hasGenerateMethod = typeof ctx.ai?.generate === "function";
+                    return { hasAI: hasAIContext };
+                },
+            });
+
+            const taskId = await engine.submit("ai_context_task", {});
+            await waitForTaskCompletion(storage, taskId);
+
+            expect(hasAIContext).toBe(true);
+            expect(hasGenerateMethod).toBe(true);
+        });
+
+        it("ai context has correct interface", async () => {
+            const engine = createFlowEngine({ storage });
+            let aiContextKeys: string[] = [];
+
+            engine.register("ai_interface_task", {
+                execute: async (_input: unknown, ctx: FlowContext) => {
+                    aiContextKeys = Object.keys(ctx.ai);
+                    return { keys: aiContextKeys };
+                },
+            });
+
+            const taskId = await engine.submit("ai_interface_task", {});
+            await waitForTaskCompletion(storage, taskId);
+
+            expect(aiContextKeys).toContain("generate");
+        });
+    });
 });

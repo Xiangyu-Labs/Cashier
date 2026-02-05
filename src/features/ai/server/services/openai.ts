@@ -22,27 +22,43 @@ export class OpenAIClient {
 
     async generateContent(
         systemPrompt: string,
-        messages: ChatCompletionMessageParam[]
+        messages: ChatCompletionMessageParam[],
+        model?: string,
+        maxTokens?: number,
+        temperature?: number,
+        responseFormat?: { type: 'text' } | { type: 'json_object' } | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } },
+        signal?: AbortSignal
     ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
-        const model = process.env.OPENAI_MODEL;
+        const effectiveModel = model ?? process.env.OPENAI_MODEL;
+        const effectiveMaxTokens = maxTokens ?? 16384;
+        const effectiveTemperature = temperature ?? 1;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
 
-        if (!model) {
+        if (!effectiveModel) {
             throw new Error("OPENAI_MODEL is required");
         }
 
         let lastError: unknown;
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            // Check if aborted before each attempt
+            if (signal?.aborted) {
+                throw new Error("Request was aborted");
+            }
+
             try {
                 const response = await this.client.chat.completions.create({
-                    model,
+                    model: effectiveModel,
                     messages: [
                         { role: "system", content: systemPrompt },
                         ...messages,
                     ],
-                    max_tokens: 16384, // Increased to handle multi-image requests
+                    max_tokens: effectiveMaxTokens,
+                    temperature: effectiveTemperature,
+                    ...(responseFormat && { response_format: responseFormat as OpenAI.ChatCompletionCreateParams['response_format'] }),
+                }, {
+                    signal, // Pass abort signal to OpenAI SDK
                 });
 
                 if (!response.choices || !Array.isArray(response.choices) || response.choices.length === 0) {
@@ -71,6 +87,11 @@ export class OpenAIClient {
                 return { content, usage };
             } catch (error) {
                 lastError = error;
+
+                // Don't retry if aborted
+                if (signal?.aborted) {
+                    break;
+                }
 
                 // Determine if the error is retryable
                 let isRetryable = true;

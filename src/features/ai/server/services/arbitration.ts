@@ -1,8 +1,7 @@
-import { getOpenAIClient } from "./openai";
 import { ParsedLedgerEntry } from "../types";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { ChatCompletionContentPart } from "openai/resources/chat/completions";
+import type { AIContext } from "@/lib/flow";
 
 /**
  * Arbitration result schema
@@ -109,18 +108,19 @@ Determine if the currency can be identified from the document and which result i
 
 /**
  * Execute arbitration between two GPT results
+ * 
+ * @param ai - AIContext from the task runner (provides generate method with automatic token tracking)
  */
 export async function arbitrate(
     scenario: "total_mismatch" | "unknown_currency",
     entries1: ParsedLedgerEntry[],
     entries2: ParsedLedgerEntry[],
-    originalContent?: string,
-    aiLanguage?: string,
-    imageUrls?: string[],
-    preferredCurrencies?: string[]
+    originalContent: string | undefined,
+    aiLanguage: string | undefined,
+    imageUrls: string[] | undefined,
+    preferredCurrencies: string[] | undefined,
+    ai: AIContext
 ): Promise<ArbitrationResult> {
-    const client = getOpenAIClient();
-
     const systemPrompt = buildArbitrationPrompt(
         scenario,
         entries1,
@@ -131,13 +131,14 @@ export async function arbitrate(
         preferredCurrencies
     );
 
-    const contentParts: ChatCompletionContentPart[] = [
+    // Build message content with optional images
+    const messageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
         { type: "text", text: "Please analyze and provide your arbitration decision." }
     ];
 
     if (imageUrls && imageUrls.length > 0) {
         imageUrls.forEach(url => {
-            contentParts.push({
+            messageContent.push({
                 type: "image_url",
                 image_url: { url }
             });
@@ -145,9 +146,11 @@ export async function arbitrate(
     }
 
     try {
-        const { content } = await client.generateContent(systemPrompt, [
-            { role: "user", content: contentParts }
-        ]);
+        const { content } = await ai.generate({
+            prompt: systemPrompt,
+            messages: [{ role: "user", content: messageContent }],
+            responseFormat: 'json_object',
+        });
 
         const cleaned = content.replace(/^```(?:json)?|```$/g, "").trim();
         const parsed = JSON.parse(cleaned);
@@ -166,3 +169,4 @@ export async function arbitrate(
         return { choice: 0, reason: "Arbitration system error" };
     }
 }
+

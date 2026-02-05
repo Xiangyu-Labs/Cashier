@@ -67,14 +67,19 @@ const myTaskHandler: FlowTaskHandler<MyTaskInput, MyTaskOutput> = {
         // 验证逻辑（在 execute 内部处理）
         if (!input.id) throw new Error("Missing ID");
         
-        // 调用 AI 或 复杂计算
+        // 更新进度 (可选，用户可见)
         await context.updateProgress('Processing...');
-        const result = await someService.process(input.id);
         
-        // 上报 token 消耗（可选）
-        context.reportTokens({ model: 'gpt-4o', input: 100, output: 50 });
+        // 调用 AI (使用内置 context.ai)
+        const response = await context.ai.generate({
+            prompt: 'Your system prompt',
+            messages: [{ role: 'user', content: 'User message' }],
+            model: 'gpt-4o-mini',  // 可选，默认使用环境变量 OPENAI_MODEL
+            responseFormat: 'json_object',  // 可选
+        });
+        // Token 用量自动统计上报！
         
-        return { result };
+        return { result: response.content };
     },
 
     // 2. 完成回调 (可选，写入 DB，发送通知)

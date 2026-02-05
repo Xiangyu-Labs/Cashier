@@ -83,9 +83,14 @@ export interface FlowEngineConfig {
 export interface FlowContext {
   taskId: string
   ledgerId: string | null
-  signal: AbortSignal                              // Cancellation signal
-  reportTokens(usage: TokenUsage): void            // Report token usage
-  updateProgress(message: string): Promise<void>   // Update progress message
+  /** @internal Cancellation signal - prefer using context.ai which handles this automatically */
+  signal: AbortSignal
+  /** @internal Report token usage - prefer using context.ai which handles this automatically */
+  reportTokens(usage: TokenUsage): void
+  updateProgress(message: string): Promise<void>
+
+  // AI capabilities
+  ai: AIContext
 }
 
 /**
@@ -166,4 +171,60 @@ export interface FlowEngine {
    * Get all currently running tasks
    */
   getRunningTasks(): Promise<TaskRecord[]>
+}
+
+// ===== AI Integration Types =====
+
+/**
+ * Response format for AI generation
+ */
+export type AIResponseFormat =
+  | 'text'
+  | 'json_object'
+  | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } }
+
+/**
+ * Options for AI generation
+ */
+export interface AIGenerateOptions {
+  prompt: string                      // System prompt
+  messages: AIMessage[]               // User messages (can include images)
+  model?: string                      // Model name, defaults to OPENAI_MODEL env
+  maxTokens?: number                  // Max output tokens, defaults to 16384
+  temperature?: number                // Creativity (0-2), defaults to 1
+  responseFormat?: AIResponseFormat   // Output format, defaults to 'text'
+  autoReportTokens?: boolean          // Auto-report tokens, defaults to true
+}
+
+/**
+ * AI message content part
+ */
+export type AIMessageContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
+/**
+ * AI message
+ */
+export interface AIMessage {
+  role: 'user' | 'assistant'
+  content: string | AIMessageContentPart[]
+}
+
+/**
+ * AI generation response
+ */
+export interface AIResponse {
+  content: string
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+  }
+}
+
+/**
+ * AI context interface
+ */
+export interface AIContext {
+  generate(options: AIGenerateOptions): Promise<AIResponse>
 }

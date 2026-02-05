@@ -2,7 +2,6 @@ import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";
-import { getOpenAIClient } from "@/features/ai/server/services/openai";
 import { buildCategoryMetadataPrompt, COMMON_LUCIDE_ICONS } from "@/features/ai/server/services/category-prompts";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -38,8 +37,6 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
         if (!input.categoryId) throw new Error("Missing categoryId");
         if (!input.categoryName) throw new Error("Missing categoryName");
 
-        const client = getOpenAIClient();
-
         const prompt = buildCategoryMetadataPrompt(
             input.categoryName,
             input.existingCategories,
@@ -47,7 +44,14 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
         );
 
         try {
-            const { content } = await client.generateContent(prompt, []);
+            // Use context.ai instead of direct OpenAI client
+            // Use a cheaper model since this is text-only
+            const { content } = await context.ai.generate({
+                prompt,
+                messages: [{ role: 'user', content: 'Generate the category metadata as specified.' }],
+                model: 'gpt-4o-mini', // Cheaper model for text-only task
+                responseFormat: 'json_object',
+            });
 
             // Basic JSON extraction
             const jsonStart = content.indexOf('{');

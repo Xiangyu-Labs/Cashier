@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { createAIContext } from './ai-context'
 import type {
   FlowContext,
   FlowEngine,
@@ -52,6 +53,15 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     // Token usage accumulator (by model)
     const tokenUsage: Record<string, { input: number; output: number }> = {}
 
+    // Token reporter function (shared between context and AI context)
+    const reportTokens = (usage: TokenUsage) => {
+      if (!tokenUsage[usage.model]) {
+        tokenUsage[usage.model] = { input: 0, output: 0 }
+      }
+      tokenUsage[usage.model].input += usage.input
+      tokenUsage[usage.model].output += usage.output
+    }
+
     // Update status to running
     await config.storage.update(taskId, { status: 'running' })
 
@@ -60,16 +70,12 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       taskId,
       ledgerId,
       signal,
-      reportTokens: (usage: TokenUsage) => {
-        if (!tokenUsage[usage.model]) {
-          tokenUsage[usage.model] = { input: 0, output: 0 }
-        }
-        tokenUsage[usage.model].input += usage.input
-        tokenUsage[usage.model].output += usage.output
-      },
+      reportTokens,
       updateProgress: async (message: string) => {
         await config.storage.update(taskId, { progress: message })
       },
+      // AI capabilities with automatic token reporting
+      ai: createAIContext(signal, reportTokens),
     }
 
     try {

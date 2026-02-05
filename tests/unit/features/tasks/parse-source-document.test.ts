@@ -3,49 +3,62 @@ import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocume
 import { getTestDb } from "../../../setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { FlowContext } from "@/lib/flow";
+import { FlowContext, AIContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
-// Mock the processor and utils
-vi.mock("@/features/ai/server/services/processor", () => ({
-    getSourceDocumentProcessor: vi.fn(),
-}));
-
-
-
+// Mock the arbitration module
 vi.mock("@/features/ai/server/services/arbitration", () => ({
     arbitrate: vi.fn(),
 }));
 
-import { getSourceDocumentProcessor } from "@/features/ai/server/services/processor";
-
 import { arbitrate } from "@/features/ai/server/services/arbitration";
 
+// Helper to create mock AI context
+function createMockAI(responses: Array<{ content: string }>): AIContext {
+    let callIndex = 0;
+    return {
+        generate: vi.fn().mockImplementation(() => {
+            const response = responses[callIndex] || responses[responses.length - 1];
+            callIndex++;
+            return Promise.resolve(response);
+        }),
+    };
+}
+
+// Helper to create a valid AI response
+function createAIResponse(entries: Array<{ itemName: string; amount: number; currency: string; category: string; entryDate: string }>, isValid = true, title?: string) {
+    return JSON.stringify({
+        is_valid: isValid,
+        title,
+        ledger_entries: entries.map(e => ({
+            item_name: e.itemName,
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+            entry_date: e.entryDate,
+            notes: null,
+        })),
+    });
+}
+
 describe("parseSourceDocumentHandler.execute", () => {
-    let mockProcessor: { process: ReturnType<typeof vi.fn> };
     let sourceDocId: string;
     let categoryId: string;
     let currentLedgerId: string;
 
     beforeEach(async () => {
         vi.clearAllMocks();
-        mockProcessor = {
-            process: vi.fn(),
-        };
-        // Mock processor to return identical results for dual call by default
-        vi.mocked(getSourceDocumentProcessor).mockReturnValue(mockProcessor as unknown as ReturnType<typeof getSourceDocumentProcessor>);
 
         // Setup real DB data
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
         currentLedgerId = ledgerId;
-        const ledger = { id: ledgerId };
         const [sourceDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: ledger.id,
+            ledgerId,
             status: "processing"
         }).returning();
         const [category] = await db.insert(entryCategories).values({
-            ledgerId: ledger.id,
+            ledgerId,
             name: "Food",
             description: "Food stuff"
         }).returning();
@@ -54,8 +67,8 @@ describe("parseSourceDocumentHandler.execute", () => {
         categoryId = category.id;
     });
 
-    it("should pass settings and preferredCurrencies correctly to the processor", async () => {
-        const _input: ParseSourceDocumentInput = {
+    it("should parse entries using context.ai and return results", async () => {
+        const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             aiLanguage: "en-US",
@@ -65,32 +78,26 @@ describe("parseSourceDocumentHandler.execute", () => {
             }
         };
 
-        mockProcessor.process.mockResolvedValue({
-            ledgerEntries: [
-                { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }
-            ],
-            isValid: true,
-            title: "Test Title"
-        });
+        const aiResponse = createAIResponse([
+            { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }
+        ], true, "Test Title");
+
+        const mockAI = createMockAI([{ content: aiResponse }, { content: aiResponse }]);
 
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(_input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
-        expect(mockProcessor.process).toHaveBeenCalledWith(
-            expect.anything(),
-            expect.objectContaining({
-                categories: _input.categories,
-                aiLanguage: "en-US",
-                preferredCurrencies: ["USD"],
-            })
-        );
+        expect(mockAI.generate).toHaveBeenCalledTimes(2); // Dual GPT
         expect(result.ledgerEntries).toHaveLength(1);
         expect(result.title).toBe("Test Title");
+        expect(result.verificationStatus).toBe("passed");
     });
 
     it("should override entryDate if autoRecognizeDate is false", async () => {
@@ -102,49 +109,47 @@ describe("parseSourceDocumentHandler.execute", () => {
             }
         };
 
-        mockProcessor.process.mockResolvedValue({
-            ledgerEntries: [
-                { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2020-01-01" }
-            ],
-            isValid: true
-        });
+        const aiResponse = createAIResponse([
+            { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2020-01-01" }
+        ]);
+
+        const mockAI = createMockAI([{ content: aiResponse }, { content: aiResponse }]);
 
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
         const today = new Date().toISOString().split("T")[0];
         expect(result.ledgerEntries[0].entryDate).toBe(today);
     });
 
-
-
-    it("should return empty ledgerEntries if isValid is false", async () => {
+    it("should return invalid status if isValid is false", async () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-
                 autoRecognizeDate: true,
             }
         };
 
-        mockProcessor.process.mockResolvedValue({
-            ledgerEntries: [],
-            isValid: false
-        });
+        const aiResponse = createAIResponse([], false);
+        const mockAI = createMockAI([{ content: aiResponse }, { content: aiResponse }]);
 
         const context = {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
         expect(result.ledgerEntries).toHaveLength(0);
         expect(result.verificationStatus).toBe("invalid");
@@ -155,21 +160,15 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-
                 autoRecognizeDate: true,
             }
         };
 
         // First call returns 10, second call returns 15 (mismatch)
-        mockProcessor.process
-            .mockResolvedValueOnce({
-                ledgerEntries: [{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
-                isValid: true
-            })
-            .mockResolvedValueOnce({
-                ledgerEntries: [{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
-                isValid: true
-            });
+        const response1 = createAIResponse([{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }]);
+        const response2 = createAIResponse([{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }]);
+
+        const mockAI = createMockAI([{ content: response1 }, { content: response2 }]);
 
         // Arbitration chooses result 1
         vi.mocked(arbitrate).mockResolvedValue({ choice: 1 });
@@ -178,13 +177,15 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
-        expect(arbitrate).toHaveBeenCalledWith("total_mismatch", expect.anything(), expect.anything(), undefined, undefined, undefined, undefined);
+        expect(arbitrate).toHaveBeenCalledWith("total_mismatch", expect.anything(), expect.anything(), undefined, undefined, undefined, undefined, mockAI);
         expect(result.verificationStatus).toBe("passed");
-        expect(result.ledgerEntries[0].amount).toBe(10); // First result chosen
+        expect(result.ledgerEntries[0].amount).toBe(10);
     });
 
     it("should return anomaly when arbitration determines genuine ambiguity", async () => {
@@ -192,20 +193,14 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-
                 autoRecognizeDate: true,
             }
         };
 
-        mockProcessor.process
-            .mockResolvedValueOnce({
-                ledgerEntries: [{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
-                isValid: true
-            })
-            .mockResolvedValueOnce({
-                ledgerEntries: [{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }],
-                isValid: true
-            });
+        const response1 = createAIResponse([{ itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01" }]);
+        const response2 = createAIResponse([{ itemName: "Lunch", amount: 15, currency: "USD", category: "Food", entryDate: "2024-01-01" }]);
+
+        const mockAI = createMockAI([{ content: response1 }, { content: response2 }]);
 
         // Arbitration says it's genuinely ambiguous
         vi.mocked(arbitrate).mockResolvedValue({ choice: 0, reason: "Amount unclear in receipt" });
@@ -214,9 +209,11 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
         expect(result.verificationStatus).toBe("anomaly");
         expect(result.anomalyReason).toBe("Amount unclear in receipt");
@@ -228,18 +225,15 @@ describe("parseSourceDocumentHandler.execute", () => {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {
-
                 autoRecognizeDate: true,
             }
         };
 
-        mockProcessor.process.mockResolvedValue({
-            ledgerEntries: [
-                { itemName: "Lunch", amount: 10, currency: "unknown", category: "Food", entryDate: "2024-01-01" }
-            ],
-            isValid: true,
-            title: "Test Title"
-        });
+        const aiResponse = createAIResponse([
+            { itemName: "Lunch", amount: 10, currency: "unknown", category: "Food", entryDate: "2024-01-01" }
+        ], true, "Test Title");
+
+        const mockAI = createMockAI([{ content: aiResponse }, { content: aiResponse }]);
 
         // Arbitration chooses result 1 and provides currency
         vi.mocked(arbitrate).mockResolvedValue({ choice: 1, currency: "CNY" });
@@ -248,11 +242,13 @@ describe("parseSourceDocumentHandler.execute", () => {
             updateProgress: vi.fn(),
             ledgerId: currentLedgerId,
             signal: { aborted: false },
+            ai: mockAI,
+            reportTokens: vi.fn(),
         } as unknown as FlowContext;
 
-        const result = (await parseSourceDocumentHandler.execute(input, context)) as ParseSourceDocumentOutput;
+        const result = await parseSourceDocumentHandler.execute(input, context);
 
-        expect(arbitrate).toHaveBeenCalledWith("unknown_currency", expect.anything(), expect.anything(), undefined, undefined, undefined, undefined);
+        expect(arbitrate).toHaveBeenCalledWith("unknown_currency", expect.anything(), expect.anything(), undefined, undefined, undefined, undefined, mockAI);
         expect(result.verificationStatus).toBe("passed");
         expect(result.ledgerEntries[0].currency).toBe("CNY");
     });
@@ -263,14 +259,12 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const db = getTestDb();
 
         const { ledgerId } = await createTestUserWithLedger(db, `test-anomaly-${Date.now()}@example.com`, "Test Ledger");
-        const ledger = { id: ledgerId };
-        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: {
-
                 autoRecognizeDate: true
             }
         };
@@ -285,7 +279,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const context = {
             id: "task-1",
             type: "parse_source_document",
-            ledgerId: ledger.id,
+            ledgerId,
         };
 
         await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
@@ -308,15 +302,13 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const db = getTestDb();
 
         const { ledgerId } = await createTestUserWithLedger(db, `test-completed-${Date.now()}@example.com`, "Test Ledger");
-        const ledger = { id: ledgerId };
-        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId: ledger.id, status: "processing" }).returning();
-        const [category] = await db.insert(entryCategories).values({ ledgerId: ledger.id, name: "餐饮", description: "餐饮" }).returning();
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
+        const [category] = await db.insert(entryCategories).values({ ledgerId, name: "餐饮", description: "餐饮" }).returning();
 
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [{ id: category.id, name: "餐饮", description: "餐饮" }],
             settings: {
-
                 autoRecognizeDate: true
             }
         };
@@ -338,7 +330,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const context = {
             id: "task-2",
             type: "parse_source_document",
-            ledgerId: ledger.id,
+            ledgerId,
         };
 
         await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
@@ -362,11 +354,11 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, `idemp-${Date.now()}@example.com`, "Idemp Ledger");
         const [sourceDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: ledgerId,
+            ledgerId,
             status: "processing"
         }).returning();
 
-        const _input: ParseSourceDocumentInput = {
+        const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: { autoRecognizeDate: true }
@@ -389,19 +381,14 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const context = {
             id: "task-idempotent",
             type: "parse_source_document",
-            ledgerId: ledgerId,
-            input: {
-                sourceDocumentId: sourceDoc.id,
-                categories: [],
-                settings: { autoRecognizeDate: true }
-            },
+            ledgerId,
         };
 
         // 1. First call
-        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
+        await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
 
         // 2. Second call
-        await parseSourceDocumentHandler.onComplete!(output, (context as unknown as { input: ParseSourceDocumentInput }).input, context as unknown as FlowContext);
+        await parseSourceDocumentHandler.onComplete!(output, input, context as unknown as FlowContext);
 
         // 3. Verify
         const entries = await db.query.ledgerEntries.findMany({

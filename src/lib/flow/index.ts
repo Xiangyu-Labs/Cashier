@@ -21,6 +21,7 @@
 
 export * from './types'
 export { createFlowEngine } from './engine'
+export { createAIContext } from './ai-context'
 export { createDrizzleStorage } from './adapters/drizzle-storage'
 
 // ===== Default Cashier Instance =====

@@ -1,21 +1,37 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
-import { flowEngine } from "@/lib/flow";
+import { flowEngine, AIContext } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { eq } from "drizzle-orm";
-import * as processorModule from "@/features/ai/server/services/processor";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
-// Mock the processor
-const mockProcess = vi.fn();
-vi.spyOn(processorModule, "getSourceDocumentProcessor").mockReturnValue({
-    process: mockProcess
-} as ReturnType<typeof processorModule.getSourceDocumentProcessor>);
+// Mock ai-context to return controlled responses
+vi.mock("@/lib/flow/ai-context", () => ({
+    createAIContext: vi.fn(() => ({
+        generate: vi.fn(),
+    })),
+}));
+
+import { createAIContext } from "@/lib/flow/ai-context";
+
+// Helper to create a valid AI response
+function createAIResponse(entries: Array<{ amount: number; currency: string; itemName: string; category: string; entryDate: string }>) {
+    return JSON.stringify({
+        is_valid: true,
+        ledger_entries: entries.map(e => ({
+            item_name: e.itemName,
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+            entry_date: e.entryDate,
+            notes: null,
+        })),
+    });
+}
 
 describe("Auto-recognize Ledger Entry Time", () => {
     let ledgerId: string;
-
 
     beforeEach(async () => {
         // Clear DB
@@ -54,16 +70,17 @@ describe("Auto-recognize Ledger Entry Time", () => {
         const pastDate = "2023-01-01";
         const today = new Date().toISOString().split('T')[0];
 
-        mockProcess.mockResolvedValue({
-            rawResponse: "Bought food",
-            ledgerEntries: [{
-                amount: 100,
-                currency: "CNY",
-                itemName: "Lunch",
-                category: "Food",
-                entryDate: pastDate
-            }]
-        });
+        const aiResponse = createAIResponse([{
+            amount: 100,
+            currency: "CNY",
+            itemName: "Lunch",
+            category: "Food",
+            entryDate: pastDate
+        }]);
+
+        // Setup mock to return consistent responses for dual GPT
+        const mockGenerate = vi.fn().mockResolvedValue({ content: aiResponse });
+        vi.mocked(createAIContext).mockReturnValue({ generate: mockGenerate });
 
         // Insert Source Document
         const [sourceDocument] = await db.insert(sourceDocuments).values({
@@ -109,16 +126,17 @@ describe("Auto-recognize Ledger Entry Time", () => {
         // Mock AI response with a specific date in the past
         const pastDate = "2023-01-01";
 
-        mockProcess.mockResolvedValue({
-            rawResponse: "Bought food",
-            ledgerEntries: [{
-                amount: 100,
-                currency: "CNY",
-                itemName: "Lunch",
-                category: "Food",
-                entryDate: pastDate
-            }]
-        });
+        const aiResponse = createAIResponse([{
+            amount: 100,
+            currency: "CNY",
+            itemName: "Lunch",
+            category: "Food",
+            entryDate: pastDate
+        }]);
+
+        // Setup mock to return consistent responses for dual GPT
+        const mockGenerate = vi.fn().mockResolvedValue({ content: aiResponse });
+        vi.mocked(createAIContext).mockReturnValue({ generate: mockGenerate });
 
         // Insert Source Document
         const [sourceDocument2] = await db.insert(sourceDocuments).values({
