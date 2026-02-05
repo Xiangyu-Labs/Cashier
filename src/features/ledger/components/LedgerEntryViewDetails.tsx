@@ -12,9 +12,10 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { motion, AnimatePresence } from "framer-motion";
 import { EditableField } from "@/components/ui/editable-field";
-import { EditableDateField } from "@/components/ui/editable-date-field";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DateFilter } from "@/components/ui/date-filter";
+import { Calendar } from "lucide-react";
 
 // Types for pending changes
 export interface EntryPendingChanges {
@@ -121,13 +122,10 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
             <div className="flex-1 overflow-y-auto p-6 space-y-6 subtle-scrollbar">
                 {/* Header Info */}
                 <div className="flex items-start gap-4">
-                    {/* Category Icon - Clickable to change */}
-                    <EditableCategorySelect
-                        value={displayData.categoryId}
-                        categories={categories}
-                        onChange={(categoryId) => handleFieldChange("categoryId", categoryId)}
-                        className="h-16 w-16 rounded-2xl"
-                    />
+                    {/* Category Icon - Display only (editing is below) */}
+                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <CategoryIcon iconName={category?.icon} className="h-8 w-8 text-primary" />
+                    </div>
 
                     <div className="flex-1 space-y-2">
                         {/* Editable Item Name */}
@@ -142,11 +140,11 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                         {/* Editable Amount with Currency */}
                         <div className="mt-1">
                             <div className="flex items-baseline gap-2">
-                                {/* Currency Selector */}
+                                {/* Currency Selector - Always shows actual currency */}
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <button className="text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
-                                            {isDifferentCurrency ? mainCurrency : (displayData.currency === "unknown" ? "?" : displayData.currency)}
+                                            {displayData.currency === "unknown" ? "?" : displayData.currency}
                                             <ChevronDown className="h-3 w-3 opacity-50" />
                                         </button>
                                     </PopoverTrigger>
@@ -168,19 +166,20 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                                     </PopoverContent>
                                 </Popover>
 
-                                {/* Editable Amount */}
+                                {/* Editable Amount - Always edit original currency amount */}
                                 <EditableField
-                                    value={(isDifferentCurrency ? converted : displayData.amount).toFixed(2)}
+                                    value={displayData.amount.toFixed(2)}
                                     onChange={(v) => handleFieldChange("amount", parseFloat(v) || 0)}
                                     type="number"
                                     displayClassName="text-3xl font-bold text-primary"
-                                    inputClassName="text-2xl font-bold text-primary w-32"
+                                    inputClassName="text-3xl font-bold text-primary w-36"
                                 />
                             </div>
 
+                            {/* Show converted amount as reference when different currency */}
                             {isDifferentCurrency && (
                                 <p className="text-sm font-medium text-muted-foreground mt-0.5 opacity-80">
-                                    ≈ {displayData.currency} {displayData.amount.toFixed(2)}
+                                    ≈ {mainCurrency} {converted.toFixed(2)}
                                 </p>
                             )}
                         </div>
@@ -191,28 +190,35 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 <div className="rounded-lg border border-border bg-surface2/30 p-4 space-y-4">
                     {/* Date and Category */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Date - Editable */}
+                        {/* Date - Always editable (like tab filters) */}
                         <div className="flex items-center gap-2 min-w-0">
+                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
-                            <EditableDateField
-                                value={displayData.entryDate}
-                                onChange={(date) => handleFieldChange("entryDate", date)}
-                                locale={locale}
-                                className="flex-1 min-w-0 text-sm"
-                            />
+                            <div className="min-w-[120px]">
+                                <DateFilter
+                                    value={displayData.entryDate}
+                                    onChange={(date) => {
+                                        if (date) {
+                                            const y = date.getFullYear();
+                                            const m = String(date.getMonth() + 1).padStart(2, "0");
+                                            const d = String(date.getDate()).padStart(2, "0");
+                                            handleFieldChange("entryDate", `${y}-${m}-${d}`);
+                                        }
+                                    }}
+                                    size="sm"
+                                />
+                            </div>
                         </div>
 
-                        {/* Category Display */}
+                        {/* Category - Editable */}
                         <div className="flex items-center gap-2 min-w-0">
                             <span className="text-sm text-muted-foreground shrink-0">{t("category")}:</span>
-                            {category ? (
-                                <Badge variant="default" className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-none transition-colors">
-                                    <CategoryIcon iconName={category.icon} className="h-3 w-3 mr-1.5" />
-                                    {category.name}
-                                </Badge>
-                            ) : (
-                                <span className="text-sm text-muted-foreground italic">{t("noCategory")}</span>
-                            )}
+                            <EditableCategorySelect
+                                value={displayData.categoryId}
+                                categories={categories}
+                                onChange={(categoryId) => handleFieldChange("categoryId", categoryId)}
+                                placeholder={t("selectCategory")}
+                            />
                         </div>
                     </div>
 

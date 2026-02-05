@@ -60,10 +60,40 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     return Object.keys(pendingChanges).length > 0;
   }, [pendingChanges]);
 
-  // Handle field change
+  // Get original values for comparison
+  const getOriginalValue = useCallback((field: keyof EntryPendingChanges) => {
+    if (!ledgerEntry) return undefined;
+    switch (field) {
+      case "itemName": return ledgerEntry.itemName;
+      case "amount": return parseFloat(ledgerEntry.amount);
+      case "currency": return ledgerEntry.currency;
+      case "categoryId": return ledgerEntry.categoryId;
+      case "entryDate": return ledgerEntry.entryDate?.split("T")[0] || "";
+      case "description": return ledgerEntry.description;
+      default: return undefined;
+    }
+  }, [ledgerEntry]);
+
+  // Handle field change - only add to pending if value actually changed
   const handleFieldChange = useCallback((changes: EntryPendingChanges) => {
-    setPendingChanges(prev => ({ ...prev, ...changes }));
-  }, []);
+    setPendingChanges(prev => {
+      const next = { ...prev };
+      for (const [key, value] of Object.entries(changes)) {
+        const field = key as keyof EntryPendingChanges;
+        const originalValue = getOriginalValue(field);
+
+        // Compare values - if same as original, remove from pending
+        if (value === originalValue ||
+          (value === null && originalValue === null) ||
+          (typeof value === "number" && typeof originalValue === "number" && value === originalValue)) {
+          delete next[field];
+        } else {
+          (next as Record<string, unknown>)[field] = value;
+        }
+      }
+      return next;
+    });
+  }, [getOriginalValue]);
 
   // Handle save
   const handleSave = useCallback(() => {
@@ -92,8 +122,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
 
     onUpdate(updateData);
     setPendingChanges({});
-    toast.success(tCommon("saveSuccess"));
-  }, [ledgerEntry, pendingChanges, onUpdate, tCommon]);
+  }, [ledgerEntry, pendingChanges, onUpdate]);
 
   // Handle discard
   const handleDiscard = useCallback(() => {

@@ -147,7 +147,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                 <Popover>
                     <PopoverTrigger asChild>
                         <button className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5">
-                            {isDifferentCurrency ? mainCurrency : (displayData.currency || "?")}
+                            {displayData.currency || "?"}
                             <ChevronDown className="h-2.5 w-2.5 opacity-50" />
                         </button>
                     </PopoverTrigger>
@@ -170,7 +170,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                 </Popover>
 
                 <EditableField
-                    value={(isDifferentCurrency ? converted : parseFloat(displayData.amount)).toFixed(2)}
+                    value={parseFloat(displayData.amount).toFixed(2)}
                     onChange={(v) => handleChange("amount", v)}
                     type="number"
                     displayClassName="font-mono font-semibold text-sm text-text"
@@ -180,7 +180,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
 
             {isDifferentCurrency && (
                 <div className="text-[9px] text-muted-foreground font-mono opacity-60 shrink-0">
-                    ≈ {displayData.currency} {parseFloat(displayData.amount).toFixed(2)}
+                    ≈ {mainCurrency} {converted.toFixed(2)}
                 </div>
             )}
         </div>

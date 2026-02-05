@@ -5,10 +5,10 @@ import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, FileText, ImagePlay, Maximize2 } from "lucide-react";
+import { Wallet, FileText, ImagePlay, Maximize2, Calendar } from "lucide-react";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import { EditableField } from "@/components/ui/editable-field";
-import { EditableDateField } from "@/components/ui/editable-date-field";
+import { DateFilter } from "@/components/ui/date-filter";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -159,12 +159,21 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     <div className="shrink-0 flex items-center justify-between gap-2">
                         {/* Header with editable date */}
                         <div className="min-w-0 flex items-center gap-2">
-                            <EditableDateField
-                                value={displayEntryDate}
-                                onChange={(date) => onSourceDocChange({ entryDate: date })}
-                                locale={locale}
-                                className="text-[10px] md:text-xs text-muted-foreground font-medium"
-                            />
+                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-[120px]">
+                                <DateFilter
+                                    value={displayEntryDate}
+                                    onChange={(date: Date | null) => {
+                                        if (date) {
+                                            const y = date.getFullYear();
+                                            const m = String(date.getMonth() + 1).padStart(2, "0");
+                                            const d = String(date.getDate()).padStart(2, "0");
+                                            onSourceDocChange({ entryDate: `${y}-${m}-${d}` });
+                                        }
+                                    }}
+                                    size="sm"
+                                />
+                            </div>
                             <span className="text-muted-foreground/40">|</span>
                             <span className="text-muted-foreground/60 text-[10px] md:text-xs">
                                 {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {

@@ -127,24 +127,70 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         onClose()
     }, [onClose])
 
-    // Handle source doc field changes
+    // Handle source doc field changes - only add if value actually changed
     const handleSourceDocChange = useCallback((changes: SourceDocPendingChanges) => {
-        setPendingChanges(prev => ({
-            ...prev,
-            sourceDoc: { ...prev.sourceDoc, ...changes }
-        }))
-    }, [])
+        if (!sourceDocument) return
+        setPendingChanges(prev => {
+            const next = { ...prev.sourceDoc }
+            for (const [key, value] of Object.entries(changes)) {
+                const field = key as keyof SourceDocPendingChanges
+                let originalValue: string | undefined
+                if (field === "title") {
+                    originalValue = sourceDocument.title ?? ""
+                } else if (field === "entryDate") {
+                    originalValue = sourceDocument.entryDate?.split("T")[0] || ""
+                }
 
-    // Handle entry field changes
-    const handleEntryChange = useCallback((entryId: string, changes: Partial<EntryEditData>) => {
-        setPendingChanges(prev => ({
-            ...prev,
-            entries: {
-                ...prev.entries,
-                [entryId]: { ...prev.entries[entryId], ...changes }
+                if (value === originalValue) {
+                    delete next[field]
+                } else {
+                    (next as Record<string, string | undefined>)[field] = value
+                }
             }
-        }))
-    }, [])
+            return { ...prev, sourceDoc: next }
+        })
+    }, [sourceDocument])
+
+    // Handle entry field changes - only add if value actually changed
+    const handleEntryChange = useCallback((entryId: string, changes: Partial<EntryEditData>) => {
+        const entry = ledgerEntries?.find(e => e.id === entryId)
+        if (!entry) return
+
+        setPendingChanges(prev => {
+            const entryChanges = { ...prev.entries[entryId] }
+
+            for (const [key, value] of Object.entries(changes)) {
+                const field = key as keyof EntryEditData
+                let originalValue: string | number | null | undefined
+
+                switch (field) {
+                    case "itemName": originalValue = entry.itemName; break
+                    case "amount": originalValue = entry.amount; break
+                    case "currency": originalValue = entry.currency; break
+                    case "categoryId": originalValue = entry.categoryId; break
+                    case "description": originalValue = entry.description; break
+                    default: originalValue = undefined
+                }
+
+                if (value === originalValue) {
+                    delete entryChanges[field]
+                } else {
+                    (entryChanges as Record<string, unknown>)[field] = value
+                }
+            }
+
+            // If no changes left, remove the entry from pending
+            if (Object.keys(entryChanges).length === 0) {
+                const { [entryId]: _, ...rest } = prev.entries
+                return { ...prev, entries: rest }
+            }
+
+            return {
+                ...prev,
+                entries: { ...prev.entries, [entryId]: entryChanges }
+            }
+        })
+    }, [ledgerEntries])
 
     // Handle entry selection
     const handleSelectEntry = useCallback((entryId: string, selected: boolean) => {
@@ -269,7 +315,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         <FileText className="h-5 w-5" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-8">
                         <EditableField
                             value={displayTitle}
                             onChange={(v) => handleSourceDocChange({ title: v })}
