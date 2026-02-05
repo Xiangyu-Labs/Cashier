@@ -3,11 +3,13 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
-import { buildLedgerEntryPrompt } from "./parse-prompts";
-import { arbitrate } from "./parse-arbitration";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
-import { z } from "zod";
+
+// Import multi-stage executors
+import { executeStage1, type Stage1Input } from "./stage1-executor";
+import { executeStage1_5Validation } from "./stage1-5-validator";
+import { executeStage2 } from "./stage2-executor";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -32,134 +34,13 @@ export interface ParseSourceDocumentOutput {
     verificationStatus: 'passed' | 'anomaly' | 'invalid';
 }
 
-// ===== Schema for AI response validation =====
-const ledgerEntrySchema = z.object({
-    item_name: z.string().min(1, "Item name cannot be empty"),
-    amount: z.number().min(0, "Amount must be non-negative"),
-    currency: z.string().nullable().optional(),
-    category: z.string().min(1, "Category cannot be empty"),
-    entry_date: z.string().nullable(),
-    notes: z.string().nullable().optional(),
-});
-
-const aiResponseSchema = z.object({
-    ledger_entries: z.array(ledgerEntrySchema),
-    title: z.string().optional(),
-    is_valid: z.boolean(),
-});
-
-const VALID_CURRENCIES = new Set([
-    "USD", "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
-    "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
-    "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR"
-]);
-
-// ===== Helper: Parse AI response =====
-function parseAIResponse(
-    response: string,
-    allowedCategories: string[]
-): { ledgerEntries: ParsedLedgerEntry[], isValid: boolean, title?: string } {
-    // Robust JSON extraction: look for the first { and last }
-    const jsonStart = response.indexOf('{');
-    const jsonEnd = response.lastIndexOf('}');
-
-    let cleaned = response;
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-        cleaned = response.substring(jsonStart, jsonEnd + 1);
-    } else {
-        cleaned = response.replace(/^```(?:json)?|```$/g, "").trim();
-    }
-
-    const parsed = JSON.parse(cleaned);
-    const validated = aiResponseSchema.parse(parsed);
-
-    if (validated.is_valid === false) {
-        return { ledgerEntries: [], isValid: false };
-    }
-
-    const ledgerEntries = validated.ledger_entries.map((t, index) => {
-        if (!t.category || !allowedCategories.includes(t.category)) {
-            throw new Error(`Entry #${index + 1}: Invalid or missing category "${t.category}". Must be one of: ${allowedCategories.join(", ")}`);
-        }
-
-        const currency = t.currency || "unknown";
-        if (currency !== "unknown" && !VALID_CURRENCIES.has(currency.toUpperCase())) {
-            throw new Error(`Entry #${index + 1}: Invalid currency code "${currency}"`);
-        }
-
-        return {
-            itemName: t.item_name,
-            amount: t.amount,
-            currency: currency,
-            category: t.category,
-            entryDate: t.entry_date,
-            notes: t.notes || null,
-        };
-    });
-
-    return { ledgerEntries, isValid: true, title: validated.title };
-}
-
-// ===== Helper: Verify amounts between two results =====
-function verifyAmounts(
-    entries1: ParsedLedgerEntry[],
-    entries2: ParsedLedgerEntry[]
-): boolean {
-    const groupTotals = (entries: ParsedLedgerEntry[]) => {
-        const map = new Map<string, number>();
-        for (const e of entries) {
-            const key = `${e.currency}|${e.entryDate || 'null'}`;
-            const current = map.get(key) || 0;
-            map.set(key, Math.round((current + e.amount) * 100) / 100);
-        }
-        return map;
-    };
-
-    const totals1 = groupTotals(entries1);
-    const totals2 = groupTotals(entries2);
-
-    if (totals1.size !== totals2.size) return false;
-
-    for (const [key, sum1] of totals1) {
-        const sum2 = totals2.get(key);
-        if (sum2 === undefined) return false;
-        if (Math.abs(sum1 - sum2) > 0.001) return false;
-    }
-    return true;
-}
-
-// ===== Helper: Build message content for AI =====
-function buildMessageContent(
-    text?: string,
-    imageUrls?: string[]
-): Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> {
-    const content: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
-
-    if (text) {
-        content.push({ type: "text", text });
-    }
-
-    if (imageUrls && imageUrls.length > 0) {
-        imageUrls.forEach(url => {
-            // Handle both base64 and URL formats
-            const imageUrl = url.startsWith("data:")
-                ? url
-                : url.startsWith("http")
-                    ? url
-                    : `data:image/jpeg;base64,${url}`;
-            content.push({ type: "image_url", image_url: { url: imageUrl } });
-        });
-    }
-
-    if (content.length === 0) {
-        content.push({ type: "text", text: "（无输入内容）" });
-    }
-
-    return content;
-}
-
 /**
  * Parse Source Document Task Handler
+ * 
+ * Multi-stage architecture:
+ * - Stage 1: Pre-analysis (validity, currency, category, title, user rules)
+ * - Stage 1.5: Validation (veto power + consolidation)
+ * - Stage 2: Detailed parsing (extract ledger entries)
  */
 export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
@@ -182,149 +63,106 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             .set({ status: 'processing' })
             .where(q.whereId(input.sourceDocumentId));
 
-        // ===== Stage 1: Dual GPT Processing (parallel) =====
-        await updateProgress('正在识别图片...');
+        // ===== Stage 1: Pre-Analysis =====
+        await updateProgress('正在预分析...');
 
-        // Check for cancellation before heavy operation
         if (signal.aborted) {
             throw new Error('Task cancelled');
         }
 
-        const now = new Date();
-        const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const systemPrompt = buildLedgerEntryPrompt(
-            input.categories,
-            input.aiLanguage,
-            currentDate,
-            input.preferredCurrencies,
-            input.settings.aiCustomPrompt
-        );
-
-        const messageContent = buildMessageContent(input.text, input.imageUrls);
-        const allowedCategories = input.categories.map(c => c.name);
-
-        // Parallel execution - dual GPT for verification
-        const [rawResult1, rawResult2] = await Promise.all([
-            ai.generate({
-                prompt: systemPrompt,
-                messages: [{ role: 'user', content: messageContent }],
-                responseFormat: 'json_object',
-            }),
-            ai.generate({
-                prompt: systemPrompt,
-                messages: [{ role: 'user', content: messageContent }],
-                responseFormat: 'json_object',
-            }),
-        ]);
-        // Token usage is automatically reported by context.ai
-
-        // Parse responses - errors propagate to onError
-        const result1 = parseAIResponse(rawResult1.content, allowedCategories);
-        const result2 = parseAIResponse(rawResult2.content, allowedCategories);
-
-        // Helper to apply date override
-        const applyDateOverride = (entries: ParsedLedgerEntry[]) => {
-            if (input.settings.autoRecognizeDate) return entries;
-            const nowLocal = new Date();
-            const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
-            return entries.map(entry => ({ ...entry, entryDate: today }));
+        const stage1Input: Stage1Input = {
+            text: input.text,
+            imageUrls: input.imageUrls,
+            aiLanguage: input.aiLanguage,
+            preferredCurrencies: input.preferredCurrencies,
+            categories: input.categories.map(c => ({ name: c.name, description: null })),
+            aiCustomPrompt: input.settings.aiCustomPrompt,
         };
 
-        const title = result1.title;
-        let entries1 = applyDateOverride(result1.ledgerEntries);
-        let entries2 = applyDateOverride(result2.ledgerEntries);
+        const stage1Result = await executeStage1(stage1Input, ai, signal);
 
-        // 1. Check validity
-        if (result1.isValid === false) {
-            return { ledgerEntries: [], title, verificationStatus: 'invalid' };
+        // Check validity from Stage 1
+        if (!stage1Result.isValid) {
+            logger.info({ docId: input.sourceDocumentId }, "Stage 1: Document invalid");
+            return { ledgerEntries: [], verificationStatus: 'invalid' };
         }
 
-        // ===== Stage 2: Handle unknown currency =====
-        if (entries1.some(e => e.currency === "unknown")) {
-            await updateProgress('正在识别币种...');
+        // ===== Stage 1.5: Validation =====
+        await updateProgress('正在校验预分析结果...');
 
-            if (signal.aborted) {
-                throw new Error('Task cancelled');
-            }
-
-            logger.info({ docId: input.sourceDocumentId }, "Unknown currency detected, invoking arbitration");
-
-            const arbitrationResult = await arbitrate(
-                "unknown_currency",
-                entries1,
-                entries2,
-                input.text,
-                input.aiLanguage,
-                input.imageUrls,
-                input.preferredCurrencies,
-                ai
-            );
-
-            if (arbitrationResult.choice === 0) {
-                return {
-                    ledgerEntries: [],
-                    title,
-                    anomalyReason: arbitrationResult.reason || "无法识别币种",
-                    verificationStatus: 'anomaly'
-                };
-            }
-
-            let chosenEntries = arbitrationResult.choice === 2 ? entries2 : entries1;
-
-            if (arbitrationResult.currency) {
-                logger.info({ currency: arbitrationResult.currency }, "Arbitration resolved unknown currency");
-                const fixedCurrency = arbitrationResult.currency;
-                entries1 = entries1.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
-                entries2 = entries2.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
-                chosenEntries = chosenEntries.map(e => e.currency === "unknown" ? { ...e, currency: fixedCurrency } : e);
-            }
-
-            entries1 = chosenEntries;
+        if (signal.aborted) {
+            throw new Error('Task cancelled');
         }
 
-        // ===== Stage 3: Verification / Arbitration =====
-        if (!verifyAmounts(entries1, entries2)) {
-            await updateProgress('正在校验结果...');
+        const validationResult = await executeStage1_5Validation({
+            text: input.text,
+            imageUrls: input.imageUrls,
+            aiLanguage: input.aiLanguage,
+            stage1Results: stage1Result.results,
+        }, ai);
 
-            if (signal.aborted) {
-                throw new Error('Task cancelled');
-            }
+        // Check if validation passed
+        if (!validationResult.is_reasonable) {
+            logger.info({
+                docId: input.sourceDocumentId,
+                reason: validationResult.rejection_reason
+            }, "Stage 1.5: Validation rejected");
+            return {
+                ledgerEntries: [],
+                anomalyReason: validationResult.rejection_reason || "预分析结果不合理",
+                verificationStatus: 'anomaly'
+            };
+        }
+
+        // ===== Stage 2: Detailed Parsing =====
+        await updateProgress('正在详细解析...');
+
+        if (signal.aborted) {
+            throw new Error('Task cancelled');
+        }
+
+        try {
+            const stage2Result = await executeStage2({
+                text: input.text,
+                imageUrls: input.imageUrls,
+                aiLanguage: input.aiLanguage,
+                validationSummary: validationResult,
+                autoRecognizeDate: input.settings.autoRecognizeDate,
+            }, ai);
+
+            // Convert Stage 2 entries to ParsedLedgerEntry format
+            const ledgerEntriesResult: ParsedLedgerEntry[] = stage2Result.entries.map(entry => ({
+                itemName: entry.item_name,
+                amount: entry.amount,
+                currency: entry.currency,
+                category: entry.category,
+                entryDate: entry.entry_date,
+                notes: entry.notes,
+            }));
 
             logger.info({
-                ledgerId,
                 docId: input.sourceDocumentId,
-            }, "Dual GPT verification failed, invoking arbitration");
+                entryCount: ledgerEntriesResult.length,
+                wasArbitrated: stage2Result.wasArbitrated,
+            }, "Stage 2: Parsing completed");
 
-            const arbitrationResult = await arbitrate(
-                "total_mismatch",
-                entries1,
-                entries2,
-                input.text,
-                input.aiLanguage,
-                input.imageUrls,
-                input.preferredCurrencies,
-                ai
-            );
-
-            if (arbitrationResult.choice === 0) {
+            return {
+                ledgerEntries: ledgerEntriesResult,
+                title: stage2Result.title,
+                verificationStatus: 'passed'
+            };
+        } catch (error) {
+            // Handle Stage 2 arbitration failure
+            if (error instanceof Error && error.message.includes('STAGE2_ARBITRATION_FAILED')) {
+                logger.info({ docId: input.sourceDocumentId }, "Stage 2: Arbitration failed");
                 return {
                     ledgerEntries: [],
-                    title,
-                    anomalyReason: arbitrationResult.reason || "账单金额存在歧义",
+                    anomalyReason: "解析结果存在分歧",
                     verificationStatus: 'anomaly'
                 };
             }
-
-            entries1 = arbitrationResult.choice === 1 ? entries1 : entries2;
-            logger.info({ choice: arbitrationResult.choice }, "Arbitration resolved - using chosen result");
+            throw error;
         }
-
-        // Passed all checks
-        return {
-            ledgerEntries: entries1,
-            title,
-            verificationStatus: 'passed'
-        };
     },
 
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
@@ -381,6 +219,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
 
+            // Use local date if entryDate is missing
+            const now = new Date();
+            const fallbackDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
             return {
                 ledgerId: ledgerId!,
                 categoryId,
@@ -389,7 +231,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 currency: entry.currency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
-                entryDate: entry.entryDate || new Date().toISOString().split('T')[0],
+                entryDate: entry.entryDate || fallbackDate,
             };
         });
 
@@ -422,7 +264,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
         let anomalyCode = "internal_error";
-        if (error.message.includes("schema validation failed") || error.message.includes("Invalid content")) {
+        if (error.message.includes("ARBITRATION_FAILED")) {
+            anomalyCode = "evidence_anomaly";
+        } else if (error.message.includes("schema validation failed") || error.message.includes("Invalid content")) {
             anomalyCode = "invalid_content";
         }
 
