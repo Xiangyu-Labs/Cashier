@@ -89,14 +89,23 @@ This significantly reduces "silent failures" where an LLM confidently outputs wr
 The parsing pipeline is being refactored into multiple specialized stages for improved accuracy:
 
 ### Stage 1: Pre-Analysis (Parallel)
-Uses `gemini-2.0-flash` for fast, parallel pre-checks:
-- **1.1 Validity Check**: Is this a valid financial document?
-- **1.2 Currency Recognition**: What currencies are present?
-- **1.3 Category Recognition**: What expense categories are involved?
-- **1.4 Title Extraction**: Generate a descriptive title
-- **1.5 User Requirements**: Parse custom user rules (if any)
+Uses `gemini-3-flash` for fast, parallel pre-checks:
+- **1.1 Validity Check**: Is this a valid financial document? (Dual GPT)
+- **1.2 Completeness Check**: Is the content complete, with no obvious missing/unreadable areas?
+- **1.3 Currency Recognition**: What currencies are present? (Dual GPT)
+- **1.4 Category Recognition**: What expense categories are involved? (Dual GPT)
+- **1.5 Title Extraction**: Generate a descriptive title
+- **1.6 User Requirements**: Parse custom user rules (if any)
 
-Each sub-task uses Dual GPT + Arbitration for accuracy.
+The completeness check detects obvious issues like:
+- Truncated text/images at edges
+- Blurred or obscured areas
+- Missing amounts in table rows
+- Partial/incomplete documents
+
+If document is incomplete → Return anomaly early, skip Stage 2.
+
+Each sub-task (except single-GPT tasks) uses Dual GPT + Arbitration for accuracy.
 
 **Files:**
 - `stage1-prompts.ts` - Prompt builders

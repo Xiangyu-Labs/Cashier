@@ -11,6 +11,11 @@ export interface ValidityCheckOutput {
     reasoning: string;
 }
 
+export interface CompletenessCheckOutput {
+    is_complete: boolean;
+    issue?: string;
+}
+
 export interface CurrencyRecognitionInput {
     text?: string;
     imageUrls?: string[];

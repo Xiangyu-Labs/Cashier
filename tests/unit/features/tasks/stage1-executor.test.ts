@@ -47,6 +47,8 @@ describe("Stage 1 Executor", () => {
                 // Validity check (dual GPT)
                 '{"is_valid": true, "reasoning": "识别到金额45元"}',
                 '{"is_valid": true, "reasoning": "识别到金额45元"}',
+                // Completeness check (single GPT)
+                '{"is_complete": true}',
                 // Currency (dual GPT)
                 '{"currencies": ["CNY"], "reasoning": "金额前有元符号"}',
                 '{"currencies": ["CNY"], "reasoning": "金额前有元符号"}',
@@ -60,7 +62,7 @@ describe("Stage 1 Executor", () => {
             const result = await executeStage1(baseInput, mockAI);
 
             expect(result.isValid).toBe(true);
-            if (result.isValid) {
+            if (result.isValid && !result.isIncomplete) {
                 expect(result.results.validity.is_valid).toBe(true);
                 expect(result.results.currency.currencies).toEqual(["CNY"]);
                 expect(result.results.category.categories).toEqual(["餐饮"]);
@@ -75,6 +77,7 @@ describe("Stage 1 Executor", () => {
             const mockAI = createMockAI([
                 '{"is_valid": true, "reasoning": "GPT1 reasoning"}',
                 '{"is_valid": true, "reasoning": "GPT2 reasoning"}',
+                '{"is_complete": true}',
                 '{"currencies": ["CNY"], "reasoning": "GPT1 currency reason"}',
                 '{"currencies": ["CNY"], "reasoning": "GPT2 currency reason"}',
                 '{"categories": ["餐饮"], "reasoning": "agreed"}',
@@ -85,7 +88,7 @@ describe("Stage 1 Executor", () => {
             const result = await executeStage1(baseInput, mockAI);
 
             expect(result.isValid).toBe(true);
-            if (result.isValid) {
+            if (result.isValid && !result.isIncomplete) {
                 // Should use GPT1's reasoning
                 expect(result.results.currency.reasoning).toBe("GPT1 currency reason");
             }
@@ -102,6 +105,9 @@ describe("Stage 1 Executor", () => {
 
                     if (prompt.includes("financial document validation")) {
                         return { content: '{"is_valid": true, "reasoning": "valid"}', usage: { promptTokens: 100, completionTokens: 50 } };
+                    }
+                    if (prompt.includes("completeness checker")) {
+                        return { content: '{"is_complete": true}', usage: { promptTokens: 100, completionTokens: 50 } };
                     }
                     if (prompt.includes("currency recognition")) {
                         currencyCallCount++;
@@ -127,7 +133,7 @@ describe("Stage 1 Executor", () => {
             const result = await executeStage1(baseInput, mockAI);
 
             expect(result.isValid).toBe(true);
-            if (result.isValid) {
+            if (result.isValid && !result.isIncomplete) {
                 expect(result.results.currency.currencies).toEqual(["CNY"]);
             }
         });
@@ -140,6 +146,9 @@ describe("Stage 1 Executor", () => {
 
                     if (prompt.includes("financial document validation")) {
                         return { content: '{"is_valid": true, "reasoning": "valid"}', usage: { promptTokens: 100, completionTokens: 50 } };
+                    }
+                    if (prompt.includes("completeness checker")) {
+                        return { content: '{"is_complete": true}', usage: { promptTokens: 100, completionTokens: 50 } };
                     }
                     if (prompt.includes("currency recognition")) {
                         currencyCallCount++;
@@ -171,6 +180,7 @@ describe("Stage 1 Executor", () => {
             const mockAI = createMockAI([
                 '{"is_valid": true, "reasoning": "valid"}',
                 '{"is_valid": true, "reasoning": "valid"}',
+                '{"is_complete": true}',
                 '{"currencies": ["CNY"], "reasoning": "r"}',
                 '{"currencies": ["CNY"], "reasoning": "r"}',
                 '{"categories": ["餐饮"], "reasoning": "r"}',
@@ -181,7 +191,7 @@ describe("Stage 1 Executor", () => {
             const result = await executeStage1({ ...baseInput, aiCustomPrompt: "" }, mockAI);
 
             expect(result.isValid).toBe(true);
-            if (result.isValid) {
+            if (result.isValid && !result.isIncomplete) {
                 expect(result.results.userRequirements).toBeUndefined();
             }
         });
@@ -190,6 +200,7 @@ describe("Stage 1 Executor", () => {
             const mockAI = createMockAI([
                 '{"is_valid": true, "reasoning": "valid"}',
                 '{"is_valid": true, "reasoning": "valid"}',
+                '{"is_complete": true}',
                 '{"currencies": ["CNY"], "reasoning": "r"}',
                 '{"currencies": ["CNY"], "reasoning": "r"}',
                 '{"categories": ["餐饮"], "reasoning": "r"}',
@@ -204,7 +215,7 @@ describe("Stage 1 Executor", () => {
             );
 
             expect(result.isValid).toBe(true);
-            if (result.isValid) {
+            if (result.isValid && !result.isIncomplete) {
                 expect(result.results.userRequirements).toBeDefined();
                 expect(result.results.userRequirements?.rules).toEqual(["合并餐饮项目"]);
             }

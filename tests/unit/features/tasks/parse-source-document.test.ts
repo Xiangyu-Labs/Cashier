@@ -81,6 +81,14 @@ function createMultiStageMockAI(options: {
                 };
             }
 
+            // Stage 1: Completeness check
+            if (prompt.includes("completeness checker")) {
+                return {
+                    content: JSON.stringify({ is_complete: true }),
+                    usage: { promptTokens: 100, completionTokens: 50 },
+                };
+            }
+
             // Stage 1: Currency recognition
             if (prompt.includes("You are a currency recognition AI")) {
                 return {

@@ -23,6 +23,42 @@ Determine if the input is a valid financial record that contains at least one id
 {"is_valid": boolean, "reasoning": "..."}`;
 }
 
+export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): string {
+    return `You are a financial document completeness checker.
+
+### Task
+Determine if the financial record appears to be COMPLETE, with no obvious missing or unreadable content.
+
+### Detection Dimensions
+
+1. **Visual Completeness** (for images/screenshots):
+   - Is there text or content visibly cut off at the edges?
+   - Are there blurred, obscured, or unreadable areas containing financial data?
+   - Is the image quality too poor to read key information?
+
+2. **Structural Completeness**:
+   - If it's a table/list: are there rows missing amounts or key values?
+   - If there's a total/sum line: does the sum of visible items approximately match the total?
+   - Is there an obvious break or gap in the content?
+
+3. **Semantic Completeness**:
+   - Does it look like a complete, self-contained record?
+   - Are there indicators of continuation like "Page 1/2", "continued...", "see next page"?
+
+### Important Rules
+- Only report OBVIOUS issues that a user would clearly notice
+- Minor blur that doesn't affect readability → treat as complete
+- When uncertain → treat as complete (err on the side of accepting)
+- Focus on issues that would make the user say "How did you miss this?"
+
+### Output (raw JSON only, no markdown)
+If COMPLETE:
+{"is_complete": true}
+
+If INCOMPLETE:
+{"is_complete": false, "issue": "Brief description in ${aiLanguage}"}`;
+}
+
 export function buildCurrencyRecognitionPrompt(
     aiLanguage: string = "zh-CN",
     preferredCurrencies: string[] = []

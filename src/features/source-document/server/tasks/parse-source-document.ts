@@ -95,6 +95,19 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return { ledgerEntries: [], verificationStatus: 'invalid' };
         }
 
+        // Check completeness from Stage 1 - detect obvious missing content
+        if (stage1Result.isIncomplete) {
+            logger.info({
+                docId: input.sourceDocumentId,
+                reason: stage1Result.incompleteReason,
+            }, "Stage 1: Document incomplete");
+            return {
+                ledgerEntries: [],
+                anomalyReason: stage1Result.incompleteReason || "内容不完整",
+                verificationStatus: 'anomaly'
+            };
+        }
+
         // Check for unknown currency from Stage 1 - intercept early
         const currencies = stage1Result.results.currency.currencies;
         const hasUnknownCurrency = currencies.some(c =>
