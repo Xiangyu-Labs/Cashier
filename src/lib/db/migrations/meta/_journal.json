@@ -29,6 +29,13 @@
       "when": 1770281712302,
       "tag": "0003_glorious_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1770295792522,
+      "tag": "0004_curious_harrier",
+      "breakpoints": true
     }
   ]
 }

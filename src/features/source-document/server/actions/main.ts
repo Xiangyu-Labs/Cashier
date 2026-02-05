@@ -84,11 +84,13 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
         const q = forLedger(sourceDocuments, ledgerId);
 
         // Save source document with 'queued' status
+        const today = new Date().toISOString().split('T')[0]; // yyyy-MM-dd format
         const [savedDoc] = await db.insert(sourceDocuments).values({
             ledgerId: ledgerId, // Explicitly set ledgerId
             text: text || null,
             imageUrls: [], // Will update after normalized
             status: "queued",
+            entryDate: today,
         }).returning();
 
         const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
@@ -188,9 +190,9 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
 }
 
 /**
- * Update source document metadata (e.g. title)
+ * Update source document metadata (e.g. title, entryDate)
  */
-export async function updateSourceDocumentAction(ledgerId: string, sourceId: string, data: { title: string }) {
+export async function updateSourceDocumentAction(ledgerId: string, sourceId: string, data: { title?: string; entryDate?: string }) {
     try {
         const { error } = await requireLedgerAccess(ledgerId);
         if (error) throw new Error("Unauthorized");

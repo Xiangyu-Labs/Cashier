@@ -40,6 +40,7 @@ erDiagram
         enum status "queued, processing, completed, anomaly"
         text text
         string[] image_urls
+        date entry_date
         jsonb anomaly_codes
         timestamp created_at
         timestamp deleted_at

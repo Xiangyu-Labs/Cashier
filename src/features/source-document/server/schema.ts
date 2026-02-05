@@ -31,6 +31,7 @@ export const sourceDocuments = sqliteTable("source_documents", {
     status: text("status").notNull().default("queued"),
     anomalyReason: text("anomaly_reason"),  // 异常原因（直接显示给用户）
     progressMessage: text("progress_message"),  // 处理进度（如"正在预分析..."）
+    entryDate: text("entry_date"),  // 交易日期 yyyy-MM-dd 格式
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),

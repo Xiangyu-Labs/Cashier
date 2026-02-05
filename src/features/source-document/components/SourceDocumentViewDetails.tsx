@@ -131,7 +131,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground font-medium">
                                 <Calendar className="h-3 w-3 text-primary/60" />
                                 <span>
-                                    {new Date(ledgerEntries[0]?.entryDate || sourceDocument.createdAt).toLocaleDateString(locale, {
+                                    {new Date(sourceDocument.entryDate || sourceDocument.createdAt).toLocaleDateString(locale, {
                                         year: 'numeric',
                                         month: 'long',
                                         day: 'numeric',
