@@ -176,21 +176,15 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         // Handle anomaly - do NOT save entries, just update document status
         if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
-            const anomalyCode = verificationStatus === 'invalid' ? 'invalid_content' : 'evidence_anomaly';
+            const reason = anomalyReason || (verificationStatus === 'invalid' ? '无效内容' : '解析结果存在分歧');
 
             await db.update(sourceDocuments)
                 .set({
                     status: 'anomaly',
-                    anomalyCodes: [anomalyCode]
+                    anomalyReason: reason,
+                    title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
-
-            const displayTitle = anomalyReason || title;
-            if (displayTitle) {
-                await db.update(sourceDocuments)
-                    .set({ title: displayTitle })
-                    .where(q.whereId(input.sourceDocumentId));
-            }
             return;
         }
 
@@ -201,7 +195,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             await db.update(sourceDocuments)
                 .set({
                     status: 'anomaly',
-                    anomalyCodes: ['invalid_content']
+                    anomalyReason: '无有效金额的条目',
+                    title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
 
@@ -263,13 +258,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
-        let anomalyCode = "internal_error";
-        if (error.message.includes("ARBITRATION_FAILED")) {
-            anomalyCode = "evidence_anomaly";
-        } else if (error.message.includes("schema validation failed") || error.message.includes("Invalid content")) {
-            anomalyCode = "invalid_content";
-        }
-
         if (!context.ledgerId) {
             logger.warn({ sourceDocumentId: input.sourceDocumentId }, "Missing ledgerId in onError, cannot update status");
             return;
@@ -280,7 +268,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         await db.update(sourceDocuments)
             .set({
                 status: 'anomaly',
-                anomalyCodes: [anomalyCode]
+                anomalyReason: error instanceof Error ? error.message : '内部错误'
             })
             .where(q.whereId(input.sourceDocumentId));
     },

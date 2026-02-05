@@ -15,13 +15,6 @@ export const SourceDocumentStatus = {
     Anomaly: "anomaly",
 } as const;
 
-export const AnomalyCode = {
-    InternalError: "internal_error",
-    InvalidContent: "invalid_content",
-    EvidenceAnomaly: "evidence_anomaly",
-    UnknownCurrency: "unknown_currency",
-} as const;
-
 // SourceDocuments (原始凭证)
 export const sourceDocuments = sqliteTable("source_documents", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -34,10 +27,9 @@ export const sourceDocuments = sqliteTable("source_documents", {
     imageUrls: text("image_urls", { mode: "json" })
         .$type<string[]>()
         .default([]),
-    // .notNull(), // Removing notNull to be safe with default, or keep it? json "[]" matches default.
 
-    status: text("status").notNull().default("queued"), // Check constraint could be added here manually
-    anomalyCodes: text("anomaly_codes", { mode: "json" }).$type<string[]>().default([]),
+    status: text("status").notNull().default("queued"),
+    anomalyReason: text("anomaly_reason"),  // 异常原因（直接显示给用户）
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),

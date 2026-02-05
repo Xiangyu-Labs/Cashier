@@ -41,7 +41,6 @@ export const PendingBillCard = memo(function PendingBillCard({
 }: PendingBillCardProps) {
     const t = useTranslations("PendingBills");
     const tCommon = useTranslations("Common");
-    const tError = useTranslations("AnomalyCode");
     const locale = useLocale();
 
     const [isRetrying, setIsRetrying] = useState(false);
@@ -52,8 +51,8 @@ export const PendingBillCard = memo(function PendingBillCard({
     const images = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls || [] : [];
     const text = sourceDocument.text;
 
-    // Get anomaly codes for error display
-    const anomalyCodes = 'anomalyCodes' in sourceDocument ? sourceDocument.anomalyCodes : null;
+    // Get anomaly reason for error display
+    const docAnomalyReason = 'anomalyReason' in sourceDocument ? sourceDocument.anomalyReason : null;
 
     async function handleRetry() {
         if (!onRetry) return;
@@ -65,12 +64,8 @@ export const PendingBillCard = memo(function PendingBillCard({
         }
     }
 
-    // Display reason: use title (which contains error reason for anomaly), or anomaly codes
-    const displayReason = anomalyReason || (
-        status === "anomaly" && anomalyCodes?.length
-            ? anomalyCodes.map(c => tError(c as string)).join(", ")
-            : null
-    );
+    // Display reason from prop or from document
+    const displayReason = anomalyReason || docAnomalyReason;
 
     return (
         <div className={cn(

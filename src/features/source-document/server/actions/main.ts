@@ -437,7 +437,7 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
 
         // 2. Update status to queued and clear anomaly fields
         await db.update(sourceDocuments)
-            .set({ status: "queued", anomalyCodes: [] })
+            .set({ status: "queued", anomalyReason: null })
             .where(and(
                 q.whereActive,
                 inArray(sourceDocuments.id, sourceDocumentIds)

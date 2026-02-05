@@ -93,7 +93,7 @@ describe("SourceDocument Retry Action", () => {
             ledgerId: testLedgerId,
             status: "anomaly",
             text: "Invalid data",
-            anomalyCodes: ["invalid_content"],
+            anomalyReason: "无效内容",
         }).returning();
         const docId = doc.id;
 

@@ -109,7 +109,7 @@ interface SourceDocumentCardProps {
   defaultExpanded?: boolean;
   onRetry?: () => void | Promise<void>;
   status: "queued" | "processing" | "completed" | "anomaly";
-  anomalyCodes?: string[] | null;
+  anomalyReason?: string | null;
   className?: string;
 }
 
@@ -126,11 +126,10 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   defaultExpanded = false,
   onRetry,
   status,
-  anomalyCodes,
+  anomalyReason,
   className,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
-  const tError = useTranslations("AnomalyCode");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const [isRetrying, setIsRetrying] = useState(false);
@@ -212,7 +211,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {(ledgerEntries.length === 0 || status === "anomaly") && (
             <ProcessingStatus
               status={status === "anomaly" ? "error" : status}
-              label={status === "anomaly" && anomalyCodes?.length ? anomalyCodes.map(c => tError(c)).join(", ") : undefined}
+              label={status === "anomaly" && anomalyReason ? anomalyReason : undefined}
             />
           )}
 

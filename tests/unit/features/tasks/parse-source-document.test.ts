@@ -382,6 +382,6 @@ describe("parseSourceDocumentHandler.onComplete", () => {
             where: eq(sourceDocuments.id, sourceDocId),
         });
         expect(doc?.status).toBe("anomaly");
-        expect(doc?.title).toBe("Results inconsistent");
+        expect(doc?.anomalyReason).toBe("Results inconsistent");
     });
 });

@@ -34,7 +34,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         });
 
         expect(updatedDoc?.status).toBe("anomaly");
-        expect(updatedDoc?.anomalyCodes).toContain("invalid_content");
+        expect(updatedDoc?.anomalyReason).toContain("schema validation failed");
     });
 
     it("should map JSON parsing errors to 'internal_error'", async () => {
@@ -64,6 +64,6 @@ describe("parseSourceDocumentHandler.onError", () => {
         });
 
         expect(updatedDoc?.status).toBe("anomaly");
-        expect(updatedDoc?.anomalyCodes).toContain("internal_error");
+        expect(updatedDoc?.anomalyReason).toContain("Invalid JSON format");
     });
 });

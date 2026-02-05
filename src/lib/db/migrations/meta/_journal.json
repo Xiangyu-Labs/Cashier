@@ -15,6 +15,13 @@
       "when": 1770198046013,
       "tag": "0001_careful_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770278786402,
+      "tag": "0002_glamorous_betty_brant",
+      "breakpoints": true
     }
   ]
 }
