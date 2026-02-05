@@ -275,7 +275,6 @@ export function PendingBillsModal({
                                                             key={group.sourceDocument.id}
                                                             sourceDocument={group.sourceDocument}
                                                             status="anomaly"
-                                                            anomalyReason={'anomalyReason' in group.sourceDocument ? group.sourceDocument.anomalyReason || undefined : undefined}
                                                             onRetry={() => handleRetry(group.sourceDocument as SourceDocument)}
                                                             onDelete={() => handleDeleteSingle(group.sourceDocument as SourceDocument)}
                                                         />

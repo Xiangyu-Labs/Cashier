@@ -25,7 +25,6 @@ function getSafeImageSrc(data: string): string {
 interface PendingBillCardProps {
     sourceDocument: SourceDocument | SourceDocumentLight;
     status: "processing" | "anomaly";
-    anomalyReason?: string;
     onRetry?: () => void | Promise<void>;
     onDelete?: () => void;
     className?: string;
@@ -34,7 +33,6 @@ interface PendingBillCardProps {
 export const PendingBillCard = memo(function PendingBillCard({
     sourceDocument,
     status,
-    anomalyReason,
     onRetry,
     onDelete,
     className,
@@ -51,8 +49,8 @@ export const PendingBillCard = memo(function PendingBillCard({
     const images = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls || [] : [];
     const text = sourceDocument.text;
 
-    // Get anomaly reason for error display
-    const docAnomalyReason = 'anomalyReason' in sourceDocument ? sourceDocument.anomalyReason : null;
+    // Get anomaly reason for error display (directly from sourceDocument)
+    const displayReason = 'anomalyReason' in sourceDocument ? sourceDocument.anomalyReason : null;
 
     async function handleRetry() {
         if (!onRetry) return;
@@ -63,9 +61,6 @@ export const PendingBillCard = memo(function PendingBillCard({
             setIsRetrying(false);
         }
     }
-
-    // Display reason from prop or from document
-    const displayReason = anomalyReason || docAnomalyReason;
 
     return (
         <div className={cn(
