@@ -119,31 +119,31 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     return (
         <div className="flex flex-col h-full max-h-[inherit]">
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 subtle-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 subtle-scrollbar">
                 {/* Header Info */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                     {/* Category Icon - Display only (editing is below) */}
-                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <CategoryIcon iconName={category?.icon} className="h-8 w-8 text-primary" />
+                    <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl sm:rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <CategoryIcon iconName={category?.icon} className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                     </div>
 
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
                         {/* Editable Item Name */}
                         <EditableField
                             value={displayData.itemName}
                             onChange={(v) => handleFieldChange("itemName", v)}
                             placeholder={t("itemName")}
-                            displayClassName="text-xl font-semibold text-text break-words"
-                            inputClassName="font-semibold text-lg"
+                            displayClassName="text-lg sm:text-xl font-semibold text-text break-words"
+                            inputClassName="font-semibold text-base sm:text-lg"
                         />
 
                         {/* Editable Amount with Currency */}
                         <div className="mt-1">
-                            <div className="flex items-baseline gap-2">
+                            <div className="flex items-baseline gap-1.5 sm:gap-2">
                                 {/* Currency Selector - Always shows actual currency */}
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <button className="text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
+                                        <button className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
                                             {displayData.currency === "unknown" ? "?" : displayData.currency}
                                             <ChevronDown className="h-3 w-3 opacity-50" />
                                         </button>
@@ -171,8 +171,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                                     value={displayData.amount.toFixed(2)}
                                     onChange={(v) => handleFieldChange("amount", parseFloat(v) || 0)}
                                     type="number"
-                                    displayClassName="text-3xl font-bold text-primary"
-                                    inputClassName="text-3xl font-bold text-primary w-36"
+                                    displayClassName="text-2xl sm:text-3xl font-bold text-primary"
+                                    inputClassName="text-2xl sm:text-3xl font-bold text-primary w-28 sm:w-36"
                                 />
                             </div>
 
@@ -187,7 +187,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 </div>
 
                 {/* Details Grid */}
-                <div className="rounded-lg border border-border bg-surface2/30 p-4 space-y-4">
+                <div className="rounded-lg border border-border bg-surface2/30 p-3 sm:p-4 space-y-3 sm:space-y-4">
                     {/* Date and Category */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Date - Always editable (like tab filters) */}

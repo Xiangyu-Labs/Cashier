@@ -96,7 +96,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
     };
 
     return (
-        <div className={cn(itemVariants({ variant }), "gap-2", className)}>
+        <div className={cn(itemVariants({ variant }), "gap-1.5 sm:gap-2", className)}>
             {/* Checkbox */}
             {onSelect && (
                 <Checkbox
