@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 //
-import { revalidatePath } from "next/cache";
+// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, asc, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -73,7 +73,6 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
         }
 
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, data: category };
     } catch (error) {
         logger.error({ err: error, ledgerId }, "Failed to create category");
@@ -94,7 +93,6 @@ export async function updateEntryCategoryAction(ledgerId: string, categoryId: st
             .set(validated)
             .where(q.whereId(categoryId));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ err: error, ledgerId, categoryId }, "Failed to update category");
@@ -112,7 +110,6 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
             .set(q.softDelete)
             .where(q.whereId(categoryId));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ err: error, ledgerId, categoryId }, "Failed to delete category");
@@ -137,7 +134,6 @@ export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds
             }
         });
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ err: error, ledgerId }, "Failed to reorder categories");

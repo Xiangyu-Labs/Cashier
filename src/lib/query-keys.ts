@@ -46,3 +46,19 @@ export const queryKeys = {
 
 // Type helper for extracting query key type
 export type QueryKeys = typeof queryKeys;
+
+/**
+ * Helper to create a predicate for invalidating all queries related to a ledger.
+ * This ensures all ledger-related data is refreshed after mutations.
+ * 
+ * Usage:
+ *   queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
+ */
+export function invalidateLedgerCache(ledgerId: string) {
+    return (query: { queryKey: readonly unknown[] }) => {
+        const key = query.queryKey;
+        // Invalidate any query that has ledgerId in position 0 or 1
+        // This covers: ['ledger', ledgerId], ['ledgerEntries', ledgerId, ...], ['sourceDocuments', ledgerId, ...], etc.
+        return Array.isArray(key) && (key[0] === ledgerId || key[1] === ledgerId);
+    };
+}

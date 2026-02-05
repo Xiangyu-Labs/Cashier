@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { ledgers, entryCategories } from "@/lib/db/schema";
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
+// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -64,8 +64,6 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
             );
         }
 
-        revalidatePath("/dashboard");
-        revalidatePath("/ledgers"); // Assuming there might be a ledgers page
 
         return { success: true, data: newLedger, error: null };
     } catch (error) {
@@ -120,8 +118,6 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
             .where(eq(ledgers.id, id))
             .returning();
 
-        revalidatePath(`/ledger/${id}`);
-        revalidatePath("/dashboard");
 
         return { success: true, data: updatedLedger, error: null };
     } catch (error) {
@@ -153,7 +149,6 @@ export async function deleteLedgerAction(id: string) {
             .set({ deletedAt: new Date() })
             .where(eq(ledgers.id, id));
 
-        revalidatePath("/dashboard");
 
         return { success: true, error: null };
     } catch (error) {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
@@ -51,12 +51,7 @@ export function LedgerEntryDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntry(id) });
-            // If linked to source doc, usually source doc details refresh is triggered by invalidating keys
-            if (ledgerEntry?.sourceDocumentId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(ledgerEntry.sourceDocumentId) });
-            }
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
         onError: () => toast.error(tCommon("saveFailed"))
     });
@@ -69,10 +64,7 @@ export function LedgerEntryDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            if (ledgerEntry?.sourceDocumentId) {
-                queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(ledgerEntry.sourceDocumentId) });
-            }
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
         },
         onError: () => toast.error(tCommon("deleteFailed"))

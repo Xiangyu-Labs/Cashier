@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
@@ -116,7 +116,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             toast.error(tCommon("saveFailed"));
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
     });
 
@@ -132,7 +132,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         },
         onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
     });
 
@@ -214,7 +214,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [monthEntries, t, locale, convertedAmounts]);
 
     const handleRefresh = async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+        await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     };
 
     return (

@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
@@ -49,7 +49,6 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
             key: key,
         }).returning();
 
-        revalidatePath(`/ledger/${ledgerId}/settings`);
 
         return {
             success: true,
@@ -81,7 +80,6 @@ export async function deleteServiceCredentialAction(ledgerId: string, credential
 
         if (result.length === 0) return { success: false, error: "Not found" };
 
-        revalidatePath(`/ledger/${ledgerId}/settings`);
         return { success: true };
     } catch (error) {
         logger.error({ error, ledgerId, credentialId }, "Failed to delete service credential");

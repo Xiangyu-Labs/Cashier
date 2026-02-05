@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 // auth is unused here
 
-import { revalidatePath } from "next/cache";
+// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, inArray, and, gte, lte } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -48,7 +48,6 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
             entryDate: validated.entryDate || null,
         }).returning();
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, data: entry };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to create ledger entry via action");
@@ -79,7 +78,6 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
         if (!updatedEntry) throw new Error("Entry not found or access denied");
 
-        revalidatePath(`/ledger/${ledgerId}`);
 
         return {
             success: true,
@@ -106,7 +104,6 @@ export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: s
             .set(q.softDelete)
             .where(q.whereId(ledgerEntryId));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ error, ledgerId, ledgerEntryId }, "Failed to delete ledger entry via action");
@@ -128,7 +125,6 @@ export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEnt
                 inArray(ledgerEntries.id, ledgerEntryIds)
             ));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch delete ledger entries");
@@ -157,7 +153,6 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
                 inArray(ledgerEntries.id, ledgerEntryIds)
             ));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true };
     } catch (error) {
         logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch update ledger entries");

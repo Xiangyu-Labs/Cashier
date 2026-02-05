@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
-import { revalidatePath } from "next/cache";
+// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -102,7 +102,6 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
                 .where(q.whereId(savedDoc.id));
         }
 
-        revalidatePath(`/ledger/${ledgerId}`);
 
         return {
             success: true,
@@ -170,7 +169,6 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
 
         await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 
-        revalidatePath(`/ledger/${ledgerId}`);
 
         return {
             success: true,
@@ -203,7 +201,6 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
             .set(data)
             .where(q.whereId(sourceId));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, sourceId }, "Failed to update source document via action");
@@ -234,7 +231,6 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
             .set(q.softDelete)
             .where(q.whereId(sourceId));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, sourceId }, "Failed to delete source document via action");
@@ -407,7 +403,6 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
                 inArray(sourceDocuments.id, sourceDocumentIds)
             ));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch delete source documents");
@@ -449,7 +444,6 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
             await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
         }));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch retry source documents");
@@ -569,7 +563,6 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
                 inArray(sourceDocuments.id, sourceDocumentIds)
             ));
 
-        revalidatePath(`/ledger/${ledgerId}`);
         return { success: true, error: null };
     } catch (error) {
         logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch update source documents");

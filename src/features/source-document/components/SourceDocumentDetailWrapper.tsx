@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 import {
     updateSourceDocumentAction,
@@ -59,8 +59,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -78,8 +77,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -92,8 +90,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -106,8 +103,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -122,8 +118,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -136,7 +131,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
         }
     });

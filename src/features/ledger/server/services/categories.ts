@@ -2,9 +2,7 @@ import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { eq, or, isNull, asc, and } from "drizzle-orm";
 import { cache } from "react";
-import { unstable_cache } from "next/cache";
 import { EntryCategory } from "@/types/api";
-import { cacheConfig } from "@/lib/cache-config";
 
 /**
  * Data Access Layer for Entry Categories
@@ -31,16 +29,9 @@ export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryC
 });
 
 /**
- * Cached version for cross-request caching
- * Use in page.tsx for improved performance
+ * Cached version - now directly calling base function
+ * React's cache() provides request-level deduplication
  */
-export const getCachedEntryCategories = (ledgerId: string) =>
-    unstable_cache(
-        () => getEntryCategories(ledgerId),
-        [`categories-${ledgerId}`],
-        {
-            revalidate: cacheConfig.categories.revalidate,
-            tags: cacheConfig.categories.tags(ledgerId),
-        }
-    )();
+export const getCachedEntryCategories = getEntryCategories;
+
 

@@ -19,7 +19,7 @@ import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 
 interface LedgerEntriesTabProps {
@@ -93,7 +93,7 @@ export function LedgerEntriesTab({
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
         },
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
+        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
 
     const deleteLedgerEntryMutation = useMutation({
@@ -106,7 +106,7 @@ export function LedgerEntriesTab({
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
         onError: () => toast.error(tCommon("deleteFailed")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) })
+        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
 
     // Simplified mutations by removing unused batch ones for now (lint)
@@ -135,8 +135,7 @@ export function LedgerEntriesTab({
             toast.error(t("deleteFailed"));
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -152,7 +151,7 @@ export function LedgerEntriesTab({
             if (deleteConfirm.open) setDeleteConfirm({ ...deleteConfirm, open: false });
         },
         onError: () => toast.error(tCommon("deleteFailed")),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) })
+        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
 
     // Handlers
@@ -286,7 +285,7 @@ export function LedgerEntriesTab({
 
 
     const handleRefresh = useCallback(async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+        await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     }, [queryClient, ledgerId]);
 
     return (
@@ -443,7 +442,7 @@ export function LedgerEntriesTab({
                     onOpenChange={(open) => !open && setRetrySourceDocument(null)}
                     onSuccess={() => {
                         toast.success(t("retrySubmitted"));
-                        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+                        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
                     }}
                 />
             )}

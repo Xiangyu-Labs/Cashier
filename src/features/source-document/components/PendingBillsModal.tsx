@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { ChevronDown, Inbox } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 
 interface PendingBillsModalProps {
     ledgerId: string;
@@ -72,7 +72,7 @@ export function PendingBillsModal({
         },
         onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -87,7 +87,7 @@ export function PendingBillsModal({
         },
         onError: () => toast.error(tCommon("deleteFailed")),
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -101,7 +101,7 @@ export function PendingBillsModal({
         },
         onError: () => toast.error(tCommon("error")),
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
 
@@ -310,7 +310,7 @@ export function PendingBillsModal({
                     onOpenChange={(open) => !open && setRetrySourceDocument(null)}
                     onSuccess={() => {
                         toast.success(tEntries("retrySubmitted"));
-                        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+                        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
                     }}
                 />
             )}
