@@ -4,6 +4,9 @@ import { getCachedEntryCategories } from "@/features/ledger/server/services/cate
 import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
+import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;
@@ -14,14 +17,31 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
     redirect({ href: "/login", locale: "en" });
   }
 
-  // Optimized: Only fetch core data (3 queries instead of 6)
-  // Source documents and credentials now fetched client-side
-  const [ledger, categories, allLedgers] = await Promise.all([
-    getCachedLedger(ledgerId),
-    getCachedEntryCategories(ledgerId),
-    getCachedLedgers(session!.user!.id!),
+  // Create a new QueryClient for this request
+  const queryClient = new QueryClient();
+
+  // Prefetch all required data in parallel
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.ledger(ledgerId),
+      queryFn: () => getCachedLedger(ledgerId),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.entryCategories(ledgerId),
+      queryFn: () => getCachedEntryCategories(ledgerId),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.ledgers(),
+      queryFn: () => getCachedLedgers(session!.user!.id!),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.sourceDocuments(ledgerId, 'unified'),
+      queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {}),
+    }),
   ]);
 
+  // Check if ledger exists
+  const ledger = queryClient.getQueryData(queryKeys.ledger(ledgerId));
   if (!ledger) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
@@ -31,12 +51,8 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <LedgerPageClient
-      initialLedger={ledger}
-      initialCategories={categories}
-      allLedgers={allLedgers}
-      ledgerId={ledgerId}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <LedgerPageClient ledgerId={ledgerId} />
+    </HydrationBoundary>
   );
 }
-

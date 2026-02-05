@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,21 +30,38 @@ import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 
 interface LedgerPageClientProps {
-    initialLedger: Ledger;
-    initialCategories: EntryCategory[];
-    allLedgers: Ledger[];
     ledgerId: string;
 }
 
-export function LedgerPageClient({
-    initialLedger: ledger,
-    initialCategories: categories,
-    allLedgers,
-    ledgerId,
-}: LedgerPageClientProps) {
+export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const pathname = usePathname();
     const searchParams = useSearchParams();
+
+    // Fetch data from hydration cache (or refetch if not available)
+    const { data: ledger } = useQuery({
+        queryKey: queryKeys.ledger(ledgerId),
+        queryFn: async () => {
+            const result = await getLedgerAction(ledgerId);
+            return result.success ? result.data as Ledger : null;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
+    const { data: categories = [] } = useQuery({
+        queryKey: queryKeys.entryCategories(ledgerId),
+        queryFn: () => getEntryCategoriesAction(ledgerId), // Returns array directly
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const { data: allLedgers = [] } = useQuery({
+        queryKey: queryKeys.ledgers(),
+        queryFn: async () => {
+            const result = await getLedgersAction();
+            return result.success ? (result.data as Ledger[]) : [];
+        },
+        staleTime: 5 * 60 * 1000,
+    });
 
     // Initialize from URL, then manage with state for instant switching
     const [activeTab, setActiveTab] = useState(
@@ -71,6 +92,7 @@ export function LedgerPageClient({
             </div>
         );
     }
+
 
     return (
         <div className="min-h-screen bg-bg text-text">

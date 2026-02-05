@@ -6,7 +6,7 @@ import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 const createLedgerSchema = z.object({
@@ -160,7 +160,7 @@ export async function deleteLedgerAction(id: string) {
 export async function getLedgerAction(id: string) {
     const session = await auth();
     if (!session?.user?.id) {
-        throw new Error("Unauthorized");
+        return { success: false, error: "Unauthorized", data: null };
     }
 
     const existing = await db.query.ledgers.findFirst({
@@ -168,21 +168,47 @@ export async function getLedgerAction(id: string) {
     });
 
     if (!existing || existing.userId !== session.user.id) {
-        throw new Error("Unauthorized or Ledger not found");
+        return { success: false, error: "Unauthorized or Ledger not found", data: null };
     }
 
-    const settings = existing.metadata?.settings || {};
-
     return {
-        id: existing.id,
-        name: existing.name,
-        aiLanguage: settings.aiLanguage || "en",
-        currencies: settings.currencies || [],
-        mainCurrency: settings.mainCurrency || "USD",
-        createdAt: existing.createdAt.toISOString(),
-        updatedAt: existing.updatedAt.toISOString(),
-        collapseProcessingDefault: settings.collapseProcessingDefault || false,
-        collapseBillsDefault: settings.collapseBillsDefault || false,
-        aiCustomPrompt: settings.aiCustomPrompt || "",
+        success: true,
+        error: null,
+        data: {
+            id: existing.id,
+            userId: existing.userId,
+            name: existing.name,
+            metadata: existing.metadata,
+            createdAt: existing.createdAt.toISOString(),
+            updatedAt: existing.updatedAt.toISOString(),
+            deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
+        },
     };
 }
+
+export async function getLedgersAction() {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return { success: false, error: "Unauthorized", data: null };
+    }
+
+    const rows = await db.query.ledgers.findMany({
+        where: and(eq(ledgers.userId, session.user.id), isNull(ledgers.deletedAt)),
+        orderBy: [desc(ledgers.createdAt)],
+    });
+
+    return {
+        success: true,
+        error: null,
+        data: rows.map(row => ({
+            id: row.id,
+            userId: row.userId,
+            name: row.name,
+            metadata: row.metadata,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
+            deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+        })),
+    };
+}
+
