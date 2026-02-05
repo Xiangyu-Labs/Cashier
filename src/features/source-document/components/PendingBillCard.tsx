@@ -105,6 +105,16 @@ export const PendingBillCard = memo(function PendingBillCard({
                         className="scale-90"
                     />
 
+                    {/* Progress message for processing */}
+                    {status === "processing" && 'progressMessage' in sourceDocument && sourceDocument.progressMessage && (
+                        <>
+                            <span className="text-muted-foreground/30 shrink-0">·</span>
+                            <span className="text-xs text-primary truncate">
+                                {sourceDocument.progressMessage}
+                            </span>
+                        </>
+                    )}
+
                     {/* Anomaly reason preview (truncated) */}
                     {status === "anomaly" && displayReason && (
                         <>
