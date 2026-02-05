@@ -169,7 +169,7 @@ Determine which result is more accurate based on the original input.
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         responseFormat: "json_object",
-        model,
+        model: "gemini-3-pro", // 仲裁使用 pro 模型
     });
 
     const arbitrationResult = parseJsonResponse(
@@ -200,7 +200,7 @@ export async function executeStage1(
     signal?: AbortSignal
 ): Promise<{ isValid: false } | { isValid: true; results: Stage1Results }> {
     const messageContent = buildMessageContent(input.text, input.imageUrls);
-    const model = "gemini-2.0-flash";
+    const model = "gemini-3-flash";
 
     // Step 1: Check validity first
     const validityPrompt = buildValidityCheckPrompt(input.aiLanguage);

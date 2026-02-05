@@ -180,7 +180,7 @@ describe("Stage 2 Executor", () => {
                     callCount++;
                     if (callCount <= 2) {
                         // Parsing calls should use pro model
-                        expect(opts.model).toBe("gemini-2.0-pro-exp-02-05");
+                        expect(opts.model).toBe("gemini-3-flash");
                         return {
                             content: JSON.stringify({
                                 ledger_entries: [{ item_name: "a", amount: callCount * 10, currency: "CNY", category: "餐饮", entry_date: "2026-02-05", notes: null }],
@@ -189,8 +189,8 @@ describe("Stage 2 Executor", () => {
                             usage: { promptTokens: 100, completionTokens: 50 },
                         };
                     }
-                    // Arbitration should use flash model
-                    expect(opts.model).toBe("gemini-2.0-flash");
+                    // Arbitration should use pro model
+                    expect(opts.model).toBe("gemini-3-pro");
                     return {
                         content: JSON.stringify({ choice: 1, reason: "ok" }),
                         usage: { promptTokens: 100, completionTokens: 50 },
