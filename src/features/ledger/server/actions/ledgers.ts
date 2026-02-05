@@ -20,7 +20,6 @@ const updateLedgerSchema = z.object({
         aiLanguage: z.string().optional(),
         currencies: z.array(z.string()).optional(),
         mainCurrency: z.string().optional(),
-        autoRecognizeDate: z.boolean().optional(),
         collapseProcessingDefault: z.boolean().optional(),
         collapseBillsDefault: z.boolean().optional(),
         aiCustomPrompt: z.string().optional(),
@@ -47,7 +46,6 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
                         aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
                         currencies: defaultLedger.settings.currencies,
                         mainCurrency: defaultLedger.settings.mainCurrency,
-                        autoRecognizeDate: defaultLedger.settings.autoRecognizeDate,
                         collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
                         collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
                         aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
@@ -188,9 +186,7 @@ export async function getLedgerAction(id: string) {
         mainCurrency: settings.mainCurrency || "USD",
         createdAt: existing.createdAt.toISOString(),
         updatedAt: existing.updatedAt.toISOString(),
-        autoRecognizeDate: settings.autoRecognizeDate || false,
         collapseProcessingDefault: settings.collapseProcessingDefault || false,
-
         collapseBillsDefault: settings.collapseBillsDefault || false,
         aiCustomPrompt: settings.aiCustomPrompt || "",
     };

@@ -170,9 +170,7 @@ describe("parseSourceDocumentHandler.execute", () => {
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             aiLanguage: "en-US",
             preferredCurrencies: ["USD"],
-            settings: {
-                autoRecognizeDate: true,
-            }
+            settings: {}
         };
 
         const mockAI = createMultiStageMockAI({
@@ -196,13 +194,11 @@ describe("parseSourceDocumentHandler.execute", () => {
         expect(result.verificationStatus).toBe("passed");
     });
 
-    it("should override entryDate if autoRecognizeDate is false", async () => {
+    it("should always override entryDate to current date", async () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: {
-                autoRecognizeDate: false,
-            }
+            settings: {}
         };
 
         const mockAI = createMultiStageMockAI({
@@ -229,9 +225,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: {
-                autoRecognizeDate: true,
-            }
+            settings: {}
         };
 
         const mockAI = createMultiStageMockAI({ isValid: false });
@@ -254,9 +248,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: {
-                autoRecognizeDate: true,
-            }
+            settings: {}
         };
 
         const mockAI = createMultiStageMockAI({ stage1_5Reasonable: false });
@@ -280,9 +272,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: {
-                autoRecognizeDate: true,
-            }
+            settings: {}
         };
 
         const mockAI = createMultiStageMockAI({ stage2ArbitrationFails: true });
@@ -341,7 +331,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: { autoRecognizeDate: true },
+            settings: {},
         };
 
         const context = {
@@ -377,7 +367,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         const input: ParseSourceDocumentInput = {
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-            settings: { autoRecognizeDate: true },
+            settings: {},
         };
 
         const context = {

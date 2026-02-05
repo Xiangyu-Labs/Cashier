@@ -192,37 +192,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 autoFocus
             />
 
-            {/* Advanced Features Fold */}
-            <div className="border border-border rounded-lg overflow-hidden">
-                <button
-                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-surface hover:bg-surface/80 transition-colors text-sm font-medium"
-                >
-                    <span className="flex items-center gap-2">
-                        {t("advancedFeatures")}
-                    </span>
-                    {isAdvancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
 
-                {isAdvancedOpen && (
-                    <div className="p-3 space-y-4 bg-surface/30 border-t border-border animate-in slide-in-from-top-1 duration-200">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <div className="text-sm font-medium">{tSettings("autoRecognizeDate")}</div>
-                                <div className="text-xs text-muted-foreground leading-tight">{tSettings("autoRecognizeDateDesc")}</div>
-                            </div>
-                            <Switch
-                                checked={ledger?.autoRecognizeDate || false}
-                                onCheckedChange={(checked: boolean) => {
-                                    updateLedgerMutation.mutate({ settings: { autoRecognizeDate: checked } });
-                                }}
-                            />
-                        </div>
-
-
-                    </div>
-                )}
-            </div>
 
             <div className="flex items-center gap-2">
                 <input

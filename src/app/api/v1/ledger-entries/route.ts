@@ -107,7 +107,6 @@ export async function POST(request: NextRequest) {
                     preferredCurrencies: ledger.metadata?.settings?.currencies || undefined,
                     categories: allCategories,
                     settings: {
-                        autoRecognizeDate: ledger.metadata?.settings?.autoRecognizeDate,
                         aiCustomPrompt: ledger.metadata?.settings?.aiCustomPrompt,
                     },
                 },

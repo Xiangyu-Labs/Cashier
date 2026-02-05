@@ -104,7 +104,6 @@ Every piece of financial data belongs to a Ledger.
 -   **`metadata` (JSONB)**: Stores ledger-specific settings like:
     -   `settings.mainCurrency`: The default currency.
     -   `settings.aiLanguage`: Preferred language for AI response.
-    -   `settings.autoRecognizeDate`: Boolean to enable/disable date extraction.
     -   `settings.aiCustomPrompt`: Custom instructions for AI processing.
 
 ### `source_documents` (The Input)

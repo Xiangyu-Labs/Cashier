@@ -56,7 +56,6 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
             preferredCurrencies: settings.currencies || undefined,
             categories: categories,
             settings: {
-                autoRecognizeDate: settings.autoRecognizeDate,
                 aiCustomPrompt: settings.aiCustomPrompt,
             },
         },

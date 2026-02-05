@@ -21,7 +21,6 @@ export interface ParseSourceDocumentInput {
     categories: CategoryInfo[];
     aiLanguage?: string;
     settings: {
-        autoRecognizeDate: boolean;
         aiCustomPrompt?: string;
     };
     preferredCurrencies?: string[];
@@ -165,7 +164,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 imageUrls: input.imageUrls,
                 aiLanguage: input.aiLanguage,
                 validationSummary: validationResult,
-                autoRecognizeDate: input.settings.autoRecognizeDate,
             }, ai);
 
             // Convert Stage 2 entries to ParsedLedgerEntry format

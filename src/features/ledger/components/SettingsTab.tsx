@@ -93,15 +93,12 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     // Optimistic states
     const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.metadata?.settings?.collapseProcessingDefault);
     const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
-    const [optimisticAutoRecognizeDate, setOptimisticAutoRecognizeDate] = useState(ledger.metadata?.settings?.autoRecognizeDate);
-
 
     function handleUpdateLedger(data: {
         name?: string;
         currencies?: string[];
         mainCurrency?: string;
         aiLanguage?: string;
-        autoRecognizeDate?: boolean;
         collapseProcessingDefault?: boolean;
         collapseBillsDefault?: boolean;
         aiCustomPrompt?: string;
@@ -114,7 +111,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             if (data.currencies !== undefined) settingsUpdate.currencies = data.currencies;
             if (data.mainCurrency !== undefined) settingsUpdate.mainCurrency = data.mainCurrency;
             if (data.aiLanguage !== undefined) settingsUpdate.aiLanguage = data.aiLanguage;
-            if (data.autoRecognizeDate !== undefined) settingsUpdate.autoRecognizeDate = data.autoRecognizeDate;
             if (data.collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = data.collapseProcessingDefault;
 
             if (data.collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = data.collapseBillsDefault;
@@ -133,8 +129,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 // Revert optimistic updates on error
                 setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
                 setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
-                setOptimisticAutoRecognizeDate(ledger.metadata?.settings?.autoRecognizeDate);
-
             }
         });
     }
@@ -433,24 +427,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                             ))}
                         </select>
                     </div>
-
-                    <div className="h-px bg-[var(--border)]" />
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('autoRecognizeDate')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('autoRecognizeDateDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={optimisticAutoRecognizeDate || false}
-                            onCheckedChange={(checked: boolean) => {
-                                setOptimisticAutoRecognizeDate(checked);
-                                handleUpdateLedger({ autoRecognizeDate: checked });
-                            }}
-                            disabled={isPending}
-                        />
-                    </div>
-
-
 
                     <div className="h-px bg-[var(--border)]" />
 

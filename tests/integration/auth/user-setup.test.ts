@@ -34,6 +34,5 @@ describe("createDefaultLedgerForUser", () => {
         expect(settings?.currencies).toEqual(defaultLedger.settings.currencies);
         expect(settings?.mainCurrency).toBe(defaultLedger.settings.mainCurrency);
         expect(settings?.aiLanguage).toBe(defaultLedger.settings.aiLanguage);
-        expect(settings?.autoRecognizeDate).toBe(defaultLedger.settings.autoRecognizeDate);
     });
 });

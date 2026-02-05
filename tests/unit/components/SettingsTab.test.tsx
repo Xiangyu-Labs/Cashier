@@ -119,7 +119,6 @@ describe("SettingsTab", () => {
                 mainCurrency: "CNY",
                 currencies: ["CNY", "USD"],
                 aiLanguage: "zh-CN",
-                autoRecognizeDate: true,
                 collapseProcessingDefault: false,
                 collapseBillsDefault: false,
 

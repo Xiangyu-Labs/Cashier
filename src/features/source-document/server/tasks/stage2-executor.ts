@@ -103,7 +103,6 @@ export interface Stage2Input {
     imageUrls?: string[];
     aiLanguage?: string;
     validationSummary: ValidationSummary;
-    autoRecognizeDate: boolean;
 }
 
 export interface Stage2Output {
@@ -153,11 +152,8 @@ export async function executeStage2(
 
     // Compare results
     if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
-        // Apply date override if needed
-        let entries = result1.ledger_entries;
-        if (!input.autoRecognizeDate) {
-            entries = entries.map(e => ({ ...e, entry_date: currentDate }));
-        }
+        // Always use current date
+        const entries = result1.ledger_entries.map(e => ({ ...e, entry_date: currentDate }));
 
         return {
             entries,
@@ -214,11 +210,8 @@ Look for:
 
     const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
 
-    // Apply date override if needed
-    let entries = chosenResult.ledger_entries;
-    if (!input.autoRecognizeDate) {
-        entries = entries.map(e => ({ ...e, entry_date: currentDate }));
-    }
+    // Always use current date
+    const entries = chosenResult.ledger_entries.map(e => ({ ...e, entry_date: currentDate }));
 
     return {
         entries,

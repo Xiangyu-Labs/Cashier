@@ -18,7 +18,6 @@ describe("Stage 2 Executor", () => {
         imageUrls: [],
         aiLanguage: "zh-CN",
         validationSummary: baseValidationSummary,
-        autoRecognizeDate: true,
     };
 
     describe("Dual GPT Agreement", () => {
@@ -55,7 +54,7 @@ describe("Stage 2 Executor", () => {
     });
 
     describe("Date Override", () => {
-        it("should override dates when autoRecognizeDate is false", async () => {
+        it("should always override dates to current date", async () => {
             const mockResponse = JSON.stringify({
                 ledger_entries: [
                     {
@@ -78,7 +77,7 @@ describe("Stage 2 Executor", () => {
             };
 
             const result = await executeStage2(
-                { ...baseInput, autoRecognizeDate: false },
+                baseInput,
                 mockAI
             );
 
