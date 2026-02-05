@@ -84,7 +84,57 @@ The Arbitrator is given:
 
 This significantly reduces "silent failures" where an LLM confidently outputs wrong numbers.
 
-## 4. Idempotency & Error Handling
+## 5. Multi-Stage Architecture (New)
+
+The parsing pipeline is being refactored into multiple specialized stages for improved accuracy:
+
+### Stage 1: Pre-Analysis (Parallel)
+Uses `gemini-2.0-flash` for fast, parallel pre-checks:
+- **1.1 Validity Check**: Is this a valid financial document?
+- **1.2 Currency Recognition**: What currencies are present?
+- **1.3 Category Recognition**: What expense categories are involved?
+- **1.4 Title Extraction**: Generate a descriptive title
+- **1.5 User Requirements**: Parse custom user rules (if any)
+
+Each sub-task uses Dual GPT + Arbitration for accuracy.
+
+**Files:**
+- `stage1-prompts.ts` - Prompt builders
+- `stage1-executor.ts` - Parallel execution with arbitration
+
+### Stage 1.5: Validation
+A single GPT that reviews Stage 1 results:
+- **Veto Power**: Reject if results are clearly inconsistent
+- **Consolidation**: Merge results with contextual hints for Stage 2
+
+**File:** `stage1-5-validator.ts`
+
+### Stage 2: Detailed Parsing
+Uses `gemini-2.0-pro` (more capable model) for detailed parsing:
+- Receives contextual hints from Stage 1.5
+- Extracts individual ledger entries
+- Uses Dual GPT + Arbitration
+
+**Files:**
+- `stage2-prompts.ts` - Prompt builder with context injection
+- `stage2-executor.ts` - Dual GPT parsing with arbitration
+
+```mermaid
+graph TD
+    A[Original Document] --> B{Stage 1: Pre-Analysis}
+    B --> C[Validity Check]
+    B --> D[Currency]
+    B --> E[Category]
+    B --> F[Title]
+    B --> G[User Rules]
+    C & D & E & F & G --> H{Stage 1.5: Validation}
+    H -->|Rejected| I[Mark as Anomaly]
+    H -->|Approved| J{Stage 2: Detailed Parsing}
+    J --> K[Dual GPT + Arbitration]
+    K --> L[Ledger Entries]
+```
+
+## 6. Idempotency & Error Handling
 
 -   **Idempotency**: The handler performs an "upsert-like" operation: it soft-deletes any existing entries for the source document before inserting new ones.
 -   **Anomalies**: If the document cannot be parsed (e.g., blurred image, unrelated text), it is not "Failed" (which implies a system crash) but set to `anomaly` status. This prompts the user to review it manually.

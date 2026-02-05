@@ -190,7 +190,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             throw new Error('Task cancelled');
         }
 
-        const currentDate = new Date().toISOString().split("T")[0];
+        const now = new Date();
+        const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const systemPrompt = buildLedgerEntryPrompt(
             input.categories,
             input.aiLanguage,
@@ -224,7 +225,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         // Helper to apply date override
         const applyDateOverride = (entries: ParsedLedgerEntry[]) => {
             if (input.settings.autoRecognizeDate) return entries;
-            const today = new Date().toISOString().split("T")[0];
+            const nowLocal = new Date();
+            const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
             return entries.map(entry => ({ ...entry, entryDate: today }));
         };
 
