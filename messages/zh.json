@@ -161,7 +161,14 @@
         "unknown": "未知",
         "expand": "展开",
         "collapse": "收起",
-        "viewSource": "查看原始凭证"
+        "viewSource": "查看原始凭证",
+        "noDescription": "暂无描述",
+        "noCategory": "未分类",
+        "addDescription": "添加备注",
+        "discardChanges": "放弃修改",
+        "unsavedChanges": "有未保存的修改",
+        "unsavedChangesDesc": "您有未保存的修改，确定要放弃这些修改吗？",
+        "discardAndClose": "放弃并关闭"
     },
     "SourceDocumentDetail": {
         "title": "账单详情",
@@ -177,13 +184,20 @@
         "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
         "batchDate": "批量修改日期",
         "batchDescription": "批量修改备注",
+        "batchDescriptionPlaceholder": "输入备注内容",
         "totalAmount": "合计金额",
         "deleteConfirmDesc": "确定要删除此原始凭证吗？这将同时删除所有关联的账本记录。",
         "rawContent": "原始输入",
         "rawEvidence": "原始凭证",
         "translation": "翻译",
         "originalText": "识别原文",
-        "createdAt": "创建于"
+        "createdAt": "创建于",
+        "untitled": "未命名账单",
+        "saveChanges": "保存 ({count}处修改)",
+        "discardChanges": "放弃修改",
+        "unsavedChanges": "有未保存的修改",
+        "unsavedChangesDesc": "您有未保存的修改，确定要放弃这些修改吗？",
+        "discardAndClose": "放弃并关闭"
     },
     "ImageViewer": {
         "clickToZoom": "点击放大",

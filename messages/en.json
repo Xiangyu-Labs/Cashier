@@ -158,7 +158,14 @@
         "unknown": "Unknown",
         "expand": "Expand",
         "collapse": "Collapse",
-        "viewSource": "View Source Document"
+        "viewSource": "View Source Document",
+        "noDescription": "No description",
+        "noCategory": "No Category",
+        "addDescription": "Add description",
+        "discardChanges": "Discard",
+        "unsavedChanges": "Unsaved Changes",
+        "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
+        "discardAndClose": "Discard & Close"
     },
     "SourceDocumentDetail": {
         "title": "Bill Details",
@@ -174,13 +181,20 @@
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDate": "Batch Edit Date",
         "batchDescription": "Batch Edit Description",
+        "batchDescriptionPlaceholder": "Enter description",
         "totalAmount": "Total Amount",
         "deleteConfirmDesc": "Are you sure you want to delete this source document? This will also delete all associated ledger entries.",
         "rawContent": "Raw Evidence",
         "rawEvidence": "Evidence",
         "translation": "Translation",
         "originalText": "Original",
-        "createdAt": "Created at"
+        "createdAt": "Created at",
+        "untitled": "Untitled Bill",
+        "saveChanges": "Save ({count} changes)",
+        "discardChanges": "Discard",
+        "unsavedChanges": "Unsaved Changes",
+        "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
+        "discardAndClose": "Discard & Close"
     },
     "ImageViewer": {
         "clickToZoom": "Click to Zoom",

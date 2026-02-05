@@ -1,19 +1,19 @@
 "use client";
 
-import { SourceDocument, LedgerEntry } from "@/types/api";
+import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import Image from "next/image";
-import { type ReactNode, useMemo, useState, memo } from "react";
+import { type ReactNode, useMemo, useState, memo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, FileText, ImagePlay, Maximize2, Calendar } from "lucide-react";
-import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
+import { Wallet, FileText, ImagePlay, Maximize2 } from "lucide-react";
+import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
+import { EditableField } from "@/components/ui/editable-field";
+import { EditableDateField } from "@/components/ui/editable-date-field";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { useQueries } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import {
-    convertCurrencyAction
-} from "@/features/ledger/server/actions/currency";
+import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -46,52 +46,84 @@ function CurrencyBreakdownItem({ currency, amount, mainCurrency, date }: Currenc
     );
 }
 
+// Types for pending changes
+export interface SourceDocPendingChanges {
+    title?: string;
+    entryDate?: string;
+}
+
+export interface EntriesPendingChanges {
+    [entryId: string]: Partial<EntryEditData>;
+}
+
+export interface PendingChanges {
+    sourceDoc: SourceDocPendingChanges;
+    entries: EntriesPendingChanges;
+}
+
 interface SourceDocumentViewDetailsProps {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
+    categories: EntryCategory[];
+    preferredCurrencies?: string[];
     mainCurrency?: string;
-    onViewEntry: (entry: LedgerEntry) => void;
+    pendingChanges: PendingChanges;
+    selectedEntryIds: string[];
+    onSourceDocChange: (changes: SourceDocPendingChanges) => void;
+    onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
+    onSelectEntry: (entryId: string, selected: boolean) => void;
+    onSelectAllEntries: (selected: boolean) => void;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
     sourceDocument,
     ledgerEntries,
+    categories,
+    preferredCurrencies = [],
     mainCurrency = "CNY",
-    onViewEntry,
+    pendingChanges,
+    selectedEntryIds,
+    onSourceDocChange,
+    onEntryChange,
+    onSelectEntry,
+    onSelectAllEntries,
 }: SourceDocumentViewDetailsProps): ReactNode {
-    // The component expects string dates, ensure our data matches
-    const _safeSourceDocument = sourceDocument;
     const t = useTranslations("SourceDocumentDetail");
     const tCard = useTranslations("SourceDocumentCard");
     const locale = useLocale();
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
+    // Merge pending changes with original data
+    const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument.title ?? "";
+    const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
+
     const { subtotalsByCurrency } = useMemo(() => {
         const groups: Record<string, number> = {};
         ledgerEntries.forEach(entry => {
-            const curr = entry.currency || mainCurrency;
-            groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
+            const pendingCurrency = pendingChanges.entries[entry.id]?.currency;
+            const pendingAmount = pendingChanges.entries[entry.id]?.amount;
+            const curr = pendingCurrency ?? entry.currency ?? mainCurrency;
+            const amt = pendingAmount ?? entry.amount;
+            groups[curr] = (groups[curr] || 0) + parseFloat(amt);
         });
 
         return {
             subtotalsByCurrency: groups,
         };
-    }, [ledgerEntries, mainCurrency]);
+    }, [ledgerEntries, mainCurrency, pendingChanges.entries]);
 
     const uniqueCurrencies = Object.keys(subtotalsByCurrency);
 
-    // Use useQueries to get all conversions for total calculation
     const conversionQueries = useQueries({
         queries: uniqueCurrencies.map(currency => {
             const amount = subtotalsByCurrency[currency];
             const date = ledgerEntries.find(e => e.currency === currency)?.entryDate || sourceDocument.createdAt;
-            const dateStr = date;
 
             return {
-                queryKey: ["convert", amount, currency, mainCurrency, dateStr],
+                queryKey: ["convert", amount, currency, mainCurrency, date],
                 queryFn: async () => {
                     if (currency === mainCurrency) return { converted: amount };
-                    const result = await convertCurrencyAction(amount, currency, mainCurrency, dateStr);
+                    const result = await convertCurrencyAction(amount, currency, mainCurrency, date);
                     if (!result.success) throw new Error(result.error || "Conversion failed");
                     return { converted: result.converted! };
                 },
@@ -117,41 +149,36 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         });
     }, [ledgerEntries]);
 
-    // Derived Status Info
     const isAnomaly = sourceDocument.status === "anomaly";
+    const allSelected = selectedEntryIds.length === ledgerEntries.length && ledgerEntries.length > 0;
 
     return (
         <div className="h-full flex flex-col mx-auto lg:h-[calc(100vh-140px)]">
-            {/* Integrated Workspace - Now full width for better focus */}
             <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
                 <Tabs defaultValue="entries" className="h-full flex flex-col gap-2">
                     <div className="shrink-0 flex items-center justify-between gap-2">
-                        {/* Header: Focused metadata for mobile */}
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground font-medium">
-                                <Calendar className="h-3 w-3 text-primary/60" />
-                                <span>
-                                    {new Date(sourceDocument.entryDate || sourceDocument.createdAt).toLocaleDateString(locale, {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })}
-                                </span>
-                                <span className="text-muted-foreground/40">|</span>
-                                <span className="text-muted-foreground/60">
-                                    {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
-                                </span>
-                                {isAnomaly && (
-                                    <Badge variant="error" className="h-3.5 px-1 text-[8px] md:text-[9px] uppercase font-black tracking-tighter rounded-full">
-                                        Anomaly
-                                    </Badge>
-                                )}
-                            </div>
+                        {/* Header with editable date */}
+                        <div className="min-w-0 flex items-center gap-2">
+                            <EditableDateField
+                                value={displayEntryDate}
+                                onChange={(date) => onSourceDocChange({ entryDate: date })}
+                                locale={locale}
+                                className="text-[10px] md:text-xs text-muted-foreground font-medium"
+                            />
+                            <span className="text-muted-foreground/40">|</span>
+                            <span className="text-muted-foreground/60 text-[10px] md:text-xs">
+                                {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                })}
+                            </span>
+                            {isAnomaly && (
+                                <Badge variant="error" className="h-3.5 px-1 text-[8px] md:text-[9px] uppercase font-black tracking-tighter rounded-full">
+                                    Anomaly
+                                </Badge>
+                            )}
                         </div>
                         <TabsList className="bg-surface2/50 p-1 border border-border/40 rounded-xl h-9 md:h-10">
                             <TabsTrigger value="entries" className="rounded-lg px-3 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">{t("entries")}</TabsTrigger>
@@ -160,7 +187,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     </div>
 
                     <TabsContent value="entries" className="flex-1 min-h-0 m-0 p-0 flex flex-col gap-2 focus-visible:outline-none">
-                        {/* Financial Summary: Compact */}
+                        {/* Financial Summary */}
                         <div className="rounded-lg border border-border/80 bg-surface shadow-sm p-3 space-y-2">
                             <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em] opacity-60">
@@ -194,7 +221,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             )}
                         </div>
 
-                        {/* Entries List: Optimized for touch */}
+                        {/* Entries List */}
                         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                             <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 pb-2 scrollbar-none">
                                 {sortedEntries.length === 0 ? (
@@ -203,11 +230,16 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                     </div>
                                 ) : (
                                     sortedEntries.map((entry) => (
-                                        <BillEntryItem
+                                        <EditableBillEntryItem
                                             key={entry.id}
                                             ledgerEntry={entry}
-                                            onView={() => onViewEntry(entry)}
+                                            categories={categories}
+                                            preferredCurrencies={preferredCurrencies}
                                             mainCurrency={mainCurrency}
+                                            selected={selectedEntryIds.includes(entry.id)}
+                                            onSelect={(selected) => onSelectEntry(entry.id, selected)}
+                                            onChange={(changes) => onEntryChange(entry.id, changes)}
+                                            pendingChanges={pendingChanges.entries[entry.id]}
                                         />
                                     ))
                                 )}
@@ -217,7 +249,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
                     <TabsContent value="raw" className="flex-1 min-h-0 m-0 p-0 overflow-y-auto focus-visible:outline-none scrollbar-none">
                         <div className="space-y-6 pb-20 sm:pb-10">
-                            {/* 1. Visual Evidence: Compact Grid of Images */}
                             {(sourceDocument.imageUrls?.length ?? 0) > 0 && (
                                 <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
                                     <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
@@ -248,13 +279,11 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 </div>
                             )}
 
-                            {/* 2. Textual Evidence: Clean RAW View */}
                             <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
                                 <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                     <FileText className="h-3 w-3 text-primary" />
                                     {t("rawContent")}
                                 </h5>
-
                                 <div className="space-y-2">
                                     <div className="text-[11px] md:text-xs text-text/80 font-mono leading-relaxed whitespace-pre-wrap bg-surface/50 p-4 rounded-xl border border-border/40">
                                         {sourceDocument.text || "No raw text available."}
@@ -263,7 +292,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             </div>
                         </div>
 
-                        {/* Shared Gallery Viewer */}
                         <ImageViewer
                             images={sourceDocument.imageUrls || []}
                             initialIndex={viewerIndex ?? 0}
@@ -277,4 +305,3 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         </div>
     );
 })
-

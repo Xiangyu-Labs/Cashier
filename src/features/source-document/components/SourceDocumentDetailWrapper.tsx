@@ -9,21 +9,22 @@ import {
 } from "@/features/source-document/server/actions";
 import {
     deleteLedgerEntryAction,
-    batchUpdateLedgerEntriesAction
+    batchUpdateLedgerEntriesAction,
+    updateLedgerEntryAction
 } from "@/features/ledger/server/actions/entries";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
+import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 
 interface SourceDocumentDetailWrapperProps {
     id: string;
     open: boolean;
     onClose: () => void;
     categories: EntryCategory[];
-    ledgerEntries?: LedgerEntry[]; // Allow override if we already have data (optional optimization)
+    ledgerEntries?: LedgerEntry[];
 }
 
 export function SourceDocumentDetailWrapper({
@@ -34,7 +35,6 @@ export function SourceDocumentDetailWrapper({
     ledgerEntries: initialLedgerEntries
 }: SourceDocumentDetailWrapperProps) {
     const tCommon = useTranslations("Common");
-    const push = useModalStackStore(state => state.push);
     const queryClient = useQueryClient();
 
     const { data: sourceDocument, isLoading, error } = useQuery({
@@ -45,24 +45,45 @@ export function SourceDocumentDetailWrapper({
             return result.data;
         },
         enabled: open && !!id,
-        retry: false // Don't retry if deleted
+        retry: false
     });
 
     const ledgerId = sourceDocument?.ledgerId;
 
-    // Mutations
-    const updateTitleMutation = useMutation({
-        mutationFn: async (title: string) => {
+    // Update source document (title, entryDate)
+    const updateSourceDocMutation = useMutation({
+        mutationFn: async (data: { title?: string; entryDate?: string }) => {
             if (!ledgerId) return;
-            const result = await updateSourceDocumentAction(ledgerId, id, { title });
+            const result = await updateSourceDocumentAction(ledgerId, id, data);
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
             if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
         }
     });
 
+    // Update single entry
+    const updateEntryMutation = useMutation({
+        mutationFn: async ({ entryId, data }: { entryId: string; data: Partial<EntryEditData> }) => {
+            if (!ledgerId) return;
+            // Convert amount from string to number if present
+            const convertedData = {
+                ...data,
+                amount: data.amount !== undefined ? parseFloat(data.amount) : undefined
+            };
+            const result = await updateLedgerEntryAction(ledgerId, entryId, convertedData);
+            if (!result.success) throw new Error(result.error || "Unknown error");
+        },
+        onSuccess: () => {
+            toast.success(tCommon("saveSuccess"));
+            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+        }
+    });
+
+    // Batch update entries
     const batchUpdateMutation = useMutation({
         mutationFn: async ({ ids, data }: { ids: string[], data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             if (!ledgerId) return;
@@ -76,6 +97,7 @@ export function SourceDocumentDetailWrapper({
         }
     });
 
+    // Delete single entry
     const deleteEntryMutation = useMutation({
         mutationFn: async (entryId: string) => {
             if (!ledgerId) return;
@@ -89,6 +111,23 @@ export function SourceDocumentDetailWrapper({
         }
     });
 
+    // Batch delete entries
+    const batchDeleteMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            if (!ledgerId) return;
+            for (const entryId of ids) {
+                const result = await deleteLedgerEntryAction(ledgerId, entryId);
+                if (!result.success) throw new Error(result.error || "Unknown error");
+            }
+        },
+        onSuccess: () => {
+            toast.success(tCommon("deleteSuccess"));
+            if (ledgerId) queryClient.invalidateQueries({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+        }
+    });
+
+    // Delete document
     const deleteDocumentMutation = useMutation({
         mutationFn: async () => {
             if (!ledgerId) return;
@@ -102,7 +141,6 @@ export function SourceDocumentDetailWrapper({
         }
     });
 
-
     // Handle error state
     if (error) {
         toast.error(tCommon("error"));
@@ -110,7 +148,7 @@ export function SourceDocumentDetailWrapper({
         return null;
     }
 
-    // Handle deleted/not-found case (after loading completes)
+    // Handle deleted/not-found case
     if (!isLoading && !sourceDocument && open) {
         setTimeout(onClose, 0);
         return null;
@@ -120,7 +158,6 @@ export function SourceDocumentDetailWrapper({
         ? ((sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries || initialLedgerEntries || [])
         : [];
 
-    // Ensure status is valid for the component safely
     const safeSourceDocument = sourceDocument ? {
         ...sourceDocument,
         status: sourceDocument.status || "queued"
@@ -134,11 +171,13 @@ export function SourceDocumentDetailWrapper({
             categories={categories}
             open={open}
             onClose={onClose}
-            onUpdateTitle={async (title) => await updateTitleMutation.mutateAsync(title)}
+            onUpdateSourceDoc={async (data) => await updateSourceDocMutation.mutateAsync(data)}
+            onUpdateEntry={async (entryId, data) => await updateEntryMutation.mutateAsync({ entryId, data })}
             onBatchUpdate={async (ids, data) => await batchUpdateMutation.mutateAsync({ ids, data })}
             onDeleteEntry={async (entryId) => await deleteEntryMutation.mutateAsync(entryId)}
+            onBatchDelete={async (ids) => await batchDeleteMutation.mutateAsync(ids)}
             onDelete={async () => await deleteDocumentMutation.mutateAsync()}
-            onViewLedgerEntry={(entry) => push({ type: 'ledger-entry', id: entry.id })}
         />
     );
 }
+

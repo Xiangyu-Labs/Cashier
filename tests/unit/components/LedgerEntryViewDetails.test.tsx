@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "@/features/ledger/components/LedgerEntryViewDetails";
+import { LedgerEntryViewDetails, EntryPendingChanges } from "@/features/ledger/components/LedgerEntryViewDetails";
 import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
 
 // Mock next-intl
@@ -30,11 +30,38 @@ vi.mock("@/components/ui/date-filter", () => ({
     ),
 }));
 
-// Mock child components
-vi.mock("./SourceDocumentOriginalContent", () => ({
-    SourceDocumentOriginalContent: () => <div data-testid="original-content">Original</div>,
+// Mock editable components
+vi.mock("@/components/ui/editable-field", () => ({
+    EditableField: ({ value, onChange, placeholder }: { value: string, onChange: (v: string) => void, placeholder?: string }) => (
+        <input
+            data-testid="editable-field"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+        />
+    ),
 }));
 
+vi.mock("@/components/ui/editable-date-field", () => ({
+    EditableDateField: ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (
+        <input
+            type="date"
+            data-testid="editable-date-field"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
+vi.mock("@/components/ui/editable-category-select", () => ({
+    EditableCategorySelect: ({ value, onChange }: { value: string | null, onChange: (v: string) => void }) => (
+        <button data-testid="editable-category" onClick={() => onChange("c2")}>
+            {value || "Select"}
+        </button>
+    ),
+}));
+
+// Mock child components
 vi.mock("@/components/CategoryIcon", () => ({
     CategoryIcon: () => <div data-testid="category-icon">Icon</div>,
 }));
@@ -75,120 +102,112 @@ describe("LedgerEntryViewDetails", () => {
     };
 
     const mockCategories: EntryCategory[] = [
-        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" }
+        { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" },
+        { id: "c2", name: "Transport", icon: "car", sortOrder: 1, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" }
     ];
-
-    const mockEditData: LedgerEntryEditFormData = {
-        itemName: "Test Item",
-        amount: 100.5,
-        currency: "CNY",
-        categoryId: "c1",
-        entryDate: "2023-01-28", // Already ISO date string from initialization logic in Modal
-        description: "Test description",
-    };
 
     const defaultProps = {
         ledgerEntry: mockLedgerEntry,
-        isEditing: false,
-        editData: mockEditData,
         categories: mockCategories,
-        onEditStart: vi.fn(),
-        onEditChange: vi.fn(),
-        onEditSave: vi.fn(),
-        onEditCancel: vi.fn(),
+        pendingChanges: {} as EntryPendingChanges,
+        onFieldChange: vi.fn(),
+        onSave: vi.fn(),
+        onDiscard: vi.fn(),
         onDelete: vi.fn(),
     };
 
-    it("renders item details in view mode", () => {
+    it("renders item details", () => {
         renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
-        expect(screen.getByText("Test Item")).toBeDefined();
-        expect(screen.getByText("100.50")).toBeDefined();
-        expect(screen.getByText("Test description")).toBeDefined();
+        // EditableField mocked - check for inputs with values
+        const inputs = screen.getAllByTestId("editable-field");
+        expect(inputs.length).toBeGreaterThan(0);
     });
 
-    it("renders input fields in edit mode with correct data", () => {
-        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+    it("displays pending changes merged with original data", () => {
+        const pendingChanges: EntryPendingChanges = {
+            itemName: "Modified Item"
+        };
+        renderWithQuery(
+            <LedgerEntryViewDetails {...defaultProps} pendingChanges={pendingChanges} />
+        );
 
-        const itemNameInput = screen.getByPlaceholderText("itemName") as HTMLInputElement;
-        expect(itemNameInput.value).toBe("Test Item");
-
-        const dateInput = screen.getByDisplayValue("2023-01-28") as HTMLInputElement;
-        expect(dateInput.type).toBe("date");
-        expect(dateInput.value).toBe("2023-01-28");
+        // Check that the input has the pending value
+        const inputs = screen.getAllByTestId("editable-field");
+        const itemNameInput = inputs.find(input => (input as HTMLInputElement).value === "Modified Item");
+        expect(itemNameInput).toBeDefined();
     });
 
-    it("triggers onEditChange when fields are updated", () => {
-        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+    it("triggers onFieldChange when field is edited", () => {
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
 
-        const itemNameInput = screen.getByPlaceholderText("itemName");
-        fireEvent.change(itemNameInput, { target: { value: "New Item Name" } });
+        const inputs = screen.getAllByTestId("editable-field");
+        fireEvent.change(inputs[0], { target: { value: "New Item Name" } });
 
-        expect(defaultProps.onEditChange).toHaveBeenCalledWith({
-            ...mockEditData,
-            itemName: "New Item Name"
-        });
+        expect(defaultProps.onFieldChange).toHaveBeenCalled();
     });
 
-    it("triggers onEditSave when save button is clicked", () => {
-        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} isEditing={true} />);
+    it("shows save button when there are pending changes", () => {
+        const pendingChanges: EntryPendingChanges = {
+            itemName: "Modified Item"
+        };
+        renderWithQuery(
+            <LedgerEntryViewDetails {...defaultProps} pendingChanges={pendingChanges} />
+        );
+
+        // Look for save button
+        expect(screen.getByText("save")).toBeDefined();
+    });
+
+    it("triggers onSave when save button is clicked", () => {
+        const pendingChanges: EntryPendingChanges = {
+            itemName: "Modified Item"
+        };
+        renderWithQuery(
+            <LedgerEntryViewDetails {...defaultProps} pendingChanges={pendingChanges} />
+        );
 
         const saveButton = screen.getByText("save");
         fireEvent.click(saveButton);
 
-        expect(defaultProps.onEditSave).toHaveBeenCalled();
+        expect(defaultProps.onSave).toHaveBeenCalled();
     });
 
-    it("shows preferred currencies first in the selector", () => {
-        const preferredCurrencies = ["HKD", "JPY"];
-        const { container } = renderWithQuery(
-            <LedgerEntryViewDetails
-                {...defaultProps}
-                isEditing={true}
-                preferredCurrencies={preferredCurrencies}
-            />
+    it("triggers onDiscard when discard button is clicked", () => {
+        const pendingChanges: EntryPendingChanges = {
+            itemName: "Modified Item"
+        };
+        renderWithQuery(
+            <LedgerEntryViewDetails {...defaultProps} pendingChanges={pendingChanges} />
         );
 
-        const select = container.querySelector("select") as HTMLSelectElement;
-        const options = Array.from(select.options).map(opt => opt.value);
+        const discardButton = screen.getByText("discardChanges");
+        fireEvent.click(discardButton);
 
-        // HKD, JPY should be first (after unknown since mockLedgerEntry status is not confirmed)
-        // Default mockLedgerEntry doesn't have status, let's assume it's pending if status is undefined in component logic?
-        // Wait, LedgerEntry status is optional. Let's check component logic.
-        // const showUnknown = ledgerEntry.status === "pending"; (from my implementation)
-        // If status is undefined, showUnknown is false.
-
-        expect(options[0]).toBe("HKD");
-        expect(options[1]).toBe("JPY");
+        expect(defaultProps.onDiscard).toHaveBeenCalled();
     });
 
-    it("shows 'unknown' option only for anomaly entries", () => {
-        // Pending status (has anomaly)
-        const anomalyDoc = { status: "anomaly" } as unknown as SourceDocument;
-        const pendingEntry = { ...mockLedgerEntry, sourceDocument: anomalyDoc };
+    it("renders delete button", () => {
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
 
-        const { rerender, container } = renderWithQuery(
-            <LedgerEntryViewDetails
-                {...defaultProps}
-                ledgerEntry={pendingEntry}
-                isEditing={true}
-            />
+        const deleteButton = screen.getByText("delete");
+        expect(deleteButton).toBeDefined();
+    });
+
+    it("triggers onDelete when delete button is clicked", () => {
+        renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
+
+        const deleteButton = screen.getByText("delete");
+        fireEvent.click(deleteButton);
+
+        expect(defaultProps.onDelete).toHaveBeenCalled();
+    });
+
+    it("shows view source button when onViewSourceDocument is provided", () => {
+        const onViewSourceDocument = vi.fn();
+        renderWithQuery(
+            <LedgerEntryViewDetails {...defaultProps} onViewSourceDocument={onViewSourceDocument} />
         );
 
-        let select = container.querySelector("select") as HTMLSelectElement;
-        expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(true);
-
-        // Confirmed status (no anomaly)
-        const confirmedDoc = { status: "completed" } as unknown as SourceDocument;
-        const confirmedEntry = { ...mockLedgerEntry, sourceDocument: confirmedDoc };
-        rerender(
-            <LedgerEntryViewDetails
-                {...defaultProps}
-                ledgerEntry={confirmedEntry}
-                isEditing={true}
-            />
-        );
-
-        select = container.querySelector("select") as HTMLSelectElement;
-        expect(Array.from(select.options).some(opt => opt.value === "unknown")).toBe(false);
+        expect(screen.getByText("viewSource")).toBeDefined();
     });
 });

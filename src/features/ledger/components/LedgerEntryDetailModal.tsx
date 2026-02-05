@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback, type ReactNode, memo } from "react";
+import { useState, useCallback, type ReactNode, memo, useMemo, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryViewDetails, LedgerEntryEditFormData } from "./LedgerEntryViewDetails";
+import { LedgerEntryViewDetails, EntryPendingChanges } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
@@ -43,60 +42,87 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
 }: LedgerEntryDetailModalProps): ReactNode | null {
   const tTab = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
+  const t = useTranslations("LedgerEntryDetail");
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<LedgerEntryEditFormData>({
-    itemName: "",
-    amount: 0,
-    currency: "",
-    categoryId: "",
-    entryDate: "",
-    description: "",
-  });
-
-
+  // Pending changes state
+  const [pendingChanges, setPendingChanges] = useState<EntryPendingChanges>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
-  // Initialize edit data when ledgerEntry changes or modal opens
-  const [prevLedgerEntry, setPrevLedgerEntry] = useState(ledgerEntry);
-  if (ledgerEntry !== prevLedgerEntry) {
-    setPrevLedgerEntry(ledgerEntry);
-    if (ledgerEntry && open) {
-      setEditData({
-        itemName: ledgerEntry.itemName,
-        amount: parseFloat(ledgerEntry.amount),
-        currency: ledgerEntry.currency || "",
-        categoryId: ledgerEntry.categoryId || "",
-        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-        description: ledgerEntry.description || "",
-      });
-      setIsEditing(false); // Default to view mode
+  // Reset pending changes when ledgerEntry changes or modal opens
+  useEffect(() => {
+    if (open && ledgerEntry) {
+      setPendingChanges({});
     }
-  }
+  }, [open, ledgerEntry?.id]);
 
+  const hasPendingChanges = useMemo(() => {
+    return Object.keys(pendingChanges).length > 0;
+  }, [pendingChanges]);
+
+  // Handle field change
+  const handleFieldChange = useCallback((changes: EntryPendingChanges) => {
+    setPendingChanges(prev => ({ ...prev, ...changes }));
+  }, []);
+
+  // Handle save
   const handleSave = useCallback(() => {
-    onUpdate({
-      itemName: editData.itemName,
-      amount: editData.amount,
-      currency: (editData.currency === "" || editData.currency === "unknown") ? "unknown" : editData.currency,
-      categoryId: editData.categoryId || null,
-      entryDate: editData.entryDate || null,
-      description: editData.description || null,
-    });
-    setIsEditing(false);
-  }, [editData, onUpdate]);
+    if (!ledgerEntry) return;
 
+    const updateData: Parameters<typeof onUpdate>[0] = {};
+
+    if (pendingChanges.itemName !== undefined) {
+      updateData.itemName = pendingChanges.itemName;
+    }
+    if (pendingChanges.amount !== undefined) {
+      updateData.amount = pendingChanges.amount;
+    }
+    if (pendingChanges.currency !== undefined) {
+      updateData.currency = pendingChanges.currency === "unknown" ? "unknown" : pendingChanges.currency;
+    }
+    if (pendingChanges.categoryId !== undefined) {
+      updateData.categoryId = pendingChanges.categoryId;
+    }
+    if (pendingChanges.entryDate !== undefined) {
+      updateData.entryDate = pendingChanges.entryDate || null;
+    }
+    if (pendingChanges.description !== undefined) {
+      updateData.description = pendingChanges.description;
+    }
+
+    onUpdate(updateData);
+    setPendingChanges({});
+    toast.success(tCommon("saveSuccess"));
+  }, [ledgerEntry, pendingChanges, onUpdate, tCommon]);
+
+  // Handle discard
+  const handleDiscard = useCallback(() => {
+    setPendingChanges({});
+  }, []);
+
+  // Handle close with unsaved changes check
+  const handleClose = useCallback(() => {
+    if (hasPendingChanges) {
+      setShowUnsavedConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [hasPendingChanges, onClose]);
+
+  // Handle discard and close
+  const handleDiscardAndClose = useCallback(() => {
+    setPendingChanges({});
+    setShowUnsavedConfirm(false);
+    onClose();
+  }, [onClose]);
+
+  // Handle delete
   const handleDelete = useCallback(() => {
     onDelete();
     setShowDeleteConfirm(false);
     onClose();
     toast.success(tTab("deleteSuccess"));
   }, [onDelete, onClose, tTab]);
-
-  const handleClose = useCallback(() => {
-    setIsEditing(false);
-    onClose();
-  }, [onClose]);
 
   return (
     <>
@@ -127,58 +153,23 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
 
           {/* Actual Content */}
           {ledgerEntry && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={isEditing ? "edit" : "view"}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                <LedgerEntryViewDetails
-                  ledgerEntry={ledgerEntry}
-                  isEditing={isEditing}
-                  editData={editData}
-                  categories={categories}
-                  preferredCurrencies={preferredCurrencies}
-                  mainCurrency={mainCurrency}
-                  onEditStart={() => {
-                    if (ledgerEntry) {
-                      setEditData({
-                        itemName: ledgerEntry.itemName,
-                        amount: parseFloat(ledgerEntry.amount),
-                        currency: ledgerEntry.currency || "",
-                        categoryId: ledgerEntry.categoryId || "",
-                        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                        description: ledgerEntry.description || "",
-                      });
-                    }
-                    setIsEditing(true);
-                  }}
-                  onEditChange={setEditData}
-                  onEditSave={handleSave}
-                  onEditCancel={() => {
-                    setIsEditing(false);
-                    if (ledgerEntry) {
-                      setEditData({
-                        itemName: ledgerEntry.itemName,
-                        amount: parseFloat(ledgerEntry.amount),
-                        currency: ledgerEntry.currency || "",
-                        categoryId: ledgerEntry.categoryId || "",
-                        entryDate: ledgerEntry.entryDate ? ledgerEntry.entryDate.split("T")[0] : "",
-                        description: ledgerEntry.description || "",
-                      });
-                    }
-                  }}
-                  onDelete={() => setShowDeleteConfirm(true)}
-                  onViewSourceDocument={onViewSourceDocument ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!) : undefined}
-                />
-              </motion.div>
-            </AnimatePresence>
+            <LedgerEntryViewDetails
+              ledgerEntry={ledgerEntry}
+              categories={categories}
+              preferredCurrencies={preferredCurrencies}
+              mainCurrency={mainCurrency}
+              pendingChanges={pendingChanges}
+              onFieldChange={handleFieldChange}
+              onSave={handleSave}
+              onDiscard={handleDiscard}
+              onDelete={() => setShowDeleteConfirm(true)}
+              onViewSourceDocument={onViewSourceDocument && ledgerEntry.sourceDocumentId
+                ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!)
+                : undefined}
+            />
           )}
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       <ConfirmDialog
         open={showDeleteConfirm}
@@ -188,6 +179,16 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
         onConfirm={handleDelete}
         variant="destructive"
         confirmLabel={tCommon("delete")}
+      />
+
+      <ConfirmDialog
+        open={showUnsavedConfirm}
+        onOpenChange={setShowUnsavedConfirm}
+        title={t("unsavedChanges")}
+        description={t("unsavedChangesDesc")}
+        onConfirm={handleDiscardAndClose}
+        variant="destructive"
+        confirmLabel={t("discardAndClose")}
       />
     </>
   );
