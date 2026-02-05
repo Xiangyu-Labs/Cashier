@@ -182,7 +182,8 @@
         "rawContent": "原始输入",
         "rawEvidence": "原始凭证",
         "translation": "翻译",
-        "originalText": "识别原文"
+        "originalText": "识别原文",
+        "createdAt": "创建于"
     },
     "ImageViewer": {
         "clickToZoom": "点击放大",

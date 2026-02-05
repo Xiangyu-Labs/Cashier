@@ -130,10 +130,22 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground font-medium">
                                 <Calendar className="h-3 w-3 text-primary/60" />
-                                {new Date(sourceDocument.createdAt).toLocaleString(locale, {
-                                    dateStyle: 'medium',
-                                    timeStyle: 'short'
-                                })}
+                                <span>
+                                    {new Date(ledgerEntries[0]?.entryDate || sourceDocument.createdAt).toLocaleDateString(locale, {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </span>
+                                <span className="text-muted-foreground/40">|</span>
+                                <span className="text-muted-foreground/60">
+                                    {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </span>
                                 {isAnomaly && (
                                     <Badge variant="error" className="h-3.5 px-1 text-[8px] md:text-[9px] uppercase font-black tracking-tighter rounded-full">
                                         Anomaly

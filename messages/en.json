@@ -179,7 +179,8 @@
         "rawContent": "Raw Evidence",
         "rawEvidence": "Evidence",
         "translation": "Translation",
-        "originalText": "Original"
+        "originalText": "Original",
+        "createdAt": "Created at"
     },
     "ImageViewer": {
         "clickToZoom": "Click to Zoom",
