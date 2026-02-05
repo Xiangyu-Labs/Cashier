@@ -73,6 +73,12 @@ export interface TokenUsageRecord {
  */
 export interface FlowEngineConfig {
   storage: StorageAdapter
+  /**
+   * Maximum number of concurrent tasks.
+   * If not set, defaults to 10.
+   * Set to 0 or Infinity for unlimited concurrent tasks.
+   */
+  maxConcurrentTasks?: number
 }
 
 // ===== Task Layer Interfaces =====

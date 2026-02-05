@@ -30,6 +30,53 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   const handlers = new Map<string, FlowTaskHandler<unknown, unknown>>()
   const abortControllers = new Map<string, AbortController>()
 
+  // Concurrency control via semaphore pattern
+  const maxConcurrent = config.maxConcurrentTasks ?? 10
+  let runningCount = 0
+  const pendingQueue: Array<{ taskId: string; resolve: () => void }> = []
+
+  /**
+   * Acquire a slot to run a task.
+   * If all slots are occupied, the task will wait in queue.
+   */
+  async function acquireSlot(taskId: string): Promise<void> {
+    if (maxConcurrent <= 0 || runningCount < maxConcurrent) {
+      runningCount++
+      return
+    }
+    // Wait for a slot to become available
+    return new Promise((resolve) => {
+      pendingQueue.push({ taskId, resolve })
+    })
+  }
+
+  /**
+   * Release a slot after task completion.
+   * If there are waiting tasks, give the slot to the next one.
+   */
+  function releaseSlot(): void {
+    const next = pendingQueue.shift()
+    if (next) {
+      // Give slot directly to the next waiting task
+      next.resolve()
+    } else {
+      // No waiting tasks, just decrement
+      runningCount--
+    }
+  }
+
+  /**
+   * Remove a task from the pending queue (e.g., when cancelled before running)
+   */
+  function removeFromQueue(taskId: string): boolean {
+    const index = pendingQueue.findIndex((item) => item.taskId === taskId)
+    if (index !== -1) {
+      pendingQueue.splice(index, 1)
+      return true
+    }
+    return false
+  }
+
   /**
    * Internal: Run a task to completion
    */
@@ -40,8 +87,21 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     ledgerId: string | null,
     signal: AbortSignal
   ): Promise<void> {
+    // Wait for an available slot (concurrency control)
+    await acquireSlot(taskId)
+
+    // Check if cancelled while waiting in queue
+    if (signal.aborted) {
+      releaseSlot()
+      await config.storage.update(taskId, { status: 'cancelled', progress: null })
+      logger.info({ taskId }, 'Task cancelled while waiting in queue')
+      abortControllers.delete(taskId)
+      return
+    }
+
     const handler = handlers.get(name)
     if (!handler) {
+      releaseSlot()
       logger.error({ taskName: name, taskId }, 'No handler registered for task')
       await config.storage.update(taskId, {
         status: 'failed',
@@ -156,7 +216,8 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         })
       }
     } finally {
-      // Cleanup abort controller
+      // Release concurrency slot and cleanup abort controller
+      releaseSlot()
       abortControllers.delete(taskId)
     }
   }
@@ -201,6 +262,16 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     },
 
     async cancel(taskId: string): Promise<void> {
+      // First, check if task is waiting in the queue (hasn't started yet)
+      if (removeFromQueue(taskId)) {
+        // Task was pending in queue, mark as cancelled directly
+        await config.storage.update(taskId, { status: 'cancelled', progress: null })
+        abortControllers.delete(taskId)
+        logger.info({ taskId }, 'Task cancelled from pending queue')
+        return
+      }
+
+      // Task is running, send abort signal
       const controller = abortControllers.get(taskId)
       if (controller) {
         controller.abort()
