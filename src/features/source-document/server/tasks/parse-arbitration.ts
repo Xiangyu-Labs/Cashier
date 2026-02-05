@@ -1,4 +1,4 @@
-import { ParsedLedgerEntry } from "../types";
+import { ParsedLedgerEntry } from "@/features/ai/server/types";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import type { AIContext } from "@/lib/flow";

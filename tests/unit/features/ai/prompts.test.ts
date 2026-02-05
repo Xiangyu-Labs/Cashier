@@ -1,5 +1,5 @@
 
-import { buildLedgerEntryPrompt } from "@/features/ai/server/services/prompts";
+import { buildLedgerEntryPrompt } from "@/features/source-document/server/tasks/parse-prompts";
 import { CategoryInfo } from "@/features/ai/server/types";
 
 describe("GPT Prompts", () => {

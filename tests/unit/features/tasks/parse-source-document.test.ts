@@ -7,11 +7,11 @@ import { FlowContext, AIContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
 // Mock the arbitration module
-vi.mock("@/features/ai/server/services/arbitration", () => ({
+vi.mock("@/features/source-document/server/tasks/parse-arbitration", () => ({
     arbitrate: vi.fn(),
 }));
 
-import { arbitrate } from "@/features/ai/server/services/arbitration";
+import { arbitrate } from "@/features/source-document/server/tasks/parse-arbitration";
 
 // Helper to create mock AI context
 function createMockAI(responses: Array<{ content: string }>): AIContext {

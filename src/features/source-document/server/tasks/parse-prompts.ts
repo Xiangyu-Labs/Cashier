@@ -1,4 +1,4 @@
-import { CategoryInfo } from "../types";
+import { CategoryInfo } from "@/features/ai/server/types";
 
 export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],
