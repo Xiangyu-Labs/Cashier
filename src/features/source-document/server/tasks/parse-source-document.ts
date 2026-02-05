@@ -218,6 +218,21 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return;
         }
 
+        // Check for unknown currency - should trigger anomaly
+        const unknownCurrencyEntries = validEntries.filter(
+            entry => !entry.currency || entry.currency.toLowerCase() === 'unknown'
+        );
+        if (unknownCurrencyEntries.length > 0) {
+            await db.update(sourceDocuments)
+                .set({
+                    status: 'anomaly',
+                    anomalyReason: '无法识别货币类型',
+                    progressMessage: null,
+                    title: title || undefined
+                })
+                .where(q.whereId(input.sourceDocumentId));
+            return;
+        }
         // Save entries
         const entriesToInsert = validEntries.map(entry => {
             const categoryId = entry.category
