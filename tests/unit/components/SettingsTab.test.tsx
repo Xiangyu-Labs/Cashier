@@ -119,7 +119,6 @@ describe("SettingsTab", () => {
                 mainCurrency: "CNY",
                 currencies: ["CNY", "USD"],
                 aiLanguage: "zh-CN",
-                collapseProcessingDefault: false,
                 collapseBillsDefault: false,
 
                 aiCustomPrompt: "Custom Prompt",

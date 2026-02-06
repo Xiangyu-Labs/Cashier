@@ -174,7 +174,6 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                         <LedgerEntriesTab
                             ledgerId={ledgerId}
                             categories={categories || []}
-                            defaultCollapsed={ledger.metadata?.settings?.collapseProcessingDefault || false}
                             ledger={ledger}
                         />
                     </TabsContent>

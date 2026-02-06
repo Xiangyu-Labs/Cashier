@@ -3,7 +3,6 @@ export const defaultLedger = {
         aiLanguage: "zh-CN",
         currencies: ["USD", "CNY"] as string[],
         mainCurrency: "CNY",
-        collapseProcessingDefault: false,
         collapseBillsDefault: false,
         aiCustomPrompt: "",
     },

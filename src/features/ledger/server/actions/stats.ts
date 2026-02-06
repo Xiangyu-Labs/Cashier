@@ -80,8 +80,7 @@ export async function getLedgerStatsAction(
             total: Number(t.total) || 0
         }));
 
-    // 3. By Category - Stub for now to fix build
-    // TODO: Implement full join with entryCategories
+    // byCategory is handled by getEnhancedStats, this action only provides totals
     const byCategory: LedgerEntrySummary['byCategory'] = [];
 
     // 4. Converted Total Logic - Accurate conversion by date

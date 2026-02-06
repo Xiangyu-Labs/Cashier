@@ -19,7 +19,6 @@ import {
     createServiceCredentialAction,
     deleteServiceCredentialAction,
 } from "@/features/ledger/server/actions/credentials";
-// import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
@@ -90,7 +89,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     }
 
     // Optimistic states
-    const [optimisticCollapseProcessing, setOptimisticCollapseProcessing] = useState(ledger.metadata?.settings?.collapseProcessingDefault);
+
     const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
 
     function handleUpdateLedger(data: {
@@ -98,7 +97,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         currencies?: string[];
         mainCurrency?: string;
         aiLanguage?: string;
-        collapseProcessingDefault?: boolean;
         collapseBillsDefault?: boolean;
         aiCustomPrompt?: string;
     }) {
@@ -110,7 +108,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             if (data.currencies !== undefined) settingsUpdate.currencies = data.currencies;
             if (data.mainCurrency !== undefined) settingsUpdate.mainCurrency = data.mainCurrency;
             if (data.aiLanguage !== undefined) settingsUpdate.aiLanguage = data.aiLanguage;
-            if (data.collapseProcessingDefault !== undefined) settingsUpdate.collapseProcessingDefault = data.collapseProcessingDefault;
 
             if (data.collapseBillsDefault !== undefined) settingsUpdate.collapseBillsDefault = data.collapseBillsDefault;
             if (data.aiCustomPrompt !== undefined) settingsUpdate.aiCustomPrompt = data.aiCustomPrompt;
@@ -126,7 +123,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             } catch {
                 toast.error(t("updateFailed"));
                 // Revert optimistic updates on error
-                setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
+
                 setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
             }
         });
@@ -359,22 +356,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                         </select>
                     </div>
 
-                    <div className="h-px bg-[var(--border)]" />
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('collapseProcessing')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('collapseProcessingDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={optimisticCollapseProcessing || false}
-                            onCheckedChange={(checked: boolean) => {
-                                setOptimisticCollapseProcessing(checked);
-                                handleUpdateLedger({ collapseProcessingDefault: checked });
-                            }}
-                            disabled={isPending}
-                        />
-                    </div>
 
                     <div className="h-px bg-[var(--border)]" />
 

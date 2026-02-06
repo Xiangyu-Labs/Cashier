@@ -4,8 +4,6 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-// import { LedgerScope } from "@/features/ledger/server/service";
-
 import { eq, and, isNull } from "drizzle-orm";
 
 const ledgerEntryInputSchema = z.object({

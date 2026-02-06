@@ -28,7 +28,6 @@ export interface LedgerMetadata {
         aiLanguage?: string;
         currencies?: string[];
         mainCurrency?: string;
-        collapseProcessingDefault?: boolean;
         collapseBillsDefault?: boolean;
         aiCustomPrompt?: string;
         // Future expansion

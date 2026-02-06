@@ -25,14 +25,12 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 interface LedgerEntriesTabProps {
     ledgerId: string;
     categories: EntryCategory[];
-    defaultCollapsed?: boolean;
     ledger?: Ledger;
 }
 
 export function LedgerEntriesTab({
     ledgerId,
     categories,
-    defaultCollapsed = false,
     ledger,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");

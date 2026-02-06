@@ -21,7 +21,6 @@ const updateLedgerSchema = z.object({
         aiLanguage: z.string().optional(),
         currencies: z.array(z.string()).optional(),
         mainCurrency: z.string().optional(),
-        collapseProcessingDefault: z.boolean().optional(),
         collapseBillsDefault: z.boolean().optional(),
         aiCustomPrompt: z.string().optional(),
     }).optional(),
@@ -46,7 +45,6 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
                     aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
                     currencies: defaultLedger.settings.currencies,
                     mainCurrency: defaultLedger.settings.mainCurrency,
-                    collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
                     collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
                     aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
                 }
