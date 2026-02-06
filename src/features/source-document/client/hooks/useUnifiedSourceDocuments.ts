@@ -33,6 +33,8 @@ interface UseUnifiedSourceDocumentsOptions {
         start?: Date;
         end?: Date;
     };
+    minAmount?: number;
+    maxAmount?: number;
     initialActiveSourceDocuments?: SourceDocumentWithEntries[];
     initialCompletedSourceDocuments?: SourceDocumentWithEntries[];
 }
@@ -46,7 +48,7 @@ export function useUnifiedSourceDocuments(
     ledgerId: string,
     options: UseUnifiedSourceDocumentsOptions = {}
 ) {
-    const { dateRange, initialActiveSourceDocuments, initialCompletedSourceDocuments } = options;
+    const { dateRange, minAmount, maxAmount, initialActiveSourceDocuments, initialCompletedSourceDocuments } = options;
 
     const startDate = formatDateTimeForApi(dateRange?.start) || null;
     const endDate = formatDateTimeForApi(dateRange?.end) || null;
@@ -98,10 +100,12 @@ export function useUnifiedSourceDocuments(
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
-        queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate ?? undefined, endDate ?? undefined),
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate ?? undefined, endDate ?? undefined, minAmount, maxAmount),
         queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
+            minAmount: minAmount ?? undefined,
+            maxAmount: maxAmount ?? undefined,
         }),
         isActive: (data) => (data?.groups?.queued?.length || 0) > 0 || (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
@@ -129,12 +133,14 @@ export function useUnifiedSourceDocuments(
         isFetchingNextPage,
         isLoading: isInfiniteLoading,
     } = useInfiniteQuery({
-        queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined),
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined, minAmount, maxAmount),
         queryFn: async ({ pageParam }) => {
             const res = await getUnifiedSourceDocumentsAction(ledgerId, {
                 cursor: pageParam as string | null,
                 startDate: startDate ?? undefined,
                 endDate: endDate ?? undefined,
+                minAmount: minAmount ?? undefined,
+                maxAmount: maxAmount ?? undefined,
             });
             return {
                 items: res.groups.completed,

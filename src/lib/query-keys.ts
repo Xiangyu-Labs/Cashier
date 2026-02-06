@@ -20,8 +20,8 @@ export const queryKeys = {
     ledgerEntry: (id: string) => ['ledgerEntry', id] as const,
 
     // === Source Documents ===
-    sourceDocuments: (ledgerId: string, ...filters: (string | undefined)[]) =>
-        ['sourceDocuments', ledgerId, ...filters.filter(Boolean)] as const,
+    sourceDocuments: (ledgerId: string, ...filters: (string | number | undefined)[]) =>
+        ['sourceDocuments', ledgerId, ...filters.filter(v => v !== undefined)] as const,
     sourceDocument: (id: string) => ['sourceDocument', id] as const,
 
     // === Categories ===

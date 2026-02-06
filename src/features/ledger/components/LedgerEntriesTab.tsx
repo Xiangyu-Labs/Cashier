@@ -15,7 +15,7 @@ import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
@@ -45,17 +45,17 @@ export function LedgerEntriesTab({
     // Layout Transitions
     const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
-    // Local State
-    // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
-    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+    // Filters State
+    const [filters, setFilters] = useState<EntryFilters>({});
 
     // Initialize date range on client side to avoid SSR timezone issues
     useEffect(() => {
         const now = new Date();
-        setDateRange({
-            start: new Date(now.getFullYear(), now.getMonth(), 1),
-            end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        });
+        setFilters(prev => ({
+            ...prev,
+            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+        }));
     }, []);
 
     // Modals State
@@ -79,7 +79,9 @@ export function LedgerEntriesTab({
         hasNextPage,
         isFetchingNextPage
     } = useUnifiedSourceDocuments(ledgerId, {
-        dateRange,
+        dateRange: { start: filters.startDate, end: filters.endDate },
+        minAmount: filters.minAmount ?? undefined,
+        maxAmount: filters.maxAmount ?? undefined,
     });
 
     // --- Mutations ---
@@ -331,12 +333,13 @@ export function LedgerEntriesTab({
         <LayoutGroup id={layoutGroupId}>
             <PullToRefresh onRefresh={handleRefresh}>
                 <div className="space-y-4" {...containerProps}>
-                    {/* Date Filter */}
+                    {/* Filter Panel */}
                     <div className="px-2 mb-2 sm:mb-4 pt-1">
-                        <DateRangeFilter
-                            startDate={dateRange.start}
-                            endDate={dateRange.end}
-                            onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                        <EntryFilterPanel
+                            filters={filters}
+                            onFiltersChange={setFilters}
+                            showCategory={false}
+                            showCurrency={false}
                             className="w-full sm:w-auto"
                         />
                     </div>

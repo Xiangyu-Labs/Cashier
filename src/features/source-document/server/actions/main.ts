@@ -481,6 +481,8 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     endDate?: string | null;
     limit?: number;
     cursor?: string | null;
+    minAmount?: number | null;
+    maxAmount?: number | null;
 }) {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
@@ -533,6 +535,34 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
                 ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
             });
         });
+
+        // Apply amount filtering if specified (post-filter based on total convertedAmount in main currency)
+        const { minAmount, maxAmount } = params;
+        const filterByAmount = (group: SourceDocumentGroup): boolean => {
+            if (minAmount === undefined && maxAmount === undefined) return true;
+            if (minAmount === null && maxAmount === null) return true;
+
+            // Calculate total converted amount for this source document (main currency)
+            const total = group.ledgerEntries.reduce((sum, entry) => {
+                // Use convertedAmount if available, otherwise fall back to amount
+                const entryWithConverted = entry as typeof entry & { convertedAmount?: string | null };
+                const convertedAmount = entryWithConverted.convertedAmount
+                    ? parseFloat(entryWithConverted.convertedAmount)
+                    : parseFloat(entry.amount) || 0;
+                return sum + Math.abs(convertedAmount);
+            }, 0);
+
+            if (minAmount !== undefined && minAmount !== null && total < minAmount) return false;
+            if (maxAmount !== undefined && maxAmount !== null && total > maxAmount) return false;
+            return true;
+        };
+
+        if (minAmount !== undefined || maxAmount !== undefined) {
+            groups.queued = groups.queued.filter(filterByAmount);
+            groups.processing = groups.processing.filter(filterByAmount);
+            groups.anomaly = groups.anomaly.filter(filterByAmount);
+            groups.completed = groups.completed.filter(filterByAmount);
+        }
 
         return {
             groups,

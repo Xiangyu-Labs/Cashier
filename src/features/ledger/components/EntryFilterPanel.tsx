@@ -32,16 +32,20 @@ export interface EntryFilters {
 interface EntryFilterPanelProps {
     filters: EntryFilters;
     onFiltersChange: (filters: EntryFilters) => void;
-    categories: EntryCategory[];
-    preferredCurrencies: string[];
+    categories?: EntryCategory[];
+    preferredCurrencies?: string[];
+    showCategory?: boolean;
+    showCurrency?: boolean;
     className?: string;
 }
 
 export function EntryFilterPanel({
     filters,
     onFiltersChange,
-    categories,
-    preferredCurrencies,
+    categories = [],
+    preferredCurrencies = [],
+    showCategory = true,
+    showCurrency = true,
     className,
 }: EntryFilterPanelProps) {
     const t = useTranslations("EntryFilterPanel");
@@ -68,8 +72,8 @@ export function EntryFilterPanel({
 
     // Count active filters (excluding default date range)
     const activeFilterCount = [
-        filters.categoryId,
-        filters.currency,
+        showCategory && filters.categoryId,
+        showCurrency && filters.currency,
         filters.minAmount !== undefined && filters.minAmount !== null,
         filters.maxAmount !== undefined && filters.maxAmount !== null,
     ].filter(Boolean).length;
@@ -214,32 +218,34 @@ export function EntryFilterPanel({
                     </div>
 
                     {/* Category Select */}
-                    <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">{t("category")}</div>
-                        <Select
-                            value={tempFilters.categoryId || "__all__"}
-                            onValueChange={(value) => setTempFilters(prev => ({
-                                ...prev,
-                                categoryId: value === "__all__" ? null : value
-                            }))}
-                        >
-                            <SelectTrigger className="w-full h-8 text-sm">
-                                <SelectValue placeholder={t("allCategories")} />
-                            </SelectTrigger>
-                            <SelectContent position="popper" sideOffset={4}>
-                                <SelectItem value="__all__">{t("allCategories")}</SelectItem>
-                                {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.icon && <span className="mr-2">{cat.icon}</span>}
-                                        {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {showCategory && (
+                        <div className="space-y-2">
+                            <div className="text-xs font-medium text-muted-foreground">{t("category")}</div>
+                            <Select
+                                value={tempFilters.categoryId || "__all__"}
+                                onValueChange={(value) => setTempFilters(prev => ({
+                                    ...prev,
+                                    categoryId: value === "__all__" ? null : value
+                                }))}
+                            >
+                                <SelectTrigger className="w-full h-8 text-sm">
+                                    <SelectValue placeholder={t("allCategories")} />
+                                </SelectTrigger>
+                                <SelectContent position="popper" sideOffset={4}>
+                                    <SelectItem value="__all__">{t("allCategories")}</SelectItem>
+                                    {categories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                            {cat.icon && <span className="mr-2">{cat.icon}</span>}
+                                            {cat.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
                     {/* Currency Select */}
-                    {preferredCurrencies.length > 0 && (
+                    {showCurrency && preferredCurrencies.length > 0 && (
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-muted-foreground">{t("currency")}</div>
                             <Select
