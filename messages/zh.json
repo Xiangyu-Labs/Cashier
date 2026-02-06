@@ -439,6 +439,7 @@
     },
     "TaskQueue": {
         "title": "任务队列",
+        "pending": "排队中",
         "queued": "排队中",
         "running": "处理中",
         "failed": "失败",

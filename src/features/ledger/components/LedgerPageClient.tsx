@@ -110,11 +110,11 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                             {/* Show counts when present, otherwise just icon */}
                             {pendingStats.total > 0 ? (
                                 <>
-                                    {/* Queued count */}
-                                    {pendingStats.queuedCount > 0 && (
+                                    {/* Pending count */}
+                                    {pendingStats.pendingCount > 0 && (
                                         <span className="inline-flex items-center gap-0.5 text-muted-foreground">
                                             <Clock className="h-3.5 w-3.5" />
-                                            <span>{pendingStats.queuedCount}</span>
+                                            <span>{pendingStats.pendingCount}</span>
                                         </span>
                                     )}
                                     {/* Running count */}

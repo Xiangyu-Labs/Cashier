@@ -436,6 +436,7 @@
     },
     "TaskQueue": {
         "title": "Task Queue",
+        "pending": "Pending",
         "queued": "Queued",
         "running": "Running",
         "failed": "Failed",

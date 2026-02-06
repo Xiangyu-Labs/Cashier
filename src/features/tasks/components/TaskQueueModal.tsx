@@ -47,7 +47,7 @@ export function TaskQueueModal({
 
     const { groups, stats, isLoading } = useTaskQueue(ledgerId);
 
-    const [isQueuedCollapsed, setIsQueuedCollapsed] = useState(false);
+    const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
     const [isRunningCollapsed, setIsRunningCollapsed] = useState(false);
     const [isFailedCollapsed, setIsFailedCollapsed] = useState(false);
     const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(true);
@@ -208,19 +208,19 @@ export function TaskQueueModal({
                             </div>
                         ) : (
                             <>
-                                {/* Queued Section */}
-                                {groups.queued.length > 0 && (
+                                {/* Pending Section */}
+                                {groups.pending.length > 0 && (
                                     <div className="space-y-2">
                                         <div
                                             className="flex items-center gap-2 px-1 cursor-pointer select-none"
-                                            onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)}
+                                            onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}
                                         >
                                             <span className="w-2 h-2 rounded-full bg-muted-foreground" />
                                             <span className="text-sm font-medium text-muted-foreground">
-                                                {t("queued")} ({groups.queued.length})
+                                                {t("pending")} ({groups.pending.length})
                                             </span>
                                             <motion.div
-                                                animate={{ rotate: isQueuedCollapsed ? -90 : 0 }}
+                                                animate={{ rotate: isPendingCollapsed ? -90 : 0 }}
                                                 transition={{ duration: 0.2 }}
                                             >
                                                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -228,14 +228,14 @@ export function TaskQueueModal({
                                         </div>
 
                                         <AnimatePresence>
-                                            {!isQueuedCollapsed && (
+                                            {!isPendingCollapsed && (
                                                 <motion.div
                                                     initial={{ height: 0, opacity: 0 }}
                                                     animate={{ height: "auto", opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}
                                                     className="space-y-2 overflow-hidden"
                                                 >
-                                                    {groups.queued.map((task) => (
+                                                    {groups.pending.map((task) => (
                                                         <TaskCard
                                                             key={task.id}
                                                             task={task}

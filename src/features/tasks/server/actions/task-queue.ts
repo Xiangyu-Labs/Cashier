@@ -9,8 +9,8 @@ import { desc, eq, and, inArray, isNull } from "drizzle-orm";
  * Status groups for the task queue UI
  */
 export interface TaskQueueGroups {
-    /** Tasks waiting in queue (status = 'queued') */
-    queued: SerializedTaskRun[];
+    /** Tasks waiting in queue (status = 'pending') */
+    pending: SerializedTaskRun[];
     /** Tasks currently running (status = 'running') */
     running: SerializedTaskRun[];
     /** Tasks that failed (status = 'failed') */
@@ -20,7 +20,7 @@ export interface TaskQueueGroups {
 }
 
 export interface TaskQueueStats {
-    queuedCount: number;
+    pendingCount: number;
     runningCount: number;
     failedCount: number;
     completedCount: number;
@@ -90,7 +90,7 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     const allActiveTasks = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
-            inArray(taskRuns.status, ["queued", "running", "failed"])
+            inArray(taskRuns.status, ["pending", "running", "failed"])
         ),
         orderBy: [desc(taskRuns.createdAt)],
     });
@@ -119,7 +119,7 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
 
     // Group tasks by status
     const groups: TaskQueueGroups = {
-        queued: [],
+        pending: [],
         running: [],
         failed: [],
         completed: completedTasks.map(serializeTaskRun),
@@ -127,8 +127,8 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
 
     for (const task of activeTasks) {
         const serialized = serializeTaskRun(task);
-        if (task.status === "queued") {
-            groups.queued.push(serialized);
+        if (task.status === "pending") {
+            groups.pending.push(serialized);
         } else if (task.status === "running") {
             groups.running.push(serialized);
         } else if (task.status === "failed") {
@@ -157,11 +157,11 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     const avgTokensPerTask = taskCount > 0 ? Math.round(totalTokens / taskCount) : 0;
 
     const stats: TaskQueueStats = {
-        queuedCount: groups.queued.length,
+        pendingCount: groups.pending.length,
         runningCount: groups.running.length,
         failedCount: groups.failed.length,
         completedCount: allCompletedTasks.length,
-        total: groups.queued.length + groups.running.length + groups.failed.length,
+        total: groups.pending.length + groups.running.length + groups.failed.length,
         totalInputTokens,
         totalOutputTokens,
         avgTokensPerTask,

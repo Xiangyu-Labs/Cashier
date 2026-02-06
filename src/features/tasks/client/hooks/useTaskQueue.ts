@@ -5,26 +5,26 @@ import { getTaskQueueAction, type TaskQueueResult, type SerializedTaskRun } from
 /**
  * Hook for fetching the unified task queue from task_runs table.
  * 
- * Uses smart polling - polls every 3 seconds while there are queued or running tasks.
+ * Uses smart polling - polls every 3 seconds while there are pending or running tasks.
  */
 export function useTaskQueue(ledgerId: string) {
     const { data, isLoading, refetch } = useSmartPolling<TaskQueueResult>({
         queryKey: queryKeys.taskQueue(ledgerId),
         queryFn: () => getTaskQueueAction(ledgerId),
-        isActive: (data) => (data?.stats?.queuedCount || 0) > 0 || (data?.stats?.runningCount || 0) > 0,
+        isActive: (data) => (data?.stats?.pendingCount || 0) > 0 || (data?.stats?.runningCount || 0) > 0,
         interval: 3000,
         enabled: !!ledgerId,
     });
 
     return {
         groups: data?.groups ?? {
-            queued: [] as SerializedTaskRun[],
+            pending: [] as SerializedTaskRun[],
             running: [] as SerializedTaskRun[],
             failed: [] as SerializedTaskRun[],
             completed: [] as SerializedTaskRun[],
         },
         stats: data?.stats ?? {
-            queuedCount: 0,
+            pendingCount: 0,
             runningCount: 0,
             failedCount: 0,
             completedCount: 0,
