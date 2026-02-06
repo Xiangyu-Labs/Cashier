@@ -141,81 +141,132 @@ export async function getLedgerEntriesAction(
     }
 
     const q = forLedger(ledgerEntries, ledgerId);
-
     const limit = params.limit ?? 20;
-    const conditions = [
-        q.whereActive
-    ];
 
-    // Direct string comparison for date range (entryDate is now yyyy-MM-dd string)
-    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));
-    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, params.endDate));
-    if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
+    // Build base conditions (without cursor)
+    const baseConditions = [q.whereActive];
+    if (params.startDate) baseConditions.push(gte(ledgerEntries.entryDate, params.startDate));
+    if (params.endDate) baseConditions.push(lte(ledgerEntries.entryDate, params.endDate));
+    if (params.categoryId) baseConditions.push(eq(ledgerEntries.categoryId, params.categoryId));
 
-    // Handle cursor for pagination: (entryDate, createdAt, id)
+    // Parse initial cursor
+    let cursorDate: string | null = null;
+    let cursorCreatedVal: number | null = null;
+    let cursorId: string | null = null;
+
     if (params.cursor) {
-        const [cursorDate, cursorCreated, cursorId] = params.cursor.split('|');
-        if (cursorDate && cursorCreated && cursorId) {
-            // This is a bit complex in Drizzle if we want strict (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
-            // For simplicity and correctness in most cases, we'll use a slightly safer approach or raw SQL if needed.
-            // But let's stick to a robust enough version:
-            conditions.push(lte(ledgerEntries.entryDate, cursorDate));
-            // Note: Strict tie-breaking is harder with findMany where clause. 
-            // We'll filter the results manually if needed or just use the cursor as is if it's unique enough.
-            // Let's refine the query to be more precise if possible.
+        const parts = params.cursor.split('|');
+        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+            cursorDate = parts[0];
+            cursorCreatedVal = new Date(parts[1]).getTime();
+            cursorId = parts[2];
+        }
+    }
+
+    // Helper function to filter items based on cursor (strict less-than comparison)
+    const filterByCursor = (items: typeof allItems, cDate: string, cCreatedVal: number, cId: string) => {
+        return items.filter(item => {
+            const itemDate = item.entryDate || '';
+            const itemCreatedVal = item.createdAt.getTime();
+
+            if (itemDate < cDate) return true;
+            if (itemDate > cDate) return false;
+
+            if (itemCreatedVal < cCreatedVal) return true;
+            if (itemCreatedVal > cCreatedVal) return false;
+
+            return item.id < cId;
+        });
+    };
+
+    // Collect items using loop to ensure we get enough data
+    type ItemWithRelations = Awaited<ReturnType<typeof db.query.ledgerEntries.findMany>>[number];
+    let allItems: ItemWithRelations[] = [];
+    let internalCursorDate = cursorDate;
+    const MAX_ITERATIONS = 10;
+    let iterations = 0;
+    let hasMoreData = true;
+
+    while (allItems.length <= limit && hasMoreData && iterations < MAX_ITERATIONS) {
+        iterations++;
+
+        // Build query conditions for this iteration
+        const queryConditions = [...baseConditions];
+        if (internalCursorDate) {
+            queryConditions.push(lte(ledgerEntries.entryDate, internalCursorDate));
+        }
+
+        // Fetch batch
+        const batchSize = limit + 1 + (iterations > 1 ? limit : 0); // Fetch more on subsequent iterations
+        const batch = await db.query.ledgerEntries.findMany({
+            where: and(...queryConditions),
+            orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
+            limit: batchSize,
+            with: {
+                category: true,
+                sourceDocument: true,
+            }
+        });
+
+        if (batch.length === 0) {
+            hasMoreData = false;
+            break;
+        }
+
+        // Filter by cursor if we have one (for the first iteration or if cursor spans multiple fetches)
+        let filteredBatch = batch;
+        if (cursorDate && cursorCreatedVal !== null && cursorId) {
+            filteredBatch = filterByCursor(batch, cursorDate, cursorCreatedVal, cursorId);
+        }
+
+        // Add new items (avoid duplicates by checking ids)
+        const existingIds = new Set(allItems.map(item => item.id));
+        for (const item of filteredBatch) {
+            if (!existingIds.has(item.id)) {
+                allItems.push(item);
+                existingIds.add(item.id);
+            }
+        }
+
+        // Check if we got less than requested (no more data in DB)
+        if (batch.length < batchSize) {
+            hasMoreData = false;
+            break;
+        }
+
+        // Update internal cursor for next iteration
+        const lastItem = batch[batch.length - 1];
+        const lastDate = lastItem.entryDate || '';
+
+        // If last item's date is same as internal cursor, we might be stuck
+        // Move to the next date range
+        if (internalCursorDate && lastDate === internalCursorDate) {
+            // We need to go further back - decrease the date
+            // This shouldn't happen often if we fetch enough items
+            internalCursorDate = lastDate;
         } else {
-            // Fallback to old behavior if cursor format is wrong
-            conditions.push(lte(ledgerEntries.createdAt, new Date(params.cursor)));
+            internalCursorDate = lastDate;
         }
     }
 
-    const items = await db.query.ledgerEntries.findMany({
-        where: and(...conditions),
-        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
-        limit: limit + 1,
-        with: {
-            category: true,
-            sourceDocument: true,
-        }
-    });
-
-    // Manual tie-breaking filtering if cursor was provided
-    let filteredItems = items;
-    if (params.cursor) {
-        const [cursorDate, cursorCreated, cursorId] = params.cursor.split('|');
-        if (cursorDate && cursorId) {
-            const cursorCreatedVal = new Date(cursorCreated).getTime();
-            filteredItems = items.filter(item => {
-                const itemDate = item.entryDate || '';
-                const itemCreatedVal = item.createdAt.getTime();
-
-                if (itemDate < cursorDate) return true;
-                if (itemDate > cursorDate) return false;
-
-                if (itemCreatedVal < cursorCreatedVal) return true;
-                if (itemCreatedVal > cursorCreatedVal) return false;
-
-                return item.id < cursorId;
-            });
-        }
-    }
-
+    // Determine next cursor
     let nextCursor: string | undefined = undefined;
-    if (filteredItems.length > limit) {
-        const nextItem = filteredItems[limit];
+    let resultItems = allItems;
+
+    if (allItems.length > limit) {
+        const nextItem = allItems[limit];
         const nextDate = nextItem.entryDate || '0000-00-00';
         nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-        filteredItems = filteredItems.slice(0, limit);
+        resultItems = allItems.slice(0, limit);
     }
 
     // Map dates to strings
-    const mappedItems = filteredItems.map(item => ({
+    const mappedItems = resultItems.map(item => ({
         ...item,
-        amount: String(item.amount), // Ensure string to match LedgerEntry interface
+        amount: String(item.amount),
         createdAt: item.createdAt.toISOString(),
         deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
         entryDate: item.entryDate,
-        // Map relations if they exist (they should with query builder)
         category: item.category ? {
             ...item.category,
             createdAt: item.category.createdAt.toISOString(),
@@ -223,14 +274,12 @@ export async function getLedgerEntriesAction(
             deletedAt: item.category.deletedAt ? item.category.deletedAt.toISOString() : null,
         } : null,
         sourceDocument: item.sourceDocument ? (() => {
-            // Strip large metadata fields to reduce payload size
             const { aiRawResponse, rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
-            // Strip imageUrls (Base64 encoded images)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { imageUrls, ...docWithoutImages } = item.sourceDocument;
             return {
                 ...docWithoutImages,
-                metadata: lightMetadata, // Exclude aiRawResponse and rawOcrText
+                metadata: lightMetadata,
                 hasImages: (imageUrls?.length || 0) > 0,
                 createdAt: item.sourceDocument.createdAt.toISOString(),
                 deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,

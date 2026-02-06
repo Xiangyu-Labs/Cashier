@@ -75,7 +75,14 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     });
 
     const monthEntries = useMemo(() => {
-        return data?.pages.flatMap(p => p.items) || [];
+        const allItems = data?.pages.flatMap(p => p.items) || [];
+        // Deduplicate by id to prevent duplicates when cache is invalidated and pages are refetched
+        const seen = new Set<string>();
+        return allItems.filter(item => {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+            return true;
+        });
     }, [data]);
 
     const monthStats = useMemo(() => {

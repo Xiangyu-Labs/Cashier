@@ -158,32 +158,28 @@ export function useUnifiedSourceDocuments(
             };
         }
 
-        // Combine the first page from unifiedData with subsequent pages from infiniteCompletedData
-        const _completed: SourceDocumentGroup[] = unifiedData.groups.completed as unknown as SourceDocumentGroup[];
+        // Helper function to deduplicate items by sourceDocument.id
+        const deduplicateByDocId = (items: SourceDocumentGroup[]): SourceDocumentGroup[] => {
+            const seen = new Set<string>();
+            return items.filter(item => {
+                const docId = item.sourceDocument?.id;
+                if (!docId || seen.has(docId)) return false;
+                seen.add(docId);
+                return true;
+            });
+        };
 
-        if (infiniteCompletedData) {
-            // Skip the first page of infinite query if it's the same as unifiedData's completed?
-            // Actually, infinite query starts with pageParam=undefined, which returns the first page.
-            // If unifiedData already includes the first page, we should avoid duplicates.
-            // But getUnifiedSourceDocumentsAction with no cursor returns the first page.
-
-            // To simplify: let's make infinite query only responsible for pages AFTER the first.
-            // However, TanStack Query's useInfiniteQuery usually handles the first page too.
-
-            // Alternative: useUnifiedSourceDocuments only uses infinite query for COMPLETED.
-            // And useQuery for ACTIVE. This keeps them separate but uses server-side logic.
-
-            // Let's stick to the separation for now to avoid complexity with cursor management.
-            // Query 1 (Active Docs) + Query 2 (Infinite Completed Docs)
-        }
+        // Get completed items from infinite query or unified data
+        const completedItems = (infiniteCompletedData
+            ? infiniteCompletedData.pages.flatMap(page => page.items)
+            : unifiedData.groups.completed) as unknown as SourceDocumentGroup[];
 
         return {
             queued: unifiedData.groups.queued as unknown as SourceDocumentGroup[],
             processing: unifiedData.groups.processing as unknown as SourceDocumentGroup[],
             anomaly: unifiedData.groups.anomaly as unknown as SourceDocumentGroup[],
-            completed: (infiniteCompletedData
-                ? infiniteCompletedData.pages.flatMap(page => page.items)
-                : unifiedData.groups.completed) as unknown as SourceDocumentGroup[]
+            // Deduplicate to prevent duplicates when cache is invalidated and pages are refetched
+            completed: deduplicateByDocId(completedItems)
         };
     }, [unifiedData, infiniteCompletedData]);
 

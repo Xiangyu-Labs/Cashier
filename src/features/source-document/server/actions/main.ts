@@ -252,72 +252,125 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
 
-    const { status, limit = 20, cursor, startDate, endDate } = params;
+    const { status, limit = 20, startDate, endDate } = params;
     const q = forLedger(sourceDocuments, ledgerId);
 
-    // Base condition: Active documents in this ledger
-    const conditions = [q.whereActive];
+    // Build base conditions (without cursor)
+    const baseConditions = [q.whereActive];
 
     if (status) {
         const statuses = status.split(",").filter(Boolean);
         if (statuses.length > 0) {
-            conditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
-        }
-    }
-
-    if (cursor) {
-        const [cursorCreated, cursorId] = cursor.split('|');
-        if (cursorCreated && cursorId) {
-            conditions.push(lte(sourceDocuments.createdAt, new Date(cursorCreated)));
-        } else {
-            conditions.push(lte(sourceDocuments.createdAt, new Date(cursor)));
+            baseConditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
         }
     }
 
     if (startDate) {
         const parsedStart = parseDateRangeStart(startDate);
-        if (parsedStart) conditions.push(gte(sourceDocuments.createdAt, parsedStart));
+        if (parsedStart) baseConditions.push(gte(sourceDocuments.createdAt, parsedStart));
     }
     if (endDate) {
         const parsedEnd = parseDateRangeEnd(endDate);
-        if (parsedEnd) conditions.push(lte(sourceDocuments.createdAt, parsedEnd));
+        if (parsedEnd) baseConditions.push(lte(sourceDocuments.createdAt, parsedEnd));
     }
 
-    // Use db.query for relation fetching if strict type safety needed, but manual join/separate query 
-    // is often better for complex filtering. Here we used findMany in repo.
-    // Drizzle query builder findMany:
-    const result = await db.query.sourceDocuments.findMany({
-        where: and(...conditions),
-        orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
-        limit: limit + 1,
-    });
+    // Parse initial cursor
+    let cursorCreatedVal: number | null = null;
+    let cursorId: string | null = null;
 
-    // Tie-breaking filtering
-    let filteredResult = result;
-    if (cursor) {
-        const [cursorCreated, cursorId] = cursor.split('|');
-        if (cursorCreated && cursorId) {
-            const cursorVal = new Date(cursorCreated).getTime();
-            filteredResult = result.filter(item => {
-                const itemVal = item.createdAt.getTime();
-                if (itemVal < cursorVal) return true;
-                if (itemVal > cursorVal) return false;
-                return item.id < cursorId;
-            });
+    if (params.cursor) {
+        const parts = params.cursor.split('|');
+        if (parts.length === 2 && parts[0] && parts[1]) {
+            cursorCreatedVal = new Date(parts[0]).getTime();
+            cursorId = parts[1];
+        } else if (parts.length === 1 && parts[0]) {
+            // Fallback: old format with just a date
+            cursorCreatedVal = new Date(parts[0]).getTime();
         }
     }
 
-    let nextCursor = null;
-    if (filteredResult.length > limit) {
-        const nextItem = filteredResult[limit];
+    // Helper function to filter items based on cursor (strict less-than comparison)
+    type DocType = Awaited<ReturnType<typeof db.query.sourceDocuments.findMany>>[number];
+    const filterByCursor = (items: DocType[], cCreatedVal: number, cId: string | null): DocType[] => {
+        return items.filter(item => {
+            const itemVal = item.createdAt.getTime();
+            if (itemVal < cCreatedVal) return true;
+            if (itemVal > cCreatedVal) return false;
+            // Same createdAt, compare by id
+            if (cId) return item.id < cId;
+            return false;
+        });
+    };
+
+    // Collect items using loop to ensure we get enough data
+    let allItems: DocType[] = [];
+    let internalCursorDate = cursorCreatedVal ? new Date(cursorCreatedVal) : null;
+    const MAX_ITERATIONS = 10;
+    let iterations = 0;
+    let hasMoreData = true;
+
+    while (allItems.length <= limit && hasMoreData && iterations < MAX_ITERATIONS) {
+        iterations++;
+
+        // Build query conditions for this iteration
+        const queryConditions = [...baseConditions];
+        if (internalCursorDate) {
+            queryConditions.push(lte(sourceDocuments.createdAt, internalCursorDate));
+        }
+
+        // Fetch batch
+        const batchSize = limit + 1 + (iterations > 1 ? limit : 0);
+        const batch = await db.query.sourceDocuments.findMany({
+            where: and(...queryConditions),
+            orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
+            limit: batchSize,
+        });
+
+        if (batch.length === 0) {
+            hasMoreData = false;
+            break;
+        }
+
+        // Filter by cursor if we have one
+        let filteredBatch = batch;
+        if (cursorCreatedVal !== null) {
+            filteredBatch = filterByCursor(batch, cursorCreatedVal, cursorId);
+        }
+
+        // Add new items (avoid duplicates)
+        const existingIds = new Set(allItems.map(item => item.id));
+        for (const item of filteredBatch) {
+            if (!existingIds.has(item.id)) {
+                allItems.push(item);
+                existingIds.add(item.id);
+            }
+        }
+
+        // Check if we got less than requested (no more data in DB)
+        if (batch.length < batchSize) {
+            hasMoreData = false;
+            break;
+        }
+
+        // Update internal cursor for next iteration
+        const lastItem = batch[batch.length - 1];
+        internalCursorDate = lastItem.createdAt;
+    }
+
+    // Determine next cursor
+    let nextCursor: string | null = null;
+    let resultItems = allItems;
+
+    if (allItems.length > limit) {
+        const nextItem = allItems[limit];
         nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-        filteredResult = filteredResult.slice(0, limit);
+        resultItems = allItems.slice(0, limit);
     }
 
     // Fetch ledger entries if requested
     const entriesByDocId = new Map<string, SourceDocumentGroup['ledgerEntries']>();
-    if (params.includeLedgerEntries && filteredResult.length > 0) {
-        const docIds = filteredResult.map(d => d.id);
+    if (params.includeLedgerEntries && resultItems.length > 0) {
+        const docIds = resultItems.map(d => d.id);
         const qEntries = forLedger(ledgerEntries, ledgerId);
 
         const entries = await db.query.ledgerEntries.findMany({
@@ -344,16 +397,11 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     return {
-        items: filteredResult.map(item => {
-            // Strip large metadata fields to reduce payload size
+        items: resultItems.map(item => {
             const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.metadata || {};
-
-            // For active documents (queued, processing, anomaly), keep imageUrls for display
-            // For completed documents, strip imageUrls to reduce payload (they have many more items)
             const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly';
 
             if (isActiveDocument) {
-                // Keep imageUrls for active documents (user needs to see original input)
                 return {
                     ...item,
                     metadata: lightMetadata,
@@ -362,7 +410,6 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
                 };
             } else {
-                // Strip imageUrls for completed documents (saves ~500KB-2MB per document)
                 const { imageUrls, ...itemWithoutImages } = item;
                 return {
                     ...itemWithoutImages,
