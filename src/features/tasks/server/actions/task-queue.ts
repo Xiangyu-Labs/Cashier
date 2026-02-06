@@ -121,13 +121,15 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         getLedgerIdFromInput(task.input) === ledgerId
     );
 
-    // Fetch all completed tasks (not soft-deleted)
+    // Fetch completed tasks (not soft-deleted) - limit to reduce data transfer
+    // We fetch more than needed (100) since we filter by ledgerId in memory, then slice to 5
     const allCompletedTasksRaw = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
             eq(taskRuns.status, "completed")
         ),
         orderBy: [desc(taskRuns.completedAt)],
+        limit: 100, // Limit to avoid fetching thousands of completed tasks
     });
 
     // Filter by ledgerId from input
