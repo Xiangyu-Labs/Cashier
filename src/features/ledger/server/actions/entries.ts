@@ -222,9 +222,6 @@ export async function getLedgerEntriesAction(
     const q = forLedger(ledgerEntries, ledgerId);
     const limit = params.limit ?? 20;
 
-    // Debug log
-    logger.info({ params, hasMinAmount: params.minAmount !== undefined && params.minAmount !== null }, "getLedgerEntriesAction params");
-
     // Build conditions
     const conditions = [q.whereActive];
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));

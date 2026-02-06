@@ -226,7 +226,7 @@ export function EntryFilterPanel({
                             <SelectTrigger className="w-full h-8 text-sm">
                                 <SelectValue placeholder={t("allCategories")} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent position="popper" sideOffset={4}>
                                 <SelectItem value="__all__">{t("allCategories")}</SelectItem>
                                 {categories.map((cat) => (
                                     <SelectItem key={cat.id} value={cat.id}>
@@ -252,7 +252,7 @@ export function EntryFilterPanel({
                                 <SelectTrigger className="w-full h-8 text-sm">
                                     <SelectValue placeholder={t("allCurrencies")} />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent position="popper" sideOffset={4}>
                                     <SelectItem value="__all__">{t("allCurrencies")}</SelectItem>
                                     {preferredCurrencies.map((curr) => (
                                         <SelectItem key={curr} value={curr}>
