@@ -1,13 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers, entryCategories } from "@/lib/db/schema";
+import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 
 const createLedgerSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -85,6 +86,8 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
 
     const currentMetadata = existing.metadata || {};
     const currentSettings = currentMetadata.settings || {};
+    const oldMainCurrency = currentSettings.mainCurrency || "CNY";
+    const newMainCurrency = validated.settings?.mainCurrency;
 
     const newSettings = {
         ...currentSettings,
@@ -103,7 +106,58 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
         .where(eq(ledgers.id, id))
         .returning();
 
+    // If main currency changed, recalculate all entries' convertedAmount
+    if (newMainCurrency && newMainCurrency !== oldMainCurrency) {
+        logger.info({ ledgerId: id, oldMainCurrency, newMainCurrency }, "Main currency changed, recalculating entries");
+
+        // Do this asynchronously to not block the response
+        recalculateEntriesConvertedAmount(id, newMainCurrency).catch(err => {
+            logger.error({ err, ledgerId: id }, "Failed to recalculate entries after currency change");
+        });
+    }
+
     return updatedLedger;
+}
+
+// Helper function to recalculate all entries' convertedAmount for a ledger
+async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency: string) {
+    const entries = await db.query.ledgerEntries.findMany({
+        where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+    });
+
+    for (const entry of entries) {
+        const entryCurrency = entry.currency || "CNY";
+        const amount = Number(entry.amount);
+        const entryDate = entry.entryDate || undefined;
+
+        let convertedAmount: string;
+        let exchangeRate: string;
+
+        if (entryCurrency === mainCurrency) {
+            convertedAmount = amount.toFixed(2);
+            exchangeRate = "1";
+        } else {
+            try {
+                const converted = await ExchangeRateService.convert(
+                    amount,
+                    entryCurrency,
+                    mainCurrency,
+                    entryDate
+                );
+                convertedAmount = converted.toFixed(2);
+                exchangeRate = (converted / amount).toFixed(6);
+            } catch (err) {
+                logger.warn({ err, entryId: entry.id, entryCurrency, mainCurrency }, "Failed to convert entry during recalculation");
+                continue; // Skip this entry
+            }
+        }
+
+        await db.update(ledgerEntries)
+            .set({ convertedAmount, exchangeRate, updatedAt: new Date() })
+            .where(eq(ledgerEntries.id, entry.id));
+    }
+
+    logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
 }
 
 export async function deleteLedgerAction(id: string): Promise<void> {

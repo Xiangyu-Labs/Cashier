@@ -15,7 +15,13 @@ export async function getLedgerStatsAction(
     ledgerId: string,
     startDate?: string,
     endDate?: string,
-    mainCurrency?: string
+    mainCurrency?: string,
+    filters?: {
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+    }
 ): Promise<LedgerEntrySummary> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) {
@@ -27,6 +33,16 @@ export async function getLedgerStatsAction(
     // Direct string comparison for date range (entryDate is now yyyy-MM-dd string)
     if (startDate) conditions.push(gte(ledgerEntries.entryDate, startDate));
     if (endDate) conditions.push(lte(ledgerEntries.entryDate, endDate));
+    // Additional filter conditions
+    if (filters?.categoryId) conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
+    if (filters?.currency) conditions.push(eq(ledgerEntries.currency, filters.currency));
+    // Filter by convertedAmount - use CAST to compare as numbers, not strings
+    if (filters?.minAmount !== undefined && filters?.minAmount !== null) {
+        conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) >= ${filters.minAmount}`);
+    }
+    if (filters?.maxAmount !== undefined && filters?.maxAmount !== null) {
+        conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) <= ${filters.maxAmount}`);
+    }
 
     // 1. Totals by Currency
     const totalsQuery = await db

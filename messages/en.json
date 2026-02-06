@@ -29,6 +29,20 @@
         "yesterday": "Yesterday",
         "noExpenses": "No expenses in this period"
     },
+    "EntryFilterPanel": {
+        "filter": "Filter",
+        "dateRange": "Date Range",
+        "allTime": "All Time",
+        "category": "Category",
+        "currency": "Currency",
+        "priceRange": "Price Range",
+        "minAmount": "Min",
+        "maxAmount": "Max",
+        "allCategories": "All Categories",
+        "allCurrencies": "All Currencies",
+        "reset": "Reset",
+        "apply": "Apply Filters"
+    },
     "HistoryTab": {
         "noHistory": "No confirmed records",
         "otherHistory": "Other History"

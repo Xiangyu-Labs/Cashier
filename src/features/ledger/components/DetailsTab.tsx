@@ -9,7 +9,7 @@ import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
-import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,7 +17,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -35,24 +34,43 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
 
     // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
-    const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+    const [filters, setFilters] = useState<EntryFilters>({});
 
-    // Initialize date range on client side to avoid SSR timezone issues
+    // Initialize filters on client side to avoid SSR timezone issues
     useEffect(() => {
         const now = new Date();
-        setDateRange({
-            start: new Date(now.getFullYear(), now.getMonth(), 1),
-            end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+        setFilters({
+            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+            categoryId: null,
+            currency: null,
+            minAmount: null,
+            maxAmount: null,
         });
     }, []);
 
-    const startDateStr = formatDateTimeForApi(dateRange.start);
-    const endDateStr = formatDateTimeForApi(dateRange.end);
+    const startDateStr = formatDateTimeForApi(filters.startDate);
+    const endDateStr = formatDateTimeForApi(filters.endDate);
+
+    // Build filter key for queryKey (serialized to string for type compatibility)
+    const filterKey = useMemo(() => {
+        const parts: string[] = [];
+        if (filters.categoryId) parts.push(`cat:${filters.categoryId}`);
+        if (filters.currency) parts.push(`cur:${filters.currency}`);
+        if (filters.minAmount !== undefined && filters.minAmount !== null) parts.push(`min:${filters.minAmount}`);
+        if (filters.maxAmount !== undefined && filters.maxAmount !== null) parts.push(`max:${filters.maxAmount}`);
+        return parts.length > 0 ? parts.join('|') : undefined;
+    }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
 
     const { data: summaryData } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency),
-        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency || undefined),
-        enabled: !!startDateStr && !!endDateStr
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency, filterKey),
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, ledger?.metadata?.settings?.mainCurrency || undefined, {
+            categoryId: filters.categoryId,
+            currency: filters.currency,
+            minAmount: filters.minAmount,
+            maxAmount: filters.maxAmount,
+        }),
+        enabled: true
     });
 
     const {
@@ -62,16 +80,20 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         isFetchingNextPage,
         isLoading,
     } = useInfiniteQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed', startDateStr, endDateStr),
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'confirmed', startDateStr, endDateStr, filterKey),
         queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
             limit: 20,
-            startDate: startDateStr,
-            endDate: endDateStr,
-            cursor: pageParam as string | undefined
+            startDate: startDateStr || undefined,
+            endDate: endDateStr || undefined,
+            cursor: pageParam as string | undefined,
+            categoryId: filters.categoryId,
+            currency: filters.currency,
+            minAmount: filters.minAmount,
+            maxAmount: filters.maxAmount,
         }),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
-        enabled: !!startDateStr && !!endDateStr
+        enabled: true
     });
 
     const monthEntries = useMemo(() => {
@@ -86,16 +108,15 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [data]);
 
     const monthStats = useMemo(() => {
+        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
         const convertedTotal = summaryData?.convertedTotal;
         const totals = summaryData?.totals || [];
-
         const mainTotal = convertedTotal?.total ?? totals.reduce((sum, t) => sum + t.total, 0);
-        const mainCurrency = convertedTotal?.currency || ledger?.metadata?.settings?.mainCurrency || "CNY";
         const hasMultipleCurrencies = totals.length > 1;
 
         return {
             mainTotal,
-            mainCurrency,
+            mainCurrency: convertedTotal?.currency || mainCurrency,
             hasMultipleCurrencies,
             breakdown: totals
         };
@@ -180,31 +201,12 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         return new Date(entry.createdAt).toLocaleDateString('sv');
     };
 
-    // Prepare batch conversion items for all entries
-    const conversionItems = useMemo(() =>
-        monthEntries.map(entry => ({
-            amount: Number(entry.amount),
-            currency: entry.currency || monthStats.mainCurrency,
-            date: getDateStr(entry)
-        })),
-        [monthEntries, monthStats.mainCurrency]
-    );
-
-    // Batch convert all amounts to main currency
-    const { results: convertedAmounts } = useBatchConvertedAmounts(
-        conversionItems,
-        monthStats.mainCurrency
-    );
-
     const groupedItems = useMemo(() => {
         const sortedEntries = [...monthEntries].sort((a, b) => {
             const dateA = getDateStr(a);
             const dateB = getDateStr(b);
             return dateB.localeCompare(dateA);
         });
-
-        // Build index map: entry id -> original index in monthEntries (for converted amounts)
-        const indexMap = new Map(monthEntries.map((e, i) => [e.id, i]));
 
         const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[]; total: number }> = {};
 
@@ -237,15 +239,14 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 };
             }
 
-            // Use converted amount for total calculation
-            const originalIndex = indexMap.get(entry.id);
-            const convertedAmount = originalIndex !== undefined ? convertedAmounts[originalIndex] : Number(entry.amount);
+            // Use entry.convertedAmount if available, otherwise fall back to amount
+            const convertedAmount = entry.convertedAmount ? Number(entry.convertedAmount) : Number(entry.amount);
             groups[dateKey].total += convertedAmount;
             groups[dateKey].items.push(entry);
         });
 
         return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [monthEntries, t, locale, convertedAmounts]);
+    }, [monthEntries, t, locale]);
 
     const handleRefresh = async () => {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
@@ -257,11 +258,12 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                 {/* Header Section - Responsive layout */}
                 <div className="px-2 mb-2 sm:mb-4 pt-1">
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-                        {/* Date Range Filter - Full width on mobile */}
-                        <DateRangeFilter
-                            startDate={dateRange.start}
-                            endDate={dateRange.end}
-                            onRangeChange={({ start, end }) => setDateRange({ start, end })}
+                        {/* Filter Panel - Full width on mobile */}
+                        <EntryFilterPanel
+                            filters={filters}
+                            onFiltersChange={setFilters}
+                            categories={categories}
+                            preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                             className="w-full sm:w-auto"
                         />
 

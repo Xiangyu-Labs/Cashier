@@ -82,6 +82,8 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     itemName: text("item_name").notNull(),
     description: text("description"),
     entryDate: text("entry_date"), // yyyy-MM-dd format, no timezone ambiguity
+    convertedAmount: text("converted_amount"), // Amount in ledger's main currency
+    exchangeRate: text("exchange_rate"), // Exchange rate used for conversion
     metadata: text("metadata", { mode: "json" }).$type<LedgerEntryMetadata>().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),

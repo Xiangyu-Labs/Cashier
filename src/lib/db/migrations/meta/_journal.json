@@ -57,6 +57,13 @@
       "when": 1770362025421,
       "tag": "0007_add-updated-at",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1770378705202,
+      "tag": "0008_early_leper_queen",
+      "breakpoints": true
     }
   ]
 }

@@ -1,14 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries, ledgers } from "@/lib/db/schema";
 // auth is unused here
 
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
-import { eq, inArray, and, gte, lte, or, lt } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, or, lt, isNull, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 
 const createLedgerEntrySchema = z.object({
     amount: z.number(),
@@ -39,12 +40,45 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     const validated = createLedgerEntrySchema.parse(data);
     const _q = forLedger(ledgerEntries, ledgerId);
 
+    // Get ledger's main currency
+    const ledger = await db.query.ledgers.findFirst({
+        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+    });
+    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+    const entryCurrency = validated.currency || "CNY";
+    const entryDate = validated.entryDate || undefined;
+
+    // Calculate converted amount
+    let convertedAmount: string | null = null;
+    let exchangeRate: string | null = null;
+
+    if (entryCurrency === mainCurrency) {
+        convertedAmount = validated.amount.toFixed(2);
+        exchangeRate = "1";
+    } else {
+        try {
+            const converted = await ExchangeRateService.convert(
+                validated.amount,
+                entryCurrency,
+                mainCurrency,
+                entryDate
+            );
+            convertedAmount = converted.toFixed(2);
+            // Calculate rate: converted / original
+            exchangeRate = (converted / validated.amount).toFixed(6);
+        } catch (err) {
+            logger.warn({ err, entryCurrency, mainCurrency }, "Failed to convert amount, storing without conversion");
+        }
+    }
+
     const [entry] = await db.insert(ledgerEntries).values({
         ...validated,
         amount: validated.amount.toFixed(2),
         ledgerId: ledgerId,
-        currency: validated.currency || "CNY",
+        currency: entryCurrency,
         entryDate: validated.entryDate || null,
+        convertedAmount,
+        exchangeRate,
     }).returning();
 
     return entry;
@@ -65,6 +99,46 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     if (validated.description !== undefined) updateData.description = validated.description;
     if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
     updateData.updatedAt = new Date();
+
+    // If amount or currency changed, recalculate convertedAmount
+    if (validated.amount !== undefined || validated.currency !== undefined) {
+        // Get current entry and ledger for calculation
+        const [currentEntry, ledger] = await Promise.all([
+            db.query.ledgerEntries.findFirst({
+                where: and(eq(ledgerEntries.id, ledgerEntryId), isNull(ledgerEntries.deletedAt)),
+            }),
+            db.query.ledgers.findFirst({
+                where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+            })
+        ]);
+
+        if (currentEntry) {
+            const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+            const newAmount = validated.amount ?? Number(currentEntry.amount);
+            const newCurrency = validated.currency ?? currentEntry.currency ?? "CNY";
+            const entryDate = validated.entryDate !== undefined
+                ? (validated.entryDate || undefined)
+                : (currentEntry.entryDate || undefined);
+
+            if (newCurrency === mainCurrency) {
+                updateData.convertedAmount = newAmount.toFixed(2);
+                updateData.exchangeRate = "1";
+            } else {
+                try {
+                    const converted = await ExchangeRateService.convert(
+                        newAmount,
+                        newCurrency,
+                        mainCurrency,
+                        entryDate
+                    );
+                    updateData.convertedAmount = converted.toFixed(2);
+                    updateData.exchangeRate = (converted / newAmount).toFixed(6);
+                } catch (err) {
+                    logger.warn({ err, newCurrency, mainCurrency }, "Failed to convert amount during update");
+                }
+            }
+        }
+    }
 
     const [updatedEntry] = await db.update(ledgerEntries)
         .set(updateData)
@@ -135,6 +209,9 @@ export async function getLedgerEntriesAction(
         startDate?: string | null;
         endDate?: string | null;
         categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
     }
 ) {
     const { error } = await requireLedgerAccess(ledgerId);
@@ -145,11 +222,23 @@ export async function getLedgerEntriesAction(
     const q = forLedger(ledgerEntries, ledgerId);
     const limit = params.limit ?? 20;
 
+    // Debug log
+    logger.info({ params, hasMinAmount: params.minAmount !== undefined && params.minAmount !== null }, "getLedgerEntriesAction params");
+
     // Build conditions
     const conditions = [q.whereActive];
     if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));
     if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, params.endDate));
     if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
+    if (params.currency) conditions.push(eq(ledgerEntries.currency, params.currency));
+    // Filter by convertedAmount (main currency) for price range filtering
+    // Use CAST to compare as numbers, not strings
+    if (params.minAmount !== undefined && params.minAmount !== null) {
+        conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) >= ${params.minAmount}`);
+    }
+    if (params.maxAmount !== undefined && params.maxAmount !== null) {
+        conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) <= ${params.maxAmount}`);
+    }
 
     // Handle cursor with precise composite condition
     // Cursor format: "entryDate|createdAt|id"

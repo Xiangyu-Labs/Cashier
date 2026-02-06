@@ -1,10 +1,11 @@
 import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
+import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 
 // Import multi-stage executors
 import { executeStage1, type Stage1Input } from "./stage1-executor";
@@ -263,7 +264,13 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             return;
         }
         // Save entries
-        const entriesToInsert = validEntries.map(entry => {
+        // Get ledger's main currency for conversion
+        const ledger = await db.query.ledgers.findFirst({
+            where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+        });
+        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+
+        const entriesToInsert = await Promise.all(validEntries.map(async entry => {
             const categoryId = entry.category
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
@@ -272,18 +279,43 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             const now = new Date();
             const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const fallbackDate = doc?.entryDate || todayDate;
+            const entryCurrency = entry.currency || "CNY";
+
+            // Calculate converted amount
+            let convertedAmount: string | null = null;
+            let exchangeRate: string | null = null;
+
+            if (entryCurrency === mainCurrency) {
+                convertedAmount = entry.amount.toFixed(2);
+                exchangeRate = "1";
+            } else {
+                try {
+                    const converted = await ExchangeRateService.convert(
+                        entry.amount,
+                        entryCurrency,
+                        mainCurrency,
+                        fallbackDate
+                    );
+                    convertedAmount = converted.toFixed(2);
+                    exchangeRate = (converted / entry.amount).toFixed(6);
+                } catch (err) {
+                    logger.warn({ err, entryCurrency, mainCurrency }, "Failed to convert amount in batch insert");
+                }
+            }
 
             return {
                 ledgerId: ledgerId!,
                 categoryId,
                 sourceDocumentId: input.sourceDocumentId,
                 amount: entry.amount.toFixed(2),
-                currency: entry.currency,
+                currency: entryCurrency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
                 entryDate: fallbackDate,
+                convertedAmount,
+                exchangeRate,
             };
-        });
+        }));
 
         // Delete existing entries for this source document (enables retry)
         await db.update(ledgerEntries)

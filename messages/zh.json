@@ -29,6 +29,20 @@
         "yesterday": "昨天",
         "noExpenses": "该时间段暂无支出"
     },
+    "EntryFilterPanel": {
+        "filter": "筛选",
+        "dateRange": "时间范围",
+        "allTime": "全部",
+        "category": "类别",
+        "currency": "货币",
+        "priceRange": "价格区间",
+        "minAmount": "最小金额",
+        "maxAmount": "最大金额",
+        "allCategories": "全部类别",
+        "allCurrencies": "全部货币",
+        "reset": "重置",
+        "apply": "应用筛选"
+    },
     "HistoryTab": {
         "noHistory": "暂无已确认记录",
         "otherHistory": "其他历史记录"
