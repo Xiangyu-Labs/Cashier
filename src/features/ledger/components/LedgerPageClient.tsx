@@ -131,6 +131,13 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                                             <span>{pendingStats.failedCount}</span>
                                         </span>
                                     )}
+                                    {/* Anomaly count */}
+                                    {pendingStats.anomalyCount > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-amber-500">
+                                            <AlertCircle className="h-3.5 w-3.5" />
+                                            <span>{pendingStats.anomalyCount}</span>
+                                        </span>
+                                    )}
                                 </>
                             ) : (
                                 <ListTodo className="h-4 w-4 text-muted-foreground" />

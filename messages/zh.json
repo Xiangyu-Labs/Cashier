@@ -455,6 +455,8 @@
         "deleteAllConfirmDesc": "确定要删除所有失败的任务吗？此操作无法撤销。",
         "progress": "进度",
         "error": "错误",
-        "tokenStats": "输入: {input} | 输出: {output} | 平均: {avg}/任务"
+        "tokenStats": "输入: {input} | 输出: {output} | 平均: {avg}/任务",
+        "anomaly": "异常账单",
+        "untitledBill": "未命名账单"
     }
 }

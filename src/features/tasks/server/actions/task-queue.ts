@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { taskRuns, type TaskRun } from "@/lib/db/schema";
+import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 
@@ -13,10 +13,12 @@ export interface TaskQueueGroups {
     pending: SerializedTaskRun[];
     /** Tasks currently running (status = 'running') */
     running: SerializedTaskRun[];
-    /** Tasks that failed (status = 'failed') */
+    /** Tasks that failed (status = 'failed') - excludes parse_source_document tasks */
     failed: SerializedTaskRun[];
     /** Recently completed tasks (status = 'completed', latest 5) */
     completed: SerializedTaskRun[];
+    /** Anomaly source documents (from source_documents table) */
+    anomaly: SerializedAnomalyBill[];
 }
 
 export interface TaskQueueStats {
@@ -24,6 +26,7 @@ export interface TaskQueueStats {
     runningCount: number;
     failedCount: number;
     completedCount: number;
+    anomalyCount: number;
     total: number;
     // Token stats
     totalInputTokens: number;
@@ -50,6 +53,14 @@ export interface SerializedTaskRun {
     completedAt: string | null;
 }
 
+/** Serialized anomaly bill for client transport */
+export interface SerializedAnomalyBill {
+    id: string;
+    title: string | null;
+    anomalyReason: string | null;
+    createdAt: string;
+}
+
 function serializeTaskRun(task: TaskRun): SerializedTaskRun {
     return {
         id: task.id,
@@ -62,6 +73,15 @@ function serializeTaskRun(task: TaskRun): SerializedTaskRun {
         createdAt: task.createdAt.toISOString(),
         startedAt: task.startedAt?.toISOString() ?? null,
         completedAt: task.completedAt?.toISOString() ?? null,
+    };
+}
+
+function serializeAnomalyBill(doc: SourceDocument): SerializedAnomalyBill {
+    return {
+        id: doc.id,
+        title: doc.title,
+        anomalyReason: doc.anomalyReason,
+        createdAt: doc.createdAt.toISOString(),
     };
 }
 
@@ -78,6 +98,7 @@ function getLedgerIdFromInput(input: unknown): string | null {
 /**
  * Get task queue data for the unified Task Queue Modal.
  * Returns tasks grouped by status with token statistics.
+ * Also includes anomaly source documents from the source_documents table.
  * 
  * Since ledgerId is now stored in input JSON, we fetch all active tasks
  * and filter in memory by parsing input.ledgerId.
@@ -117,12 +138,24 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     // Get latest 5 completed
     const completedTasks = allCompletedTasks.slice(0, 5);
 
+    // Fetch anomaly source documents (directly from source_documents table)
+    const anomalyDocs = await db.query.sourceDocuments.findMany({
+        where: and(
+            eq(sourceDocuments.ledgerId, ledgerId),
+            eq(sourceDocuments.status, "anomaly"),
+            isNull(sourceDocuments.deletedAt)
+        ),
+        orderBy: [desc(sourceDocuments.createdAt)],
+    });
+
     // Group tasks by status
+    // For failed tasks, exclude parse_source_document since those are shown in anomaly section
     const groups: TaskQueueGroups = {
         pending: [],
         running: [],
         failed: [],
         completed: completedTasks.map(serializeTaskRun),
+        anomaly: anomalyDocs.map(serializeAnomalyBill),
     };
 
     for (const task of activeTasks) {
@@ -132,6 +165,8 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         } else if (task.status === "running") {
             groups.running.push(serialized);
         } else if (task.status === "failed") {
+            // For parse_source_document, the anomaly is shown in anomaly section
+            // Still show the failed task for visibility/debugging
             groups.failed.push(serialized);
         }
     }
@@ -161,7 +196,8 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         runningCount: groups.running.length,
         failedCount: groups.failed.length,
         completedCount: allCompletedTasks.length,
-        total: groups.pending.length + groups.running.length + groups.failed.length,
+        anomalyCount: groups.anomaly.length,
+        total: groups.pending.length + groups.running.length + groups.failed.length + groups.anomaly.length,
         totalInputTokens,
         totalOutputTokens,
         avgTokensPerTask,

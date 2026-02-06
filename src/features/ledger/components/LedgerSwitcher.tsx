@@ -46,21 +46,21 @@ export function LedgerSwitcher({ currentLedgerId, currentLedgerName, ledgers = [
         if (!newLedgerName.trim()) return;
 
         startTransition(async () => {
-            const result = await createLedgerAction({
-                name: newLedgerName.trim()
-            });
+            try {
+                const newLedger = await createLedgerAction({
+                    name: newLedgerName.trim()
+                });
 
-            if (result.success && result.data) {
                 setShowCreateModal(false);
                 setNewLedgerName("");
                 setOpen(false);
                 toast.success(t("createSuccess"), {
                     description: t("createSuccessDesc"),
                 });
-                router.push(`/ledger/${result.data.id}`);
-            } else {
+                router.push(`/ledger/${newLedger.id}`);
+            } catch (error) {
                 toast.error(t("createFailed"), {
-                    description: result.error || t("createFailedDesc"),
+                    description: error instanceof Error ? error.message : t("createFailedDesc"),
                 });
             }
         });

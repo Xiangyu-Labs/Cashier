@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TaskCard } from "./TaskCard";
 import { useTaskQueue } from "../client/hooks/useTaskQueue";
-import { SerializedTaskRun } from "../server/actions/task-queue";
+import { SerializedTaskRun, SerializedAnomalyBill } from "../server/actions/task-queue";
 import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
@@ -21,7 +21,7 @@ import {
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
 
-import { ChevronDown, Inbox, ListTodo } from "lucide-react";
+import { ChevronDown, Inbox, ListTodo, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
@@ -50,6 +50,7 @@ export function TaskQueueModal({
     const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
     const [isRunningCollapsed, setIsRunningCollapsed] = useState(false);
     const [isFailedCollapsed, setIsFailedCollapsed] = useState(false);
+    const [isAnomalyCollapsed, setIsAnomalyCollapsed] = useState(false);
     const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(true);
 
     // Edit-Retry Dialog State (for parse_source_document tasks)
@@ -346,6 +347,112 @@ export function TaskQueueModal({
                                                             onRetry={() => handleRetry(task)}
                                                             onDelete={() => handleDeleteSingle(task)}
                                                         />
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+
+                                {/* Anomaly Bills Section */}
+                                {groups.anomaly.length > 0 && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <div
+                                                className="flex items-center gap-2 cursor-pointer select-none"
+                                                onClick={() => setIsAnomalyCollapsed(!isAnomalyCollapsed)}
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                                <span className="text-sm font-medium text-amber-600">
+                                                    {t("anomaly")} ({groups.anomaly.length})
+                                                </span>
+                                                <motion.div
+                                                    animate={{ rotate: isAnomalyCollapsed ? -90 : 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <ChevronDown className="w-3.5 h-3.5 text-amber-500" />
+                                                </motion.div>
+                                            </div>
+
+                                            {!isAnomalyCollapsed && groups.anomaly.length > 0 && (
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-xs bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-50 hover:border-amber-200"
+                                                        onClick={() => {
+                                                            const ids = groups.anomaly.map(b => b.id);
+                                                            batchDeleteMutation.mutate(ids);
+                                                        }}
+                                                    >
+                                                        {t("deleteAll")}
+                                                    </Button>
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-xs bg-amber-500 hover:bg-amber-600"
+                                                        onClick={() => {
+                                                            const ids = groups.anomaly.map(b => b.id);
+                                                            batchRetryMutation.mutate(ids);
+                                                        }}
+                                                    >
+                                                        {t("retryAll")}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {!isAnomalyCollapsed && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="space-y-2 overflow-hidden"
+                                                >
+                                                    {groups.anomaly.map((bill: SerializedAnomalyBill) => (
+                                                        <div
+                                                            key={bill.id}
+                                                            className="flex items-start gap-3 p-3 bg-amber-50/50 rounded-lg border border-amber-100"
+                                                        >
+                                                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-foreground truncate">
+                                                                    {bill.title || t("untitledBill")}
+                                                                </p>
+                                                                {bill.anomalyReason && (
+                                                                    <p className="text-xs text-amber-600 mt-0.5 line-clamp-2">
+                                                                        {bill.anomalyReason}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 text-xs"
+                                                                    onClick={() => setRetryTaskId(bill.id)}
+                                                                >
+                                                                    {tEntries("retry")}
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                                                                    onClick={() => {
+                                                                        setDeleteConfirm({
+                                                                            open: true,
+                                                                            type: "single",
+                                                                            id: bill.id,
+                                                                            title: t("deleteConfirmTitle"),
+                                                                            description: t("deleteConfirmDesc"),
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    {tCommon("delete")}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
                                                     ))}
                                                 </motion.div>
                                             )}

@@ -48,10 +48,10 @@ export function SourceDocumentEditRetryDialog({
         setIsLoading(true);
         getSourceDocumentFullAction(ledgerId, sourceDocument.id)
             .then((result) => {
-                if (result.success && result.data) {
+                if (result) {
                     setFullData({
-                        text: result.data.text,
-                        imageUrls: result.data.imageUrls,
+                        text: result.text,
+                        imageUrls: result.imageUrls,
                     });
                 }
             })

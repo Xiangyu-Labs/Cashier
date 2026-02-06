@@ -32,16 +32,12 @@ export default async function HomePage(): Promise<ReactNode> {
 
   // 4. Auto-create default ledger (Server Action called directly)
   try {
-    const result = await createLedgerAction({
+    const newLedger = await createLedgerAction({
       name: t("defaultLedgerName"),
       aiLanguage: locale
     });
 
-    if (result.success && result.data) {
-      redirect({ href: `/ledger/${result.data.id}`, locale });
-    } else {
-      throw new Error(result.error || "Failed to create ledger");
-    }
+    redirect({ href: `/ledger/${newLedger.id}`, locale });
   } catch (error) {
     console.error("Failed to auto-create ledger:", error);
     return (
