@@ -30,9 +30,14 @@ export function SourceDocumentEditRetryDialog({
     const t = useTranslations("SourceDocumentEditRetryDialog");
 
     // Check if we need to fetch full data (imageUrls may be stripped for completed documents)
+    // Also fetch if the sourceDocument is minimal (e.g., from task queue anomaly bills that only have id/title)
     const hasImageUrls = 'imageUrls' in sourceDocument && Array.isArray(sourceDocument.imageUrls) && sourceDocument.imageUrls.length > 0;
+    const hasText = 'text' in sourceDocument && sourceDocument.text;
     const hasImages = 'hasImages' in sourceDocument && sourceDocument.hasImages;
-    const needsFetch = !hasImageUrls && hasImages;
+    // needsFetch is true when:
+    // 1. No imageUrls but hasImages flag is true (stripped for performance)
+    // 2. No imageUrls AND no text (minimal object, likely from TaskQueueModal)
+    const needsFetch = (!hasImageUrls && hasImages) || (!hasImageUrls && !hasText);
 
     const [isLoading, setIsLoading] = useState(needsFetch);
     const [fullData, setFullData] = useState<{ text?: string | null; imageUrls?: string[] | null } | null>(null);
