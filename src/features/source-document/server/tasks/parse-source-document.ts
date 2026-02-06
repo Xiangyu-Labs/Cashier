@@ -171,7 +171,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 amount: entry.amount,
                 currency: entry.currency,
                 category: entry.category,
-                entryDate: entry.entry_date,
+                entryDate: null,  // Will be set from source document in onComplete
                 notes: entry.notes,
             }));
 
@@ -208,6 +208,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, ledgerId);
         const qEntries = forLedger(ledgerEntries, ledgerId);
+
+        // Query source document to get its entryDate for fallback
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+        });
 
         // Handle anomaly - do NOT save entries, just update document status
         if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
@@ -263,9 +268,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 ? input.categories.find((c) => c.name === entry.category)?.id ?? null
                 : null;
 
-            // Use local date if entryDate is missing
+            // Use source document's entryDate as primary fallback, then today's date
             const now = new Date();
-            const fallbackDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const fallbackDate = doc.entryDate || todayDate;
 
             return {
                 ledgerId: ledgerId!,
@@ -275,7 +281,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 currency: entry.currency,
                 itemName: entry.itemName || "未分类",
                 description: entry.notes || null,
-                entryDate: entry.entryDate || fallbackDate,
+                entryDate: fallbackDate,
             };
         });
 

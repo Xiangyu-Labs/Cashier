@@ -17,7 +17,7 @@ const entrySchema = z.object({
     amount: z.number(),
     currency: z.string(),
     category: z.string(),
-    entry_date: z.string(),
+    entry_date: z.string().optional(),  // Optional: we use source document's entryDate instead
     notes: z.string().nullable(),
 });
 
@@ -118,14 +118,9 @@ export async function executeStage2(
 ): Promise<Stage2Output> {
     const messageContent = buildMessageContent(input.text, input.imageUrls);
 
-    // Get current date in local timezone
-    const now = new Date();
-    const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
     const prompt = buildDetailedParsePrompt(
         input.validationSummary,
-        input.aiLanguage,
-        currentDate
+        input.aiLanguage
     );
 
     // Use more capable model for detailed parsing
@@ -152,11 +147,8 @@ export async function executeStage2(
 
     // Compare results
     if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
-        // Always use current date
-        const entries = result1.ledger_entries.map(e => ({ ...e, entry_date: currentDate }));
-
         return {
-            entries,
+            entries: result1.ledger_entries,
             title: input.validationSummary.summary?.title || "Untitled",
             reasoning: result1.reasoning,
             wasArbitrated: false,
@@ -210,11 +202,8 @@ Look for:
 
     const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
 
-    // Always use current date
-    const entries = chosenResult.ledger_entries.map(e => ({ ...e, entry_date: currentDate }));
-
     return {
-        entries,
+        entries: chosenResult.ledger_entries,
         title: input.validationSummary.summary?.title || "Untitled",
         reasoning: chosenResult.reasoning,
         wasArbitrated: true,

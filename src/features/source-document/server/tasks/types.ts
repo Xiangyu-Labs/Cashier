@@ -81,7 +81,7 @@ export interface ParsedEntry {
     amount: number;
     currency: string;
     category: string;
-    entry_date: string;
+    entry_date?: string;  // Optional: we use source document's entryDate instead
     notes: string | null;
 }
 

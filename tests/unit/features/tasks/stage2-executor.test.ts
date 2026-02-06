@@ -53,8 +53,8 @@ describe("Stage 2 Executor", () => {
         });
     });
 
-    describe("Date Override", () => {
-        it("should always override dates to current date", async () => {
+    describe("Date Handling", () => {
+        it("should preserve dates from AI parsing results", async () => {
             const mockResponse = JSON.stringify({
                 ledger_entries: [
                     {
@@ -62,7 +62,7 @@ describe("Stage 2 Executor", () => {
                         amount: 45,
                         currency: "CNY",
                         category: "餐饮",
-                        entry_date: "2026-01-15", // Old date
+                        entry_date: "2026-01-15", // Date from document
                         notes: null,
                     },
                 ],
@@ -81,10 +81,8 @@ describe("Stage 2 Executor", () => {
                 mockAI
             );
 
-            // Date should be overridden to today
-            const now = new Date();
-            const expectedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-            expect(result.entries[0].entry_date).toBe(expectedDate);
+            // Date should be preserved from AI result (not overridden to today)
+            expect(result.entries[0].entry_date).toBe("2026-01-15");
         });
     });
 

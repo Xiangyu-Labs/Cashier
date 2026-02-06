@@ -195,7 +195,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         expect(result.verificationStatus).toBe("passed");
     });
 
-    it("should always override entryDate to current date", async () => {
+    it("should return null entryDate in execute (date is set from source document in onComplete)", async () => {
         const input: ParseSourceDocumentInput = {
             ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
@@ -217,10 +217,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         const result = await parseSourceDocumentHandler.execute(input, context);
 
-        // Date should be overridden to today
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        expect(result.ledgerEntries[0].entryDate).toBe(today);
+        // entryDate is null in execute result - it will be set from source document in onComplete
+        expect(result.ledgerEntries[0].entryDate).toBeNull();
     });
 
     it("should return invalid status if Stage 1 validity check fails", async () => {
