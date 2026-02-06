@@ -37,19 +37,34 @@ vi.mock("@/features/ledger/components/LedgerEntryEditForm", () => ({
     ),
 }));
 
+// Track pending changes for the mock to determine edit state
+let mockHasPendingChanges = false;
+
 vi.mock("@/features/ledger/components/LedgerEntryViewDetails", () => ({
-    LedgerEntryViewDetails: ({ isEditing, onEditStart, onEditSave, onDelete }: { isEditing: boolean, onEditStart: () => void, onEditSave: () => void, onDelete: () => void }) => (
-        <div>
-            {isEditing ? (
-                <button onClick={onEditSave}>Save</button>
-            ) : (
-                <>
-                    <button onClick={onEditStart}>Edit</button>
-                    <button onClick={onDelete}>Delete</button>
-                </>
-            )}
-        </div>
-    ),
+    LedgerEntryViewDetails: ({ pendingChanges, onFieldChange, onSave, onDiscard, onDelete }: {
+        pendingChanges: Record<string, unknown>,
+        onFieldChange: (changes: Record<string, unknown>) => void,
+        onSave: () => void,
+        onDiscard: () => void,
+        onDelete: () => void
+    }) => {
+        const hasPendingChanges = Object.keys(pendingChanges || {}).length > 0;
+        return (
+            <div>
+                {hasPendingChanges ? (
+                    <>
+                        <button onClick={onSave}>Save</button>
+                        <button onClick={onDiscard}>Discard</button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => onFieldChange({ itemName: "Edited" })}>Edit</button>
+                        <button onClick={onDelete}>Delete</button>
+                    </>
+                )}
+            </div>
+        );
+    },
 }));
 
 describe("LedgerEntryDetailModal", () => {

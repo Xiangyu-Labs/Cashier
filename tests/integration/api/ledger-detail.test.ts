@@ -7,12 +7,9 @@ import { eq } from "drizzle-orm";
 
 describe("Ledger Actions", () => {
   it("should return error for non-existent ledger (Get)", async () => {
-    try {
-      await getLedgerAction("00000000-0000-0000-0000-000000000000");
-      expect.fail("Should throw error");
-    } catch (e: unknown) {
-      expect((e as Error).message).toContain("Unauthorized");
-    }
+    const result = await getLedgerAction("00000000-0000-0000-0000-000000000000");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Unauthorized");
   });
 
   it("should update ledger name", async () => {

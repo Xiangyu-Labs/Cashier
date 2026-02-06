@@ -59,7 +59,9 @@ describe("Multi-User Isolation", () => {
                 user: { id: TEST_USER_ID }
             });
 
-            await expect(getLedgerAction(user2Ledger)).rejects.toThrow("Unauthorized or Ledger not found");
+            const result = await getLedgerAction(user2Ledger);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain("Unauthorized");
         });
 
         it("should allow access when user1 accesses their own ledger", async () => {
@@ -68,7 +70,8 @@ describe("Multi-User Isolation", () => {
             });
 
             const result = await getLedgerAction(user1Ledger);
-            expect(result.id).toBe(user1Ledger);
+            expect(result.success).toBe(true);
+            expect(result.data?.id).toBe(user1Ledger);
         });
 
         it("should refuse update when user1 tries to update user2 ledger", async () => {
