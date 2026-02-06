@@ -97,7 +97,8 @@
         "retrySubmitted": "重试已提交",
         "retryAllDesc": "正在重试所有失败的记录",
         "deleteAllConfirmTitle": "删除所有异常账单",
-        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
+        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。",
+        "retry": "编辑重试"
     },
     "SourceDocumentCard": {
         "collapseContent": "折叠内容",
