@@ -190,55 +190,35 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
 /**
  * Update source document metadata (e.g. title, entryDate)
  */
-export async function updateSourceDocumentAction(ledgerId: string, sourceId: string, data: { title?: string; entryDate?: string }) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized");
+export async function updateSourceDocumentAction(ledgerId: string, sourceId: string, data: { title?: string; entryDate?: string }): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const q = forLedger(sourceDocuments, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
 
-        await db.update(sourceDocuments)
-            .set(data)
-            .where(q.whereId(sourceId));
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId, sourceId }, "Failed to update source document via action");
-        return {
-            success: false,
-            error: safeError(error),
-        };
-    }
+    await db.update(sourceDocuments)
+        .set(data)
+        .where(q.whereId(sourceId));
 }
 
-export async function deleteSourceDocumentAction(ledgerId: string, sourceId: string) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized");
+export async function deleteSourceDocumentAction(ledgerId: string, sourceId: string): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const q = forLedger(sourceDocuments, ledgerId);
-        const qEntries = forLedger(ledgerEntries, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
+    const qEntries = forLedger(ledgerEntries, ledgerId);
 
-        // Cascade soft delete to ledger entries
-        await db.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(and(
-                qEntries.whereActive,
-                eq(ledgerEntries.sourceDocumentId, sourceId)
-            ));
+    // Cascade soft delete to ledger entries
+    await db.update(ledgerEntries)
+        .set(qEntries.softDelete)
+        .where(and(
+            qEntries.whereActive,
+            eq(ledgerEntries.sourceDocumentId, sourceId)
+        ));
 
-        await db.update(sourceDocuments)
-            .set(q.softDelete)
-            .where(q.whereId(sourceId));
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId, sourceId }, "Failed to delete source document via action");
-        return {
-            success: false,
-            error: safeError(error),
-        };
-    }
+    await db.update(sourceDocuments)
+        .set(q.softDelete)
+        .where(q.whereId(sourceId));
 }
 
 export async function getSourceDocumentsAction(ledgerId: string, params: {
@@ -378,80 +358,60 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     };
 }
 
-export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized");
+export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        if (sourceDocumentIds.length === 0) return { success: true };
+    if (sourceDocumentIds.length === 0) return;
 
-        const q = forLedger(sourceDocuments, ledgerId);
-        const qEntries = forLedger(ledgerEntries, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
+    const qEntries = forLedger(ledgerEntries, ledgerId);
 
-        // Cascade soft delete to associated ledger entries
-        await db.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(and(
-                qEntries.whereActive,
-                inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
-            ));
+    // Cascade soft delete to associated ledger entries
+    await db.update(ledgerEntries)
+        .set(qEntries.softDelete)
+        .where(and(
+            qEntries.whereActive,
+            inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
+        ));
 
-        await db.update(sourceDocuments)
-            .set(q.softDelete)
-            .where(and(
-                q.whereActive,
-                inArray(sourceDocuments.id, sourceDocumentIds)
-            ));
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch delete source documents");
-        return {
-            success: false,
-            error: safeError(error),
-        };
-    }
+    await db.update(sourceDocuments)
+        .set(q.softDelete)
+        .where(and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        ));
 }
 
-export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]) {
-    try {
-        const { ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized");
+export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]): Promise<void> {
+    const { ledger, error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        if (sourceDocumentIds.length === 0) return { success: true };
+    if (sourceDocumentIds.length === 0) return;
 
-        const q = forLedger(sourceDocuments, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
 
-        // 1. Fetch all docs to get their current text/images
-        const docs = await db.query.sourceDocuments.findMany({
-            where: and(
-                q.whereActive,
-                inArray(sourceDocuments.id, sourceDocumentIds)
-            )
-        });
+    // 1. Fetch all docs to get their current text/images
+    const docs = await db.query.sourceDocuments.findMany({
+        where: and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        )
+    });
 
-        // 2. Update status to queued and clear anomaly fields
-        await db.update(sourceDocuments)
-            .set({ status: "queued", anomalyReason: null })
-            .where(and(
-                q.whereActive,
-                inArray(sourceDocuments.id, sourceDocumentIds)
-            ));
+    // 2. Update status to queued and clear anomaly fields
+    await db.update(sourceDocuments)
+        .set({ status: "queued", anomalyReason: null })
+        .where(and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        ));
 
-        // 3. Retrigger tasks for each
-        await Promise.all(docs.map(async (doc) => {
-            const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
-            await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
-        }));
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch retry source documents");
-        return {
-            success: false,
-            error: safeError(error),
-        };
-    }
+    // 3. Retrigger tasks for each
+    await Promise.all(docs.map(async (doc) => {
+        const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
+        await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
+    }));
 }
 
 export interface SourceDocumentGroup {
@@ -547,30 +507,20 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     }
 }
 
-export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized");
+export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        if (sourceDocumentIds.length === 0) return { success: true };
+    if (sourceDocumentIds.length === 0) return;
 
-        const q = forLedger(sourceDocuments, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
 
-        await db.update(sourceDocuments)
-            .set(data as Partial<SourceDocument>)
-            .where(and(
-                q.whereActive,
-                inArray(sourceDocuments.id, sourceDocumentIds)
-            ));
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId, count: sourceDocumentIds.length }, "Failed to batch update source documents");
-        return {
-            success: false,
-            error: safeError(error),
-        };
-    }
+    await db.update(sourceDocuments)
+        .set(data as Partial<SourceDocument>)
+        .where(and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        ));
 }
 
 /**
@@ -579,7 +529,7 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
  */
 export async function getPendingSourceDocumentsAction(ledgerId: string) {
     const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
     try {
         // Fetch active documents (queued, processing, anomaly) WITHOUT date filtering
@@ -626,37 +576,24 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
  */
 export async function getSourceDocumentFullAction(ledgerId: string, sourceDocumentId: string) {
     const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-    try {
-        const q = forLedger(sourceDocuments, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
 
-        const doc = await db.query.sourceDocuments.findFirst({
-            where: q.whereId(sourceDocumentId),
-        });
+    const doc = await db.query.sourceDocuments.findFirst({
+        where: q.whereId(sourceDocumentId),
+    });
 
-        if (!doc) {
-            return { success: false, error: "Source document not found", data: null };
-        }
-
-        return {
-            success: true,
-            error: null,
-            data: {
-                id: doc.id,
-                text: doc.text,
-                imageUrls: doc.imageUrls,
-                status: doc.status,
-                createdAt: doc.createdAt.toISOString(),
-            }
-        };
-    } catch (error) {
-        logger.error({ error, ledgerId, sourceDocumentId }, "Failed to get full source document");
-        return {
-            success: false,
-            error: safeError(error),
-            data: null,
-        };
+    if (!doc) {
+        return null;
     }
+
+    return {
+        id: doc.id,
+        text: doc.text,
+        imageUrls: doc.imageUrls,
+        status: doc.status,
+        createdAt: doc.createdAt.toISOString(),
+    };
 }
 

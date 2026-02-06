@@ -1,4 +1,3 @@
-
 import { describe, it, expect, beforeEach } from "vitest";
 import { updateLedgerEntryAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
@@ -41,8 +40,8 @@ describe("Ledger Entry Update Action", () => {
 
         const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { description: newDescription });
 
-        expect(result.success).toBe(true);
-        expect(result.data?.description).toBe(newDescription);
+        expect(result).toBeDefined();
+        expect(result.description).toBe(newDescription);
 
         // Verify in DB
         const db = getTestDb();
@@ -64,18 +63,18 @@ describe("Ledger Entry Update Action", () => {
 
         const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
 
-        expect(result.success).toBe(true);
-        expect(result.data?.amount).toBe("200.00");
-        expect(result.data?.itemName).toBe(changes.itemName);
-        expect(result.data?.currency).toBe(changes.currency);
-        expect(new Date(result.data!.entryDate!).toISOString()).toBe(changes.entryDate);
+        expect(result).toBeDefined();
+        expect(result.amount).toBe("200.00");
+        expect(result.itemName).toBe(changes.itemName);
+        expect(result.currency).toBe(changes.currency);
+        expect(new Date(result.entryDate!).toISOString()).toBe(changes.entryDate);
     });
 
     it("should handle partial updates", async () => {
         const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { itemName: "Only Name Changed" });
 
-        expect(result.success).toBe(true);
-        expect(result.data?.itemName).toBe("Only Name Changed");
-        expect(result.data?.amount).toBe("100.00"); // Original value
+        expect(result).toBeDefined();
+        expect(result.itemName).toBe("Only Name Changed");
+        expect(result.amount).toBe("100.00"); // Original value
     });
 });

@@ -6,10 +6,9 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 
 describe("Ledger Actions", () => {
-  it("should return error for non-existent ledger (Get)", async () => {
+  it("should return null for non-existent ledger (Get)", async () => {
     const result = await getLedgerAction("00000000-0000-0000-0000-000000000000");
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Unauthorized");
+    expect(result).toBeNull();
   });
 
   it("should update ledger name", async () => {
@@ -18,23 +17,21 @@ describe("Ledger Actions", () => {
 
     const result = await updateLedgerAction(ledgerId, { name: "Updated Name" });
 
-    expect(result.success).toBe(true);
-    expect(result.data?.name).toBe("Updated Name");
+    expect(result).toBeDefined();
+    expect(result.name).toBe("Updated Name");
   });
 
-  it("should return error for non-existent ledger (Update)", async () => {
-    const result = await updateLedgerAction("00000000-0000-0000-0000-000000000000", { name: "Updated" });
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Unauthorized");
+  it("should throw error for non-existent ledger (Update)", async () => {
+    await expect(updateLedgerAction("00000000-0000-0000-0000-000000000000", { name: "Updated" }))
+      .rejects.toThrow();
   });
 
   it("should delete ledger", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "To Delete");
 
-    const result = await deleteLedgerAction(ledgerId);
-
-    expect(result.success).toBe(true);
+    // deleteLedgerAction returns void in new format
+    await deleteLedgerAction(ledgerId);
 
     // Verify deletion (soft delete)
     const found = await db.query.ledgers.findFirst({
@@ -44,8 +41,9 @@ describe("Ledger Actions", () => {
     expect(found?.deletedAt).not.toBeNull();
   });
 
-  it("should return error for non-existent ledger (Delete)", async () => {
-    const result = await deleteLedgerAction("00000000-0000-0000-0000-000000000000");
-    expect(result.success).toBe(false);
+  it("should throw error for non-existent ledger (Delete)", async () => {
+    await expect(deleteLedgerAction("00000000-0000-0000-0000-000000000000"))
+      .rejects.toThrow();
   });
 });
+

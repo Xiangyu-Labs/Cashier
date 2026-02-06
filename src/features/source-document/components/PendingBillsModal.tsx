@@ -63,8 +63,7 @@ export function PendingBillsModal({
     // Mutations
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => {
-            const result = await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
-            if (!result.success) throw new Error(result.error || "Failed to delete");
+            await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
         },
         onMutate: async (sourceDocumentId) => {
             // Cancel in-flight queries
@@ -108,8 +107,7 @@ export function PendingBillsModal({
 
     const batchDeleteMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            const result = await batchDeleteSourceDocumentsAction(ledgerId, ids);
-            if (!result.success) throw new Error(result.error || "Failed to batch delete");
+            await batchDeleteSourceDocumentsAction(ledgerId, ids);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
@@ -123,8 +121,7 @@ export function PendingBillsModal({
 
     const batchRetryMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            const result = await batchRetrySourceDocumentsAction(ledgerId, ids);
-            if (!result.success) throw new Error(result.error || "Failed to batch retry");
+            await batchRetrySourceDocumentsAction(ledgerId, ids);
         },
         onSuccess: () => {
             toast.success(tEntries("retrySubmitted"));

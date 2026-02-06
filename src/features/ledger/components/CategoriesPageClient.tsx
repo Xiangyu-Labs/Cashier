@@ -65,11 +65,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
 
     const createMutation = useMutation({
         mutationFn: async (data: CreateCategoryData) => {
-            const result = await createEntryCategoryAction(ledgerId, data);
-            if (result.success) {
-                return result.data;
-            }
-            throw new Error(result.error || tSettings("createCategoryFailed"));
+            return await createEntryCategoryAction(ledgerId, data);
         },
         onMutate: async (newData) => {
             // Cancel outgoing refetches
@@ -112,11 +108,8 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: CreateCategoryData }) => {
-            const result = await updateEntryCategoryAction(ledgerId, id, data);
-            if (result.success) {
-                return { id, ...data };
-            }
-            throw new Error(result.error || tSettings("updateCategoryFailed"));
+            await updateEntryCategoryAction(ledgerId, id, data);
+            return { id, ...data };
         },
         onMutate: async ({ id, data }) => {
             await queryClient.cancelQueries({ queryKey });
@@ -143,8 +136,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const result = await deleteEntryCategoryAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || tSettings("deleteCategoryFailed"));
+            await deleteEntryCategoryAction(ledgerId, id);
             return id;
         },
         onMutate: async (id) => {

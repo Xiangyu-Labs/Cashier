@@ -4,13 +4,9 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  fetchLedger,
-  fetchLedgers,
-  fetchEntryCategories,
-  fetchPendingSourceDocuments,
-  fetchUnifiedSourceDocuments,
-} from "@/lib/fetchers";
+import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { getPendingSourceDocumentsAction, getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 
 export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ledgerId } = await params;
@@ -31,27 +27,27 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
   await Promise.all([
     queryClient.prefetchQuery({
       queryKey: queryKeys.ledger(ledgerId),
-      queryFn: () => fetchLedger(ledgerId),
+      queryFn: () => getLedgerAction(ledgerId),
       staleTime: STALE_TIME,
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.entryCategories(ledgerId),
-      queryFn: () => fetchEntryCategories(ledgerId),
+      queryFn: () => getEntryCategoriesAction(ledgerId),
       staleTime: STALE_TIME,
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.ledgers(),
-      queryFn: () => fetchLedgers(),
+      queryFn: () => getLedgersAction(),
       staleTime: STALE_TIME,
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'pending'),
-      queryFn: () => fetchPendingSourceDocuments(ledgerId),
+      queryFn: () => getPendingSourceDocumentsAction(ledgerId),
       staleTime: 30 * 1000, // 30 seconds for pending (more dynamic)
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'unified'),
-      queryFn: () => fetchUnifiedSourceDocuments(ledgerId, {}),
+      queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {}),
       staleTime: 30 * 1000,
     }),
   ]);

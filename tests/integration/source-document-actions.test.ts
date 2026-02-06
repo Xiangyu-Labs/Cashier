@@ -36,25 +36,21 @@ describe("getSourceDocumentByIdAction", () => {
         // 3. Action
         const result = await getSourceDocumentByIdAction(docData.id);
 
-        // 4. Assertion
-        expect(result.success).toBe(true);
-        expect(result.data).toBeDefined();
-        if (result.success && result.data) {
-            expect(result.data.id).toBe(docData.id);
-            expect(result.data.ledgerId).toBe(ledgerData.id);
-            // Verify date serialization
-            expect(typeof result.data.createdAt).toBe("string");
-        }
+        // 4. Assertion - new format returns data directly
+        expect(result).not.toBeNull();
+        expect(result!.id).toBe(docData.id);
+        expect(result!.ledgerId).toBe(ledgerData.id);
+        // Verify date serialization
+        expect(typeof result!.createdAt).toBe("string");
     });
 
 
-    it("should return error when document does not exist", async () => {
+    it("should return null when document does not exist", async () => {
         const result = await getSourceDocumentByIdAction(uuidv4());
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("Document not found");
+        expect(result).toBeNull();
     });
 
-    it("should return error when user does not have access to the ledger", async () => {
+    it("should throw error when user does not have access to the ledger", async () => {
         const db = getTestDb();
         // 1. Create Ledger for ANOTHER user
         const otherUserId = "22222222-2222-2222-2222-222222222222";
@@ -72,11 +68,8 @@ describe("getSourceDocumentByIdAction", () => {
         const docData = createSourceDocumentData(ledgerData.id);
         await db.insert(sourceDocuments).values(docData);
 
-        // 3. Action
-        const result = await getSourceDocumentByIdAction(docData.id);
-
-        // 4. Assertion
-        expect(result.success).toBe(false);
-        expect(result.error).toBeTruthy();
+        // 3. Action - should throw error
+        await expect(getSourceDocumentByIdAction(docData.id)).rejects.toThrow("Unauthorized");
     });
 });
+

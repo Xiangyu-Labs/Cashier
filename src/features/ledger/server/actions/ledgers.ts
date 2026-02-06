@@ -26,141 +26,110 @@ const updateLedgerSchema = z.object({
     }).optional(),
 });
 
-export async function createLedgerAction(data: z.infer<typeof createLedgerSchema>) {
-    try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Unauthorized" };
-        }
-
-        const validated = createLedgerSchema.parse(data);
-
-        // Create ledger
-        const [newLedger] = await db
-            .insert(ledgers)
-            .values({
-                userId: session.user.id,
-                name: validated.name,
-                metadata: {
-                    settings: {
-                        aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
-                        currencies: defaultLedger.settings.currencies,
-                        mainCurrency: defaultLedger.settings.mainCurrency,
-                        collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
-                        collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
-                        aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
-                    }
-                }
-            })
-            .returning();
-
-        // Seed categories for the new ledger
-        if (defaultLedger.categories.length > 0) {
-            await db.insert(entryCategories).values(
-                defaultLedger.categories.map((cat) => ({
-                    ...cat,
-                    ledgerId: newLedger.id,
-                }))
-            );
-        }
-
-
-        return { success: true, data: newLedger, error: null };
-    } catch (error) {
-        logger.error({ error }, "Failed to create ledger via action");
-        if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation failed", details: error.issues, data: null };
-        }
-        return { success: false, error: "Failed to create ledger", data: null };
-    }
-}
-
-export async function updateLedgerAction(id: string, data: z.infer<typeof updateLedgerSchema>) {
-    try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Unauthorized" };
-        }
-
-        // Verify ownership
-        const existing = await db.query.ledgers.findFirst({
-            where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
-        });
-
-        if (!existing || existing.userId !== session.user.id) {
-            return { success: false, error: "Unauthorized or Ledger not found" };
-        }
-
-        const validated = updateLedgerSchema.parse(data);
-
-        // Helper to merge deep objects is tricky with Drizzle's set, so we fetch and merge in app logic
-        // or use sql hacks. But for metadata, we can fetch, merge, update.
-        // However, here we can just assume we want to update specific fields in settings.
-        // We need to get current metadata first.
-
-        const currentMetadata = existing.metadata || {};
-        const currentSettings = currentMetadata.settings || {};
-
-        const newSettings = {
-            ...currentSettings,
-            ...(validated.settings || {}),
-        };
-
-        const [updatedLedger] = await db
-            .update(ledgers)
-            .set({
-                name: validated.name || existing.name,
-                metadata: {
-                    ...currentMetadata,
-                    settings: newSettings,
-                }
-            })
-            .where(eq(ledgers.id, id))
-            .returning();
-
-
-        return { success: true, data: updatedLedger, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId: id }, "Failed to update ledger via action");
-        if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation failed", details: error.issues, data: null };
-        }
-        return { success: false, error: "Failed to update ledger", data: null };
-    }
-}
-
-export async function deleteLedgerAction(id: string) {
-    try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Unauthorized" };
-        }
-
-        // Verify ownership
-        const existing = await db.query.ledgers.findFirst({
-            where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
-        });
-
-        if (!existing || existing.userId !== session.user.id) {
-            return { success: false, error: "Unauthorized or Ledger not found" };
-        }
-
-        await db.update(ledgers)
-            .set({ deletedAt: new Date() })
-            .where(eq(ledgers.id, id));
-
-
-        return { success: true, error: null };
-    } catch (error) {
-        logger.error({ error, ledgerId: id }, "Failed to delete ledger via action");
-        return { success: false, error: "Failed to delete ledger" };
-    }
-}
-
-export async function getLedgerAction(id: string) {
+export async function createLedgerAction(data: z.infer<typeof createLedgerSchema>): Promise<import("@/lib/db/schema").Ledger> {
     const session = await auth();
     if (!session?.user?.id) {
-        return { success: false, error: "Unauthorized", data: null };
+        throw new Error("Unauthorized: Please log in to create a ledger");
+    }
+
+    const validated = createLedgerSchema.parse(data);
+
+    // Create ledger
+    const [newLedger] = await db
+        .insert(ledgers)
+        .values({
+            userId: session.user.id,
+            name: validated.name,
+            metadata: {
+                settings: {
+                    aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
+                    currencies: defaultLedger.settings.currencies,
+                    mainCurrency: defaultLedger.settings.mainCurrency,
+                    collapseProcessingDefault: defaultLedger.settings.collapseProcessingDefault,
+                    collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
+                    aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
+                }
+            }
+        })
+        .returning();
+
+    // Seed categories for the new ledger
+    if (defaultLedger.categories.length > 0) {
+        await db.insert(entryCategories).values(
+            defaultLedger.categories.map((cat) => ({
+                ...cat,
+                ledgerId: newLedger.id,
+            }))
+        );
+    }
+
+    return newLedger;
+}
+
+export async function updateLedgerAction(id: string, data: z.infer<typeof updateLedgerSchema>): Promise<import("@/lib/db/schema").Ledger> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized: Please log in to update a ledger");
+    }
+
+    // Verify ownership
+    const existing = await db.query.ledgers.findFirst({
+        where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
+    });
+
+    if (!existing || existing.userId !== session.user.id) {
+        throw new Error("Ledger not found or access denied");
+    }
+
+    const validated = updateLedgerSchema.parse(data);
+
+    const currentMetadata = existing.metadata || {};
+    const currentSettings = currentMetadata.settings || {};
+
+    const newSettings = {
+        ...currentSettings,
+        ...(validated.settings || {}),
+    };
+
+    const [updatedLedger] = await db
+        .update(ledgers)
+        .set({
+            name: validated.name || existing.name,
+            metadata: {
+                ...currentMetadata,
+                settings: newSettings,
+            }
+        })
+        .where(eq(ledgers.id, id))
+        .returning();
+
+    return updatedLedger;
+}
+
+export async function deleteLedgerAction(id: string): Promise<void> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized: Please log in to delete a ledger");
+    }
+
+    // Verify ownership
+    const existing = await db.query.ledgers.findFirst({
+        where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
+    });
+
+    if (!existing || existing.userId !== session.user.id) {
+        throw new Error("Ledger not found or access denied");
+    }
+
+    await db.update(ledgers)
+        .set({ deletedAt: new Date() })
+        .where(eq(ledgers.id, id));
+}
+
+export async function getLedgerAction(id: string): Promise<import("@/types/api").Ledger | null> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized");
     }
 
     const existing = await db.query.ledgers.findFirst({
@@ -168,28 +137,24 @@ export async function getLedgerAction(id: string) {
     });
 
     if (!existing || existing.userId !== session.user.id) {
-        return { success: false, error: "Unauthorized or Ledger not found", data: null };
+        return null;
     }
 
     return {
-        success: true,
-        error: null,
-        data: {
-            id: existing.id,
-            userId: existing.userId,
-            name: existing.name,
-            metadata: existing.metadata,
-            createdAt: existing.createdAt.toISOString(),
-            updatedAt: existing.updatedAt.toISOString(),
-            deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
-        },
+        id: existing.id,
+        userId: existing.userId,
+        name: existing.name,
+        metadata: existing.metadata,
+        createdAt: existing.createdAt.toISOString(),
+        updatedAt: existing.updatedAt.toISOString(),
+        deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
     };
 }
 
-export async function getLedgersAction() {
+export async function getLedgersAction(): Promise<import("@/types/api").Ledger[]> {
     const session = await auth();
     if (!session?.user?.id) {
-        return { success: false, error: "Unauthorized", data: null };
+        throw new Error("Unauthorized");
     }
 
     const rows = await db.query.ledgers.findMany({
@@ -197,18 +162,14 @@ export async function getLedgersAction() {
         orderBy: [desc(ledgers.createdAt)],
     });
 
-    return {
-        success: true,
-        error: null,
-        data: rows.map(row => ({
-            id: row.id,
-            userId: row.userId,
-            name: row.name,
-            metadata: row.metadata,
-            createdAt: row.createdAt.toISOString(),
-            updatedAt: row.updatedAt.toISOString(),
-            deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
-        })),
-    };
+    return rows.map(row => ({
+        id: row.id,
+        userId: row.userId,
+        name: row.name,
+        metadata: row.metadata,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    }));
 }
 

@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { fetchLedger, fetchLedgers, fetchEntryCategories } from "@/lib/fetchers";
+import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,23 +39,23 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Read from hydration cache using the SAME fetchers as server prefetch
+    // Read from hydration cache using the SAME Actions as server prefetch
     // This ensures perfect hydration - no additional requests on first render
     const { data: ledger } = useQuery({
         queryKey: queryKeys.ledger(ledgerId),
-        queryFn: () => fetchLedger(ledgerId),
+        queryFn: () => getLedgerAction(ledgerId),
         staleTime: STALE_TIME,
     });
 
     const { data: categories = [] } = useQuery({
         queryKey: queryKeys.entryCategories(ledgerId),
-        queryFn: () => fetchEntryCategories(ledgerId),
+        queryFn: () => getEntryCategoriesAction(ledgerId),
         staleTime: STALE_TIME,
     });
 
     const { data: allLedgers = [] } = useQuery({
         queryKey: queryKeys.ledgers(),
-        queryFn: () => fetchLedgers(),
+        queryFn: () => getLedgersAction(),
         staleTime: STALE_TIME,
     });
 

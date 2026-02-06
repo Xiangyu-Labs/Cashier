@@ -26,8 +26,8 @@ describe("Ledger Entry Delete Action", () => {
     });
 
     it("should delete a ledger entry", async () => {
-        const result = await deleteLedgerEntryAction(testLedgerId, testEntryId);
-        expect(result.success).toBe(true);
+        // deleteLedgerEntryAction returns void in new format
+        await deleteLedgerEntryAction(testLedgerId, testEntryId);
 
         const db = getTestDb();
         const deletedEntry = await db.query.ledgerEntries.findFirst({
@@ -37,16 +37,13 @@ describe("Ledger Entry Delete Action", () => {
         expect(deletedEntry?.deletedAt).not.toBeNull();
     });
 
-    it("should fail if ledger entry belongs to another ledger", async () => {
+    it("should throw error if ledger entry belongs to another ledger", async () => {
         const db = getTestDb();
         const { ledgerId: otherLedgerId } = await createTestUserWithLedger(db, "other@example.com", "Other Ledger", "11111111-1111-1111-1111-111111111111");
 
-        // This should fail because requireLedgerAccess will check if 'otherLedgerId' is owned by the current 'TEST_USER_ID' (0000...)
-        // Wait, the action takes ledgerId as first arg. 
-        // If I pass otherLedgerId, requireLedgerAccess(otherLedgerId) will fail for TEST_USER_ID.
-
-        const result = await deleteLedgerEntryAction(otherLedgerId, testEntryId);
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("Unauthorized");
+        // This should throw error because requireLedgerAccess will fail for TEST_USER_ID
+        await expect(deleteLedgerEntryAction(otherLedgerId, testEntryId))
+            .rejects.toThrow("Unauthorized");
     });
 });
+

@@ -40,9 +40,7 @@ export function SourceDocumentDetailWrapper({
     const { data: sourceDocument, isLoading, error } = useQuery({
         queryKey: queryKeys.sourceDocument(id),
         queryFn: async () => {
-            const result = await getSourceDocumentByIdAction(id);
-            if (!result.success) throw new Error(String(result.error || "Unknown error"));
-            return result.data;
+            return await getSourceDocumentByIdAction(id);
         },
         enabled: open && !!id,
         retry: false
@@ -54,8 +52,7 @@ export function SourceDocumentDetailWrapper({
     const updateSourceDocMutation = useMutation({
         mutationFn: async (data: { title?: string; entryDate?: string }) => {
             if (!ledgerId) return;
-            const result = await updateSourceDocumentAction(ledgerId, id, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await updateSourceDocumentAction(ledgerId, id, data);
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -72,8 +69,7 @@ export function SourceDocumentDetailWrapper({
                 ...data,
                 amount: data.amount !== undefined ? parseFloat(data.amount) : undefined
             };
-            const result = await updateLedgerEntryAction(ledgerId, entryId, convertedData);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await updateLedgerEntryAction(ledgerId, entryId, convertedData);
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -85,8 +81,7 @@ export function SourceDocumentDetailWrapper({
     const batchUpdateMutation = useMutation({
         mutationFn: async ({ ids, data }: { ids: string[], data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             if (!ledgerId) return;
-            const result = await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -98,8 +93,7 @@ export function SourceDocumentDetailWrapper({
     const deleteEntryMutation = useMutation({
         mutationFn: async (entryId: string) => {
             if (!ledgerId) return;
-            const result = await deleteLedgerEntryAction(ledgerId, entryId);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteLedgerEntryAction(ledgerId, entryId);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
@@ -112,8 +106,7 @@ export function SourceDocumentDetailWrapper({
         mutationFn: async (ids: string[]) => {
             if (!ledgerId) return;
             for (const entryId of ids) {
-                const result = await deleteLedgerEntryAction(ledgerId, entryId);
-                if (!result.success) throw new Error(result.error || "Unknown error");
+                await deleteLedgerEntryAction(ledgerId, entryId);
             }
         },
         onSuccess: () => {
@@ -126,8 +119,7 @@ export function SourceDocumentDetailWrapper({
     const deleteDocumentMutation = useMutation({
         mutationFn: async () => {
             if (!ledgerId) return;
-            const result = await deleteSourceDocumentAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteSourceDocumentAction(ledgerId, id);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));

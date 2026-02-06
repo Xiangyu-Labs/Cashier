@@ -56,11 +56,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const mutation = useMutation({
-  // Step 1: 定义 mutation 函数
+  // Step 1: 定义 mutation 函数 (Actions 直接返回数据或 throw 错误)
   mutationFn: async (data) => {
-    const result = await someAction(data);
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    return await someAction(data);
+    // 如果 Action 返回 void，直接: await someAction(data);
   },
   
   // Step 2: 乐观更新

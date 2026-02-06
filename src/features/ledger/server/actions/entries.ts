@@ -32,132 +32,97 @@ const updateLedgerEntrySchema = z.object({
 import { forLedger } from "@/lib/db/scoped-query";
 // Date string comparison - no need for date parsing utilities
 
-export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
+export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<import("@/lib/db/schema").LedgerEntry> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const validated = createLedgerEntrySchema.parse(data);
-        const _q = forLedger(ledgerEntries, ledgerId);
+    const validated = createLedgerEntrySchema.parse(data);
+    const _q = forLedger(ledgerEntries, ledgerId);
 
-        const [entry] = await db.insert(ledgerEntries).values({
-            ...validated,
-            amount: validated.amount.toFixed(2),
-            ledgerId: ledgerId,
-            currency: validated.currency || "CNY",
-            entryDate: validated.entryDate || null,
-        }).returning();
+    const [entry] = await db.insert(ledgerEntries).values({
+        ...validated,
+        amount: validated.amount.toFixed(2),
+        ledgerId: ledgerId,
+        currency: validated.currency || "CNY",
+        entryDate: validated.entryDate || null,
+    }).returning();
 
-        return { success: true, data: entry };
-    } catch (error) {
-        logger.error({ error, ledgerId }, "Failed to create ledger entry via action");
-        return { success: false, error: "Failed to create ledger entry" };
-    }
+    return entry;
 }
 
 export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const validated = updateLedgerEntrySchema.parse(data);
-        const _q = forLedger(ledgerEntries, ledgerId);
+    const validated = updateLedgerEntrySchema.parse(data);
+    const _q = forLedger(ledgerEntries, ledgerId);
 
-        const updateData: Record<string, unknown> = {};
-        if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
-        if (validated.amount !== undefined) updateData.amount = validated.amount.toFixed(2);
-        if (validated.currency !== undefined) updateData.currency = validated.currency;
-        if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
-        if (validated.description !== undefined) updateData.description = validated.description;
-        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
+    const updateData: Record<string, unknown> = {};
+    if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
+    if (validated.amount !== undefined) updateData.amount = validated.amount.toFixed(2);
+    if (validated.currency !== undefined) updateData.currency = validated.currency;
+    if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
+    if (validated.description !== undefined) updateData.description = validated.description;
+    if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
 
-        const [updatedEntry] = await db.update(ledgerEntries)
-            .set(updateData)
-            .where(_q.whereId(ledgerEntryId))
-            .returning();
+    const [updatedEntry] = await db.update(ledgerEntries)
+        .set(updateData)
+        .where(_q.whereId(ledgerEntryId))
+        .returning();
 
-        if (!updatedEntry) throw new Error("Entry not found or access denied");
+    if (!updatedEntry) throw new Error("Entry not found or access denied");
 
-
-        return {
-            success: true,
-            data: {
-                ...updatedEntry,
-                amount: updatedEntry.amount,
-                createdAt: updatedEntry.createdAt.toISOString(),
-                entryDate: updatedEntry.entryDate,
-            }
-        };
-    } catch (error) {
-        logger.error({ error, ledgerId, ledgerEntryId }, "Failed to update ledger entry via action");
-        return { success: false, error: "Failed to update ledger entry" };
-    }
+    return {
+        ...updatedEntry,
+        amount: updatedEntry.amount,
+        createdAt: updatedEntry.createdAt.toISOString(),
+        entryDate: updatedEntry.entryDate,
+    };
 }
 
-export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
+export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const q = forLedger(ledgerEntries, ledgerId);
-        await db.update(ledgerEntries)
-            .set(q.softDelete)
-            .where(q.whereId(ledgerEntryId));
-
-        return { success: true };
-    } catch (error) {
-        logger.error({ error, ledgerId, ledgerEntryId }, "Failed to delete ledger entry via action");
-        return { success: false, error: "Failed to delete ledger entry" };
-    }
+    const q = forLedger(ledgerEntries, ledgerId);
+    await db.update(ledgerEntries)
+        .set(q.softDelete)
+        .where(q.whereId(ledgerEntryId));
 }
 
-export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[]) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
+export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[]): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const q = forLedger(ledgerEntries, ledgerId);
+    const q = forLedger(ledgerEntries, ledgerId);
 
-        await db.update(ledgerEntries)
-            .set(q.softDelete)
-            .where(and(
-                q.whereActive,
-                inArray(ledgerEntries.id, ledgerEntryIds)
-            ));
-
-        return { success: true };
-    } catch (error) {
-        logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch delete ledger entries");
-        return { success: false, error: "Failed to batch delete" };
-    }
+    await db.update(ledgerEntries)
+        .set(q.softDelete)
+        .where(and(
+            q.whereActive,
+            inArray(ledgerEntries.id, ledgerEntryIds)
+        ));
 }
 
-export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: Record<string, unknown>) {
-    try {
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
+export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: Record<string, unknown>): Promise<void> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-        const updateData: Record<string, unknown> = {};
-        if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-        if (data.currency !== undefined) updateData.currency = data.currency;
-        if (data.description !== undefined) updateData.description = data.description;
-        if (data.itemName !== undefined) updateData.itemName = data.itemName;
-        if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? (data.entryDate as string).split('T')[0] : null;
+    const updateData: Record<string, unknown> = {};
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+    if (data.currency !== undefined) updateData.currency = data.currency;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.itemName !== undefined) updateData.itemName = data.itemName;
+    if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? (data.entryDate as string).split('T')[0] : null;
 
-        const q = forLedger(ledgerEntries, ledgerId);
+    const q = forLedger(ledgerEntries, ledgerId);
 
-        await db.update(ledgerEntries)
-            .set(updateData)
-            .where(and(
-                q.whereActive,
-                inArray(ledgerEntries.id, ledgerEntryIds)
-            ));
-
-        return { success: true };
-    } catch (error) {
-        logger.error({ error, ledgerId, ledgerEntryIds }, "Failed to batch update ledger entries");
-        return { success: false, error: "Failed to batch update" };
-    }
+    await db.update(ledgerEntries)
+        .set(updateData)
+        .where(and(
+            q.whereActive,
+            inArray(ledgerEntries.id, ledgerEntryIds)
+        ));
 }
 
 export async function getLedgerEntriesAction(

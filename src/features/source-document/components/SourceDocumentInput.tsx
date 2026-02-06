@@ -61,9 +61,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 settings: Object.keys(settingsUpdate).length > 0 ? settingsUpdate : undefined
             };
 
-            const result = await updateLedgerAction(ledgerId, payload);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-            return result.data;
+            return await updateLedgerAction(ledgerId, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
@@ -75,9 +73,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             text?: string;
             images?: { data: string; mimeType: string }[];
         }) => {
-            const result = await createSourceDocumentAction(ledgerId, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-            return result;
+            return await createSourceDocumentAction(ledgerId, data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
@@ -92,9 +88,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             text?: string;
             images?: { data: string; mimeType: string }[];
         }) => {
-            const result = await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-            return result;
+            await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });

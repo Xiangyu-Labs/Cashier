@@ -1,5 +1,5 @@
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { fetchPendingSourceDocuments } from "@/lib/fetchers";
+import { getPendingSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { queryKeys } from '@/lib/query-keys';
 import { SourceDocumentGroup } from './useUnifiedSourceDocuments';
 
@@ -19,7 +19,7 @@ export interface PendingSourceDocumentsResult {
 export function usePendingSourceDocuments(ledgerId: string) {
     const { data, isLoading, refetch } = useSmartPolling({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'pending'),
-        queryFn: () => fetchPendingSourceDocuments(ledgerId),
+        queryFn: () => getPendingSourceDocumentsAction(ledgerId),
         isActive: (data) => (data?.stats?.processingCount || 0) > 0,
         interval: 3000,
     });

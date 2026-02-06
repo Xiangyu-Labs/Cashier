@@ -43,12 +43,11 @@ describe("Batch Update Ledger Entries Action", () => {
     });
 
     it("should batch update category and currency", async () => {
-        const result = await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
+        // batchUpdateLedgerEntriesAction returns void in new format
+        await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
             categoryId: testCategoryId,
             currency: "USD"
         });
-
-        expect(result.success).toBe(true);
 
         // Verify in DB
         const db = getTestDb();
@@ -68,37 +67,11 @@ describe("Batch Update Ledger Entries Action", () => {
         const newDate = "2023-10-27T00:00:00.000Z";
         const newDescription = "Batch updated description";
 
-        // Note: Action might expect Date object for date fields if typed tightly, 
-        // OR it parses inside. The action says:
-        /*
-        if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate ? new Date(validated.entryDate) : null;
-        But wait, `batchUpdateLedgerEntriesAction` takes `data: any` and does manual check.
-        It does NOT seemingly confirm Zod schema or parse date string to Date object in the generic `updateData` construction?
-        Let's check `actions/ledger-entries.ts` again.
-
-        export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: any) {
-             // ...
-             if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-             // Add other fields as needed
-             await scope.entries.batchUpdate(ledgerEntryIds, updateData);
-        }
-        
-        The implementation I saw earlier was very minimal:
-        // if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-        // Add other fields as needed
-
-        I might need to UPDATE `batchUpdateLedgerEntriesAction` to support more fields!
-        */
-
-        // I should check `src/actions/ledger-entries.ts` again to see if I need to expand it.
-        // Assuming I need to expand it, I will do so.
-
-        const result = await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
+        // batchUpdateLedgerEntriesAction returns void in new format
+        await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
             entryDate: newDate,
             description: newDescription
         });
-
-        expect(result.success).toBe(true);
 
         // Verify in DB
         const db = getTestDb();

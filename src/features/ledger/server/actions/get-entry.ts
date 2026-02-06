@@ -4,59 +4,52 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
-export async function getLedgerEntryAction(id: string) {
-    try {
-        const entry = await db.query.ledgerEntries.findFirst({
-            where: eq(ledgerEntries.id, id),
-            with: {
-                category: true,
-                sourceDocument: true,
-            }
-        });
-
-        if (!entry) {
-            return { success: false, error: "Link not found or has been deleted." };
+export async function getLedgerEntryAction(id: string): Promise<import("@/types/api").LedgerEntry | null> {
+    const entry = await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.id, id),
+        with: {
+            category: true,
+            sourceDocument: true,
         }
+    });
 
-        // Verify access to the ledger this entry belongs to
-        // We do this AFTER fetching because we need the ledgerId
-        const { error } = await requireLedgerAccess(entry.ledgerId);
-        if (error) return { success: false, error: "Unauthorized" };
-
-        // Strip large metadata fields from sourceDocument to reduce payload size
-        let cleanedSourceDocument = null;
-        if (entry.sourceDocument) {
-            const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
-            // Strip imageUrls (Base64 encoded images)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { imageUrls, ...docWithoutImages } = entry.sourceDocument;
-            cleanedSourceDocument = {
-                ...docWithoutImages,
-                metadata: lightMetadata,
-                hasImages: (imageUrls?.length || 0) > 0,
-                createdAt: entry.sourceDocument.createdAt.toISOString(),
-                deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
-            };
-        }
-
-        return {
-            success: true,
-            data: {
-                ...entry,
-                amount: String(entry.amount),
-                createdAt: entry.createdAt.toISOString(),
-                deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-                category: entry.category ? {
-                    ...entry.category,
-                    createdAt: entry.category.createdAt.toISOString(),
-                    updatedAt: entry.category.updatedAt.toISOString(),
-                    deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
-                } : null,
-                sourceDocument: cleanedSourceDocument,
-            }
-        };
-    } catch (e) {
-        return { success: false, error: e instanceof Error ? e.message : String(e) };
+    if (!entry) {
+        return null;
     }
+
+    // Verify access to the ledger this entry belongs to
+    // We do this AFTER fetching because we need the ledgerId
+    const { error } = await requireLedgerAccess(entry.ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger entry denied");
+
+    // Strip large metadata fields from sourceDocument to reduce payload size
+    let cleanedSourceDocument = null;
+    if (entry.sourceDocument) {
+        const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
+        // Strip imageUrls (Base64 encoded images)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { imageUrls, ...docWithoutImages } = entry.sourceDocument;
+        cleanedSourceDocument = {
+            ...docWithoutImages,
+            metadata: lightMetadata,
+            hasImages: (imageUrls?.length || 0) > 0,
+            createdAt: entry.sourceDocument.createdAt.toISOString(),
+            deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
+        };
+    }
+
+    return {
+        ...entry,
+        amount: String(entry.amount),
+        createdAt: entry.createdAt.toISOString(),
+        deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
+        category: entry.category ? {
+            ...entry.category,
+            createdAt: entry.category.createdAt.toISOString(),
+            updatedAt: entry.category.updatedAt.toISOString(),
+            deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
+        } : null,
+        sourceDocument: cleanedSourceDocument,
+    };
 }
 

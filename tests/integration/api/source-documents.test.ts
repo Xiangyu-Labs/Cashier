@@ -154,14 +154,8 @@ describe("SourceDocument Actions", () => {
   });
 
   it("should return error for non-existent ledger", async () => {
+    // createSourceDocumentAction still uses { success, error } format due to special return structure
     const result = await createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" });
-    // requireLedgerAccess returns 404 response object via helper?
-    // Wait, helper implementation returns { error: NextResponse }.
-    // Action catches it?
-    // In action:
-    // const { scope, ledger, error } = await requireLedgerAccess(ledgerId);
-    // if (error || !scope) throw new Error("Unauthorized or Ledger not found");
-
     expect(result.success).toBe(false);
     expect(result.error).toContain("Unauthorized or Ledger not found");
   });
@@ -205,9 +199,8 @@ describe("SourceDocument Actions", () => {
     });
     expect(entriesBefore.length).toBeGreaterThan(0);
 
-    // 2. DELETE request
-    const deleteRes = await deleteSourceDocumentAction(testLedgerId, sourceDocumentId);
-    expect(deleteRes.success).toBe(true);
+    // 2. DELETE request - deleteSourceDocumentAction returns void in new format
+    await deleteSourceDocumentAction(testLedgerId, sourceDocumentId);
 
     // 3. Verify deletion
     const docAfter = await db.query.sourceDocuments.findFirst({
@@ -232,10 +225,9 @@ describe("SourceDocument Actions", () => {
     const res2 = await createSourceDocumentAction(testLedgerId, { text: "Doc 2" });
     const res3 = await createSourceDocumentAction(testLedgerId, { text: "Doc 3" });
 
-    // 2. Batch Delete 1 and 2
+    // 2. Batch Delete 1 and 2 - batchDeleteSourceDocumentsAction returns void in new format
     const ids = [res1.sourceDocumentId!, res2.sourceDocumentId!];
-    const deleteRes = await batchDeleteSourceDocumentsAction(testLedgerId, ids);
-    expect(deleteRes.success).toBe(true);
+    await batchDeleteSourceDocumentsAction(testLedgerId, ids);
 
     // 3. Verify
     const db = getTestDb();
@@ -269,9 +261,8 @@ describe("SourceDocument Actions", () => {
       imageUrls: []
     }).returning();
 
-    // 2. Batch Retry
-    const retryRes = await batchRetrySourceDocumentsAction(testLedgerId, [doc1.id, doc2.id]);
-    expect(retryRes.success).toBe(true);
+    // 2. Batch Retry - batchRetrySourceDocumentsAction returns void in new format
+    await batchRetrySourceDocumentsAction(testLedgerId, [doc1.id, doc2.id]);
 
     // 3. Verify they are queued
     const refreshedDocs = await db.query.sourceDocuments.findMany({

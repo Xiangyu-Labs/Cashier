@@ -46,9 +46,8 @@ describe("createEntryCategoryAction", () => {
   it("should create a new category", async () => {
     const result = await createEntryCategoryAction(testLedgerId, { name: "新分类" });
 
-    expect(result.success).toBe(true);
-    expect(result.data).toBeDefined();
-    expect(result.data?.name).toBe("新分类");
+    expect(result).toBeDefined();
+    expect(result.name).toBe("新分类");
   });
 
   it("should create category with all fields", async () => {
@@ -59,10 +58,10 @@ describe("createEntryCategoryAction", () => {
       sortOrder: 20,
     });
 
-    expect(result.success).toBe(true);
-    expect(result.data?.description).toBe("描述");
-    expect(result.data?.icon).toBe("🚗");
-    expect(result.data?.sortOrder).toBe(20);
+    expect(result).toBeDefined();
+    expect(result.description).toBe("描述");
+    expect(result.icon).toBe("🚗");
+    expect(result.sortOrder).toBe(20);
   });
 
   it("should auto-increment sortOrder (Implementation Check: This might rely on DB trigger or Action logic?)", async () => {
@@ -88,25 +87,9 @@ describe("createEntryCategoryAction", () => {
     // I should fix Action to calculate sortOrder!
   });
 
-  it("should return error for missing name (Zod parsing)", async () => {
-    // Calling with invalid type? TS prevents this.
-    // But if we bypass TS:
-    // @ts-expect-error - testing invalid input
-    const promise = createEntryCategoryAction(testLedgerId, {});
-    // Usually it throws or returns error? 
-    // My action catches error and returns { success: false }.
-    // Zod throws inside try/catch.
-
-    await promise.catch(() => ({ success: false })); // In case it throws before catch block?
-    // Actually action has try/catch.
-
-    // Using simple expect
-    try {
-    } catch (_e) {
-      // Success
-    }
-    const res = await createEntryCategoryAction(testLedgerId, { name: "" });
-    expect(res.success).toBe(false);
+  it("should throw error for missing name (Zod parsing)", async () => {
+    // Zod validation throws error in new format
+    await expect(createEntryCategoryAction(testLedgerId, { name: "" })).rejects.toThrow();
   });
 });
 
@@ -133,9 +116,8 @@ describe("reorderEntryCategoriesAction", () => {
   it("should reorder categories based on input array", async () => {
     const newOrder = [category3Id, category1Id, category2Id];
 
-    const result = await reorderEntryCategoriesAction(testLedgerId, newOrder);
-
-    expect(result.success).toBe(true);
+    // reorderEntryCategoriesAction returns void in new format
+    await reorderEntryCategoriesAction(testLedgerId, newOrder);
 
     const db = getTestDb();
     const allCategories = await db.query.entryCategories.findMany({

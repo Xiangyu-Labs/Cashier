@@ -41,19 +41,18 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     });
 
     it("should create and list service credentials via Actions", async () => {
-        // Create Credential
+        // Create Credential - new format returns data directly
         const createRes = await createServiceCredentialAction(testLedgerId, { name: "Test Credential" });
 
-        expect(createRes.success).toBe(true);
-        expect(createRes.data).toBeDefined();
-        expect(createRes.data?.key).toBeDefined();
-        expect(createRes.data?.name).toBe("Test Credential");
+        expect(createRes).toBeDefined();
+        expect(createRes.key).toBeDefined();
+        expect(createRes.name).toBe("Test Credential");
 
         // List Credentials
         const listRes = await getServiceCredentialsAction(testLedgerId);
 
         expect(listRes).toHaveLength(1);
-        expect(listRes[0].id).toBe(createRes.data!.id);
+        expect(listRes[0].id).toBe(createRes.id);
     });
 
     it("should ingest ledger entry with valid service credential", async () => {
@@ -114,9 +113,8 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
             key: "sk_delete_123"
         }).returning();
 
-        const result = await deleteServiceCredentialAction(testLedgerId, c.id);
-
-        expect(result.success).toBe(true);
+        // deleteServiceCredentialAction returns void in new format
+        await deleteServiceCredentialAction(testLedgerId, c.id);
 
         const check = await db.query.serviceCredentials.findFirst({
             where: eq(serviceCredentials.id, c.id)

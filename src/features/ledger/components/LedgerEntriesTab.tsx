@@ -86,9 +86,7 @@ export function LedgerEntriesTab({
 
     const updateMutation = useMutation({
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
-            const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-            return result.data as LedgerEntry;
+            return await updateLedgerEntryAction(ledgerId, ledgerEntryId, data) as unknown as LedgerEntry;
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -98,8 +96,7 @@ export function LedgerEntriesTab({
 
     const deleteLedgerEntryMutation = useMutation({
         mutationFn: async (ledgerEntryId: string) => {
-            const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
         },
         onMutate: async (ledgerEntryId) => {
             // Cancel in-flight queries to prevent race conditions
@@ -153,8 +150,7 @@ export function LedgerEntriesTab({
 
     const deleteSourceDocumentMutation = useMutation({
         mutationFn: async (sourceDocumentId: string) => {
-            const result = await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
-            if (!result.success) throw new Error(result.error || "Failed to delete source document");
+            await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
         },
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
@@ -183,8 +179,7 @@ export function LedgerEntriesTab({
 
     const batchDeleteSourceDocsMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            const result = await batchDeleteSourceDocumentsAction(ledgerId, ids);
-            if (!result.success) throw new Error(result.error || "Failed to batch delete");
+            await batchDeleteSourceDocumentsAction(ledgerId, ids);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));

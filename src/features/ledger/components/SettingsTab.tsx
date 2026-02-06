@@ -120,11 +120,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             if (data.name !== undefined) payload.name = data.name;
             if (Object.keys(settingsUpdate).length > 0) payload.settings = settingsUpdate;
 
-            const result = await updateLedgerAction(ledgerId, payload);
-            if (result.success) {
+            try {
+                await updateLedgerAction(ledgerId, payload);
                 toast.success(t("settingsUpdated"));
                 router.refresh();
-            } else {
+            } catch {
                 toast.error(t("updateFailed"));
                 // Revert optimistic updates on error
                 setOptimisticCollapseProcessing(ledger.metadata?.settings?.collapseProcessingDefault);
@@ -138,9 +138,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const createCategoryMutation = useMutation({
         mutationFn: async (data: { name: string }) => {
-            const result = await createEntryCategoryAction(ledgerId, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
-            return result.data;
+            return await createEntryCategoryAction(ledgerId, data);
         },
         onMutate: async (newCategory) => {
             await queryClient.cancelQueries({ queryKey });
@@ -179,12 +177,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const updateCategoryMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: Partial<EntryCategory> }) => {
-            const result = await updateEntryCategoryAction(ledgerId, id, {
+            await updateEntryCategoryAction(ledgerId, id, {
                 ...data,
                 description: data.description ?? undefined,
                 icon: data.icon ?? undefined,
             });
-            if (!result.success) throw new Error(result.error || "Unknown error");
         },
         onMutate: async ({ id: _id, data: _data }) => {
             await queryClient.cancelQueries({ queryKey });
@@ -205,8 +202,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const deleteCategoryMutation = useMutation({
         mutationFn: async (id: string) => {
-            const result = await deleteEntryCategoryAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteEntryCategoryAction(ledgerId, id);
         },
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey });
@@ -232,8 +228,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const reorderCategoriesMutation = useMutation({
         mutationFn: async (categoryIds: string[]) => {
-            const result = await reorderEntryCategoriesAction(ledgerId, categoryIds);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await reorderEntryCategoriesAction(ledgerId, categoryIds);
         },
         onSuccess: () => {
             toast.success(t("categoriesReordered"));
@@ -247,9 +242,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const createCredentialMutation = useMutation({
         mutationFn: async (name: string) => {
-            const result = await createServiceCredentialAction(ledgerId, { name });
-            if (!result.success || !result.data) throw new Error(result.error || "Failed to create credential");
-            return result.data;
+            return await createServiceCredentialAction(ledgerId, { name });
         },
         onSuccess: () => {
             toast.success(t("credentialCreated"));
@@ -260,8 +253,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const deleteCredentialMutation = useMutation({
         mutationFn: async (id: string) => {
-            const result = await deleteServiceCredentialAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteServiceCredentialAction(ledgerId, id);
         },
         onSuccess: () => {
             toast.success(t("credentialDeleted"));

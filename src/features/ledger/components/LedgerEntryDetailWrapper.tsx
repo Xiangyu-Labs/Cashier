@@ -28,15 +28,7 @@ export function LedgerEntryDetailWrapper({
 
     const { data: ledgerEntry, isLoading, error } = useQuery({
         queryKey: queryKeys.ledgerEntry(id),
-        queryFn: async () => {
-            const result = await getLedgerEntryAction(id);
-            if (!result.success) {
-                const errorMsg = typeof result.error === 'string' ? result.error : "Unknown error";
-                throw new Error(errorMsg);
-            }
-            // Data is already formatted with ISO string dates from the server action
-            return result.data ?? null;
-        },
+        queryFn: () => getLedgerEntryAction(id),
         enabled: open && !!id,
         retry: false
     });
@@ -46,8 +38,7 @@ export function LedgerEntryDetailWrapper({
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number }) => {
             if (!ledgerId) return;
-            const result = await updateLedgerEntryAction(ledgerId, id, data);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await updateLedgerEntryAction(ledgerId, id, data);
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
@@ -59,8 +50,7 @@ export function LedgerEntryDetailWrapper({
     const deleteMutation = useMutation({
         mutationFn: async () => {
             if (!ledgerId) return;
-            const result = await deleteLedgerEntryAction(ledgerId, id);
-            if (!result.success) throw new Error(result.error || "Unknown error");
+            await deleteLedgerEntryAction(ledgerId, id);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));

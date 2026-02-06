@@ -33,26 +33,22 @@ describe("getLedgerEntryAction", () => {
         const entryData = createLedgerEntryData(ledgerData.id);
         await db.insert(ledgerEntries).values(entryData);
 
-        // 3. Action
+        // 3. Action - now returns data directly
         const result = await getLedgerEntryAction(entryData.id);
 
         // 4. Assertion
-        expect(result.success).toBe(true);
-        expect(result.data).toBeDefined();
-        if (result.success && result.data) {
-            expect(result.data.id).toBe(entryData.id);
-            expect(result.data.ledgerId).toBe(ledgerData.id);
-        }
+        expect(result).not.toBeNull();
+        expect(result!.id).toBe(entryData.id);
+        expect(result!.ledgerId).toBe(ledgerData.id);
     });
 
 
-    it("should return error when entry does not exist", async () => {
+    it("should return null when entry does not exist", async () => {
         const result = await getLedgerEntryAction(uuidv4());
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("Link not found");
+        expect(result).toBeNull();
     });
 
-    it("should return error when user does not have access to the ledger", async () => {
+    it("should throw error when user does not have access to the ledger", async () => {
         // 1. Create Ledger for ANOTHER user
         const otherUserId = "11111111-1111-1111-1111-111111111111";
 
@@ -76,11 +72,9 @@ describe("getLedgerEntryAction", () => {
         const entryData = createLedgerEntryData(ledgerData.id);
         await db.insert(ledgerEntries).values(entryData);
 
-        // 3. Action (Current authenticated user is testUserId)
-        const result = await getLedgerEntryAction(entryData.id);
-
-        // 4. Assertion
-        expect(result.success).toBe(false);
-        expect(result.error).toBeTruthy();
+        // 3. Action (Current authenticated user is testUserId) - now throws
+        await expect(getLedgerEntryAction(entryData.id))
+            .rejects.toThrow("Unauthorized");
     });
 });
+

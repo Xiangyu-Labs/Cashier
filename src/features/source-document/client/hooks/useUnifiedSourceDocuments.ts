@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { fetchUnifiedSourceDocuments } from "@/lib/fetchers";
+import { getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
 import { SourceDocument, LedgerEntry } from '@/types/api';
@@ -92,7 +92,7 @@ export function useUnifiedSourceDocuments(
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate ?? undefined, endDate ?? undefined),
-        queryFn: () => fetchUnifiedSourceDocuments(ledgerId, {
+        queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
         }),
@@ -124,7 +124,7 @@ export function useUnifiedSourceDocuments(
     } = useInfiniteQuery({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined),
         queryFn: async ({ pageParam }) => {
-            const res = await fetchUnifiedSourceDocuments(ledgerId, {
+            const res = await getUnifiedSourceDocumentsAction(ledgerId, {
                 cursor: pageParam as string | null,
                 startDate: startDate ?? undefined,
                 endDate: endDate ?? undefined,

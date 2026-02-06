@@ -59,9 +59,9 @@ describe("Multi-User Isolation", () => {
                 user: { id: TEST_USER_ID }
             });
 
+            // getLedgerAction now returns null for not found/unauthorized
             const result = await getLedgerAction(user2Ledger);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Unauthorized");
+            expect(result).toBeNull();
         });
 
         it("should allow access when user1 accesses their own ledger", async () => {
@@ -69,9 +69,10 @@ describe("Multi-User Isolation", () => {
                 user: { id: TEST_USER_ID }
             });
 
+            // getLedgerAction now returns data directly
             const result = await getLedgerAction(user1Ledger);
-            expect(result.success).toBe(true);
-            expect(result.data?.id).toBe(user1Ledger);
+            expect(result).not.toBeNull();
+            expect(result!.id).toBe(user1Ledger);
         });
 
         it("should refuse update when user1 tries to update user2 ledger", async () => {
@@ -79,9 +80,9 @@ describe("Multi-User Isolation", () => {
                 user: { id: TEST_USER_ID }
             });
 
-            const result = await updateLedgerAction(user2Ledger, { name: "Hacked" });
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Unauthorized");
+            // should throw error in new format
+            await expect(updateLedgerAction(user2Ledger, { name: "Hacked" }))
+                .rejects.toThrow();
         });
 
         it("should refuse delete when user1 tries to delete user2 ledger", async () => {
@@ -89,9 +90,9 @@ describe("Multi-User Isolation", () => {
                 user: { id: TEST_USER_ID }
             });
 
-            const result = await deleteLedgerAction(user2Ledger);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Unauthorized");
+            // should throw error in new format
+            await expect(deleteLedgerAction(user2Ledger))
+                .rejects.toThrow();
         });
     });
 
