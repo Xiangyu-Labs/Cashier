@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -29,6 +29,7 @@ const itemVariants = cva(
 export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
     ledgerEntry: LedgerEntry;
     mainCurrency?: string;
+    sourceDocumentEntryDate?: string | null;
     onView?: () => void;
     className?: string;
 }
@@ -42,10 +43,20 @@ export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
 export const BillEntryItem = memo(function BillEntryItem({
     ledgerEntry,
     mainCurrency = "CNY",
+    sourceDocumentEntryDate,
     onView,
     variant = "default",
     className,
 }: BillEntryItemProps) {
+    // Date difference logic
+    const formattedDiffDate = useMemo(() => {
+        if (!sourceDocumentEntryDate || !ledgerEntry.entryDate) return null;
+        const d1 = sourceDocumentEntryDate.split('T')[0];
+        const d2 = ledgerEntry.entryDate.split('T')[0];
+        if (d1 === d2) return null;
+        return new Date(ledgerEntry.entryDate).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    }, [sourceDocumentEntryDate, ledgerEntry.entryDate]);
+
     const { converted } = useConvertedAmount(
         parseFloat(ledgerEntry.amount),
         ledgerEntry.currency,
@@ -73,9 +84,16 @@ export const BillEntryItem = memo(function BillEntryItem({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <p className="font-medium text-text text-sm truncate">
-                        {ledgerEntry.itemName}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-medium text-text text-sm truncate">
+                            {ledgerEntry.itemName}
+                        </p>
+                        {formattedDiffDate && (
+                            <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                                {formattedDiffDate}
+                            </span>
+                        )}
+                    </div>
 
                     <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                         {ledgerEntry.category && (

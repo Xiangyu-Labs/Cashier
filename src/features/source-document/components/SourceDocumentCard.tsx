@@ -314,6 +314,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                     ledgerEntry={entry}
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
+                    sourceDocumentEntryDate={sourceDocument.entryDate}
                     variant={status === "queued" ? "info" : "default"}
                   />
                 ))}

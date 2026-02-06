@@ -249,6 +249,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                             onSelect={(selected) => onSelectEntry(entry.id, selected)}
                                             onChange={(changes) => onEntryChange(entry.id, changes)}
                                             pendingChanges={pendingChanges.entries[entry.id]}
+                                            sourceDocumentEntryDate={displayEntryDate}
                                         />
                                     ))
                                 )}

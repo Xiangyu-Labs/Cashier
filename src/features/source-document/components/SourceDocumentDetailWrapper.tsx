@@ -56,6 +56,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
@@ -73,6 +74,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
@@ -85,6 +87,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
@@ -97,6 +100,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
@@ -111,6 +115,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });

@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
+import { useLocale } from "next-intl";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -48,6 +49,8 @@ export interface EditableBillEntryItemProps extends VariantProps<typeof itemVari
     onSelect?: (selected: boolean) => void;
     onChange?: (data: Partial<EntryEditData>) => void;
     pendingChanges?: Partial<EntryEditData>;
+    /** The entryDate of the parent source document, used to detect date differences */
+    sourceDocumentEntryDate?: string;
 }
 
 export const EditableBillEntryItem = memo(function EditableBillEntryItem({
@@ -61,7 +64,9 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
     onSelect,
     onChange,
     pendingChanges,
+    sourceDocumentEntryDate,
 }: EditableBillEntryItemProps) {
+    const locale = useLocale();
     // Merge pending changes with original data
     const displayData = {
         itemName: pendingChanges?.itemName ?? ledgerEntry.itemName,
@@ -84,6 +89,22 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
         displayData.currency !== "unknown";
 
     const category = categories.find(c => c.id === displayData.categoryId);
+
+    // Check if entry date differs from source document date
+    const entryDateDiffersFromSourceDoc = useMemo(() => {
+        if (!sourceDocumentEntryDate || !ledgerEntry.entryDate) return false;
+        // Compare only the date part (YYYY-MM-DD)
+        const entryDateStr = ledgerEntry.entryDate.split('T')[0];
+        const sourceDocDateStr = sourceDocumentEntryDate.split('T')[0];
+        return entryDateStr !== sourceDocDateStr;
+    }, [sourceDocumentEntryDate, ledgerEntry.entryDate]);
+
+    // Format the entry date for display
+    const formattedEntryDate = useMemo(() => {
+        if (!entryDateDiffersFromSourceDoc || !ledgerEntry.entryDate) return null;
+        const date = new Date(ledgerEntry.entryDate);
+        return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    }, [entryDateDiffersFromSourceDoc, ledgerEntry.entryDate, locale]);
 
     const sortedCurrencies = (() => {
         const preferred = preferredCurrencies.filter(c => c !== "unknown");
@@ -115,13 +136,20 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
 
             {/* Name + Description */}
             <div className="min-w-0 flex-1">
-                <EditableField
-                    value={displayData.itemName}
-                    onChange={(v) => handleChange("itemName", v)}
-                    placeholder="商品名称"
-                    displayClassName="font-medium text-text text-sm"
-                    inputClassName="text-sm font-medium"
-                />
+                <div className="flex items-center gap-2">
+                    <EditableField
+                        value={displayData.itemName}
+                        onChange={(v) => handleChange("itemName", v)}
+                        placeholder="商品名称"
+                        displayClassName="font-medium text-text text-sm"
+                        inputClassName="text-sm font-medium"
+                    />
+                    {formattedEntryDate && (
+                        <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                            {formattedEntryDate}
+                        </span>
+                    )}
+                </div>
 
                 {(displayData.description || category) && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
