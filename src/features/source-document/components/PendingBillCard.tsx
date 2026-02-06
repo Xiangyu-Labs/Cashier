@@ -100,11 +100,9 @@ export const PendingBillCard = memo(function PendingBillCard({
                     <ProcessingStatus
                         status={status === "anomaly" ? "error" : status}
                         label={
-                            status === "processing" && 'progressMessage' in sourceDocument && sourceDocument.progressMessage
-                                ? sourceDocument.progressMessage
-                                : status === "anomaly" && displayReason
-                                    ? displayReason
-                                    : undefined  // fallback to default label
+                            status === "anomaly" && displayReason
+                                ? displayReason
+                                : undefined  // fallback to default label
                         }
                         className="scale-90"
                     />

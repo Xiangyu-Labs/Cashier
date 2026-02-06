@@ -39,6 +39,7 @@ export const queryKeys = {
 
     // === Tasks ===
     processingTasks: (ledgerId: string) => ['processingTasks', ledgerId] as const,
+    taskQueue: (ledgerId: string) => ['taskQueue', ledgerId] as const,
 
     // === Service Credentials ===
     serviceCredentials: (ledgerId: string) => ['serviceCredentials', ledgerId] as const,

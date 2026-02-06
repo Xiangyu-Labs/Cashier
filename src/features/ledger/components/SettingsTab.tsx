@@ -23,7 +23,6 @@ import {
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
-import { ProcessingSystemSection } from "./settings/ProcessingSystemSection";
 
 import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 import { useQuery } from "@tanstack/react-query";
@@ -474,8 +473,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 </div>
             </section>
 
-            {/* Processing System Stats & Tasks */}
-            <ProcessingSystemSection ledgerId={ledgerId} />
+
 
             {/* Service Credentials Settings */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">

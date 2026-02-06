@@ -433,5 +433,24 @@
         "deleteConfirmDesc": "Are you sure you want to delete this pending bill?",
         "deleteAllConfirmTitle": "Delete All Anomalous Bills",
         "deleteAllConfirmDesc": "Are you sure you want to delete all anomalous bills? This action cannot be undone."
+    },
+    "TaskQueue": {
+        "title": "Task Queue",
+        "queued": "Queued",
+        "running": "Running",
+        "failed": "Failed",
+        "completed": "Completed",
+        "recent": "Recent {count}",
+        "empty": "No tasks",
+        "emptyDesc": "New processing tasks will appear here",
+        "retryAll": "Retry All",
+        "deleteAll": "Delete All",
+        "deleteConfirmTitle": "Confirm Delete",
+        "deleteConfirmDesc": "Are you sure you want to delete this task?",
+        "deleteAllConfirmTitle": "Delete All Failed Tasks",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all failed tasks? This action cannot be undone.",
+        "progress": "Progress",
+        "error": "Error",
+        "tokenStats": "In: {input} | Out: {output} | Avg: {avg}/task"
     }
 }

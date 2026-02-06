@@ -1,0 +1,1 @@
+ALTER TABLE `source_documents` DROP COLUMN `progress_message`;

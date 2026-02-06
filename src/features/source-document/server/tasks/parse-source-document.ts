@@ -57,12 +57,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, ledgerId);
 
-        // Helper: Update progress in both task_runs and sourceDocuments
+        // Helper: Update progress in task_runs only
         const setProgress = async (message: string) => {
             await updateProgress(message);  // Flow Engine: task_runs.progress
-            await db.update(sourceDocuments)
-                .set({ progressMessage: message })
-                .where(q.whereId(input.sourceDocumentId));
         };
 
         // Update status to processing
@@ -218,7 +215,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 .set({
                     status: 'anomaly',
                     anomalyReason: reason,
-                    progressMessage: null,
                     title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
@@ -233,7 +229,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 .set({
                     status: 'anomaly',
                     anomalyReason: '无有效金额的条目',
-                    progressMessage: null,
                     title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
@@ -255,7 +250,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 .set({
                     status: 'anomaly',
                     anomalyReason: '无法识别货币类型',
-                    progressMessage: null,
                     title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
@@ -297,7 +291,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         // Update document status to completed
         await db.update(sourceDocuments)
-            .set({ status: 'completed', progressMessage: null })
+            .set({ status: 'completed' })
             .where(q.whereId(input.sourceDocumentId));
 
         // Update title if present
@@ -321,8 +315,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         await db.update(sourceDocuments)
             .set({
                 status: 'anomaly',
-                anomalyReason: error instanceof Error ? error.message : '内部错误',
-                progressMessage: null
+                anomalyReason: error instanceof Error ? error.message : '内部错误'
             })
             .where(q.whereId(input.sourceDocumentId));
     },

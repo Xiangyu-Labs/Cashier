@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, AlertCircle, Clock } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Clock, ListTodo } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
@@ -21,8 +21,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { PendingBillsModal } from "@/features/source-document/components/PendingBillsModal";
-import { usePendingSourceDocuments } from "@/features/source-document/client/hooks/usePendingSourceDocuments";
+import { TaskQueueModal } from "@/features/tasks/components/TaskQueueModal";
+import { useTaskQueue } from "@/features/tasks/client/hooks/useTaskQueue";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
@@ -76,8 +76,8 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
     const [isInputOpen, setIsInputOpen] = useState(false);
     const [isPendingOpen, setIsPendingOpen] = useState(false);
 
-    // Fetch pending bills count for the header button
-    const { stats: pendingStats } = usePendingSourceDocuments(ledgerId);
+    // Fetch task queue data for the header button
+    const { stats: pendingStats } = useTaskQueue(ledgerId);
 
     if (!ledger) {
         return (
@@ -100,37 +100,42 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                             ledgers={allLedgers}
                         />
 
-                        {/* Pending Status Button - Unified pill showing queued/processing/anomaly counts */}
-                        {pendingStats.total > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setIsPendingOpen(true)}
-                                className="h-8 px-2 gap-1.5 text-xs font-medium rounded-full hover:bg-surface2"
-                            >
-                                {/* Queued count */}
-                                {pendingStats.queuedCount > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 text-muted-foreground">
-                                        <Clock className="h-3.5 w-3.5" />
-                                        <span>{pendingStats.queuedCount}</span>
-                                    </span>
-                                )}
-                                {/* Processing count */}
-                                {pendingStats.processingCount > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 text-primary">
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        <span>{pendingStats.processingCount}</span>
-                                    </span>
-                                )}
-                                {/* Anomaly count */}
-                                {pendingStats.anomalyCount > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 text-red-500">
-                                        <AlertCircle className="h-3.5 w-3.5" />
-                                        <span>{pendingStats.anomalyCount}</span>
-                                    </span>
-                                )}
-                            </Button>
-                        )}
+                        {/* Task Queue Button - Unified pill showing queued/running/failed counts */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsPendingOpen(true)}
+                            className="h-8 px-2 gap-1.5 text-xs font-medium rounded-full hover:bg-surface2"
+                        >
+                            {/* Show counts when present, otherwise just icon */}
+                            {pendingStats.total > 0 ? (
+                                <>
+                                    {/* Queued count */}
+                                    {pendingStats.queuedCount > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-muted-foreground">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            <span>{pendingStats.queuedCount}</span>
+                                        </span>
+                                    )}
+                                    {/* Running count */}
+                                    {pendingStats.runningCount > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-primary">
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            <span>{pendingStats.runningCount}</span>
+                                        </span>
+                                    )}
+                                    {/* Failed count */}
+                                    {pendingStats.failedCount > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-red-500">
+                                            <AlertCircle className="h-3.5 w-3.5" />
+                                            <span>{pendingStats.failedCount}</span>
+                                        </span>
+                                    )}
+                                </>
+                            ) : (
+                                <ListTodo className="h-4 w-4 text-muted-foreground" />
+                            )}
+                        </Button>
                     </div>
                     <div className="flex items-center gap-2">
 
@@ -201,8 +206,8 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Pending Bills Modal */}
-            <PendingBillsModal
+            {/* Task Queue Modal */}
+            <TaskQueueModal
                 ledgerId={ledgerId}
                 open={isPendingOpen}
                 onOpenChange={setIsPendingOpen}

@@ -436,5 +436,24 @@
         "deleteConfirmDesc": "确定要删除这条待处理账单吗？",
         "deleteAllConfirmTitle": "删除所有异常账单",
         "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
+    },
+    "TaskQueue": {
+        "title": "任务队列",
+        "queued": "排队中",
+        "running": "处理中",
+        "failed": "失败",
+        "completed": "已完成",
+        "recent": "最近 {count} 条",
+        "empty": "暂无任务",
+        "emptyDesc": "新的处理任务将显示在这里",
+        "retryAll": "全部重试",
+        "deleteAll": "全部删除",
+        "deleteConfirmTitle": "确认删除",
+        "deleteConfirmDesc": "确定要删除这个任务吗？",
+        "deleteAllConfirmTitle": "删除所有失败任务",
+        "deleteAllConfirmDesc": "确定要删除所有失败的任务吗？此操作无法撤销。",
+        "progress": "进度",
+        "error": "错误",
+        "tokenStats": "输入: {input} | 输出: {output} | 平均: {avg}/任务"
     }
 }
