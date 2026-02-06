@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useEffect, useTransition } from "react";
+import { ImageViewer } from "@/components/ui/image-viewer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
@@ -34,6 +35,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     const [text, setText] = useState(initialData?.text || "");
     const [images, setImages] = useState<{ data: string; mimeType: string }[]>(initialData?.images || []);
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const [isTransitionPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,7 +159,10 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 <div className="grid grid-cols-4 gap-2">
                     {images.map((img, idx) => (
                         <div key={idx} className="relative group">
-                            <div className="aspect-square relative w-full overflow-hidden rounded-md border border-border">
+                            <div
+                                className="aspect-square relative w-full overflow-hidden rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => setSelectedImageIndex(idx)}
+                            >
                                 <Image
                                     src={img.data}
                                     alt={`Uploaded ${idx + 1}`}
@@ -221,6 +226,13 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                     )}
                 </Button>
             </div>
+
+            <ImageViewer
+                images={images.map(img => img.data)}
+                initialIndex={selectedImageIndex ?? 0}
+                open={selectedImageIndex !== null}
+                onOpenChange={(open) => !open && setSelectedImageIndex(null)}
+            />
         </div>
     );
 }

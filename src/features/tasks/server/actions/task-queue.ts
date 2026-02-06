@@ -59,6 +59,10 @@ export interface SerializedAnomalyBill {
     title: string | null;
     anomalyReason: string | null;
     createdAt: string;
+    /** Whether the document has images (for edit-retry dialog) */
+    hasImages: boolean;
+    /** Original text input (for edit-retry dialog) */
+    text: string | null;
 }
 
 function serializeTaskRun(task: TaskRun): SerializedTaskRun {
@@ -82,6 +86,8 @@ function serializeAnomalyBill(doc: SourceDocument): SerializedAnomalyBill {
         title: doc.title,
         anomalyReason: doc.anomalyReason,
         createdAt: doc.createdAt.toISOString(),
+        hasImages: Array.isArray(doc.imageUrls) && doc.imageUrls.length > 0,
+        text: doc.text,
     };
 }
 
