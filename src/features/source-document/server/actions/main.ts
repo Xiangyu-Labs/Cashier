@@ -275,15 +275,31 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     }
 
     // Handle cursor with precise composite condition
-    // Cursor format: "createdAt|id"
-    // Order: (createdAt DESC, id DESC)
-    // Condition: (createdAt, id) < (cursorCreated, cursorId)
+    // Cursor format: "entryDate|createdAt|id"
+    // Order: (entryDate DESC, createdAt DESC, id DESC)
+    // Condition: (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
     if (params.cursor) {
         const parts = params.cursor.split('|');
-        if (parts.length === 2 && parts[0] && parts[1]) {
-            const [cursorCreated, cursorId] = parts;
+        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+            const [cursorDate, cursorCreated, cursorId] = parts;
             // Use precise composite condition
-            // This is equivalent to: (createdAt, id) < (cursorCreated, cursorId)
+            conditions.push(
+                or(
+                    lt(sourceDocuments.entryDate, cursorDate),
+                    and(
+                        eq(sourceDocuments.entryDate, cursorDate),
+                        lt(sourceDocuments.createdAt, new Date(cursorCreated))
+                    ),
+                    and(
+                        eq(sourceDocuments.entryDate, cursorDate),
+                        eq(sourceDocuments.createdAt, new Date(cursorCreated)),
+                        lt(sourceDocuments.id, cursorId)
+                    )
+                )!
+            );
+        } else if (parts.length === 2 && parts[0] && parts[1]) {
+            // Fallback: old format with createdAt|id
+            const [cursorCreated, cursorId] = parts;
             conditions.push(
                 or(
                     lt(sourceDocuments.createdAt, new Date(cursorCreated)),
@@ -293,16 +309,13 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     )
                 )!
             );
-        } else if (parts.length === 1 && parts[0]) {
-            // Fallback: old format with just a date
-            conditions.push(lt(sourceDocuments.createdAt, new Date(parts[0])));
         }
     }
 
     // Single query with precise conditions - no manual filtering needed!
     const items = await db.query.sourceDocuments.findMany({
         where: and(...conditions),
-        orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
+        orderBy: [desc(sourceDocuments.entryDate), desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
         limit: limit + 1,
     });
 
@@ -312,7 +325,8 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
 
     if (items.length > limit) {
         const nextItem = items[limit];
-        nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
+        const nextDate = nextItem.entryDate || '0000-00-00';
+        nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
         resultItems = items.slice(0, limit);
     }
 
