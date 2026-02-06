@@ -97,11 +97,9 @@ Uses `gemini-3-flash` for fast, parallel pre-checks:
 - **1.5 Title Extraction**: Generate a descriptive title
 - **1.6 User Requirements**: Parse custom user rules (if any)
 
-The completeness check detects obvious issues like:
-- Truncated text/images at edges
-- Blurred or obscured areas
-- Missing amounts in table rows
-- Partial/incomplete documents
+The completeness check uses a two-step approach:
+1. **Check for total amount first**: If a clear total/sum is present → document is complete
+2. **If no total, check line items**: All visible items must have readable amounts
 
 If document is incomplete → Return anomaly early, skip Stage 2.
 

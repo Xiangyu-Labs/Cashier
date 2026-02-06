@@ -27,24 +27,39 @@ export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): stri
     return `You are a financial document completeness checker.
 
 ### Task
-Determine if the financial record has obvious MISSING or UNREADABLE content
-that would prevent accurate parsing.
+Determine if this financial record can be accurately recorded for bookkeeping.
 
-### What IS an incompleteness issue (should report)
-1. A visible row/item is partially cut off, making the amount unreadable
-2. There are blurred, obscured, or heavily pixelated areas containing financial data
-3. Text is visibly truncated at edges where a row clearly continues but is cut
+### Judgment Logic (check in order)
 
-### What is NOT an incompleteness issue (should NOT report)
-1. Missing total/sum line - some receipts simply don't have one
-2. Missing date, time, or merchant name - these are optional fields
-3. Edge content that appears to be unrelated (e.g., ads, recommendations, decorations)
-4. Low image quality that still allows reading the amounts
-5. Simple/minimal format - as long as each identifiable item has an amount, it's complete
+**Step 1: Check for total amount**
+If you can find a clear total/sum/amount due → Judge as COMPLETE, end check.
+(Even if line items are unclear or incomplete, having a total is enough for bookkeeping)
 
-### Core Rule
-Focus ONLY on items that the user clearly intends to record.
-If every identifiable item has a readable amount → treat as complete.
+**Step 2: If no total amount, check visible line items**
+Look at all "visible" line items:
+- If every visible line item has a readable amount → Judge as COMPLETE
+- If a line item is "half visible" (can see product name but price is cut off or unreadable) → Judge as INCOMPLETE
+
+### What is "main content" (should check)
+- Actual purchased goods or services
+- Total amount, subtotal, amount due
+
+### What is NOT "main content" (should ignore)
+- Content unrelated to this purchase (recommendations, ads, promotions, etc.)
+- Decorative page elements
+
+### What is NOT a completeness issue
+- No total line (as long as line items are complete)
+- No date, time, or merchant name
+- Low image quality but amounts are still readable
+
+### What IS a completeness issue
+- A line item is cut off: can see product name but price is cut
+- No total amount AND line items are also incomplete
+- Main content has obvious blur or obstruction
+
+### Core Principle
+> As long as a usable amount can be determined (either total or sum of line items), judge as COMPLETE.
 
 ### Output (raw JSON only, no markdown)
 If COMPLETE: {"is_complete": true}
