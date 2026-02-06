@@ -6,7 +6,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
-import { eq, inArray, and, gte, lte } from "drizzle-orm";
+import { eq, inArray, and, gte, lte, or, lt } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -143,121 +143,59 @@ export async function getLedgerEntriesAction(
     const q = forLedger(ledgerEntries, ledgerId);
     const limit = params.limit ?? 20;
 
-    // Build base conditions (without cursor)
-    const baseConditions = [q.whereActive];
-    if (params.startDate) baseConditions.push(gte(ledgerEntries.entryDate, params.startDate));
-    if (params.endDate) baseConditions.push(lte(ledgerEntries.entryDate, params.endDate));
-    if (params.categoryId) baseConditions.push(eq(ledgerEntries.categoryId, params.categoryId));
+    // Build conditions
+    const conditions = [q.whereActive];
+    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));
+    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, params.endDate));
+    if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
 
-    // Parse initial cursor
-    let cursorDate: string | null = null;
-    let cursorCreatedVal: number | null = null;
-    let cursorId: string | null = null;
-
+    // Handle cursor with precise composite condition
+    // Cursor format: "entryDate|createdAt|id"
+    // Order: (entryDate DESC, createdAt DESC, id DESC)
+    // Condition: (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
     if (params.cursor) {
         const parts = params.cursor.split('|');
         if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-            cursorDate = parts[0];
-            cursorCreatedVal = new Date(parts[1]).getTime();
-            cursorId = parts[2];
+            const [cursorDate, cursorCreated, cursorId] = parts;
+            // Use precise composite condition with SQL template
+            // This is equivalent to: (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
+            conditions.push(
+                or(
+                    lt(ledgerEntries.entryDate, cursorDate),
+                    and(
+                        eq(ledgerEntries.entryDate, cursorDate),
+                        lt(ledgerEntries.createdAt, new Date(cursorCreated))
+                    ),
+                    and(
+                        eq(ledgerEntries.entryDate, cursorDate),
+                        eq(ledgerEntries.createdAt, new Date(cursorCreated)),
+                        lt(ledgerEntries.id, cursorId)
+                    )
+                )!
+            );
         }
     }
 
-    // Helper function to filter items based on cursor (strict less-than comparison)
-    const filterByCursor = (items: typeof allItems, cDate: string, cCreatedVal: number, cId: string) => {
-        return items.filter(item => {
-            const itemDate = item.entryDate || '';
-            const itemCreatedVal = item.createdAt.getTime();
-
-            if (itemDate < cDate) return true;
-            if (itemDate > cDate) return false;
-
-            if (itemCreatedVal < cCreatedVal) return true;
-            if (itemCreatedVal > cCreatedVal) return false;
-
-            return item.id < cId;
-        });
-    };
-
-    // Collect items using loop to ensure we get enough data
-    type ItemWithRelations = Awaited<ReturnType<typeof db.query.ledgerEntries.findMany>>[number];
-    let allItems: ItemWithRelations[] = [];
-    let internalCursorDate = cursorDate;
-    const MAX_ITERATIONS = 10;
-    let iterations = 0;
-    let hasMoreData = true;
-
-    while (allItems.length <= limit && hasMoreData && iterations < MAX_ITERATIONS) {
-        iterations++;
-
-        // Build query conditions for this iteration
-        const queryConditions = [...baseConditions];
-        if (internalCursorDate) {
-            queryConditions.push(lte(ledgerEntries.entryDate, internalCursorDate));
+    // Single query with precise conditions - no manual filtering needed!
+    const items = await db.query.ledgerEntries.findMany({
+        where: and(...conditions),
+        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
+        limit: limit + 1,
+        with: {
+            category: true,
+            sourceDocument: true,
         }
-
-        // Fetch batch
-        const batchSize = limit + 1 + (iterations > 1 ? limit : 0); // Fetch more on subsequent iterations
-        const batch = await db.query.ledgerEntries.findMany({
-            where: and(...queryConditions),
-            orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
-            limit: batchSize,
-            with: {
-                category: true,
-                sourceDocument: true,
-            }
-        });
-
-        if (batch.length === 0) {
-            hasMoreData = false;
-            break;
-        }
-
-        // Filter by cursor if we have one (for the first iteration or if cursor spans multiple fetches)
-        let filteredBatch = batch;
-        if (cursorDate && cursorCreatedVal !== null && cursorId) {
-            filteredBatch = filterByCursor(batch, cursorDate, cursorCreatedVal, cursorId);
-        }
-
-        // Add new items (avoid duplicates by checking ids)
-        const existingIds = new Set(allItems.map(item => item.id));
-        for (const item of filteredBatch) {
-            if (!existingIds.has(item.id)) {
-                allItems.push(item);
-                existingIds.add(item.id);
-            }
-        }
-
-        // Check if we got less than requested (no more data in DB)
-        if (batch.length < batchSize) {
-            hasMoreData = false;
-            break;
-        }
-
-        // Update internal cursor for next iteration
-        const lastItem = batch[batch.length - 1];
-        const lastDate = lastItem.entryDate || '';
-
-        // If last item's date is same as internal cursor, we might be stuck
-        // Move to the next date range
-        if (internalCursorDate && lastDate === internalCursorDate) {
-            // We need to go further back - decrease the date
-            // This shouldn't happen often if we fetch enough items
-            internalCursorDate = lastDate;
-        } else {
-            internalCursorDate = lastDate;
-        }
-    }
+    });
 
     // Determine next cursor
     let nextCursor: string | undefined = undefined;
-    let resultItems = allItems;
+    let resultItems = items;
 
-    if (allItems.length > limit) {
-        const nextItem = allItems[limit];
+    if (items.length > limit) {
+        const nextItem = items[limit];
         const nextDate = nextItem.entryDate || '0000-00-00';
         nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-        resultItems = allItems.slice(0, limit);
+        resultItems = items.slice(0, limit);
     }
 
     // Map dates to strings

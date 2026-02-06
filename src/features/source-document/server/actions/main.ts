@@ -7,7 +7,7 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
-import { desc, lte, gte, inArray, and, eq, isNull } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, isNull, or, lt } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -255,116 +255,65 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     const { status, limit = 20, startDate, endDate } = params;
     const q = forLedger(sourceDocuments, ledgerId);
 
-    // Build base conditions (without cursor)
-    const baseConditions = [q.whereActive];
+    // Build conditions
+    const conditions = [q.whereActive];
 
     if (status) {
         const statuses = status.split(",").filter(Boolean);
         if (statuses.length > 0) {
-            baseConditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
+            conditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
         }
     }
 
     if (startDate) {
         const parsedStart = parseDateRangeStart(startDate);
-        if (parsedStart) baseConditions.push(gte(sourceDocuments.createdAt, parsedStart));
+        if (parsedStart) conditions.push(gte(sourceDocuments.createdAt, parsedStart));
     }
     if (endDate) {
         const parsedEnd = parseDateRangeEnd(endDate);
-        if (parsedEnd) baseConditions.push(lte(sourceDocuments.createdAt, parsedEnd));
+        if (parsedEnd) conditions.push(lte(sourceDocuments.createdAt, parsedEnd));
     }
 
-    // Parse initial cursor
-    let cursorCreatedVal: number | null = null;
-    let cursorId: string | null = null;
-
+    // Handle cursor with precise composite condition
+    // Cursor format: "createdAt|id"
+    // Order: (createdAt DESC, id DESC)
+    // Condition: (createdAt, id) < (cursorCreated, cursorId)
     if (params.cursor) {
         const parts = params.cursor.split('|');
         if (parts.length === 2 && parts[0] && parts[1]) {
-            cursorCreatedVal = new Date(parts[0]).getTime();
-            cursorId = parts[1];
+            const [cursorCreated, cursorId] = parts;
+            // Use precise composite condition
+            // This is equivalent to: (createdAt, id) < (cursorCreated, cursorId)
+            conditions.push(
+                or(
+                    lt(sourceDocuments.createdAt, new Date(cursorCreated)),
+                    and(
+                        eq(sourceDocuments.createdAt, new Date(cursorCreated)),
+                        lt(sourceDocuments.id, cursorId)
+                    )
+                )!
+            );
         } else if (parts.length === 1 && parts[0]) {
             // Fallback: old format with just a date
-            cursorCreatedVal = new Date(parts[0]).getTime();
+            conditions.push(lt(sourceDocuments.createdAt, new Date(parts[0])));
         }
     }
 
-    // Helper function to filter items based on cursor (strict less-than comparison)
-    type DocType = Awaited<ReturnType<typeof db.query.sourceDocuments.findMany>>[number];
-    const filterByCursor = (items: DocType[], cCreatedVal: number, cId: string | null): DocType[] => {
-        return items.filter(item => {
-            const itemVal = item.createdAt.getTime();
-            if (itemVal < cCreatedVal) return true;
-            if (itemVal > cCreatedVal) return false;
-            // Same createdAt, compare by id
-            if (cId) return item.id < cId;
-            return false;
-        });
-    };
-
-    // Collect items using loop to ensure we get enough data
-    let allItems: DocType[] = [];
-    let internalCursorDate = cursorCreatedVal ? new Date(cursorCreatedVal) : null;
-    const MAX_ITERATIONS = 10;
-    let iterations = 0;
-    let hasMoreData = true;
-
-    while (allItems.length <= limit && hasMoreData && iterations < MAX_ITERATIONS) {
-        iterations++;
-
-        // Build query conditions for this iteration
-        const queryConditions = [...baseConditions];
-        if (internalCursorDate) {
-            queryConditions.push(lte(sourceDocuments.createdAt, internalCursorDate));
-        }
-
-        // Fetch batch
-        const batchSize = limit + 1 + (iterations > 1 ? limit : 0);
-        const batch = await db.query.sourceDocuments.findMany({
-            where: and(...queryConditions),
-            orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
-            limit: batchSize,
-        });
-
-        if (batch.length === 0) {
-            hasMoreData = false;
-            break;
-        }
-
-        // Filter by cursor if we have one
-        let filteredBatch = batch;
-        if (cursorCreatedVal !== null) {
-            filteredBatch = filterByCursor(batch, cursorCreatedVal, cursorId);
-        }
-
-        // Add new items (avoid duplicates)
-        const existingIds = new Set(allItems.map(item => item.id));
-        for (const item of filteredBatch) {
-            if (!existingIds.has(item.id)) {
-                allItems.push(item);
-                existingIds.add(item.id);
-            }
-        }
-
-        // Check if we got less than requested (no more data in DB)
-        if (batch.length < batchSize) {
-            hasMoreData = false;
-            break;
-        }
-
-        // Update internal cursor for next iteration
-        const lastItem = batch[batch.length - 1];
-        internalCursorDate = lastItem.createdAt;
-    }
+    // Single query with precise conditions - no manual filtering needed!
+    const items = await db.query.sourceDocuments.findMany({
+        where: and(...conditions),
+        orderBy: [desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
+        limit: limit + 1,
+    });
 
     // Determine next cursor
     let nextCursor: string | null = null;
-    let resultItems = allItems;
+    let resultItems = items;
 
-    if (allItems.length > limit) {
-        const nextItem = allItems[limit];
+    if (items.length > limit) {
+        const nextItem = items[limit];
         nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-        resultItems = allItems.slice(0, limit);
+        resultItems = items.slice(0, limit);
     }
 
     // Fetch ledger entries if requested
