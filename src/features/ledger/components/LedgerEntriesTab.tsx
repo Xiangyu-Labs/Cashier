@@ -241,14 +241,18 @@ export function LedgerEntriesTab({
 
     // --- Date Grouping for Completed Documents ---
 
-    // Helper to get date string from source document (using its ledger entries or createdAt)
+    // Helper to get date string from source document (prioritize sourceDocument.entryDate)
     const getSourceDocDateStr = useCallback((group: SourceDocumentGroup): string => {
-        // Use the first ledger entry's entryDate if available, otherwise use sourceDocument createdAt
+        // Prioritize sourceDocument's entryDate (most authoritative source for the document's date)
+        if (group.sourceDocument.entryDate) {
+            return group.sourceDocument.entryDate;
+        }
+        // Fallback to first ledger entry's entryDate
         const firstEntry = group.ledgerEntries[0];
         if (firstEntry?.entryDate) {
             return firstEntry.entryDate;
         }
-        // Fallback to sourceDocument createdAt
+        // Final fallback to sourceDocument createdAt
         const createdAt = group.sourceDocument.createdAt;
         if (createdAt) {
             const date = new Date(createdAt);
