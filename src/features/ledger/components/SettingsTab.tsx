@@ -29,17 +29,58 @@ import { queryKeys } from "@/lib/query-keys";
 
 import { EntryCategory, Ledger, ServiceCredential, Settings } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
-import { Monitor, Sun, Moon, LogOut } from "lucide-react";
+import { Monitor, Sun, Moon, LogOut, ChevronDown } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { toast } from "sonner";
 import { signOut } from "next-auth/react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface SettingsTabProps {
     ledger: Ledger;
     initialCategories: EntryCategory[];
     ledgerId: string;
+}
+
+// Collapsible Section wrapper component
+function CollapsibleSection({
+    title,
+    defaultOpen = false,
+    children,
+}: {
+    title: string;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}) {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden">
+                <CollapsibleTrigger asChild>
+                    <button
+                        className="w-full p-4 sm:p-6 flex items-center justify-between text-left hover:bg-[var(--surface2)]/50 transition-colors"
+                        type="button"
+                    >
+                        <h2 className="text-lg font-medium">{title}</h2>
+                        <ChevronDown
+                            className={cn(
+                                "h-5 w-5 text-muted-foreground transition-transform duration-200",
+                                isOpen && "rotate-180"
+                            )}
+                        />
+                    </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0 space-y-6 border-t border-[var(--border)]">
+                        {children}
+                    </div>
+                </CollapsibleContent>
+            </section>
+        </Collapsible>
+    );
 }
 
 export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTabProps) {
@@ -260,7 +301,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     return (
         <div className="space-y-6 sm:space-y-8">
-            {/* Ledger Name Settings */}
+            {/* Ledger Name Settings - Always visible */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('ledgerName')}</h2>
                 <div className="space-y-4">
@@ -285,7 +326,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 </div>
             </section>
 
-            {/* Appearance Settings */}
+            {/* Appearance Settings - Always visible */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
                 <div className="space-y-6">
@@ -355,83 +396,79 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                             ))}
                         </select>
                     </div>
-
-
-                    <div className="h-px bg-[var(--border)]" />
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('collapseBills')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
-                        </div>
-                        <Switch
-                            checked={optimisticCollapseBills || false}
-                            onCheckedChange={(checked: boolean) => {
-                                setOptimisticCollapseBills(checked);
-                                handleUpdateLedger({ collapseBillsDefault: checked });
-                            }}
-                            disabled={isPending}
-                        />
-                    </div>
                 </div>
             </section>
 
-            {/* AI Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('assistant')}</h2>
-                <div className="space-y-6">
-                    {/* AI Language Setting */}
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
-                        </div>
-                        <select
-                            value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
-                            onChange={(e) => {
-                                handleUpdateLedger({ aiLanguage: e.target.value });
-                            }}
-                            disabled={isPending}
-                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
-                        >
-                            {AI_LANGUAGES.map(lang => (
-                                <option key={lang.value} value={lang.value}>{lang.label}</option>
-                            ))}
-                        </select>
+            {/* Advanced Settings - Collapsible, default closed */}
+            <CollapsibleSection title={t('advancedSettings')} defaultOpen={false}>
+                {/* Collapse Bills Setting */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
+                    <div>
+                        <h3 className="text-base font-medium">{t('collapseBills')}</h3>
+                        <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
                     </div>
-
-                    <div className="h-px bg-[var(--border)]" />
-
-                    <div className="space-y-4">
-                        <div>
-                            <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
-                            <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
-                        </div>
-                        <textarea
-                            value={localAiPrompt}
-                            onChange={(e) => {
-                                setLocalAiPrompt(e.target.value);
-                            }}
-                            onFocus={() => setIsPromptFocused(true)}
-                            onBlur={(_e) => {
-                                setIsPromptFocused(false);
-                                if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
-                                    handleUpdateLedger({ aiCustomPrompt: localAiPrompt });
-                                }
-                            }}
-                            disabled={isPending}
-                            placeholder={t('aiPromptPlaceholder')}
-                            className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
-                        />
-                    </div>
+                    <Switch
+                        checked={optimisticCollapseBills || false}
+                        onCheckedChange={(checked: boolean) => {
+                            setOptimisticCollapseBills(checked);
+                            handleUpdateLedger({ collapseBillsDefault: checked });
+                        }}
+                        disabled={isPending}
+                    />
                 </div>
-            </section>
 
-            {/* Data Configuration */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('dataConfig')}</h2>
+                <div className="h-px bg-[var(--border)]" />
 
-                <div className="space-y-8">
+                {/* AI Language Setting */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
+                        <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
+                    </div>
+                    <select
+                        value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
+                        onChange={(e) => {
+                            handleUpdateLedger({ aiLanguage: e.target.value });
+                        }}
+                        disabled={isPending}
+                        className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
+                    >
+                        {AI_LANGUAGES.map(lang => (
+                            <option key={lang.value} value={lang.value}>{lang.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="h-px bg-[var(--border)]" />
+
+                {/* AI Prompt */}
+                <div className="space-y-4">
+                    <div>
+                        <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
+                        <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
+                    </div>
+                    <textarea
+                        value={localAiPrompt}
+                        onChange={(e) => {
+                            setLocalAiPrompt(e.target.value);
+                        }}
+                        onFocus={() => setIsPromptFocused(true)}
+                        onBlur={(_e) => {
+                            setIsPromptFocused(false);
+                            if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
+                                handleUpdateLedger({ aiCustomPrompt: localAiPrompt });
+                            }
+                        }}
+                        disabled={isPending}
+                        placeholder={t('aiPromptPlaceholder')}
+                        className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
+                    />
+                </div>
+            </CollapsibleSection>
+
+            {/* Data Configuration - Collapsible, default closed */}
+            <CollapsibleSection title={t('dataConfig')} defaultOpen={false}>
+                <div className="space-y-8 pt-4">
                     {/* Currency Settings */}
                     <CurrencySection
                         settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
@@ -452,22 +489,20 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                         />
                     )}
                 </div>
-            </section>
+            </CollapsibleSection>
 
+            {/* Service Credentials Settings - Collapsible, default closed */}
+            <CollapsibleSection title={t('serviceCredentialsSection')} defaultOpen={false}>
+                <div className="pt-4">
+                    <ServiceCredentialSection
+                        credentials={credentials || []}
+                        onCreateCredential={(name) => createCredentialMutation.mutateAsync(name)}
+                        onDeleteCredential={(id) => deleteCredentialMutation.mutate(id)}
+                    />
+                </div>
+            </CollapsibleSection>
 
-
-            {/* Service Credentials Settings */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <ServiceCredentialSection
-                    credentials={credentials || []}
-                    onCreateCredential={(name) => createCredentialMutation.mutateAsync(name)}
-                    onDeleteCredential={(id) => deleteCredentialMutation.mutate(id)}
-                />
-            </section>
-
-
-
-            {/* Account Settings (Sign Out) */}
+            {/* Account Settings (Sign Out) - Always visible */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

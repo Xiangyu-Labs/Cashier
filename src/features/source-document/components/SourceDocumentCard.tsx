@@ -1,7 +1,7 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -11,6 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,16 +31,16 @@ function getSafeImageSrc(data: string): string {
   return `data:image/jpeg;base64,${data}`;
 }
 
-const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
-  return (
-    <span className="text-sm font-bold text-text">
-      <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
-      <TotalValue entries={entries} mainCurrency={mainCurrency} />
-    </span>
-  );
-});
+interface CurrencyBreakdown {
+  currency: string;
+  amount: number;
+  convertedAmount?: number;
+}
 
-const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
+const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
+  const t = useTranslations("SourceDocumentCard");
+
+  // Calculate subtotals by currency
   const { subtotalsByCurrency, entryDates } = useMemo(() => {
     const groups: Record<string, number> = {};
     const dates: Record<string, string> = {};
@@ -54,7 +59,9 @@ const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries
   }, [entries, mainCurrency]);
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
+  const hasMultipleCurrencies = uniqueCurrencies.length > 1;
 
+  // Conversion queries
   const conversionQueries = useQueries({
     queries: uniqueCurrencies.map(currency => {
       const amount = subtotalsByCurrency[currency];
@@ -81,12 +88,71 @@ const TotalValue = memo(function TotalValue({ entries, mainCurrency }: { entries
 
   const isLoading = conversionQueries.some(q => q.isLoading);
 
-  if (isLoading) {
-    return <span className="animate-pulse">...</span>;
+  // Build breakdown data
+  const breakdownData: CurrencyBreakdown[] = uniqueCurrencies.map((currency, index) => ({
+    currency,
+    amount: subtotalsByCurrency[currency],
+    convertedAmount: conversionQueries[index].data?.converted,
+  }));
+
+  const formattedTotal = totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // If only one currency, just show the total
+  if (!hasMultipleCurrencies) {
+    return (
+      <span className="text-sm font-bold text-text">
+        <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
+        {isLoading ? <span className="animate-pulse">...</span> : formattedTotal}
+      </span>
+    );
   }
 
-  return totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Multiple currencies: show total with expand option
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="inline-flex items-center gap-1 text-sm font-bold text-text hover:text-primary transition-colors group"
+          type="button"
+        >
+          <span className="text-xs text-muted-foreground mr-0.5">{mainCurrency}</span>
+          {isLoading ? <span className="animate-pulse">...</span> : formattedTotal}
+          <Coins className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-3" align="end">
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Coins className="h-3 w-3" />
+            {t("currencyBreakdown")}
+          </div>
+          <div className="space-y-1.5">
+            {breakdownData.map(({ currency, amount, convertedAmount }) => (
+              <div key={currency} className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">{currency}</span>
+                <div className="text-right">
+                  <span className="font-medium">{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {currency !== mainCurrency && convertedAmount !== undefined && (
+                    <span className="text-xs text-muted-foreground ml-1.5">
+                      ≈ {mainCurrency} {convertedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-2 mt-2 flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">{t("convertedTotal")}</span>
+            <span className="text-sm font-bold text-primary">
+              {mainCurrency} {formattedTotal}
+            </span>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 });
+
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;

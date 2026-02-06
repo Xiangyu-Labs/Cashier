@@ -41,7 +41,8 @@
         "allCategories": "All Categories",
         "allCurrencies": "All Currencies",
         "reset": "Reset",
-        "apply": "Apply Filters"
+        "apply": "Apply Filters",
+        "moreFilters": "More Filters"
     },
     "HistoryTab": {
         "noHistory": "No confirmed records",
@@ -121,7 +122,9 @@
         "viewDetails": "View Details",
         "retryProcessing": "Retry Processing",
         "editRetry": "Edit and Retry",
-        "moreActions": "More Actions"
+        "moreActions": "More Actions",
+        "currencyBreakdown": "Currency Breakdown",
+        "convertedTotal": "Converted"
     },
     "Common": {
         "confirm": "Confirm",
@@ -237,6 +240,8 @@
         "aiLanguageDesc": "Set the language preference for AI recognition and summaries in this ledger",
         "collapseBills": "Collapse Bills by Default",
         "collapseBillsDesc": "If enabled, confirmed bills will have their detail items collapsed by default.",
+        "advancedSettings": "Advanced Settings",
+        "serviceCredentialsSection": "Service Credentials",
         "dataConfig": "Data Configuration",
         "language": "Language",
         "chinese": "Chinese",
