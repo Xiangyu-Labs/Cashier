@@ -205,6 +205,7 @@ export async function getLedgerEntriesAction(
         ...item,
         amount: String(item.amount),
         createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
         deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
         entryDate: item.entryDate,
         category: item.category ? {
@@ -222,6 +223,7 @@ export async function getLedgerEntriesAction(
                 metadata: lightMetadata,
                 hasImages: (imageUrls?.length || 0) > 0,
                 createdAt: item.sourceDocument.createdAt.toISOString(),
+                updatedAt: item.sourceDocument.updatedAt.toISOString(),
                 deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
             };
         })() : null,

@@ -34,6 +34,7 @@ export async function getLedgerEntryAction(id: string): Promise<import("@/types/
             metadata: lightMetadata,
             hasImages: (imageUrls?.length || 0) > 0,
             createdAt: entry.sourceDocument.createdAt.toISOString(),
+            updatedAt: entry.sourceDocument.updatedAt.toISOString(),
             deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
         };
     }
@@ -42,6 +43,7 @@ export async function getLedgerEntryAction(id: string): Promise<import("@/types/
         ...entry,
         amount: String(entry.amount),
         createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
         deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
         category: entry.category ? {
             ...entry.category,

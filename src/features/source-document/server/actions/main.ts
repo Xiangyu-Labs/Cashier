@@ -352,6 +352,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     ...entry,
                     amount: String(entry.amount),
                     createdAt: entry.createdAt.toISOString(),
+                    updatedAt: entry.updatedAt.toISOString(),
                     entryDate: entry.entryDate,
                 } as unknown as SourceDocumentGroup['ledgerEntries'][number]);
                 entriesByDocId.set(docId, existing);
@@ -369,6 +370,8 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     ...item,
                     metadata: lightMetadata,
                     createdAt: item.createdAt.toISOString(),
+                    updatedAt: item.updatedAt.toISOString(),
+                    deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
                     status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
                     ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
                 };
@@ -379,6 +382,8 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     metadata: lightMetadata,
                     hasImages: (imageUrls?.length || 0) > 0,
                     createdAt: item.createdAt.toISOString(),
+                    updatedAt: item.updatedAt.toISOString(),
+                    deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
                     status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
                     ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
                 };
@@ -445,15 +450,17 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
 }
 
 export interface SourceDocumentGroup {
-    sourceDocument: Omit<SourceDocument, 'createdAt' | 'deletedAt' | 'status'> & {
+    sourceDocument: Omit<SourceDocument, 'createdAt' | 'updatedAt' | 'deletedAt' | 'status'> & {
         createdAt: string;
+        updatedAt: string;
         deletedAt?: string | null;
         status: "queued" | "processing" | "completed" | "anomaly" | undefined;
         ledgerEntries?: SourceDocumentGroup['ledgerEntries'];
     };
-    ledgerEntries: (Omit<LedgerEntry, 'amount' | 'createdAt' | 'entryDate' | 'deletedAt'> & {
+    ledgerEntries: (Omit<LedgerEntry, 'amount' | 'createdAt' | 'updatedAt' | 'entryDate' | 'deletedAt'> & {
         amount: string;
         createdAt: string;
+        updatedAt: string;
         entryDate: string | null;
         deletedAt?: string | null;
     })[];

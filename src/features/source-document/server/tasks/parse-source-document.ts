@@ -271,7 +271,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             // Use source document's entryDate as primary fallback, then today's date
             const now = new Date();
             const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const fallbackDate = doc.entryDate || todayDate;
+            const fallbackDate = doc?.entryDate || todayDate;
 
             return {
                 ledgerId: ledgerId!,
