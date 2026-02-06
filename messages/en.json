@@ -420,6 +420,7 @@
     },
     "PendingBills": {
         "title": "Pending Bills",
+        "queued": "Queued",
         "processing": "Processing",
         "anomaly": "Anomaly",
         "empty": "No pending bills",

@@ -430,6 +430,7 @@ export interface SourceDocumentGroup {
 }
 
 export interface GroupedSourceDocuments {
+    queued: SourceDocumentGroup[];
     processing: SourceDocumentGroup[];
     anomaly: SourceDocumentGroup[];
     completed: SourceDocumentGroup[];
@@ -469,6 +470,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
         });
 
         const groups: GroupedSourceDocuments = {
+            queued: [],
             processing: [],
             anomaly: [],
             completed: [],
@@ -481,6 +483,8 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             };
             if (doc.status === 'anomaly') {
                 groups.anomaly.push(group);
+            } else if (doc.status === 'queued') {
+                groups.queued.push(group);
             } else {
                 groups.processing.push(group);
             }
@@ -497,6 +501,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             groups,
             nextCursor: completedDocsResult.nextCursor,
             stats: {
+                queuedCount: groups.queued.length,
                 processingCount: groups.processing.length,
                 anomalyCount: groups.anomaly.length,
             }
@@ -540,6 +545,7 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
         });
 
         const groups = {
+            queued: [] as SourceDocumentGroup[],
             processing: [] as SourceDocumentGroup[],
             anomaly: [] as SourceDocumentGroup[],
         };
@@ -551,6 +557,8 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
             };
             if (doc.status === 'anomaly') {
                 groups.anomaly.push(group);
+            } else if (doc.status === 'queued') {
+                groups.queued.push(group);
             } else {
                 groups.processing.push(group);
             }
@@ -559,9 +567,10 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
         return {
             groups,
             stats: {
+                queuedCount: groups.queued.length,
                 processingCount: groups.processing.length,
                 anomalyCount: groups.anomaly.length,
-                total: groups.processing.length + groups.anomaly.length,
+                total: groups.queued.length + groups.processing.length + groups.anomaly.length,
             }
         };
     } catch (error) {

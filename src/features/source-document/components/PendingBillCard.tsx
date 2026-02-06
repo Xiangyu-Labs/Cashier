@@ -24,7 +24,7 @@ function getSafeImageSrc(data: string): string {
 
 interface PendingBillCardProps {
     sourceDocument: SourceDocument | SourceDocumentLight;
-    status: "processing" | "anomaly";
+    status: "queued" | "processing" | "anomaly";
     onRetry?: () => void | Promise<void>;
     onDelete?: () => void;
     className?: string;
@@ -65,9 +65,11 @@ export const PendingBillCard = memo(function PendingBillCard({
     return (
         <div className={cn(
             "bg-surface rounded-lg border overflow-hidden",
-            status === "processing"
-                ? "border-primary/30 bg-primary/5"
-                : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10",
+            status === "queued"
+                ? "border-muted/50 bg-muted/5"
+                : status === "processing"
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10",
             className
         )}>
             {/* Header */}
@@ -96,7 +98,7 @@ export const PendingBillCard = memo(function PendingBillCard({
 
                     {/* Status with dynamic label */}
                     <ProcessingStatus
-                        status={status === "anomaly" ? "error" : "processing"}
+                        status={status === "anomaly" ? "error" : status}
                         label={
                             status === "processing" && 'progressMessage' in sourceDocument && sourceDocument.progressMessage
                                 ? sourceDocument.progressMessage

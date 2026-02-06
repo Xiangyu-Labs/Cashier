@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Clock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
@@ -100,29 +100,35 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                             ledgers={allLedgers}
                         />
 
-                        {/* Processing Bills Button - Only show if there are processing items */}
-                        {pendingStats.processingCount > 0 && (
+                        {/* Pending Status Button - Unified pill showing queued/processing/anomaly counts */}
+                        {pendingStats.total > 0 && (
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setIsPendingOpen(true)}
-                                className="h-8 px-2 gap-1 text-xs font-medium rounded-full text-primary hover:bg-primary/10"
+                                className="h-8 px-2 gap-1.5 text-xs font-medium rounded-full hover:bg-surface2"
                             >
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                <span>{pendingStats.processingCount}</span>
-                            </Button>
-                        )}
-
-                        {/* Anomaly Bills Button - Only show if there are anomaly items */}
-                        {pendingStats.anomalyCount > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setIsPendingOpen(true)}
-                                className="h-8 px-2 gap-1 text-xs font-medium rounded-full text-red-500 hover:bg-red-500/10"
-                            >
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                <span>{pendingStats.anomalyCount}</span>
+                                {/* Queued count */}
+                                {pendingStats.queuedCount > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 text-muted-foreground">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        <span>{pendingStats.queuedCount}</span>
+                                    </span>
+                                )}
+                                {/* Processing count */}
+                                {pendingStats.processingCount > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 text-primary">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        <span>{pendingStats.processingCount}</span>
+                                    </span>
+                                )}
+                                {/* Anomaly count */}
+                                {pendingStats.anomalyCount > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 text-red-500">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        <span>{pendingStats.anomalyCount}</span>
+                                    </span>
+                                )}
                             </Button>
                         )}
                     </div>

@@ -18,7 +18,9 @@ export type SourceDocumentWithEntries = SourceDocument & {
 };
 
 export interface GroupedSourceDocuments {
-    /** Documents currently being processed (queued + processing) */
+    /** Documents waiting in queue */
+    queued: SourceDocumentGroup[];
+    /** Documents currently being processed */
     processing: SourceDocumentGroup[];
     /** Documents that failed processing or have anomalies */
     anomaly: SourceDocumentGroup[];
@@ -57,6 +59,7 @@ export function useUnifiedSourceDocuments(
     const initialUnifiedData = useMemo(() => {
         if (!initialActiveSourceDocuments && !initialCompletedSourceDocuments) return undefined;
 
+        const queued: SourceDocumentGroup[] = [];
         const processing: SourceDocumentGroup[] = [];
         const anomaly: SourceDocumentGroup[] = [];
 
@@ -67,6 +70,8 @@ export function useUnifiedSourceDocuments(
             };
             if (doc.status === 'anomaly') {
                 anomaly.push(group);
+            } else if (doc.status === 'queued') {
+                queued.push(group);
             } else {
                 processing.push(group);
             }
@@ -74,6 +79,7 @@ export function useUnifiedSourceDocuments(
 
         return {
             groups: {
+                queued,
                 processing,
                 anomaly,
                 completed: initialCompletedSourceDocuments?.map(doc => ({
@@ -83,6 +89,7 @@ export function useUnifiedSourceDocuments(
             },
             nextCursor: null,
             stats: {
+                queuedCount: queued.length,
                 processingCount: processing.length,
                 anomalyCount: anomaly.length
             }
@@ -96,14 +103,14 @@ export function useUnifiedSourceDocuments(
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
         }),
-        isActive: (data) => (data?.groups?.processing?.length || 0) > 0,
+        isActive: (data) => (data?.groups?.queued?.length || 0) > 0 || (data?.groups?.processing?.length || 0) > 0,
         interval: 3000,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         initialData: initialUnifiedData as any,
     });
 
     // Invalidate infinite completed list if processing count drops (transition to completed/anomaly)
-    const currentProcessingCount = unifiedData?.groups?.processing?.length || 0;
+    const currentProcessingCount = (unifiedData?.groups?.queued?.length || 0) + (unifiedData?.groups?.processing?.length || 0);
     useEffect(() => {
         if (prevProcessingCount.current !== null && currentProcessingCount < prevProcessingCount.current) {
             // Document finished processing - invalidate the completed infinite list
@@ -144,6 +151,7 @@ export function useUnifiedSourceDocuments(
     const groups = useMemo((): GroupedSourceDocuments => {
         if (!unifiedData) {
             return {
+                queued: [],
                 processing: [],
                 anomaly: [],
                 completed: [],
@@ -170,6 +178,7 @@ export function useUnifiedSourceDocuments(
         }
 
         return {
+            queued: unifiedData.groups.queued as unknown as SourceDocumentGroup[],
             processing: unifiedData.groups.processing as unknown as SourceDocumentGroup[],
             anomaly: unifiedData.groups.anomaly as unknown as SourceDocumentGroup[],
             completed: (infiniteCompletedData
@@ -180,7 +189,7 @@ export function useUnifiedSourceDocuments(
 
     return {
         groups,
-        stats: unifiedData?.stats || { processingCount: 0, anomalyCount: 0 },
+        stats: unifiedData?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0 },
         isLoading: isUnifiedLoading && !unifiedData,
         fetchNextPage,
         hasNextPage,

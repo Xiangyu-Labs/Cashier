@@ -45,6 +45,7 @@ export function PendingBillsModal({
 
     const { groups, stats, isLoading } = usePendingSourceDocuments(ledgerId);
 
+    const [isQueuedCollapsed, setIsQueuedCollapsed] = useState(false);
     const [isProcessingCollapsed, setIsProcessingCollapsed] = useState(false);
     const [isAnomalyCollapsed, setIsAnomalyCollapsed] = useState(false);
 
@@ -205,6 +206,48 @@ export function PendingBillsModal({
                             </div>
                         ) : (
                             <>
+                                {/* Queued Section */}
+                                {groups.queued.length > 0 && (
+                                    <div className="space-y-2">
+                                        <div
+                                            className="flex items-center gap-2 px-1 cursor-pointer select-none"
+                                            onClick={() => setIsQueuedCollapsed(!isQueuedCollapsed)}
+                                        >
+                                            <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse" />
+                                            <span className="text-sm font-medium text-muted-foreground">
+                                                {t("queued")} ({groups.queued.length})
+                                            </span>
+                                            <motion.div
+                                                animate={{ rotate: isQueuedCollapsed ? -90 : 0 }}
+                                                transition={{ duration: 0.2 }}
+                                            >
+                                                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                                            </motion.div>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {!isQueuedCollapsed && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="space-y-2 overflow-hidden"
+                                                >
+                                                    {groups.queued.map((group: SourceDocumentGroup) => (
+                                                        <PendingBillCard
+                                                            key={group.sourceDocument.id}
+                                                            sourceDocument={group.sourceDocument}
+                                                            status="queued"
+                                                            onRetry={() => handleRetry(group.sourceDocument as SourceDocument)}
+                                                            onDelete={() => handleDeleteSingle(group.sourceDocument as SourceDocument)}
+                                                        />
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+
                                 {/* Processing Section */}
                                 {groups.processing.length > 0 && (
                                     <div className="space-y-2">

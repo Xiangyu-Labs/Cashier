@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
@@ -17,9 +17,9 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
     const config = {
         queued: {
             label: t("statusQueued"),
-            icon: Loader2,
-            colorClass: "text-primary/70",
-            bgClass: "bg-primary/70",
+            icon: Clock,
+            colorClass: "text-muted-foreground",
+            bgClass: "bg-muted-foreground",
         },
         processing: {
             label: t("statusRunning"),
@@ -53,8 +53,10 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
     return (
         <div className={cn("inline-flex items-center gap-2", className)}>
             <div className="relative flex items-center justify-center">
-                {status === "processing" || status === "queued" ? (
+                {status === "processing" ? (
                     <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />
+                ) : status === "queued" ? (
+                    <Icon className={cn("w-3.5 h-3.5", colorClass)} />
                 ) : (
                     <div className={cn("w-2 h-2 rounded-full", bgClass)} />
                 )}

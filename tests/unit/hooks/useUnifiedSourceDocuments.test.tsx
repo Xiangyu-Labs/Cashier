@@ -78,8 +78,10 @@ describe("useUnifiedSourceDocuments", () => {
             // Normal initial fetch
             return Promise.resolve({
                 groups: {
+                    queued: [
+                        { sourceDocument: mockSourceDocs.queued, ledgerEntries: [] }
+                    ],
                     processing: [
-                        { sourceDocument: mockSourceDocs.queued, ledgerEntries: [] },
                         { sourceDocument: mockSourceDocs.processing, ledgerEntries: [] }
                     ],
                     anomaly: [
@@ -92,7 +94,8 @@ describe("useUnifiedSourceDocuments", () => {
                 },
                 nextCursor: null,
                 stats: {
-                    processingCount: 2,
+                    queuedCount: 1,
+                    processingCount: 1,
                     anomalyCount: 1
                 }
             });
@@ -107,24 +110,26 @@ describe("useUnifiedSourceDocuments", () => {
 
         const { groups } = result.current;
 
-        // Verify Processing Group (queued + processing)
-        expect(groups.processing).toHaveLength(2);
-        expect(groups.processing.map(g => g.sourceDocument.status).sort()).toEqual(['processing', 'queued']);
+        // Verify Queued Group
+        expect(groups.queued).toHaveLength(1);
+        expect(groups.queued[0].sourceDocument.status).toBe('queued');
+
+        // Verify Processing Group
+        expect(groups.processing).toHaveLength(1);
+        expect(groups.processing[0].sourceDocument.status).toBe('processing');
 
         // Verify Anomaly Group
-        // Only doc_e1 has status='anomaly'. 
-        // doc_pending1 has status='completed' and no entries -> goes to completed group
         expect(groups.anomaly).toHaveLength(1);
         expect(groups.anomaly[0].sourceDocument.id).toBe("doc_e1");
-        expect(groups.anomaly[0].ledgerEntries).toHaveLength(0); // No entries for anomaly
+        expect(groups.anomaly[0].ledgerEntries).toHaveLength(0);
 
         // Verify Completed Group
-        // Should contain doc_c1 and doc_pending1
         expect(groups.completed).toHaveLength(2);
         expect(groups.completed.map(g => g.sourceDocument.id).sort()).toEqual(["doc_c1", "doc_pending1"].sort());
 
         // Verify stats
-        expect(result.current.stats.processingCount).toBe(2);
+        expect(result.current.stats.queuedCount).toBe(1);
+        expect(result.current.stats.processingCount).toBe(1);
         expect(result.current.stats.anomalyCount).toBe(1);
     });
 
@@ -147,12 +152,13 @@ describe("useUnifiedSourceDocuments", () => {
             const _p = _params as { status?: string };
             return Promise.resolve({
                 groups: {
-                    processing: [{ sourceDocument: mockSourceDocs.queued, ledgerEntries: [] }],
+                    queued: [{ sourceDocument: mockSourceDocs.queued, ledgerEntries: [] }],
+                    processing: [],
                     anomaly: [],
                     completed: [{ sourceDocument: mockSourceDocs.completed, ledgerEntries: [] }]
                 },
                 nextCursor: null,
-                stats: { processingCount: 1, anomalyCount: 0 }
+                stats: { queuedCount: 1, processingCount: 0, anomalyCount: 0 }
             });
         });
 
@@ -168,8 +174,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-        // Jan 4 doc should be in processing group (queued status, in date range)
-        expect(result.current.groups.processing).toHaveLength(1);
+        // Jan 4 doc should be in queued group (queued status, in date range)
+        expect(result.current.groups.queued).toHaveLength(1);
 
         // Jan 1 doc should be filtered out
         // Note: completed group logic in hook takes `grouped.completed` which comes from `completedData`
@@ -202,15 +208,16 @@ describe("useUnifiedSourceDocuments", () => {
         (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, _params: unknown) => {
             return Promise.resolve({
                 groups: {
-                    processing: [
+                    queued: [
                         { sourceDocument: mockSourceDocs.queued, ledgerEntries: [] },
                         { sourceDocument: docOutOfRange, ledgerEntries: [] }
                     ],
+                    processing: [],
                     anomaly: [],
                     completed: []
                 },
                 nextCursor: null,
-                stats: { processingCount: 2, anomalyCount: 0 }
+                stats: { queuedCount: 2, processingCount: 0, anomalyCount: 0 }
             });
         });
 
@@ -221,8 +228,8 @@ describe("useUnifiedSourceDocuments", () => {
 
         await waitFor(() => expect(result2.current.isLoading).toBe(false));
 
-        // Only doc_q1 (Jan 4, in range) should be in processing, doc_out (Jan 1, out of range) filtered out
-        expect(result2.current.groups.processing).toHaveLength(1);
-        expect(result2.current.groups.processing[0].sourceDocument.id).toBe("doc_q1");
+        // Only doc_q1 (Jan 4, in range) should be in queued, doc_out (Jan 1, out of range) filtered out
+        expect(result2.current.groups.queued).toHaveLength(1);
+        expect(result2.current.groups.queued[0].sourceDocument.id).toBe("doc_q1");
     });
 });

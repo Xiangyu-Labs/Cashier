@@ -423,6 +423,7 @@
     },
     "PendingBills": {
         "title": "待处理账单",
+        "queued": "排队中",
         "processing": "处理中",
         "anomaly": "异常",
         "empty": "没有待处理的账单",
