@@ -101,11 +101,51 @@ export function LedgerEntriesTab({
             const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
+        onMutate: async (ledgerEntryId) => {
+            // Cancel in-flight queries to prevent race conditions
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot current state for rollback
+            const prevUnified = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, 'unified'));
+
+            // Optimistic update: remove the entry from unified source documents
+            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
+                { queryKey: queryKeys.sourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old?.groups) return old;
+                    return {
+                        ...old,
+                        groups: {
+                            processing: old.groups.processing?.map(group => ({
+                                ...group,
+                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
+                            })),
+                            anomaly: old.groups.anomaly?.map(group => ({
+                                ...group,
+                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
+                            })),
+                            completed: old.groups.completed?.map(group => ({
+                                ...group,
+                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
+                            })),
+                        }
+                    };
+                }
+            );
+
+            return { prevUnified };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
-        onError: () => toast.error(tCommon("deleteFailed")),
+        onError: (_err, _id, ctx) => {
+            // Rollback on error
+            if (ctx?.prevUnified) {
+                queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, 'unified'), ctx.prevUnified);
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
         onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
 

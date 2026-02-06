@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { fetchLedger, fetchLedgers, fetchEntryCategories } from "@/lib/fetchers";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +22,6 @@ import {
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 import { PendingBillsModal } from "@/features/source-document/components/PendingBillsModal";
 import { usePendingSourceDocuments } from "@/features/source-document/client/hooks/usePendingSourceDocuments";
-// import { useLedgerEvents } from "@/features/ledger/client/hooks/use-ledger-events";
 import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
@@ -33,34 +31,31 @@ interface LedgerPageClientProps {
     ledgerId: string;
 }
 
+const STALE_TIME = 5 * 60 * 1000; // 5 minutes - must match server prefetch
+
 export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Fetch data from hydration cache (or refetch if not available)
+    // Read from hydration cache using the SAME fetchers as server prefetch
+    // This ensures perfect hydration - no additional requests on first render
     const { data: ledger } = useQuery({
         queryKey: queryKeys.ledger(ledgerId),
-        queryFn: async () => {
-            const result = await getLedgerAction(ledgerId);
-            return result.success ? result.data as Ledger : null;
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        queryFn: () => fetchLedger(ledgerId),
+        staleTime: STALE_TIME,
     });
 
     const { data: categories = [] } = useQuery({
         queryKey: queryKeys.entryCategories(ledgerId),
-        queryFn: () => getEntryCategoriesAction(ledgerId), // Returns array directly
-        staleTime: 5 * 60 * 1000,
+        queryFn: () => fetchEntryCategories(ledgerId),
+        staleTime: STALE_TIME,
     });
 
     const { data: allLedgers = [] } = useQuery({
         queryKey: queryKeys.ledgers(),
-        queryFn: async () => {
-            const result = await getLedgersAction();
-            return result.success ? (result.data as Ledger[]) : [];
-        },
-        staleTime: 5 * 60 * 1000,
+        queryFn: () => fetchLedgers(),
+        staleTime: STALE_TIME,
     });
 
     // Initialize from URL, then manage with state for instant switching
@@ -83,8 +78,6 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
     // Fetch pending bills count for the header button
     const { stats: pendingStats } = usePendingSourceDocuments(ledgerId);
 
-    // Enable real-time updates not needed here anymore, rely on smart polling in tabs
-
     if (!ledger) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-bg">
@@ -92,7 +85,6 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
             </div>
         );
     }
-
 
     return (
         <div className="min-h-screen bg-bg text-text">

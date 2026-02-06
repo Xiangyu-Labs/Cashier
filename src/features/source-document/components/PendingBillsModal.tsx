@@ -66,11 +66,41 @@ export function PendingBillsModal({
             const result = await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
             if (!result.success) throw new Error(result.error || "Failed to delete");
         },
+        onMutate: async (sourceDocumentId) => {
+            // Cancel in-flight queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot for rollback
+            const prevPending = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, 'pending'));
+
+            // Optimistic update: remove document from pending groups
+            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[] }; stats?: object }>(
+                { queryKey: queryKeys.sourceDocuments(ledgerId, 'pending') },
+                (old) => {
+                    if (!old?.groups) return old;
+                    return {
+                        ...old,
+                        groups: {
+                            processing: old.groups.processing?.filter(g => g.sourceDocument.id !== sourceDocumentId),
+                            anomaly: old.groups.anomaly?.filter(g => g.sourceDocument.id !== sourceDocumentId),
+                        }
+                    };
+                }
+            );
+
+            return { prevPending };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             setDeleteConfirm({ ...deleteConfirm, open: false });
         },
-        onError: () => toast.error(tCommon("deleteFailed")),
+        onError: (_err, _id, ctx) => {
+            // Rollback
+            if (ctx?.prevPending) {
+                queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, 'pending'), ctx.prevPending);
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
         onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }

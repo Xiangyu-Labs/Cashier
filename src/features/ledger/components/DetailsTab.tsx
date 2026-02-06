@@ -125,12 +125,42 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
             const result = await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
             if (!result.success) throw new Error(result.error || "Unknown error");
         },
+        onMutate: async (ledgerEntryId) => {
+            // Cancel in-flight queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot for rollback
+            const prevEntries = queryClient.getQueryData(queryKeys.ledgerEntries(ledgerId));
+
+            // Optimistic update: remove entry from infinite query data
+            queryClient.setQueriesData<{ pages?: { items?: LedgerEntry[] }[] }>(
+                { queryKey: queryKeys.ledgerEntries(ledgerId) },
+                (old) => {
+                    if (!old?.pages) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map(page => ({
+                            ...page,
+                            items: page.items?.filter(e => e.id !== ledgerEntryId)
+                        }))
+                    };
+                }
+            );
+
+            return { prevEntries };
+        },
         onSuccess: () => {
             toast.success(tLedger("deleteSuccess"));
             setIsDetailModalOpen(false);
             setSelectedLedgerEntry(null);
         },
-        onError: () => toast.error(tCommon("deleteFailed")),
+        onError: (_err, _id, ctx) => {
+            // Rollback
+            if (ctx?.prevEntries) {
+                queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId), ctx.prevEntries);
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
         onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
