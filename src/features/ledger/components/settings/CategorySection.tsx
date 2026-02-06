@@ -113,6 +113,9 @@ function SortableItem({
                     <div className="flex-1">
                         <div className="font-medium text-sm flex items-center gap-2">
                             {category.name}
+                            {'entryCount' in category && typeof category.entryCount === 'number' && (
+                                <span className="text-[10px] text-[var(--muted)] font-normal">{t("categoryItemCount", { count: category.entryCount })}</span>
+                            )}
                             {category.id.toString().startsWith('temp-') && (
                                 <span className="text-[10px] text-muted font-normal animate-pulse">{t("saving")}</span>
                             )}

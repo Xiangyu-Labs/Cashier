@@ -5,7 +5,7 @@ import { entryCategories } from "@/lib/db/schema";
 //
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -122,11 +122,30 @@ export async function getEntryCategoriesAction(ledgerId: string) {
         orderBy: asc(entryCategories.sortOrder),
     });
 
+    // Get entry counts for each category
+    const { ledgerEntries } = await import("@/lib/db/schema");
+    const entryCounts = await db
+        .select({
+            categoryId: ledgerEntries.categoryId,
+            count: sql<number>`count(*)`.as('count'),
+        })
+        .from(ledgerEntries)
+        .where(and(
+            eq(ledgerEntries.ledgerId, ledgerId),
+            isNull(ledgerEntries.deletedAt)
+        ))
+        .groupBy(ledgerEntries.categoryId);
+
+    // Create a map for quick lookup
+    const countMap = new Map(entryCounts.map(e => [e.categoryId, e.count]));
+
     return categories.map(c => ({
         ...c,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
         // deletedAt is excluded by whereActive but type definition has it
         deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
+        entryCount: countMap.get(c.id) || 0,
     }));
 }
+
