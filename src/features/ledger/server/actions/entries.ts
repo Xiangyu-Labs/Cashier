@@ -64,6 +64,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
     if (validated.description !== undefined) updateData.description = validated.description;
     if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
+    updateData.updatedAt = new Date();
 
     const [updatedEntry] = await db.update(ledgerEntries)
         .set(updateData)
@@ -114,6 +115,7 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
     if (data.description !== undefined) updateData.description = data.description;
     if (data.itemName !== undefined) updateData.itemName = data.itemName;
     if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? (data.entryDate as string).split('T')[0] : null;
+    updateData.updatedAt = new Date();
 
     const q = forLedger(ledgerEntries, ledgerId);
 

@@ -197,7 +197,7 @@ export async function updateSourceDocumentAction(ledgerId: string, sourceId: str
     const q = forLedger(sourceDocuments, ledgerId);
 
     await db.update(sourceDocuments)
-        .set(data)
+        .set({ ...data, updatedAt: new Date() })
         .where(q.whereId(sourceId));
 }
 

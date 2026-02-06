@@ -34,6 +34,7 @@ export const sourceDocuments = sqliteTable("source_documents", {
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),

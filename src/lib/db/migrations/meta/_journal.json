@@ -50,6 +50,13 @@
       "when": 1770351771856,
       "tag": "0006_task_runs_refactor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1770362025421,
+      "tag": "0007_add-updated-at",
+      "breakpoints": true
     }
   ]
 }

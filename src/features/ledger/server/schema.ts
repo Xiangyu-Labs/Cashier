@@ -84,6 +84,7 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     entryDate: text("entry_date"), // yyyy-MM-dd format, no timezone ambiguity
     metadata: text("metadata", { mode: "json" }).$type<LedgerEntryMetadata>().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
