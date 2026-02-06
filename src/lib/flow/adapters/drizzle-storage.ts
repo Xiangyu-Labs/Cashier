@@ -23,10 +23,8 @@ export function createDrizzleStorage(): StorageAdapter {
         .values({
           type: task.type,
           title: task.title ?? task.type,
-          ledgerId: task.ledgerId,
           status: 'pending',
-          // Store input in output field temporarily (will be replaced on completion)
-          // Note: Consider adding a separate 'input' column if needed
+          input: task.input, // Framework-enforced complete storage
         })
         .returning({ id: taskRuns.id })
 
@@ -43,9 +41,6 @@ export function createDrizzleStorage(): StorageAdapter {
       }
       if (data.progress !== undefined) {
         updateData.progress = data.progress
-      }
-      if (data.result !== undefined) {
-        updateData.output = data.result
       }
       if (data.error !== undefined) {
         updateData.error = data.error
@@ -94,9 +89,6 @@ export function createDrizzleStorage(): StorageAdapter {
       if (filter?.status) {
         conditions.push(eq(taskRuns.status, filter.status))
       }
-      if (filter?.ledgerId) {
-        conditions.push(eq(taskRuns.ledgerId, filter.ledgerId))
-      }
 
       const query = db
         .select()
@@ -128,10 +120,9 @@ function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
     title: record.title,
     status: record.status as TaskRecord['status'],
     progress: record.progress ?? null,
-    result: record.output,
+    input: record.input,
     error: record.error,
     tokenUsage: record.tokenUsage as TokenUsageRecord | null,
-    ledgerId: record.ledgerId,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }

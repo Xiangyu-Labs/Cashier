@@ -13,6 +13,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
+            ledgerId,
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: {}
@@ -21,7 +22,6 @@ describe("parseSourceDocumentHandler.onError", () => {
         const context = {
             id: "task-error-1",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            ledgerId,
             input,
         } as unknown as FlowContext;
 
@@ -43,6 +43,7 @@ describe("parseSourceDocumentHandler.onError", () => {
         const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
 
         const input: ParseSourceDocumentInput = {
+            ledgerId,
             sourceDocumentId: sourceDoc.id,
             categories: [],
             settings: {}
@@ -51,7 +52,6 @@ describe("parseSourceDocumentHandler.onError", () => {
         const context = {
             id: "task-error-2",
             type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-            ledgerId,
             input,
         } as unknown as FlowContext;
 

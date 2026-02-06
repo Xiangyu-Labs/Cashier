@@ -166,6 +166,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should parse entries using multi-stage architecture and return results", async () => {
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             aiLanguage: "en-US",
@@ -196,6 +197,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should always override entryDate to current date", async () => {
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {}
@@ -223,6 +225,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should return invalid status if Stage 1 validity check fails", async () => {
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {}
@@ -246,6 +249,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should return anomaly status if Stage 1.5 validation rejects", async () => {
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {}
@@ -270,6 +274,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     it("should return anomaly when Stage 2 arbitration fails", async () => {
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {}
@@ -329,6 +334,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         };
 
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {},
@@ -365,6 +371,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         };
 
         const input: ParseSourceDocumentInput = {
+            ledgerId: currentLedgerId,
             sourceDocumentId: sourceDocId,
             categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
             settings: {},

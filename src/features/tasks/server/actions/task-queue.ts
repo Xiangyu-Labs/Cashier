@@ -3,8 +3,7 @@
 import { db } from "@/lib/db";
 import { taskRuns, type TaskRun } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray } from "drizzle-orm";
-import { forLedger } from "@/lib/db/scoped-query";
+import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 
 /**
  * Status groups for the task queue UI
@@ -45,6 +44,7 @@ export interface SerializedTaskRun {
     status: string;
     progress: string | null;
     error: string | null;
+    input: unknown | null;
     createdAt: string;
     startedAt: string | null;
     completedAt: string | null;
@@ -58,6 +58,7 @@ function serializeTaskRun(task: TaskRun): SerializedTaskRun {
         status: task.status,
         progress: task.progress,
         error: task.error,
+        input: task.input,
         createdAt: task.createdAt.toISOString(),
         startedAt: task.startedAt?.toISOString() ?? null,
         completedAt: task.completedAt?.toISOString() ?? null,
@@ -65,41 +66,56 @@ function serializeTaskRun(task: TaskRun): SerializedTaskRun {
 }
 
 /**
+ * Helper to extract ledgerId from task input
+ */
+function getLedgerIdFromInput(input: unknown): string | null {
+    if (typeof input === 'object' && input !== null && 'ledgerId' in input) {
+        return (input as { ledgerId?: string }).ledgerId ?? null;
+    }
+    return null;
+}
+
+/**
  * Get task queue data for the unified Task Queue Modal.
  * Returns tasks grouped by status with token statistics.
+ * 
+ * Since ledgerId is now stored in input JSON, we fetch all active tasks
+ * and filter in memory by parsing input.ledgerId.
  */
 export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueResult> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
 
-    const q = forLedger(taskRuns, ledgerId);
-
-    // Fetch active tasks (queued, running, failed)
-    const activeTasks = await db.query.taskRuns.findMany({
+    // Fetch all active tasks (not soft-deleted)
+    const allActiveTasks = await db.query.taskRuns.findMany({
         where: and(
-            q.whereActive,
+            isNull(taskRuns.deletedAt),
             inArray(taskRuns.status, ["queued", "running", "failed"])
         ),
         orderBy: [desc(taskRuns.createdAt)],
     });
 
-    // Fetch recently completed tasks (limit 5)
-    const completedTasks = await db.query.taskRuns.findMany({
+    // Filter by ledgerId from input
+    const activeTasks = allActiveTasks.filter(task =>
+        getLedgerIdFromInput(task.input) === ledgerId
+    );
+
+    // Fetch all completed tasks (not soft-deleted)
+    const allCompletedTasksRaw = await db.query.taskRuns.findMany({
         where: and(
-            q.whereActive,
+            isNull(taskRuns.deletedAt),
             eq(taskRuns.status, "completed")
         ),
         orderBy: [desc(taskRuns.completedAt)],
-        limit: 5,
     });
 
-    // Fetch all completed tasks for token stats
-    const allCompletedTasks = await db.query.taskRuns.findMany({
-        where: and(
-            q.whereActive,
-            eq(taskRuns.status, "completed")
-        ),
-    });
+    // Filter by ledgerId from input
+    const allCompletedTasks = allCompletedTasksRaw.filter(task =>
+        getLedgerIdFromInput(task.input) === ledgerId
+    );
+
+    // Get latest 5 completed
+    const completedTasks = allCompletedTasks.slice(0, 5);
 
     // Group tasks by status
     const groups: TaskQueueGroups = {

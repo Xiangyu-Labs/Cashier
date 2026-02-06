@@ -15,6 +15,7 @@ import { executeStage2 } from "./stage2-executor";
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
 
 export interface ParseSourceDocumentInput {
+    ledgerId: string;
     sourceDocumentId: string;
     text?: string;
     imageUrls?: string[];
@@ -43,9 +44,10 @@ export interface ParseSourceDocumentOutput {
  */
 export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
-        const { signal, updateProgress, ledgerId, ai } = context;
+        const { signal, updateProgress, ai } = context;
+        const { ledgerId } = input;
 
-        if (!ledgerId) throw new Error("Missing ledgerId in task context");
+        if (!ledgerId) throw new Error("Missing ledgerId in task input");
 
         // Validate document exists
         const doc = await db.query.sourceDocuments.findFirst({
@@ -199,8 +201,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
-        const { ledgerId } = context;
-        if (!ledgerId) throw new Error("Missing ledgerId in task context");
+        const { ledgerId } = input;
+        if (!ledgerId) throw new Error("Missing ledgerId in task input");
 
         const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
 
@@ -305,12 +307,12 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
-        if (!context.ledgerId) {
-            logger.warn({ sourceDocumentId: input.sourceDocumentId }, "Missing ledgerId in onError, cannot update status");
+        if (!input.ledgerId) {
+            logger.warn({ sourceDocumentId: input.sourceDocumentId }, "Missing ledgerId in input, cannot update status");
             return;
         }
 
-        const q = forLedger(sourceDocuments, context.ledgerId);
+        const q = forLedger(sourceDocuments, input.ledgerId);
 
         await db.update(sourceDocuments)
             .set({
@@ -323,11 +325,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     async onCancel(input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
         logger.info({ sourceDocumentId: input.sourceDocumentId }, "Parse source document task cancelled");
 
-        if (!context.ledgerId) {
+        if (!input.ledgerId) {
             return;
         }
 
-        const q = forLedger(sourceDocuments, context.ledgerId);
+        const q = forLedger(sourceDocuments, input.ledgerId);
 
         // Reset document status back to pending on cancellation
         await db.update(sourceDocuments)

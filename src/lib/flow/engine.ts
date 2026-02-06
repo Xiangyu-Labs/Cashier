@@ -84,7 +84,6 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     taskId: string,
     name: string,
     input: TInput,
-    ledgerId: string | null,
     signal: AbortSignal
   ): Promise<void> {
     // Wait for an available slot (concurrency control)
@@ -128,7 +127,6 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     // Build execution context
     const context: FlowContext = {
       taskId,
-      ledgerId,
       signal,
       reportTokens,
       updateProgress: async (message: string) => {
@@ -161,7 +159,6 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       // Mark as completed
       await config.storage.update(taskId, {
         status: 'completed',
-        result,
         tokenUsage: finalTokenUsage,
         progress: null,
       })
@@ -242,7 +239,6 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       const taskId = await config.storage.create({
         type: name,
         title: meta?.title,
-        ledgerId: meta?.ledgerId,
         input,
       })
 
@@ -252,7 +248,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
       // Fire and forget - execute asynchronously
       // We intentionally don't await this
-      runTask(taskId, name, input, meta?.ledgerId ?? null, controller.signal).catch((err) => {
+      runTask(taskId, name, input, controller.signal).catch((err) => {
         logger.error({ err, taskId }, 'Unhandled error in background task runner')
       })
 

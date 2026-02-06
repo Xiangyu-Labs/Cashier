@@ -13,9 +13,8 @@ describe("generateCategoryMetadataHandler", () => {
     });
 
     // Helper to create a mock context with ai.generate
-    function createMockContext(ledgerId: string, generateResponse: { content: string }) {
+    function createMockContext(generateResponse: { content: string }) {
         return {
-            ledgerId,
             ai: {
                 generate: vi.fn().mockResolvedValue(generateResponse),
             },
@@ -25,13 +24,14 @@ describe("generateCategoryMetadataHandler", () => {
     describe("execute", () => {
         it("should parse valid JSON response and return icon/description", async () => {
             const input: GenerateCategoryMetadataInput = {
+                ledgerId: "ledger-1",
                 categoryId: "cat-1",
                 categoryName: "宠物",
                 existingCategories: [],
                 aiLanguage: "zh-CN"
             };
 
-            const context = createMockContext("ledger-1", {
+            const context = createMockContext({
                 content: JSON.stringify({
                     icon: "Dog",
                     description: "宠物相关的支出"
@@ -46,12 +46,13 @@ describe("generateCategoryMetadataHandler", () => {
 
         it("should fallback to Package icon if AI returns invalid icon", async () => {
             const input: GenerateCategoryMetadataInput = {
+                ledgerId: "ledger-1",
                 categoryId: "cat-1",
                 categoryName: "奇怪的东西",
                 existingCategories: [],
             };
 
-            const context = createMockContext("ledger-1", {
+            const context = createMockContext({
                 content: JSON.stringify({
                     icon: "NonExistentIconXYZ",
                     description: "Description"
@@ -64,12 +65,13 @@ describe("generateCategoryMetadataHandler", () => {
 
         it("should throw on JSON parsing errors (triggers onError)", async () => {
             const input: GenerateCategoryMetadataInput = {
+                ledgerId: "ledger-1",
                 categoryId: "cat-1",
                 categoryName: "Bad JSON",
                 existingCategories: [],
             };
 
-            const context = createMockContext("ledger-1", { content: "Not JSON" });
+            const context = createMockContext({ content: "Not JSON" });
 
             // Should throw, not return success: false
             await expect(generateCategoryMetadataHandler.execute(input, context))
@@ -93,12 +95,13 @@ describe("generateCategoryMetadataHandler", () => {
             };
 
             const input: GenerateCategoryMetadataInput = {
+                ledgerId,
                 categoryId: category.id,
                 categoryName: "Testing",
                 existingCategories: []
             };
 
-            const context = { ledgerId } as FlowContext;
+            const context = {} as FlowContext;
 
             if (generateCategoryMetadataHandler.onComplete) {
                 await generateCategoryMetadataHandler.onComplete(output, input, context);

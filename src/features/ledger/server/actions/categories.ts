@@ -53,6 +53,7 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
             await flowEngine.submit(
                 TASK_TYPE_GENERATE_CATEGORY_METADATA,
                 {
+                    ledgerId: ledgerId,
                     categoryId: category.id,
                     categoryName: category.name,
                     existingCategories: existing,
@@ -60,7 +61,6 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
                 },
                 {
                     title: `Generate metadata for category: ${validated.name}`,
-                    ledgerId: ledgerId,
                 }
             );
         } catch (err) {

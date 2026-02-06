@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
             await flowEngine.submit(
                 TASK_TYPE_PARSE_SOURCE_DOCUMENT,
                 {
+                    ledgerId: credential.ledgerId,
                     sourceDocumentId: savedDoc.id,
                     text: text || undefined,
                     imageUrls: imageUrls,
@@ -112,7 +113,6 @@ export async function POST(request: NextRequest) {
                 },
                 {
                     title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
-                    ledgerId: credential.ledgerId,
                 }
             );
         }

@@ -23,7 +23,6 @@ export interface StorageAdapter {
 export interface TaskInput {
   type: string
   title?: string | null
-  ledgerId?: string
   input?: unknown
 }
 
@@ -33,7 +32,6 @@ export interface TaskInput {
 export interface TaskFilter {
   type?: string           // Filter by task type
   status?: TaskStatus     // Filter by status
-  ledgerId?: string       // Filter by ledger
   limit?: number          // Result count limit
   offset?: number         // Pagination offset
 }
@@ -47,10 +45,9 @@ export interface TaskRecord {
   title: string | null                      // Task title (optional)
   status: TaskStatus                        // pending / running / completed / failed / cancelled
   progress: string | null                   // "Processing image..."
-  result: unknown | null                    // Result after completion
+  input: unknown | null                     // Complete task input (framework-enforced)
   error: string | null                      // Error message on failure
   tokenUsage: TokenUsageRecord | null       // Token statistics by model
-  ledgerId: string | null                   // Scoping for multi-tenant
   createdAt: Date
   updatedAt: Date
 }
@@ -88,7 +85,6 @@ export interface FlowEngineConfig {
  */
 export interface FlowContext {
   taskId: string
-  ledgerId: string | null
   /** @internal Cancellation signal - prefer using context.ai which handles this automatically */
   signal: AbortSignal
   /** @internal Report token usage - prefer using context.ai which handles this automatically */

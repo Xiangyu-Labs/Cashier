@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import { users, accounts } from "@/features/auth/server/schema";
 import { ledgers, entryCategories, ledgerEntries, serviceCredentials } from "@/features/ledger/server/schema";
-import { taskRuns } from "@/features/tasks/server/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";
 
 // Auth relations
@@ -71,9 +70,5 @@ export const serviceCredentialsRelations = relations(serviceCredentials, ({ one 
     }),
 }));
 
-export const taskRunsRelations = relations(taskRuns, ({ one }) => ({
-    ledger: one(ledgers, {
-        fields: [taskRuns.ledgerId],
-        references: [ledgers.id],
-    }),
-}));
+// Note: taskRuns no longer has a direct ledgerId foreign key.
+// The ledger association is now through the input JSON field.

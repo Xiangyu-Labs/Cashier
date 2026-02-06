@@ -9,6 +9,7 @@ import { z } from "zod";
 export const TASK_TYPE_GENERATE_CATEGORY_METADATA = "generate_category_metadata";
 
 export interface GenerateCategoryMetadataInput {
+    ledgerId: string;
     categoryId: string;
     categoryName: string;
     existingCategories: Array<{
@@ -33,7 +34,7 @@ const aiResponseSchema = z.object({
 export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMetadataInput, GenerateCategoryMetadataOutput> = {
     // 1. Main execution (validation moved inline)
     async execute(input: GenerateCategoryMetadataInput, context: FlowContext): Promise<GenerateCategoryMetadataOutput> {
-        if (!context.ledgerId) throw new Error("Missing ledgerId in task context");
+        if (!input.ledgerId) throw new Error("Missing ledgerId in task input");
         if (!input.categoryId) throw new Error("Missing categoryId");
         if (!input.categoryName) throw new Error("Missing categoryName");
 
@@ -78,9 +79,9 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
     // 2. Completion
     async onComplete(output: GenerateCategoryMetadataOutput, input: GenerateCategoryMetadataInput, context: FlowContext): Promise<void> {
         if (!output.success) return;
-        if (!context.ledgerId) return;
+        if (!input.ledgerId) return;
 
-        const q = forLedger(entryCategories, context.ledgerId);
+        const q = forLedger(entryCategories, input.ledgerId);
 
         await db.update(entryCategories)
             .set({
@@ -100,8 +101,8 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
         logger.error({ err: error, categoryId: input.categoryId }, "Generate category metadata task failed");
 
         // Set default values to prevent UI from showing "generating" forever
-        if (context.ledgerId && input.categoryId) {
-            const q = forLedger(entryCategories, context.ledgerId);
+        if (input.ledgerId && input.categoryId) {
+            const q = forLedger(entryCategories, input.ledgerId);
             await db.update(entryCategories)
                 .set({
                     icon: "Package", // Default icon

@@ -26,10 +26,9 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
                 title: task.title ?? null,
                 status: "pending",
                 progress: null,
-                result: null,
+                input: task.input ?? null,
                 error: null,
                 tokenUsage: null,
-                ledgerId: task.ledgerId ?? null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };
@@ -55,9 +54,6 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
             }
             if (filter?.type) {
                 results = results.filter((t) => t.type === filter.type);
-            }
-            if (filter?.ledgerId) {
-                results = results.filter((t) => t.ledgerId === filter.ledgerId);
             }
             return results;
         },
@@ -125,7 +121,6 @@ describe("FlowEngine", () => {
             const task = await waitForTaskCompletion(storage, taskId);
 
             expect(task.status).toBe("completed");
-            expect(task.result).toEqual(expectedResult);
             expect(task.error).toBeNull();
         });
 
@@ -359,18 +354,15 @@ describe("FlowEngine", () => {
             engine.register("type_a", { execute: async () => "a" });
             engine.register("type_b", { execute: async () => "b" });
 
-            await engine.submit("type_a", {}, { ledgerId: "ledger-1" });
-            await engine.submit("type_a", {}, { ledgerId: "ledger-2" });
-            await engine.submit("type_b", {}, { ledgerId: "ledger-1" });
+            await engine.submit("type_a", {});
+            await engine.submit("type_a", {});
+            await engine.submit("type_b", {});
 
             // Wait for all to complete
             await new Promise((r) => setTimeout(r, 100));
 
             const typeAResults = await engine.listTasks({ type: "type_a" });
             expect(typeAResults).toHaveLength(2);
-
-            const ledger1Results = await engine.listTasks({ ledgerId: "ledger-1" });
-            expect(ledger1Results).toHaveLength(2);
         });
 
         it("gets running tasks", async () => {

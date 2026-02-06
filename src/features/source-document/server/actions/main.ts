@@ -7,7 +7,7 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
-import { desc, lte, gte, inArray, and, eq } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, isNull } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -49,6 +49,7 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
     await flowEngine.submit(
         TASK_TYPE_PARSE_SOURCE_DOCUMENT,
         {
+            ledgerId: ledgerId,
             sourceDocumentId: sourceDocumentId,
             text: text,
             imageUrls: imageUrls,
@@ -61,7 +62,6 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
         },
         {
             title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
-            ledgerId: ledgerId,
         }
     );
 
@@ -215,6 +215,26 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
             qEntries.whereActive,
             eq(ledgerEntries.sourceDocumentId, sourceId)
         ));
+
+    // Cascade soft delete to task_runs that reference this source document
+    // Since task_runs.input contains sourceDocumentId, we fetch and filter
+    const { taskRuns } = await import("@/lib/db/schema");
+    const allTaskRuns = await db.query.taskRuns.findMany({
+        where: isNull(taskRuns.deletedAt),
+    });
+
+    const taskIdsToDelete = allTaskRuns
+        .filter(task => {
+            const input = task.input as { sourceDocumentId?: string } | null;
+            return input?.sourceDocumentId === sourceId;
+        })
+        .map(task => task.id);
+
+    if (taskIdsToDelete.length > 0) {
+        await db.update(taskRuns)
+            .set({ deletedAt: new Date() })
+            .where(inArray(taskRuns.id, taskIdsToDelete));
+    }
 
     await db.update(sourceDocuments)
         .set(q.softDelete)
