@@ -64,6 +64,13 @@
       "when": 1770378705202,
       "tag": "0008_early_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1770444434525,
+      "tag": "0009_flimsy_leech",
+      "breakpoints": true
     }
   ]
 }

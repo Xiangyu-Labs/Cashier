@@ -79,6 +79,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+            // Also invalidate task queue to trigger smart polling for the new parse task
+            queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
             setText("");
             setImages([]);
             onSuccess?.();
@@ -94,6 +96,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+            // Also invalidate task queue to trigger smart polling for the retry task
+            queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
             onSuccess?.();
         },
     });

@@ -57,6 +57,7 @@ export const accounts = sqliteTable("accounts", {
     session_state: text("session_state"),
 }, (table) => [
     primaryKey({ columns: [table.provider, table.providerAccountId] }),
+    index("idx_accounts_user_id").on(table.userId),
 ]);
 
 export type Account = InferSelectModel<typeof accounts>;

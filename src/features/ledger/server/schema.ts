@@ -95,6 +95,8 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     index("idx_ledger_entries_category_date").on(table.ledgerId, table.categoryId, table.entryDate),
     // Optimization for default sort (createdAt) within a ledger
     index("idx_ledger_entries_ledger_created").on(table.ledgerId, table.createdAt),
+    // Optimization for soft-delete filtering
+    index("idx_ledger_entries_deleted_at").on(table.deletedAt),
 ]);
 
 export interface LedgerEntryMetadata {
@@ -123,6 +125,8 @@ export const serviceCredentials = sqliteTable("service_credentials", {
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
-});
+}, (table) => [
+    index("idx_service_credentials_ledger_id").on(table.ledgerId),
+]);
 
 export type ServiceCredential = InferSelectModel<typeof serviceCredentials>;

@@ -214,6 +214,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             setCategoryCreatedTrigger(() => () => { });
             queryClient.invalidateQueries({ queryKey });
             queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
         onError: (_err: Error, _: { name: string }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("createCategoryFailed"));
@@ -510,8 +511,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                                 if (!result.success) {
                                     throw new Error(result.error);
                                 }
-                                // Invalidate uncategorized count after submitting tasks
+                                // Invalidate uncategorized count and task queue after submitting tasks
                                 queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+                                queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
                                 return { submittedCount: result.submittedCount, skippedCount: result.skippedCount };
                             }}
                         />

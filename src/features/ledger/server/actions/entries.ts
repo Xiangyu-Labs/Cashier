@@ -103,9 +103,14 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     // If amount or currency changed, recalculate convertedAmount
     if (validated.amount !== undefined || validated.currency !== undefined) {
         // Get current entry and ledger for calculation
+        // Include ledgerId in query to prevent IDOR
         const [currentEntry, ledger] = await Promise.all([
             db.query.ledgerEntries.findFirst({
-                where: and(eq(ledgerEntries.id, ledgerEntryId), isNull(ledgerEntries.deletedAt)),
+                where: and(
+                    eq(ledgerEntries.id, ledgerEntryId),
+                    eq(ledgerEntries.ledgerId, ledgerId),
+                    isNull(ledgerEntries.deletedAt)
+                ),
             }),
             db.query.ledgers.findFirst({
                 where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),

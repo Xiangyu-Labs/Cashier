@@ -50,7 +50,7 @@ describe("getSourceDocumentByIdAction", () => {
         expect(result).toBeNull();
     });
 
-    it("should throw error when user does not have access to the ledger", async () => {
+    it("should return null when user does not have access to the ledger", async () => {
         const db = getTestDb();
         // 1. Create Ledger for ANOTHER user
         const otherUserId = "22222222-2222-2222-2222-222222222222";
@@ -68,8 +68,9 @@ describe("getSourceDocumentByIdAction", () => {
         const docData = createSourceDocumentData(ledgerData.id);
         await db.insert(sourceDocuments).values(docData);
 
-        // 3. Action - should throw error
-        await expect(getSourceDocumentByIdAction(docData.id)).rejects.toThrow("Unauthorized");
+        // 3. Action - returns null to avoid leaking document existence
+        const result = await getSourceDocumentByIdAction(docData.id);
+        expect(result).toBeNull();
     });
 });
 

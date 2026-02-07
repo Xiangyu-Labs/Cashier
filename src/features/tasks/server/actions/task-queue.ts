@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 
 /**
  * Status groups for the task queue UI
@@ -113,35 +113,26 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
 
-    // Fetch all active tasks (not soft-deleted)
-    const allActiveTasks = await db.query.taskRuns.findMany({
+    // Fetch active tasks for this ledger (filter at SQL level using json_extract)
+    const activeTasks = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
-            inArray(taskRuns.status, ["pending", "running", "failed"])
+            inArray(taskRuns.status, ["pending", "running", "failed"]),
+            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
         ),
         orderBy: [desc(taskRuns.createdAt)],
     });
 
-    // Filter by ledgerId from input
-    const activeTasks = allActiveTasks.filter(task =>
-        getLedgerIdFromInput(task.input) === ledgerId
-    );
-
-    // Fetch completed tasks (not soft-deleted) - limit to reduce data transfer
-    // We fetch more than needed (100) since we filter by ledgerId in memory, then slice to 5
-    const allCompletedTasksRaw = await db.query.taskRuns.findMany({
+    // Fetch completed tasks for this ledger (filter at SQL level)
+    const allCompletedTasks = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
-            eq(taskRuns.status, "completed")
+            eq(taskRuns.status, "completed"),
+            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
         ),
         orderBy: [desc(taskRuns.completedAt)],
         limit: 100, // Limit to avoid fetching thousands of completed tasks
     });
-
-    // Filter by ledgerId from input
-    const allCompletedTasks = allCompletedTasksRaw.filter(task =>
-        getLedgerIdFromInput(task.input) === ledgerId
-    );
 
     // Get latest 5 completed
     const completedTasks = allCompletedTasks.slice(0, 5);

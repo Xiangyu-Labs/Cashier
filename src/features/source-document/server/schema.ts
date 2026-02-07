@@ -39,6 +39,8 @@ export const sourceDocuments = sqliteTable("source_documents", {
 }, (table) => [
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),
     index("idx_source_docs_ledger_created").on(table.ledgerId, table.createdAt),
+    // Optimization for soft-delete filtering
+    index("idx_source_docs_deleted_at").on(table.deletedAt),
 ]);
 
 export interface SourceDocMetadata {

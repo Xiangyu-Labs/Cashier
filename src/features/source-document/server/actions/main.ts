@@ -210,17 +210,18 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
     const qEntries = forLedger(ledgerEntries, ledgerId);
 
     // Find task_runs that reference this source document before transaction
+    // Filter by ledgerId at SQL level to avoid IDOR
     const { taskRuns } = await import("@/lib/db/schema");
-    const allTaskRuns = await db.query.taskRuns.findMany({
-        where: isNull(taskRuns.deletedAt),
+    const { sql } = await import("drizzle-orm");
+    const relatedTaskRuns = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${sourceId}`,
+            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+        ),
     });
 
-    const taskIdsToDelete = allTaskRuns
-        .filter(task => {
-            const input = task.input as { sourceDocumentId?: string } | null;
-            return input?.sourceDocumentId === sourceId;
-        })
-        .map(task => task.id);
+    const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
 
     // better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
