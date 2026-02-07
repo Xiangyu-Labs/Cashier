@@ -2,6 +2,7 @@ import { LedgerEntry, EntryCategory } from "@/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
@@ -26,6 +27,9 @@ interface LedgerEntryCardProps {
   onView?: () => void;
   className?: string;
   mainCurrency?: string;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function LedgerEntryCard({
@@ -33,6 +37,9 @@ export function LedgerEntryCard({
   onView,
   className,
   mainCurrency = "CNY",
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: LedgerEntryCardProps) {
   const t = useTranslations("Common");
   const { converted } = useConvertedAmount(
@@ -48,24 +55,44 @@ export function LedgerEntryCard({
     <Card
       className={cn(
         cardVariants({ status: "default" }),
+        isSelected && "border-primary bg-primary/5",
         className
       )}
     >
       <CardContent className="py-2.5 px-3">
         <div
-          className={cn(onView && "cursor-pointer hover:opacity-80 transition-opacity")}
+          className={cn(
+            (onView || selectionMode) && "cursor-pointer hover:opacity-80 transition-opacity"
+          )}
           onClick={(e) => {
-            if (onView) {
-              // Prevent detail view when clicking interactive elements if any were added
-              const target = e.target as HTMLElement;
-              if (!target.closest("button") && !target.closest("select") && !target.closest("input")) {
-                onView();
-              }
+            const target = e.target as HTMLElement;
+            // Don't trigger on interactive elements (except checkbox in selection mode)
+            const isCheckbox = target.closest("[data-checkbox]");
+            if (!isCheckbox && (target.closest("button") || target.closest("select") || target.closest("input"))) {
+              return;
+            }
+
+            if (selectionMode && onToggleSelect) {
+              onToggleSelect();
+            } else if (onView) {
+              onView();
             }
           }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+              {/* Checkbox for selection mode */}
+              {selectionMode && (
+                <div
+                  className="shrink-0"
+                  data-checkbox="true"
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    className="h-5 w-5"
+                  />
+                </div>
+              )}
               <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg text-text shrink-0">
                 <CategoryIcon
                   iconName={ledgerEntry.category?.icon}

@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
-import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/features/ledger/server/actions/entries";
+import { updateLedgerEntryAction, deleteLedgerEntryAction, batchDeleteLedgerEntriesAction, batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
+import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/batch-categorize";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
+import { BatchActionToolbar } from "./BatchActionToolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useModalStackStore } from "@/lib/store/modal-stack";
+import { CheckSquare, X } from "lucide-react";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -28,9 +32,27 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tLedger = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
+    const tBatch = useTranslations("BatchActions");
     const locale = useLocale();
     const queryClient = useQueryClient();
     const push = useModalStackStore(state => state.push);
+
+    // Selection mode state
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    // ESC key to exit selection mode
+    useEffect(() => {
+        if (!selectionMode) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setSelectedIds(new Set());
+                setSelectionMode(false);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectionMode]);
 
 
     // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
@@ -253,20 +275,99 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     };
 
+    // Selection handlers
+    const toggleSelection = useCallback((entryId: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(entryId)) {
+                next.delete(entryId);
+            } else {
+                next.add(entryId);
+            }
+            return next;
+        });
+    }, []);
+
+    const selectAll = useCallback(() => {
+        setSelectedIds(new Set(monthEntries.map(e => e.id)));
+    }, [monthEntries]);
+
+    const clearSelection = useCallback(() => {
+        setSelectedIds(new Set());
+        setSelectionMode(false);
+    }, []);
+
+    const isAllSelected = monthEntries.length > 0 && selectedIds.size === monthEntries.length;
+
+    // Batch action handlers
+    const handleBatchAiCategorize = async () => {
+        const ids = Array.from(selectedIds);
+        const result = await submitBatchCategorizeAction(ledgerId, ids);
+        if (result.success) {
+            if (result.submittedCount > 0) {
+                toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
+            }
+            clearSelection();
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        } else {
+            toast.error(result.error || tCommon("error"));
+        }
+    };
+
+    const handleBatchChangeCategory = async (categoryId: string | null) => {
+        const ids = Array.from(selectedIds);
+        await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId });
+        toast.success(tBatch("categoryChanged", { count: ids.length }));
+        clearSelection();
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+    };
+
+    const handleBatchDelete = async () => {
+        const ids = Array.from(selectedIds);
+        await batchDeleteLedgerEntriesAction(ledgerId, ids);
+        toast.success(tBatch("entriesDeleted", { count: ids.length }));
+        clearSelection();
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+    };
+
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-4">
                 {/* Header Section - Responsive layout */}
                 <div className="px-2 mb-2 sm:mb-4 pt-1">
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-                        {/* Filter Panel - Full width on mobile */}
-                        <EntryFilterPanel
-                            filters={filters}
-                            onFiltersChange={setFilters}
-                            categories={categories}
-                            preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
-                            className="w-full sm:w-auto"
-                        />
+                        {/* Filter Panel and Select Button */}
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            {/* Select/Cancel button - leftmost position */}
+                            {monthEntries.length > 0 && (
+                                <Button
+                                    variant={selectionMode ? "secondary" : "ghost"}
+                                    size="icon"
+                                    onClick={() => {
+                                        if (selectionMode) {
+                                            clearSelection();
+                                        } else {
+                                            setSelectionMode(true);
+                                        }
+                                    }}
+                                    className="shrink-0 h-8 w-8"
+                                    title={selectionMode ? t("cancelSelect") : t("select")}
+                                >
+                                    {selectionMode ? (
+                                        <X className="w-4 h-4" />
+                                    ) : (
+                                        <CheckSquare className="w-4 h-4" />
+                                    )}
+                                </Button>
+                            )}
+                            <EntryFilterPanel
+                                filters={filters}
+                                onFiltersChange={setFilters}
+                                categories={categories}
+                                preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
+                                className="flex-1 sm:flex-none"
+                            />
+                        </div>
 
                         {/* Expense Summary - Right aligned on desktop, full width on mobile */}
                         <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1 py-1 sm:py-0">
@@ -336,7 +437,10 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                                                 ledgerEntry={entry}
                                                 categories={categories}
                                                 mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                onView={() => {
+                                                selectionMode={selectionMode}
+                                                isSelected={selectedIds.has(entry.id)}
+                                                onToggleSelect={() => toggleSelection(entry.id)}
+                                                onView={selectionMode ? undefined : () => {
                                                     setSelectedLedgerEntry(entry);
                                                     setIsDetailModalOpen(true);
                                                 }}
@@ -445,6 +549,20 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                         setSelectedLedgerEntry(null);
                         push({ type: 'source-document', id: sourceDocumentId });
                     } : undefined}
+                />
+
+                {/* Batch Action Toolbar */}
+                <BatchActionToolbar
+                    selectedCount={selectedIds.size}
+                    totalCount={monthEntries.length}
+                    isAllSelected={isAllSelected}
+                    hasMoreData={hasNextPage}
+                    onSelectAll={selectAll}
+                    onClearSelection={clearSelection}
+                    onAiCategorize={handleBatchAiCategorize}
+                    onChangeCategory={handleBatchChangeCategory}
+                    onDelete={handleBatchDelete}
+                    categories={categories}
                 />
             </div>
         </PullToRefresh>

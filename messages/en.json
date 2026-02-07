@@ -27,7 +27,26 @@
         "expenseSummary": "Expense Summary",
         "today": "Today",
         "yesterday": "Yesterday",
-        "noExpenses": "No expenses in this period"
+        "noExpenses": "No expenses in this period",
+        "select": "Select",
+        "cancelSelect": "Cancel"
+    },
+    "BatchActions": {
+        "selected": "{count} selected",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "aiCategorize": "Auto Categorize",
+        "aiCategorizeShort": "Auto",
+        "manualCategory": "Set Category",
+        "manualCategoryShort": "Category",
+        "delete": "Delete",
+        "uncategorized": "Uncategorized",
+        "aiCategorizeSubmitted": "Submitted {count} items for AI categorization",
+        "categoryChanged": "Changed category for {count} items",
+        "entriesDeleted": "Deleted {count} items",
+        "deleteConfirmTitle": "Delete {count} items?",
+        "deleteConfirmDesc": "This action cannot be undone. The selected entries will be permanently deleted.",
+        "loadedOnly": "Only loaded items are selected"
     },
     "EntryFilterPanel": {
         "filter": "Filter",

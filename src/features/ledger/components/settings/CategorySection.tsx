@@ -1,20 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, GripVertical, Loader2, Sparkles } from "lucide-react";
+import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
@@ -45,7 +34,6 @@ interface CategorySectionProps {
     onDeleteCategory: (id: string) => void;
     onReorderCategories: (ids: string[]) => void;
     onCategoryCreated?: () => void;
-    onAutoCategorize?: () => Promise<{ submittedCount: number; skippedCount: number }>;
 }
 
 interface SortableItemProps {
@@ -153,11 +141,9 @@ export function CategorySection({
     onDeleteCategory,
     onReorderCategories,
     onCategoryCreated,
-    onAutoCategorize
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [newCategoryName, setNewCategoryName] = useState("");
-    const [isAutoCategorizing, setIsAutoCategorizing] = useState(false);
 
     // 本地状态管理分类顺序（乐观更新）
     const [localCategories, setLocalCategories] = useState<EntryCategory[]>(categories);
@@ -177,24 +163,6 @@ export function CategorySection({
     const handleCreate = () => {
         if (!newCategoryName.trim()) return;
         onCreateCategory(newCategoryName.trim());
-    };
-
-    const handleAutoCategorize = async () => {
-        if (!onAutoCategorize) return;
-
-        setIsAutoCategorizing(true);
-        try {
-            const result = await onAutoCategorize();
-            if (result.submittedCount > 0) {
-                toast.success(t("autoCategorizeSubmitted", { count: result.submittedCount }));
-            } else if (result.skippedCount > 0) {
-                toast.info(t("autoCategorizeAllPending"));
-            }
-        } catch {
-            toast.error(t("autoCategorizeError"));
-        } finally {
-            setIsAutoCategorizing(false);
-        }
     };
 
     // Clear input on successful creation - listen to onCategoryCreated change
@@ -242,39 +210,6 @@ export function CategorySection({
                                 {t("uncategorizedDesc", { count: uncategorizedCount })}
                             </div>
                         </div>
-
-                        {/* Auto-categorize button with confirmation */}
-                        {onAutoCategorize && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <button
-                                        disabled={isAutoCategorizing}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-[var(--radius)] hover:bg-amber-600 disabled:opacity-50 transition-colors"
-                                    >
-                                        {isAutoCategorizing ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                            <Sparkles className="w-3 h-3" />
-                                        )}
-                                        {t("autoCategorize")}
-                                    </button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>{t("autoCategorizeTitle")}</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            {t("autoCategorizeConfirm", { count: uncategorizedCount })}
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleAutoCategorize}>
-                                            {t("confirm")}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
                     </div>
                 )}
 
