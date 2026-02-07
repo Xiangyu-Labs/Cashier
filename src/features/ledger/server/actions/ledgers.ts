@@ -9,6 +9,7 @@ import { z } from "zod";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { taskVersionManager } from "@/lib/task-version";
 
 const createLedgerSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -119,42 +120,69 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
 
 // Helper function to recalculate all entries' convertedAmount for a ledger
 async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency: string) {
+    const taskKey = `recalculate:${ledgerId}`;
+    const version = taskVersionManager.acquire(taskKey);
+
     const entries = await db.query.ledgerEntries.findMany({
         where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
     });
 
-    for (const entry of entries) {
-        const entryCurrency = entry.currency || "CNY";
-        const amount = Number(entry.amount);
-        const entryDate = entry.entryDate || undefined;
-
-        let convertedAmount: string;
-        let exchangeRate: string;
-
-        if (entryCurrency === mainCurrency) {
-            convertedAmount = amount.toFixed(2);
-            exchangeRate = "1";
-        } else {
-            try {
-                const converted = await ExchangeRateService.convert(
-                    amount,
-                    entryCurrency,
-                    mainCurrency,
-                    entryDate
-                );
-                convertedAmount = converted.toFixed(2);
-                exchangeRate = (converted / amount).toFixed(6);
-            } catch (err) {
-                logger.warn({ err, entryId: entry.id, entryCurrency, mainCurrency }, "Failed to convert entry during recalculation");
-                continue; // Skip this entry
-            }
-        }
-
-        await db.update(ledgerEntries)
-            .set({ convertedAmount, exchangeRate, updatedAt: new Date() })
-            .where(eq(ledgerEntries.id, entry.id));
+    if (entries.length === 0) {
+        taskVersionManager.release(taskKey, version);
+        return;
     }
 
+    // Check if superseded before expensive batch conversion
+    if (!taskVersionManager.isValid(taskKey, version)) {
+        logger.info({ ledgerId, version }, "Recalculation superseded before batch conversion");
+        return;
+    }
+
+    // Prepare items for batch conversion
+    const conversionItems = entries.map(entry => ({
+        amount: Number(entry.amount),
+        from: entry.currency || "CNY",
+        to: mainCurrency,
+        date: entry.entryDate || undefined,
+    }));
+
+    // Batch convert all entries (optimized: M DB queries for M unique dates)
+    let results: Array<{ convertedAmount: number; exchangeRate: number }>;
+    try {
+        results = await ExchangeRateService.convertBatch(conversionItems, mainCurrency);
+    } catch (err) {
+        logger.error({ err, ledgerId }, "Failed to batch convert entries");
+        taskVersionManager.release(taskKey, version);
+        return;
+    }
+
+    // Final check before committing updates
+    if (!taskVersionManager.isValid(taskKey, version)) {
+        logger.info({ ledgerId, version }, "Recalculation superseded before database update");
+        return;
+    }
+
+    // Batch update using transaction
+    db.transaction((tx) => {
+        for (let i = 0; i < entries.length; i++) {
+            // Check version periodically (every 100 entries) to allow early abort
+            if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
+                logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
+                return;
+            }
+
+            tx.update(ledgerEntries)
+                .set({
+                    convertedAmount: results[i].convertedAmount.toFixed(2),
+                    exchangeRate: results[i].exchangeRate.toFixed(6),
+                    updatedAt: new Date(),
+                })
+                .where(eq(ledgerEntries.id, entries[i].id))
+                .run();
+        }
+    });
+
+    taskVersionManager.release(taskKey, version);
     logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
 }
 
@@ -173,9 +201,35 @@ export async function deleteLedgerAction(id: string): Promise<void> {
         throw new Error("Ledger not found or access denied");
     }
 
-    await db.update(ledgers)
-        .set({ deletedAt: new Date() })
-        .where(eq(ledgers.id, id));
+    const { sourceDocuments } = await import("@/lib/db/schema");
+    const now = new Date();
+
+    // better-sqlite3 transactions are synchronous
+    db.transaction((tx) => {
+        // 1. Soft delete all associated ledger entries
+        tx.update(ledgerEntries)
+            .set({ deletedAt: now })
+            .where(and(eq(ledgerEntries.ledgerId, id), isNull(ledgerEntries.deletedAt)))
+            .run();
+
+        // 2. Soft delete all associated entry categories
+        tx.update(entryCategories)
+            .set({ deletedAt: now })
+            .where(and(eq(entryCategories.ledgerId, id), isNull(entryCategories.deletedAt)))
+            .run();
+
+        // 3. Soft delete all associated source documents
+        tx.update(sourceDocuments)
+            .set({ deletedAt: now })
+            .where(and(eq(sourceDocuments.ledgerId, id), isNull(sourceDocuments.deletedAt)))
+            .run();
+
+        // 4. Finally soft delete the ledger itself
+        tx.update(ledgers)
+            .set({ deletedAt: now })
+            .where(eq(ledgers.id, id))
+            .run();
+    });
 }
 
 export async function getLedgerAction(id: string): Promise<import("@/types/api").Ledger | null> {

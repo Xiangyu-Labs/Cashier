@@ -209,16 +209,7 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
 
-    // Cascade soft delete to ledger entries
-    await db.update(ledgerEntries)
-        .set(qEntries.softDelete)
-        .where(and(
-            qEntries.whereActive,
-            eq(ledgerEntries.sourceDocumentId, sourceId)
-        ));
-
-    // Cascade soft delete to task_runs that reference this source document
-    // Since task_runs.input contains sourceDocumentId, we fetch and filter
+    // Find task_runs that reference this source document before transaction
     const { taskRuns } = await import("@/lib/db/schema");
     const allTaskRuns = await db.query.taskRuns.findMany({
         where: isNull(taskRuns.deletedAt),
@@ -231,15 +222,31 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
         })
         .map(task => task.id);
 
-    if (taskIdsToDelete.length > 0) {
-        await db.update(taskRuns)
-            .set({ deletedAt: new Date() })
-            .where(inArray(taskRuns.id, taskIdsToDelete));
-    }
+    // better-sqlite3 transactions are synchronous
+    db.transaction((tx) => {
+        // 1. Cascade soft delete to ledger entries
+        tx.update(ledgerEntries)
+            .set(qEntries.softDelete)
+            .where(and(
+                qEntries.whereActive,
+                eq(ledgerEntries.sourceDocumentId, sourceId)
+            ))
+            .run();
 
-    await db.update(sourceDocuments)
-        .set(q.softDelete)
-        .where(q.whereId(sourceId));
+        // 2. Cascade soft delete to task_runs
+        if (taskIdsToDelete.length > 0) {
+            tx.update(taskRuns)
+                .set({ deletedAt: new Date() })
+                .where(inArray(taskRuns.id, taskIdsToDelete))
+                .run();
+        }
+
+        // 3. Soft delete the source document
+        tx.update(sourceDocuments)
+            .set(q.softDelete)
+            .where(q.whereId(sourceId))
+            .run();
+    });
 }
 
 export async function getSourceDocumentsAction(ledgerId: string, params: {
@@ -403,20 +410,26 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
 
-    // Cascade soft delete to associated ledger entries
-    await db.update(ledgerEntries)
-        .set(qEntries.softDelete)
-        .where(and(
-            qEntries.whereActive,
-            inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
-        ));
+    // better-sqlite3 transactions are synchronous
+    db.transaction((tx) => {
+        // 1. Cascade soft delete to associated ledger entries
+        tx.update(ledgerEntries)
+            .set(qEntries.softDelete)
+            .where(and(
+                qEntries.whereActive,
+                inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
+            ))
+            .run();
 
-    await db.update(sourceDocuments)
-        .set(q.softDelete)
-        .where(and(
-            q.whereActive,
-            inArray(sourceDocuments.id, sourceDocumentIds)
-        ));
+        // 2. Soft delete the source documents
+        tx.update(sourceDocuments)
+            .set(q.softDelete)
+            .where(and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            ))
+            .run();
+    });
 }
 
 export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[]): Promise<void> {

@@ -131,4 +131,32 @@ export class ExchangeRateService {
         if (typeof date === "string") return date.split("T")[0];
         return format(date, "yyyy-MM-dd");
     }
+
+    /**
+     * Batch convert multiple amounts, optimizing DB queries by pre-loading rates.
+     * For N items with M unique dates, this performs M DB queries instead of N.
+     */
+    static async convertBatch(
+        items: Array<{ amount: number; from: string; to: string; date?: Date | string }>,
+        targetCurrency: string
+    ): Promise<Array<{ convertedAmount: number; exchangeRate: number }>> {
+        if (items.length === 0) return [];
+
+        // 1. Collect all unique dates
+        const uniqueDates = [...new Set(items.map(i => this.formatDate(i.date || new Date())))];
+
+        // 2. Pre-load all rates in parallel (populates cache)
+        await Promise.all(uniqueDates.map(date => this.getRates(date)));
+
+        // 3. Perform all conversions (will hit cache)
+        return Promise.all(items.map(async item => {
+            if (item.from === targetCurrency) {
+                return { convertedAmount: item.amount, exchangeRate: 1 };
+            }
+
+            const converted = await this.convert(item.amount, item.from, targetCurrency, item.date);
+            const rate = item.amount !== 0 ? converted / item.amount : 1;
+            return { convertedAmount: converted, exchangeRate: rate };
+        }));
+    }
 }

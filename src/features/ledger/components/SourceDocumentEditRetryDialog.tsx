@@ -14,7 +14,7 @@ import { getSourceDocumentFullAction } from "@/features/source-document/server/a
 
 interface SourceDocumentEditRetryDialogProps {
     ledgerId: string;
-    sourceDocument: SourceDocument | SourceDocumentLight;
+    sourceDocument: SourceDocument | SourceDocumentLight | { id: string };
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -79,8 +79,9 @@ export function SourceDocumentEditRetryDialog({
 
         // Otherwise use existing sourceDocument data
         const imageUrls = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls : undefined;
+        const text = 'text' in sourceDocument ? sourceDocument.text : undefined;
         return {
-            text: sourceDocument.text || undefined,
+            text: text || undefined,
             images: imageUrls?.map(url => ({
                 data: url,
                 mimeType: "image/jpeg",

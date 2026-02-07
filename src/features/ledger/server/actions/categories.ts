@@ -89,29 +89,34 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
     const { ledgerEntries } = await import("@/lib/db/schema");
-
-    // First, set categoryId to null for all entries in this category
-    // This makes them "uncategorized" instead of orphaned
-    await db.update(ledgerEntries)
-        .set({ categoryId: null })
-        .where(and(
-            eq(ledgerEntries.ledgerId, ledgerId),
-            eq(ledgerEntries.categoryId, categoryId),
-            isNull(ledgerEntries.deletedAt)
-        ));
-
-    // Then soft-delete the category
     const q = forLedger(entryCategories, ledgerId);
-    await db.update(entryCategories)
-        .set(q.softDelete)
-        .where(q.whereId(categoryId));
+
+    // better-sqlite3 transactions are synchronous, so we use a sync callback
+    db.transaction((tx) => {
+        // First, set categoryId to null for all entries in this category
+        // This makes them "uncategorized" instead of orphaned
+        tx.update(ledgerEntries)
+            .set({ categoryId: null })
+            .where(and(
+                eq(ledgerEntries.ledgerId, ledgerId),
+                eq(ledgerEntries.categoryId, categoryId),
+                isNull(ledgerEntries.deletedAt)
+            ))
+            .run();
+
+        // Then soft-delete the category
+        tx.update(entryCategories)
+            .set(q.softDelete)
+            .where(q.whereId(categoryId))
+            .run();
+    });
 }
 
 export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds: string[]): Promise<void> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-    // Transaction for reordering
+    // better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
         for (let i = 0; i < categoryIds.length; i++) {
             // Ensure we only update categories belonging to this ledger
