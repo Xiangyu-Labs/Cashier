@@ -88,6 +88,12 @@ export function StatsChart({
 
     if (chartPoints.length === 0) return null;
 
+    // Calculate chart dimensions (chart area height)
+    const chartHeight = 130; // pixels, matches h-full minus padding
+    const paddingTop = 10;   // 10% top padding
+    const paddingBottom = 10; // 10% bottom padding
+    const usableHeight = chartHeight - paddingTop - paddingBottom;
+
     return (
         <div className="w-full h-52 relative pt-6 pb-6 select-none">
             {/* Grid Lines */}
@@ -97,72 +103,86 @@ export function StatsChart({
                 <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
             </div>
 
-            {/* Chart Area */}
-            <div className="h-full w-full px-2">
-                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
+            {/* Chart Area - Using relative positioning for points */}
+            <div className="h-full w-full px-2 relative" style={{ height: `${chartHeight}px` }}>
+                {/* SVG for line only - stretched horizontally */}
+                <svg
+                    className="absolute inset-0 w-full h-full overflow-visible"
+                    preserveAspectRatio="none"
+                >
                     {/* Line Path */}
-                    <polyline
-                        points={chartPoints.map((p, i) => {
-                            const x = (i / (chartPoints.length - 1)) * 100;
-                            // Leave 10% padding top/bottom inside the chart area
-                            // value=0 -> y=90%, value=max -> y=10%
-                            const y = 90 - (p.value / maxVal) * 80;
-                            return `${x}%,${y}%`;
-                        }).join(" ")}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        className="text-primary transition-all duration-300 ease-in-out"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                    />
-
-                    {/* Points (Only show if sparse enough or interactive) */}
-                    {(rangeType !== "month" || chartPoints.length < 15) && chartPoints.map((p, i) => {
-                        const x = (i / (chartPoints.length - 1)) * 100;
-                        const y = 90 - (p.value / maxVal) * 80;
-                        return (
-                            <circle
-                                key={i}
-                                cx={`${x}%`}
-                                cy={`${y}%`}
-                                r="3.5"
-                                className="fill-bg stroke-primary stroke-[2px]"
-                            />
-                        );
-                    })}
+                    {chartPoints.length > 1 && (
+                        <polyline
+                            points={chartPoints.map((p, i) => {
+                                const xPercent = chartPoints.length === 1
+                                    ? 50
+                                    : (i / (chartPoints.length - 1)) * 100;
+                                // Calculate y position (inverted: 0 at top)
+                                const yPercent = paddingTop + (1 - p.value / maxVal) * (100 - paddingTop - paddingBottom);
+                                return `${xPercent}%,${yPercent}%`;
+                            }).join(" ")}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-primary transition-all duration-300 ease-in-out"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                            vectorEffect="non-scaling-stroke"
+                        />
+                    )}
                 </svg>
 
-                {/* X Axis Labels */}
-                <div className="relative mt-2 h-6 w-full">
-                    {chartPoints.map((p, i) => {
-                        // Label Filtering
-                        let showLabel = false;
-                        if (rangeType === "week" || rangeType === "year") {
+                {/* Points - Using absolute positioning with CSS (no SVG distortion) */}
+                {chartPoints.map((p, i) => {
+                    const leftPercent = chartPoints.length === 1
+                        ? 50
+                        : (i / (chartPoints.length - 1)) * 100;
+                    // Calculate top position
+                    const topPercent = paddingTop + (1 - p.value / maxVal) * (100 - paddingTop - paddingBottom);
+
+                    return (
+                        <div
+                            key={i}
+                            className="absolute w-[7px] h-[7px] rounded-full bg-bg border-2 border-primary -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
+                            style={{
+                                left: `${leftPercent}%`,
+                                top: `${topPercent}%`,
+                            }}
+                        />
+                    );
+                })}
+            </div>
+
+            {/* X Axis Labels */}
+            <div className="relative mt-2 h-6 w-full px-2">
+                {chartPoints.map((p, i) => {
+                    // Label Filtering
+                    let showLabel = false;
+                    if (rangeType === "week" || rangeType === "year") {
+                        showLabel = true;
+                    } else if (rangeType === "month") {
+                        // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
+                        if (i === 0 || i === chartPoints.length - 1 || (i) % 5 === 0) {
                             showLabel = true;
-                        } else if (rangeType === "month") {
-                            // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
-                            // Or just indices % 5 === 0
-                            if (i === 0 || i === chartPoints.length - 1 || (i) % 5 === 0) {
-                                showLabel = true;
-                            }
                         }
+                    }
 
-                        if (!showLabel) return null;
+                    if (!showLabel) return null;
 
-                        const leftPos = (i / (chartPoints.length - 1)) * 100;
+                    const leftPos = chartPoints.length === 1
+                        ? 50
+                        : (i / (chartPoints.length - 1)) * 100;
 
-                        return (
-                            <div
-                                key={i}
-                                className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
-                                style={{ left: `${leftPos}%` }}
-                            >
-                                {p.label}
-                            </div>
-                        );
-                    })}
-                </div>
+                    return (
+                        <div
+                            key={i}
+                            className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
+                            style={{ left: `${leftPos}%` }}
+                        >
+                            {p.label}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
