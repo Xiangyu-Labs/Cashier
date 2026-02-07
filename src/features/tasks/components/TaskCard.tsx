@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { SerializedTaskRun } from "../server/actions/task-queue";
+import { SourceDocumentPreview } from "./SourceDocumentPreview";
 
 interface TaskCardProps {
     task: SerializedTaskRun;
@@ -23,6 +24,17 @@ interface TaskCardProps {
     /** Called when user wants to dismiss (soft delete) the task */
     onDismiss?: () => void | Promise<void>;
     className?: string;
+    /** Ledger ID for fetching source document data */
+    ledgerId?: string;
+    /** Whether to show original input preview for source document tasks */
+    showSourcePreview?: boolean;
+}
+
+function getSourceDocumentIdFromInput(input: unknown): string | null {
+    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
+        return (input as { sourceDocumentId?: string }).sourceDocumentId ?? null;
+    }
+    return null;
 }
 
 function TaskStatusIcon({ status }: { status: string }) {
@@ -46,6 +58,8 @@ export const TaskCard = memo(function TaskCard({
     onDelete,
     onDismiss,
     className,
+    ledgerId,
+    showSourcePreview = false,
 }: TaskCardProps) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("TaskQueue");
@@ -82,7 +96,11 @@ export const TaskCard = memo(function TaskCard({
         }
     }
 
-    const hasDetails = task.progress || task.error;
+    const sourceDocumentId = task.type === "parse_source_document"
+        ? getSourceDocumentIdFromInput(task.input)
+        : null;
+    const hasSourcePreview = showSourcePreview && ledgerId && sourceDocumentId;
+    const hasDetails = task.progress || task.error || hasSourcePreview;
     const showActions = supportsActions && (onRetry || onDelete || onDismiss) && task.status === "failed";
 
     return (
@@ -195,6 +213,23 @@ export const TaskCard = memo(function TaskCard({
                                     <span className="text-xs text-red-600 dark:text-red-400">
                                         {task.error}
                                     </span>
+                                </div>
+                            )}
+
+                            {/* Original Input Preview */}
+                            {hasSourcePreview && ledgerId && sourceDocumentId && (
+                                <div className="pt-2 border-t border-border/30">
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-xs font-medium text-muted-foreground shrink-0">
+                                            {t("originalInput")}:
+                                        </span>
+                                    </div>
+                                    <div className="mt-1.5">
+                                        <SourceDocumentPreview
+                                            ledgerId={ledgerId}
+                                            sourceDocumentId={sourceDocumentId}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>

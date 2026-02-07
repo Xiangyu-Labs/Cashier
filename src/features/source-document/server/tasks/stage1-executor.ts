@@ -60,7 +60,7 @@ const titleSchema = z.object({
 });
 
 const rulesSchema = z.object({
-    rules: z.array(z.string()),
+    rules: z.array(z.string()).default([]),
 });
 
 // ===== Helper: Build Message Content =====

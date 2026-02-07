@@ -327,6 +327,8 @@ export function TaskQueueModal({
                                                             key={task.id}
                                                             task={task}
                                                             supportsActions={supportsActions()}
+                                                            ledgerId={ledgerId}
+                                                            showSourcePreview={true}
                                                         />
                                                     ))}
                                                 </motion.div>
@@ -404,6 +406,8 @@ export function TaskQueueModal({
                                                             key={task.id}
                                                             task={task}
                                                             supportsActions={supportsActions()}
+                                                            ledgerId={ledgerId}
+                                                            showSourcePreview={true}
                                                             onRetry={isSourceDocumentTask(task) ? () => handleRetry(task) : undefined}
                                                             onDelete={isSourceDocumentTask(task) ? () => handleDeleteSingle(task) : undefined}
                                                             onDismiss={!isSourceDocumentTask(task) ? () => handleDismiss(task) : undefined}

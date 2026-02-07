@@ -499,6 +499,7 @@
         "deleteAllConfirmDesc": "Are you sure you want to delete all failed tasks? This action cannot be undone.",
         "progress": "Progress",
         "error": "Error",
+        "originalInput": "Original Input",
         "tokenStats": "In: {input} | Out: {output} | Avg: {avg}/task",
         "anomaly": "Anomaly Bills",
         "untitledBill": "Untitled Bill"
