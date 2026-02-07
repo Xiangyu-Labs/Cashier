@@ -16,6 +16,7 @@ import {
     getEntryCategoriesAction,
     getUncategorizedCountAction,
 } from "@/features/ledger/server/actions/categories";
+import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/auto-categorize";
 import {
     createServiceCredentialAction,
     deleteServiceCredentialAction,
@@ -504,6 +505,15 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                             onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
                             onReorderCategories={(ids) => reorderCategoriesMutation.mutate(ids)}
                             onCategoryCreated={categoryCreatedTrigger}
+                            onAutoCategorize={async () => {
+                                const result = await submitAutoCategorizeAction(ledgerId);
+                                if (!result.success) {
+                                    throw new Error(result.error);
+                                }
+                                // Invalidate uncategorized count after submitting tasks
+                                queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+                                return { submittedCount: result.submittedCount, skippedCount: result.skippedCount };
+                            }}
                         />
                     )}
                 </div>

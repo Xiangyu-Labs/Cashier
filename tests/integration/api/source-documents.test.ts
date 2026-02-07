@@ -64,7 +64,7 @@ describe("SourceDocument Actions", () => {
           item_name: "苹果",
           amount: 20,
           currency: "CNY",
-          category: "水果",
+          category_index: 1,
           notes: "2kg * 10元/kg, 红富士苹果"
         }]
       }) as unknown as ReturnType<typeof getOpenAIClient>
@@ -109,7 +109,7 @@ describe("SourceDocument Actions", () => {
     expect(savedEntries[0].amount).toBe("25.50");
   });
 
-  it("should match category by name", async () => {
+  it("should match category by index", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐" });
     expect(result.status).toBe("queued");
 

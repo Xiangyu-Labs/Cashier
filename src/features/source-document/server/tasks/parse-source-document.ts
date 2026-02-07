@@ -171,7 +171,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 itemName: entry.item_name,
                 amount: entry.amount,
                 currency: entry.currency,
-                category: entry.category,
+                categoryIndex: entry.category_index,
                 entryDate: null,  // Will be set from source document in onComplete
                 notes: entry.notes,
             }));
@@ -271,8 +271,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
         const entriesToInsert = await Promise.all(validEntries.map(async entry => {
-            const categoryId = entry.category
-                ? input.categories.find((c) => c.name === entry.category)?.id ?? null
+            // categoryIndex is 1-based, so index 1 = categories[0]
+            const categoryId = entry.categoryIndex > 0 && entry.categoryIndex <= input.categories.length
+                ? input.categories[entry.categoryIndex - 1]?.id ?? null
                 : null;
 
             // Use source document's entryDate as primary fallback, then today's date

@@ -28,7 +28,7 @@ describe("Stage 2 Executor", () => {
                         item_name: "午餐",
                         amount: 45,
                         currency: "CNY",
-                        category: "餐饮",
+                        category_index: 1,
                         entry_date: "2026-02-05",
                         notes: null,
                     },
@@ -61,7 +61,7 @@ describe("Stage 2 Executor", () => {
                         item_name: "午餐",
                         amount: 45,
                         currency: "CNY",
-                        category: "餐饮",
+                        category_index: 1,
                         entry_date: "2026-01-15", // Date from document
                         notes: null,
                     },
@@ -98,7 +98,7 @@ describe("Stage 2 Executor", () => {
                     if (callCount === 1) {
                         return {
                             content: JSON.stringify({
-                                ledger_entries: [{ item_name: "午餐", amount: 45, currency: "CNY", category: "餐饮", entry_date: "2026-02-05", notes: null }],
+                                ledger_entries: [{ item_name: "午餐", amount: 45, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
                                 reasoning: "a",
                             }),
                             usage: { promptTokens: 100, completionTokens: 50 },
@@ -107,7 +107,7 @@ describe("Stage 2 Executor", () => {
                     if (callCount === 2) {
                         return {
                             content: JSON.stringify({
-                                ledger_entries: [{ item_name: "午餐", amount: 50, currency: "CNY", category: "餐饮", entry_date: "2026-02-05", notes: null }],
+                                ledger_entries: [{ item_name: "午餐", amount: 50, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
                                 reasoning: "b",
                             }),
                             usage: { promptTokens: 100, completionTokens: 50 },
@@ -140,7 +140,7 @@ describe("Stage 2 Executor", () => {
                     if (callCount === 1) {
                         return {
                             content: JSON.stringify({
-                                ledger_entries: [{ item_name: "a", amount: 10, currency: "CNY", category: "餐饮", entry_date: "2026-02-05", notes: null }],
+                                ledger_entries: [{ item_name: "a", amount: 10, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
                                 reasoning: "a",
                             }),
                             usage: { promptTokens: 100, completionTokens: 50 },
@@ -149,7 +149,7 @@ describe("Stage 2 Executor", () => {
                     if (callCount === 2) {
                         return {
                             content: JSON.stringify({
-                                ledger_entries: [{ item_name: "b", amount: 20, currency: "USD", category: "交通", entry_date: "2026-02-05", notes: null }],
+                                ledger_entries: [{ item_name: "b", amount: 20, currency: "USD", category_index: 2, entry_date: "2026-02-05", notes: null }],
                                 reasoning: "b",
                             }),
                             usage: { promptTokens: 100, completionTokens: 50 },
@@ -180,7 +180,7 @@ describe("Stage 2 Executor", () => {
                         expect(opts.model).toBe("gemini-3-flash");
                         return {
                             content: JSON.stringify({
-                                ledger_entries: [{ item_name: "a", amount: callCount * 10, currency: "CNY", category: "餐饮", entry_date: "2026-02-05", notes: null }],
+                                ledger_entries: [{ item_name: "a", amount: callCount * 10, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
                                 reasoning: "x",
                             }),
                             usage: { promptTokens: 100, completionTokens: 50 },

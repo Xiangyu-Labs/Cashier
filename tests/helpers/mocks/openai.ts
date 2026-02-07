@@ -11,7 +11,7 @@ export interface MockEntryData {
     item_name: string;
     amount: number;
     currency?: string;
-    category?: string;
+    category_index?: number;
     entry_date?: string | null;
     notes?: string | null;
 }
@@ -45,7 +45,7 @@ const DEFAULT_OPTIONS: Required<Omit<MultiStageMockOptions, 'incompleteReason' |
         item_name: "午餐",
         amount: 25.50,
         currency: "CNY",
-        category: "餐饮",
+        category_index: 1,
         entry_date: new Date().toISOString().split('T')[0],
         notes: null
     }]
@@ -100,11 +100,11 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
                 const currentDate = new Date().toISOString().split('T')[0];
                 return Promise.resolve({
                     content: JSON.stringify({
-                        ledger_entries: opts.entries.map(e => ({
+                        ledger_entries: opts.entries.map((e, index) => ({
                             item_name: e.item_name,
                             amount: e.amount,
                             currency: e.currency || opts.currencies[0] || "CNY",
-                            category: e.category || opts.categories[0] || "餐饮",
+                            category_index: e.category_index ?? (index + 1),
                             entry_date: e.entry_date === undefined ? currentDate : e.entry_date,
                             notes: e.notes ?? null
                         })),
@@ -195,11 +195,11 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
             const currentDate = new Date().toISOString().split('T')[0];
             return Promise.resolve({
                 content: JSON.stringify({
-                    ledger_entries: opts.entries.map(e => ({
+                    ledger_entries: opts.entries.map((e, index) => ({
                         item_name: e.item_name,
                         amount: e.amount,
                         currency: e.currency || opts.currencies[0] || "CNY",
-                        category: e.category || opts.categories[0] || "餐饮",
+                        category_index: e.category_index ?? (index + 1),
                         entry_date: e.entry_date === undefined ? currentDate : e.entry_date,
                         notes: e.notes ?? null
                     })),

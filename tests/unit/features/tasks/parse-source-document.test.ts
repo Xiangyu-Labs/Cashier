@@ -18,7 +18,7 @@ function createMultiStageMockAI(options: {
     currencies?: string[];
     categories?: string[];
     title?: string;
-    entries?: Array<{ item_name: string; amount: number; currency: string; category: string; entry_date: string; notes: string | null }>;
+    entries?: Array<{ item_name: string; amount: number; currency: string; category_index: number; entry_date: string; notes: string | null }>;
     stage1_5Reasonable?: boolean;
     stage2ArbitrationFails?: boolean;
 }): AIContext {
@@ -27,7 +27,7 @@ function createMultiStageMockAI(options: {
         currencies = ["USD"],
         categories = ["Food"],
         title = "Test Document",
-        entries = [{ item_name: "Lunch", amount: 10, currency: "USD", category: "Food", entry_date: "2024-01-01", notes: null }],
+        entries = [{ item_name: "Lunch", amount: 10, currency: "USD", category_index: 1, entry_date: "2024-01-01", notes: null }],
         stage1_5Reasonable = true,
         stage2ArbitrationFails = false,
     } = options;
@@ -175,7 +175,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         };
 
         const mockAI = createMultiStageMockAI({
-            entries: [{ item_name: "Lunch", amount: 10, currency: "USD", category: "Food", entry_date: "2024-01-01", notes: null }],
+            entries: [{ item_name: "Lunch", amount: 10, currency: "USD", category_index: 1, entry_date: "2024-01-01", notes: null }],
             title: "Test Title",
         });
 
@@ -204,7 +204,7 @@ describe("parseSourceDocumentHandler.execute", () => {
         };
 
         const mockAI = createMultiStageMockAI({
-            entries: [{ item_name: "Lunch", amount: 10, currency: "USD", category: "Food", entry_date: "2020-01-01", notes: null }],
+            entries: [{ item_name: "Lunch", amount: 10, currency: "USD", category_index: 1, entry_date: "2020-01-01", notes: null }],
         });
 
         const context = {
@@ -325,7 +325,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
 
         const output: ParseSourceDocumentOutput = {
             ledgerEntries: [
-                { itemName: "Lunch", amount: 10, currency: "USD", category: "Food", entryDate: "2024-01-01", notes: null },
+                { itemName: "Lunch", amount: 10, currency: "USD", categoryIndex: 1, entryDate: "2024-01-01", notes: null },
             ],
             title: "Test Title",
             verificationStatus: "passed",

@@ -12,7 +12,7 @@ export interface ParsedLedgerEntry {
     itemName: string;
     amount: number;
     currency: string | null;
-    category: string | null; // 分类名称
+    categoryIndex: number; // 0 = no category, 1+ = index into categories array
     entryDate: string | null; // YYYY-MM-DD 格式
     notes?: string | null; // Consolidated notes
 }

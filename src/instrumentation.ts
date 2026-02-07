@@ -9,6 +9,7 @@ export async function register() {
             // Register task handlers (needed for in-process runner)
             await import("@/features/source-document/server/tasks/parse-source-document");
             await import("@/features/ledger/server/tasks/generate-category-metadata");
+            await import("@/features/ledger/server/tasks/categorize-entry");
         } catch (error) {
             logger.error({ error }, "Failed during startup initialization");
         }

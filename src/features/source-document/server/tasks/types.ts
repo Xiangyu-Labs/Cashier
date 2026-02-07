@@ -80,7 +80,7 @@ export interface ParsedEntry {
     item_name: string;
     amount: number;
     currency: string;
-    category: string;
+    category_index: number;  // 0 = no category, 1+ = index into categories array
     entry_date?: string;  // Optional: we use source document's entryDate instead
     notes: string | null;
 }

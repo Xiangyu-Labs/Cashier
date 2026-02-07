@@ -16,7 +16,7 @@ const entrySchema = z.object({
     item_name: z.string(),
     amount: z.number(),
     currency: z.string(),
-    category: z.string(),
+    category_index: z.number().int().min(0),  // 0 = no category, 1+ = index
     entry_date: z.string().optional(),  // Optional: we use source document's entryDate instead
     notes: z.string().nullable(),
 });
@@ -74,7 +74,7 @@ function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boole
     const groupTotals = (entries: ParsedEntry[]) => {
         const groups: Record<string, number> = {};
         for (const e of entries) {
-            const key = `${e.currency}:${e.category}`;
+            const key = `${e.currency}:${e.category_index}`;
             groups[key] = (groups[key] || 0) + e.amount;
         }
         return groups;
