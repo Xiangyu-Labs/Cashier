@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Check, X, Pencil, GripVertical, Loader2, Sparkles } from "lucide-react";
+import { Trash2, GripVertical, Loader2, Sparkles } from "lucide-react";
+import { EditableField } from "@/components/ui/editable-field";
+import { IconPicker } from "@/components/ui/icon-picker";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -15,7 +17,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { EntryCategory } from "@/types/api";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { useTranslations } from "next-intl";
 
 import {
@@ -49,23 +50,13 @@ interface CategorySectionProps {
 
 interface SortableItemProps {
     category: EntryCategory;
-    isEditing: boolean;
-    editingData: { name: string, description: string };
-    onEditStart: () => void;
-    onEditCancel: () => void;
-    onEditChange: (data: { name: string, description: string }) => void;
-    onUpdate: () => void;
+    onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
     onDelete: () => void;
 }
 
 function SortableItem({
     category,
-    isEditing,
-    editingData,
-    onEditStart,
-    onEditCancel,
-    onEditChange,
-    onUpdate,
+    onUpdateCategory,
     onDelete
 }: SortableItemProps) {
     const t = useTranslations("Settings");
@@ -82,6 +73,9 @@ function SortableItem({
         transition,
     };
 
+    const isGenerating = !category.icon || !category.description;
+    const isEditable = category.isEditable !== false;
+
     return (
         <div
             ref={setNodeRef}
@@ -92,71 +86,60 @@ function SortableItem({
                 <GripVertical className="text-[var(--muted)]" size={16} />
             </div>
 
-            {isEditing ? (
-                <div className="flex-1 flex gap-2">
-                    <input
-                        type="text"
-                        value={editingData.name}
-                        onChange={e => onEditChange({ ...editingData, name: e.target.value })}
-                        className="flex-1 px-2 py-1 text-sm rounded bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-                        autoFocus
+            {/* Icon Area - uses IconPicker */}
+            <div className="w-8 flex justify-center">
+                {isGenerating ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                ) : (
+                    <IconPicker
+                        value={category.icon}
+                        onChange={(icon) => onUpdateCategory(category.id, { icon })}
+                        disabled={!isEditable}
                     />
-                    <input
-                        type="text"
-                        value={editingData.description}
-                        onChange={e => onEditChange({ ...editingData, description: e.target.value })}
+                )}
+            </div>
+
+            {/* Name and Description - uses EditableField */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <EditableField
+                        value={category.name}
+                        onChange={(name) => onUpdateCategory(category.id, { name })}
+                        disabled={!isEditable}
+                        displayClassName="font-medium text-sm"
+                        inputClassName="text-sm"
+                    />
+                    {'entryCount' in category && typeof category.entryCount === 'number' && (
+                        <span className="text-[10px] text-[var(--muted)] font-normal shrink-0">{t("categoryItemCount", { count: category.entryCount })}</span>
+                    )}
+                    {category.id.toString().startsWith('temp-') && (
+                        <span className="text-[10px] text-muted font-normal animate-pulse">{t("saving")}</span>
+                    )}
+                </div>
+                {isGenerating ? (
+                    <div className="text-xs text-primary animate-pulse">{t("generating")}</div>
+                ) : (
+                    <EditableField
+                        value={category.description || ""}
+                        onChange={(description) => onUpdateCategory(category.id, { description })}
                         placeholder={t("categoryDescription")}
-                        className="flex-1 px-2 py-1 text-sm rounded bg-surface text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        disabled={!isEditable}
+                        displayClassName="text-xs text-[var(--muted)]"
+                        inputClassName="text-xs"
                     />
-                    <button onClick={onUpdate} className="text-[var(--primary)] p-1 hover:bg-surface rounded transition-colors">
-                        <Check size={16} />
-                    </button>
-                    <button onClick={onEditCancel} className="text-[var(--danger)] p-1 hover:bg-surface rounded transition-colors">
-                        <X size={16} />
+                )}
+            </div>
+
+            {/* Delete button only */}
+            {isEditable && (
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={onDelete}
+                        className="p-1.5 text-[var(--muted)] hover:text-[var(--danger)] hover:bg-surface rounded transition-colors"
+                    >
+                        <Trash2 size={15} />
                     </button>
                 </div>
-            ) : (
-                <>
-                    <div className="w-8 flex justify-center text-xl">
-                        {(!category.icon || !category.description) ? (
-                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        ) : (
-                            <CategoryIcon iconName={category.icon} className="w-6 h-6" />
-                        )}
-                    </div>
-                    <div className="flex-1">
-                        <div className="font-medium text-sm flex items-center gap-2">
-                            {category.name}
-                            {'entryCount' in category && typeof category.entryCount === 'number' && (
-                                <span className="text-[10px] text-[var(--muted)] font-normal">{t("categoryItemCount", { count: category.entryCount })}</span>
-                            )}
-                            {category.id.toString().startsWith('temp-') && (
-                                <span className="text-[10px] text-muted font-normal animate-pulse">{t("saving")}</span>
-                            )}
-                        </div>
-                        {(!category.icon || !category.description) ? (
-                            <div className="text-xs text-primary animate-pulse">{t("generating")}</div>
-                        ) : category.description && (
-                            <div className="text-xs text-[var(--muted)]">{category.description}</div>
-                        )}
-                    </div>
-                    {category.isEditable !== false && (
-                        <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                            <button
-                                onClick={onEditStart}
-                                className="p-1.5 text-[var(--muted)] hover:text-[var(--primary)] hover:bg-surface rounded transition-colors"
-                            >
-                                <Pencil size={15} />
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="p-1.5 text-[var(--muted)] hover:text-[var(--danger)] hover:bg-surface rounded transition-colors"
-                            >
-                                <Trash2 size={15} />
-                            </button>
-                        </div>
-                    )}
-                </>
             )}
         </div>
     );
@@ -173,8 +156,6 @@ export function CategorySection({
     onAutoCategorize
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
-    const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
-    const [editingCategoryData, setEditingCategoryData] = useState<{ name: string, description: string }>({ name: "", description: "" });
     const [newCategoryName, setNewCategoryName] = useState("");
     const [isAutoCategorizing, setIsAutoCategorizing] = useState(false);
 
@@ -310,21 +291,7 @@ export function CategorySection({
                             <SortableItem
                                 key={category.id}
                                 category={category}
-                                isEditing={isEditingCategory === category.id}
-                                editingData={editingCategoryData}
-                                onEditStart={() => {
-                                    setIsEditingCategory(category.id);
-                                    setEditingCategoryData({ name: category.name, description: category.description || "" });
-                                }}
-                                onEditCancel={() => setIsEditingCategory(null)}
-                                onEditChange={setEditingCategoryData}
-                                onUpdate={() => {
-                                    onUpdateCategory(category.id, {
-                                        name: editingCategoryData.name,
-                                        description: editingCategoryData.description
-                                    });
-                                    setIsEditingCategory(null);
-                                }}
+                                onUpdateCategory={onUpdateCategory}
                                 onDelete={() => onDeleteCategory(category.id)}
                             />
                         ))}
