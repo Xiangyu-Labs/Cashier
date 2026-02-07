@@ -532,7 +532,7 @@ export function TaskQueueModal({
             {retryTaskId && (
                 <SourceDocumentEditRetryDialog
                     ledgerId={ledgerId}
-                    sourceDocument={{ id: retryTaskId } as any}
+                    sourceDocument={{ id: retryTaskId } as Pick<SourceDocument, 'id'>}
                     open={!!retryTaskId}
                     onOpenChange={(open) => !open && setRetryTaskId(null)}
                     onSuccess={() => {

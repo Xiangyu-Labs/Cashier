@@ -156,7 +156,7 @@ describe("SettingsTab", () => {
         );
 
         expect(screen.getByText("appearance")).toBeDefined();
-        expect(screen.getByText("assistant")).toBeDefined();
+        expect(screen.getByText("advancedSettings")).toBeDefined();
         expect(screen.getByText("dataConfig")).toBeDefined();
     });
 
@@ -187,6 +187,10 @@ describe("SettingsTab", () => {
                 />
             </QueryClientProvider>
         );
+
+        // Expand the Advanced Settings section first (it's collapsed by default)
+        const advancedSettingsButton = screen.getByText("advancedSettings");
+        await user.click(advancedSettingsButton);
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
         await user.type(textarea, "New Custom Prompt");

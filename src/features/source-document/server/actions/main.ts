@@ -41,7 +41,8 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
         where: (table, { eq, or, isNull, and }) => and(
             or(eq(table.ledgerId, ledgerId), isNull(table.ledgerId)),
             isNull(table.deletedAt)
-        )
+        ),
+        orderBy: (table, { asc }) => [asc(table.sortOrder), asc(table.id)]
     });
 
     const settings = ledger.metadata?.settings || {};

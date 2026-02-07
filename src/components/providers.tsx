@@ -39,6 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Initialize persister on client side only
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side only initialization to avoid SSR hydration mismatch
     setPersister(createPersister());
   }, []);
 

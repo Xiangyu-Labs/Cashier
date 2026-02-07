@@ -38,6 +38,7 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     // Initialize filters on client side to avoid SSR timezone issues
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side only initialization to avoid SSR timezone mismatch
         const now = new Date();
         setFilters({
             startDate: new Date(now.getFullYear(), now.getMonth(), 1),

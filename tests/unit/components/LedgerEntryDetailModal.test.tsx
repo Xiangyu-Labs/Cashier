@@ -38,7 +38,7 @@ vi.mock("@/features/ledger/components/LedgerEntryEditForm", () => ({
 }));
 
 // Track pending changes for the mock to determine edit state
-let mockHasPendingChanges = false;
+const mockHasPendingChanges = false;
 
 vi.mock("@/features/ledger/components/LedgerEntryViewDetails", () => ({
     LedgerEntryViewDetails: ({ pendingChanges, onFieldChange, onSave, onDiscard, onDelete }: {

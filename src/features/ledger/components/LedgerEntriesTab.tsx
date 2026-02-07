@@ -48,6 +48,7 @@ export function LedgerEntriesTab({
 
     // Initialize date range on client side to avoid SSR timezone issues
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side only initialization to avoid SSR timezone mismatch
         const now = new Date();
         setFilters(prev => ({
             ...prev,
