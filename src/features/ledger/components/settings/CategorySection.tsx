@@ -34,6 +34,7 @@ interface CategorySectionProps {
     onDeleteCategory: (id: string) => void;
     onReorderCategories: (ids: string[]) => void;
     onCategoryCreated?: () => void;
+    onAutoCategorize?: () => Promise<{ submittedCount: number; skippedCount: number }>;
 }
 
 interface SortableItemProps {
@@ -141,6 +142,7 @@ export function CategorySection({
     onDeleteCategory,
     onReorderCategories,
     onCategoryCreated,
+    onAutoCategorize,
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [newCategoryName, setNewCategoryName] = useState("");
