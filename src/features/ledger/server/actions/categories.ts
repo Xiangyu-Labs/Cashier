@@ -5,7 +5,7 @@ import { entryCategories } from "@/lib/db/schema";
 //
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
-import { eq, asc, and, isNull, sql } from "drizzle-orm";
+import { eq, asc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
@@ -87,6 +87,24 @@ export async function updateEntryCategoryAction(ledgerId: string, categoryId: st
 export async function deleteEntryCategoryAction(ledgerId: string, categoryId: string): Promise<void> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
+
+    // Cancel any pending/running background tasks for this category
+    const { flowEngine } = await import("@/lib/flow");
+    const { taskRuns } = await import("@/features/tasks/server/schema");
+
+    const pendingTasks = await db
+        .select({ id: taskRuns.id })
+        .from(taskRuns)
+        .where(and(
+            eq(taskRuns.type, "generate_category_metadata"),
+            inArray(taskRuns.status, ["pending", "running"]),
+            isNull(taskRuns.deletedAt),
+            sql`json_extract(${taskRuns.input}, '$.categoryId') = ${categoryId}`
+        ));
+
+    for (const task of pendingTasks) {
+        await flowEngine.cancel(task.id);
+    }
 
     const { ledgerEntries } = await import("@/lib/db/schema");
     const q = forLedger(entryCategories, ledgerId);

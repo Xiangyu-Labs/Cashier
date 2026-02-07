@@ -273,6 +273,8 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             queryClient.invalidateQueries({ queryKey });
             // Also invalidate uncategorized count since deleted category's entries become uncategorized
             queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+            // Invalidate task queue to immediately reflect cancelled tasks
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
         onError: (_err: Error, _: string, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("deleteCategoryFailed"));

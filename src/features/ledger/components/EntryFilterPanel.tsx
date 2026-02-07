@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTranslations, useFormatter } from "next-intl";
 import { EntryCategory } from "@/types/api";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 export interface EntryFilters {
     startDate?: Date;
@@ -50,6 +51,7 @@ export function EntryFilterPanel({
 }: EntryFilterPanelProps) {
     const t = useTranslations("EntryFilterPanel");
     const tDateRange = useTranslations("DateRangeFilter");
+    const tSettings = useTranslations("Settings");
     const format = useFormatter();
     const [open, setOpen] = React.useState(false);
 
@@ -318,9 +320,10 @@ export function EntryFilterPanel({
                                     </SelectTrigger>
                                     <SelectContent position="popper" sideOffset={4}>
                                         <SelectItem value="__all__">{t("allCategories")}</SelectItem>
+                                        <SelectItem value="__uncategorized__">{tSettings("uncategorized")}</SelectItem>
                                         {categories.map((cat) => (
                                             <SelectItem key={cat.id} value={cat.id}>
-                                                {cat.icon && <span className="mr-2">{cat.icon}</span>}
+                                                <CategoryIcon iconName={cat.icon} className="w-4 h-4 mr-2 inline-block" />
                                                 {cat.name}
                                             </SelectItem>
                                         ))}
