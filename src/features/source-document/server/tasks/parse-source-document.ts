@@ -353,11 +353,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, input.ledgerId);
 
+        // 系统错误时重置为 pending，让用户可以重试
+        // 不要标记为 anomaly，因为 anomaly 应该只用于业务异常（用户输入问题）
         await db.update(sourceDocuments)
-            .set({
-                status: 'anomaly',
-                anomalyReason: error instanceof Error ? error.message : '内部错误'
-            })
+            .set({ status: 'pending' })
             .where(q.whereId(input.sourceDocumentId));
     },
 

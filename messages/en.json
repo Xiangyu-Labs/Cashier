@@ -502,6 +502,7 @@
         "originalInput": "Original Input",
         "tokenStats": "In: {input} | Out: {output} | Avg: {avg}/task",
         "anomaly": "Anomaly Bills",
+        "reason": "Reason",
         "untitledBill": "Untitled Bill"
     }
 }

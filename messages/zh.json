@@ -506,6 +506,7 @@
         "originalInput": "原始输入",
         "tokenStats": "输入: {input} | 输出: {output} | 平均: {avg}/任务",
         "anomaly": "异常账单",
+        "reason": "原因",
         "untitledBill": "未命名账单"
     }
 }

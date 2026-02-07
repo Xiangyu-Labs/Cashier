@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TaskCard } from "./TaskCard";
+import { AnomalyBillCard } from "./AnomalyBillCard";
 import { useTaskQueue } from "../client/hooks/useTaskQueue";
 import { SerializedTaskRun, SerializedAnomalyBill } from "../server/actions/task-queue";
 import {
@@ -25,7 +26,7 @@ import {
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
 
-import { ChevronDown, Inbox, ListTodo, AlertTriangle } from "lucide-react";
+import { ChevronDown, Inbox, ListTodo } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
@@ -476,48 +477,21 @@ export function TaskQueueModal({
                                                     className="space-y-2 overflow-hidden"
                                                 >
                                                     {groups.anomaly.map((bill: SerializedAnomalyBill) => (
-                                                        <div
+                                                        <AnomalyBillCard
                                                             key={bill.id}
-                                                            className="flex items-start gap-3 p-3 bg-amber-50/50 rounded-lg border border-amber-100"
-                                                        >
-                                                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-medium text-foreground truncate">
-                                                                    {bill.title || t("untitledBill")}
-                                                                </p>
-                                                                {bill.anomalyReason && (
-                                                                    <p className="text-xs text-amber-600 mt-0.5 line-clamp-2">
-                                                                        {bill.anomalyReason}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-1 shrink-0">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 px-2 text-xs"
-                                                                    onClick={() => setRetryTaskId(bill.id)}
-                                                                >
-                                                                    {tEntries("retry")}
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-                                                                    onClick={() => {
-                                                                        setDeleteConfirm({
-                                                                            open: true,
-                                                                            type: "single",
-                                                                            id: bill.id,
-                                                                            title: t("deleteConfirmTitle"),
-                                                                            description: t("deleteConfirmDesc"),
-                                                                        });
-                                                                    }}
-                                                                >
-                                                                    {tCommon("delete")}
-                                                                </Button>
-                                                            </div>
-                                                        </div>
+                                                            bill={bill}
+                                                            ledgerId={ledgerId}
+                                                            onRetry={() => setRetryTaskId(bill.id)}
+                                                            onDelete={() => {
+                                                                setDeleteConfirm({
+                                                                    open: true,
+                                                                    type: "single",
+                                                                    id: bill.id,
+                                                                    title: t("deleteConfirmTitle"),
+                                                                    description: t("deleteConfirmDesc"),
+                                                                });
+                                                            }}
+                                                        />
                                                     ))}
                                                 </motion.div>
                                             )}

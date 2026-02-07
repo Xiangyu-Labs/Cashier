@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSourceDocumentFullAction } from "@/features/source-document/server/actions/main";
 import { ImageIcon, FileText, Loader2 } from "lucide-react";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 interface SourceDocumentPreviewProps {
     ledgerId: string;
@@ -18,6 +19,8 @@ export function SourceDocumentPreview({
         text?: string | null;
         imageUrls?: string[] | null;
     } | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
 
     useEffect(() => {
         setIsLoading(true);
@@ -50,39 +53,60 @@ export function SourceDocumentPreview({
 
     if (!hasImages && !hasText) return null;
 
-    return (
-        <div className="space-y-2">
-            {/* Image thumbnails */}
-            {hasImages && (
-                <div className="flex items-start gap-2">
-                    <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div className="flex gap-1.5 flex-wrap">
-                        {data.imageUrls!.slice(0, 4).map((url, idx) => (
-                            <img
-                                key={idx}
-                                src={url}
-                                alt={`Input image ${idx + 1}`}
-                                className="h-12 w-12 object-cover rounded border border-border"
-                            />
-                        ))}
-                        {data.imageUrls!.length > 4 && (
-                            <div className="h-12 w-12 flex items-center justify-center rounded border border-border bg-surface2 text-xs text-muted-foreground">
-                                +{data.imageUrls!.length - 4}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+    const handleImageClick = (index: number) => {
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
 
-            {/* Text preview */}
-            {hasText && (
-                <div className="flex items-start gap-2">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                    <p className="text-xs text-text line-clamp-3 whitespace-pre-wrap">
-                        {data.text}
-                    </p>
-                </div>
+    return (
+        <>
+            <div className="space-y-2">
+                {/* Image thumbnails */}
+                {hasImages && (
+                    <div className="flex items-start gap-2">
+                        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex gap-1.5 flex-wrap">
+                            {data.imageUrls!.slice(0, 4).map((url, idx) => (
+                                <img
+                                    key={idx}
+                                    src={url}
+                                    alt={`Input image ${idx + 1}`}
+                                    className="h-12 w-12 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => handleImageClick(idx)}
+                                />
+                            ))}
+                            {data.imageUrls!.length > 4 && (
+                                <div
+                                    className="h-12 w-12 flex items-center justify-center rounded border border-border bg-surface2 text-xs text-muted-foreground cursor-pointer hover:bg-surface3 transition-colors"
+                                    onClick={() => handleImageClick(4)}
+                                >
+                                    +{data.imageUrls!.length - 4}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Text preview */}
+                {hasText && (
+                    <div className="flex items-start gap-2">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <p className="text-xs text-text line-clamp-3 whitespace-pre-wrap">
+                            {data.text}
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* Image Viewer Dialog */}
+            {hasImages && (
+                <ImageViewer
+                    images={data.imageUrls!}
+                    initialIndex={viewerIndex}
+                    open={viewerOpen}
+                    onOpenChange={setViewerOpen}
+                />
             )}
-        </div>
+        </>
     );
 }
