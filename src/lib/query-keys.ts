@@ -26,6 +26,7 @@ export const queryKeys = {
 
     // === Categories ===
     entryCategories: (ledgerId: string) => ['entryCategories', ledgerId] as const,
+    uncategorizedCount: (ledgerId: string) => ['uncategorizedCount', ledgerId] as const,
 
     // === Summary & Stats ===
     summary: (ledgerId: string, ...params: (string | undefined)[]) =>

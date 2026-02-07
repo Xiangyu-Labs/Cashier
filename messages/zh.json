@@ -291,6 +291,8 @@
         "generating": "AI 生成中...",
         "saving": "(保存中...)",
         "categoryItemCount": "{count} 条明细",
+        "uncategorized": "未分类物品",
+        "uncategorizedDesc": "有 {count} 条记录尚未分类",
         "ledgerName": "账本名称",
         "ledgerNameDesc": "在首页显示的账本名称",
         "ledgerNamePlaceholder": "例如：我的账本",

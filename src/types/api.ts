@@ -14,6 +14,8 @@ import { Serialized } from "./utils";
 export type Ledger = Serialized<DbLedger>;
 export type ServiceCredential = Serialized<DbServiceCredential>;
 export type EntryCategory = Serialized<DbEntryCategory>;
+// Extended type with entry count for category management
+export type EntryCategoryWithCount = EntryCategory & { entryCount: number };
 export type SourceDocument = Serialized<DbSourceDocument>;
 export type TaskRun = Serialized<DbTaskRun>;
 export type User = Serialized<DbUser>;

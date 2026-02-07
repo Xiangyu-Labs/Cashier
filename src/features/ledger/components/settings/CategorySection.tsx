@@ -26,6 +26,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface CategorySectionProps {
     categories: EntryCategory[];
+    uncategorizedCount?: number;
     onCreateCategory: (name: string) => void;
     onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
     onDeleteCategory: (id: string) => void;
@@ -150,6 +151,7 @@ function SortableItem({
 
 export function CategorySection({
     categories,
+    uncategorizedCount = 0,
     onCreateCategory,
     onUpdateCategory,
     onDeleteCategory,
@@ -212,6 +214,23 @@ export function CategorySection({
             </div>
 
             <div className="space-y-2 mb-4">
+                {/* Uncategorized count */}
+                {uncategorizedCount > 0 && (
+                    <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-[var(--radius)]">
+                        <div className="w-8 flex justify-center">
+                            <span className="text-amber-600 dark:text-amber-400">⚠</span>
+                        </div>
+                        <div className="flex-1">
+                            <div className="font-medium text-sm text-amber-700 dark:text-amber-300">
+                                {t("uncategorized")}
+                            </div>
+                            <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
+                                {t("uncategorizedDesc", { count: uncategorizedCount })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}

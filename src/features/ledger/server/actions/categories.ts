@@ -139,7 +139,7 @@ export async function getEntryCategoriesAction(ledgerId: string) {
     // Create a map for quick lookup
     const countMap = new Map(entryCounts.map(e => [e.categoryId, e.count]));
 
-    return categories.map(c => ({
+    const categoriesWithCount = categories.map(c => ({
         ...c,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
@@ -147,5 +147,30 @@ export async function getEntryCategoriesAction(ledgerId: string) {
         deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
         entryCount: countMap.get(c.id) || 0,
     }));
+
+    return categoriesWithCount;
 }
 
+/**
+ * Get count of uncategorized entries (entries without a category)
+ * Separated from getEntryCategoriesAction for cleaner cache management
+ */
+export async function getUncategorizedCountAction(ledgerId: string): Promise<number> {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized: Access to ledger denied");
+
+    const { ledgerEntries } = await import("@/lib/db/schema");
+
+    const result = await db
+        .select({
+            count: sql<number>`count(*)`.as('count'),
+        })
+        .from(ledgerEntries)
+        .where(and(
+            eq(ledgerEntries.ledgerId, ledgerId),
+            isNull(ledgerEntries.deletedAt),
+            isNull(ledgerEntries.categoryId)
+        ));
+
+    return result[0]?.count || 0;
+}

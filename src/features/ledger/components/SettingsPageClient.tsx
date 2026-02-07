@@ -2,14 +2,14 @@
 
 import { useRouter } from "@/i18n/routing";
 import { SettingsTab } from "./SettingsTab";
-import { EntryCategory, Ledger } from "@/types/api";
+import { EntryCategoryWithCount, Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
 interface SettingsPageClientProps {
     ledger: Ledger;
-    initialCategories: EntryCategory[];
+    initialCategories: EntryCategoryWithCount[];
     ledgerId: string;
 }
 

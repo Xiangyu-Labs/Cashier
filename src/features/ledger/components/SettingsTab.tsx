@@ -14,6 +14,7 @@ import {
     deleteEntryCategoryAction,
     reorderEntryCategoriesAction,
     getEntryCategoriesAction,
+    getUncategorizedCountAction,
 } from "@/features/ledger/server/actions/categories";
 import {
     createServiceCredentialAction,
@@ -27,7 +28,7 @@ import { getServiceCredentialsAction } from "@/features/ledger/server/actions/cr
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 
-import { EntryCategory, Ledger, ServiceCredential, Settings } from "@/types/api";
+import { EntryCategory, EntryCategoryWithCount, Ledger, ServiceCredential, Settings } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut, ChevronDown } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
@@ -40,7 +41,7 @@ import { cn } from "@/lib/utils";
 
 interface SettingsTabProps {
     ledger: Ledger;
-    initialCategories: EntryCategory[];
+    initialCategories: EntryCategoryWithCount[];
     ledgerId: string;
 }
 
@@ -96,12 +97,19 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     const queryKey = queryKeys.entryCategories(ledgerId);
 
     // Categories - Use smart polling
-    const { data: categories = [] } = useSmartPolling<EntryCategory[]>({
+    const { data: categories = [] } = useSmartPolling<EntryCategoryWithCount[]>({
         queryKey,
         queryFn: () => getEntryCategoriesAction(ledgerId),
         isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
         interval: 3000,
         initialData: initialCategories
+    });
+
+    // Uncategorized count - separate query for cleaner cache management
+    const { data: uncategorizedCount = 0 } = useQuery<number>({
+        queryKey: queryKeys.uncategorizedCount(ledgerId),
+        queryFn: () => getUncategorizedCountAction(ledgerId),
+        staleTime: 30 * 1000, // 30 seconds
     });
 
     // Credentials - fetch client-side with long staleTime
@@ -177,11 +185,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         mutationFn: async (data: { name: string }) => {
             return await createEntryCategoryAction(ledgerId, data);
         },
-        onMutate: async (newCategory) => {
+        onMutate: async (newCategory: { name: string }) => {
             await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
 
-            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) => [
+            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) => [
                 ...old,
                 {
                     id: `temp-${Date.now()}`,
@@ -193,7 +201,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     ledgerId,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
-                } as EntryCategory
+                    deletedAt: null,
+                    entryCount: 0,
+                } as EntryCategoryWithCount
             ]);
 
             return { previousCategories };
@@ -204,7 +214,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
             queryClient.invalidateQueries({ queryKey });
             queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
         },
-        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
+        onError: (_err: Error, _: { name: string }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("createCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -220,16 +230,21 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 icon: data.icon ?? undefined,
             });
         },
-        onMutate: async ({ id: _id, data: _data }) => {
+        onMutate: async ({ id, data }: { id: string; data: Partial<EntryCategory> }) => {
             await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
+
+            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) =>
+                old.map((c) => c.id === id ? { ...c, ...data } : c)
+            );
+
             return { previousCategories };
         },
         onSuccess: () => {
             toast.success(t("categoryUpdated"));
             queryClient.invalidateQueries({ queryKey });
         },
-        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
+        onError: (_err: Error, _: { id: string; data: Partial<EntryCategory> }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("updateCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -241,12 +256,12 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         mutationFn: async (id: string) => {
             await deleteEntryCategoryAction(ledgerId, id);
         },
-        onMutate: async (id) => {
+        onMutate: async (id: string) => {
             await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategory[]>(queryKey);
+            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
 
-            queryClient.setQueryData<EntryCategory[]>(queryKey, (old = []) =>
-                old.filter(c => c.id !== id)
+            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) =>
+                old.filter((c) => c.id !== id)
             );
 
             return { previousCategories };
@@ -254,8 +269,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         onSuccess: () => {
             toast.success(t("categoryDeleted"));
             queryClient.invalidateQueries({ queryKey });
+            // Also invalidate uncategorized count since deleted category's entries become uncategorized
+            queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
         },
-        onError: (err, _, context: { previousCategories?: EntryCategory[] } | undefined) => {
+        onError: (_err: Error, _: string, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("deleteCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
@@ -481,6 +498,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     {categories && (
                         <CategorySection
                             categories={categories}
+                            uncategorizedCount={uncategorizedCount}
                             onCreateCategory={(name) => createCategoryMutation.mutate({ name })}
                             onUpdateCategory={(id, data) => updateCategoryMutation.mutate({ id, data })}
                             onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
