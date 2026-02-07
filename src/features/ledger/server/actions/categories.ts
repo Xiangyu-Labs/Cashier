@@ -88,6 +88,19 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
+    const { ledgerEntries } = await import("@/lib/db/schema");
+
+    // First, set categoryId to null for all entries in this category
+    // This makes them "uncategorized" instead of orphaned
+    await db.update(ledgerEntries)
+        .set({ categoryId: null })
+        .where(and(
+            eq(ledgerEntries.ledgerId, ledgerId),
+            eq(ledgerEntries.categoryId, categoryId),
+            isNull(ledgerEntries.deletedAt)
+        ));
+
+    // Then soft-delete the category
     const q = forLedger(entryCategories, ledgerId);
     await db.update(entryCategories)
         .set(q.softDelete)

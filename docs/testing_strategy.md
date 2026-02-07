@@ -102,4 +102,28 @@ tests/
 │   └── schema-setup.ts
 ├── unit/              # Unit tests (no DB)
 └── integration/       # Integration tests (uses DB)
+    └── cascade-operations.test.ts  # Entity relationship tests
 ```
+
+## 8. Cascade Operation Tests
+
+These tests verify that related entities are correctly updated when primary entities are modified or deleted.
+
+### Test Categories
+
+| ID | Scenario | Description |
+|----|----------|-------------|
+| C1 | Delete Category → Entries Uncategorized | 删除分类后，相关条目变为未分类 |
+| E1 | Create Entry → Data Association | 创建条目后，数据关联正确 |
+| E2 | Delete Entry → Counts Update | 删除条目后，相关计数更新 |
+| E3 | Update Entry Category → Counts Update | 修改条目分类后，新旧分类计数正确 |
+| D1 | Delete Source Document → Entries Deleted | 删除单据后，关联条目被删除 |
+| L1 | Delete Ledger → Data Inaccessible | 删除账本后，数据不可访问 |
+| L2 | Create Ledger → Default Categories | 创建账本后，默认分类自动生成 |
+
+### Running Cascade Tests
+
+```bash
+npm test -- tests/integration/cascade-operations.test.ts
+```
+
