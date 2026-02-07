@@ -18,6 +18,10 @@ import {
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
+import {
+    dismissTaskAction,
+    batchDismissTasksAction,
+} from "../server/actions/dismiss-task";
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
 
@@ -118,6 +122,33 @@ export function TaskQueueModal({
         }
     });
 
+    // Dismiss mutations for non-source-document tasks
+    const dismissTaskMutation = useMutation({
+        mutationFn: async (taskId: string) => {
+            await dismissTaskAction(ledgerId, taskId);
+        },
+        onSuccess: () => {
+            toast.success(t("dismissed"));
+        },
+        onError: () => toast.error(tCommon("error")),
+        onSettled: () => {
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
+    });
+
+    const batchDismissMutation = useMutation({
+        mutationFn: async (taskIds: string[]) => {
+            await batchDismissTasksAction(ledgerId, taskIds);
+        },
+        onSuccess: () => {
+            toast.success(t("dismissed"));
+        },
+        onError: () => toast.error(tCommon("error")),
+        onSettled: () => {
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
+    });
+
     // Handlers
     const handleDeleteConfirmAction = useCallback(() => {
         if (!deleteConfirm.type) return;
@@ -172,11 +203,26 @@ export function TaskQueueModal({
 
     const isEmpty = stats.total === 0 && groups.completed.length === 0;
 
-    // Check if task type supports actions
-    const supportsActions = (task: SerializedTaskRun) => task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT;
+    // Check if task type supports actions (all tasks now support some action)
+    const supportsActions = () => true;
+
+    // Check if task is a source document parsing task
+    const isSourceDocumentTask = (task: SerializedTaskRun) => task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT;
 
     // Failed source document tasks for batch actions
     const failedSourceDocTasks = groups.failed.filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT);
+
+    // Failed non-source-document tasks for batch dismiss
+    const failedOtherTasks = groups.failed.filter(t => t.type !== TASK_TYPE_PARSE_SOURCE_DOCUMENT);
+
+    const handleDismiss = useCallback((task: SerializedTaskRun) => {
+        dismissTaskMutation.mutate(task.id);
+    }, [dismissTaskMutation]);
+
+    const handleDismissAll = useCallback(() => {
+        const ids = failedOtherTasks.map(t => t.id);
+        batchDismissMutation.mutate(ids);
+    }, [failedOtherTasks, batchDismissMutation]);
 
     return (
         <>
@@ -240,7 +286,7 @@ export function TaskQueueModal({
                                                         <TaskCard
                                                             key={task.id}
                                                             task={task}
-                                                            supportsActions={supportsActions(task)}
+                                                            supportsActions={supportsActions()}
                                                         />
                                                     ))}
                                                 </motion.div>
@@ -280,7 +326,7 @@ export function TaskQueueModal({
                                                         <TaskCard
                                                             key={task.id}
                                                             task={task}
-                                                            supportsActions={supportsActions(task)}
+                                                            supportsActions={supportsActions()}
                                                         />
                                                     ))}
                                                 </motion.div>
@@ -309,24 +355,38 @@ export function TaskQueueModal({
                                                 </motion.div>
                                             </div>
 
-                                            {!isFailedCollapsed && failedSourceDocTasks.length > 0 && (
+                                            {!isFailedCollapsed && (failedSourceDocTasks.length > 0 || failedOtherTasks.length > 0) && (
                                                 <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-6 px-2 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200"
-                                                        onClick={handleDeleteAll}
-                                                    >
-                                                        {t("deleteAll")}
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        className="h-6 px-2 text-xs"
-                                                        onClick={handleRetryAll}
-                                                    >
-                                                        {t("retryAll")}
-                                                    </Button>
+                                                    {failedOtherTasks.length > 0 && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200"
+                                                            onClick={handleDismissAll}
+                                                        >
+                                                            {t("dismissAll")}
+                                                        </Button>
+                                                    )}
+                                                    {failedSourceDocTasks.length > 0 && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-xs bg-red-50/50 text-red-600 border-red-100 hover:bg-red-50 hover:border-red-200"
+                                                                onClick={handleDeleteAll}
+                                                            >
+                                                                {t("deleteAll")}
+                                                            </Button>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-xs"
+                                                                onClick={handleRetryAll}
+                                                            >
+                                                                {t("retryAll")}
+                                                            </Button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -343,9 +403,10 @@ export function TaskQueueModal({
                                                         <TaskCard
                                                             key={task.id}
                                                             task={task}
-                                                            supportsActions={supportsActions(task)}
-                                                            onRetry={() => handleRetry(task)}
-                                                            onDelete={() => handleDeleteSingle(task)}
+                                                            supportsActions={supportsActions()}
+                                                            onRetry={isSourceDocumentTask(task) ? () => handleRetry(task) : undefined}
+                                                            onDelete={isSourceDocumentTask(task) ? () => handleDeleteSingle(task) : undefined}
+                                                            onDismiss={!isSourceDocumentTask(task) ? () => handleDismiss(task) : undefined}
                                                         />
                                                     ))}
                                                 </motion.div>

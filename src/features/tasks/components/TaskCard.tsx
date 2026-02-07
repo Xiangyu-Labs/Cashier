@@ -20,6 +20,8 @@ interface TaskCardProps {
     supportsActions?: boolean;
     onRetry?: () => void | Promise<void>;
     onDelete?: () => void;
+    /** Called when user wants to dismiss (soft delete) the task */
+    onDismiss?: () => void | Promise<void>;
     className?: string;
 }
 
@@ -42,12 +44,14 @@ export const TaskCard = memo(function TaskCard({
     supportsActions = false,
     onRetry,
     onDelete,
+    onDismiss,
     className,
 }: TaskCardProps) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("TaskQueue");
 
     const [isRetrying, setIsRetrying] = useState(false);
+    const [isDismissing, setIsDismissing] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Determine status-specific styling
@@ -68,8 +72,18 @@ export const TaskCard = memo(function TaskCard({
         }
     }
 
+    async function handleDismiss() {
+        if (!onDismiss) return;
+        setIsDismissing(true);
+        try {
+            await onDismiss();
+        } finally {
+            setIsDismissing(false);
+        }
+    }
+
     const hasDetails = task.progress || task.error;
-    const showActions = supportsActions && (onRetry || onDelete) && task.status === "failed";
+    const showActions = supportsActions && (onRetry || onDelete || onDismiss) && task.status === "failed";
 
     return (
         <div className={cn(
@@ -135,6 +149,12 @@ export const TaskCard = memo(function TaskCard({
                                     >
                                         <Trash2 className="mr-2 h-3.5 w-3.5" />
                                         {tCommon("delete")}
+                                    </DropdownMenuItem>
+                                )}
+                                {onDismiss && (
+                                    <DropdownMenuItem onClick={handleDismiss} disabled={isDismissing}>
+                                        <XCircle className={cn("mr-2 h-3.5 w-3.5", isDismissing && "animate-pulse")} />
+                                        {t("dismiss")}
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
