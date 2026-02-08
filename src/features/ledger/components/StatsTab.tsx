@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/features/stats/server/actions";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import {
     DateRangeType,
@@ -79,7 +79,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
     const trend = stats?.summary.trend;
 
     const handleRefresh = async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.enhancedStats(ledgerId || '') });
+        await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId || '') });
     };
 
     return (

@@ -27,7 +27,8 @@ import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
 
 import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 
 import { EntryCategory, EntryCategoryWithCount, Ledger, ServiceCredential, Settings } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
@@ -96,6 +97,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const queryClient = useQueryClient();
     const queryKey = queryKeys.entryCategories(ledgerId);
+
+    const handleRefresh = async () => {
+        await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+    };
 
     // Categories - Use smart polling
     const { data: categories = [] } = useSmartPolling<EntryCategoryWithCount[]>({
@@ -387,6 +392,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     });
 
     return (
+        <PullToRefresh onRefresh={handleRefresh}>
         <div className="space-y-6 sm:space-y-8">
             {/* Ledger Name Settings - Always visible */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
@@ -619,5 +625,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                 </div>
             </section>
         </div >
+        </PullToRefresh>
     );
 }
