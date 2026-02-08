@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations, useFormatter } from "next-intl";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { PeriodParams, PeriodPreset } from "@/lib/period-utils";
 
 export interface EntryFilters {
     startDate?: Date;
@@ -33,6 +34,8 @@ export interface EntryFilters {
 interface EntryFilterPanelProps {
     filters: EntryFilters;
     onFiltersChange: (filters: EntryFilters) => void;
+    periodParams?: PeriodParams;
+    onPeriodChange?: (params: PeriodParams) => void;
     categories?: EntryCategory[];
     preferredCurrencies?: string[];
     showCategory?: boolean;
@@ -43,6 +46,8 @@ interface EntryFilterPanelProps {
 export function EntryFilterPanel({
     filters,
     onFiltersChange,
+    periodParams,
+    onPeriodChange,
     categories = [],
     preferredCurrencies = [],
     showCategory = true,
@@ -80,9 +85,8 @@ export function EntryFilterPanel({
         filters.maxAmount !== undefined && filters.maxAmount !== null,
     ].filter(Boolean).length;
 
-    // Check active date preset
-    type DatePreset = "all" | "thisMonth" | "week" | "month" | "3months" | "6months" | "year" | "custom";
-    const getActivePreset = (): DatePreset => {
+    // Get active preset from periodParams if available, otherwise derive from filters
+    const activePreset: PeriodPreset = periodParams?.period ?? (() => {
         if (!filters.startDate && !filters.endDate) return "all";
 
         const now = new Date();
@@ -108,12 +112,21 @@ export function EntryFilterPanel({
         }
 
         return "custom";
+    })();
+
+    // Handle preset button clicks - use onPeriodChange if available
+    const handlePresetClick = (preset: PeriodPreset) => {
+        if (onPeriodChange) {
+            // Use URL-driven period change
+            onPeriodChange({ period: preset });
+        } else {
+            // Fallback to legacy behavior
+            handleDatePresetLegacy(preset, true);
+        }
     };
 
-    const activePreset = getActivePreset();
-
-    // Handle date presets - apply immediately for quick presets
-    const handleDatePreset = (preset: DatePreset, applyImmediately = false) => {
+    // Legacy date preset handler for backward compatibility
+    const handleDatePresetLegacy = (preset: string, applyImmediately = false) => {
         let newFilters = { ...filters };
 
         if (preset === "all") {
@@ -197,7 +210,7 @@ export function EntryFilterPanel({
                         "h-7 px-2.5 text-xs rounded-md transition-all",
                         activePreset === "all" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
                     )}
-                    onClick={() => handleDatePreset("all", true)}
+                    onClick={() => handlePresetClick("all")}
                 >
                     {t("allTime")}
                 </Button>
@@ -208,7 +221,7 @@ export function EntryFilterPanel({
                         "h-7 px-2.5 text-xs rounded-md transition-all",
                         activePreset === "thisMonth" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
                     )}
-                    onClick={() => handleDatePreset("thisMonth", true)}
+                    onClick={() => handlePresetClick("thisMonth")}
                 >
                     {tDateRange("thisMonth")}
                 </Button>
@@ -219,7 +232,7 @@ export function EntryFilterPanel({
                         "h-7 px-2.5 text-xs rounded-md transition-all",
                         activePreset === "week" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
                     )}
-                    onClick={() => handleDatePreset("week", true)}
+                    onClick={() => handlePresetClick("week")}
                 >
                     {tDateRange("pastWeek")}
                 </Button>
@@ -263,16 +276,16 @@ export function EntryFilterPanel({
                                 {t("dateRange")}
                             </div>
                             <div className="grid grid-cols-4 gap-1">
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePreset("all")}>
+                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("all")}>
                                     {t("allTime")}
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePreset("thisMonth")}>
+                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("thisMonth")}>
                                     {tDateRange("thisMonth")}
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePreset("month")}>
+                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("month")}>
                                     {tDateRange("pastMonth")}
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePreset("3months")}>
+                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("3months")}>
                                     {tDateRange("past3Months")}
                                 </Button>
                             </div>

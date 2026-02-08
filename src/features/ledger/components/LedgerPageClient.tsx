@@ -27,14 +27,16 @@ import { LedgerSwitcher } from "./LedgerSwitcher";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
+import { PeriodParams } from "@/lib/period-utils";
 
 interface LedgerPageClientProps {
     ledgerId: string;
+    initialPeriod: PeriodParams;
 }
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes - must match server prefetch
 
-export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
+export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -175,6 +177,7 @@ export function LedgerPageClient({ ledgerId }: LedgerPageClientProps) {
                             ledgerId={ledgerId}
                             categories={categories || []}
                             ledger={ledger}
+                            initialPeriod={initialPeriod}
                         />
                     </TabsContent>
 

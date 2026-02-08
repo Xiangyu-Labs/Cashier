@@ -7,9 +7,21 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getPendingSourceDocumentsAction, getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
 
-export default async function LedgerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LedgerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id: ledgerId } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // Parse period from URL (default: thisMonth)
+  const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
+  const dateRange = periodToDateRange(periodParams);
   const session = await auth();
   const t = await getTranslations("LedgerPage");
 
@@ -46,8 +58,11 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
       staleTime: 30 * 1000, // 30 seconds for pending (more dynamic)
     }),
     queryClient.prefetchQuery({
-      queryKey: queryKeys.sourceDocuments(ledgerId, 'unified'),
-      queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {}),
+      queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', dateRange.startDate ?? undefined, dateRange.endDate ?? undefined),
+      queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
+        startDate: dateRange.startDate ?? undefined,
+        endDate: dateRange.endDate ?? undefined,
+      }),
       staleTime: 30 * 1000,
     }),
   ]);
@@ -64,7 +79,7 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <LedgerPageClient ledgerId={ledgerId} />
+      <LedgerPageClient ledgerId={ledgerId} initialPeriod={periodParams} />
     </HydrationBoundary>
   );
 }

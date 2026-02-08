@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     updateLedgerEntryAction,
@@ -21,41 +21,87 @@ import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/sourc
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { useSearchParams } from "next/navigation";
+import { usePathname } from "@/i18n/routing";
+import { PeriodParams, PeriodPreset, periodToDateRange } from "@/lib/period-utils";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
     categories: EntryCategory[];
     ledger?: Ledger;
+    initialPeriod: PeriodParams;
 }
 
 export function LedgerEntriesTab({
     ledgerId,
     categories,
     ledger,
+    initialPeriod,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tDetails = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
 
 
     // Layout Transitions
     const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
-    // Filters State
-    const [filters, setFilters] = useState<EntryFilters>({});
+    // Period state - initialized from URL (via props), no useEffect needed
+    const [periodParams, setPeriodParams] = useState<PeriodParams>(initialPeriod);
 
-    // Initialize date range on client side to avoid SSR timezone issues
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side only initialization to avoid SSR timezone mismatch
-        const now = new Date();
-        setFilters(prev => ({
-            ...prev,
-            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
-            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        }));
-    }, []);
+    // Compute date range from period (memoized)
+    const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
+
+    // Convert to EntryFilters format for compatibility
+    const filters: EntryFilters = useMemo(() => ({
+        startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
+        endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+    }), [dateRange]);
+
+    // Handle period change - update both state and URL
+    const handlePeriodChange = useCallback((newPeriod: PeriodParams) => {
+        setPeriodParams(newPeriod);
+
+        // Update URL without navigation
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('period', newPeriod.period);
+
+        if (newPeriod.period === 'custom') {
+            if (newPeriod.startDate) params.set('startDate', newPeriod.startDate);
+            if (newPeriod.endDate) params.set('endDate', newPeriod.endDate);
+        } else {
+            params.delete('startDate');
+            params.delete('endDate');
+        }
+
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+    }, [pathname, searchParams]);
+
+    // Handle filter changes from EntryFilterPanel (for advanced filters like amount)
+    const handleFiltersChange = useCallback((newFilters: EntryFilters) => {
+        // If date changed, update period to custom
+        if (newFilters.startDate || newFilters.endDate) {
+            const formatDate = (d?: Date): string | undefined => {
+                if (!d) return undefined;
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+            handlePeriodChange({
+                period: 'custom',
+                startDate: formatDate(newFilters.startDate),
+                endDate: formatDate(newFilters.endDate),
+            });
+        } else {
+            // No dates means "all"
+            handlePeriodChange({ period: 'all' });
+        }
+    }, [handlePeriodChange]);
 
     // Modals State
     const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -336,7 +382,9 @@ export function LedgerEntriesTab({
                     <div className="px-2 mb-2 sm:mb-4 pt-1">
                         <EntryFilterPanel
                             filters={filters}
-                            onFiltersChange={setFilters}
+                            onFiltersChange={handleFiltersChange}
+                            periodParams={periodParams}
+                            onPeriodChange={handlePeriodChange}
                             showCategory={false}
                             showCurrency={false}
                             className="w-full sm:w-auto"
