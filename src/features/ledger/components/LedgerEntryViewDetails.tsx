@@ -62,7 +62,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         amount: pendingChanges.amount ?? parseFloat(ledgerEntry.amount),
         currency: pendingChanges.currency ?? ledgerEntry.currency,
         categoryId: pendingChanges.categoryId !== undefined ? pendingChanges.categoryId : ledgerEntry.categoryId,
-        entryDate: pendingChanges.entryDate ?? ledgerEntry.entryDate ?? "",
+        entryDate: pendingChanges.entryDate ?? ledgerEntry.entryDate ??
+            (ledgerEntry.createdAt ? new Date(ledgerEntry.createdAt).toISOString().split('T')[0] : ""),
         description: pendingChanges.description !== undefined ? pendingChanges.description : ledgerEntry.description,
     }), [pendingChanges, ledgerEntry]);
 

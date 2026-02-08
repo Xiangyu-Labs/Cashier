@@ -62,11 +62,13 @@ export async function POST(request: NextRequest) {
 
         // Save source document with 'queued' status directly
         const { sourceDocuments } = await import("@/lib/db/schema");
+        const today = new Date().toISOString().split('T')[0];
         const [savedDoc] = await db.insert(sourceDocuments).values({
             ledgerId: credential.ledgerId,
             text: text || null,
             imageUrls: imageUrls,
             status: "queued",
+            entryDate: today,
         }).returning();
 
         // Update last used at
