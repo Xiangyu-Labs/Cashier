@@ -263,9 +263,9 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-    // Helper to get date string (yyyy-MM-dd) from entry
+    // Helper to get date string (yyyy-MM-dd) from entry's source document
     const getDateStr = (entry: LedgerEntry) => {
-        if (entry.entryDate) return entry.entryDate;
+        if (entry.sourceDocument?.entryDate) return entry.sourceDocument.entryDate;
         return new Date(entry.createdAt).toLocaleDateString('sv');
     };
 

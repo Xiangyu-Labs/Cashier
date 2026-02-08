@@ -46,7 +46,7 @@ export function LedgerEntryCard({
     parseFloat(ledgerEntry.amount),
     ledgerEntry.currency,
     mainCurrency,
-    ledgerEntry.entryDate || ledgerEntry.createdAt
+    ledgerEntry.sourceDocument?.entryDate || ledgerEntry.createdAt
   );
 
   const isDifferentCurrency = ledgerEntry.currency && ledgerEntry.currency !== mainCurrency && ledgerEntry.currency !== "unknown";

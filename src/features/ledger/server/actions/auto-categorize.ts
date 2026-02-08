@@ -107,7 +107,7 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
                 amount: entry.amount,
                 currency: entry.currency ?? "CNY",
                 description: entry.description,
-                entryDate: entry.entryDate ?? new Date().toISOString().split('T')[0],
+                entryDate: entry.sourceDocument?.entryDate ?? new Date().toISOString().split('T')[0],
                 sourceDocumentText: entry.sourceDocument?.text || undefined,
                 sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
                 categories: indexedCategories,

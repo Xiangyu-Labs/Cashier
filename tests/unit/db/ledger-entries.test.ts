@@ -74,14 +74,12 @@ describe("LedgerEntries Database Operations", () => {
           currency: "CNY",
           itemName: "午餐",
           description: "在公司附近吃的",
-          entryDate: "2025-01-25",
         })
         .returning();
 
       expect(created.currency).toBe("CNY");
       expect(created.description).toBe("在公司附近吃的");
       expect(created.sourceDocumentId).toBe(sourceDocument.id);
-      expect(created.entryDate).toBe("2025-01-25");
     });
   });
 

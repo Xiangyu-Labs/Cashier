@@ -117,7 +117,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     const conversionQueries = useQueries({
         queries: uniqueCurrencies.map(currency => {
             const amount = subtotalsByCurrency[currency];
-            const date = ledgerEntries.find(e => e.currency === currency)?.entryDate || sourceDocument.createdAt;
+            const date = sourceDocument.entryDate || sourceDocument.createdAt;
 
             return {
                 queryKey: ["convert", amount, currency, mainCurrency, date],
@@ -223,7 +223,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                             currency={curr}
                                             amount={subtotalsByCurrency[curr]}
                                             mainCurrency={mainCurrency}
-                                            date={ledgerEntries.find(e => e.currency === curr)?.entryDate || sourceDocument.createdAt}
+                                            date={sourceDocument.entryDate || sourceDocument.createdAt}
                                         />
                                     ))}
                                 </div>

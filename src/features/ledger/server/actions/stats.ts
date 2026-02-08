@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers, ledgerEntries, currencyRates } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, currencyRates, sourceDocuments } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { convertAmount } from "@/features/stats/server/utils";
@@ -30,9 +30,23 @@ export async function getLedgerStatsAction(
 
     const q = forLedger(ledgerEntries, ledgerId);
     const conditions = [q.whereActive];
-    // Direct string comparison for date range (entryDate is now yyyy-MM-dd string)
-    if (startDate) conditions.push(gte(ledgerEntries.entryDate, startDate));
-    if (endDate) conditions.push(lte(ledgerEntries.entryDate, endDate));
+    // Date filtering now uses sourceDocument.entryDate via subquery
+    if (startDate) {
+        conditions.push(
+            sql`${ledgerEntries.sourceDocumentId} IN (
+                SELECT id FROM source_documents
+                WHERE entry_date >= ${startDate} AND deleted_at IS NULL
+            )`
+        );
+    }
+    if (endDate) {
+        conditions.push(
+            sql`${ledgerEntries.sourceDocumentId} IN (
+                SELECT id FROM source_documents
+                WHERE entry_date <= ${endDate} AND deleted_at IS NULL
+            )`
+        );
+    }
     // Additional filter conditions
     if (filters?.categoryId) conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
     if (filters?.currency) conditions.push(eq(ledgerEntries.currency, filters.currency));
@@ -61,16 +75,17 @@ export async function getLedgerStatsAction(
         count: Number(t.count) || 0,
     }));
 
-    // 2. Trend (Daily Total)
+    // 2. Trend (Daily Total) - Join with sourceDocuments to get entryDate
     const trendQuery = await db
         .select({
-            date: ledgerEntries.entryDate,
+            date: sourceDocuments.entryDate,
             total: sql<number>`sum(${ledgerEntries.amount})`,
         })
         .from(ledgerEntries)
+        .innerJoin(sourceDocuments, eq(ledgerEntries.sourceDocumentId, sourceDocuments.id))
         .where(and(...conditions))
-        .groupBy(ledgerEntries.entryDate)
-        .orderBy(ledgerEntries.entryDate);
+        .groupBy(sourceDocuments.entryDate)
+        .orderBy(sourceDocuments.entryDate);
 
     // entryDate is now a yyyy-MM-dd string, no conversion needed
     const trend = trendQuery
@@ -90,19 +105,25 @@ export async function getLedgerStatsAction(
         columns: { metadata: true }
     }))?.metadata?.settings?.mainCurrency || "CNY";
 
-    // Fetch entries with their dates to get matching rates
+    // Fetch entries with their source documents to get matching dates
     const entries = await db.query.ledgerEntries.findMany({
         where: and(...conditions),
         columns: {
             amount: true,
             currency: true,
-            entryDate: true,
+        },
+        with: {
+            sourceDocument: {
+                columns: {
+                    entryDate: true,
+                }
+            }
         }
     });
 
     if (entries.length > 0) {
-        // entryDate is now a yyyy-MM-dd string, use directly
-        const uniqueDates = Array.from(new Set(entries.map(e => e.entryDate).filter((d): d is string => !!d)));
+        // Get entryDate from sourceDocument
+        const uniqueDates = Array.from(new Set(entries.map(e => e.sourceDocument?.entryDate).filter((d): d is string => !!d)));
 
         // Fetch rates
         const ratesMap: Record<string, Record<string, number>> = {};
@@ -117,7 +138,7 @@ export async function getLedgerStatsAction(
 
         // Calculate converted total
         for (const entry of entries) {
-            const dateStr = entry.entryDate || "";
+            const dateStr = entry.sourceDocument?.entryDate || "";
             const dayRates = ratesMap[dateStr] || null;
 
             const converted = convertAmount({

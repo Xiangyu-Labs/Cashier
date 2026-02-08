@@ -21,7 +21,6 @@ interface LedgerEntryDetailModalProps {
     itemName?: string;
     amount?: number;
     currency?: string | null;
-    entryDate?: string | null;
     description?: string | null;
   }) => void;
   onDelete: () => void;
@@ -68,7 +67,6 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
       case "amount": return parseFloat(ledgerEntry.amount);
       case "currency": return ledgerEntry.currency;
       case "categoryId": return ledgerEntry.categoryId;
-      case "entryDate": return ledgerEntry.entryDate?.split("T")[0] || "";
       case "description": return ledgerEntry.description;
       default: return undefined;
     }
@@ -112,9 +110,6 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     }
     if (pendingChanges.categoryId !== undefined) {
       updateData.categoryId = pendingChanges.categoryId;
-    }
-    if (pendingChanges.entryDate !== undefined) {
-      updateData.entryDate = pendingChanges.entryDate || null;
     }
     if (pendingChanges.description !== undefined) {
       updateData.description = pendingChanges.description;

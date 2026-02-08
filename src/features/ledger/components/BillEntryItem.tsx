@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -48,20 +48,11 @@ export const BillEntryItem = memo(function BillEntryItem({
     variant = "default",
     className,
 }: BillEntryItemProps) {
-    // Date difference logic
-    const formattedDiffDate = useMemo(() => {
-        if (!sourceDocumentEntryDate || !ledgerEntry.entryDate) return null;
-        const d1 = sourceDocumentEntryDate.split('T')[0];
-        const d2 = ledgerEntry.entryDate.split('T')[0];
-        if (d1 === d2) return null;
-        return new Date(ledgerEntry.entryDate).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-    }, [sourceDocumentEntryDate, ledgerEntry.entryDate]);
-
     const { converted } = useConvertedAmount(
         parseFloat(ledgerEntry.amount),
         ledgerEntry.currency,
         mainCurrency,
-        ledgerEntry.entryDate || ledgerEntry.createdAt
+        sourceDocumentEntryDate || ledgerEntry.createdAt
     );
 
     const isDifferentCurrency =
@@ -88,11 +79,6 @@ export const BillEntryItem = memo(function BillEntryItem({
                         <p className="font-medium text-text text-sm truncate">
                             {ledgerEntry.itemName}
                         </p>
-                        {formattedDiffDate && (
-                            <span className="text-[10px] text-muted-foreground/50 shrink-0">
-                                {formattedDiffDate}
-                            </span>
-                        )}
                     </div>
 
                     <div className="flex items-center gap-1.5 mt-0.5 min-w-0">

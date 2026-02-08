@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries, ledgers } from "@/features/ledger/server/schema";
 import { currencyRates } from "@/features/currency/server/schema";
-import { and, eq, gte, lte, inArray } from "drizzle-orm";
+import { and, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "./utils";
 import { forLedger } from "@/lib/db/scoped-query";
 
@@ -67,11 +67,18 @@ export async function getEnhancedStats({
         return await db.query.ledgerEntries.findMany({
             where: and(
                 q.active, // This includes ledgerId and deletedAt is null
-                gte(ledgerEntries.entryDate, startStr),
-                lte(ledgerEntries.entryDate, endStr)
+                sql`${ledgerEntries.sourceDocumentId} IN (
+                    SELECT id FROM source_documents
+                    WHERE entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
+                )`
             ),
             with: {
-                category: true
+                category: true,
+                sourceDocument: {
+                    columns: {
+                        entryDate: true
+                    }
+                }
             }
         });
     };
@@ -84,9 +91,8 @@ export async function getEnhancedStats({
     // 4. Fetch Currency Rates (Optimization: Only fetch distinct dates needed)
     // We need rates for every unique date in the entries.
     const allEntries = [...currentEntries, ...prevEntries];
-    // Collect unique dates (as strings YYYY-MM-DD)
-    // entryDate is now a yyyy-MM-dd string, use directly
-    const uniqueDates = Array.from(new Set(allEntries.map(e => e.entryDate).filter((d): d is string => !!d)));
+    // Collect unique dates (as strings YYYY-MM-DD) from source documents
+    const uniqueDates = Array.from(new Set(allEntries.map(e => e.sourceDocument?.entryDate).filter((d): d is string => !!d)));
 
     // Fetch rates from DB
     const ratesMap: Record<string, Record<string, number>> = {};
@@ -115,7 +121,7 @@ export async function getEnhancedStats({
         const dailyMap = new Map<string, number>();
 
         for (const entry of entries) {
-            const dateStr = entry.entryDate || "";
+            const dateStr = entry.sourceDocument?.entryDate || "";
             // Use rates for that specific day
             const dayRates = ratesMap[dateStr] || null;
 

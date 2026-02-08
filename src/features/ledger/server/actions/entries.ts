@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers } from "@/lib/db/schema";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
 // auth is unused here
 
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
@@ -16,9 +16,8 @@ const createLedgerEntrySchema = z.object({
     currency: z.string().optional(),
     itemName: z.string().min(1),
     categoryId: z.string().optional(),
-    entryDate: z.string().optional().nullable(),
     description: z.string().optional().nullable(),
-    sourceDocumentId: z.string().optional().nullable(),
+    sourceDocumentId: z.string(),
 });
 
 const updateLedgerEntrySchema = z.object({
@@ -27,7 +26,6 @@ const updateLedgerEntrySchema = z.object({
     currency: z.string().nullable().optional(),
     itemName: z.string().optional(),
     description: z.string().nullable().optional(),
-    entryDate: z.string().nullable().optional(),
 });
 
 import { forLedger } from "@/lib/db/scoped-query";
@@ -40,13 +38,18 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     const validated = createLedgerEntrySchema.parse(data);
     const _q = forLedger(ledgerEntries, ledgerId);
 
-    // Get ledger's main currency
+    // Get ledger's main currency and source document's entryDate
     const ledger = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
     });
     const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
     const entryCurrency = validated.currency || "CNY";
-    const entryDate = validated.entryDate || undefined;
+
+    // Get entryDate from source document for currency conversion
+    const sourceDoc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, validated.sourceDocumentId),
+    });
+    const entryDate = sourceDoc?.entryDate || undefined;
 
     // Calculate converted amount
     let convertedAmount: string | null = null;
@@ -72,11 +75,13 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     }
 
     const [entry] = await db.insert(ledgerEntries).values({
-        ...validated,
         amount: validated.amount.toFixed(2),
         ledgerId: ledgerId,
+        sourceDocumentId: validated.sourceDocumentId,
+        itemName: validated.itemName,
         currency: entryCurrency,
-        entryDate: validated.entryDate || null,
+        categoryId: validated.categoryId,
+        description: validated.description,
         convertedAmount,
         exchangeRate,
     }).returning();
@@ -97,7 +102,6 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     if (validated.currency !== undefined) updateData.currency = validated.currency;
     if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
     if (validated.description !== undefined) updateData.description = validated.description;
-    if (validated.entryDate !== undefined) updateData.entryDate = validated.entryDate || null;
     updateData.updatedAt = new Date();
 
     // If amount or currency changed, recalculate convertedAmount
@@ -111,6 +115,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
                     eq(ledgerEntries.ledgerId, ledgerId),
                     isNull(ledgerEntries.deletedAt)
                 ),
+                with: { sourceDocument: true },
             }),
             db.query.ledgers.findFirst({
                 where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
@@ -121,9 +126,8 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
             const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
             const newAmount = validated.amount ?? Number(currentEntry.amount);
             const newCurrency = validated.currency ?? currentEntry.currency ?? "CNY";
-            const entryDate = validated.entryDate !== undefined
-                ? (validated.entryDate || undefined)
-                : (currentEntry.entryDate || undefined);
+            // Get entryDate from source document
+            const entryDate = currentEntry.sourceDocument?.entryDate || undefined;
 
             if (newCurrency === mainCurrency) {
                 updateData.convertedAmount = newAmount.toFixed(2);
@@ -156,7 +160,6 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
         ...updatedEntry,
         amount: updatedEntry.amount,
         createdAt: updatedEntry.createdAt.toISOString(),
-        entryDate: updatedEntry.entryDate,
     };
 }
 
@@ -229,8 +232,23 @@ export async function getLedgerEntriesAction(
 
     // Build conditions
     const conditions = [q.whereActive];
-    if (params.startDate) conditions.push(gte(ledgerEntries.entryDate, params.startDate));
-    if (params.endDate) conditions.push(lte(ledgerEntries.entryDate, params.endDate));
+    // Date filtering now uses sourceDocument.entryDate via subquery
+    if (params.startDate) {
+        conditions.push(
+            sql`${ledgerEntries.sourceDocumentId} IN (
+                SELECT id FROM source_documents
+                WHERE entry_date >= ${params.startDate} AND deleted_at IS NULL
+            )`
+        );
+    }
+    if (params.endDate) {
+        conditions.push(
+            sql`${ledgerEntries.sourceDocumentId} IN (
+                SELECT id FROM source_documents
+                WHERE entry_date <= ${params.endDate} AND deleted_at IS NULL
+            )`
+        );
+    }
     if (params.categoryId) conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
     if (params.currency) conditions.push(eq(ledgerEntries.currency, params.currency));
     // Filter by convertedAmount (main currency) for price range filtering
@@ -243,24 +261,16 @@ export async function getLedgerEntriesAction(
     }
 
     // Handle cursor with precise composite condition
-    // Cursor format: "entryDate|createdAt|id"
-    // Order: (entryDate DESC, createdAt DESC, id DESC)
-    // Condition: (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
+    // Cursor format: "createdAt|id" (simplified since entryDate is now on sourceDocument)
+    // Order: (createdAt DESC, id DESC)
     if (params.cursor) {
         const parts = params.cursor.split('|');
-        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-            const [cursorDate, cursorCreated, cursorId] = parts;
-            // Use precise composite condition with SQL template
-            // This is equivalent to: (entryDate, createdAt, id) < (cursorDate, cursorCreated, cursorId)
+        if (parts.length === 2 && parts[0] && parts[1]) {
+            const [cursorCreated, cursorId] = parts;
             conditions.push(
                 or(
-                    lt(ledgerEntries.entryDate, cursorDate),
+                    lt(ledgerEntries.createdAt, new Date(cursorCreated)),
                     and(
-                        eq(ledgerEntries.entryDate, cursorDate),
-                        lt(ledgerEntries.createdAt, new Date(cursorCreated))
-                    ),
-                    and(
-                        eq(ledgerEntries.entryDate, cursorDate),
                         eq(ledgerEntries.createdAt, new Date(cursorCreated)),
                         lt(ledgerEntries.id, cursorId)
                     )
@@ -269,10 +279,10 @@ export async function getLedgerEntriesAction(
         }
     }
 
-    // Single query with precise conditions - no manual filtering needed!
+    // Single query with precise conditions
     const items = await db.query.ledgerEntries.findMany({
         where: and(...conditions),
-        orderBy: (entries, { desc }) => [desc(entries.entryDate), desc(entries.createdAt), desc(entries.id)],
+        orderBy: (entries, { desc }) => [desc(entries.createdAt), desc(entries.id)],
         limit: limit + 1,
         with: {
             category: true,
@@ -286,8 +296,7 @@ export async function getLedgerEntriesAction(
 
     if (items.length > limit) {
         const nextItem = items[limit];
-        const nextDate = nextItem.entryDate || '0000-00-00';
-        nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
+        nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
         resultItems = items.slice(0, limit);
     }
 
@@ -298,7 +307,6 @@ export async function getLedgerEntriesAction(
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
         deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-        entryDate: item.entryDate,
         category: item.category ? {
             ...item.category,
             createdAt: item.category.createdAt.toISOString(),

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { createTestUserWithLedger } from "../helpers/schema-setup";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { eq } from "drizzle-orm";
@@ -21,29 +21,37 @@ describe("Stats Soft Delete Filtering Regression", () => {
     it("getLedgerStatsAction should filter out deleted entries", async () => {
         const db = getTestDb();
 
-        // 1. Insert an active entry
+        // 1. Create source document with entryDate
+        const [sourceDoc] = await db.insert(sourceDocuments).values({
+            ledgerId,
+            text: "Test expense",
+            entryDate: "2024-01-01",
+            status: "completed",
+        }).returning();
+
+        // 2. Insert an active entry
         await db.insert(ledgerEntries).values({
             ledgerId,
+            sourceDocumentId: sourceDoc.id,
             amount: "100.00",
             currency: "CNY",
             itemName: "Active Item",
-            entryDate: "2024-01-01",
         });
 
-        // 2. Insert a deleted entry
+        // 3. Insert a deleted entry
         await db.insert(ledgerEntries).values({
             ledgerId,
+            sourceDocumentId: sourceDoc.id,
             amount: "500.00",
             currency: "CNY",
             itemName: "Deleted Item",
-            entryDate: "2024-01-01",
             deletedAt: new Date(),
         });
 
-        // 3. Call stat action
+        // 4. Call stat action
         const stats = await getLedgerStatsAction(ledgerId);
 
-        // 4. Assert
+        // 5. Assert
         const cnyTotal = stats.totals.find(t => t.currency === "CNY");
         expect(cnyTotal?.total).toBe(100);
         expect(cnyTotal?.count).toBe(1);
@@ -52,33 +60,41 @@ describe("Stats Soft Delete Filtering Regression", () => {
     it("getEnhancedStats should filter out deleted entries", async () => {
         const db = getTestDb();
 
-        // 1. Insert an active entry
+        // 1. Create source document with entryDate
+        const [sourceDoc] = await db.insert(sourceDocuments).values({
+            ledgerId,
+            text: "Test expense",
+            entryDate: "2024-02-01",
+            status: "completed",
+        }).returning();
+
+        // 2. Insert an active entry
         await db.insert(ledgerEntries).values({
             ledgerId,
+            sourceDocumentId: sourceDoc.id,
             amount: "200.00",
             currency: "CNY",
             itemName: "Active Enhanced",
-            entryDate: "2024-02-01",
         });
 
-        // 2. Insert a deleted entry
+        // 3. Insert a deleted entry
         await db.insert(ledgerEntries).values({
             ledgerId,
+            sourceDocumentId: sourceDoc.id,
             amount: "1000.00",
             currency: "CNY",
             itemName: "Deleted Enhanced",
-            entryDate: "2024-02-01",
             deletedAt: new Date(),
         });
 
-        // 3. Call enhanced stats
+        // 4. Call enhanced stats
         const stats = await getEnhancedStats({
             ledgerId,
             queryRange: { from: "2024-02-01", to: "2024-02-28" },
             compareRange: { from: "2024-01-01", to: "2024-01-31" }
         });
 
-        // 4. Assert
+        // 5. Assert
         expect(stats.summary.total).toBe(200);
     });
 });

@@ -58,7 +58,6 @@ describe("Ledger Entry Update Action", () => {
             amount: 200,
             itemName: "Updated Item",
             currency: "USD",
-            entryDate: "2023-01-01T00:00:00.000Z",
         };
 
         const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
@@ -67,7 +66,6 @@ describe("Ledger Entry Update Action", () => {
         expect(result.amount).toBe("200.00");
         expect(result.itemName).toBe(changes.itemName);
         expect(result.currency).toBe(changes.currency);
-        expect(new Date(result.entryDate!).toISOString()).toBe(changes.entryDate);
     });
 
     it("should handle partial updates", async () => {

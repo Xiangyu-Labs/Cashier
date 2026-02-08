@@ -125,13 +125,15 @@ describe("E1: Create Entry → Data Association Correct", () => {
 
         const ledger = await createTestLedger(db);
         const category = await createTestCategory(db, ledger.id);
+        const sourceDoc = await createTestSourceDocument(db, ledger.id);
 
-        // Create entry via action (amount must be a number)
+        // Create entry via action (amount must be a number, sourceDocumentId is required)
         const entry = await createLedgerEntryAction(ledger.id, {
             amount: 100.00,
             currency: "CNY",
             itemName: "测试条目",
             categoryId: category.id,
+            sourceDocumentId: sourceDoc.id,
         });
 
         // Verify association
@@ -148,12 +150,14 @@ describe("E1: Create Entry → Data Association Correct", () => {
         const db = getTestDb();
 
         const ledger = await createTestLedger(db);
+        const sourceDoc = await createTestSourceDocument(db, ledger.id);
 
-        // Create entry without category (amount must be a number)
+        // Create entry without category (amount must be a number, sourceDocumentId is required)
         const entry = await createLedgerEntryAction(ledger.id, {
             amount: 50.00,
             currency: "CNY",
             itemName: "无分类条目",
+            sourceDocumentId: sourceDoc.id,
         });
 
         expect(entry.categoryId).toBeNull();

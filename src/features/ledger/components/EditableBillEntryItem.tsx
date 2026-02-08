@@ -80,7 +80,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
         parseFloat(displayData.amount),
         displayData.currency,
         mainCurrency,
-        ledgerEntry.entryDate || ledgerEntry.createdAt
+        sourceDocumentEntryDate || ledgerEntry.createdAt
     );
 
     const isDifferentCurrency =
@@ -89,22 +89,6 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
         displayData.currency !== "unknown";
 
     const category = categories.find(c => c.id === displayData.categoryId);
-
-    // Check if entry date differs from source document date
-    const entryDateDiffersFromSourceDoc = useMemo(() => {
-        if (!sourceDocumentEntryDate || !ledgerEntry.entryDate) return false;
-        // Compare only the date part (YYYY-MM-DD)
-        const entryDateStr = ledgerEntry.entryDate.split('T')[0];
-        const sourceDocDateStr = sourceDocumentEntryDate.split('T')[0];
-        return entryDateStr !== sourceDocDateStr;
-    }, [sourceDocumentEntryDate, ledgerEntry.entryDate]);
-
-    // Format the entry date for display
-    const formattedEntryDate = useMemo(() => {
-        if (!entryDateDiffersFromSourceDoc || !ledgerEntry.entryDate) return null;
-        const date = new Date(ledgerEntry.entryDate);
-        return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-    }, [entryDateDiffersFromSourceDoc, ledgerEntry.entryDate, locale]);
 
     const sortedCurrencies = (() => {
         const preferred = preferredCurrencies.filter(c => c !== "unknown");
@@ -144,11 +128,6 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                         displayClassName="font-medium text-text text-sm"
                         inputClassName="text-sm font-medium"
                     />
-                    {formattedEntryDate && (
-                        <span className="text-[10px] text-muted-foreground/50 shrink-0">
-                            {formattedEntryDate}
-                        </span>
-                    )}
                 </div>
 
                 {(displayData.description || category) && (

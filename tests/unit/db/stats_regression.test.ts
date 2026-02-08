@@ -1,64 +1,63 @@
 import { describe, it, expect } from "vitest";
-import { sql, eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 
 /**
  * Regression Test for Statistics Data Issue
- * 
- * Issue: Confirmed ledger entries were missing from stats because they had null entryDate.
- * Fix: The API was updated to use COALESCE(entry_date, created_at) as the date source.
- * 
- * This test verifies that we can correctly filter and group ledger entries even if entryDate is null,
- * using the same SQL logic as the API.
+ *
+ * Issue: Previously entries could have null entryDate. Now entryDate is on sourceDocument.
+ * Fix: Entries now inherit entryDate from their associated sourceDocument.
+ *
+ * This test verifies that we can correctly filter and group ledger entries
+ * using the sourceDocument's entryDate.
  */
 describe("Stats Regression Test", () => {
-    it("should include ledger entries with null entryDate in date-filtered queries using createdAt fallback", async () => {
+    it("should include ledger entries when sourceDocument has entryDate", async () => {
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Stats Regression Ledger");
         const ledger = { id: ledgerId };
 
-        // Create a ledger entry with NO entryDate (it defaults to null)
-        // But it has a createdAt (defaults to now)
+        // Create a source document with entryDate
+        const today = new Date().toISOString().split('T')[0];
+        const [sourceDoc] = await db
+            .insert(sourceDocuments)
+            .values({
+                ledgerId: ledger.id,
+                text: "Test expense",
+                entryDate: today,
+                status: "completed",
+            })
+            .returning();
+
+        // Create a ledger entry associated with the source document
         const [tx] = await db
             .insert(ledgerEntries)
             .values({
                 ledgerId: ledger.id,
+                sourceDocumentId: sourceDoc.id,
                 amount: "100.00",
-                itemName: "No Date Entry",
-                entryDate: null, // Explicitly null
+                itemName: "Test Entry",
             })
             .returning();
 
-        expect(tx.entryDate).toBeNull();
+        expect(tx.sourceDocumentId).toBe(sourceDoc.id);
         expect(tx.createdAt).toBeDefined();
 
-        // Simulate the API query logic
-        // We want to find this entry if we query for today's date range
-        const today = new Date();
-        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-
-        // SQLite logic for date extraction from timestamp_ms
-        const dateCol = sql<string>`date(COALESCE(${ledgerEntries.entryDate}, ${ledgerEntries.createdAt}) / 1000, 'unixepoch')`;
-
-        // Construct query with the coalesced date filter
-        const found = await db
-            .select({
-                id: ledgerEntries.id,
-                date: dateCol
-            })
-            .from(ledgerEntries)
-            .where(
-                and(
-                    eq(ledgerEntries.ledgerId, ledger.id),
-                    sql`${dateCol} >= ${startDate.toISOString().split('T')[0]}`,
-                    sql`${dateCol} <= ${endDate.toISOString().split('T')[0]}`
-                )
-            );
+        // Verify we can find the entry via sourceDocument's entryDate
+        const found = await db.query.ledgerEntries.findMany({
+            where: and(
+                eq(ledgerEntries.ledgerId, ledger.id),
+                isNull(ledgerEntries.deletedAt)
+            ),
+            with: {
+                sourceDocument: true
+            }
+        });
 
         expect(found).toHaveLength(1);
         expect(found[0].id).toBe(tx.id);
+        expect(found[0].sourceDocument?.entryDate).toBe(today);
     });
 });

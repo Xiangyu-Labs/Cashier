@@ -63,13 +63,11 @@ describe("Batch Update Ledger Entries Action", () => {
         });
     });
 
-    it("should batch update entryDate and description", async () => {
-        const newDate = "2023-10-27T00:00:00.000Z";
+    it("should batch update description", async () => {
         const newDescription = "Batch updated description";
 
         // batchUpdateLedgerEntriesAction returns void in new format
         await batchUpdateLedgerEntriesAction(testLedgerId, testEntryIds, {
-            entryDate: newDate,
             description: newDescription
         });
 
@@ -83,8 +81,6 @@ describe("Batch Update Ledger Entries Action", () => {
         expect(updatedEntries).toHaveLength(2);
         updatedEntries.forEach(entry => {
             expect(entry.description).toBe(newDescription);
-            // entryDate is now a string in yyyy-MM-dd format
-            expect(entry.entryDate).toBe(newDate.split('T')[0]);
         });
     });
 });

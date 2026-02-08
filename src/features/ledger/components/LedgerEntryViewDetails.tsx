@@ -23,7 +23,6 @@ export interface EntryPendingChanges {
     amount?: number;
     currency?: string;
     categoryId?: string | null;
-    entryDate?: string;
     description?: string | null;
 }
 
@@ -62,10 +61,12 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         amount: pendingChanges.amount ?? parseFloat(ledgerEntry.amount),
         currency: pendingChanges.currency ?? ledgerEntry.currency,
         categoryId: pendingChanges.categoryId !== undefined ? pendingChanges.categoryId : ledgerEntry.categoryId,
-        entryDate: pendingChanges.entryDate ?? ledgerEntry.entryDate ??
-            (ledgerEntry.createdAt ? new Date(ledgerEntry.createdAt).toISOString().split('T')[0] : ""),
         description: pendingChanges.description !== undefined ? pendingChanges.description : ledgerEntry.description,
     }), [pendingChanges, ledgerEntry]);
+
+    // Get entryDate from source document
+    const entryDate = ledgerEntry.sourceDocument?.entryDate ??
+        (ledgerEntry.createdAt ? new Date(ledgerEntry.createdAt).toISOString().split('T')[0] : "");
 
     const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -73,7 +74,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         displayData.amount,
         displayData.currency,
         mainCurrency,
-        displayData.entryDate || ledgerEntry.createdAt
+        entryDate || ledgerEntry.createdAt
     );
 
     const isDifferentCurrency = displayData.currency && displayData.currency !== mainCurrency && displayData.currency !== "unknown";
@@ -191,24 +192,13 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 <div className="rounded-lg border border-border bg-surface2/30 p-3 sm:p-4 space-y-3 sm:space-y-4">
                     {/* Date and Category */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Date - Always editable (like tab filters) */}
+                        {/* Date - Read-only, from source document */}
                         <div className="flex items-center gap-2 min-w-0">
                             <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
-                            <div className="min-w-[120px]">
-                                <DateFilter
-                                    value={displayData.entryDate}
-                                    onChange={(date) => {
-                                        if (date) {
-                                            const y = date.getFullYear();
-                                            const m = String(date.getMonth() + 1).padStart(2, "0");
-                                            const d = String(date.getDate()).padStart(2, "0");
-                                            handleFieldChange("entryDate", `${y}-${m}-${d}`);
-                                        }
-                                    }}
-                                    size="sm"
-                                />
-                            </div>
+                            <span className="text-sm text-text">
+                                {entryDate ? new Date(entryDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
+                            </span>
                         </div>
 
                         {/* Category - Editable */}

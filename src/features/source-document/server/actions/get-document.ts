@@ -59,7 +59,6 @@ export async function getSourceDocumentByIdAction(id: string) {
             amount: String(entry.amount),
             createdAt: entry.createdAt.toISOString(),
             deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-            entryDate: entry.entryDate
         }))
     };
 }

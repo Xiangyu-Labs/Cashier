@@ -48,7 +48,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
       const curr = entry.currency || mainCurrency;
       groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
       if (!dates[curr]) {
-        dates[curr] = entry.entryDate || entry.createdAt;
+        dates[curr] = entry.sourceDocument?.entryDate || entry.createdAt;
       }
     });
 

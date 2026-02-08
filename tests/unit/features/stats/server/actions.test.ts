@@ -121,15 +121,15 @@ describe('getEnhancedStats', () => {
             metadata: { settings: { mainCurrency: 'CNY' } }
         });
 
-        // Mock Entries for Current Month
+        // Mock Entries for Current Month (entryDate is now on sourceDocument)
         const mockCurrentEntries = [
-            { id: '1', amount: 100, currency: 'CNY', entryDate: '2023-10-01', categoryId: 'cat1', category: { name: 'Food', icon: 'food' } },
-            { id: '2', amount: 10, currency: 'USD', entryDate: '2023-10-02', categoryId: 'cat2', category: { name: 'Transport', icon: 'car' } } // 10 USD -> ~70 CNY
+            { id: '1', amount: 100, currency: 'CNY', categoryId: 'cat1', category: { name: 'Food', icon: 'food' }, sourceDocument: { entryDate: '2023-10-01' } },
+            { id: '2', amount: 10, currency: 'USD', categoryId: 'cat2', category: { name: 'Transport', icon: 'car' }, sourceDocument: { entryDate: '2023-10-02' } } // 10 USD -> ~70 CNY
         ];
 
         // Mock Entries for Previous Month
         const mockPrevEntries = [
-            { id: '3', amount: 50, currency: 'CNY', entryDate: '2023-09-01', categoryId: 'cat1', category: { name: 'Food', icon: 'food' } }
+            { id: '3', amount: 50, currency: 'CNY', categoryId: 'cat1', category: { name: 'Food', icon: 'food' }, sourceDocument: { entryDate: '2023-09-01' } }
         ];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

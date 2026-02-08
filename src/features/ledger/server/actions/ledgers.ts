@@ -125,6 +125,7 @@ async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency:
 
     const entries = await db.query.ledgerEntries.findMany({
         where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+        with: { sourceDocument: true },
     });
 
     if (entries.length === 0) {
@@ -143,7 +144,7 @@ async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency:
         amount: Number(entry.amount),
         from: entry.currency || "CNY",
         to: mainCurrency,
-        date: entry.entryDate || undefined,
+        date: entry.sourceDocument?.entryDate || undefined,
     }));
 
     // Batch convert all entries (optimized: M DB queries for M unique dates)

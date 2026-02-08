@@ -73,14 +73,13 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     categoryId: text("category_id").references(() => entryCategories.id, {
         onDelete: "set null",
     }),
-    sourceDocumentId: text("source_document_id").references(() => sourceDocuments.id, {
-        onDelete: "set null",
-    }),
+    sourceDocumentId: text("source_document_id")
+        .notNull()
+        .references(() => sourceDocuments.id, { onDelete: "cascade" }),
     amount: text("amount").notNull(), // SQLite has no decimal, use text
     currency: text("currency"),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    entryDate: text("entry_date"), // yyyy-MM-dd format, no timezone ambiguity
     convertedAmount: text("converted_amount"), // Amount in ledger's main currency
     exchangeRate: text("exchange_rate"), // Exchange rate used for conversion
     metadata: text("metadata", { mode: "json" }).$type<LedgerEntryMetadata>().default({}),
@@ -88,11 +87,8 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
-    index("idx_ledger_entries_ledger_date").on(table.ledgerId, table.entryDate),
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
     index("idx_ledger_entries_created_at").on(table.createdAt),
-    // Optimization for category filtering with date sort
-    index("idx_ledger_entries_category_date").on(table.ledgerId, table.categoryId, table.entryDate),
     // Optimization for default sort (createdAt) within a ledger
     index("idx_ledger_entries_ledger_created").on(table.ledgerId, table.createdAt),
     // Optimization for soft-delete filtering

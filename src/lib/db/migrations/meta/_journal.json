@@ -71,6 +71,13 @@
       "when": 1770444434525,
       "tag": "0009_flimsy_leech",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1770528301996,
+      "tag": "0010_hot_rhodey",
+      "breakpoints": true
     }
   ]
 }
