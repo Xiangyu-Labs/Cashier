@@ -196,7 +196,6 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
     if (data.currency !== undefined) updateData.currency = data.currency;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.itemName !== undefined) updateData.itemName = data.itemName;
-    if (data.entryDate !== undefined) updateData.entryDate = data.entryDate ? (data.entryDate as string).split('T')[0] : null;
     updateData.updatedAt = new Date();
 
     const q = forLedger(ledgerEntries, ledgerId);
