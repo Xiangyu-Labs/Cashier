@@ -103,6 +103,7 @@ export interface Stage2Input {
     imageUrls?: string[];
     aiLanguage?: string;
     validationSummary: ValidationSummary;
+    originalCategories: { name: string; description: string | null }[];
 }
 
 export interface Stage2Output {
@@ -120,6 +121,7 @@ export async function executeStage2(
 
     const prompt = buildDetailedParsePrompt(
         input.validationSummary,
+        input.originalCategories,
         input.aiLanguage
     );
 

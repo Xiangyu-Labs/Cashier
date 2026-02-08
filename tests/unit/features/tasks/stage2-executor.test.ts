@@ -18,6 +18,10 @@ describe("Stage 2 Executor", () => {
         imageUrls: [],
         aiLanguage: "zh-CN",
         validationSummary: baseValidationSummary,
+        originalCategories: [
+            { name: "餐饮", description: "食物消费" },
+            { name: "交通", description: "出行费用" },
+        ],
     };
 
     describe("Dual GPT Agreement", () => {

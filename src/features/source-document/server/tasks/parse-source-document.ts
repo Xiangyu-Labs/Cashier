@@ -82,7 +82,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             imageUrls: input.imageUrls,
             aiLanguage: input.aiLanguage,
             preferredCurrencies: input.preferredCurrencies,
-            categories: input.categories.map(c => ({ name: c.name, description: null })),
+            categories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
             aiCustomPrompt: input.settings.aiCustomPrompt,
         };
 
@@ -164,6 +164,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 imageUrls: input.imageUrls,
                 aiLanguage: input.aiLanguage,
                 validationSummary: validationResult,
+                originalCategories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
             }, ai);
 
             // Convert Stage 2 entries to ParsedLedgerEntry format

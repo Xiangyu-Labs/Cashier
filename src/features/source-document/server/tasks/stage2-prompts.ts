@@ -8,6 +8,7 @@ import type { ValidationSummary } from "./types";
 
 export function buildDetailedParsePrompt(
   validationSummary: ValidationSummary,
+  originalCategories: { name: string; description: string | null }[],
   aiLanguage: string = "zh-CN"
 ): string {
   // Build context section from validation summary
@@ -15,8 +16,9 @@ export function buildDetailedParsePrompt(
     .map(c => `- ${c.code}: ${c.hint}`)
     .join("\n") || "No currency hints";
 
-  const categoryHints = validationSummary.summary?.categories
-    .map((c, index) => ({ index: index + 1, name: c.name, description: c.hint })) || [];
+  // Use original categories with correct indices (1-based)
+  const categoryHints = originalCategories
+    .map((c, index) => ({ index: index + 1, name: c.name, description: c.description || "" }));
   const categoryHintsStr = categoryHints.length > 0
     ? JSON.stringify(categoryHints, null, 2)
     : "No categories available";
