@@ -77,13 +77,47 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         }) => {
             return await createSourceDocumentAction(ledgerId, data);
         },
+        onMutate: async (newData) => {
+            // Cancel any outgoing refetches to prevent race conditions
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId, 'pending') });
+
+            // Snapshot the previous pending documents for rollback
+            const previousPending = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, 'pending'));
+
+            // Store the current input values for potential rollback
+            const previousText = text;
+            const previousImages = [...images];
+
+            // Immediately clear the input (feels instant!)
+            setText("");
+            setImages([]);
+
+            return { previousPending, previousText, previousImages };
+        },
+        onError: (_err, _newData, context) => {
+            // Rollback: restore the pending documents cache
+            if (context?.previousPending !== undefined) {
+                queryClient.setQueryData(
+                    queryKeys.sourceDocuments(ledgerId, 'pending'),
+                    context.previousPending
+                );
+            }
+            // Restore the input values so user doesn't lose their data
+            if (context?.previousText !== undefined) {
+                setText(context.previousText);
+            }
+            if (context?.previousImages !== undefined) {
+                setImages(context.previousImages);
+            }
+        },
         onSuccess: () => {
+            onSuccess?.();
+        },
+        onSettled: () => {
+            // Always refetch to ensure server state is in sync
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             // Also invalidate task queue to trigger smart polling for the new parse task
             queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
-            setText("");
-            setImages([]);
-            onSuccess?.();
         },
     });
 
@@ -94,11 +128,17 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         }) => {
             await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
         },
+        onMutate: async () => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        },
         onSuccess: () => {
+            onSuccess?.();
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             // Also invalidate task queue to trigger smart polling for the retry task
             queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
-            onSuccess?.();
         },
     });
 

@@ -288,13 +288,34 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         mutationFn: async (categoryIds: string[]) => {
             await reorderEntryCategoriesAction(ledgerId, categoryIds);
         },
+        onMutate: async (categoryIds: string[]) => {
+            await queryClient.cancelQueries({ queryKey });
+            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
+
+            // Optimistically reorder categories
+            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) => {
+                const categoryMap = new Map(old.map(c => [c.id, c]));
+                return categoryIds
+                    .map((id, index) => {
+                        const cat = categoryMap.get(id);
+                        return cat ? { ...cat, sortOrder: index } : null;
+                    })
+                    .filter((c): c is EntryCategoryWithCount => c !== null);
+            });
+
+            return { previousCategories };
+        },
         onSuccess: () => {
             toast.success(t("categoriesReordered"));
-            // 不调用 router.refresh()，使用乐观更新避免UI闪烁
         },
-        onError: () => {
+        onError: (_err: Error, _: string[], context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("reorderCategoriesFailed"));
-            router.refresh(); // 仅失败时refresh恢复状态
+            if (context?.previousCategories) {
+                queryClient.setQueryData(queryKey, context.previousCategories);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
         },
     });
 
@@ -302,22 +323,67 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         mutationFn: async (name: string) => {
             return await createServiceCredentialAction(ledgerId, { name });
         },
+        onMutate: async (name: string) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.serviceCredentials(ledgerId) });
+            const previousCredentials = queryClient.getQueryData<ServiceCredential[]>(queryKeys.serviceCredentials(ledgerId));
+
+            // Optimistically add the new credential
+            queryClient.setQueryData<ServiceCredential[]>(queryKeys.serviceCredentials(ledgerId), (old = []) => [
+                ...old,
+                {
+                    id: `temp-${Date.now()}`,
+                    name,
+                    ledgerId,
+                    key: '••••••••', // Placeholder
+                    createdAt: new Date().toISOString(),
+                    deletedAt: null,
+                    lastUsedAt: null,
+                } as ServiceCredential
+            ]);
+
+            return { previousCredentials };
+        },
         onSuccess: () => {
             toast.success(t("credentialCreated"));
-            router.refresh();
         },
-        onError: () => toast.error(t("createFailed"))
+        onError: (_err: Error, _: string, context: { previousCredentials?: ServiceCredential[] } | undefined) => {
+            toast.error(t("createFailed"));
+            if (context?.previousCredentials) {
+                queryClient.setQueryData(queryKeys.serviceCredentials(ledgerId), context.previousCredentials);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceCredentials(ledgerId) });
+        },
     });
 
     const deleteCredentialMutation = useMutation({
         mutationFn: async (id: string) => {
             await deleteServiceCredentialAction(ledgerId, id);
         },
+        onMutate: async (id: string) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.serviceCredentials(ledgerId) });
+            const previousCredentials = queryClient.getQueryData<ServiceCredential[]>(queryKeys.serviceCredentials(ledgerId));
+
+            // Optimistically remove the credential
+            queryClient.setQueryData<ServiceCredential[]>(queryKeys.serviceCredentials(ledgerId), (old = []) =>
+                old.filter((c) => c.id !== id)
+            );
+
+            return { previousCredentials };
+        },
         onSuccess: () => {
             toast.success(t("credentialDeleted"));
-            router.refresh();
         },
-        onError: () => toast.error(t("deleteFailed"))
+        onError: (_err: Error, _: string, context: { previousCredentials?: ServiceCredential[] } | undefined) => {
+            toast.error(t("deleteFailed"));
+            if (context?.previousCredentials) {
+                queryClient.setQueryData(queryKeys.serviceCredentials(ledgerId), context.previousCredentials);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceCredentials(ledgerId) });
+        },
     });
 
     return (

@@ -135,8 +135,59 @@ export function LedgerEntriesTab({
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             return await updateLedgerEntryAction(ledgerId, ledgerEntryId, data) as unknown as LedgerEntry;
         },
+        onMutate: async ({ ledgerEntryId, data }) => {
+            // Cancel in-flight queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot for rollback
+            const prevData = queryClient.getQueriesData({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+
+            // Optimistic update: update the entry in unified source documents
+            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
+                { queryKey: queryKeys.sourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old?.groups) return old;
+                    const updateEntries = (groups: SourceDocumentGroup[] | undefined): SourceDocumentGroup[] | undefined =>
+                        groups?.map(group => ({
+                            ...group,
+                            ledgerEntries: group.ledgerEntries.map(e =>
+                                e.id === ledgerEntryId
+                                    ? {
+                                        ...e,
+                                        ...data,
+                                        // Ensure amount stays as string type
+                                        amount: data.amount !== undefined ? String(data.amount) : e.amount,
+                                        category: data.categoryId
+                                            ? categories.find(c => c.id === data.categoryId) || e.category
+                                            : e.category
+                                    } as LedgerEntry
+                                    : e
+                            )
+                        }));
+                    return {
+                        ...old,
+                        groups: {
+                            processing: updateEntries(old.groups.processing),
+                            anomaly: updateEntries(old.groups.anomaly),
+                            completed: updateEntries(old.groups.completed),
+                        }
+                    };
+                }
+            );
+
+            return { prevData };
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+        },
+        onError: (_err, _vars, ctx) => {
+            // Rollback
+            if (ctx?.prevData) {
+                ctx.prevData.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
+            toast.error(tCommon("saveFailed"));
         },
         onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
@@ -228,11 +279,45 @@ export function LedgerEntriesTab({
         mutationFn: async (ids: string[]) => {
             await batchDeleteSourceDocumentsAction(ledgerId, ids);
         },
+        onMutate: async (ids) => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot for rollback
+            const prevData = queryClient.getQueriesData({ queryKey: queryKeys.sourceDocuments(ledgerId) });
+
+            // Optimistic update: remove all documents with matching IDs
+            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
+                { queryKey: queryKeys.sourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old?.groups) return old;
+                    const filterDocs = (groups: SourceDocumentGroup[] | undefined) =>
+                        groups?.filter(g => !ids.includes(g.sourceDocument.id));
+                    return {
+                        ...old,
+                        groups: {
+                            processing: filterDocs(old.groups.processing),
+                            anomaly: filterDocs(old.groups.anomaly),
+                            completed: filterDocs(old.groups.completed),
+                        }
+                    };
+                }
+            );
+
+            return { prevData };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             if (deleteConfirm.open) setDeleteConfirm({ ...deleteConfirm, open: false });
         },
-        onError: () => toast.error(tCommon("deleteFailed")),
+        onError: (_err, _ids, ctx) => {
+            // Rollback
+            if (ctx?.prevData) {
+                ctx.prevData.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
         onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
     });
 

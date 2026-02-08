@@ -149,19 +149,64 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
             return await updateLedgerEntryAction(ledgerId, ledgerEntryId, data) as unknown as LedgerEntry;
         },
-        onSuccess: (updatedEntry) => {
-            // Invalidation handled by Server Action revalidatePath + SSE
+        onMutate: async ({ ledgerEntryId, data }) => {
+            // Cancel in-flight queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot for rollback
+            const prevEntries = queryClient.getQueriesData({ queryKey: queryKeys.ledgerEntries(ledgerId) });
+
+            // Optimistic update: update entry in infinite query data
+            queryClient.setQueriesData<{ pages?: { items?: LedgerEntry[] }[] }>(
+                { queryKey: queryKeys.ledgerEntries(ledgerId) },
+                (old) => {
+                    if (!old?.pages) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map(page => ({
+                            ...page,
+                            items: page.items?.map(e =>
+                                e.id === ledgerEntryId
+                                    ? {
+                                        ...e,
+                                        ...data,
+                                        // Ensure amount stays as string type
+                                        amount: data.amount !== undefined ? String(data.amount) : e.amount,
+                                        category: data.categoryId
+                                            ? categories.find(c => c.id === data.categoryId) || e.category
+                                            : e.category
+                                    } as LedgerEntry
+                                    : e
+                            )
+                        }))
+                    };
+                }
+            );
+
+            // Also update selected entry immediately for modal
+            if (selectedLedgerEntry && selectedLedgerEntry.id === ledgerEntryId) {
+                setSelectedLedgerEntry(prev => prev ? {
+                    ...prev,
+                    ...data,
+                    amount: data.amount !== undefined ? String(data.amount) : prev.amount,
+                    category: data.categoryId
+                        ? categories.find(c => c.id === data.categoryId) || prev.category
+                        : prev.category
+                } as LedgerEntry : null);
+            }
+
+            return { prevEntries };
+        },
+        onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            // Update selected entry if it's the one being edited to reflect changes in modal
-            if (selectedLedgerEntry && selectedLedgerEntry.id === updatedEntry.id) {
-                setSelectedLedgerEntry({
-                    ...updatedEntry,
-                    category: categories.find(c => c.id === updatedEntry.categoryId) || null,
-                    sourceDocument: selectedLedgerEntry.sourceDocument
+        },
+        onError: (_err, _vars, ctx) => {
+            // Rollback
+            if (ctx?.prevEntries) {
+                ctx.prevEntries.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
                 });
             }
-        },
-        onError: () => {
             toast.error(tCommon("saveFailed"));
         },
         onSettled: () => {

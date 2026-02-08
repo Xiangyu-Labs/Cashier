@@ -1,16 +1,82 @@
 /**
  * Compresses an image file on the client side.
+ * Uses Web Worker with OffscreenCanvas when available for non-blocking compression.
  * @param file The image file to compress
  * @param maxWidth The maximum width of the resulting image
  * @param maxHeight The maximum height of the resulting image
  * @param quality The quality of the JPEG compression (0.0 to 1.0)
  * @returns A promise that resolves to the compressed base64 string and mime type
  */
+
+let worker: Worker | null = null;
+
+function getWorker(): Worker | null {
+    if (typeof window === 'undefined') return null;
+    if (typeof OffscreenCanvas === 'undefined') return null;
+
+    if (!worker) {
+        try {
+            worker = new Worker(new URL('./workers/image-compress.worker.ts', import.meta.url));
+        } catch {
+            // Worker creation failed, fall back to sync
+            return null;
+        }
+    }
+    return worker;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
 export async function compressImage(
     file: File,
     maxWidth = 1600,
     maxHeight = 1600,
     quality = 0.8
+): Promise<{ data: string; mimeType: string }> {
+    const w = getWorker();
+
+    // Use Web Worker if available (non-blocking)
+    if (w) {
+        const arrayBuffer = await file.arrayBuffer();
+
+        return new Promise((resolve, reject) => {
+            const handler = (e: MessageEvent) => {
+                w.removeEventListener('message', handler);
+                if (e.data.success) {
+                    const base64 = arrayBufferToBase64(e.data.data);
+                    resolve({
+                        data: `data:image/jpeg;base64,${base64}`,
+                        mimeType: 'image/jpeg',
+                    });
+                } else {
+                    reject(new Error(e.data.error));
+                }
+            };
+
+            w.addEventListener('message', handler);
+            w.postMessage({ imageData: arrayBuffer, maxWidth, maxHeight, quality }, [arrayBuffer]);
+        });
+    }
+
+    // Fallback to synchronous compression (main thread)
+    return compressImageSync(file, maxWidth, maxHeight, quality);
+}
+
+/**
+ * Synchronous image compression (fallback when Web Worker not available)
+ */
+function compressImageSync(
+    file: File,
+    maxWidth: number,
+    maxHeight: number,
+    quality: number
 ): Promise<{ data: string; mimeType: string }> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();

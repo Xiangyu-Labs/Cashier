@@ -84,6 +84,11 @@ export function TaskQueueModal({
         mutationFn: async (sourceDocumentId: string) => {
             await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
         },
+        onMutate: async (sourceDocumentId) => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+            // Note: Task queue uses its own data structure, optimistic update handled by UI state
+            return { sourceDocumentId };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             setDeleteConfirm({ ...deleteConfirm, open: false });
@@ -100,6 +105,9 @@ export function TaskQueueModal({
         mutationFn: async (ids: string[]) => {
             await batchDeleteSourceDocumentsAction(ledgerId, ids);
         },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
             setDeleteConfirm({ ...deleteConfirm, open: false });
@@ -113,6 +121,9 @@ export function TaskQueueModal({
     const batchRetryMutation = useMutation({
         mutationFn: async (ids: string[]) => {
             await batchRetrySourceDocumentsAction(ledgerId, ids);
+        },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
         onSuccess: () => {
             toast.success(tEntries("retrySubmitted"));
@@ -128,6 +139,9 @@ export function TaskQueueModal({
         mutationFn: async (taskId: string) => {
             await dismissTaskAction(ledgerId, taskId);
         },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        },
         onSuccess: () => {
             toast.success(t("dismissed"));
         },
@@ -140,6 +154,9 @@ export function TaskQueueModal({
     const batchDismissMutation = useMutation({
         mutationFn: async (taskIds: string[]) => {
             await batchDismissTasksAction(ledgerId, taskIds);
+        },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
         onSuccess: () => {
             toast.success(t("dismissed"));
