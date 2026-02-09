@@ -34,6 +34,13 @@ import { invalidateLedgerCache } from "@/lib/query-keys";
 // Task type constant for matching
 const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
 
+function getSourceDocumentIdFromInput(input: unknown): string | null {
+    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
+        return (input as { sourceDocumentId?: string }).sourceDocumentId ?? null;
+    }
+    return null;
+}
+
 interface TaskQueueModalProps {
     ledgerId: string;
     open: boolean;
@@ -70,13 +77,9 @@ export function TaskQueueModal({
         description: string;
     }>({ open: false, type: null, id: null, title: "", description: "" });
 
-    // For parse_source_document tasks, we need to extract sourceDocumentId from the task
-    // This is a project-specific integration point
+    // For parse_source_document tasks, extract sourceDocumentId from task input
     const getSourceDocumentId = useCallback((task: SerializedTaskRun): string | null => {
-        // The sourceDocumentId is stored in task input when the task is created
-        // For now, we use the task.id as a fallback mechanism
-        // In practice, you'd need to store/lookup the association
-        return task.id; // Placeholder - actual implementation would need task input parsing
+        return getSourceDocumentIdFromInput(task.input);
     }, []);
 
     // Mutations for source document tasks
@@ -184,7 +187,10 @@ export function TaskQueueModal({
 
     const handleRetry = useCallback((task: SerializedTaskRun) => {
         if (task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT) {
-            setRetryTaskId(task.id);
+            const sourceDocId = getSourceDocumentIdFromInput(task.input);
+            if (sourceDocId) {
+                setRetryTaskId(sourceDocId);
+            }
         }
     }, []);
 
