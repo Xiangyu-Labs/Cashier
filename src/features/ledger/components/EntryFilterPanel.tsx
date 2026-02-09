@@ -138,6 +138,7 @@ export function EntryFilterPanel({
             switch (preset) {
                 case "thisMonth":
                     start.setDate(1);
+                    start.setHours(0, 0, 0, 0);
                     end.setMonth(end.getMonth() + 1, 0);
                     end.setHours(23, 59, 59, 999);
                     break;
