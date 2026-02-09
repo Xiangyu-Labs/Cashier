@@ -7,7 +7,7 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 // Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
-import { desc, lte, gte, inArray, and, eq, isNull, or, lt } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, isNull, or, lt, sql } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -137,11 +137,21 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         });
         if (!existingDoc) throw new Error("Source document not found");
 
+        // Soft delete old failed/completed task_runs for this source document
+        const { taskRuns } = await import("@/lib/db/schema");
+        await db.update(taskRuns)
+            .set({ deletedAt: new Date() })
+            .where(and(
+                isNull(taskRuns.deletedAt),
+                sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${sourceDocumentId}`,
+                sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+            ));
+
         const text = input?.text || existingDoc.text || undefined;
         const images = input?.images;
 
-        // Update status to queued
-        const updatePayload: Partial<SourceDocument> = { status: "queued" };
+        // Update status to queued and clear anomaly fields
+        const updatePayload: Partial<SourceDocument> = { status: "queued", anomalyReason: null };
 
         // If new text/images provided, update the document record
         if (input) {
@@ -448,7 +458,19 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
         )
     });
 
-    // 2. Update status to queued and clear anomaly fields
+    // 2. Soft delete old task_runs for these source documents
+    const { taskRuns } = await import("@/lib/db/schema");
+    for (const docId of sourceDocumentIds) {
+        await db.update(taskRuns)
+            .set({ deletedAt: new Date() })
+            .where(and(
+                isNull(taskRuns.deletedAt),
+                sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${docId}`,
+                sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+            ));
+    }
+
+    // 3. Update status to queued and clear anomaly fields
     await db.update(sourceDocuments)
         .set({ status: "queued", anomalyReason: null })
         .where(and(
@@ -456,7 +478,7 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
             inArray(sourceDocuments.id, sourceDocumentIds)
         ));
 
-    // 3. Retrigger tasks for each
+    // 4. Retrigger tasks for each
     await Promise.all(docs.map(async (doc) => {
         const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
         await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
