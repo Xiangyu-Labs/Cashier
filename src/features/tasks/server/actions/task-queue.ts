@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 
 /**
  * Status groups for the task queue UI
@@ -92,33 +92,22 @@ function serializeAnomalyBill(doc: SourceDocument): SerializedAnomalyBill {
 }
 
 /**
- * Helper to extract ledgerId from task input
- */
-function getLedgerIdFromInput(input: unknown): string | null {
-    if (typeof input === 'object' && input !== null && 'ledgerId' in input) {
-        return (input as { ledgerId?: string }).ledgerId ?? null;
-    }
-    return null;
-}
-
-/**
  * Get task queue data for the unified Task Queue Modal.
  * Returns tasks grouped by status with token statistics.
  * Also includes anomaly source documents from the source_documents table.
- * 
- * Since ledgerId is now stored in input JSON, we fetch all active tasks
- * and filter in memory by parsing input.ledgerId.
+ *
+ * Tasks are filtered by ledgerId using the scopeId column.
  */
 export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueResult> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
 
-    // Fetch active tasks for this ledger (filter at SQL level using json_extract)
+    // Fetch active tasks for this ledger (filter at SQL level using scopeId column)
     const activeTasks = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
             inArray(taskRuns.status, ["pending", "running", "failed"]),
-            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+            eq(taskRuns.scopeId, ledgerId)
         ),
         orderBy: [desc(taskRuns.createdAt)],
     });
@@ -128,7 +117,7 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         where: and(
             isNull(taskRuns.deletedAt),
             eq(taskRuns.status, "completed"),
-            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+            eq(taskRuns.scopeId, ledgerId)
         ),
         orderBy: [desc(taskRuns.completedAt)],
         limit: 100, // Limit to avoid fetching thousands of completed tasks

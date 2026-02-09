@@ -35,35 +35,41 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
 
     const validated = createLedgerSchema.parse(data);
 
-    // Create ledger
-    const [newLedger] = await db
-        .insert(ledgers)
-        .values({
-            userId: session.user.id,
-            name: validated.name,
-            metadata: {
-                settings: {
-                    aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
-                    currencies: defaultLedger.settings.currencies,
-                    mainCurrency: defaultLedger.settings.mainCurrency,
-                    collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
-                    aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
+    let newLedger: import("@/lib/db/schema").Ledger;
+
+    // Atomically create ledger and seed categories in a transaction
+    db.transaction((tx) => {
+        // 1. Create ledger
+        [newLedger] = tx
+            .insert(ledgers)
+            .values({
+                userId: session.user.id,
+                name: validated.name,
+                metadata: {
+                    settings: {
+                        aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
+                        currencies: defaultLedger.settings.currencies,
+                        mainCurrency: defaultLedger.settings.mainCurrency,
+                        collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
+                        aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
+                    }
                 }
-            }
-        })
-        .returning();
+            })
+            .returning()
+            .all();
 
-    // Seed categories for the new ledger
-    if (defaultLedger.categories.length > 0) {
-        await db.insert(entryCategories).values(
-            defaultLedger.categories.map((cat) => ({
-                ...cat,
-                ledgerId: newLedger.id,
-            }))
-        );
-    }
+        // 2. Seed categories for the new ledger
+        if (defaultLedger.categories.length > 0) {
+            tx.insert(entryCategories).values(
+                defaultLedger.categories.map((cat) => ({
+                    ...cat,
+                    ledgerId: newLedger.id,
+                }))
+            ).run();
+        }
+    });
 
-    return newLedger;
+    return newLedger!;
 }
 
 export async function updateLedgerAction(id: string, data: z.infer<typeof updateLedgerSchema>): Promise<import("@/lib/db/schema").Ledger> {
@@ -164,27 +170,36 @@ async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency:
     }
 
     // Batch update using transaction
-    db.transaction((tx) => {
-        for (let i = 0; i < entries.length; i++) {
-            // Check version periodically (every 100 entries) to allow early abort
-            if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
-                logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
-                return;
+    try {
+        db.transaction((tx) => {
+            for (let i = 0; i < entries.length; i++) {
+                // Check version periodically (every 100 entries) to allow early abort
+                if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
+                    logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
+                    throw new Error('SUPERSEDED');
+                }
+
+                tx.update(ledgerEntries)
+                    .set({
+                        convertedAmount: results[i].convertedAmount.toFixed(2),
+                        exchangeRate: results[i].exchangeRate.toFixed(6),
+                        updatedAt: new Date(),
+                    })
+                    .where(eq(ledgerEntries.id, entries[i].id))
+                    .run();
             }
+        });
 
-            tx.update(ledgerEntries)
-                .set({
-                    convertedAmount: results[i].convertedAmount.toFixed(2),
-                    exchangeRate: results[i].exchangeRate.toFixed(6),
-                    updatedAt: new Date(),
-                })
-                .where(eq(ledgerEntries.id, entries[i].id))
-                .run();
+        taskVersionManager.release(taskKey, version);
+        logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
+    } catch (err) {
+        if (err instanceof Error && err.message === 'SUPERSEDED') {
+            logger.info({ ledgerId, version }, "Recalculation superseded, transaction rolled back");
+            taskVersionManager.release(taskKey, version);
+            return;
         }
-    });
-
-    taskVersionManager.release(taskKey, version);
-    logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
+        throw err;
+    }
 }
 
 export async function deleteLedgerAction(id: string): Promise<void> {
@@ -202,8 +217,27 @@ export async function deleteLedgerAction(id: string): Promise<void> {
         throw new Error("Ledger not found or access denied");
     }
 
-    const { sourceDocuments } = await import("@/lib/db/schema");
+    const { sourceDocuments, taskRuns } = await import("@/lib/db/schema");
+    const { flowEngine } = await import("@/lib/flow");
+    const { inArray } = await import("drizzle-orm");
     const now = new Date();
+
+    // Find and cancel all task_runs for this ledger before transaction
+    const relatedTaskRuns = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.scopeId, id)
+        ),
+    });
+
+    // Cancel any running/pending tasks
+    for (const task of relatedTaskRuns) {
+        if (task.status === 'pending' || task.status === 'running') {
+            await flowEngine.cancel(task.id);
+        }
+    }
+
+    const taskIdsToDelete = relatedTaskRuns.map(t => t.id);
 
     // better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
@@ -225,7 +259,15 @@ export async function deleteLedgerAction(id: string): Promise<void> {
             .where(and(eq(sourceDocuments.ledgerId, id), isNull(sourceDocuments.deletedAt)))
             .run();
 
-        // 4. Finally soft delete the ledger itself
+        // 4. Soft delete all associated task_runs
+        if (taskIdsToDelete.length > 0) {
+            tx.update(taskRuns)
+                .set({ deletedAt: now })
+                .where(inArray(taskRuns.id, taskIdsToDelete))
+                .run();
+        }
+
+        // 5. Finally soft delete the ledger itself
         tx.update(ledgers)
             .set({ deletedAt: now })
             .where(eq(ledgers.id, id))

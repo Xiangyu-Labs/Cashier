@@ -14,10 +14,14 @@ npm run dev              # Start dev server
 npm run build            # Production build
 npm run lint             # ESLint
 
-# Testing (uses in-memory SQLite)
+# Testing (uses in-memory SQLite, no external DB needed)
 npm run test             # Watch mode
 npm run test:run         # Single run
 npm run test:coverage    # With coverage
+# Run a single test file:
+npx vitest run tests/unit/lib/date-utils.test.ts
+# Run tests matching a pattern:
+npx vitest run -t "should parse receipt"
 
 # Database (Drizzle ORM)
 npm run db:push          # Push schema changes
@@ -34,18 +38,55 @@ npm run docker:prod      # Production deployment
 
 ### Directory Structure
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
-- `src/features/` - Domain modules (ledger, source-document, ai, etc.). Each contains feature-specific components, hooks, and logic.
-- `src/lib/` - Core infrastructure: `db/` (Drizzle schema), `store/` (Zustand), `auth/` (Auth.js config), `logger.ts` (Pino)
-- `src/components/` - Shared UI components (Shadcn/ui primitives)
-- `messages/` - Translation files for next-intl
-- `data/` - SQLite database file location
+- `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
+- `src/features/` - Domain modules, each self-contained with `server/` (actions, services, schema), `components/`, and `client/` (hooks)
+- `src/lib/` - Core infrastructure: `db/` (Drizzle), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
+- `src/components/ui/` - Shared Shadcn/ui primitives
+- `messages/` - Translation files (en.json, zh.json) for next-intl
+- `tests/` - Unit tests in `unit/`, integration tests in `integration/`, shared fixtures in `fixtures/`
 
-### Key Patterns
-- **Feature-based organization**: Domain logic grouped under `src/features/` rather than global folders
-- **Localized routing**: All routes wrapped in `[locale]` segment (e.g., `/en/dashboard`)
-- **Type safety**: Zod for validation (forms, API responses, env vars), Drizzle for type-safe SQL
-- **State management**: Zustand for client state, TanStack Query for server state
-- **Authentication**: Auth.js v5 with Magic Link via Resend
+### Feature Module Structure
+Each feature under `src/features/` follows this layout:
+```
+src/features/{domain}/
+├── server/
+│   ├── actions/     # Server Actions (primary API surface)
+│   ├── services/    # Business logic
+│   ├── tasks/       # Background task handlers (registered in instrumentation.ts)
+│   └── schema.ts    # Drizzle ORM table definitions
+├── components/      # Feature-specific UI
+└── client/hooks/    # Client-side hooks
+```
+
+### Key Architectural Decisions
+
+**Server Actions over API Routes**: All data mutations use Server Actions. API Routes exist only for NextAuth and a minimal v1 public API.
+
+**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are registered in `src/instrumentation.ts`.
+
+**AI pipeline**: Source document parsing uses a "Dual GPT + Arbitration" strategy — two parallel LLM calls compared for consistency, with a third arbitrator call if they disagree. Multi-stage: Stage 1 (pre-analysis) → Stage 1.5 (validation) → Stage 2 (detailed parsing).
+
+**Tenant isolation**: All data queries are scoped to `ledgerId` using `forLedger()` helper. Access is validated via `requireLedgerAccess()`. Soft deletes via `deletedAt` column on all main tables.
+
+**State management**: TanStack Query for server state with centralized query keys (`src/lib/query-keys.ts`). Zustand only for lightweight client state (modal stack). Smart polling (`src/hooks/use-smart-polling.ts`) for monitoring async task completion.
+
+**Optimistic updates**: Mutations use TanStack Query's `onMutate`/`onError`/`onSettled` pattern — never manual `useState` for optimistic state. Always `cancelQueries` before update, save previous data for rollback, and `invalidateQueries` in `onSettled`.
+
+### Testing
+- Tests use in-memory SQLite (`:memory:`), no external DB needed
+- `fileParallelism: false` in vitest config for DB consistency
+- Global mocks in `tests/setup.ts`: `@/lib/db`, `@/auth` (test user `00000000-0000-0000-0000-000000000000`), `next-intl`, `next/cache`
+- Prefer integration tests over unit tests for business logic
+- Test fixtures in `tests/fixtures/`
+
+### Development Preferences
+- Server Actions throw errors directly (no `{ success, error }` result objects)
+- Use Zod for validation at system boundaries
+- Use skeleton loading states, not spinners
+- SQL-level filtering over in-memory filtering
+- Batch operations over iterative processing
+- Inline editing preferred over modal editing for simple fields
+- Icons from Lucide React
 
 ### Environment Variables
 Required in `.env.local`:

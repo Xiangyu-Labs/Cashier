@@ -228,7 +228,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     async submit<TInput>(
       name: string,
       input: TInput,
-      meta?: { title?: string; ledgerId?: string }
+      meta?: { title?: string; scopeId?: string; entityType?: string; entityId?: string }
     ): Promise<string> {
       // Validate handler exists
       if (!handlers.has(name)) {
@@ -240,6 +240,9 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         type: name,
         title: meta?.title,
         input,
+        scopeId: meta?.scopeId,
+        entityType: meta?.entityType,
+        entityId: meta?.entityId,
       })
 
       // Create abort controller for cancellation

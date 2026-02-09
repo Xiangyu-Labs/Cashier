@@ -33,6 +33,7 @@ describe("Processing Stats Actions", () => {
         await db.insert(taskRuns).values([
             {
                 input: { ledgerId: testLedgerId },
+                scopeId: testLedgerId,
                 type: "parse_source_document",
                 title: "Task 1",
                 status: "completed",
@@ -41,6 +42,7 @@ describe("Processing Stats Actions", () => {
             },
             {
                 input: { ledgerId: testLedgerId },
+                scopeId: testLedgerId,
                 type: "parse_source_document",
                 title: "Task 2",
                 status: "completed",
@@ -50,6 +52,7 @@ describe("Processing Stats Actions", () => {
             // This task should be ignored because it's not completed
             {
                 input: { ledgerId: testLedgerId },
+                scopeId: testLedgerId,
                 type: "parse_source_document",
                 title: "Task 3",
                 status: "running",
@@ -59,6 +62,7 @@ describe("Processing Stats Actions", () => {
             // This task should be ignored because it belongs to another ledger
             {
                 input: { ledgerId: otherLedgerId },
+                scopeId: otherLedgerId,
                 type: "parse_source_document",
                 title: "Other Ledger Task",
                 status: "completed",

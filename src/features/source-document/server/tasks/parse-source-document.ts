@@ -241,12 +241,6 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                     title: title || undefined
                 })
                 .where(q.whereId(input.sourceDocumentId));
-
-            if (title) {
-                await db.update(sourceDocuments)
-                    .set({ title })
-                    .where(q.whereId(input.sourceDocumentId));
-            }
             return;
         }
 
@@ -319,29 +313,31 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             };
         }));
 
-        // Delete existing entries for this source document (enables retry)
-        await db.update(ledgerEntries)
-            .set({ deletedAt: new Date() })
-            .where(and(
-                eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
-                qEntries.whereActive
-            ));
+        // Atomically update entries and document status in a transaction
+        db.transaction((tx) => {
+            // 1. Delete existing entries for this source document (enables retry)
+            tx.update(ledgerEntries)
+                .set({ deletedAt: new Date() })
+                .where(and(
+                    eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+                    qEntries.whereActive
+                ))
+                .run();
 
-        if (entriesToInsert.length > 0) {
-            await db.insert(ledgerEntries).values(entriesToInsert);
-        }
+            // 2. Insert new entries
+            if (entriesToInsert.length > 0) {
+                tx.insert(ledgerEntries).values(entriesToInsert).run();
+            }
 
-        // Update document status to completed
-        await db.update(sourceDocuments)
-            .set({ status: 'completed' })
-            .where(q.whereId(input.sourceDocumentId));
-
-        // Update title if present
-        if (title) {
-            await db.update(sourceDocuments)
-                .set({ title })
-                .where(q.whereId(input.sourceDocumentId));
-        }
+            // 3. Update document status to completed and title (merged into single statement)
+            tx.update(sourceDocuments)
+                .set({
+                    status: 'completed',
+                    ...(title ? { title } : {})
+                })
+                .where(q.whereId(input.sourceDocumentId))
+                .run();
+        });
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {

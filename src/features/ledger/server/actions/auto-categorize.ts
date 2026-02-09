@@ -116,6 +116,9 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
 
             await flowEngine.submit(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
                 title: `Categorize: ${entry.itemName}`,
+                scopeId: ledgerId,
+                entityType: 'entry',
+                entityId: entry.id,
             });
 
             submittedCount++;

@@ -63,6 +63,9 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
         },
         {
             title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
+            scopeId: ledgerId,
+            entityType: 'source_document',
+            entityId: sourceDocumentId,
         }
     );
 
@@ -137,16 +140,6 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
         });
         if (!existingDoc) throw new Error("Source document not found");
 
-        // Soft delete old failed/completed task_runs for this source document
-        const { taskRuns } = await import("@/lib/db/schema");
-        await db.update(taskRuns)
-            .set({ deletedAt: new Date() })
-            .where(and(
-                isNull(taskRuns.deletedAt),
-                sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${sourceDocumentId}`,
-                sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
-            ));
-
         const text = input?.text || existingDoc.text || undefined;
         const images = input?.images;
 
@@ -169,9 +162,26 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
             }
         }
 
-        await db.update(sourceDocuments)
-            .set(updatePayload)
-            .where(q.whereId(sourceDocumentId));
+        // Atomically delete old task_runs and reset document status in a transaction
+        const { taskRuns } = await import("@/lib/db/schema");
+        db.transaction((tx) => {
+            // 1. Soft delete old failed/completed task_runs for this source document
+            tx.update(taskRuns)
+                .set({ deletedAt: new Date() })
+                .where(and(
+                    isNull(taskRuns.deletedAt),
+                    eq(taskRuns.entityType, 'source_document'),
+                    eq(taskRuns.entityId, sourceDocumentId),
+                    eq(taskRuns.scopeId, ledgerId)
+                ))
+                .run();
+
+            // 2. Update document status to queued and apply any new data
+            tx.update(sourceDocuments)
+                .set(updatePayload)
+                .where(q.whereId(sourceDocumentId))
+                .run();
+        });
 
         // Use the updated doc we just potentially patched, or logic:
         const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
@@ -222,12 +232,12 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
     // Find task_runs that reference this source document before transaction
     // Filter by ledgerId at SQL level to avoid IDOR
     const { taskRuns } = await import("@/lib/db/schema");
-    const { sql } = await import("drizzle-orm");
     const relatedTaskRuns = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
-            sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${sourceId}`,
-            sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
+            eq(taskRuns.entityType, 'source_document'),
+            eq(taskRuns.entityId, sourceId),
+            eq(taskRuns.scopeId, ledgerId)
         ),
     });
 
@@ -420,6 +430,19 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
 
+    // Find task_runs that reference these source documents before transaction
+    const { taskRuns } = await import("@/lib/db/schema");
+    const relatedTaskRuns = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.scopeId, ledgerId),
+            eq(taskRuns.entityType, 'source_document'),
+            inArray(taskRuns.entityId, sourceDocumentIds)
+        ),
+    });
+
+    const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
+
     // better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
         // 1. Cascade soft delete to associated ledger entries
@@ -431,7 +454,15 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
             ))
             .run();
 
-        // 2. Soft delete the source documents
+        // 2. Cascade soft delete to task_runs
+        if (taskIdsToDelete.length > 0) {
+            tx.update(taskRuns)
+                .set({ deletedAt: new Date() })
+                .where(inArray(taskRuns.id, taskIdsToDelete))
+                .run();
+        }
+
+        // 3. Soft delete the source documents
         tx.update(sourceDocuments)
             .set(q.softDelete)
             .where(and(
@@ -458,25 +489,38 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
         )
     });
 
-    // 2. Soft delete old task_runs for these source documents
+    // 2. Find all related task_runs before transaction
     const { taskRuns } = await import("@/lib/db/schema");
-    for (const docId of sourceDocumentIds) {
-        await db.update(taskRuns)
-            .set({ deletedAt: new Date() })
-            .where(and(
-                isNull(taskRuns.deletedAt),
-                sql`json_extract(${taskRuns.input}, '$.sourceDocumentId') = ${docId}`,
-                sql`json_extract(${taskRuns.input}, '$.ledgerId') = ${ledgerId}`
-            ));
-    }
+    const relatedTaskRuns = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.scopeId, ledgerId),
+            eq(taskRuns.entityType, 'source_document'),
+            inArray(taskRuns.entityId, sourceDocumentIds)
+        ),
+    });
 
-    // 3. Update status to queued and clear anomaly fields
-    await db.update(sourceDocuments)
-        .set({ status: "queued", anomalyReason: null })
-        .where(and(
-            q.whereActive,
-            inArray(sourceDocuments.id, sourceDocumentIds)
-        ));
+    const taskIdsToDelete = relatedTaskRuns.map(t => t.id);
+
+    // 3. Atomically delete old task_runs and reset document status in a transaction
+    db.transaction((tx) => {
+        // 3a. Soft delete old task_runs for these source documents
+        if (taskIdsToDelete.length > 0) {
+            tx.update(taskRuns)
+                .set({ deletedAt: new Date() })
+                .where(inArray(taskRuns.id, taskIdsToDelete))
+                .run();
+        }
+
+        // 3b. Update status to queued and clear anomaly fields
+        tx.update(sourceDocuments)
+            .set({ status: "queued", anomalyReason: null })
+            .where(and(
+                q.whereActive,
+                inArray(sourceDocuments.id, sourceDocumentIds)
+            ))
+            .run();
+    });
 
     // 4. Retrigger tasks for each
     await Promise.all(docs.map(async (doc) => {

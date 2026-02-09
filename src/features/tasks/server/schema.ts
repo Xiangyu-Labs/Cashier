@@ -17,6 +17,11 @@ export const taskRuns = sqliteTable("task_runs", {
     // Input (framework-enforced complete storage)
     input: text("input", { mode: "json" }).$type<unknown>(),
 
+    // Generic reference columns (domain-agnostic for task engine portability)
+    scopeId: text("scope_id"),                  // Scope ID (e.g., ledgerId in Cashier)
+    entityType: text("entity_type"),            // Entity type (e.g., "source_document", "category")
+    entityId: text("entity_id"),                // Entity ID (e.g., sourceDocumentId, categoryId)
+
     // Result
     status: text("status").notNull().default("pending"), // 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
     error: text("error"),
@@ -36,6 +41,9 @@ export const taskRuns = sqliteTable("task_runs", {
 }, (table) => [
     index("idx_task_runs_status").on(table.status),
     index("idx_task_runs_created_at").on(table.createdAt),
+    index("idx_task_runs_scope").on(table.scopeId),
+    index("idx_task_runs_entity").on(table.entityType, table.entityId),
+    index("idx_task_runs_scope_entity").on(table.scopeId, table.entityType, table.entityId),
 ]);
 
 export type TaskRun = InferSelectModel<typeof taskRuns>;

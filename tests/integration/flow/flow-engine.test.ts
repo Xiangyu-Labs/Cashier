@@ -29,6 +29,9 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
                 input: task.input ?? null,
                 error: null,
                 tokenUsage: null,
+                scopeId: task.scopeId ?? null,
+                entityType: task.entityType ?? null,
+                entityId: task.entityId ?? null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };

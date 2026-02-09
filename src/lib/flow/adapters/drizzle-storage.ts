@@ -25,6 +25,9 @@ export function createDrizzleStorage(): StorageAdapter {
           title: task.title ?? task.type,
           status: 'pending',
           input: task.input, // Framework-enforced complete storage
+          scopeId: task.scopeId ?? null,
+          entityType: task.entityType ?? null,
+          entityId: task.entityId ?? null,
         })
         .returning({ id: taskRuns.id })
 
@@ -123,6 +126,9 @@ function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
     input: record.input,
     error: record.error,
     tokenUsage: record.tokenUsage as TokenUsageRecord | null,
+    scopeId: record.scopeId ?? null,
+    entityType: record.entityType ?? null,
+    entityId: record.entityId ?? null,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }

@@ -61,6 +61,9 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
                 },
                 {
                     title: `Generate metadata for category: ${validated.name}`,
+                    scopeId: ledgerId,
+                    entityType: 'category',
+                    entityId: category.id,
                 }
             );
         } catch (err) {
@@ -99,7 +102,8 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
             eq(taskRuns.type, "generate_category_metadata"),
             inArray(taskRuns.status, ["pending", "running"]),
             isNull(taskRuns.deletedAt),
-            sql`json_extract(${taskRuns.input}, '$.categoryId') = ${categoryId}`
+            eq(taskRuns.entityType, 'category'),
+            eq(taskRuns.entityId, categoryId)
         ));
 
     for (const task of pendingTasks) {

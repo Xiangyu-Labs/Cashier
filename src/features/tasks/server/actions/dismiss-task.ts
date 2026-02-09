@@ -6,13 +6,10 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { eq, and, inArray, isNull } from "drizzle-orm";
 
 /**
- * Helper to extract ledgerId from task input
+ * Helper to extract ledgerId from task scopeId
  */
-function getLedgerIdFromInput(input: unknown): string | null {
-    if (typeof input === 'object' && input !== null && 'ledgerId' in input) {
-        return (input as { ledgerId?: string }).ledgerId ?? null;
-    }
-    return null;
+function getLedgerIdFromTask(task: typeof taskRuns.$inferSelect): string | null {
+    return task.scopeId ?? null;
 }
 
 /**
@@ -35,8 +32,8 @@ export async function dismissTaskAction(ledgerId: string, taskId: string): Promi
         throw new Error("Task not found");
     }
 
-    // Verify ledgerId from input matches
-    const taskLedgerId = getLedgerIdFromInput(task.input);
+    // Verify ledgerId from scopeId matches
+    const taskLedgerId = getLedgerIdFromTask(task);
     if (taskLedgerId !== ledgerId) {
         throw new Error("Task does not belong to this ledger");
     }
@@ -67,7 +64,7 @@ export async function batchDismissTasksAction(ledgerId: string, taskIds: string[
 
     // Filter to only tasks that belong to this ledger
     const validTaskIds = tasks
-        .filter(task => getLedgerIdFromInput(task.input) === ledgerId)
+        .filter(task => getLedgerIdFromTask(task) === ledgerId)
         .map(task => task.id);
 
     if (validTaskIds.length === 0) return;

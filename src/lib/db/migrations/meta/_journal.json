@@ -78,6 +78,13 @@
       "when": 1770528301996,
       "tag": "0010_hot_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1770644266398,
+      "tag": "0011_mature_barracuda",
+      "breakpoints": true
     }
   ]
 }
