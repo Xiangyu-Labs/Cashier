@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, users } from "@/lib/db/schema";
-import { createLedgerData, createLedgerEntryData } from "../helpers/factories";
+import { ledgers, ledgerEntries, users, sourceDocuments } from "@/lib/db/schema";
+import { createLedgerData, createLedgerEntryData, createSourceDocumentData } from "../helpers/factories";
 import { v4 as uuidv4 } from "uuid";
 
 // Mock auth module
@@ -29,14 +29,18 @@ describe("getLedgerEntryAction", () => {
         const ledgerData = createLedgerData({ userId: testUserId });
         await db.insert(ledgers).values(ledgerData);
 
-        // 2. Create Entry
-        const entryData = createLedgerEntryData(ledgerData.id);
+        // 2. Create Source Document
+        const sourceDocData = createSourceDocumentData(ledgerData.id);
+        await db.insert(sourceDocuments).values(sourceDocData);
+
+        // 3. Create Entry
+        const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
         await db.insert(ledgerEntries).values(entryData);
 
-        // 3. Action - now returns data directly
+        // 4. Action - now returns data directly
         const result = await getLedgerEntryAction(entryData.id);
 
-        // 4. Assertion
+        // 5. Assertion
         expect(result).not.toBeNull();
         expect(result!.id).toBe(entryData.id);
         expect(result!.ledgerId).toBe(ledgerData.id);
@@ -68,11 +72,15 @@ describe("getLedgerEntryAction", () => {
         const ledgerData = createLedgerData({ userId: otherUserId });
         await db.insert(ledgers).values(ledgerData);
 
-        // 2. Create Entry
-        const entryData = createLedgerEntryData(ledgerData.id);
+        // 2. Create Source Document
+        const sourceDocData = createSourceDocumentData(ledgerData.id);
+        await db.insert(sourceDocuments).values(sourceDocData);
+
+        // 3. Create Entry
+        const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
         await db.insert(ledgerEntries).values(entryData);
 
-        // 3. Action (Current authenticated user is testUserId) - now throws
+        // 4. Action (Current authenticated user is testUserId) - now throws
         await expect(getLedgerEntryAction(entryData.id))
             .rejects.toThrow("Unauthorized");
     });

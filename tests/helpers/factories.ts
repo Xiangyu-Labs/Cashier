@@ -51,7 +51,7 @@ export function createLedgerEntryData(
   overrides: Partial<{
     id: string;
     categoryId: string | null;
-    sourceDocumentId: string | null;
+    sourceDocumentId: string;
     amount: string;
     currency: string | null;
     itemName: string;
@@ -60,11 +60,14 @@ export function createLedgerEntryData(
     createdAt: Date;
   }> = {}
 ) {
+  // sourceDocumentId is required by schema, so generate one if not provided
+  const sourceDocumentId = overrides.sourceDocumentId || uuidv4();
+
   return {
     id: uuidv4(),
     ledgerId,
     categoryId: null,
-    sourceDocumentId: null,
+    sourceDocumentId,
     amount: "25.50",
     currency: "CNY",
     itemName: "午餐",

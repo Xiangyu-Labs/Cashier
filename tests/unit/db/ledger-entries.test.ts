@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
 
 describe("LedgerEntries Database Operations", () => {
   describe("CREATE", () => {
@@ -11,10 +11,13 @@ describe("LedgerEntries Database Operations", () => {
       const { ledgerId: id } = await createTestUserWithLedger(db, "test1@example.com", "Test Ledger");
       const ledger = { id };
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       const [created] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
+          sourceDocumentId: sourceDocId,
           amount: "25.50",
           itemName: "午餐",
         })
@@ -39,10 +42,13 @@ describe("LedgerEntries Database Operations", () => {
         })
         .returning();
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       const [created] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
+          sourceDocumentId: sourceDocId,
           categoryId: category.id,
           amount: "30.00",
           itemName: "晚餐",
@@ -89,9 +95,11 @@ describe("LedgerEntries Database Operations", () => {
       const { ledgerId: id } = await createTestUserWithLedger(db, "test4@example.com", "Test Ledger");
       const ledger = { id };
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       await db.insert(ledgerEntries).values([
-        { ledgerId: ledger.id, amount: "10.00", itemName: "Item 1" },
-        { ledgerId: ledger.id, amount: "20.00", itemName: "Item 2" },
+        { ledgerId: ledger.id, sourceDocumentId: sourceDocId, amount: "10.00", itemName: "Item 1" },
+        { ledgerId: ledger.id, sourceDocumentId: sourceDocId, amount: "20.00", itemName: "Item 2" },
       ]);
 
       const found = await db.query.ledgerEntries.findMany({
@@ -115,10 +123,13 @@ describe("LedgerEntries Database Operations", () => {
         })
         .returning();
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       const [tx] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
+          sourceDocumentId: sourceDocId,
           categoryId: category.id,
           amount: "25.00",
           itemName: "午餐",
@@ -142,10 +153,13 @@ describe("LedgerEntries Database Operations", () => {
       const db = getTestDb();
       const { ledgerId: id } = await createTestUserWithLedger(db, "test6@example.com", "Test Ledger");
 
+      const sourceDocId = await createTestSourceDocument(db, id);
+
       const [created] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: id,
+          sourceDocumentId: sourceDocId,
           amount: "25.00",
           itemName: "午餐",
         })
@@ -167,10 +181,13 @@ describe("LedgerEntries Database Operations", () => {
       const { ledgerId: id } = await createTestUserWithLedger(db, "test7@example.com", "Test Ledger");
       const ledger = { id };
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       const [created] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
+          sourceDocumentId: sourceDocId,
           amount: "25.00",
           itemName: "To Delete",
         })
@@ -190,8 +207,11 @@ describe("LedgerEntries Database Operations", () => {
       const { ledgerId: id } = await createTestUserWithLedger(db, "test8@example.com", "Test Ledger");
       const ledger = { id };
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       await db.insert(ledgerEntries).values({
         ledgerId: ledger.id,
+        sourceDocumentId: sourceDocId,
         amount: "25.00",
         itemName: "Will Be Deleted",
       });
@@ -219,10 +239,13 @@ describe("LedgerEntries Database Operations", () => {
         })
         .returning();
 
+      const sourceDocId = await createTestSourceDocument(db, ledger.id);
+
       const [tx] = await db
         .insert(ledgerEntries)
         .values({
           ledgerId: ledger.id,
+          sourceDocumentId: sourceDocId,
           categoryId: category.id,
           amount: "25.00",
           itemName: "午餐",

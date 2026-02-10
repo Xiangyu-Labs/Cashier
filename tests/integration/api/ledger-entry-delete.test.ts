@@ -3,21 +3,26 @@ import { deleteLedgerEntryAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
 
 describe("Ledger Entry Delete Action", () => {
     let testLedgerId: string;
     let testEntryId: string;
+    let testSourceDocId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
         const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
         testLedgerId = ledgerId;
 
+        // Create a test source document for entries
+        testSourceDocId = await createTestSourceDocument(db, testLedgerId);
+
         const [entry] = await db
             .insert(ledgerEntries)
             .values({
                 ledgerId: testLedgerId,
+                sourceDocumentId: testSourceDocId,
                 amount: "100",
                 itemName: "Delete Me",
             })

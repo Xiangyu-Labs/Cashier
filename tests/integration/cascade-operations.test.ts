@@ -36,8 +36,15 @@ async function createTestCategory(db: ReturnType<typeof getTestDb>, ledgerId: st
     return category;
 }
 
-async function createTestEntry(db: ReturnType<typeof getTestDb>, ledgerId: string, opts: { categoryId?: string | null; sourceDocumentId?: string | null } = {}) {
-    const entry = createLedgerEntryData(ledgerId, opts);
+async function createTestEntry(db: ReturnType<typeof getTestDb>, ledgerId: string, opts: { categoryId?: string | null; sourceDocumentId?: string } = {}) {
+    // If no sourceDocumentId provided, create a source document
+    let sourceDocumentId = opts.sourceDocumentId;
+    if (!sourceDocumentId) {
+        const sourceDoc = await createTestSourceDocument(db, ledgerId);
+        sourceDocumentId = sourceDoc.id;
+    }
+
+    const entry = createLedgerEntryData(ledgerId, { ...opts, sourceDocumentId });
     await db.insert(ledgerEntries).values(entry);
     return entry;
 }

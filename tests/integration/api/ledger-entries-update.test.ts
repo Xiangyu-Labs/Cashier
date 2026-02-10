@@ -3,12 +3,13 @@ import { updateLedgerEntryAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
 
 describe("Ledger Entry Update Action", () => {
     let testLedgerId: string;
     let testEntryId: string;
     let testCategoryId: string;
+    let testSourceDocId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
@@ -22,10 +23,14 @@ describe("Ledger Entry Update Action", () => {
             .returning();
         testCategoryId = category.id;
 
+        // Create a test source document for entries
+        testSourceDocId = await createTestSourceDocument(db, testLedgerId);
+
         const [entry] = await db
             .insert(ledgerEntries)
             .values({
                 ledgerId: testLedgerId,
+                sourceDocumentId: testSourceDocId,
                 amount: "100.00",
                 itemName: "Test Item",
                 description: "Initial description",

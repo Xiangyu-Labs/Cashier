@@ -62,3 +62,24 @@ export async function createTestUserWithLedger(
 
   return { userId: finalUserId, ledgerId };
 }
+
+// Helper to create a test source document
+export async function createTestSourceDocument(
+  db: BetterSQLite3Database<typeof schema>,
+  ledgerId: string,
+  overrides: Partial<{
+    text: string;
+    status: "queued" | "processing" | "completed" | "anomaly";
+    imageUrls: string[];
+  }> = {}
+): Promise<string> {
+  const [doc] = await db.insert(schema.sourceDocuments).values({
+    ledgerId,
+    text: overrides.text || "Test document",
+    status: overrides.status || "completed",
+    imageUrls: overrides.imageUrls || [],
+  }).returning();
+
+  return doc.id;
+}
+

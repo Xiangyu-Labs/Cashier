@@ -2,11 +2,12 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories, ledgerEntries } from "@/lib/db/schema";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
 
 describe("getLedgerEntriesAction", () => {
   let testLedgerId: string;
   let testCategoryId: string;
+  let testSourceDocId: string;
 
   beforeEach(async () => {
     const db = getTestDb();
@@ -23,6 +24,9 @@ describe("getLedgerEntriesAction", () => {
       })
       .returning();
     testCategoryId = category.id;
+
+    // Create a test source document for entries
+    testSourceDocId = await createTestSourceDocument(db, testLedgerId);
   });
 
   it("should return empty array when no ledger entries exist", async () => {
@@ -37,6 +41,7 @@ describe("getLedgerEntriesAction", () => {
     await db.insert(ledgerEntries).values({
       ledgerId: testLedgerId,
       categoryId: testCategoryId,
+      sourceDocumentId: testSourceDocId,
       amount: "25.50",
       itemName: "午餐",
     });
@@ -57,8 +62,8 @@ describe("getLedgerEntriesAction", () => {
       .returning();
 
     await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, categoryId: testCategoryId, amount: "10", itemName: "餐饮交易" },
-      { ledgerId: testLedgerId, categoryId: otherCategory.id, amount: "20", itemName: "交通交易" },
+      { ledgerId: testLedgerId, categoryId: testCategoryId, sourceDocumentId: testSourceDocId, amount: "10", itemName: "餐饮交易" },
+      { ledgerId: testLedgerId, categoryId: otherCategory.id, sourceDocumentId: testSourceDocId, amount: "20", itemName: "交通交易" },
     ]);
 
     const data = await getLedgerEntriesAction(testLedgerId, { categoryId: testCategoryId });
