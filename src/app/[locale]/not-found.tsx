@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import { AlertCircle, Home } from "lucide-react";
 
 export default function NotFound() {
     const t = useTranslations("NotFound");
@@ -12,22 +13,7 @@ export default function NotFound() {
                         <div className="text-9xl font-bold text-surface2 select-none">404</div>
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="32"
-                                    height="32"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="text-primary"
-                                >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
+                                <AlertCircle className="w-8 h-8 text-primary" />
                             </div>
                         </div>
                     </div>
@@ -42,21 +28,7 @@ export default function NotFound() {
                     href="/"
                     className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2"
-                    >
-                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
+                    <Home className="w-5 h-5 mr-2" />
                     {t("backToHome")}
                 </Link>
             </div>

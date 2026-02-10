@@ -21,12 +21,11 @@ interface CategoryStat {
 
 interface StatsRankingProps {
     data: CategoryStat[];
-    total: number;
     isLoading?: boolean;
     currencySymbol?: string;
 }
 
-export function StatsRanking({ data, isLoading, currencySymbol = "¥" }: Omit<StatsRankingProps, 'total'>) {
+export function StatsRanking({ data, isLoading, currencySymbol = "¥" }: StatsRankingProps) {
     const t = useTranslations("StatsTab");
 
     if (isLoading) {
