@@ -23,13 +23,12 @@ export function useConvertedAmount(
         queryKey: ["convert", amount, from, to, date],
         queryFn: async () => {
             const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
-            if (!result.success) throw new Error(result.error || "Conversion failed");
             return {
                 amount,
                 from: from!,
                 to: to!,
                 date: date || undefined,
-                converted: result.converted!,
+                converted: result.converted,
             };
         },
         enabled: !isSameCurrency && !isMissingInfo,

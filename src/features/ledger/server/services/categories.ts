@@ -45,10 +45,4 @@ export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryC
     }));
 });
 
-/**
- * Cached version - now directly calling base function
- * React's cache() provides request-level deduplication
- */
-export const getCachedEntryCategories = getEntryCategories;
-
 

@@ -2,8 +2,6 @@
 
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
-//
-// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, asc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";

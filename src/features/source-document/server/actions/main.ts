@@ -6,7 +6,6 @@ import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
-// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { desc, lte, gte, inArray, and, eq, isNull, or, lt, sql } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -77,136 +76,108 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
  * Create a new source document and trigger processing
  */
 export async function createSourceDocumentAction(ledgerId: string, input: SourceDocumentActionInput) {
-    try {
-        const { text, images, entryDate } = input;
-        if (!text && (!images || images.length === 0)) {
-            throw new Error("At least one input (text or images) is required");
-        }
-
-        const { ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized or Ledger not found");
-
-        const q = forLedger(sourceDocuments, ledgerId);
-
-        // Save source document with 'queued' status
-        const today = entryDate || formatDateTimeForApi(new Date());
-        const [savedDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: ledgerId, // Explicitly set ledgerId
-            text: text || null,
-            imageUrls: [], // Will update after normalized
-            status: "queued",
-            entryDate: today,
-        }).returning();
-
-        const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
-
-        // Update with normalized image URLs if any
-        if (imageUrls.length > 0) {
-            await db.update(sourceDocuments)
-                .set({ imageUrls })
-                .where(q.whereId(savedDoc.id));
-        }
-
-
-        return {
-            success: true,
-            sourceDocumentId: savedDoc.id,
-            status: "queued" as const,
-            error: null,
-        };
-    } catch (error) {
-        logger.error({ error, ledgerId }, "Failed to create source document via action");
-        return {
-            success: false,
-            error: safeError(error),
-            sourceDocumentId: null,
-            status: null,
-        };
+    const { text, images, entryDate } = input;
+    if (!text && (!images || images.length === 0)) {
+        throw new Error("At least one input (text or images) is required");
     }
+
+    const { ledger, error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized or Ledger not found");
+
+    const q = forLedger(sourceDocuments, ledgerId);
+
+    // Save source document with 'queued' status
+    const today = entryDate || formatDateTimeForApi(new Date());
+    const [savedDoc] = await db.insert(sourceDocuments).values({
+        ledgerId: ledgerId, // Explicitly set ledgerId
+        text: text || null,
+        imageUrls: [], // Will update after normalized
+        status: "queued",
+        entryDate: today,
+    }).returning();
+
+    const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
+
+    // Update with normalized image URLs if any
+    if (imageUrls.length > 0) {
+        await db.update(sourceDocuments)
+            .set({ imageUrls })
+            .where(q.whereId(savedDoc.id));
+    }
+
+    return {
+        sourceDocumentId: savedDoc.id,
+        status: "queued" as const,
+    };
 }
 
 /**
  * Retry an existing source document with optional new data
  */
 export async function retrySourceDocumentAction(ledgerId: string, sourceDocumentId: string, input?: SourceDocumentActionInput) {
-    try {
-        const { ledger, error } = await requireLedgerAccess(ledgerId);
-        if (error) throw new Error("Unauthorized or Ledger not found");
+    const { ledger, error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized or Ledger not found");
 
-        const q = forLedger(sourceDocuments, ledgerId);
+    const q = forLedger(sourceDocuments, ledgerId);
 
-        // Verify document belongs to ledger
-        const existingDoc = await db.query.sourceDocuments.findFirst({
-            where: q.whereId(sourceDocumentId)
-        });
-        if (!existingDoc) throw new Error("Source document not found");
+    // Verify document belongs to ledger
+    const existingDoc = await db.query.sourceDocuments.findFirst({
+        where: q.whereId(sourceDocumentId)
+    });
+    if (!existingDoc) throw new Error("Source document not found");
 
-        const text = input?.text || existingDoc.text || undefined;
-        const images = input?.images;
+    const text = input?.text || existingDoc.text || undefined;
+    const images = input?.images;
 
-        // Update status to queued and clear anomaly fields
-        const updatePayload: Partial<SourceDocument> = { status: "queued", anomalyReason: null };
+    // Update status to queued and clear anomaly fields
+    const updatePayload: Partial<SourceDocument> = { status: "queued", anomalyReason: null };
 
-        // If new text/images provided, update the document record
-        if (input) {
-            if (input.text !== undefined) updatePayload.text = input.text;
+    // If new text/images provided, update the document record
+    if (input) {
+        if (input.text !== undefined) updatePayload.text = input.text;
 
-            if (images) {
-                const newImageUrls = images.map(img => {
-                    const data = img.data;
-                    if (!data.startsWith("data:") && !data.startsWith("http")) {
-                        return `data:${img.mimeType};base64,${data}`;
-                    }
-                    return data;
-                });
-                updatePayload.imageUrls = newImageUrls;
-            }
+        if (images) {
+            const newImageUrls = images.map(img => {
+                const data = img.data;
+                if (!data.startsWith("data:") && !data.startsWith("http")) {
+                    return `data:${img.mimeType};base64,${data}`;
+                }
+                return data;
+            });
+            updatePayload.imageUrls = newImageUrls;
         }
-
-        // Atomically delete old task_runs and reset document status in a transaction
-        const { taskRuns } = await import("@/lib/db/schema");
-        db.transaction((tx) => {
-            // 1. Soft delete old failed/completed task_runs for this source document
-            tx.update(taskRuns)
-                .set({ deletedAt: new Date() })
-                .where(and(
-                    isNull(taskRuns.deletedAt),
-                    eq(taskRuns.entityType, 'source_document'),
-                    eq(taskRuns.entityId, sourceDocumentId),
-                    eq(taskRuns.scopeId, ledgerId)
-                ))
-                .run();
-
-            // 2. Update document status to queued and apply any new data
-            tx.update(sourceDocuments)
-                .set(updatePayload)
-                .where(q.whereId(sourceDocumentId))
-                .run();
-        });
-
-        // Use the updated doc we just potentially patched, or logic:
-        const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
-
-
-
-        await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
-
-
-        return {
-            success: true,
-            sourceDocumentId,
-            status: "queued" as const,
-            error: null,
-        };
-    } catch (error) {
-        logger.error({ error, ledgerId, sourceDocumentId }, "Failed to retry source document via action");
-        return {
-            success: false,
-            error: safeError(error),
-            sourceDocumentId: null,
-            status: null,
-        };
     }
+
+    // Atomically delete old task_runs and reset document status in a transaction
+    const { taskRuns } = await import("@/lib/db/schema");
+    db.transaction((tx) => {
+        // 1. Soft delete old failed/completed task_runs for this source document
+        tx.update(taskRuns)
+            .set({ deletedAt: new Date() })
+            .where(and(
+                isNull(taskRuns.deletedAt),
+                eq(taskRuns.entityType, 'source_document'),
+                eq(taskRuns.entityId, sourceDocumentId),
+                eq(taskRuns.scopeId, ledgerId)
+            ))
+            .run();
+
+        // 2. Update document status to queued and apply any new data
+        tx.update(sourceDocuments)
+            .set(updatePayload)
+            .where(q.whereId(sourceDocumentId))
+            .run();
+    });
+
+    // Use the updated doc we just potentially patched, or logic:
+    const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
+
+    await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
+
+    return {
+        sourceDocumentId,
+        status: "queued" as const,
+    };
 }
 
 /**

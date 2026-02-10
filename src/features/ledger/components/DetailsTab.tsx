@@ -346,15 +346,11 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     const handleBatchAiCategorize = async () => {
         const ids = Array.from(selectedIds);
         const result = await submitBatchCategorizeAction(ledgerId, ids);
-        if (result.success) {
-            if (result.submittedCount > 0) {
-                toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
-            }
-            clearSelection();
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        } else {
-            toast.error(result.error || tCommon("error"));
+        if (result.submittedCount > 0) {
+            toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
         }
+        clearSelection();
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     };
 
     const handleBatchChangeCategory = async (categoryId: string | null) => {

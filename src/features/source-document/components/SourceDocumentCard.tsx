@@ -75,7 +75,6 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
           if (currency === mainCurrency) return { converted: amount };
 
           const res = await convertCurrencyAction(amount, currency, mainCurrency, dateStr);
-          if (!res.success) throw new Error(res.error || "Conversion failed");
           return { converted: res.converted };
         },
         staleTime: 1000 * 60 * 60 * 24,

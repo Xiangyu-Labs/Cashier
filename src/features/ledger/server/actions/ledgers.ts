@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
-// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";

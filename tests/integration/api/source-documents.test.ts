@@ -72,7 +72,6 @@ describe("SourceDocument Actions", () => {
 
     const result = await createSourceDocumentAction(testLedgerId, { text: "苹果2公斤，每公斤10元" });
 
-    expect(result.success).toBe(true);
     expect(result.status).toBe("queued");
 
     // Process
@@ -80,7 +79,7 @@ describe("SourceDocument Actions", () => {
 
     const db = getTestDb();
     const savedEntry = await db.query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId!)
+      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId)
     });
 
     expect(savedEntry).toBeDefined();
@@ -92,7 +91,6 @@ describe("SourceDocument Actions", () => {
 
   it("should process text message and create ledger entry", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐花了25.5元" });
-    expect(result.success).toBe(true);
     expect(result.sourceDocumentId).toBeDefined();
     expect(result.status).toBe("queued");
 
@@ -147,17 +145,11 @@ describe("SourceDocument Actions", () => {
 
 
   it("should return error when no input provided", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, {});
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("At least one input");
+    await expect(createSourceDocumentAction(testLedgerId, {})).rejects.toThrow("At least one input");
   });
 
   it("should return error for non-existent ledger", async () => {
-    // createSourceDocumentAction still uses { success, error } format due to special return structure
-    const result = await createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" });
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Unauthorized or Ledger not found");
+    await expect(createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })).rejects.toThrow("Unauthorized or Ledger not found");
   });
 
   it("should handle image input", async () => {
@@ -170,12 +162,11 @@ describe("SourceDocument Actions", () => {
       ],
     });
 
-    expect(result.success).toBe(true);
     expect(result.status).toBe("queued");
 
     const db = getTestDb();
     const savedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, result.sourceDocumentId!),
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
     expect(savedDoc?.imageUrls).toHaveLength(1);
     expect(savedDoc?.text).toBeNull(); // text optional in input, but in action we pass null if undefined

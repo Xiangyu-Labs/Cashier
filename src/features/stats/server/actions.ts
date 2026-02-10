@@ -66,7 +66,7 @@ export async function getEnhancedStats({
     const fetchEntries = async (startStr: string, endStr: string) => {
         return await db.query.ledgerEntries.findMany({
             where: and(
-                q.active, // This includes ledgerId and deletedAt is null
+                q.whereActive, // This includes ledgerId and deletedAt is null
                 sql`${ledgerEntries.sourceDocumentId} IN (
                     SELECT id FROM source_documents
                     WHERE ledger_id = ${ledgerId} AND entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL

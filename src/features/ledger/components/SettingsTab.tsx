@@ -582,9 +582,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                             onCategoryCreated={categoryCreatedTrigger}
                             onAutoCategorize={async () => {
                                 const result = await submitAutoCategorizeAction(ledgerId);
-                                if (!result.success) {
-                                    throw new Error(result.error);
-                                }
                                 // Invalidate uncategorized count and task queue after submitting tasks
                                 queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
                                 queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });

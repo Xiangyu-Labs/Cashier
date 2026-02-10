@@ -10,10 +10,8 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 export interface AutoCategorizeResult {
-    success: boolean;
     submittedCount: number;
     skippedCount: number;
-    error?: string;
 }
 
 /**
@@ -21,12 +19,11 @@ export interface AutoCategorizeResult {
  * Implements duplicate prevention by checking for pending/running tasks.
  */
 export async function submitAutoCategorizeAction(ledgerId: string): Promise<AutoCategorizeResult> {
-    try {
-        // Verify session and ledger access
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) {
-            return { success: false, submittedCount: 0, skippedCount: 0, error: "Unauthorized" };
-        }
+    // Verify session and ledger access
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) {
+        throw new Error("Unauthorized");
+    }
 
         // 1. Get all uncategorized entries with their source documents
         const uncategorizedEntries = await db.query.ledgerEntries.findMany({
@@ -41,7 +38,7 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
         });
 
         if (uncategorizedEntries.length === 0) {
-            return { success: true, submittedCount: 0, skippedCount: 0 };
+            return { submittedCount: 0, skippedCount: 0 };
         }
 
         // 2. Get pending/running tasks of type categorize_entry
@@ -75,12 +72,7 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
         });
 
         if (categories.length === 0) {
-            return {
-                success: false,
-                submittedCount: 0,
-                skippedCount: uncategorizedEntries.length,
-                error: "No categories available"
-            };
+            throw new Error("No categories available");
         }
 
         // Build indexed categories for AI
@@ -125,22 +117,12 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
             submittedCount++;
         }
 
-        logger.info({
-            ledgerId,
-            submittedCount,
-            skippedCount,
-            totalUncategorized: uncategorizedEntries.length,
-        }, "Auto-categorize tasks submitted");
+    logger.info({
+        ledgerId,
+        submittedCount,
+        skippedCount,
+        totalUncategorized: uncategorizedEntries.length,
+    }, "Auto-categorize tasks submitted");
 
-        return { success: true, submittedCount, skippedCount };
-
-    } catch (error) {
-        logger.error({ error, ledgerId }, "Failed to submit auto-categorize tasks");
-        return {
-            success: false,
-            submittedCount: 0,
-            skippedCount: 0,
-            error: error instanceof Error ? error.message : "Unknown error"
-        };
-    }
+    return { submittedCount, skippedCount };
 }

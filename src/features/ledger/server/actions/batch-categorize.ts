@@ -10,10 +10,8 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 export interface BatchCategorizeResult {
-    success: boolean;
     submittedCount: number;
     skippedCount: number;
-    error?: string;
 }
 
 /**
@@ -24,16 +22,15 @@ export async function submitBatchCategorizeAction(
     ledgerId: string,
     entryIds: string[]
 ): Promise<BatchCategorizeResult> {
-    try {
-        // Verify session and ledger access
-        const { error } = await requireLedgerAccess(ledgerId);
-        if (error) {
-            return { success: false, submittedCount: 0, skippedCount: 0, error: "Unauthorized" };
-        }
+    // Verify session and ledger access
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) {
+        throw new Error("Unauthorized");
+    }
 
-        if (entryIds.length === 0) {
-            return { success: true, submittedCount: 0, skippedCount: 0 };
-        }
+    if (entryIds.length === 0) {
+        return { submittedCount: 0, skippedCount: 0 };
+    }
 
         // 1. Get selected entries with their source documents
         const selectedEntries = await db.query.ledgerEntries.findMany({
@@ -48,7 +45,7 @@ export async function submitBatchCategorizeAction(
         });
 
         if (selectedEntries.length === 0) {
-            return { success: true, submittedCount: 0, skippedCount: 0 };
+            return { submittedCount: 0, skippedCount: 0 };
         }
 
         // 2. Get pending/running tasks of type categorize_entry
@@ -82,12 +79,7 @@ export async function submitBatchCategorizeAction(
         });
 
         if (categories.length === 0) {
-            return {
-                success: false,
-                submittedCount: 0,
-                skippedCount: selectedEntries.length,
-                error: "No categories available"
-            };
+            throw new Error("No categories available");
         }
 
         // Get ledger settings for AI language
@@ -138,22 +130,12 @@ export async function submitBatchCategorizeAction(
             submittedCount++;
         }
 
-        logger.info({
-            ledgerId,
-            submittedCount,
-            skippedCount,
-            totalSelected: selectedEntries.length,
-        }, "Batch categorize tasks submitted");
+    logger.info({
+        ledgerId,
+        submittedCount,
+        skippedCount,
+        totalSelected: selectedEntries.length,
+    }, "Batch categorize tasks submitted");
 
-        return { success: true, submittedCount, skippedCount };
-
-    } catch (error) {
-        logger.error({ error, ledgerId }, "Failed to submit batch categorize tasks");
-        return {
-            success: false,
-            submittedCount: 0,
-            skippedCount: 0,
-            error: error instanceof Error ? error.message : "Unknown error"
-        };
-    }
+    return { submittedCount, skippedCount };
 }

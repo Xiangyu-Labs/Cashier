@@ -124,8 +124,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 queryFn: async () => {
                     if (currency === mainCurrency) return { converted: amount };
                     const result = await convertCurrencyAction(amount, currency, mainCurrency, date);
-                    if (!result.success) throw new Error(result.error || "Conversion failed");
-                    return { converted: result.converted! };
+                    return { converted: result.converted };
                 },
                 staleTime: 1000 * 60 * 60 * 24,
             };

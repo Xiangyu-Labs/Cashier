@@ -24,11 +24,6 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
             return and(...conditions);
         },
 
-        // Alias for convenience
-        get active() {
-            return this.whereActive;
-        },
-
         /**
          * 生成精确匹配条件 (用于 update/delete by ID)
          * - automatically ensures the entity belongs to the ledger and is active
@@ -42,7 +37,9 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
          * 软删除数据
          * Use in db.update().set(...)
          */
-        softDelete: { deletedAt: new Date() } as const,
+        get softDelete() {
+            return { deletedAt: new Date() } as const;
+        },
 
         /**
          * 当前 ledgerId (用于 insert)
@@ -51,7 +48,3 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
     };
 }
 
-/**
- * 类型安全的软删除助手 (Standalone)
- */
-export const SOFT_DELETE = { deletedAt: new Date() } as const;

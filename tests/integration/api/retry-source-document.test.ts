@@ -56,7 +56,7 @@ describe("SourceDocument Retry Action", () => {
 
         // 2. Call retry with new text
         const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Dinner 50" });
-        expect(retryRes.success).toBe(true);
+        expect(retryRes.status).toBe("queued");
 
         const docAfterRetry = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, docId),
@@ -99,7 +99,7 @@ describe("SourceDocument Retry Action", () => {
 
         // 2. Retry it
         const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Fixed data" });
-        expect(retryRes.success).toBe(true);
+        expect(retryRes.status).toBe("queued");
 
         const docAfterRetry = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, docId),

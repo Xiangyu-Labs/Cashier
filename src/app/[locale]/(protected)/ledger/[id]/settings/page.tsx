@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
-import { getCachedLedger } from "@/features/ledger/server/services/ledgers";
-import { getCachedEntryCategories } from "@/features/ledger/server/services/categories";
+import { getLedger } from "@/features/ledger/server/services/ledgers";
+import { getEntryCategories } from "@/features/ledger/server/services/categories";
 import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
 import { redirect } from "@/i18n/routing";
 
@@ -14,8 +14,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
 
     // Optimized: Only fetch core data, credentials now fetched client-side
     const [ledger, categories] = await Promise.all([
-        getCachedLedger(ledgerId),
-        getCachedEntryCategories(ledgerId),
+        getLedger(ledgerId),
+        getEntryCategories(ledgerId),
     ]);
 
     if (!ledger) {

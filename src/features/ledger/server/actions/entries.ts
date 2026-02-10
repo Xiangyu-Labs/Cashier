@@ -2,9 +2,6 @@
 
 import { db } from "@/lib/db";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
-// auth is unused here
-
-// Server-side cache revalidation removed - client-side TanStack Query handles cache invalidation
 import { z } from "zod";
 import { eq, inArray, and, gte, lte, or, lt, isNull, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -36,7 +33,6 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
     const validated = createLedgerEntrySchema.parse(data);
-    const _q = forLedger(ledgerEntries, ledgerId);
 
     // Get ledger's main currency and source document's entryDate
     const ledger = await db.query.ledgers.findFirst({
@@ -94,7 +90,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
     const validated = updateLedgerEntrySchema.parse(data);
-    const _q = forLedger(ledgerEntries, ledgerId);
+    const q = forLedger(ledgerEntries, ledgerId);
 
     const updateData: Record<string, unknown> = {};
     if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
@@ -151,7 +147,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
     const [updatedEntry] = await db.update(ledgerEntries)
         .set(updateData)
-        .where(_q.whereId(ledgerEntryId))
+        .where(q.whereId(ledgerEntryId))
         .returning();
 
     if (!updatedEntry) throw new Error("Entry not found or access denied");

@@ -30,8 +30,7 @@ export function useBatchConvertedAmounts(
         queryKey: ["batchConvert", cacheKey, targetCurrency],
         queryFn: async () => {
             const result = await batchConvertCurrencyAction(items, targetCurrency!);
-            if (!result.success) throw new Error(result.error || "Batch conversion failed");
-            return result.results!;
+            return result.results;
         },
         enabled: items.length > 0 && !!targetCurrency,
         staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours

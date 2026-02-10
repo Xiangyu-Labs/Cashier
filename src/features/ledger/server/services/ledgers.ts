@@ -27,9 +27,6 @@ export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefi
     return mapLedgerToApi(row);
 });
 
-// logger is unused here
-
-
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
     return {
         id: row.id,
@@ -41,12 +38,5 @@ function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
         deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     };
 }
-
-/**
- * Cached versions - now directly calling base functions
- * React's cache() provides request-level deduplication
- */
-export const getCachedLedger = getLedger;
-export const getCachedLedgers = getLedgers;
 
 
