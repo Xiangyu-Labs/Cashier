@@ -1,9 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { updateLedgerEntryAction } from "@/features/ledger/server/actions";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { updateLedgerEntryAction, createLedgerEntryAction } from "@/features/ledger/server/actions";
 import { getTestDb } from "../../setup";
-import { ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
+
+// Mock the exchange rate service
+vi.mock('@/features/currency/server/exchange-rate-service', () => ({
+  ExchangeRateService: {
+    convert: vi.fn().mockImplementation((amount: number) => {
+      // Mock: 1 USD = 7 CNY
+      return Promise.resolve(amount * 7);
+    }),
+  },
+}));
 
 describe("Ledger Entry Update Action", () => {
     let testLedgerId: string;
@@ -79,5 +89,97 @@ describe("Ledger Entry Update Action", () => {
         expect(result).toBeDefined();
         expect(result.itemName).toBe("Only Name Changed");
         expect(result.amount).toBe("100.00"); // Original value
+    });
+
+    it("should recalculate convertedAmount and exchangeRate when currency changes", async () => {
+        const db = getTestDb();
+
+        // Set ledger's main currency to CNY
+        await db
+            .update(ledgers)
+            .set({
+                metadata: {
+                    settings: {
+                        mainCurrency: 'CNY',
+                    },
+                },
+            })
+            .where(eq(ledgers.id, testLedgerId));
+
+        // Update entry to use USD (different from main currency)
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+            currency: 'USD',
+            amount: 100,
+        });
+
+        expect(result).toBeDefined();
+        expect(result.currency).toBe('USD');
+        expect(result.amount).toBe('100.00');
+        // Mock converts at 1 USD = 7 CNY
+        expect(result.convertedAmount).toBe('700.00');
+        expect(result.exchangeRate).toBe('7.000000');
+    });
+
+    it("should recalculate when amount changes with different currency", async () => {
+        const db = getTestDb();
+
+        // Set ledger's main currency to CNY
+        await db
+            .update(ledgers)
+            .set({
+                metadata: {
+                    settings: {
+                        mainCurrency: 'CNY',
+                    },
+                },
+            })
+            .where(eq(ledgers.id, testLedgerId));
+
+        // First set currency to USD and amount
+        await updateLedgerEntryAction(testLedgerId, testEntryId, {
+            currency: 'USD',
+            amount: 100,
+        });
+
+        // Then update amount - should trigger recalculation
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+            amount: 200,
+        });
+
+        expect(result).toBeDefined();
+        expect(result.amount).toBe('200.00');
+        expect(result.currency).toBe('USD'); // Should retain USD
+        // Mock converts at 1 USD = 7 CNY, so 200 USD = 1400 CNY
+        expect(result.convertedAmount).toBe('1400.00');
+        expect(result.exchangeRate).toBe('7.000000');
+    });
+
+    it("should set convertedAmount equal to amount when currency matches main currency", async () => {
+        const db = getTestDb();
+
+        // Set ledger's main currency to CNY
+        await db
+            .update(ledgers)
+            .set({
+                metadata: {
+                    settings: {
+                        mainCurrency: 'CNY',
+                    },
+                },
+            })
+            .where(eq(ledgers.id, testLedgerId));
+
+        // Update entry to use CNY (same as main currency)
+        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+            currency: 'CNY',
+            amount: 100,
+        });
+
+        expect(result).toBeDefined();
+        expect(result.currency).toBe('CNY');
+        expect(result.amount).toBe('100.00');
+        // When currencies match, convertedAmount should equal amount
+        expect(result.convertedAmount).toBe('100.00');
+        expect(result.exchangeRate).toBe('1');
     });
 });
