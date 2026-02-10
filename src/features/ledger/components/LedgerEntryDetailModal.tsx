@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type ReactNode, memo, useMemo, useEffect } from "react";
+import { useState, useCallback, type ReactNode, memo, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
@@ -43,17 +43,21 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   const tCommon = useTranslations("Common");
   const t = useTranslations("LedgerEntryDetail");
 
-  // Pending changes state
+  // Pending changes state - reset using key prop pattern
+  const resetKey = `${open}-${ledgerEntry?.id}`;
+  const [internalResetKey, setInternalResetKey] = useState(resetKey);
   const [pendingChanges, setPendingChanges] = useState<EntryPendingChanges>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
-  // Reset pending changes when ledgerEntry changes or modal opens
-  useEffect(() => {
-    if (open && ledgerEntry) {
-      setPendingChanges({});
+  // Reset pending changes when resetKey changes - using getDerivedStateFromProps pattern
+  if (resetKey !== internalResetKey) {
+    setInternalResetKey(resetKey);
+    if (Object.keys(pendingChanges).length > 0) {
+      // This will be batched with the render
+      setTimeout(() => setPendingChanges({}), 0);
     }
-  }, [open, ledgerEntry?.id]);
+  }
 
   const hasPendingChanges = useMemo(() => {
     return Object.keys(pendingChanges).length > 0;

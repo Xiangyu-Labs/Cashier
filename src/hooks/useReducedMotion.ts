@@ -6,7 +6,13 @@ import { useEffect, useState } from 'react';
  * Use this to conditionally disable heavy Framer Motion layout animations.
  */
 export function useReducedMotion(): boolean {
-    const [shouldReduce, setShouldReduce] = useState(false);
+    const [shouldReduce, setShouldReduce] = useState(() => {
+        // Initialize with current state
+        if (typeof window === 'undefined') return false;
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const isMobile = window.innerWidth < 768;
+        return prefersReduced || isMobile;
+    });
 
     useEffect(() => {
         // Check system preference for reduced motion
@@ -15,8 +21,6 @@ export function useReducedMotion(): boolean {
 
         // Check if mobile device (screen width < 768px)
         const isMobile = window.innerWidth < 768;
-
-        setShouldReduce(prefersReduced || isMobile);
 
         // Listen for changes in reduced motion preference
         const handleReducedChange = (e: MediaQueryListEvent) => {

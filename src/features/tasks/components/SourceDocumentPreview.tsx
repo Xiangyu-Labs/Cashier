@@ -14,31 +14,52 @@ export function SourceDocumentPreview({
     ledgerId,
     sourceDocumentId,
 }: SourceDocumentPreviewProps) {
-    const [isLoading, setIsLoading] = useState(true);
-    const [data, setData] = useState<{
-        text?: string | null;
-        imageUrls?: string[] | null;
-    } | null>(null);
+    const [state, setState] = useState<{
+        isLoading: boolean;
+        data: {
+            text?: string | null;
+            imageUrls?: string[] | null;
+        } | null;
+    }>(() => ({ isLoading: true, data: null }));
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
 
     useEffect(() => {
-        setIsLoading(true);
+        let cancelled = false;
+
+        // Use setTimeout to defer state update
+        setTimeout(() => {
+            if (!cancelled) {
+                setState({ isLoading: true, data: null });
+            }
+        }, 0);
+
         getSourceDocumentFullAction(ledgerId, sourceDocumentId)
             .then((result) => {
-                if (result) {
-                    setData({
-                        text: result.text,
-                        imageUrls: result.imageUrls,
+                if (!cancelled && result) {
+                    setState({
+                        isLoading: false,
+                        data: {
+                            text: result.text,
+                            imageUrls: result.imageUrls,
+                        }
                     });
+                } else if (!cancelled) {
+                    setState({ isLoading: false, data: null });
                 }
             })
-            .finally(() => {
-                setIsLoading(false);
+            .catch(() => {
+                if (!cancelled) {
+                    setState({ isLoading: false, data: null });
+                }
             });
+
+        return () => {
+            cancelled = true;
+        };
     }, [ledgerId, sourceDocumentId]);
 
-    if (isLoading) {
+    if (state.isLoading) {
         return (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -46,10 +67,10 @@ export function SourceDocumentPreview({
         );
     }
 
-    if (!data) return null;
+    if (!state.data) return null;
 
-    const hasImages = data.imageUrls && data.imageUrls.length > 0;
-    const hasText = data.text && data.text.trim().length > 0;
+    const hasImages = state.data.imageUrls && state.data.imageUrls.length > 0;
+    const hasText = state.data.text && state.data.text.trim().length > 0;
 
     if (!hasImages && !hasText) return null;
 
@@ -66,7 +87,7 @@ export function SourceDocumentPreview({
                     <div className="flex items-start gap-2">
                         <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="flex gap-1.5 flex-wrap">
-                            {data.imageUrls!.slice(0, 4).map((url, idx) => (
+                            {state.data.imageUrls!.slice(0, 4).map((url, idx) => (
                                 <img
                                     key={idx}
                                     src={url}
@@ -75,12 +96,12 @@ export function SourceDocumentPreview({
                                     onClick={() => handleImageClick(idx)}
                                 />
                             ))}
-                            {data.imageUrls!.length > 4 && (
+                            {state.data.imageUrls!.length > 4 && (
                                 <div
                                     className="h-12 w-12 flex items-center justify-center rounded border border-border bg-surface2 text-xs text-muted-foreground cursor-pointer hover:bg-surface3 transition-colors"
                                     onClick={() => handleImageClick(4)}
                                 >
-                                    +{data.imageUrls!.length - 4}
+                                    +{state.data.imageUrls!.length - 4}
                                 </div>
                             )}
                         </div>
@@ -92,7 +113,7 @@ export function SourceDocumentPreview({
                     <div className="flex items-start gap-2">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <p className="text-xs text-text line-clamp-3 whitespace-pre-wrap">
-                            {data.text}
+                            {state.data.text}
                         </p>
                     </div>
                 )}
@@ -101,7 +122,7 @@ export function SourceDocumentPreview({
             {/* Image Viewer Dialog */}
             {hasImages && (
                 <ImageViewer
-                    images={data.imageUrls!}
+                    images={state.data.imageUrls!}
                     initialIndex={viewerIndex}
                     open={viewerOpen}
                     onOpenChange={setViewerOpen}

@@ -57,7 +57,7 @@ export function useUnifiedSourceDocuments(
     const prevProcessingCount = useRef<number | null>(null);
 
     // Prepare initial data if provided
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+     
     const initialUnifiedData = useMemo(() => {
         if (!initialActiveSourceDocuments && !initialCompletedSourceDocuments) return undefined;
 
@@ -96,7 +96,8 @@ export function useUnifiedSourceDocuments(
                 anomalyCount: anomaly.length
             }
         };
-    }, [initialActiveSourceDocuments, initialCompletedSourceDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Initial data only, dependencies are intentionally not tracked
+    }, []);
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({

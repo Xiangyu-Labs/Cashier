@@ -314,7 +314,7 @@ export async function getLedgerEntriesAction(
         } : null,
         sourceDocument: item.sourceDocument ? (() => {
             const { aiRawResponse, rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+             
             const { imageUrls, ...docWithoutImages } = item.sourceDocument;
             return {
                 ...docWithoutImages,

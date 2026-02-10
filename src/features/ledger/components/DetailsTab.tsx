@@ -55,22 +55,20 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
     }, [selectionMode]);
 
 
-    // Use undefined initially to avoid SSR/Hydration mismatch for date initialization
-    const [filters, setFilters] = useState<EntryFilters>({});
-
-    // Initialize filters on client side to avoid SSR timezone issues
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side only initialization to avoid SSR timezone mismatch
+    // Initialize filters with lazy initializer to avoid SSR timezone issues
+    const [filters, setFilters] = useState<EntryFilters>(() => {
+        // Only initialize dates on client side
+        if (typeof window === 'undefined') return {};
         const now = new Date();
-        setFilters({
+        return {
             startDate: new Date(now.getFullYear(), now.getMonth(), 1),
             endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
             categoryId: null,
             currency: null,
             minAmount: null,
             maxAmount: null,
-        });
-    }, []);
+        };
+    });
 
     const startDateStr = formatDateTimeForApi(filters.startDate);
     const endDateStr = formatDateTimeForApi(filters.endDate);

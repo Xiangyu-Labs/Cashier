@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { Trash2, ChevronDown, ChevronUp, FileText, Save, X } from "lucide-react";
@@ -15,7 +14,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EditableField } from "@/components/ui/editable-field";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DateFilter } from "@/components/ui/date-filter";
 import { Calendar } from "lucide-react";
 
 // Types for pending changes
@@ -84,21 +82,33 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     const [needsFolding, setNeedsFolding] = useState(false);
     const descriptionRef = useRef<HTMLDivElement>(null);
 
-    // Check if description needs folding
+    // Check if description needs folding - use layout effect to avoid visual flicker
     useEffect(() => {
-        if (displayData.description && descriptionRef.current) {
-            const element = descriptionRef.current;
+        if (!displayData.description || !descriptionRef.current) {
+            return;
+        }
+
+        const element = descriptionRef.current;
+        // Use requestAnimationFrame to defer state update
+        const rafId = requestAnimationFrame(() => {
             const isClamped = element.classList.contains("line-clamp-3");
             if (isClamped) element.classList.remove("line-clamp-3");
             const fullHeight = element.scrollHeight;
             element.classList.add("line-clamp-3");
             const clampedHeight = element.clientHeight;
-            setNeedsFolding(fullHeight > clampedHeight);
+            const shouldFold = fullHeight > clampedHeight;
+
+            if (shouldFold !== needsFolding) {
+                setNeedsFolding(shouldFold);
+            }
+
             if (isDescriptionExpanded) {
                 element.classList.remove("line-clamp-3");
             }
-        }
-    }, [displayData.description, isDescriptionExpanded]);
+        });
+
+        return () => cancelAnimationFrame(rafId);
+    }, [displayData.description, isDescriptionExpanded, needsFolding]);
 
     const formatDateTime = (dateStr: string) => {
         return new Date(dateStr).toLocaleString(locale);

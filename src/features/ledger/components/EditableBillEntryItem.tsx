@@ -1,9 +1,7 @@
 "use client";
 
-import { memo, useState, useMemo } from "react";
-import { useLocale } from "next-intl";
+import { memo } from "react";
 import { LedgerEntry, EntryCategory } from "@/types/api";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
@@ -66,7 +64,6 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
     pendingChanges,
     sourceDocumentEntryDate,
 }: EditableBillEntryItemProps) {
-    const locale = useLocale();
     // Merge pending changes with original data
     const displayData = {
         itemName: pendingChanges?.itemName ?? ledgerEntry.itemName,

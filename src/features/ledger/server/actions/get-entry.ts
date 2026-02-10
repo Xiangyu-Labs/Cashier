@@ -27,7 +27,7 @@ export async function getLedgerEntryAction(id: string): Promise<import("@/types/
     if (entry.sourceDocument) {
         const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
         // Strip imageUrls (Base64 encoded images)
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const { imageUrls, ...docWithoutImages } = entry.sourceDocument;
         cleanedSourceDocument = {
             ...docWithoutImages,

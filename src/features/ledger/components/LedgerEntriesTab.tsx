@@ -23,7 +23,7 @@ import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
-import { PeriodParams, PeriodPreset, periodToDateRange } from "@/lib/period-utils";
+import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;

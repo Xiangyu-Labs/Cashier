@@ -39,38 +39,57 @@ export function SourceDocumentEditRetryDialog({
     // 2. No imageUrls AND no text (minimal object, likely from TaskQueueModal)
     const needsFetch = (!hasImageUrls && hasImages) || (!hasImageUrls && !hasText);
 
-    const [isLoading, setIsLoading] = useState(needsFetch);
-    const [fullData, setFullData] = useState<{ text?: string | null; imageUrls?: string[] | null } | null>(null);
+    const [state, setState] = useState<{
+        isLoading: boolean;
+        fullData: { text?: string | null; imageUrls?: string[] | null } | null;
+    }>(() => ({ isLoading: needsFetch, fullData: null }));
 
     // Fetch full data when dialog opens and we need imageUrls
     useEffect(() => {
         if (!open || !needsFetch) {
-            setIsLoading(false);
-            setFullData(null);
             return;
         }
 
-        setIsLoading(true);
+        let cancelled = false;
+
+        // Use setTimeout to defer state update
+        setTimeout(() => {
+            if (!cancelled) {
+                setState({ isLoading: true, fullData: null });
+            }
+        }, 0);
+
         getSourceDocumentFullAction(ledgerId, sourceDocument.id)
             .then((result) => {
-                if (result) {
-                    setFullData({
-                        text: result.text,
-                        imageUrls: result.imageUrls,
+                if (!cancelled && result) {
+                    setState({
+                        isLoading: false,
+                        fullData: {
+                            text: result.text,
+                            imageUrls: result.imageUrls,
+                        }
                     });
+                } else if (!cancelled) {
+                    setState({ isLoading: false, fullData: null });
                 }
             })
-            .finally(() => {
-                setIsLoading(false);
+            .catch(() => {
+                if (!cancelled) {
+                    setState({ isLoading: false, fullData: null });
+                }
             });
+
+        return () => {
+            cancelled = true;
+        };
     }, [open, needsFetch, ledgerId, sourceDocument.id]);
 
     const initialData = useMemo(() => {
         // If we fetched full data, use it
-        if (fullData) {
+        if (state.fullData) {
             return {
-                text: fullData.text || undefined,
-                images: fullData.imageUrls?.map(url => ({
+                text: state.fullData.text || undefined,
+                images: state.fullData.imageUrls?.map(url => ({
                     data: url,
                     mimeType: "image/jpeg",
                 })) || [],
@@ -87,7 +106,7 @@ export function SourceDocumentEditRetryDialog({
                 mimeType: "image/jpeg",
             })) || [],
         };
-    }, [sourceDocument, fullData]);
+    }, [sourceDocument, state.fullData]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,7 +114,7 @@ export function SourceDocumentEditRetryDialog({
                 <DialogHeader>
                     <DialogTitle>{t("title")}</DialogTitle>
                 </DialogHeader>
-                {isLoading ? (
+                {state.isLoading ? (
                     <EditRetryDialogSkeleton />
                 ) : (
                     <SourceDocumentInput

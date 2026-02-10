@@ -7,14 +7,14 @@
  * Test cases are designed from BUSINESS expectations, not implementation details.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, entryCategories, sourceDocuments, users } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
 import { createLedgerData, createCategoryData, createLedgerEntryData, createSourceDocumentData } from "../helpers/factories";
 import { eq, isNull, and } from "drizzle-orm";
 
 // Import actions
-import { deleteEntryCategoryAction, getEntryCategoriesAction, getUncategorizedCountAction, createEntryCategoryAction } from "@/features/ledger/server/actions/categories";
+import { deleteEntryCategoryAction, getEntryCategoriesAction, getUncategorizedCountAction } from "@/features/ledger/server/actions/categories";
 import { deleteLedgerEntryAction, createLedgerEntryAction, updateLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { deleteLedgerAction, createLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { deleteSourceDocumentAction } from "@/features/source-document/server/actions/main";
@@ -188,7 +188,7 @@ describe("E2: Delete Entry → Related Counts Update", () => {
 
         // Create 2 entries in the category
         const entry1 = await createTestEntry(db, ledger.id, { categoryId: category.id });
-        const entry2 = await createTestEntry(db, ledger.id, { categoryId: category.id });
+        await createTestEntry(db, ledger.id, { categoryId: category.id });
 
         // Verify initial count
         let categories = await getEntryCategoriesAction(ledger.id);
@@ -312,7 +312,7 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
         const docA = await createTestSourceDocument(db, ledger.id, "completed");
         const docB = await createTestSourceDocument(db, ledger.id, "completed");
 
-        const entryA = await createTestEntry(db, ledger.id, { sourceDocumentId: docA.id });
+        await createTestEntry(db, ledger.id, { sourceDocumentId: docA.id });
         const entryB = await createTestEntry(db, ledger.id, { sourceDocumentId: docB.id });
 
         // Delete only doc A
@@ -336,7 +336,7 @@ describe("L1: Delete Ledger → All Data Inaccessible", () => {
 
         const ledger = await createTestLedger(db);
         const category = await createTestCategory(db, ledger.id);
-        const entry = await createTestEntry(db, ledger.id, { categoryId: category.id });
+        await createTestEntry(db, ledger.id, { categoryId: category.id });
 
         // Verify ledger exists initially
         const allLedgers = await getLedgersAction();

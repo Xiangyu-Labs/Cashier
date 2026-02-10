@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LedgerEntryViewDetails, EntryPendingChanges } from "@/features/ledger/components/LedgerEntryViewDetails";
-import { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
+import { LedgerEntry, EntryCategory } from "@/types/api";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({

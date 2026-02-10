@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Calendar as CalendarIcon, Filter, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Calendar as CalendarIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Popover,

@@ -92,7 +92,7 @@ export function StatsChart({
     const chartHeight = 130; // pixels, matches h-full minus padding
     const paddingTop = 10;   // 10% top padding
     const paddingBottom = 10; // 10% bottom padding
-    const usableHeight = chartHeight - paddingTop - paddingBottom;
+    const _usableHeight = chartHeight - paddingTop - paddingBottom;
 
     return (
         <div className="w-full h-52 relative pt-6 pb-6 select-none">
