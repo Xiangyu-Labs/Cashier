@@ -1,29 +1,22 @@
 import { useState, useCallback, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-    updateLedgerEntryAction,
-    deleteLedgerEntryAction,
-} from "@/features/ledger/server/actions/entries";
-import {
-    deleteSourceDocumentAction,
-    batchDeleteSourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+import { useQueryClient } from "@tanstack/react-query";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { toast } from "sonner";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
+import { EntryFilterPanel } from "./EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
-import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { PeriodParams } from "@/lib/period-utils";
+import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
+import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -46,62 +39,23 @@ export function LedgerEntriesTab({
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-
     // Layout Transitions
     const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
-    // Period state - initialized from URL (via props), no useEffect needed
-    const [periodParams, setPeriodParams] = useState<PeriodParams>(initialPeriod);
+    // Use extracted hooks
+    const {
+        periodParams,
+        filters,
+        handlePeriodChange,
+        handleFiltersChange,
+    } = usePeriodFilter({ pathname, searchParams, initialPeriod });
 
-    // Compute date range from period (memoized)
-    const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
-
-    // Convert to EntryFilters format for compatibility
-    const filters: EntryFilters = useMemo(() => ({
-        startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-        endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
-    }), [dateRange]);
-
-    // Handle period change - update both state and URL
-    const handlePeriodChange = useCallback((newPeriod: PeriodParams) => {
-        setPeriodParams(newPeriod);
-
-        // Update URL without navigation
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('period', newPeriod.period);
-
-        if (newPeriod.period === 'custom') {
-            if (newPeriod.startDate) params.set('startDate', newPeriod.startDate);
-            if (newPeriod.endDate) params.set('endDate', newPeriod.endDate);
-        } else {
-            params.delete('startDate');
-            params.delete('endDate');
-        }
-
-        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
-    }, [pathname, searchParams]);
-
-    // Handle filter changes from EntryFilterPanel (for advanced filters like amount)
-    const handleFiltersChange = useCallback((newFilters: EntryFilters) => {
-        // If date changed, update period to custom
-        if (newFilters.startDate || newFilters.endDate) {
-            const formatDate = (d?: Date): string | undefined => {
-                if (!d) return undefined;
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return `${y}-${m}-${day}`;
-            };
-            handlePeriodChange({
-                period: 'custom',
-                startDate: formatDate(newFilters.startDate),
-                endDate: formatDate(newFilters.endDate),
-            });
-        } else {
-            // No dates means "all"
-            handlePeriodChange({ period: 'all' });
-        }
-    }, [handlePeriodChange]);
+    const {
+        updateEntry,
+        deleteEntry,
+        deleteSourceDocument,
+        batchDeleteSourceDocuments,
+    } = useLedgerEntriesMutations(ledgerId, categories);
 
     // Modals State
     const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -129,198 +83,6 @@ export function LedgerEntriesTab({
         maxAmount: filters.maxAmount ?? undefined,
     });
 
-    // --- Mutations ---
-
-    const updateMutation = useMutation({
-        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
-            return await updateLedgerEntryAction(ledgerId, ledgerEntryId, data) as unknown as LedgerEntry;
-        },
-        onMutate: async ({ ledgerEntryId, data }) => {
-            // Cancel in-flight queries
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-
-            // Snapshot for rollback
-            const prevData = queryClient.getQueriesData({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-
-            // Optimistic update: update the entry in unified source documents
-            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    const updateEntries = (groups: SourceDocumentGroup[] | undefined): SourceDocumentGroup[] | undefined =>
-                        groups?.map(group => ({
-                            ...group,
-                            ledgerEntries: group.ledgerEntries.map(e =>
-                                e.id === ledgerEntryId
-                                    ? {
-                                        ...e,
-                                        ...data,
-                                        // Ensure amount stays as string type
-                                        amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                                        category: data.categoryId
-                                            ? categories.find(c => c.id === data.categoryId) || e.category
-                                            : e.category
-                                    } as LedgerEntry
-                                    : e
-                            )
-                        }));
-                    return {
-                        ...old,
-                        groups: {
-                            processing: updateEntries(old.groups.processing),
-                            anomaly: updateEntries(old.groups.anomaly),
-                            completed: updateEntries(old.groups.completed),
-                        }
-                    };
-                }
-            );
-
-            return { prevData };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
-        onError: (_err, _vars, ctx) => {
-            // Rollback
-            if (ctx?.prevData) {
-                ctx.prevData.forEach(([queryKey, data]) => {
-                    queryClient.setQueryData(queryKey, data);
-                });
-            }
-            toast.error(tCommon("saveFailed"));
-        },
-        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
-    });
-
-    const deleteLedgerEntryMutation = useMutation({
-        mutationFn: async (ledgerEntryId: string) => {
-            await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
-        },
-        onMutate: async (ledgerEntryId) => {
-            // Cancel in-flight queries to prevent race conditions
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-
-            // Snapshot current state for rollback
-            const prevUnified = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, 'unified'));
-
-            // Optimistic update: remove the entry from unified source documents
-            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    return {
-                        ...old,
-                        groups: {
-                            processing: old.groups.processing?.map(group => ({
-                                ...group,
-                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
-                            })),
-                            anomaly: old.groups.anomaly?.map(group => ({
-                                ...group,
-                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
-                            })),
-                            completed: old.groups.completed?.map(group => ({
-                                ...group,
-                                ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
-                            })),
-                        }
-                    };
-                }
-            );
-
-            return { prevUnified };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-            setDeleteConfirm({ ...deleteConfirm, open: false });
-        },
-        onError: (_err, _id, ctx) => {
-            // Rollback on error
-            if (ctx?.prevUnified) {
-                queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, 'unified'), ctx.prevUnified);
-            }
-            toast.error(tCommon("deleteFailed"));
-        },
-        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
-    });
-
-    // Simplified mutations by removing unused batch ones for now (lint)
-
-    const deleteSourceDocumentMutation = useMutation({
-        mutationFn: async (sourceDocumentId: string) => {
-            await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
-        },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-            const prevActive = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, "active"));
-
-            queryClient.setQueryData<SourceDocument[]>(queryKeys.sourceDocuments(ledgerId, "active"), (old) =>
-                old?.filter(d => d.id !== id) || []
-            );
-
-            return { prevActive };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-            setDeleteConfirm({ ...deleteConfirm, open: false });
-        },
-        onError: (err, id, ctx) => {
-            queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "active"), ctx?.prevActive);
-            toast.error(t("deleteFailed"));
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
-    // retryMutation was redundant here, removed.
-
-    const batchDeleteSourceDocsMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            await batchDeleteSourceDocumentsAction(ledgerId, ids);
-        },
-        onMutate: async (ids) => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-
-            // Snapshot for rollback
-            const prevData = queryClient.getQueriesData({ queryKey: queryKeys.sourceDocuments(ledgerId) });
-
-            // Optimistic update: remove all documents with matching IDs
-            queryClient.setQueriesData<{ groups?: { processing?: SourceDocumentGroup[]; anomaly?: SourceDocumentGroup[]; completed?: SourceDocumentGroup[] } }>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    const filterDocs = (groups: SourceDocumentGroup[] | undefined) =>
-                        groups?.filter(g => !ids.includes(g.sourceDocument.id));
-                    return {
-                        ...old,
-                        groups: {
-                            processing: filterDocs(old.groups.processing),
-                            anomaly: filterDocs(old.groups.anomaly),
-                            completed: filterDocs(old.groups.completed),
-                        }
-                    };
-                }
-            );
-
-            return { prevData };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-            if (deleteConfirm.open) setDeleteConfirm({ ...deleteConfirm, open: false });
-        },
-        onError: (_err, _ids, ctx) => {
-            // Rollback
-            if (ctx?.prevData) {
-                ctx.prevData.forEach(([queryKey, data]) => {
-                    queryClient.setQueryData(queryKey, data);
-                });
-            }
-            toast.error(tCommon("deleteFailed"));
-        },
-        onSettled: () => queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
-    });
-
     // Handlers
     const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
         pushModal({ type: 'source-document', id: group.sourceDocument.id });
@@ -341,34 +103,28 @@ export function LedgerEntriesTab({
     }, [t]);
 
     const handleUpdateLedgerEntry = useCallback((id: string, data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number }) => {
-        updateMutation.mutate({ ledgerEntryId: id, data });
-    }, [updateMutation]);
+        updateEntry.mutate({ ledgerEntryId: id, data });
+    }, [updateEntry]);
 
     const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
         pushModal({ type: 'ledger-entry', id: entry.id });
     }, [pushModal]);
-
-    // Removed unused handlers: handleUpdateTitle, handleBatchUpdate, handleDeleteEntryRequest, handleBatchDelete, handleUpdateLedgerEntryDetail, handleDeleteLedgerEntryRequest
 
     // Helper Action Handlers
     function handleDeleteConfirmAction() {
         if (!deleteConfirm.id || !deleteConfirm.type) return;
 
         if (deleteConfirm.type === "sourceDocument") {
-            deleteSourceDocumentMutation.mutate(deleteConfirm.id);
-        } else if (deleteConfirm.type === "batch") {
-            // For safety, batch delete currently only used for anomaly multiple selection which UI doesn't fully support yet mostly,
-            // except "Delete All" button which we will implement below.
-            // If ID is special "ALL_ERRORS", we handle it specifically or use a new mutation.
-            // Wait, the previous logic used deleteSourceDocumentMutation in a loop.
+            deleteSourceDocument.mutate(deleteConfirm.id);
+            setDeleteConfirm({ ...deleteConfirm, open: false });
         } else if (deleteConfirm.id === "ALL_ERRORS") {
             const ids = groups.anomaly.map((g: SourceDocumentGroup) => g.sourceDocument.id);
-            batchDeleteSourceDocsMutation.mutate(ids);
+            batchDeleteSourceDocuments.mutate(ids);
+            setDeleteConfirm({ ...deleteConfirm, open: false });
         } else if (deleteConfirm.type === "ledgerEntry") {
-            deleteLedgerEntryMutation.mutate(deleteConfirm.id);
+            deleteEntry.mutate(deleteConfirm.id);
+            setDeleteConfirm({ ...deleteConfirm, open: false });
         }
-
-        setDeleteConfirm({ ...deleteConfirm, open: false });
     }
 
     // --- Date Grouping for Completed Documents ---
@@ -428,25 +184,17 @@ export function LedgerEntriesTab({
                 };
             }
 
-            // Calculate total for this source document (sum of all ledger entries)
-            const docTotal = group.ledgerEntries.reduce((sum, entry) => {
-                // For now, just sum amounts directly (currency conversion would need more work)
-                // If entry currency matches main currency, add directly
-                if (entry.currency === mainCurrency || !entry.currency) {
-                    return sum + Number(entry.amount);
-                }
-                // For different currencies, just add the amount (proper conversion would need batch conversion)
-                return sum + Number(entry.amount);
-            }, 0);
-
-            dateGroups[dateKey].total += docTotal;
             dateGroups[dateKey].items.push(group);
+
+            // Calculate total for this date
+            group.ledgerEntries.forEach(entry => {
+                const amount = parseFloat(entry.amount);
+                dateGroups[dateKey].total += amount;
+            });
         });
 
         return Object.values(dateGroups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [groups.completed, getSourceDocDateStr, tDetails, locale, ledger?.metadata?.settings?.mainCurrency]);
-
-    // --- Main Render ---
+    }, [groups.completed, getSourceDocDateStr, locale, ledger?.metadata?.settings?.mainCurrency, tDetails]);
 
 
 
@@ -550,14 +298,14 @@ export function LedgerEntriesTab({
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
                                                                 categories={categories}
-                                                                status="completed"
-                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency || undefined}
-                                                                defaultExpanded={!ledger?.metadata?.settings?.collapseBillsDefault}
-                                                                onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
+                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency}
                                                                 onUpdateLedgerEntry={handleUpdateLedgerEntry}
-                                                                onRetry={() => handleRetry(group.sourceDocument)}
-                                                                onViewDetails={() => handleViewSourceDetail(group)}
                                                                 onViewLedgerEntry={handleViewLedgerEntry}
+                                                                onViewDetails={() => handleViewSourceDetail(group)}
+                                                                onRetry={() => handleRetry(group.sourceDocument)}
+                                                                onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
+                                                                status={(group.sourceDocument.status || "completed") as "queued" | "processing" | "completed" | "anomaly"}
+                                                                anomalyReason={group.sourceDocument.anomalyReason}
                                                             />
                                                         </motion.div>
                                                     ))}
@@ -566,55 +314,44 @@ export function LedgerEntriesTab({
                                         ))}
                                     </AnimatePresence>
                                 )}
-
-                                {/* Infinite Scroll Sentinel */}
-                                <div className="h-10 flex items-center justify-center text-muted-foreground text-sm pb-4">
-                                    {isFetchingNextPage ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"></span>
-                                            <span>{tCommon("loading")}</span>
-                                        </div>
-                                    ) : hasNextPage ? (
-                                        <motion.div onViewportEnter={() => fetchNextPage()} className="w-full h-full flex items-center justify-center cursor-pointer" onClick={() => fetchNextPage()}>
-                                            <span>{t("loadMore")}</span>
-                                        </motion.div>
-                                    ) : (
-                                        <span className="opacity-50 text-xs">{tCommon("noMore")}</span>
-                                    )}
-                                </div>
                             </div>
+
+                            {/* Load More Button */}
+                            {hasNextPage && (
+                                <div className="flex justify-center py-4">
+                                    <button
+                                        onClick={() => fetchNextPage()}
+                                        disabled={isFetchingNextPage}
+                                        className="px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
+                                    >
+                                        {isFetchingNextPage ? tCommon("loading") : tCommon("loadMore")}
+                                    </button>
+                                </div>
+                            )}
                         </>
                     )}
-
                 </div>
-            </PullToRefresh>
 
-            {/* Global Modal Stack Renderer */}
-
-
-            <ConfirmDialog
-                open={deleteConfirm.open}
-                onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-                title={deleteConfirm.title}
-                description={deleteConfirm.description}
-                onConfirm={handleDeleteConfirmAction}
-                variant="destructive"
-                confirmLabel={tCommon("delete")}
-            />
-
-            {/* Edit-Retry Dialog */}
-            {retrySourceDocument && (
-                <SourceDocumentEditRetryDialog
-                    ledgerId={ledgerId}
-                    sourceDocument={retrySourceDocument}
-                    open={!!retrySourceDocument}
-                    onOpenChange={(open) => !open && setRetrySourceDocument(null)}
-                    onSuccess={() => {
-                        toast.success(t("retrySubmitted"));
-                        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-                    }}
+                {/* Dialogs */}
+                <ConfirmDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+                    title={deleteConfirm.title}
+                    description={deleteConfirm.description}
+                    onConfirm={handleDeleteConfirmAction}
+                    confirmLabel={tCommon("delete")}
+                    variant="destructive"
                 />
-            )}
+
+                {retrySourceDocument && (
+                    <SourceDocumentEditRetryDialog
+                        sourceDocument={retrySourceDocument}
+                        open={true}
+                        onOpenChange={(open) => !open && setRetrySourceDocument(null)}
+                        ledgerId={ledgerId}
+                    />
+                )}
+            </PullToRefresh>
         </LayoutGroup>
     );
 }
