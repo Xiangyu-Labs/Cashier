@@ -105,7 +105,7 @@ export function ImageViewer({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-none bg-black/60 backdrop-blur-md shadow-none flex flex-col items-center justify-center overflow-hidden z-[9999]"
+                className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-none bg-black/60 backdrop-blur-md shadow-none flex flex-col items-center justify-center overflow-hidden z-[500]"
                 style={{ borderRadius: 0 }}
                 onPointerDownOutside={() => onOpenChange(false)}
             >
