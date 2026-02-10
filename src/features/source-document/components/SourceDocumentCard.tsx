@@ -22,9 +22,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
-import { useQueries } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/features/currency/server/actions";
-import { queryKeys } from "@/lib/query-keys";
+import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -43,57 +41,37 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
   const t = useTranslations("SourceDocumentCard");
 
   // Calculate subtotals by currency
-  const { subtotalsByCurrency, entryDates } = useMemo(() => {
+  const { subtotalsByCurrency, conversionItems } = useMemo(() => {
     const groups: Record<string, number> = {};
-    const dates: Record<string, string> = {};
+    const items: Array<{ amount: number; currency: string; date?: string }> = [];
+
     entries.forEach(entry => {
       const curr = entry.currency || mainCurrency;
       groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
-      if (!dates[curr]) {
-        dates[curr] = entry.sourceDocument?.entryDate || entry.createdAt;
-      }
     });
 
-    return {
-      subtotalsByCurrency: groups,
-      entryDates: dates,
-    };
+    // Build conversion items for batch hook
+    Object.entries(groups).forEach(([currency, amount]) => {
+      const date = entries.find(e => (e.currency || mainCurrency) === currency)?.sourceDocument?.entryDate || entries[0]?.createdAt;
+      items.push({ amount, currency, date });
+    });
+
+    return { subtotalsByCurrency: groups, conversionItems: items };
   }, [entries, mainCurrency]);
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
   const hasMultipleCurrencies = uniqueCurrencies.length > 1;
 
-  // Conversion queries
-  const conversionQueries = useQueries({
-    queries: uniqueCurrencies.map(currency => {
-      const amount = subtotalsByCurrency[currency];
-      const date = entryDates[currency];
-      const dateStr = typeof date === 'string' ? date : (date as Date).toISOString();
+  // Use batch conversion hook
+  const { results: convertedAmounts, isLoading } = useBatchConvertedAmounts(conversionItems, mainCurrency);
 
-      return {
-        queryKey: queryKeys.convert(amount, currency, mainCurrency, dateStr),
-        queryFn: async () => {
-          if (currency === mainCurrency) return { converted: amount };
-
-          const res = await convertCurrencyAction(amount, currency, mainCurrency, dateStr);
-          return { converted: res.converted };
-        },
-        staleTime: 1000 * 60 * 60 * 24,
-      };
-    })
-  });
-
-  const totalInMainCurrency = conversionQueries.reduce((sum, query) => {
-    return sum + (query.data?.converted ?? 0);
-  }, 0);
-
-  const isLoading = conversionQueries.some(q => q.isLoading);
+  const totalInMainCurrency = convertedAmounts.reduce((sum, amount) => sum + amount, 0);
 
   // Build breakdown data
   const breakdownData: CurrencyBreakdown[] = uniqueCurrencies.map((currency, index) => ({
     currency,
     amount: subtotalsByCurrency[currency],
-    convertedAmount: conversionQueries[index].data?.converted,
+    convertedAmount: convertedAmounts[index],
   }));
 
   const formattedTotal = totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });

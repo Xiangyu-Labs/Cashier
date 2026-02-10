@@ -10,11 +10,9 @@ import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/componen
 import { EditableField } from "@/components/ui/editable-field";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
-import { useQueries } from "@tanstack/react-query";
+import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import { convertCurrencyAction } from "@/features/currency/server/actions";
-import { queryKeys } from "@/lib/query-keys";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -98,7 +96,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument.title ?? "";
     const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
 
-    const { subtotalsByCurrency } = useMemo(() => {
+    const { subtotalsByCurrency, conversionItems } = useMemo(() => {
         const groups: Record<string, number> = {};
         ledgerEntries.forEach(entry => {
             const pendingCurrency = pendingChanges.entries[entry.id]?.currency;
@@ -108,37 +106,28 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             groups[curr] = (groups[curr] || 0) + parseFloat(amt);
         });
 
+        // Build conversion items for batch hook
+        const date = sourceDocument.entryDate || sourceDocument.createdAt;
+        const items = Object.entries(groups).map(([currency, amount]) => ({
+            amount,
+            currency,
+            date
+        }));
+
         return {
             subtotalsByCurrency: groups,
+            conversionItems: items
         };
-    }, [ledgerEntries, mainCurrency, pendingChanges.entries]);
+    }, [ledgerEntries, mainCurrency, pendingChanges.entries, sourceDocument.entryDate, sourceDocument.createdAt]);
 
     const uniqueCurrencies = Object.keys(subtotalsByCurrency);
 
-    const conversionQueries = useQueries({
-        queries: uniqueCurrencies.map(currency => {
-            const amount = subtotalsByCurrency[currency];
-            const date = sourceDocument.entryDate || sourceDocument.createdAt;
-
-            return {
-                queryKey: queryKeys.convert(amount, currency, mainCurrency, date),
-                queryFn: async () => {
-                    if (currency === mainCurrency) return { converted: amount };
-                    const result = await convertCurrencyAction(amount, currency, mainCurrency, date);
-                    return { converted: result.converted };
-                },
-                staleTime: 1000 * 60 * 60 * 24,
-            };
-        })
-    });
+    // Use batch conversion hook
+    const { results: convertedAmounts, isLoading: isLoadingConverted } = useBatchConvertedAmounts(conversionItems, mainCurrency);
 
     const totalInMainCurrency = useMemo(() => {
-        return conversionQueries.reduce((sum, query) => {
-            return sum + (query.data?.converted ?? 0);
-        }, 0);
-    }, [conversionQueries]);
-
-    const isLoadingConverted = conversionQueries.some(q => q.isLoading);
+        return convertedAmounts.reduce((sum, amount) => sum + amount, 0);
+    }, [convertedAmounts]);
 
     const sortedEntries = useMemo(() => {
         return [...ledgerEntries].sort((a, b) => {
