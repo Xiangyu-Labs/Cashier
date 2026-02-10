@@ -56,8 +56,27 @@ export function SourceDocumentDetailWrapper({
             if (!ledgerId) return;
             await updateSourceDocumentAction(ledgerId, id, data);
         },
+        onMutate: async (data) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
+            const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+                if (!old) return old;
+                return { ...old, ...data };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
+            }
+            toast.error(tCommon("saveFailed"));
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
@@ -74,8 +93,32 @@ export function SourceDocumentDetailWrapper({
             };
             await updateLedgerEntryAction(ledgerId, entryId, convertedData);
         },
+        onMutate: async ({ entryId, data }) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
+            const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+                if (!old?.ledgerEntries) return old;
+                return {
+                    ...old,
+                    ledgerEntries: old.ledgerEntries.map((entry: any) =>
+                        entry.id === entryId ? { ...entry, ...data } : entry
+                    )
+                };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
+            }
+            toast.error(tCommon("saveFailed"));
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
@@ -87,8 +130,32 @@ export function SourceDocumentDetailWrapper({
             if (!ledgerId) return;
             await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
         },
+        onMutate: async ({ ids, data }) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
+            const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+                if (!old?.ledgerEntries) return old;
+                return {
+                    ...old,
+                    ledgerEntries: old.ledgerEntries.map((entry: any) =>
+                        ids.includes(entry.id) ? { ...entry, ...data } : entry
+                    )
+                };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
+            }
+            toast.error(tCommon("saveFailed"));
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
@@ -100,8 +167,30 @@ export function SourceDocumentDetailWrapper({
             if (!ledgerId) return;
             await deleteLedgerEntryAction(ledgerId, entryId);
         },
+        onMutate: async (entryId) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
+            const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+                if (!old?.ledgerEntries) return old;
+                return {
+                    ...old,
+                    ledgerEntries: old.ledgerEntries.filter((entry: any) => entry.id !== entryId)
+                };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
@@ -113,8 +202,30 @@ export function SourceDocumentDetailWrapper({
             if (!ledgerId) return;
             await batchDeleteLedgerEntriesAction(ledgerId, ids);
         },
+        onMutate: async (ids) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
+            const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+                if (!old?.ledgerEntries) return old;
+                return {
+                    ...old,
+                    ledgerEntries: old.ledgerEntries.filter((entry: any) => !ids.includes(entry.id))
+                };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
+            }
+            toast.error(tCommon("deleteFailed"));
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
@@ -130,6 +241,9 @@ export function SourceDocumentDetailWrapper({
             toast.success(tCommon("deleteSuccess"));
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
+        },
+        onError: () => {
+            toast.error(tCommon("deleteFailed"));
         }
     });
 

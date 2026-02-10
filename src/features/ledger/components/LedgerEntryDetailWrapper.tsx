@@ -41,11 +41,29 @@ export function LedgerEntryDetailWrapper({
             if (!ledgerId) return;
             await updateLedgerEntryAction(ledgerId, id, data);
         },
+        onMutate: async (data) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.ledgerEntry(id) });
+            const previousData = queryClient.getQueryData(queryKeys.ledgerEntry(id));
+
+            queryClient.setQueryData(queryKeys.ledgerEntry(id), (old: any) => {
+                if (!old) return old;
+                return { ...old, ...data };
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success(tCommon("saveSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
-        onError: () => toast.error(tCommon("saveFailed"))
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.ledgerEntry(id), context.previousData);
+            }
+            toast.error(tCommon("saveFailed"));
+        },
+        onSettled: () => {
+            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
     });
 
     const deleteMutation = useMutation({
@@ -58,7 +76,9 @@ export function LedgerEntryDetailWrapper({
             if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
         },
-        onError: () => toast.error(tCommon("deleteFailed"))
+        onError: () => {
+            toast.error(tCommon("deleteFailed"));
+        }
     });
 
 
