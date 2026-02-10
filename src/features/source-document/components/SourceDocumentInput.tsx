@@ -118,7 +118,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             // Always refetch to ensure server state is in sync
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             // Also invalidate task queue to trigger smart polling for the new parse task
-            queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
     });
 
@@ -139,7 +139,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             // Also invalidate task queue to trigger smart polling for the retry task
-            queryClient.invalidateQueries({ queryKey: ['taskQueue', ledgerId] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
     });
 

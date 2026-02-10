@@ -6,6 +6,7 @@ import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 import type { EntryCategory, LedgerEntry } from "@/types/api";
 
@@ -61,18 +62,20 @@ export function LedgerEntryDetailWrapper({
     });
 
 
-    // Handle error state
-    if (error) {
-        toast.error(tCommon("error"));
-        setTimeout(onClose, 0);
-        return null;
-    }
+    // Handle error state - moved to useEffect to avoid render-path side effects
+    useEffect(() => {
+        if (error) {
+            toast.error(tCommon("error"));
+            onClose();
+        }
+    }, [error, onClose, tCommon]);
 
-    // Handle deleted/not-found case (after loading completes)
-    if (!isLoading && !ledgerEntry && open) {
-        setTimeout(onClose, 0);
-        return null;
-    }
+    // Handle deleted/not-found case - moved to useEffect
+    useEffect(() => {
+        if (!isLoading && !ledgerEntry && open) {
+            onClose();
+        }
+    }, [isLoading, ledgerEntry, open, onClose]);
 
     // Always render Modal - pass isLoading for skeleton state
     return (

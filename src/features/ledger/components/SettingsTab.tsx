@@ -217,15 +217,17 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         onSuccess: () => {
             toast.success(t("categoryCreated"));
             setCategoryCreatedTrigger(() => () => { });
-            queryClient.invalidateQueries({ queryKey });
-            queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
         onError: (_err: Error, _: { name: string }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("createCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
             }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
+            queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
     });
 
@@ -249,13 +251,15 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         },
         onSuccess: () => {
             toast.success(t("categoryUpdated"));
-            queryClient.invalidateQueries({ queryKey });
         },
         onError: (_err: Error, _: { id: string; data: Partial<EntryCategory> }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("updateCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
             }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
         },
     });
 
@@ -275,17 +279,19 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         },
         onSuccess: () => {
             toast.success(t("categoryDeleted"));
-            queryClient.invalidateQueries({ queryKey });
-            // Also invalidate uncategorized count since deleted category's entries become uncategorized
-            queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
-            // Invalidate task queue to immediately reflect cancelled tasks
-            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
         onError: (_err: Error, _: string, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
             toast.error(t("deleteCategoryFailed"));
             if (context?.previousCategories) {
                 queryClient.setQueryData(queryKey, context.previousCategories);
             }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey });
+            // Also invalidate uncategorized count since deleted category's entries become uncategorized
+            queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+            // Invalidate task queue to immediately reflect cancelled tasks
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
     });
 

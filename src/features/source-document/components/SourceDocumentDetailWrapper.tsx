@@ -16,6 +16,7 @@ import {
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
@@ -132,18 +133,20 @@ export function SourceDocumentDetailWrapper({
         }
     });
 
-    // Handle error state
-    if (error) {
-        toast.error(tCommon("error"));
-        setTimeout(onClose, 0);
-        return null;
-    }
+    // Handle error state - moved to useEffect to avoid render-path side effects
+    useEffect(() => {
+        if (error) {
+            toast.error(tCommon("error"));
+            onClose();
+        }
+    }, [error, onClose, tCommon]);
 
-    // Handle deleted/not-found case
-    if (!isLoading && !sourceDocument && open) {
-        setTimeout(onClose, 0);
-        return null;
-    }
+    // Handle deleted/not-found case - moved to useEffect
+    useEffect(() => {
+        if (!isLoading && !sourceDocument && open) {
+            onClose();
+        }
+    }, [isLoading, sourceDocument, open, onClose]);
 
     const currentLedgerEntries: LedgerEntry[] = sourceDocument
         ? ((sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries || initialLedgerEntries || [])

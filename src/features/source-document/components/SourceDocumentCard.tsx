@@ -24,6 +24,7 @@ import { useTranslations, useLocale } from "next-intl";
 
 import { useQueries } from "@tanstack/react-query";
 import { convertCurrencyAction } from "@/features/currency/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -70,7 +71,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
       const dateStr = typeof date === 'string' ? date : (date as Date).toISOString();
 
       return {
-        queryKey: ["convert", amount, currency, mainCurrency, dateStr],
+        queryKey: queryKeys.convert(amount, currency, mainCurrency, dateStr),
         queryFn: async () => {
           if (currency === mainCurrency) return { converted: amount };
 

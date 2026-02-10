@@ -14,6 +14,7 @@ import { useQueries } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { convertCurrencyAction } from "@/features/currency/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -120,7 +121,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             const date = sourceDocument.entryDate || sourceDocument.createdAt;
 
             return {
-                queryKey: ["convert", amount, currency, mainCurrency, date],
+                queryKey: queryKeys.convert(amount, currency, mainCurrency, date),
                 queryFn: async () => {
                     if (currency === mainCurrency) return { converted: amount };
                     const result = await convertCurrencyAction(amount, currency, mainCurrency, date);
