@@ -22,28 +22,30 @@ export function PullToRefresh({
     const t = useTranslations("PullToRefresh");
     const [pullDistance, setPullDistance] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
     const startYRef = useRef(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const lastRefreshTime = useRef(0);
     const isPullingRef = useRef(false);
+    const pullDistanceRef = useRef(0);
 
-    // 检测是否为桌面端（没有触摸支持）
-    const isTouchDevice = typeof window !== "undefined" && "ontouchstart" in window;
+    // Detect touch device on mount
+    useEffect(() => {
+        setIsTouchDevice("ontouchstart" in window);
+    }, []);
 
     useEffect(() => {
-        // 如果禁用或非触摸设备，不添加监听器
+        // If disabled or non-touch device, don't add listeners
         if (disabled || !isTouchDevice) return;
 
         const container = containerRef.current;
         if (!container) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            // 只有在容器顶部时才允许下拉
+            // Only allow pull when at top
             const scrollTop = container.scrollTop;
-            // 兼容 body 滚动：如果容器没有滚动条，检查 window 滚动位置
             const bodyScrollTop = window.scrollY || document.documentElement.scrollTop;
 
-            // 只有都在顶部才允许触发
             if (scrollTop === 0 && bodyScrollTop === 0 && !isRefreshing) {
                 startYRef.current = e.touches[0].clientY;
                 isPullingRef.current = true;
@@ -58,16 +60,16 @@ export function PullToRefresh({
             const containerScrollTop = container.scrollTop;
             const bodyScrollTop = window.scrollY || document.documentElement.scrollTop;
 
-            // 只在向下拉且在顶部时生效
+            // Only when pulling down and at top
             if (distance > 0 && containerScrollTop === 0 && bodyScrollTop === 0) {
-                // 阻止默认的页面滚动行为
                 if (e.cancelable) e.preventDefault();
 
-                // 限制最大拉动距离为 80px，并应用阻尼效果
+                // Apply damping and max distance
                 const maxDistance = 80;
                 const damping = 0.5;
                 const dampedDistance = Math.min(distance * damping, maxDistance);
 
+                pullDistanceRef.current = dampedDistance;
                 setPullDistance(dampedDistance);
             }
         };
@@ -76,13 +78,15 @@ export function PullToRefresh({
             if (!isPullingRef.current) return;
 
             isPullingRef.current = false;
+            const currentPullDistance = pullDistanceRef.current;
 
-            // 如果拉动距离超过阈值，触发刷新
-            if (pullDistance > threshold) {
-                // 防抖：500ms 内不允许重复触发
+            // Trigger refresh if threshold exceeded
+            if (currentPullDistance > threshold) {
+                // Debounce: 500ms between refreshes
                 const now = Date.now();
                 if (now - lastRefreshTime.current < 500) {
                     setPullDistance(0);
+                    pullDistanceRef.current = 0;
                     return;
                 }
 
@@ -96,14 +100,16 @@ export function PullToRefresh({
                 } finally {
                     setIsRefreshing(false);
                     setPullDistance(0);
+                    pullDistanceRef.current = 0;
                 }
             } else {
-                // 距离不够，回弹
+                // Not enough distance, bounce back
                 setPullDistance(0);
+                pullDistanceRef.current = 0;
             }
         };
 
-        // 使用 passive: false 以便可以调用 preventDefault()
+        // Attach listeners - dependencies are now stable
         container.addEventListener("touchstart", handleTouchStart, { passive: true });
         container.addEventListener("touchmove", handleTouchMove, { passive: false });
         container.addEventListener("touchend", handleTouchEnd, { passive: true });
@@ -113,7 +119,7 @@ export function PullToRefresh({
             container.removeEventListener("touchmove", handleTouchMove);
             container.removeEventListener("touchend", handleTouchEnd);
         };
-    }, [pullDistance, threshold, isRefreshing, onRefresh, disabled, isTouchDevice]);
+    }, [threshold, isRefreshing, onRefresh, disabled, isTouchDevice]);
 
     // 如果禁用或非触摸设备，直接渲染子元素
     if (disabled || !isTouchDevice) {
