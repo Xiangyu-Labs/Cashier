@@ -5,13 +5,16 @@ import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { eq, and, isNull } from "drizzle-orm";
+import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 
 const ledgerEntryInputSchema = z.object({
     text: z.string().optional(),
     images: z.array(z.object({
         data: z.string(), // base64
         mimeType: z.string()
-    })).optional()
+    })).optional(),
+    entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    timezone: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Validation failed", details: result.error.issues }, { status: 400 });
     }
 
-    const { text, images } = result.data;
+    const { text, images, entryDate, timezone } = result.data;
 
     if (!text && (!images || images.length === 0)) {
         return NextResponse.json({ error: "Content (text or images) is required" }, { status: 400 });
@@ -62,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         // Save source document with 'queued' status directly
         const { sourceDocuments } = await import("@/lib/db/schema");
-        const today = new Date().toISOString().split('T')[0];
+        const today = entryDate || getDateInTimezone(timezone) || formatDateTimeForApi(new Date());
         const [savedDoc] = await db.insert(sourceDocuments).values({
             ledgerId: credential.ledgerId,
             text: text || null,

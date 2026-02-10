@@ -7,6 +7,7 @@ import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_CATEGORIZE_ENTRY, type CategorizeEntryInput } from "../tasks/categorize-entry";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 export interface AutoCategorizeResult {
     success: boolean;
@@ -107,7 +108,7 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Auto
                 amount: entry.amount,
                 currency: entry.currency ?? "CNY",
                 description: entry.description,
-                entryDate: entry.sourceDocument?.entryDate ?? new Date().toISOString().split('T')[0],
+                entryDate: entry.sourceDocument?.entryDate ?? formatDateTimeForApi(new Date()),
                 sourceDocumentText: entry.sourceDocument?.text || undefined,
                 sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
                 categories: indexedCategories,

@@ -135,3 +135,28 @@ export function parseDateRangeEnd(dateStr: string | null | undefined): Date | nu
 
     return endOfDay(parsed);
 }
+
+/**
+ * Parse a "YYYY-MM-DD" string as a local-time Date (midnight local).
+ *
+ * IMPORTANT: Do NOT use `new Date("YYYY-MM-DD")` — JS spec treats date-only
+ * strings as UTC midnight, which shifts the date in non-UTC timezones.
+ * This function always creates the date in the runtime's local timezone.
+ */
+export function parseDateString(dateStr: string): Date {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
+/**
+ * Get today's date (YYYY-MM-DD) in a specific timezone.
+ * Uses Intl API — works regardless of server's TZ setting.
+ */
+export function getDateInTimezone(timezone?: string): string | undefined {
+    if (!timezone) return undefined;
+    try {
+        return new Intl.DateTimeFormat('sv-SE', { timeZone: timezone }).format(new Date());
+    } catch {
+        return undefined; // invalid timezone string
+    }
+}

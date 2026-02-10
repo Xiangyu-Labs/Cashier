@@ -6,6 +6,7 @@ import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 // Import multi-stage executors
 import { executeStage1, type Stage1Input } from "./stage1-executor";
@@ -272,8 +273,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
                 : null;
 
             // Use source document's entryDate as primary fallback, then today's date
-            const now = new Date();
-            const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const todayDate = formatDateTimeForApi(new Date());
             const fallbackDate = doc?.entryDate || todayDate;
             const entryCurrency = entry.currency || "CNY";
 

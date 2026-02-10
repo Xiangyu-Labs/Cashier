@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 import { DateFilter } from "@/components/ui/date-filter";
+import { parseDateString } from "@/lib/date-utils";
 
 interface EditableDateFieldProps {
     value: string; // yyyy-MM-dd format
@@ -29,7 +30,7 @@ export function EditableDateField({
     const formatDisplayDate = (dateStr: string) => {
         if (!dateStr) return placeholder;
         try {
-            return new Date(dateStr).toLocaleDateString(locale, displayFormat);
+            return parseDateString(dateStr).toLocaleDateString(locale, displayFormat);
         } catch {
             return dateStr;
         }

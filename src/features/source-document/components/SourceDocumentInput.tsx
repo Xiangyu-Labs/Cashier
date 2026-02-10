@@ -15,6 +15,7 @@ import { Ledger } from "@/types/api";
 
 import { useTranslations } from "next-intl";
 import { compressImage } from "@/lib/image-utils";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 interface SourceDocumentInputProps {
     ledgerId: string;
@@ -147,6 +148,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         const payload = {
             text: text || undefined,
             images: images.length > 0 ? images : undefined,
+            entryDate: formatDateTimeForApi(new Date()),
         };
         startTransition(() => {
             if (mode === "retry") {

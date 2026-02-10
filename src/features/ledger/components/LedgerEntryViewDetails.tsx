@@ -8,6 +8,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { type ReactNode, useState, useRef, useEffect, memo, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { motion, AnimatePresence } from "framer-motion";
@@ -66,7 +67,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
     // Get entryDate from source document
     const entryDate = ledgerEntry.sourceDocument?.entryDate ??
-        (ledgerEntry.createdAt ? new Date(ledgerEntry.createdAt).toISOString().split('T')[0] : "");
+        (ledgerEntry.createdAt ? formatDateTimeForApi(new Date(ledgerEntry.createdAt)) : "");
 
     const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -197,7 +198,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                             <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
                             <span className="text-sm text-text">
-                                {entryDate ? new Date(entryDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
+                                {entryDate ? parseDateString(entryDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
                             </span>
                         </div>
 

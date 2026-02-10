@@ -29,6 +29,7 @@ import { EditableField } from "@/components/ui/editable-field"
 import { Textarea } from "@/components/ui/textarea"
 import { DateFilter } from "@/components/ui/date-filter"
 import { Badge } from "@/components/ui/badge"
+import { formatDateTimeForApi } from "@/lib/date-utils"
 
 interface SourceDocumentDetailModalProps {
     sourceDocument: SourceDocument | null
@@ -449,7 +450,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                             <div className="space-y-2">
                                                 <DateFilter
                                                     value={batchDate}
-                                                    onChange={(date) => setBatchDate(date ? date.toISOString().split('T')[0] : "")}
+                                                    onChange={(date) => setBatchDate(date ? formatDateTimeForApi(date) : "")}
                                                     size="sm"
                                                 />
                                                 <Button

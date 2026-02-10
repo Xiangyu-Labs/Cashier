@@ -1,4 +1,5 @@
 import { CategoryInfo } from "@/features/ai/server/types";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 export function buildLedgerEntryPrompt(
   categories: CategoryInfo[],
@@ -12,7 +13,7 @@ export function buildLedgerEntryPrompt(
     .map((c) => `- ${c.name}${c.description ? `: ${c.description}` : ""}`)
     .join("\n");
 
-  const today = currentDate || new Date().toISOString().split('T')[0];
+  const today = currentDate || formatDateTimeForApi(new Date());
 
 
 

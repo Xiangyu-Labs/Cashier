@@ -5,6 +5,7 @@ import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Coins } from "l
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { parseDateString } from "@/lib/date-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -256,7 +257,10 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted-foreground group-hover:text-text", isItemsExpanded && "rotate-180")} />
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-            {new Date(sourceDocument.entryDate || sourceDocument.createdAt).toLocaleDateString(locale, {
+            {(sourceDocument.entryDate
+              ? parseDateString(sourceDocument.entryDate)
+              : new Date(sourceDocument.createdAt)
+            ).toLocaleDateString(locale, {
               month: "long",
               day: "numeric",
             })}

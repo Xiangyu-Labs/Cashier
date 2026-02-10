@@ -10,11 +10,12 @@ import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document"
 import { desc, lte, gte, inArray, and, eq, isNull, or, lt, sql } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
-import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
+import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/lib/date-utils";
 
 export interface SourceDocumentActionInput {
     text?: string;
     images?: { data: string; mimeType: string }[];
+    entryDate?: string; // yyyy-MM-dd, provided by client
 }
 
 /**
@@ -77,7 +78,7 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
  */
 export async function createSourceDocumentAction(ledgerId: string, input: SourceDocumentActionInput) {
     try {
-        const { text, images } = input;
+        const { text, images, entryDate } = input;
         if (!text && (!images || images.length === 0)) {
             throw new Error("At least one input (text or images) is required");
         }
@@ -88,7 +89,7 @@ export async function createSourceDocumentAction(ledgerId: string, input: Source
         const q = forLedger(sourceDocuments, ledgerId);
 
         // Save source document with 'queued' status
-        const today = new Date().toISOString().split('T')[0]; // yyyy-MM-dd format
+        const today = entryDate || formatDateTimeForApi(new Date());
         const [savedDoc] = await db.insert(sourceDocuments).values({
             ledgerId: ledgerId, // Explicitly set ledgerId
             text: text || null,
