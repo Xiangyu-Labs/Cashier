@@ -24,10 +24,14 @@ interface BatchActionToolbarProps {
     hasMoreData?: boolean;
     onSelectAll: () => void;
     onClearSelection: () => void;
-    onAiCategorize: () => Promise<void>;
-    onChangeCategory: (categoryId: string | null) => Promise<void>;
-    onDelete: () => Promise<void>;
+    onAiCategorize: () => void;
+    onChangeCategory: (categoryId: string | null) => void;
+    onDelete: () => void;
     categories: EntryCategory[];
+    // Optional loading states from mutations
+    isAiCategorizing?: boolean;
+    isChangingCategory?: boolean;
+    isDeleting?: boolean;
 }
 
 export function BatchActionToolbar({
@@ -41,38 +45,60 @@ export function BatchActionToolbar({
     onChangeCategory,
     onDelete,
     categories,
+    isAiCategorizing: isAiCategorizingProp,
+    isChangingCategory: isChangingCategoryProp,
+    isDeleting: isDeletingProp,
 }: BatchActionToolbarProps) {
     const t = useTranslations("BatchActions");
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-    const [isAiCategorizing, setIsAiCategorizing] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [isChangingCategory, setIsChangingCategory] = useState(false);
+
+    // Use provided loading states or fall back to internal state management
+    const [internalAiCategorizing, setInternalAiCategorizing] = useState(false);
+    const [internalDeleting, setInternalDeleting] = useState(false);
+    const [internalChangingCategory, setInternalChangingCategory] = useState(false);
+
+    const isAiCategorizing = isAiCategorizingProp ?? internalAiCategorizing;
+    const isDeleting = isDeletingProp ?? internalDeleting;
+    const isChangingCategory = isChangingCategoryProp ?? internalChangingCategory;
 
     const handleAiCategorize = async () => {
-        setIsAiCategorizing(true);
-        try {
-            await onAiCategorize();
-        } finally {
-            setIsAiCategorizing(false);
+        if (isAiCategorizingProp === undefined) {
+            setInternalAiCategorizing(true);
+            try {
+                await onAiCategorize();
+            } finally {
+                setInternalAiCategorizing(false);
+            }
+        } else {
+            onAiCategorize();
         }
     };
 
     const handleDelete = async () => {
-        setIsDeleting(true);
-        try {
-            await onDelete();
-        } finally {
-            setIsDeleting(false);
+        if (isDeletingProp === undefined) {
+            setInternalDeleting(true);
+            try {
+                await onDelete();
+            } finally {
+                setInternalDeleting(false);
+                setDeleteConfirmOpen(false);
+            }
+        } else {
+            onDelete();
             setDeleteConfirmOpen(false);
         }
     };
 
     const handleChangeCategory = async (categoryId: string | null) => {
-        setIsChangingCategory(true);
-        try {
-            await onChangeCategory(categoryId);
-        } finally {
-            setIsChangingCategory(false);
+        if (isChangingCategoryProp === undefined) {
+            setInternalChangingCategory(true);
+            try {
+                await onChangeCategory(categoryId);
+            } finally {
+                setInternalChangingCategory(false);
+            }
+        } else {
+            onChangeCategory(categoryId);
         }
     };
 

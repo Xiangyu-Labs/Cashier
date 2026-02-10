@@ -7,6 +7,7 @@ import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { updateLedgerEntryAction, deleteLedgerEntryAction, batchDeleteLedgerEntriesAction, batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/categorize";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
@@ -342,31 +343,60 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
 
     const isAllSelected = monthEntries.length > 0 && selectedIds.size === monthEntries.length;
 
+    // Batch mutations
+    const batchCategorizeMutation = useLedgerMutation(ledgerId, {
+        mutationFn: async (ids: string[]) => {
+            const result = await submitBatchCategorizeAction(ledgerId, ids);
+            return result;
+        },
+        successMessage: "", // Custom message based on result
+        errorMessage: tCommon("error"),
+        onSuccessExtra: (result) => {
+            if (result.submittedCount > 0) {
+                toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
+            }
+            clearSelection();
+        },
+    });
+
+    const batchChangeCategoryMutation = useLedgerMutation(ledgerId, {
+        mutationFn: async ({ ids, categoryId }: { ids: string[]; categoryId: string | null }) => {
+            await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId });
+        },
+        successMessage: "", // Custom message with count
+        errorMessage: tCommon("error"),
+        onSuccessExtra: (_data, { ids }) => {
+            toast.success(tBatch("categoryChanged", { count: ids.length }));
+            clearSelection();
+        },
+    });
+
+    const batchDeleteMutation = useLedgerMutation(ledgerId, {
+        mutationFn: async (ids: string[]) => {
+            await batchDeleteLedgerEntriesAction(ledgerId, ids);
+        },
+        successMessage: "", // Custom message with count
+        errorMessage: tCommon("error"),
+        onSuccessExtra: (_data, ids) => {
+            toast.success(tBatch("entriesDeleted", { count: ids.length }));
+            clearSelection();
+        },
+    });
+
     // Batch action handlers
-    const handleBatchAiCategorize = async () => {
+    const handleBatchAiCategorize = () => {
         const ids = Array.from(selectedIds);
-        const result = await submitBatchCategorizeAction(ledgerId, ids);
-        if (result.submittedCount > 0) {
-            toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
-        }
-        clearSelection();
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        batchCategorizeMutation.mutate(ids);
     };
 
-    const handleBatchChangeCategory = async (categoryId: string | null) => {
+    const handleBatchChangeCategory = (categoryId: string | null) => {
         const ids = Array.from(selectedIds);
-        await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId });
-        toast.success(tBatch("categoryChanged", { count: ids.length }));
-        clearSelection();
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        batchChangeCategoryMutation.mutate({ ids, categoryId });
     };
 
-    const handleBatchDelete = async () => {
+    const handleBatchDelete = () => {
         const ids = Array.from(selectedIds);
-        await batchDeleteLedgerEntriesAction(ledgerId, ids);
-        toast.success(tBatch("entriesDeleted", { count: ids.length }));
-        clearSelection();
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        batchDeleteMutation.mutate(ids);
     };
 
     return (
@@ -602,6 +632,9 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                     onChangeCategory={handleBatchChangeCategory}
                     onDelete={handleBatchDelete}
                     categories={categories}
+                    isAiCategorizing={batchCategorizeMutation.isPending}
+                    isChangingCategory={batchChangeCategoryMutation.isPending}
+                    isDeleting={batchDeleteMutation.isPending}
                 />
             </div>
         </PullToRefresh>
