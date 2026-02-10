@@ -60,7 +60,25 @@ export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLe
             collapseBillsDefault?: boolean;
             aiCustomPrompt?: string;
         }) => {
-            await updateLedgerAction(ledgerId, data);
+            // Transform flat structure to nested structure expected by updateLedgerAction
+            const { name, preferredCurrencies, aiLanguage, collapseBillsDefault, aiCustomPrompt, ...rest } = data;
+            const payload: { name?: string; settings?: Record<string, unknown> } = {};
+
+            if (name !== undefined) {
+                payload.name = name;
+            }
+
+            const settings: Record<string, unknown> = {};
+            if (preferredCurrencies !== undefined) settings.currencies = preferredCurrencies;
+            if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
+            if (collapseBillsDefault !== undefined) settings.collapseBillsDefault = collapseBillsDefault;
+            if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
+
+            if (Object.keys(settings).length > 0) {
+                payload.settings = settings;
+            }
+
+            await updateLedgerAction(ledgerId, payload);
         },
         onSuccess: () => {
             toast.success(t("updateSuccess"));
