@@ -40,8 +40,8 @@ export const taskRuns = sqliteTable("task_runs", {
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_task_runs_status").on(table.status),
-    index("idx_task_runs_created_at").on(table.createdAt),
-    index("idx_task_runs_scope").on(table.scopeId),
+    index("idx_task_runs_scope_status").on(table.scopeId, table.status),
+    index("idx_task_runs_type_status").on(table.type, table.status),
     index("idx_task_runs_entity").on(table.entityType, table.entityId),
     index("idx_task_runs_scope_entity").on(table.scopeId, table.entityType, table.entityId),
 ]);

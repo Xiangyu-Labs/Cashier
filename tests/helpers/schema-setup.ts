@@ -38,7 +38,6 @@ export async function createTestUser(
     email,
     name: "Test User",
     emailVerified: new Date(),
-    metadata: {}, // SQLite JSON
   });
   return id;
 }

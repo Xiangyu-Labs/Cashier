@@ -35,7 +35,7 @@ export async function getLedgerStatsAction(
         conditions.push(
             sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
-                WHERE entry_date >= ${startDate} AND deleted_at IS NULL
+                WHERE ledger_id = ${ledgerId} AND entry_date >= ${startDate} AND deleted_at IS NULL
             )`
         );
     }
@@ -43,7 +43,7 @@ export async function getLedgerStatsAction(
         conditions.push(
             sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
-                WHERE entry_date <= ${endDate} AND deleted_at IS NULL
+                WHERE ledger_id = ${ledgerId} AND entry_date <= ${endDate} AND deleted_at IS NULL
             )`
         );
     }

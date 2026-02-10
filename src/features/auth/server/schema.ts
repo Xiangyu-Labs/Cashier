@@ -20,23 +20,10 @@ export const users = sqliteTable("users", {
     image: text("image"),
     // Default ledger will be set after ledger is created (no FK to avoid circular type dependency)
     defaultLedgerId: text("default_ledger_id"),
-    metadata: text("metadata", { mode: "json" }).$type<UserMetadata>().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 });
-
-export interface UserMetadata {
-    uiPreferences?: {
-        theme?: "light" | "dark" | "system";
-        sidebarCollapsed?: boolean;
-        lastActiveLedgerId?: string;
-    };
-    onboarding?: {
-        hasSeenWelcomeModal?: boolean;
-        guideStep?: number;
-    };
-}
 
 export type User = InferSelectModel<typeof users>;
 

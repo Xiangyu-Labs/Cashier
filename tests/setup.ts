@@ -70,7 +70,6 @@ beforeEach(async () => {
         email: 'test@example.com',
         name: 'Test User',
         emailVerified: new Date(),
-        metadata: {},
       });
     } catch (_e) {
       // Ignore unique constraint violation if exists

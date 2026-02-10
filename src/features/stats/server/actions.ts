@@ -69,7 +69,7 @@ export async function getEnhancedStats({
                 q.active, // This includes ledgerId and deletedAt is null
                 sql`${ledgerEntries.sourceDocumentId} IN (
                     SELECT id FROM source_documents
-                    WHERE entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
+                    WHERE ledger_id = ${ledgerId} AND entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
                 )`
             ),
             with: {

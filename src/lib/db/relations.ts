@@ -26,6 +26,8 @@ export const ledgersRelations = relations(ledgers, ({ one, many }) => ({
     }),
     ledgerEntries: many(ledgerEntries),
     sourceDocuments: many(sourceDocuments),
+    entryCategories: many(entryCategories),
+    serviceCredentials: many(serviceCredentials),
 }));
 
 export const entryCategoriesRelations = relations(entryCategories, ({ one, many }) => ({
