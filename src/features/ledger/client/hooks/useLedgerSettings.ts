@@ -1,0 +1,127 @@
+"use client";
+
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import {
+    getEntryCategoriesAction,
+    getUncategorizedCountAction,
+} from "@/features/ledger/server/actions/categories";
+import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
+import type { Ledger, EntryCategoryWithCount, ServiceCredential, Settings } from "@/types/api";
+
+interface UseLedgerSettingsParams {
+    ledgerId: string;
+    ledger: Ledger;
+    initialCategories: EntryCategoryWithCount[];
+}
+
+export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLedgerSettingsParams) {
+    const queryClient = useQueryClient();
+    const t = useTranslations("Settings");
+
+    // Categories - Use smart polling
+    const { data: categories = [] } = useSmartPolling<EntryCategoryWithCount[]>({
+        queryKey: queryKeys.entryCategories(ledgerId),
+        queryFn: () => getEntryCategoriesAction(ledgerId),
+        isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
+        interval: 3000,
+        initialData: initialCategories
+    });
+
+    // Uncategorized count - separate query for cleaner cache management
+    const { data: uncategorizedCount = 0 } = useQuery<number>({
+        queryKey: queryKeys.uncategorizedCount(ledgerId),
+        queryFn: () => getUncategorizedCountAction(ledgerId),
+        staleTime: 30 * 1000, // 30 seconds
+    });
+
+    // Credentials - fetch client-side with long staleTime
+    const { data: credentials = [] } = useQuery<ServiceCredential[]>({
+        queryKey: queryKeys.serviceCredentials(ledgerId),
+        queryFn: () => getServiceCredentialsAction(ledgerId) as Promise<ServiceCredential[]>,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
+    // Local state for Ledger Name
+    const [localLedgerName, setLocalLedgerName] = useState(ledger.name);
+    const [isNameFocused, setIsNameFocused] = useState(false);
+
+    // Sync from props only when not focused and not pending
+    const updateLedgerMutation = useMutation({
+        mutationFn: async (data: {
+            name?: string;
+            preferredCurrencies?: string[];
+            aiLanguage?: string;
+            collapseBillsDefault?: boolean;
+            aiCustomPrompt?: string;
+        }) => {
+            await updateLedgerAction(ledgerId, data);
+        },
+        onSuccess: () => {
+            toast.success(t("updateSuccess"));
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        },
+        onError: () => {
+            toast.error(t("updateFailed"));
+        },
+    });
+
+    // Sync local name from props when not focused and not pending
+    if (!isNameFocused && !updateLedgerMutation.isPending && localLedgerName !== ledger.name) {
+        setLocalLedgerName(ledger.name);
+    }
+
+    // Local state for AI Prompt
+    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
+    const [isPromptFocused, setIsPromptFocused] = useState(false);
+
+    // Sync from props only when not focused and not pending
+    if (!isPromptFocused && !updateLedgerMutation.isPending && localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
+        setLocalAiPrompt(ledger.metadata?.settings?.aiCustomPrompt || "");
+    }
+
+    // Optimistic state for collapse bills
+    const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
+
+    const updateLedger = async (data: {
+        name?: string;
+        preferredCurrencies?: string[];
+        aiLanguage?: string;
+        collapseBillsDefault?: boolean;
+        aiCustomPrompt?: string;
+    }) => {
+        // Optimistic update for collapse bills
+        if (data.collapseBillsDefault !== undefined) {
+            setOptimisticCollapseBills(data.collapseBillsDefault);
+        }
+
+        try {
+            await updateLedgerMutation.mutateAsync(data);
+        } catch (error) {
+            // Revert optimistic updates on error
+            setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
+        }
+    };
+
+    return {
+        categories,
+        uncategorizedCount,
+        credentials,
+        updateLedger,
+        isPending: updateLedgerMutation.isPending,
+        localLedgerName,
+        setLocalLedgerName,
+        isNameFocused,
+        setIsNameFocused,
+        localAiPrompt,
+        setLocalAiPrompt,
+        isPromptFocused,
+        setIsPromptFocused,
+        optimisticCollapseBills,
+    };
+}
