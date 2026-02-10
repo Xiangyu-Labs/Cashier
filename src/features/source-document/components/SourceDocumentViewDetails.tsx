@@ -13,7 +13,7 @@ import { useConvertedAmount } from "@/features/currency/client/hooks/useConverte
 import { useQueries } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
+import { convertCurrencyAction } from "@/features/currency/server/actions";
 
 interface CurrencyBreakdownItemProps {
     currency: string;

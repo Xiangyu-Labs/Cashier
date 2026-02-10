@@ -8,7 +8,6 @@ import {
     getEndOfYear,
     getDateRange,
     addPeriod,
-    formatDateForApi,
     formatDateTimeForApi,
     parseDateRangeStart,
     parseDateRangeEnd,
@@ -128,13 +127,6 @@ describe("date-utils", () => {
             const date = new Date("2026-02-04");
             const result = addPeriod(date, "month", -1);
             expect(result.getMonth()).toBe(0); // January
-        });
-    });
-
-    describe("formatDateForApi", () => {
-        it("formats date as yyyy-MM-dd", () => {
-            const result = formatDateForApi(new Date("2026-02-04"));
-            expect(result).toBe("2026-02-04");
         });
     });
 

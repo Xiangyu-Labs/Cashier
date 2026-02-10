@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
 import { useQueries } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/features/ledger/server/actions/currency";
+import { convertCurrencyAction } from "@/features/currency/server/actions";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {

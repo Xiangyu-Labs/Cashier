@@ -78,8 +78,20 @@ export function addPeriod(date: Date, type: DateRangeType, amount: number): Date
     }
 }
 
-export function formatDateForApi(date: Date): string {
-    return format(date, "yyyy-MM-dd");
+/**
+ * Serialize database date fields to ISO strings for API responses.
+ * Handles the common pattern of createdAt, updatedAt, and deletedAt fields.
+ *
+ * @param row - Database row with date fields
+ * @returns Object with dates serialized to ISO strings
+ */
+export function serializeDates<T extends { createdAt: Date; updatedAt: Date; deletedAt: Date | null }>(row: T) {
+    return {
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+        deletedAt: row.deletedAt?.toISOString() ?? null,
+    };
 }
 
 /**

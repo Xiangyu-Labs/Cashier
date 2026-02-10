@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { DateRangeType, formatDateForApi } from "@/lib/date-utils";
+import { DateRangeType, formatDateTimeForApi } from "@/lib/date-utils";
 import { useLocale } from "next-intl";
 
 
@@ -56,7 +56,7 @@ export function StatsChart({
             // Safety break to prevent infinite loops if dates are weird
             let safety = 0;
             while (curr <= end && safety < 400) {
-                const dateStr = formatDateForApi(curr);
+                const dateStr = formatDateTimeForApi(curr);
                 const found = data.find(d => d.date === dateStr);
 
                 let label = "";

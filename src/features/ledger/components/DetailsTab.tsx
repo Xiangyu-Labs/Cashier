@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { updateLedgerEntryAction, deleteLedgerEntryAction, batchDeleteLedgerEntriesAction, batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/batch-categorize";
+import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/categorize";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
 import { LedgerEntryCard } from "./LedgerEntryCard";

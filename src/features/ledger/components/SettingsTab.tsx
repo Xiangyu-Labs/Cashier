@@ -16,7 +16,7 @@ import {
     getEntryCategoriesAction,
     getUncategorizedCountAction,
 } from "@/features/ledger/server/actions/categories";
-import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/auto-categorize";
+import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/categorize";
 import {
     createServiceCredentialAction,
     deleteServiceCredentialAction,

@@ -8,7 +8,6 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import {
     DateRangeType,
     getDateRange,
-    formatDateForApi,
     formatDateTimeForApi,
 } from "@/lib/date-utils";
 import { StatsHeader } from "@/components/stats/StatsHeader";
@@ -55,7 +54,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         }
     }, [startDate, endDate, rangeType, format]);
 
-    const enhancedStatsKey = [...queryKeys.enhancedStats(ledgerId || ''), formatDateForApi(startDate), rangeType, ledger?.metadata?.settings?.mainCurrency];
+    const enhancedStatsKey = [...queryKeys.enhancedStats(ledgerId || ''), formatDateTimeForApi(startDate), rangeType, ledger?.metadata?.settings?.mainCurrency];
     const { data: stats, isLoading } = useQuery({
         queryKey: enhancedStatsKey,
         queryFn: () =>

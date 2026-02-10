@@ -4,7 +4,7 @@ import { currencyRates } from "@/features/currency/server/schema";
 import {
     convertCurrencyAction,
     batchConvertCurrencyAction,
-} from "@/features/ledger/server/actions/currency";
+} from "@/features/currency/server/actions";
 
 /**
  * Helper to insert test exchange rates into the database

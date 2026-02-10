@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/features/ledger/server/actions";
+import { convertCurrencyAction } from "@/features/currency/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 interface ConversionData {
     amount: number;
@@ -20,7 +21,7 @@ export function useConvertedAmount(
     const isMissingInfo = !amount || !from || !to || from === "unknown" || to === "unknown";
 
     const { data, isLoading, error } = useQuery<ConversionData>({
-        queryKey: ["convert", amount, from, to, date],
+        queryKey: queryKeys.convert(amount, from!, to!, date || undefined),
         queryFn: async () => {
             const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
             return {

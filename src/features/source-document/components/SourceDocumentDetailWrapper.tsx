@@ -10,6 +10,7 @@ import {
 import {
     deleteLedgerEntryAction,
     batchUpdateLedgerEntriesAction,
+    batchDeleteLedgerEntriesAction,
     updateLedgerEntryAction
 } from "@/features/ledger/server/actions/entries";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
@@ -109,9 +110,7 @@ export function SourceDocumentDetailWrapper({
     const batchDeleteMutation = useMutation({
         mutationFn: async (ids: string[]) => {
             if (!ledgerId) return;
-            for (const entryId of ids) {
-                await deleteLedgerEntryAction(ledgerId, entryId);
-            }
+            await batchDeleteLedgerEntriesAction(ledgerId, ids);
         },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));

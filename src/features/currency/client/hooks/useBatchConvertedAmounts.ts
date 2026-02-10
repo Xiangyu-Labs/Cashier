@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { batchConvertCurrencyAction, BatchConversionItem } from "@/features/ledger/server/actions/currency";
+import { batchConvertCurrencyAction, BatchConversionItem } from "@/features/currency/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 interface UseBatchConvertedAmountsResult {
     results: number[];
@@ -27,7 +28,7 @@ export function useBatchConvertedAmounts(
     })));
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ["batchConvert", cacheKey, targetCurrency],
+        queryKey: queryKeys.batchConvert(cacheKey, targetCurrency!),
         queryFn: async () => {
             const result = await batchConvertCurrencyAction(items, targetCurrency!);
             return result.results;
