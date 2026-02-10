@@ -397,7 +397,13 @@
         "errorDesc": "An error occurred during sign in. Please try again.",
         "tryAgain": "Try Again",
         "rateLimited": "Too Many Requests",
-        "rateLimitedDesc": "Please wait a minute before trying again."
+        "rateLimitedDesc": "Please wait a minute before trying again.",
+        "sendCodeFailed": "Failed to send verification code",
+        "unexpectedError": "An unexpected error occurred",
+        "invalidCode": "Please enter a valid 6-digit code",
+        "verifyFailed": "Invalid verification code",
+        "resendFailed": "Failed to resend verification code",
+        "codeExpiredMessage": "Verification code has expired. Please request a new one."
     },
     "Devices": {
         "title": "Device Management",

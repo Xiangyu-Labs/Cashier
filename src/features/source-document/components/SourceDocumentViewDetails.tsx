@@ -232,6 +232,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                             key={entry.id}
                                             ledgerEntry={entry}
                                             categories={categories}
+                                            categoryPlaceholder={t("selectCategory")}
                                             preferredCurrencies={preferredCurrencies}
                                             mainCurrency={mainCurrency}
                                             selected={selectedEntryIds.includes(entry.id)}

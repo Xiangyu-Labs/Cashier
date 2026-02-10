@@ -40,6 +40,7 @@ export interface EntryEditData {
 export interface EditableBillEntryItemProps extends VariantProps<typeof itemVariants> {
     ledgerEntry: LedgerEntry;
     categories: EntryCategory[];
+    categoryPlaceholder: string;
     preferredCurrencies?: string[];
     mainCurrency?: string;
     className?: string;
@@ -54,6 +55,7 @@ export interface EditableBillEntryItemProps extends VariantProps<typeof itemVari
 export const EditableBillEntryItem = memo(function EditableBillEntryItem({
     ledgerEntry,
     categories,
+    categoryPlaceholder,
     preferredCurrencies = [],
     mainCurrency = "CNY",
     variant = "default",
@@ -113,6 +115,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                 value={displayData.categoryId}
                 categories={categories}
                 onChange={(categoryId) => handleChange("categoryId", categoryId)}
+                placeholder={categoryPlaceholder}
             />
 
             {/* Name + Description */}

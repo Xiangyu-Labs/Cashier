@@ -9,9 +9,9 @@ import { parseDateString } from "@/lib/date-utils";
 interface EditableDateFieldProps {
     value: string; // yyyy-MM-dd format
     onChange: (value: string) => void;
+    placeholder: string;
     displayFormat?: Intl.DateTimeFormatOptions;
     locale?: string;
-    placeholder?: string;
     className?: string;
     disabled?: boolean;
 }
@@ -19,9 +19,9 @@ interface EditableDateFieldProps {
 export function EditableDateField({
     value,
     onChange,
+    placeholder,
     displayFormat = { year: "numeric", month: "long", day: "numeric" },
     locale = "zh-CN",
-    placeholder = "选择日期",
     className,
     disabled = false,
 }: EditableDateFieldProps) {

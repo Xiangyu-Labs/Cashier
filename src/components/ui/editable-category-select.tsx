@@ -12,18 +12,18 @@ interface EditableCategorySelectProps {
     value: string | null; // categoryId
     categories: EntryCategory[];
     onChange: (categoryId: string) => void;
+    placeholder: string;
     className?: string;
     disabled?: boolean;
-    placeholder?: string;
 }
 
 export function EditableCategorySelect({
     value,
     categories,
     onChange,
+    placeholder,
     className,
     disabled = false,
-    placeholder = "选择类别",
 }: EditableCategorySelectProps) {
     const [open, setOpen] = useState(false);
 

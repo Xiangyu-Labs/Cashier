@@ -39,7 +39,7 @@ export default function LoginPage() {
         try {
             const result = await sendOTPAction(email);
             if (!result.success) {
-                setError(result.error || "Failed to send verification code");
+                setError(result.error || t("sendCodeFailed"));
                 setIsLoading(false);
                 return;
             }
@@ -49,14 +49,14 @@ export default function LoginPage() {
             setStep("otp");
             setIsLoading(false);
         } catch {
-            setError("An unexpected error occurred");
+            setError(t("unexpectedError"));
             setIsLoading(false);
         }
     };
 
     const handleVerifyOTP = async () => {
         if (!otp || otp.length !== 6) {
-            setError("Please enter a valid 6-digit code");
+            setError(t("invalidCode"));
             return;
         }
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
         try {
             const verifyResult = await verifyOTPAction(email, otp);
             if (!verifyResult.success) {
-                setError(verifyResult.error || "Invalid verification code");
+                setError(verifyResult.error || t("verifyFailed"));
                 setIsLoading(false);
                 return;
             }
@@ -86,7 +86,7 @@ export default function LoginPage() {
                 router.refresh();
             }
         } catch {
-            setError("An unexpected error occurred");
+            setError(t("unexpectedError"));
             setIsLoading(false);
         }
     };
@@ -97,13 +97,13 @@ export default function LoginPage() {
         try {
             const result = await sendOTPAction(email);
             if (!result.success) {
-                setError(result.error || "Failed to resend verification code");
+                setError(result.error || t("resendFailed"));
                 return;
             }
             setExpiresAt(result.expiresAt || null);
             setCanResendAt(result.canResendAt || null);
         } catch {
-            setError("Failed to resend verification code");
+            setError(t("resendFailed"));
         }
     };
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
     };
 
     const handleOTPExpired = () => {
-        setError("Verification code has expired. Please request a new one.");
+        setError(t("codeExpiredMessage"));
     };
 
     return (
