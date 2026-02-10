@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { COMMON_LUCIDE_ICONS } from "@/features/ledger/server/tasks/category-metadata-prompts";
+import { COMMON_LUCIDE_ICONS } from "@/config/icons";
 import { cn } from "@/lib/utils";
 
 interface IconPickerProps {

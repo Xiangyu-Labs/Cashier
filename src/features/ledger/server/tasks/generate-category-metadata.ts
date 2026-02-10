@@ -2,7 +2,8 @@ import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";
-import { buildCategoryMetadataPrompt, COMMON_LUCIDE_ICONS } from "./category-metadata-prompts";
+import { buildCategoryMetadataPrompt } from "./category-metadata-prompts";
+import { COMMON_LUCIDE_ICONS } from "@/config/icons";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
