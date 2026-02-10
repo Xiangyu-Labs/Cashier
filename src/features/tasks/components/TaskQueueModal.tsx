@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     Dialog,
     DialogContent,
@@ -12,22 +12,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TaskCard } from "./TaskCard";
 import { AnomalyBillCard } from "./AnomalyBillCard";
+import { TaskGroupSection } from "./TaskGroupSection";
 import { useTaskQueue } from "../client/hooks/useTaskQueue";
+import { useTaskQueueMutations } from "../client/hooks/useTaskQueueMutations";
 import { SerializedTaskRun, SerializedAnomalyBill } from "../server/actions/task-queue";
-import {
-    deleteSourceDocumentAction,
-    batchDeleteSourceDocumentsAction,
-    batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions";
-import {
-    dismissTaskAction,
-    batchDismissTasksAction,
-} from "../server/actions/dismiss-task";
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
 
-import { ChevronDown, Inbox, ListTodo } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Inbox, ListTodo } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
 
@@ -58,6 +50,13 @@ export function TaskQueueModal({
     const queryClient = useQueryClient();
 
     const { groups, stats, isLoading } = useTaskQueue(ledgerId);
+    const {
+        deleteSourceDocument,
+        batchDelete,
+        batchRetry,
+        dismissTask,
+        batchDismiss,
+    } = useTaskQueueMutations(ledgerId);
 
     const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
     const [isRunningCollapsed, setIsRunningCollapsed] = useState(false);
@@ -82,108 +81,24 @@ export function TaskQueueModal({
         return getSourceDocumentIdFromInput(task.input);
     }, []);
 
-    // Mutations for source document tasks
-    const deleteSourceDocumentMutation = useMutation({
-        mutationFn: async (sourceDocumentId: string) => {
-            await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
-        },
-        onMutate: async (sourceDocumentId) => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-            // Note: Task queue uses its own data structure, optimistic update handled by UI state
-            return { sourceDocumentId };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-            setDeleteConfirm({ ...deleteConfirm, open: false });
-        },
-        onError: () => {
-            toast.error(tCommon("deleteFailed"));
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
-    const batchDeleteMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            await batchDeleteSourceDocumentsAction(ledgerId, ids);
-        },
-        onMutate: async () => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        },
-        onSuccess: () => {
-            toast.success(tCommon("deleteSuccess"));
-            setDeleteConfirm({ ...deleteConfirm, open: false });
-        },
-        onError: () => toast.error(tCommon("deleteFailed")),
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
-    const batchRetryMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            await batchRetrySourceDocumentsAction(ledgerId, ids);
-        },
-        onMutate: async () => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        },
-        onSuccess: () => {
-            toast.success(tEntries("retrySubmitted"));
-        },
-        onError: () => toast.error(tCommon("error")),
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
-    // Dismiss mutations for non-source-document tasks
-    const dismissTaskMutation = useMutation({
-        mutationFn: async (taskId: string) => {
-            await dismissTaskAction(ledgerId, taskId);
-        },
-        onMutate: async () => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        },
-        onSuccess: () => {
-            toast.success(t("dismissed"));
-        },
-        onError: () => toast.error(tCommon("error")),
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
-    const batchDismissMutation = useMutation({
-        mutationFn: async (taskIds: string[]) => {
-            await batchDismissTasksAction(ledgerId, taskIds);
-        },
-        onMutate: async () => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        },
-        onSuccess: () => {
-            toast.success(t("dismissed"));
-        },
-        onError: () => toast.error(tCommon("error")),
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-        }
-    });
-
     // Handlers
     const handleDeleteConfirmAction = useCallback(() => {
         if (!deleteConfirm.type) return;
 
         if (deleteConfirm.type === "single" && deleteConfirm.id) {
-            deleteSourceDocumentMutation.mutate(deleteConfirm.id);
+            deleteSourceDocument.mutate(deleteConfirm.id, {
+                onSuccess: () => setDeleteConfirm({ ...deleteConfirm, open: false }),
+            });
         } else if (deleteConfirm.type === "all") {
             const ids = groups.failed
                 .filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT)
                 .map(t => getSourceDocumentId(t))
                 .filter((id): id is string => id !== null);
-            batchDeleteMutation.mutate(ids);
+            batchDelete.mutate(ids, {
+                onSuccess: () => setDeleteConfirm({ ...deleteConfirm, open: false }),
+            });
         }
-    }, [deleteConfirm, deleteSourceDocumentMutation, batchDeleteMutation, groups.failed, getSourceDocumentId]);
+    }, [deleteConfirm, deleteSourceDocument, batchDelete, groups.failed, getSourceDocumentId]);
 
     const handleRetry = useCallback((task: SerializedTaskRun) => {
         if (task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT) {
@@ -222,8 +137,8 @@ export function TaskQueueModal({
             .filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT)
             .map(t => getSourceDocumentId(t))
             .filter((id): id is string => id !== null);
-        batchRetryMutation.mutate(ids);
-    }, [groups.failed, batchRetryMutation, getSourceDocumentId]);
+        batchRetry.mutate(ids);
+    }, [groups.failed, batchRetry, getSourceDocumentId]);
 
     const isEmpty = stats.total === 0 && groups.completed.length === 0;
 
@@ -240,13 +155,13 @@ export function TaskQueueModal({
     const failedOtherTasks = groups.failed.filter(t => t.type !== TASK_TYPE_PARSE_SOURCE_DOCUMENT);
 
     const handleDismiss = useCallback((task: SerializedTaskRun) => {
-        dismissTaskMutation.mutate(task.id);
-    }, [dismissTaskMutation]);
+        dismissTask.mutate(task.id);
+    }, [dismissTask]);
 
     const handleDismissAll = useCallback(() => {
         const ids = failedOtherTasks.map(t => t.id);
-        batchDismissMutation.mutate(ids);
-    }, [failedOtherTasks, batchDismissMutation]);
+        batchDismiss.mutate(ids);
+    }, [failedOtherTasks, batchDismiss]);
 
     return (
         <>
@@ -281,108 +196,55 @@ export function TaskQueueModal({
                             <>
                                 {/* Pending Section */}
                                 {groups.pending.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div
-                                            className="flex items-center gap-2 px-1 cursor-pointer select-none"
-                                            onClick={() => setIsPendingCollapsed(!isPendingCollapsed)}
-                                        >
-                                            <span className="w-2 h-2 rounded-full bg-muted-foreground" />
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {t("pending")} ({groups.pending.length})
-                                            </span>
-                                            <motion.div
-                                                animate={{ rotate: isPendingCollapsed ? -90 : 0 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                                            </motion.div>
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {!isPendingCollapsed && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="space-y-2 overflow-hidden"
-                                                >
-                                                    {groups.pending.map((task) => (
-                                                        <TaskCard
-                                                            key={task.id}
-                                                            task={task}
-                                                            supportsActions={supportsActions()}
-                                                        />
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    <TaskGroupSection
+                                        title={t("pending")}
+                                        count={groups.pending.length}
+                                        color="muted"
+                                        collapsed={isPendingCollapsed}
+                                        onToggle={() => setIsPendingCollapsed(!isPendingCollapsed)}
+                                    >
+                                        {groups.pending.map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                                supportsActions={supportsActions()}
+                                            />
+                                        ))}
+                                    </TaskGroupSection>
                                 )}
 
                                 {/* Running Section */}
                                 {groups.running.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div
-                                            className="flex items-center gap-2 px-1 cursor-pointer select-none"
-                                            onClick={() => setIsRunningCollapsed(!isRunningCollapsed)}
-                                        >
-                                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                            <span className="text-sm font-medium text-primary">
-                                                {t("running")} ({groups.running.length})
-                                            </span>
-                                            <motion.div
-                                                animate={{ rotate: isRunningCollapsed ? -90 : 0 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <ChevronDown className="w-3.5 h-3.5 text-primary" />
-                                            </motion.div>
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {!isRunningCollapsed && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="space-y-2 overflow-hidden"
-                                                >
-                                                    {groups.running.map((task) => (
-                                                        <TaskCard
-                                                            key={task.id}
-                                                            task={task}
-                                                            supportsActions={supportsActions()}
-                                                            ledgerId={ledgerId}
-                                                            showSourcePreview={true}
-                                                        />
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    <TaskGroupSection
+                                        title={t("running")}
+                                        count={groups.running.length}
+                                        color="primary"
+                                        collapsed={isRunningCollapsed}
+                                        onToggle={() => setIsRunningCollapsed(!isRunningCollapsed)}
+                                    >
+                                        {groups.running.map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                                supportsActions={supportsActions()}
+                                                ledgerId={ledgerId}
+                                                showSourcePreview={true}
+                                            />
+                                        ))}
+                                    </TaskGroupSection>
                                 )}
 
                                 {/* Failed Section */}
                                 {groups.failed.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div
-                                                className="flex items-center gap-2 cursor-pointer select-none"
-                                                onClick={() => setIsFailedCollapsed(!isFailedCollapsed)}
-                                            >
-                                                <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                <span className="text-sm font-medium text-red-500">
-                                                    {t("failed")} ({groups.failed.length})
-                                                </span>
-                                                <motion.div
-                                                    animate={{ rotate: isFailedCollapsed ? -90 : 0 }}
-                                                    transition={{ duration: 0.2 }}
-                                                >
-                                                    <ChevronDown className="w-3.5 h-3.5 text-red-500" />
-                                                </motion.div>
-                                            </div>
-
-                                            {!isFailedCollapsed && (failedSourceDocTasks.length > 0 || failedOtherTasks.length > 0) && (
-                                                <div className="flex items-center gap-1">
+                                    <TaskGroupSection
+                                        title={t("failed")}
+                                        count={groups.failed.length}
+                                        color="red"
+                                        collapsed={isFailedCollapsed}
+                                        onToggle={() => setIsFailedCollapsed(!isFailedCollapsed)}
+                                        actions={
+                                            (failedSourceDocTasks.length > 0 || failedOtherTasks.length > 0) && (
+                                                <>
                                                     {failedOtherTasks.length > 0 && (
                                                         <Button
                                                             variant="outline"
@@ -413,152 +275,96 @@ export function TaskQueueModal({
                                                             </Button>
                                                         </>
                                                     )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {!isFailedCollapsed && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="space-y-2 overflow-hidden"
-                                                >
-                                                    {groups.failed.map((task) => (
-                                                        <TaskCard
-                                                            key={task.id}
-                                                            task={task}
-                                                            supportsActions={supportsActions()}
-                                                            ledgerId={ledgerId}
-                                                            showSourcePreview={true}
-                                                            onRetry={isSourceDocumentTask(task) ? () => handleRetry(task) : undefined}
-                                                            onDelete={isSourceDocumentTask(task) ? () => handleDeleteSingle(task) : undefined}
-                                                            onDismiss={!isSourceDocumentTask(task) ? () => handleDismiss(task) : undefined}
-                                                        />
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                                </>
+                                            )
+                                        }
+                                    >
+                                        {groups.failed.map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                                supportsActions={supportsActions()}
+                                                ledgerId={ledgerId}
+                                                showSourcePreview={true}
+                                                onRetry={isSourceDocumentTask(task) ? () => handleRetry(task) : undefined}
+                                                onDelete={isSourceDocumentTask(task) ? () => handleDeleteSingle(task) : undefined}
+                                                onDismiss={!isSourceDocumentTask(task) ? () => handleDismiss(task) : undefined}
+                                            />
+                                        ))}
+                                    </TaskGroupSection>
                                 )}
 
                                 {/* Anomaly Bills Section */}
                                 {groups.anomaly.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div
-                                                className="flex items-center gap-2 cursor-pointer select-none"
-                                                onClick={() => setIsAnomalyCollapsed(!isAnomalyCollapsed)}
-                                            >
-                                                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                                <span className="text-sm font-medium text-amber-600">
-                                                    {t("anomaly")} ({groups.anomaly.length})
-                                                </span>
-                                                <motion.div
-                                                    animate={{ rotate: isAnomalyCollapsed ? -90 : 0 }}
-                                                    transition={{ duration: 0.2 }}
+                                    <TaskGroupSection
+                                        title={t("anomaly")}
+                                        count={groups.anomaly.length}
+                                        color="amber"
+                                        collapsed={isAnomalyCollapsed}
+                                        onToggle={() => setIsAnomalyCollapsed(!isAnomalyCollapsed)}
+                                        actions={
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-50 hover:border-amber-200"
+                                                    onClick={() => {
+                                                        const ids = groups.anomaly.map(b => b.id);
+                                                        batchDelete.mutate(ids);
+                                                    }}
                                                 >
-                                                    <ChevronDown className="w-3.5 h-3.5 text-amber-500" />
-                                                </motion.div>
-                                            </div>
-
-                                            {!isAnomalyCollapsed && groups.anomaly.length > 0 && (
-                                                <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-6 px-2 text-xs bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-50 hover:border-amber-200"
-                                                        onClick={() => {
-                                                            const ids = groups.anomaly.map(b => b.id);
-                                                            batchDeleteMutation.mutate(ids);
-                                                        }}
-                                                    >
-                                                        {t("deleteAll")}
-                                                    </Button>
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        className="h-6 px-2 text-xs bg-amber-500 hover:bg-amber-600"
-                                                        onClick={() => {
-                                                            const ids = groups.anomaly.map(b => b.id);
-                                                            batchRetryMutation.mutate(ids);
-                                                        }}
-                                                    >
-                                                        {t("retryAll")}
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {!isAnomalyCollapsed && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="space-y-2 overflow-hidden"
+                                                    {t("deleteAll")}
+                                                </Button>
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs bg-amber-500 hover:bg-amber-600"
+                                                    onClick={() => {
+                                                        const ids = groups.anomaly.map(b => b.id);
+                                                        batchRetry.mutate(ids);
+                                                    }}
                                                 >
-                                                    {groups.anomaly.map((bill: SerializedAnomalyBill) => (
-                                                        <AnomalyBillCard
-                                                            key={bill.id}
-                                                            bill={bill}
-                                                            ledgerId={ledgerId}
-                                                            onRetry={() => setRetryTaskId(bill.id)}
-                                                            onDelete={() => {
-                                                                setDeleteConfirm({
-                                                                    open: true,
-                                                                    type: "single",
-                                                                    id: bill.id,
-                                                                    title: t("deleteConfirmTitle"),
-                                                                    description: t("deleteConfirmDesc"),
-                                                                });
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                                    {t("retryAll")}
+                                                </Button>
+                                            </>
+                                        }
+                                    >
+                                        {groups.anomaly.map((bill: SerializedAnomalyBill) => (
+                                            <AnomalyBillCard
+                                                key={bill.id}
+                                                bill={bill}
+                                                ledgerId={ledgerId}
+                                                onRetry={() => setRetryTaskId(bill.id)}
+                                                onDelete={() => {
+                                                    setDeleteConfirm({
+                                                        open: true,
+                                                        type: "single",
+                                                        id: bill.id,
+                                                        title: t("deleteConfirmTitle"),
+                                                        description: t("deleteConfirmDesc"),
+                                                    });
+                                                }}
+                                            />
+                                        ))}
+                                    </TaskGroupSection>
                                 )}
 
                                 {/* Completed Section (Last 5) */}
                                 {groups.completed.length > 0 && (
-                                    <div className="space-y-2">
-                                        <div
-                                            className="flex items-center gap-2 px-1 cursor-pointer select-none"
-                                            onClick={() => setIsCompletedCollapsed(!isCompletedCollapsed)}
-                                        >
-                                            <span className="w-2 h-2 rounded-full bg-primary/50" />
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {t("completed")} ({t("recent", { count: groups.completed.length })})
-                                            </span>
-                                            <motion.div
-                                                animate={{ rotate: isCompletedCollapsed ? -90 : 0 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                                            </motion.div>
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {!isCompletedCollapsed && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="space-y-2 overflow-hidden"
-                                                >
-                                                    {groups.completed.map((task) => (
-                                                        <TaskCard
-                                                            key={task.id}
-                                                            task={task}
-                                                        />
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    <TaskGroupSection
+                                        title={t("completed")}
+                                        count={groups.completed.length}
+                                        color="green"
+                                        collapsed={isCompletedCollapsed}
+                                        onToggle={() => setIsCompletedCollapsed(!isCompletedCollapsed)}
+                                    >
+                                        {groups.completed.map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                            />
+                                        ))}
+                                    </TaskGroupSection>
                                 )}
                             </>
                         )}
