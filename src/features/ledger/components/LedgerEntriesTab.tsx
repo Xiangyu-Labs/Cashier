@@ -17,6 +17,7 @@ import { usePathname } from "@/i18n/routing";
 import { PeriodParams } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
+import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -56,6 +57,9 @@ export function LedgerEntriesTab({
         deleteSourceDocument,
         batchDeleteSourceDocuments,
     } = useLedgerEntriesMutations(ledgerId, categories);
+
+    // Prefetch adjacent periods in background for faster switching
+    usePrefetchAdjacentPeriods(ledgerId, periodParams);
 
     // Modals State
     const [deleteConfirm, setDeleteConfirm] = useState<{

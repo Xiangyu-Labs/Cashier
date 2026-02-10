@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { batchConvertCurrencyAction, BatchConversionItem } from "@/features/currency/server/actions";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -20,12 +21,11 @@ export function useBatchConvertedAmounts(
     items: BatchConversionItem[],
     targetCurrency: string | null | undefined
 ): UseBatchConvertedAmountsResult {
-    // Generate a stable cache key based on input
-    const cacheKey = JSON.stringify(items.map(i => ({
-        a: i.amount,
-        c: i.currency,
-        d: i.date?.split('T')[0]
-    })));
+    // Generate a stable cache key based on input (optimized - no JSON.stringify)
+    const cacheKey = useMemo(() =>
+        items.map(i => `${i.amount}:${i.currency}:${i.date?.split('T')[0] || ''}`).join('|'),
+        [items]
+    );
 
     const { data, isLoading, error } = useQuery({
         queryKey: queryKeys.batchConvert(cacheKey, targetCurrency!),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
@@ -28,13 +28,19 @@ import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 import { PeriodParams } from "@/lib/period-utils";
+import {
+    EntriesTabSkeleton,
+    DetailsTabSkeleton,
+    StatsTabSkeleton,
+    SettingsTabSkeleton,
+} from "@/components/skeletons/TabSkeletons";
 
 interface LedgerPageClientProps {
     ledgerId: string;
     initialPeriod: PeriodParams;
 }
 
-const STALE_TIME = 5 * 60 * 1000; // 5 minutes - must match server prefetch
+const STALE_TIME = 10 * 60 * 1000; // 10 minutes - must match server prefetch
 
 export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientProps) {
     const t = useTranslations("LedgerPage");
@@ -173,32 +179,40 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                     </TabsList>
 
                     <TabsContent value="history" className="mt-0">
-                        <LedgerEntriesTab
-                            ledgerId={ledgerId}
-                            categories={categories || []}
-                            ledger={ledger}
-                            initialPeriod={initialPeriod}
-                        />
+                        <Suspense fallback={<EntriesTabSkeleton />}>
+                            <LedgerEntriesTab
+                                ledgerId={ledgerId}
+                                categories={categories || []}
+                                ledger={ledger}
+                                initialPeriod={initialPeriod}
+                            />
+                        </Suspense>
                     </TabsContent>
 
                     <TabsContent value="details" className="mt-0">
-                        <DetailsTab
-                            ledgerId={ledgerId}
-                            categories={categories || []}
-                            ledger={ledger}
-                        />
+                        <Suspense fallback={<DetailsTabSkeleton />}>
+                            <DetailsTab
+                                ledgerId={ledgerId}
+                                categories={categories || []}
+                                ledger={ledger}
+                            />
+                        </Suspense>
                     </TabsContent>
 
                     <TabsContent value="stats" className="mt-0">
-                        <StatsTab ledgerId={ledgerId} ledger={ledger} />
+                        <Suspense fallback={<StatsTabSkeleton />}>
+                            <StatsTab ledgerId={ledgerId} ledger={ledger} />
+                        </Suspense>
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-0">
-                        <SettingsTab
-                            ledgerId={ledgerId}
-                            ledger={ledger}
-                            initialCategories={categories}
-                        />
+                        <Suspense fallback={<SettingsTabSkeleton />}>
+                            <SettingsTab
+                                ledgerId={ledgerId}
+                                ledger={ledger}
+                                initialCategories={categories}
+                            />
+                        </Suspense>
                     </TabsContent>
                 </Tabs>
             </main>
