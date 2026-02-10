@@ -1,18 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
-import {
-    getEntryCategoriesAction,
-    getUncategorizedCountAction,
-} from "@/features/ledger/server/actions/categories";
-import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
-import type { Ledger, EntryCategoryWithCount, ServiceCredential, Settings } from "@/types/api";
+import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
+import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
 
 interface UseLedgerSettingsParams {
     ledgerId: string;
@@ -24,28 +20,26 @@ export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLe
     const queryClient = useQueryClient();
     const t = useTranslations("Settings");
 
-    // Categories - Use smart polling
-    const { data: categories = [] } = useSmartPolling<EntryCategoryWithCount[]>({
-        queryKey: queryKeys.entryCategories(ledgerId),
-        queryFn: () => getEntryCategoriesAction(ledgerId),
-        isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
+    // Batch fetch all settings data - Use smart polling for categories that need metadata generation
+    const { data: settingsData } = useSmartPolling<{
+        categories: EntryCategoryWithCount[];
+        uncategorizedCount: number;
+        credentials: ServiceCredential[];
+    }>({
+        queryKey: queryKeys.ledgerSettings(ledgerId),
+        queryFn: () => getLedgerSettingsAction(ledgerId),
+        isActive: (data) => data?.categories?.some((c) => !c.icon || !c.description) ?? false,
         interval: 3000,
-        initialData: initialCategories
+        initialData: {
+            categories: initialCategories,
+            uncategorizedCount: 0,
+            credentials: [],
+        }
     });
 
-    // Uncategorized count - separate query for cleaner cache management
-    const { data: uncategorizedCount = 0 } = useQuery<number>({
-        queryKey: queryKeys.uncategorizedCount(ledgerId),
-        queryFn: () => getUncategorizedCountAction(ledgerId),
-        staleTime: 30 * 1000, // 30 seconds
-    });
-
-    // Credentials - fetch client-side with long staleTime
-    const { data: credentials = [] } = useQuery<ServiceCredential[]>({
-        queryKey: queryKeys.serviceCredentials(ledgerId),
-        queryFn: () => getServiceCredentialsAction(ledgerId) as Promise<ServiceCredential[]>,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
+    const categories = settingsData?.categories || [];
+    const uncategorizedCount = settingsData?.uncategorizedCount || 0;
+    const credentials = settingsData?.credentials || [];
 
     // Local state for Ledger Name
     const [localLedgerName, setLocalLedgerName] = useState(ledger.name);

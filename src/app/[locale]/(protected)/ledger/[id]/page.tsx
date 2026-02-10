@@ -58,7 +58,7 @@ export default async function LedgerPage({
       staleTime: 30 * 1000, // 30 seconds for pending (more dynamic)
     }),
     queryClient.prefetchQuery({
-      queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', dateRange.startDate ?? undefined, dateRange.endDate ?? undefined),
+      queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', dateRange.startDate, dateRange.endDate),
       queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
         startDate: dateRange.startDate ?? undefined,
         endDate: dateRange.endDate ?? undefined,

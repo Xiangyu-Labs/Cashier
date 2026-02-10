@@ -15,22 +15,23 @@ export const queryKeys = {
     ledgers: () => ['ledgers'] as const,
 
     // === Ledger Entries ===
-    ledgerEntries: (ledgerId: string, ...filters: (string | undefined)[]) =>
-        ['ledgerEntries', ledgerId, ...filters.filter(Boolean)] as const,
+    ledgerEntries: (ledgerId: string, ...filters: (string | null | undefined)[]) =>
+        ['ledgerEntries', ledgerId, ...filters.filter(v => v !== undefined && v !== null)] as const,
     ledgerEntry: (id: string) => ['ledgerEntry', id] as const,
 
     // === Source Documents ===
-    sourceDocuments: (ledgerId: string, ...filters: (string | number | undefined)[]) =>
-        ['sourceDocuments', ledgerId, ...filters.filter(v => v !== undefined)] as const,
+    sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
+        ['sourceDocuments', ledgerId, ...filters.filter(v => v !== undefined && v !== null)] as const,
     sourceDocument: (id: string) => ['sourceDocument', id] as const,
 
     // === Categories ===
     entryCategories: (ledgerId: string) => ['entryCategories', ledgerId] as const,
     uncategorizedCount: (ledgerId: string) => ['uncategorizedCount', ledgerId] as const,
+    ledgerSettings: (ledgerId: string) => ['ledgerSettings', ledgerId] as const,
 
     // === Summary & Stats ===
-    summary: (ledgerId: string, ...params: (string | undefined)[]) =>
-        ['summary', ledgerId, ...params.filter(Boolean)] as const,
+    summary: (ledgerId: string, ...params: (string | null | undefined)[]) =>
+        ['summary', ledgerId, ...params.filter(v => v !== undefined && v !== null)] as const,
     tokenStats: (ledgerId: string) => ['token-stats', ledgerId] as const,
     enhancedStats: (ledgerId: string) => ['enhanced-stats', ledgerId] as const,
 

@@ -101,7 +101,7 @@ export function useUnifiedSourceDocuments(
 
     // Query 1: Fetch grouped documents (active docs + first page of completed)
     const { data: unifiedData, isLoading: isUnifiedLoading } = useSmartPolling({
-        queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate ?? undefined, endDate ?? undefined, minAmount, maxAmount),
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'unified', startDate, endDate, minAmount, maxAmount),
         queryFn: () => getUnifiedSourceDocumentsAction(ledgerId, {
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
@@ -120,7 +120,7 @@ export function useUnifiedSourceDocuments(
         if (prevProcessingCount.current !== null && currentProcessingCount < prevProcessingCount.current) {
             // Document finished processing - invalidate the completed infinite list
             queryClient.invalidateQueries({
-                queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined)
+                queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate, endDate)
             });
         }
         prevProcessingCount.current = currentProcessingCount;
@@ -134,7 +134,7 @@ export function useUnifiedSourceDocuments(
         isFetchingNextPage,
         isLoading: isInfiniteLoading,
     } = useInfiniteQuery({
-        queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate ?? undefined, endDate ?? undefined, minAmount, maxAmount),
+        queryKey: queryKeys.sourceDocuments(ledgerId, 'completed', startDate, endDate, minAmount, maxAmount),
         queryFn: async ({ pageParam }) => {
             const res = await getUnifiedSourceDocumentsAction(ledgerId, {
                 cursor: pageParam as string | null,
