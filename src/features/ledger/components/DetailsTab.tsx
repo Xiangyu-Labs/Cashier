@@ -64,8 +64,9 @@ export function DetailsTab({
         ...additionalFilters,
     }), [dateRange, additionalFilters]);
 
-    const startDateStr = formatDateTimeForApi(filters.startDate);
-    const endDateStr = formatDateTimeForApi(filters.endDate);
+    const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
+    const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
+    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
 
     // Build filter key for queryKey (serialized to string for type compatibility)
     const filterKey = useMemo(() => {
@@ -78,8 +79,8 @@ export function DetailsTab({
     }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
 
     const { data: summaryData } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, ledger?.metadata?.settings?.mainCurrency, filterKey),
-        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, ledger?.metadata?.settings?.mainCurrency || undefined, {
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, mainCurrency, filterKey),
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
             categoryId: filters.categoryId,
             currency: filters.currency,
             minAmount: filters.minAmount,

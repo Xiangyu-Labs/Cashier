@@ -16,12 +16,12 @@ export const queryKeys = {
 
     // === Ledger Entries ===
     ledgerEntries: (ledgerId: string, ...filters: (string | null | undefined)[]) =>
-        ['ledgerEntries', ledgerId, ...filters.filter(v => v !== undefined && v !== null)] as const,
+        ['ledgerEntries', ledgerId, ...filters.filter(v => v !== undefined)] as const,
     ledgerEntry: (id: string) => ['ledgerEntry', id] as const,
 
     // === Source Documents ===
     sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
-        ['sourceDocuments', ledgerId, ...filters.filter(v => v !== undefined && v !== null)] as const,
+        ['sourceDocuments', ledgerId, ...filters.filter(v => v !== undefined)] as const,
     sourceDocument: (id: string) => ['sourceDocument', id] as const,
 
     // === Categories ===
@@ -31,7 +31,7 @@ export const queryKeys = {
 
     // === Summary & Stats ===
     summary: (ledgerId: string, ...params: (string | null | undefined)[]) =>
-        ['summary', ledgerId, ...params.filter(v => v !== undefined && v !== null)] as const,
+        ['summary', ledgerId, ...params.filter(v => v !== undefined)] as const,
     tokenStats: (ledgerId: string) => ['token-stats', ledgerId] as const,
     enhancedStats: (ledgerId: string) => ['enhanced-stats', ledgerId] as const,
 
