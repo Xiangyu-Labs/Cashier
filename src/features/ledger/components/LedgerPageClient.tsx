@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
@@ -28,12 +28,6 @@ import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 import { PeriodParams } from "@/lib/period-utils";
-import {
-    EntriesTabSkeleton,
-    DetailsTabSkeleton,
-    StatsTabSkeleton,
-    SettingsTabSkeleton,
-} from "@/components/skeletons/TabSkeletons";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 
 interface LedgerPageClientProps {
@@ -189,45 +183,37 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                     </TabsList>
 
                     <TabsContent value="history" className="mt-0">
-                        <Suspense fallback={<EntriesTabSkeleton />}>
-                            <LedgerEntriesTab
-                                ledgerId={ledgerId}
-                                categories={categories || []}
-                                ledger={ledger}
-                                periodParams={periodParams}
-                                onPeriodChange={handlePeriodChange}
-                                onFiltersChange={handleFiltersChange}
-                            />
-                        </Suspense>
+                        <LedgerEntriesTab
+                            ledgerId={ledgerId}
+                            categories={categories || []}
+                            ledger={ledger}
+                            periodParams={periodParams}
+                            onPeriodChange={handlePeriodChange}
+                            onFiltersChange={handleFiltersChange}
+                        />
                     </TabsContent>
 
                     <TabsContent value="details" className="mt-0">
-                        <Suspense fallback={<DetailsTabSkeleton />}>
-                            <DetailsTab
-                                ledgerId={ledgerId}
-                                categories={categories || []}
-                                ledger={ledger}
-                                periodParams={periodParams}
-                                onPeriodChange={handlePeriodChange}
-                                onFiltersChange={handleFiltersChange}
-                            />
-                        </Suspense>
+                        <DetailsTab
+                            ledgerId={ledgerId}
+                            categories={categories || []}
+                            ledger={ledger}
+                            periodParams={periodParams}
+                            onPeriodChange={handlePeriodChange}
+                            onFiltersChange={handleFiltersChange}
+                        />
                     </TabsContent>
 
                     <TabsContent value="stats" className="mt-0">
-                        <Suspense fallback={<StatsTabSkeleton />}>
-                            <StatsTab ledgerId={ledgerId} ledger={ledger} />
-                        </Suspense>
+                        <StatsTab ledgerId={ledgerId} ledger={ledger} />
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-0">
-                        <Suspense fallback={<SettingsTabSkeleton />}>
-                            <SettingsTab
-                                ledgerId={ledgerId}
-                                ledger={ledger}
-                                initialCategories={categories}
-                            />
-                        </Suspense>
+                        <SettingsTab
+                            ledgerId={ledgerId}
+                            ledger={ledger}
+                            initialCategories={categories}
+                        />
                     </TabsContent>
                 </Tabs>
             </main>
