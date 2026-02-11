@@ -6,50 +6,48 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { EntryFilterPanel } from "./EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "./EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { useSearchParams } from "next/navigation";
-import { usePathname } from "@/i18n/routing";
-import { PeriodParams } from "@/lib/period-utils";
+import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
-import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
     categories: EntryCategory[];
     ledger?: Ledger;
-    initialPeriod: PeriodParams;
+    periodParams: PeriodParams;
+    onPeriodChange: (params: PeriodParams) => void;
+    onFiltersChange: (filters: EntryFilters) => void;
 }
 
 export function LedgerEntriesTab({
     ledgerId,
     categories,
     ledger,
-    initialPeriod,
+    periodParams,
+    onPeriodChange,
+    onFiltersChange,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tDetails = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
 
     // Layout Transitions
     const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
 
-    // Use extracted hooks
-    const {
-        periodParams,
-        filters,
-        handlePeriodChange,
-        handleFiltersChange,
-    } = usePeriodFilter({ pathname, searchParams, initialPeriod });
+    // Convert periodParams to filters for data fetching
+    const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
+    const filters: EntryFilters = useMemo(() => ({
+        startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
+        endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+    }), [dateRange]);
 
     const {
         updateEntry,
@@ -214,9 +212,9 @@ export function LedgerEntriesTab({
                     <div className="px-2 mb-2 sm:mb-4 pt-1">
                         <EntryFilterPanel
                             filters={filters}
-                            onFiltersChange={handleFiltersChange}
+                            onFiltersChange={onFiltersChange}
                             periodParams={periodParams}
-                            onPeriodChange={handlePeriodChange}
+                            onPeriodChange={onPeriodChange}
                             showCategory={false}
                             showCurrency={false}
                             className="w-full sm:w-auto"

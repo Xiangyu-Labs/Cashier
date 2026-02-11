@@ -21,34 +21,48 @@ import { CheckSquare, X } from "lucide-react";
 import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
 import { useEntryMutations } from "@/features/ledger/client/hooks/useEntryMutations";
 import { useBatchEntryActions } from "@/features/ledger/client/hooks/useBatchEntryActions";
+import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 
 interface DetailsTabProps {
     ledgerId: string;
     categories: EntryCategory[];
     ledger?: Ledger;
+    periodParams: PeriodParams;
+    onPeriodChange: (params: PeriodParams) => void;
+    onFiltersChange: (filters: EntryFilters) => void;
 }
 
-export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
+export function DetailsTab({
+    ledgerId,
+    categories,
+    ledger,
+    periodParams,
+    onPeriodChange,
+    onFiltersChange,
+}: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
     const push = useModalStackStore(state => state.push);
 
-    // Initialize filters with lazy initializer to avoid SSR timezone issues
-    const [filters, setFilters] = useState<EntryFilters>(() => {
-        // Only initialize dates on client side
-        if (typeof window === 'undefined') return {};
-        const now = new Date();
-        return {
-            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
-            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-            categoryId: null,
-            currency: null,
-            minAmount: null,
-            maxAmount: null,
-        };
+    // Convert periodParams to date range
+    const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
+
+    // Initialize additional filters (category, currency, amount range)
+    const [additionalFilters, setAdditionalFilters] = useState<Partial<EntryFilters>>({
+        categoryId: null,
+        currency: null,
+        minAmount: null,
+        maxAmount: null,
     });
+
+    // Combine period-based dates with additional filters
+    const filters: EntryFilters = useMemo(() => ({
+        startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
+        endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+        ...additionalFilters,
+    }), [dateRange, additionalFilters]);
 
     const startDateStr = formatDateTimeForApi(filters.startDate);
     const endDateStr = formatDateTimeForApi(filters.endDate);
@@ -206,6 +220,22 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     }, [queryClient, ledgerId]);
 
+    // Handle filter changes - distinguish between period changes and additional filter changes
+    const handleLocalFiltersChange = useCallback((newFilters: EntryFilters) => {
+        // If dates changed, propagate to parent (period change)
+        if (newFilters.startDate !== filters.startDate || newFilters.endDate !== filters.endDate) {
+            onFiltersChange(newFilters);
+        }
+
+        // Update additional filters (category, currency, amount)
+        setAdditionalFilters({
+            categoryId: newFilters.categoryId,
+            currency: newFilters.currency,
+            minAmount: newFilters.minAmount,
+            maxAmount: newFilters.maxAmount,
+        });
+    }, [filters.startDate, filters.endDate, onFiltersChange]);
+
     // Batch action handlers
     const handleBatchAiCategorize = () => {
         const ids = Array.from(selectedIds);
@@ -254,7 +284,9 @@ export function DetailsTab({ ledgerId, categories, ledger }: DetailsTabProps) {
                             )}
                             <EntryFilterPanel
                                 filters={filters}
-                                onFiltersChange={setFilters}
+                                onFiltersChange={handleLocalFiltersChange}
+                                periodParams={periodParams}
+                                onPeriodChange={onPeriodChange}
                                 categories={categories}
                                 preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                                 className="flex-1 sm:flex-none"

@@ -34,6 +34,7 @@ import {
     StatsTabSkeleton,
     SettingsTabSkeleton,
 } from "@/components/skeletons/TabSkeletons";
+import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 
 interface LedgerPageClientProps {
     ledgerId: string;
@@ -71,6 +72,15 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     const [activeTab, setActiveTab] = useState(
         () => searchParams.get("tab") || "history"
     );
+
+    // Lift period filter state to page level - shared across all tabs
+    const {
+        periodParams,
+        dateRange,
+        filters,
+        handlePeriodChange,
+        handleFiltersChange,
+    } = usePeriodFilter({ pathname, searchParams, initialPeriod });
 
     const handleTabChange = (value: string) => {
         // Instant client-side update
@@ -184,7 +194,9 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                                 ledgerId={ledgerId}
                                 categories={categories || []}
                                 ledger={ledger}
-                                initialPeriod={initialPeriod}
+                                periodParams={periodParams}
+                                onPeriodChange={handlePeriodChange}
+                                onFiltersChange={handleFiltersChange}
                             />
                         </Suspense>
                     </TabsContent>
@@ -195,6 +207,9 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                                 ledgerId={ledgerId}
                                 categories={categories || []}
                                 ledger={ledger}
+                                periodParams={periodParams}
+                                onPeriodChange={handlePeriodChange}
+                                onFiltersChange={handleFiltersChange}
                             />
                         </Suspense>
                     </TabsContent>

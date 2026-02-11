@@ -9,6 +9,8 @@ import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categ
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getPendingSourceDocumentsAction, getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { getEnhancedStats } from "@/features/stats/server/actions";
+import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
+import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 export default async function LedgerPage({
@@ -108,6 +110,43 @@ export default async function LedgerPage({
     queryClient.prefetchQuery({
       queryKey: queryKeys.ledgerSettings(ledgerId),
       queryFn: () => getLedgerSettingsAction(ledgerId),
+      staleTime: STALE_TIME,
+    }),
+    // Prefetch details tab summary data
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.ledgerEntries(
+        ledgerId,
+        'summary',
+        dateRange.startDate,
+        dateRange.endDate,
+        mainCurrency,
+        undefined
+      ),
+      queryFn: () =>
+        getLedgerStatsAction(
+          ledgerId,
+          dateRange.startDate ?? undefined,
+          dateRange.endDate ?? undefined,
+          mainCurrency,
+          {}
+        ),
+      staleTime: STALE_TIME,
+    }),
+    // Prefetch details tab first page entries
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.ledgerEntries(
+        ledgerId,
+        'infinite',
+        dateRange.startDate,
+        dateRange.endDate,
+        undefined
+      ),
+      queryFn: () =>
+        getLedgerEntriesAction(ledgerId, {
+          startDate: dateRange.startDate ?? undefined,
+          endDate: dateRange.endDate ?? undefined,
+          limit: 50,
+        }),
       staleTime: STALE_TIME,
     }),
   ]);
