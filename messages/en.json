@@ -29,7 +29,9 @@
         "yesterday": "Yesterday",
         "noExpenses": "No expenses in this period",
         "select": "Select",
-        "cancelSelect": "Cancel"
+        "cancelSelect": "Cancel",
+        "deleteConfirmTitle": "Delete Confirmation",
+        "deleteConfirmDesc": "Are you sure you want to delete this record? This action cannot be undone."
     },
     "BatchActions": {
         "selected": "{count} selected",
