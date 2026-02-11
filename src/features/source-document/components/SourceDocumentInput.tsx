@@ -66,7 +66,40 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
             return await updateLedgerAction(ledgerId, payload);
         },
-        onSuccess: () => {
+        onMutate: async (data) => {
+            // Cancel outgoing queries
+            await queryClient.cancelQueries({ queryKey: queryKeys.ledger(ledgerId) });
+
+            // Snapshot previous data
+            const previousLedger = queryClient.getQueryData(queryKeys.ledger(ledgerId));
+
+            // Optimistically update cache
+            queryClient.setQueryData(queryKeys.ledger(ledgerId), (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    ...data,
+                    ...(data.settings && {
+                        metadata: {
+                            ...old.metadata,
+                            settings: {
+                                ...old.metadata?.settings,
+                                ...data.settings,
+                            }
+                        }
+                    })
+                };
+            });
+
+            return { previousLedger };
+        },
+        onError: (_err, _vars, context) => {
+            // Rollback on error
+            if (context?.previousLedger) {
+                queryClient.setQueryData(queryKeys.ledger(ledgerId), context.previousLedger);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
     });
@@ -129,12 +162,37 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         }) => {
             await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
         },
-        onMutate: async () => {
+        onMutate: async (data) => {
             // Cancel any outgoing refetches
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot previous data
+            const previousDocument = sourceDocumentId
+                ? queryClient.getQueryData(queryKeys.sourceDocument(sourceDocumentId))
+                : undefined;
+
+            // Optimistically update document status to "processing"
+            if (sourceDocumentId) {
+                queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), (old: any) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        status: 'processing',
+                        ...(data.text && { text: data.text }),
+                    };
+                });
+            }
+
+            return { previousDocument };
         },
         onSuccess: () => {
             onSuccess?.();
+        },
+        onError: (_err, _vars, context) => {
+            // Rollback on error
+            if (context?.previousDocument && sourceDocumentId) {
+                queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), context.previousDocument);
+            }
         },
         onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });

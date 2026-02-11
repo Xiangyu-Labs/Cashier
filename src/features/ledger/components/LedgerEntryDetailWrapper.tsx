@@ -71,13 +71,35 @@ export function LedgerEntryDetailWrapper({
             if (!ledgerId) return;
             await deleteLedgerEntryAction(ledgerId, id);
         },
+        onMutate: async () => {
+            if (!ledgerId) return;
+
+            // Cancel outgoing queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot previous data
+            const previousEntry = queryClient.getQueryData(queryKeys.ledgerEntry(id));
+
+            // Optimistically remove the entry (it will be gone from cache)
+            queryClient.removeQueries({ queryKey: queryKeys.ledgerEntry(id) });
+
+            return { previousEntry, ledgerId };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
         },
-        onError: () => {
+        onError: (_err, _vars, context) => {
             toast.error(tCommon("deleteFailed"));
+            // Rollback on error
+            if (context?.previousEntry) {
+                queryClient.setQueryData(queryKeys.ledgerEntry(id), context.previousEntry);
+            }
+        },
+        onSettled: (_data, _err, _vars, context) => {
+            if (context?.ledgerId) {
+                queryClient.invalidateQueries({ predicate: invalidateLedgerCache(context.ledgerId) });
+            }
         }
     });
 

@@ -237,13 +237,35 @@ export function SourceDocumentDetailWrapper({
             if (!ledgerId) return;
             await deleteSourceDocumentAction(ledgerId, id);
         },
+        onMutate: async () => {
+            if (!ledgerId) return;
+
+            // Cancel outgoing queries
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            // Snapshot previous data
+            const previousDocument = queryClient.getQueryData(queryKeys.sourceDocument(id));
+
+            // Optimistically remove the document
+            queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(id) });
+
+            return { previousDocument, ledgerId };
+        },
         onSuccess: () => {
             toast.success(tCommon("deleteSuccess"));
-            if (ledgerId) queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
             onClose();
         },
-        onError: () => {
+        onError: (_err, _vars, context) => {
             toast.error(tCommon("deleteFailed"));
+            // Rollback on error
+            if (context?.previousDocument) {
+                queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousDocument);
+            }
+        },
+        onSettled: (_data, _err, _vars, context) => {
+            if (context?.ledgerId) {
+                queryClient.invalidateQueries({ predicate: invalidateLedgerCache(context.ledgerId) });
+            }
         }
     });
 
