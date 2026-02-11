@@ -75,7 +75,7 @@ export function DetailsTab({
         if (filters.currency) parts.push(`cur:${filters.currency}`);
         if (filters.minAmount !== undefined && filters.minAmount !== null) parts.push(`min:${filters.minAmount}`);
         if (filters.maxAmount !== undefined && filters.maxAmount !== null) parts.push(`max:${filters.maxAmount}`);
-        return parts.length > 0 ? parts.join('|') : undefined;
+        return parts.length > 0 ? parts.join('|') : null;
     }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
 
     const { data: summaryData } = useQuery({
