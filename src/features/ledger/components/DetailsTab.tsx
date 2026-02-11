@@ -110,7 +110,6 @@ export function DetailsTab({
         }),
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: undefined as string | undefined,
-        refetchOnMount: 'always',
         placeholderData: (previousData) => previousData,
     });
 
