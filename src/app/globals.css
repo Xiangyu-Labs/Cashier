@@ -29,6 +29,7 @@
 }
 
 :root {
+  color-scheme: light;
   --primary: #10a37f;
 
   --bg: #ffffff;
@@ -97,6 +98,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --bg: #343541;
   --surface: #444654;
   --surface2: #202123;
@@ -115,6 +117,11 @@
   */
 }
 
+
+html {
+  background-color: var(--bg);
+  scroll-behavior: smooth;
+}
 
 body {
   background-color: var(--bg);

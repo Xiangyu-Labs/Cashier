@@ -512,5 +512,8 @@
         "anomaly": "Anomaly Bills",
         "reason": "Reason",
         "untitledBill": "Untitled Bill"
+    },
+    "BackgroundRefresh": {
+        "syncing": "Syncing..."
     }
 }

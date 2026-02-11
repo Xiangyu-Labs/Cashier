@@ -1,5 +1,6 @@
 "use client";
 
+import { BackgroundRefreshIndicator } from "@/components/ui/background-refresh-indicator";
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
@@ -109,6 +110,8 @@ export function DetailsTab({
         }),
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         initialPageParam: undefined as string | undefined,
+        refetchOnMount: 'always',
+        placeholderData: (previousData) => previousData,
     });
 
     const monthEntries = useMemo(() => {
@@ -255,6 +258,11 @@ export function DetailsTab({
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
+            <BackgroundRefreshIndicator
+                queryKey={['ledgerEntries', ledgerId]}
+                delay={500}
+            />
+
             <div className="space-y-4">
                 {/* Header Section - Responsive layout */}
                 <div className="px-2 mb-2 sm:mb-4 pt-1">

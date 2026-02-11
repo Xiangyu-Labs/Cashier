@@ -19,6 +19,7 @@ function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
     'ledgers',
     'entryCategories',
     'sourceDocuments',
+    'ledgerEntries',
     'batchConvert',
     'convert',
     'summary',
@@ -35,6 +36,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             staleTime: 10 * 60 * 1000, // 10 minutes (increased from 5 for better caching)
             gcTime: 24 * 60 * 60 * 1000, // 24 hours - cache retention
             refetchOnWindowFocus: false,
+            refetchOnMount: 'always',
+            refetchOnReconnect: true,
             retry: (failureCount, _error) => {
               return failureCount < 3;
             },

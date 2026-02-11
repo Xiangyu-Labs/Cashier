@@ -51,9 +51,10 @@ export default async function LocaleLayout({
   const messages = await getMessages({ locale });
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+        style={{ backgroundColor: 'var(--bg)' }}
       >
         <NextIntlClientProvider messages={messages} locale={locale} timeZone="Asia/Shanghai">
           <Providers>

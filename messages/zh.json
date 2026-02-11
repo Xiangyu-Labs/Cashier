@@ -516,5 +516,8 @@
         "anomaly": "异常账单",
         "reason": "原因",
         "untitledBill": "未命名账单"
+    },
+    "BackgroundRefresh": {
+        "syncing": "同步中..."
     }
 }
