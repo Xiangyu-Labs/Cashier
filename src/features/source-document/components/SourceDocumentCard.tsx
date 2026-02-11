@@ -22,8 +22,6 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 
-import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
-
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
     return data;
@@ -40,39 +38,52 @@ interface CurrencyBreakdown {
 const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
   const t = useTranslations("SourceDocumentCard");
 
-  // Calculate subtotals by currency
-  const { subtotalsByCurrency, conversionItems } = useMemo(() => {
+  // Calculate subtotals by currency and total in main currency
+  const { subtotalsByCurrency, totalInMainCurrency, breakdownData } = useMemo(() => {
     const groups: Record<string, number> = {};
-    const items: Array<{ amount: number; currency: string; date?: string }> = [];
+    let mainCurrencyTotal = 0;
 
     entries.forEach(entry => {
       const curr = entry.currency || mainCurrency;
-      groups[curr] = (groups[curr] || 0) + parseFloat(entry.amount);
+      const amount = parseFloat(entry.amount);
+      groups[curr] = (groups[curr] || 0) + amount;
+
+      // Use convertedAmount if available, otherwise use amount (for main currency)
+      if (entry.convertedAmount) {
+        mainCurrencyTotal += parseFloat(entry.convertedAmount);
+      } else if (curr === mainCurrency) {
+        mainCurrencyTotal += amount;
+      }
     });
 
-    // Build conversion items for batch hook
-    Object.entries(groups).forEach(([currency, amount]) => {
-      const date = entries.find(e => (e.currency || mainCurrency) === currency)?.sourceDocument?.entryDate || entries[0]?.createdAt;
-      items.push({ amount, currency, date });
+    const uniqueCurrencies = Object.keys(groups);
+
+    // Build breakdown data
+    const breakdown: CurrencyBreakdown[] = uniqueCurrencies.map((currency) => {
+      // Calculate converted amount for this currency by summing all entries of this currency
+      const convertedAmount = entries
+        .filter(e => (e.currency || mainCurrency) === currency)
+        .reduce((sum, e) => {
+          if (e.convertedAmount) {
+            return sum + parseFloat(e.convertedAmount);
+          } else if ((e.currency || mainCurrency) === mainCurrency) {
+            return sum + parseFloat(e.amount);
+          }
+          return sum;
+        }, 0);
+
+      return {
+        currency,
+        amount: groups[currency],
+        convertedAmount,
+      };
     });
 
-    return { subtotalsByCurrency: groups, conversionItems: items };
+    return { subtotalsByCurrency: groups, totalInMainCurrency: mainCurrencyTotal, breakdownData: breakdown };
   }, [entries, mainCurrency]);
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
   const hasMultipleCurrencies = uniqueCurrencies.length > 1;
-
-  // Use batch conversion hook
-  const { results: convertedAmounts, isLoading } = useBatchConvertedAmounts(conversionItems, mainCurrency);
-
-  const totalInMainCurrency = convertedAmounts.reduce((sum, amount) => sum + amount, 0);
-
-  // Build breakdown data
-  const breakdownData: CurrencyBreakdown[] = uniqueCurrencies.map((currency, index) => ({
-    currency,
-    amount: subtotalsByCurrency[currency],
-    convertedAmount: convertedAmounts[index],
-  }));
 
   const formattedTotal = totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -81,7 +92,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
     return (
       <span className="text-sm font-bold text-text">
         <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
-        {isLoading ? <span className="animate-pulse">...</span> : formattedTotal}
+        {formattedTotal}
       </span>
     );
   }
@@ -95,7 +106,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
           type="button"
         >
           <span className="text-xs text-muted-foreground mr-0.5">{mainCurrency}</span>
-          {isLoading ? <span className="animate-pulse">...</span> : formattedTotal}
+          {formattedTotal}
           <Coins className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
         </button>
       </PopoverTrigger>

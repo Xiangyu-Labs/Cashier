@@ -9,8 +9,6 @@ import { Wallet, FileText, ImagePlay, Maximize2, Calendar } from "lucide-react";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import { EditableField } from "@/components/ui/editable-field";
 import { DateFilter } from "@/components/ui/date-filter";
-import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
-import { useBatchConvertedAmounts } from "@/features/currency/client/hooks/useBatchConvertedAmounts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
 
@@ -18,14 +16,27 @@ interface CurrencyBreakdownItemProps {
     currency: string;
     amount: number;
     mainCurrency: string;
-    date: Date | string;
+    entries: LedgerEntry[];
 }
 
-function CurrencyBreakdownItem({ currency, amount, mainCurrency, date }: CurrencyBreakdownItemProps) {
-    const { converted } = useConvertedAmount(amount, currency, mainCurrency, typeof date === 'string' ? date : date.toISOString());
+function CurrencyBreakdownItem({ currency, amount, mainCurrency, entries }: CurrencyBreakdownItemProps) {
+    // Calculate converted amount and average rate from entries
+    const { converted, rate } = useMemo(() => {
+        const currencyEntries = entries.filter(e => (e.currency || mainCurrency) === currency);
 
-    const isMainCurrency = currency === mainCurrency;
-    const rate = isMainCurrency ? 1 : (amount > 0 ? converted / amount : 0);
+        let totalConverted = 0;
+        currencyEntries.forEach(entry => {
+            if (entry.convertedAmount) {
+                totalConverted += parseFloat(entry.convertedAmount);
+            } else if ((entry.currency || mainCurrency) === mainCurrency) {
+                totalConverted += parseFloat(entry.amount);
+            }
+        });
+
+        const avgRate = amount > 0 ? totalConverted / amount : 1;
+
+        return { converted: totalConverted, rate: avgRate };
+    }, [entries, currency, mainCurrency, amount]);
 
     return (
         <div className="flex items-center gap-3 text-xs text-muted-foreground/80 font-medium whitespace-nowrap">
@@ -96,38 +107,32 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument.title ?? "";
     const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
 
-    const { subtotalsByCurrency, conversionItems } = useMemo(() => {
+    const { subtotalsByCurrency, totalInMainCurrency } = useMemo(() => {
         const groups: Record<string, number> = {};
+        let mainCurrencyTotal = 0;
+
         ledgerEntries.forEach(entry => {
             const pendingCurrency = pendingChanges.entries[entry.id]?.currency;
             const pendingAmount = pendingChanges.entries[entry.id]?.amount;
             const curr = pendingCurrency ?? entry.currency ?? mainCurrency;
             const amt = pendingAmount ?? entry.amount;
             groups[curr] = (groups[curr] || 0) + parseFloat(amt);
-        });
 
-        // Build conversion items for batch hook
-        const date = sourceDocument.entryDate || sourceDocument.createdAt;
-        const items = Object.entries(groups).map(([currency, amount]) => ({
-            amount,
-            currency,
-            date
-        }));
+            // Use convertedAmount if available, otherwise use amount (for main currency)
+            if (entry.convertedAmount) {
+                mainCurrencyTotal += parseFloat(entry.convertedAmount);
+            } else if (curr === mainCurrency) {
+                mainCurrencyTotal += parseFloat(amt);
+            }
+        });
 
         return {
             subtotalsByCurrency: groups,
-            conversionItems: items
+            totalInMainCurrency: mainCurrencyTotal
         };
-    }, [ledgerEntries, mainCurrency, pendingChanges.entries, sourceDocument.entryDate, sourceDocument.createdAt]);
+    }, [ledgerEntries, mainCurrency, pendingChanges.entries]);
 
     const uniqueCurrencies = Object.keys(subtotalsByCurrency);
-
-    // Use batch conversion hook
-    const { results: convertedAmounts, isLoading: isLoadingConverted } = useBatchConvertedAmounts(conversionItems, mainCurrency);
-
-    const totalInMainCurrency = useMemo(() => {
-        return convertedAmounts.reduce((sum, amount) => sum + amount, 0);
-    }, [convertedAmounts]);
 
     const sortedEntries = useMemo(() => {
         return [...ledgerEntries].sort((a, b) => {
@@ -194,11 +199,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 </div>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-2xl font-black text-primary tabular-nums tracking-tight">
-                                        {isLoadingConverted ? (
-                                            <span className="animate-pulse opacity-50">...</span>
-                                        ) : (
-                                            totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                        )}
+                                        {totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                     <span className="text-base font-bold text-primary/40 leading-none">{mainCurrency}</span>
                                 </div>
@@ -212,7 +213,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                             currency={curr}
                                             amount={subtotalsByCurrency[curr]}
                                             mainCurrency={mainCurrency}
-                                            date={sourceDocument.entryDate || sourceDocument.createdAt}
+                                            entries={ledgerEntries}
                                         />
                                     ))}
                                 </div>

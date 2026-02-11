@@ -11,8 +11,6 @@ import { getPendingSourceDocumentsAction, getUnifiedSourceDocumentsAction } from
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { batchConvertCurrencyAction, type BatchConversionItem } from "@/features/currency/server/actions";
-
 export default async function LedgerPage({
   params,
   searchParams,
@@ -113,52 +111,6 @@ export default async function LedgerPage({
       staleTime: STALE_TIME,
     }),
   ]);
-
-  // Prefetch currency conversions for unified source documents
-  const unifiedDocsResult = queryClient.getQueryData(
-    queryKeys.sourceDocuments(ledgerId, 'unified', dateRange.startDate, dateRange.endDate)
-  ) as Awaited<ReturnType<typeof getUnifiedSourceDocumentsAction>> | undefined;
-
-  if (unifiedDocsResult?.groups) {
-    // Extract all entries that need currency conversion from all groups
-    const conversionItems: BatchConversionItem[] = [];
-
-    // Iterate through all groups (queued, processing, anomaly, completed)
-    const allDocs = [
-      ...unifiedDocsResult.groups.queued,
-      ...unifiedDocsResult.groups.processing,
-      ...unifiedDocsResult.groups.anomaly,
-      ...unifiedDocsResult.groups.completed,
-    ];
-
-    allDocs.forEach(group => {
-      group.ledgerEntries?.forEach(entry => {
-        const currency = entry.currency || mainCurrency;
-        if (currency !== mainCurrency) {
-          conversionItems.push({
-            amount: parseFloat(entry.amount),
-            currency,
-            date: group.sourceDocument.entryDate || entry.createdAt,
-          });
-        }
-      });
-    });
-
-    // Prefetch batch conversion if there are items to convert
-    if (conversionItems.length > 0) {
-      const cacheKey = JSON.stringify(conversionItems.map(i => ({
-        a: i.amount,
-        c: i.currency,
-        d: i.date?.split('T')[0]
-      })));
-
-      await queryClient.prefetchQuery({
-        queryKey: queryKeys.batchConvert(cacheKey, mainCurrency),
-        queryFn: () => batchConvertCurrencyAction(conversionItems, mainCurrency),
-        staleTime: 24 * 60 * 60 * 1000, // 24 hours - exchange rates don't change often
-      });
-    }
-  }
 
   // Check if ledger exists (already fetched above)
   if (!ledger) {
