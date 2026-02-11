@@ -79,6 +79,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
 
     const queryClient = useQueryClient();
 
+    // Local state for input fields (for controlled inputs during editing)
+    const [localLedgerName, setLocalLedgerName] = useState(ledger.name);
+    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
+
     const handleRefresh = async () => {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     };
@@ -88,17 +92,8 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
         categories,
         uncategorizedCount,
         credentials,
-        updateLedger,
+        updateLedgerMutation,
         isPending,
-        localLedgerName,
-        setLocalLedgerName,
-        isNameFocused,
-        setIsNameFocused,
-        localAiPrompt,
-        setLocalAiPrompt,
-        isPromptFocused,
-        setIsPromptFocused,
-        optimisticCollapseBills,
     } = useLedgerSettings({ ledgerId, ledger, initialCategories });
 
     const {
@@ -127,11 +122,13 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                             type="text"
                             value={localLedgerName}
                             onChange={(e) => setLocalLedgerName(e.target.value)}
-                            onFocus={() => setIsNameFocused(true)}
                             onBlur={() => {
-                                setIsNameFocused(false);
-                                if (localLedgerName !== ledger.name) {
-                                    updateLedger({ name: localLedgerName });
+                                const newName = localLedgerName.trim();
+                                if (newName && newName !== ledger.name) {
+                                    updateLedgerMutation.mutate({ name: newName });
+                                } else {
+                                    // Reset to original if empty or unchanged
+                                    setLocalLedgerName(ledger.name);
                                 }
                             }}
                             disabled={isPending}
@@ -224,9 +221,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                         <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
                     </div>
                     <Switch
-                        checked={optimisticCollapseBills || false}
+                        checked={ledger.metadata?.settings?.collapseBillsDefault || false}
                         onCheckedChange={(checked: boolean) => {
-                            updateLedger({ collapseBillsDefault: checked });
+                            updateLedgerMutation.mutate({ collapseBillsDefault: checked });
                         }}
                         disabled={isPending}
                     />
@@ -243,7 +240,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     <select
                         value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
                         onChange={(e) => {
-                            updateLedger({ aiLanguage: e.target.value });
+                            updateLedgerMutation.mutate({ aiLanguage: e.target.value });
                         }}
                         disabled={isPending}
                         className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
@@ -267,11 +264,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                         onChange={(e) => {
                             setLocalAiPrompt(e.target.value);
                         }}
-                        onFocus={() => setIsPromptFocused(true)}
-                        onBlur={(_e) => {
-                            setIsPromptFocused(false);
+                        onBlur={() => {
                             if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
-                                updateLedger({ aiCustomPrompt: localAiPrompt });
+                                updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
                             }
                         }}
                         disabled={isPending}
@@ -287,7 +282,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     {/* Currency Settings */}
                     <CurrencySection
                         settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
-                        onUpdateSettings={(data) => updateLedger(data)}
+                        onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
                     />
 
                     <div className="h-px bg-[var(--border)]" />

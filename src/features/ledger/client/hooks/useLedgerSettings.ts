@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
@@ -41,21 +40,20 @@ export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLe
     const uncategorizedCount = settingsData?.uncategorizedCount || 0;
     const credentials = settingsData?.credentials || [];
 
-    // Local state for Ledger Name
-    const [localLedgerName, setLocalLedgerName] = useState(ledger.name);
-    const [isNameFocused, setIsNameFocused] = useState(false);
+    const ledgerQueryKey = queryKeys.ledger(ledgerId);
 
-    // Sync from props only when not focused and not pending
+    // Mutation for updating ledger settings with proper optimistic updates
     const updateLedgerMutation = useMutation({
         mutationFn: async (data: {
             name?: string;
             preferredCurrencies?: string[];
+            mainCurrency?: string;
             aiLanguage?: string;
             collapseBillsDefault?: boolean;
             aiCustomPrompt?: string;
         }) => {
             // Transform flat structure to nested structure expected by updateLedgerAction
-            const { name, preferredCurrencies, aiLanguage, collapseBillsDefault, aiCustomPrompt, ...rest } = data;
+            const { name, preferredCurrencies, mainCurrency, aiLanguage, collapseBillsDefault, aiCustomPrompt } = data;
             const payload: { name?: string; settings?: Record<string, unknown> } = {};
 
             if (name !== undefined) {
@@ -64,6 +62,7 @@ export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLe
 
             const settings: Record<string, unknown> = {};
             if (preferredCurrencies !== undefined) settings.currencies = preferredCurrencies;
+            if (mainCurrency !== undefined) settings.mainCurrency = mainCurrency;
             if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
             if (collapseBillsDefault !== undefined) settings.collapseBillsDefault = collapseBillsDefault;
             if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
@@ -74,66 +73,73 @@ export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLe
 
             await updateLedgerAction(ledgerId, payload);
         },
+        onMutate: async (newData) => {
+            // Cancel any outgoing queries
+            await queryClient.cancelQueries({ queryKey: ledgerQueryKey });
+
+            // Snapshot the previous value
+            const previousLedger = queryClient.getQueryData<Ledger>(ledgerQueryKey);
+
+            // Optimistically update the cache
+            queryClient.setQueryData<Ledger>(ledgerQueryKey, (old) => {
+                if (!old) return old;
+
+                const updated = { ...old };
+
+                // Update name if provided
+                if (newData.name !== undefined) {
+                    updated.name = newData.name;
+                }
+
+                // Update settings if provided
+                if (newData.preferredCurrencies !== undefined ||
+                    newData.mainCurrency !== undefined ||
+                    newData.aiLanguage !== undefined ||
+                    newData.collapseBillsDefault !== undefined ||
+                    newData.aiCustomPrompt !== undefined) {
+
+                    updated.metadata = {
+                        ...old.metadata,
+                        settings: {
+                            ...old.metadata?.settings,
+                            ...(newData.preferredCurrencies !== undefined && { currencies: newData.preferredCurrencies }),
+                            ...(newData.mainCurrency !== undefined && { mainCurrency: newData.mainCurrency }),
+                            ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
+                            ...(newData.collapseBillsDefault !== undefined && { collapseBillsDefault: newData.collapseBillsDefault }),
+                            ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
+                        }
+                    };
+                }
+
+                return updated;
+            });
+
+            // Return context with the previous value
+            return { previousLedger };
+        },
         onSuccess: () => {
             toast.success(t("updateSuccess"));
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         },
-        onError: () => {
+        onError: (_err, _variables, context) => {
             toast.error(t("updateFailed"));
+
+            // Rollback to previous value on error
+            if (context?.previousLedger) {
+                queryClient.setQueryData(ledgerQueryKey, context.previousLedger);
+            }
+        },
+        onSettled: () => {
+            // Invalidate to sync with server
+            queryClient.invalidateQueries({ queryKey: ledgerQueryKey });
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
         },
     });
-
-    // Sync local name from props when not focused and not pending
-    if (!isNameFocused && !updateLedgerMutation.isPending && localLedgerName !== ledger.name) {
-        setLocalLedgerName(ledger.name);
-    }
-
-    // Local state for AI Prompt
-    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
-    const [isPromptFocused, setIsPromptFocused] = useState(false);
-
-    // Sync from props only when not focused and not pending
-    if (!isPromptFocused && !updateLedgerMutation.isPending && localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
-        setLocalAiPrompt(ledger.metadata?.settings?.aiCustomPrompt || "");
-    }
-
-    // Optimistic state for collapse bills
-    const [optimisticCollapseBills, setOptimisticCollapseBills] = useState(ledger.metadata?.settings?.collapseBillsDefault);
-
-    const updateLedger = async (data: {
-        name?: string;
-        preferredCurrencies?: string[];
-        aiLanguage?: string;
-        collapseBillsDefault?: boolean;
-        aiCustomPrompt?: string;
-    }) => {
-        // Optimistic update for collapse bills
-        if (data.collapseBillsDefault !== undefined) {
-            setOptimisticCollapseBills(data.collapseBillsDefault);
-        }
-
-        try {
-            await updateLedgerMutation.mutateAsync(data);
-        } catch (error) {
-            // Revert optimistic updates on error
-            setOptimisticCollapseBills(ledger.metadata?.settings?.collapseBillsDefault);
-        }
-    };
 
     return {
         categories,
         uncategorizedCount,
         credentials,
-        updateLedger,
+        updateLedgerMutation,
         isPending: updateLedgerMutation.isPending,
-        localLedgerName,
-        setLocalLedgerName,
-        isNameFocused,
-        setIsNameFocused,
-        localAiPrompt,
-        setLocalAiPrompt,
-        isPromptFocused,
-        setIsPromptFocused,
-        optimisticCollapseBills,
     };
 }

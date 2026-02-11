@@ -146,14 +146,7 @@ export function CategorySection({
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [newCategoryName, setNewCategoryName] = useState("");
-
-    // 本地状态管理分类顺序（乐观更新）
-    const [localCategories, setLocalCategories] = useState<EntryCategory[]>(categories);
-
-    // 同步 props 到本地状态
-    useEffect(() => {
-        setLocalCategories(categories);
-    }, [categories]);
+    const [draggedCategories, setDraggedCategories] = useState<EntryCategory[] | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -177,18 +170,38 @@ export function CategorySection({
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
 
+        // Clear dragged state first
+        setDraggedCategories(null);
+
         if (over && active.id !== over.id) {
-            const oldIndex = localCategories.findIndex((c) => c.id === active.id);
-            const newIndex = localCategories.findIndex((c) => c.id === over.id);
+            const oldIndex = categories.findIndex((c) => c.id === active.id);
+            const newIndex = categories.findIndex((c) => c.id === over.id);
 
-            // 乐观更新：立即更新本地状态
-            const newOrderedCategories = arrayMove(localCategories, oldIndex, newIndex);
-            setLocalCategories(newOrderedCategories);
+            const newOrderedCategories = arrayMove(categories, oldIndex, newIndex);
 
-            // 异步调用后端API
+            // Call backend API with new order
             onReorderCategories(newOrderedCategories.map(c => c.id));
         }
     };
+
+    const handleDragStart = () => {
+        // Store current categories for drag preview
+        setDraggedCategories([...categories]);
+    };
+
+    const handleDragOver = (event: { active: any; over: any }) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id && draggedCategories) {
+            const oldIndex = draggedCategories.findIndex((c) => c.id === active.id);
+            const newIndex = draggedCategories.findIndex((c) => c.id === over.id);
+
+            setDraggedCategories(arrayMove(draggedCategories, oldIndex, newIndex));
+        }
+    };
+
+    // Use dragged categories during drag, otherwise use categories from query
+    const displayCategories = draggedCategories || categories;
 
     return (
         <div className="space-y-4">
@@ -218,13 +231,15 @@ export function CategorySection({
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
-                        items={localCategories.map(c => c.id)}
+                        items={displayCategories.map(c => c.id)}
                         strategy={verticalListSortingStrategy}
                     >
-                        {localCategories.map(category => (
+                        {displayCategories.map(category => (
                             <SortableItem
                                 key={category.id}
                                 category={category}
