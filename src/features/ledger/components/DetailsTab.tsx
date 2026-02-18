@@ -213,7 +213,9 @@ export function DetailsTab({
             }
 
             groups[dateKey].items.push(entry);
-            groups[dateKey].total += parseFloat(entry.amount);
+            groups[dateKey].total += entry.convertedAmount
+                ? parseFloat(entry.convertedAmount)
+                : parseFloat(entry.amount);
         });
 
         return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);

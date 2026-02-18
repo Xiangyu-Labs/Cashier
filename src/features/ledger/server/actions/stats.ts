@@ -78,7 +78,7 @@ export async function getLedgerStatsAction(
     const trendQuery = await db
         .select({
             date: sourceDocuments.entryDate,
-            total: sql<number>`sum(${ledgerEntries.amount})`,
+            total: sql<number>`sum(COALESCE(CAST(${ledgerEntries.convertedAmount} AS REAL), CAST(${ledgerEntries.amount} AS REAL)))`,
         })
         .from(ledgerEntries)
         .innerJoin(sourceDocuments, eq(ledgerEntries.sourceDocumentId, sourceDocuments.id))

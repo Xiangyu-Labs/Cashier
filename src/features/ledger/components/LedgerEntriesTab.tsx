@@ -188,9 +188,11 @@ export function LedgerEntriesTab({
 
             dateGroups[dateKey].items.push(group);
 
-            // Calculate total for this date
+            // Calculate total for this date using converted amount for foreign currency
             group.ledgerEntries.forEach(entry => {
-                const amount = parseFloat(entry.amount);
+                const amount = entry.convertedAmount
+                    ? parseFloat(entry.convertedAmount)
+                    : parseFloat(entry.amount);
                 dateGroups[dateKey].total += amount;
             });
         });
