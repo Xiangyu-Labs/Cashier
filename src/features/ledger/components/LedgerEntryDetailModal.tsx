@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, type ReactNode, memo, useMemo } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { LedgerEntry, EntryCategory } from "@/types/api";
@@ -163,6 +164,9 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg">
+          <VisuallyHidden.Root>
+            <DialogTitle>{t("unsavedChanges")}</DialogTitle>
+          </VisuallyHidden.Root>
 
           {/* Loading Skeleton State */}
           {isLoading && !ledgerEntry && (

@@ -171,7 +171,8 @@
         "needsCurrency": "Needs Currency",
         "noRecords": "No records",
         "noMore": "No more items",
-        "loadMore": "Load More"
+        "loadMore": "Load More",
+        "discard": "Discard"
     },
     "SourceDocumentInput": {
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
@@ -213,6 +214,7 @@
         "editTitle": "Edit Title",
         "titlePlaceholder": "Enter bill title",
         "entries": "Detail Items",
+        "selectCategory": "Select Category",
         "select": "Select",
         "cancelSelect": "Cancel",
         "done": "Done",
