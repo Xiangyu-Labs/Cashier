@@ -141,7 +141,8 @@ export function EditableField({
             <div className={cn(containerStyles, "bg-surface2 border-border/50", displayClassName)}>
                 <div className="flex-1 min-w-0 relative">
                     <InputComponent
-                        ref={isTextarea ? textareaRef : inputRef as React.RefObject<HTMLInputElement>}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        ref={isTextarea ? textareaRef : inputRef as any}
                         type={type === "number" ? "number" : "text"}
                         value={localValue}
                         onChange={(e) => setLocalValue(e.target.value)}

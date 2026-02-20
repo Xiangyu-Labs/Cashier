@@ -100,6 +100,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 }: SourceDocumentViewDetailsProps): ReactNode {
     const t = useTranslations("SourceDocumentDetail");
     const tCard = useTranslations("SourceDocumentCard");
+    const tCommon = useTranslations("Common");
     const locale = useLocale();
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
