@@ -17,7 +17,8 @@ import {
     Calendar,
     AlignLeft,
     X,
-    Save
+    Save,
+    RefreshCw
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
@@ -28,8 +29,10 @@ import { EntryEditData } from "@/features/ledger/components/EditableBillEntryIte
 import { EditableField } from "@/components/ui/editable-field"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
 
 interface SourceDocumentDetailModalProps {
+    ledgerId: string
     sourceDocument: SourceDocument | null
     isLoading?: boolean
     ledgerEntries: LedgerEntry[]
@@ -52,6 +55,7 @@ interface SourceDocumentDetailModalProps {
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
+    ledgerId,
     sourceDocument,
     isLoading = false,
     ledgerEntries,
@@ -80,6 +84,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const [isSaving, setIsSaving] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+    const [showRetryDialog, setShowRetryDialog] = useState(false)
 
     // Batch operation states
     const [batchDate, setBatchDate] = useState("")
@@ -546,6 +551,15 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             <Trash2 className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">{tCommon("delete")}</span>
                         </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-3 gap-1.5 text-muted-foreground"
+                            onClick={() => setShowRetryDialog(true)}
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{t("editRetry")}</span>
+                        </Button>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -602,6 +616,20 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 variant="destructive"
                 confirmLabel={t("discardAndClose")}
             />
+
+            {/* Edit Retry Dialog */}
+            {sourceDocument && (
+                <SourceDocumentEditRetryDialog
+                    ledgerId={ledgerId}
+                    sourceDocument={sourceDocument}
+                    open={showRetryDialog}
+                    onOpenChange={setShowRetryDialog}
+                    onSuccess={() => {
+                        setShowRetryDialog(false)
+                        onClose()
+                    }}
+                />
+            )}
         </Dialog>
     )
 });

@@ -232,6 +232,8 @@
         "translation": "Translation",
         "originalText": "Original",
         "createdAt": "Created at",
+        "transactionTime": "Transaction Time",
+        "editRetry": "Edit & Retry",
         "untitled": "Untitled Bill",
         "noRawText": "No raw text available.",
         "saveChanges": "Save ({count} changes)",

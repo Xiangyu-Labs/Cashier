@@ -158,6 +158,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 {/* Date row */}
                 <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground shrink-0">
+                            {t("transactionTime")}:
+                        </span>
                         <Input
                             type="date"
                             value={displayEntryDate}
@@ -166,8 +169,14 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                     onSourceDocChange({ entryDate: e.target.value });
                                 }
                             }}
-                            className="h-8 text-sm w-[140px] pr-8 shrink-0"
+                            className="h-8 text-sm w-[160px] shrink-0"
+                            autoComplete="off"
                         />
+                        {isAnomaly && (
+                            <Badge variant="error" className="h-4 px-1.5 text-[8px] uppercase font-black tracking-tighter rounded-full">
+                                {tCommon("error")}
+                            </Badge>
+                        )}
                         <span className="text-muted-foreground/30 hidden sm:inline">|</span>
                         <span className="text-muted-foreground/50 text-[10px] hidden sm:inline">
                             {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
@@ -177,11 +186,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 minute: '2-digit',
                             })}
                         </span>
-                        {isAnomaly && (
-                            <Badge variant="error" className="h-4 px-1.5 text-[8px] uppercase font-black tracking-tighter rounded-full">
-                                {tCommon("error")}
-                            </Badge>
-                        )}
                     </div>
                 </div>
 

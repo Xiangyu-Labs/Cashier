@@ -295,6 +295,7 @@ export function SourceDocumentDetailWrapper({
 
     return (
         <SourceDocumentDetailModal
+            ledgerId={ledgerId || ""}
             sourceDocument={safeSourceDocument}
             isLoading={isLoading}
             ledgerEntries={currentLedgerEntries}

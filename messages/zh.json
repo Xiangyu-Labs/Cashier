@@ -236,6 +236,8 @@
         "translation": "翻译",
         "originalText": "识别原文",
         "createdAt": "创建于",
+        "transactionTime": "交易时间",
+        "editRetry": "编辑重试",
         "untitled": "未命名账单",
         "noRawText": "暂无原始文本。",
         "saveChanges": "保存 ({count}处修改)",
