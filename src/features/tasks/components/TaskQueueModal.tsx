@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     Dialog,
@@ -10,28 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { TaskCard } from "./TaskCard";
-import { AnomalyBillCard } from "./AnomalyBillCard";
+import { QueueItemCard } from "./QueueItemCard";
 import { TaskGroupSection } from "./TaskGroupSection";
 import { useTaskQueue } from "../client/hooks/useTaskQueue";
 import { useTaskQueueMutations } from "../client/hooks/useTaskQueueMutations";
-import { SerializedTaskRun, SerializedAnomalyBill } from "../server/actions/task-queue";
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
 import { toast } from "sonner";
 
 import { Inbox, ListTodo } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
-
-// Task type constant for matching
-const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
-
-function getSourceDocumentIdFromInput(input: unknown): string | null {
-    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
-        return (input as { sourceDocumentId?: string }).sourceDocumentId ?? null;
-    }
-    return null;
-}
+import type { QueueItem } from "../types/queue-item";
 
 interface TaskQueueModalProps {
     ledgerId: string;
@@ -49,11 +38,12 @@ export function TaskQueueModal({
     const tEntries = useTranslations("LedgerEntriesTab");
     const queryClient = useQueryClient();
 
-    const { groups, stats, isLoading } = useTaskQueue(ledgerId);
+    const { items, stats, isLoading } = useTaskQueue(ledgerId);
     const {
         deleteSourceDocument,
         batchDelete,
         batchRetry,
+        cancelTask,
         dismissTask,
         batchDismiss,
     } = useTaskQueueMutations(ledgerId);
@@ -64,8 +54,8 @@ export function TaskQueueModal({
     const [isAnomalyCollapsed, setIsAnomalyCollapsed] = useState(false);
     const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(true);
 
-    // Edit-Retry Dialog State (for parse_source_document tasks)
-    const [retryTaskId, setRetryTaskId] = useState<string | null>(null);
+    // Edit-Retry Dialog State
+    const [retrySourceDocId, setRetrySourceDocId] = useState<string | null>(null);
 
     // Delete Confirm State
     const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -76,10 +66,36 @@ export function TaskQueueModal({
         description: string;
     }>({ open: false, type: null, id: null, title: "", description: "" });
 
-    // For parse_source_document tasks, extract sourceDocumentId from task input
-    const getSourceDocumentId = useCallback((task: SerializedTaskRun): string | null => {
-        return getSourceDocumentIdFromInput(task.input);
-    }, []);
+    // Group items by status
+    const groupedItems = useMemo(() => {
+        const pending: QueueItem[] = [];
+        const running: QueueItem[] = [];
+        const failed: QueueItem[] = [];
+        const completed: QueueItem[] = [];
+        const anomaly: QueueItem[] = [];
+
+        for (const item of items) {
+            switch (item.status) {
+                case "pending":
+                    pending.push(item);
+                    break;
+                case "running":
+                    running.push(item);
+                    break;
+                case "failed":
+                    failed.push(item);
+                    break;
+                case "completed":
+                    completed.push(item);
+                    break;
+                case "anomaly":
+                    anomaly.push(item);
+                    break;
+            }
+        }
+
+        return { pending, running, failed, completed, anomaly };
+    }, [items]);
 
     // Handlers
     const handleDeleteConfirmAction = useCallback(() => {
@@ -90,37 +106,32 @@ export function TaskQueueModal({
                 onSuccess: () => setDeleteConfirm({ ...deleteConfirm, open: false }),
             });
         } else if (deleteConfirm.type === "all") {
-            const ids = groups.failed
-                .filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT)
-                .map(t => getSourceDocumentId(t))
-                .filter((id): id is string => id !== null);
+            const ids = groupedItems.failed
+                .filter(item => item.sourceDocumentId)
+                .map(item => item.sourceDocumentId!);
             batchDelete.mutate(ids, {
                 onSuccess: () => setDeleteConfirm({ ...deleteConfirm, open: false }),
             });
         }
-    }, [deleteConfirm, deleteSourceDocument, batchDelete, groups.failed, getSourceDocumentId]);
+    }, [deleteConfirm, deleteSourceDocument, batchDelete, groupedItems.failed]);
 
-    const handleRetry = useCallback((task: SerializedTaskRun) => {
-        if (task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT) {
-            const sourceDocId = getSourceDocumentIdFromInput(task.input);
-            if (sourceDocId) {
-                setRetryTaskId(sourceDocId);
-            }
+    const handleRetry = useCallback((item: QueueItem) => {
+        if (item.sourceDocumentId) {
+            setRetrySourceDocId(item.sourceDocumentId);
         }
     }, []);
 
-    const handleDeleteSingle = useCallback((task: SerializedTaskRun) => {
-        const sourceDocId = getSourceDocumentId(task);
-        if (!sourceDocId) return;
+    const handleDeleteSingle = useCallback((item: QueueItem) => {
+        if (!item.sourceDocumentId) return;
 
         setDeleteConfirm({
             open: true,
             type: "single",
-            id: sourceDocId,
+            id: item.sourceDocumentId,
             title: t("deleteConfirmTitle"),
             description: t("deleteConfirmDesc"),
         });
-    }, [t, getSourceDocumentId]);
+    }, [t]);
 
     const handleDeleteAll = useCallback(() => {
         setDeleteConfirm({
@@ -132,36 +143,36 @@ export function TaskQueueModal({
         });
     }, [t]);
 
-    const handleRetryAll = useCallback(() => {
-        const ids = groups.failed
-            .filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT)
-            .map(t => getSourceDocumentId(t))
-            .filter((id): id is string => id !== null);
+    const handleRetryAll = useCallback((status: 'failed' | 'anomaly') => {
+        const itemsToRetry = groupedItems[status].filter(item => item.sourceDocumentId);
+        const ids = itemsToRetry.map(item => item.sourceDocumentId!);
         batchRetry.mutate(ids);
-    }, [groups.failed, batchRetry, getSourceDocumentId]);
+    }, [groupedItems, batchRetry]);
 
-    const isEmpty = stats.total === 0 && groups.completed.length === 0;
+    const handleCancel = useCallback((item: QueueItem) => {
+        if (item.taskId) {
+            cancelTask.mutate(item.taskId);
+        }
+    }, [cancelTask]);
 
-    // Check if task type supports actions (all tasks now support some action)
-    const supportsActions = () => true;
-
-    // Check if task is a source document parsing task
-    const isSourceDocumentTask = (task: SerializedTaskRun) => task.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT;
-
-    // Failed source document tasks for batch actions
-    const failedSourceDocTasks = groups.failed.filter(t => t.type === TASK_TYPE_PARSE_SOURCE_DOCUMENT);
-
-    // Failed non-source-document tasks for batch dismiss
-    const failedOtherTasks = groups.failed.filter(t => t.type !== TASK_TYPE_PARSE_SOURCE_DOCUMENT);
-
-    const handleDismiss = useCallback((task: SerializedTaskRun) => {
-        dismissTask.mutate(task.id);
+    const handleDismiss = useCallback((item: QueueItem) => {
+        if (item.taskId) {
+            dismissTask.mutate(item.taskId);
+        }
     }, [dismissTask]);
 
+    const isEmpty = stats.total === 0 && groupedItems.completed.length === 0;
+
+    // Items with source documents for batch actions
+    const failedWithSourceDoc = groupedItems.failed.filter(item => item.sourceDocumentId);
+    const failedWithoutSourceDoc = groupedItems.failed.filter(item => !item.sourceDocumentId);
+
     const handleDismissAll = useCallback(() => {
-        const ids = failedOtherTasks.map(t => t.id);
-        batchDismiss.mutate(ids);
-    }, [failedOtherTasks, batchDismiss]);
+        const ids = failedWithoutSourceDoc.map(item => item.id);
+        if (ids.length > 0) {
+            batchDismiss.mutate(ids);
+        }
+    }, [failedWithoutSourceDoc, batchDismiss]);
 
     return (
         <>
@@ -195,57 +206,59 @@ export function TaskQueueModal({
                         ) : (
                             <>
                                 {/* Pending Section */}
-                                {groups.pending.length > 0 && (
+                                {groupedItems.pending.length > 0 && (
                                     <TaskGroupSection
                                         title={t("pending")}
-                                        count={groups.pending.length}
+                                        count={groupedItems.pending.length}
                                         color="muted"
                                         collapsed={isPendingCollapsed}
                                         onToggle={() => setIsPendingCollapsed(!isPendingCollapsed)}
                                     >
-                                        {groups.pending.map((task) => (
-                                            <TaskCard
-                                                key={task.id}
-                                                task={task}
-                                                supportsActions={supportsActions()}
+                                        {groupedItems.pending.map((item) => (
+                                            <QueueItemCard
+                                                key={item.id}
+                                                item={item}
+                                                ledgerId={ledgerId}
+                                                onCancel={() => handleCancel(item)}
+                                                onRetry={item.sourceDocumentId ? () => handleRetry(item) : undefined}
+                                                onDelete={item.sourceDocumentId ? () => handleDeleteSingle(item) : undefined}
                                             />
                                         ))}
                                     </TaskGroupSection>
                                 )}
 
                                 {/* Running Section */}
-                                {groups.running.length > 0 && (
+                                {groupedItems.running.length > 0 && (
                                     <TaskGroupSection
                                         title={t("running")}
-                                        count={groups.running.length}
+                                        count={groupedItems.running.length}
                                         color="primary"
                                         collapsed={isRunningCollapsed}
                                         onToggle={() => setIsRunningCollapsed(!isRunningCollapsed)}
                                     >
-                                        {groups.running.map((task) => (
-                                            <TaskCard
-                                                key={task.id}
-                                                task={task}
-                                                supportsActions={supportsActions()}
+                                        {groupedItems.running.map((item) => (
+                                            <QueueItemCard
+                                                key={item.id}
+                                                item={item}
                                                 ledgerId={ledgerId}
-                                                showSourcePreview={true}
+                                                onCancel={() => handleCancel(item)}
                                             />
                                         ))}
                                     </TaskGroupSection>
                                 )}
 
                                 {/* Failed Section */}
-                                {groups.failed.length > 0 && (
+                                {groupedItems.failed.length > 0 && (
                                     <TaskGroupSection
                                         title={t("failed")}
-                                        count={groups.failed.length}
+                                        count={groupedItems.failed.length}
                                         color="red"
                                         collapsed={isFailedCollapsed}
                                         onToggle={() => setIsFailedCollapsed(!isFailedCollapsed)}
                                         actions={
-                                            (failedSourceDocTasks.length > 0 || failedOtherTasks.length > 0) && (
+                                            (failedWithSourceDoc.length > 0 || failedWithoutSourceDoc.length > 0) && (
                                                 <>
-                                                    {failedOtherTasks.length > 0 && (
+                                                    {failedWithoutSourceDoc.length > 0 && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
@@ -255,7 +268,7 @@ export function TaskQueueModal({
                                                             {t("dismissAll")}
                                                         </Button>
                                                     )}
-                                                    {failedSourceDocTasks.length > 0 && (
+                                                    {failedWithSourceDoc.length > 0 && (
                                                         <>
                                                             <Button
                                                                 variant="outline"
@@ -269,7 +282,7 @@ export function TaskQueueModal({
                                                                 variant="destructive"
                                                                 size="sm"
                                                                 className="h-6 px-2 text-xs"
-                                                                onClick={handleRetryAll}
+                                                                onClick={() => handleRetryAll('failed')}
                                                             >
                                                                 {t("retryAll")}
                                                             </Button>
@@ -279,26 +292,24 @@ export function TaskQueueModal({
                                             )
                                         }
                                     >
-                                        {groups.failed.map((task) => (
-                                            <TaskCard
-                                                key={task.id}
-                                                task={task}
-                                                supportsActions={supportsActions()}
+                                        {groupedItems.failed.map((item) => (
+                                            <QueueItemCard
+                                                key={item.id}
+                                                item={item}
                                                 ledgerId={ledgerId}
-                                                showSourcePreview={true}
-                                                onRetry={isSourceDocumentTask(task) ? () => handleRetry(task) : undefined}
-                                                onDelete={isSourceDocumentTask(task) ? () => handleDeleteSingle(task) : undefined}
-                                                onDismiss={!isSourceDocumentTask(task) ? () => handleDismiss(task) : undefined}
+                                                onRetry={item.sourceDocumentId ? () => handleRetry(item) : undefined}
+                                                onDelete={item.sourceDocumentId ? () => handleDeleteSingle(item) : undefined}
+                                                onDismiss={!item.sourceDocumentId ? () => handleDismiss(item) : undefined}
                                             />
                                         ))}
                                     </TaskGroupSection>
                                 )}
 
                                 {/* Anomaly Bills Section */}
-                                {groups.anomaly.length > 0 && (
+                                {groupedItems.anomaly.length > 0 && (
                                     <TaskGroupSection
                                         title={t("anomaly")}
-                                        count={groups.anomaly.length}
+                                        count={groupedItems.anomaly.length}
                                         color="amber"
                                         collapsed={isAnomalyCollapsed}
                                         onToggle={() => setIsAnomalyCollapsed(!isAnomalyCollapsed)}
@@ -309,7 +320,7 @@ export function TaskQueueModal({
                                                     size="sm"
                                                     className="h-6 px-2 text-xs bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-50 hover:border-amber-200"
                                                     onClick={() => {
-                                                        const ids = groups.anomaly.map(b => b.id);
+                                                        const ids = groupedItems.anomaly.map(item => item.id);
                                                         batchDelete.mutate(ids);
                                                     }}
                                                 >
@@ -319,49 +330,40 @@ export function TaskQueueModal({
                                                     variant="default"
                                                     size="sm"
                                                     className="h-6 px-2 text-xs bg-amber-500 hover:bg-amber-600"
-                                                    onClick={() => {
-                                                        const ids = groups.anomaly.map(b => b.id);
-                                                        batchRetry.mutate(ids);
-                                                    }}
+                                                    onClick={() => handleRetryAll('anomaly')}
                                                 >
                                                     {t("retryAll")}
                                                 </Button>
                                             </>
                                         }
                                     >
-                                        {groups.anomaly.map((bill: SerializedAnomalyBill) => (
-                                            <AnomalyBillCard
-                                                key={bill.id}
-                                                bill={bill}
+                                        {groupedItems.anomaly.map((item) => (
+                                            <QueueItemCard
+                                                key={item.id}
+                                                item={item}
                                                 ledgerId={ledgerId}
-                                                onRetry={() => setRetryTaskId(bill.id)}
-                                                onDelete={() => {
-                                                    setDeleteConfirm({
-                                                        open: true,
-                                                        type: "single",
-                                                        id: bill.id,
-                                                        title: t("deleteConfirmTitle"),
-                                                        description: t("deleteConfirmDesc"),
-                                                    });
-                                                }}
+                                                onRetry={() => handleRetry(item)}
+                                                onDelete={() => handleDeleteSingle(item)}
                                             />
                                         ))}
                                     </TaskGroupSection>
                                 )}
 
                                 {/* Completed Section (Last 5) */}
-                                {groups.completed.length > 0 && (
+                                {groupedItems.completed.length > 0 && (
                                     <TaskGroupSection
                                         title={t("completed")}
-                                        count={groups.completed.length}
+                                        count={groupedItems.completed.length}
                                         color="green"
                                         collapsed={isCompletedCollapsed}
                                         onToggle={() => setIsCompletedCollapsed(!isCompletedCollapsed)}
                                     >
-                                        {groups.completed.map((task) => (
-                                            <TaskCard
-                                                key={task.id}
-                                                task={task}
+                                        {groupedItems.completed.map((item) => (
+                                            <QueueItemCard
+                                                key={item.id}
+                                                item={item}
+                                                ledgerId={ledgerId}
+                                                onRetry={item.sourceDocumentId ? () => handleRetry(item) : undefined}
                                             />
                                         ))}
                                     </TaskGroupSection>
@@ -396,13 +398,13 @@ export function TaskQueueModal({
                 confirmLabel={tCommon("delete")}
             />
 
-            {/* Edit-Retry Dialog - For parse_source_document tasks */}
-            {retryTaskId && (
+            {/* Edit-Retry Dialog */}
+            {retrySourceDocId && (
                 <SourceDocumentEditRetryDialog
                     ledgerId={ledgerId}
-                    sourceDocument={{ id: retryTaskId }}
-                    open={!!retryTaskId}
-                    onOpenChange={(open) => !open && setRetryTaskId(null)}
+                    sourceDocument={{ id: retrySourceDocId }}
+                    open={!!retrySourceDocId}
+                    onOpenChange={(open) => !open && setRetrySourceDocId(null)}
                     onSuccess={() => {
                         toast.success(tEntries("retrySubmitted"));
                         queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });

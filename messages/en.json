@@ -498,6 +498,8 @@
         "emptyDesc": "New processing tasks will appear here",
         "retryAll": "Retry All",
         "deleteAll": "Delete All",
+        "cancel": "Cancel",
+        "cancelled": "Cancelled",
         "dismiss": "Dismiss",
         "dismissAll": "Dismiss All",
         "dismissed": "Dismissed",

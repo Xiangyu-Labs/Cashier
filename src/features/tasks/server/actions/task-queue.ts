@@ -4,23 +4,11 @@ import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import type { QueueItem, QueueItemStatus } from "../../types/queue-item";
 
 /**
- * Status groups for the task queue UI
+ * Stats for the task queue
  */
-export interface TaskQueueGroups {
-    /** Tasks waiting in queue (status = 'pending') */
-    pending: SerializedTaskRun[];
-    /** Tasks currently running (status = 'running') */
-    running: SerializedTaskRun[];
-    /** Tasks that failed (status = 'failed') - excludes parse_source_document tasks */
-    failed: SerializedTaskRun[];
-    /** Recently completed tasks (status = 'completed', latest 5) */
-    completed: SerializedTaskRun[];
-    /** Anomaly source documents (from source_documents table) */
-    anomaly: SerializedAnomalyBill[];
-}
-
 export interface TaskQueueStats {
     pendingCount: number;
     runningCount: number;
@@ -34,67 +22,70 @@ export interface TaskQueueStats {
     avgTokensPerTask: number;
 }
 
+/**
+ * Result from getTaskQueueAction
+ * Returns a flat list of QueueItems and statistics
+ */
 export interface TaskQueueResult {
-    groups: TaskQueueGroups;
+    items: QueueItem[];
     stats: TaskQueueStats;
 }
 
-/** Serialized version for client transport */
-export interface SerializedTaskRun {
-    id: string;
-    type: string;
-    title: string;
-    status: string;
-    progress: string | null;
-    error: string | null;
-    input: unknown | null;
-    createdAt: string;
-    startedAt: string | null;
-    completedAt: string | null;
+/**
+ * Extract sourceDocumentId from task input
+ */
+function getSourceDocumentIdFromInput(input: unknown): string | undefined {
+    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
+        const id = (input as { sourceDocumentId?: string }).sourceDocumentId;
+        return id ?? undefined;
+    }
+    return undefined;
 }
 
-/** Serialized anomaly bill for client transport */
-export interface SerializedAnomalyBill {
-    id: string;
-    title: string | null;
-    anomalyReason: string | null;
-    createdAt: string;
-    /** Whether the document has images (for edit-retry dialog) */
-    hasImages: boolean;
-    /** Original text input (for edit-retry dialog) */
-    text: string | null;
-}
+/**
+ * Convert a TaskRun to a QueueItem
+ */
+function taskRunToQueueItem(task: TaskRun): QueueItem {
+    const sourceDocumentId = getSourceDocumentIdFromInput(task.input);
 
-function serializeTaskRun(task: TaskRun): SerializedTaskRun {
     return {
         id: task.id,
-        type: task.type,
+        kind: 'task',
+        status: task.status as QueueItemStatus,
         title: task.title,
-        status: task.status,
-        progress: task.progress,
-        error: task.error,
-        input: task.input,
+        subtitle: task.error ?? undefined,
+        progress: task.progress ?? undefined,
         createdAt: task.createdAt.toISOString(),
-        startedAt: task.startedAt?.toISOString() ?? null,
-        completedAt: task.completedAt?.toISOString() ?? null,
+        sourceDocumentId,
+        taskId: task.id,
+        taskType: task.type,
     };
 }
 
-function serializeAnomalyBill(doc: SourceDocument): SerializedAnomalyBill {
+/**
+ * Convert an anomaly SourceDocument to a QueueItem
+ */
+function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
     return {
         id: doc.id,
-        title: doc.title,
-        anomalyReason: doc.anomalyReason,
+        kind: 'anomaly',
+        status: 'anomaly',
+        title: doc.title ?? 'Untitled Bill',
+        subtitle: doc.anomalyReason ?? undefined,
         createdAt: doc.createdAt.toISOString(),
-        hasImages: Array.isArray(doc.imageUrls) && doc.imageUrls.length > 0,
-        text: doc.text,
+        sourceDocumentId: doc.id,
+        taskId: undefined,
+        taskType: undefined,
     };
 }
 
 /**
  * Get task queue data for the unified Task Queue Modal.
- * Returns tasks grouped by status with token statistics.
- * Also includes anomaly source documents from the source_documents table.
+ * Returns a flat list of QueueItems with token statistics.
+ *
+ * Items are from two sources:
+ * - task_runs table (pending, running, failed, completed)
+ * - source_documents table (anomaly status)
  *
  * Tasks are filtered by ledgerId using the scopeId column.
  */
@@ -136,28 +127,30 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         orderBy: [desc(sourceDocuments.createdAt)],
     });
 
-    // Group tasks by status
-    // For failed tasks, exclude parse_source_document since those are shown in anomaly section
-    const groups: TaskQueueGroups = {
-        pending: [],
-        running: [],
-        failed: [],
-        completed: completedTasks.map(serializeTaskRun),
-        anomaly: anomalyDocs.map(serializeAnomalyBill),
-    };
+    // Build flat items list
+    const items: QueueItem[] = [];
 
+    // Add active tasks
     for (const task of activeTasks) {
-        const serialized = serializeTaskRun(task);
-        if (task.status === "pending") {
-            groups.pending.push(serialized);
-        } else if (task.status === "running") {
-            groups.running.push(serialized);
-        } else if (task.status === "failed") {
-            // For parse_source_document, the anomaly is shown in anomaly section
-            // Still show the failed task for visibility/debugging
-            groups.failed.push(serialized);
-        }
+        items.push(taskRunToQueueItem(task));
     }
+
+    // Add completed tasks
+    for (const task of completedTasks) {
+        items.push(taskRunToQueueItem(task));
+    }
+
+    // Add anomaly documents
+    for (const doc of anomalyDocs) {
+        items.push(anomalyDocToQueueItem(doc));
+    }
+
+    // Calculate counts
+    const pendingCount = items.filter(i => i.status === 'pending').length;
+    const runningCount = items.filter(i => i.status === 'running').length;
+    const failedCount = items.filter(i => i.status === 'failed').length;
+    const completedCount = allCompletedTasks.length; // Total count, not just the 5 shown
+    const anomalyCount = items.filter(i => i.status === 'anomaly').length;
 
     // Calculate token stats from all completed tasks
     let totalInputTokens = 0;
@@ -180,16 +173,16 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     const avgTokensPerTask = taskCount > 0 ? Math.round(totalTokens / taskCount) : 0;
 
     const stats: TaskQueueStats = {
-        pendingCount: groups.pending.length,
-        runningCount: groups.running.length,
-        failedCount: groups.failed.length,
-        completedCount: allCompletedTasks.length,
-        anomalyCount: groups.anomaly.length,
-        total: groups.pending.length + groups.running.length + groups.failed.length + groups.anomaly.length,
+        pendingCount,
+        runningCount,
+        failedCount,
+        completedCount,
+        anomalyCount,
+        total: pendingCount + runningCount + failedCount + anomalyCount,
         totalInputTokens,
         totalOutputTokens,
         avgTokensPerTask,
     };
 
-    return { groups, stats };
+    return { items, stats };
 }

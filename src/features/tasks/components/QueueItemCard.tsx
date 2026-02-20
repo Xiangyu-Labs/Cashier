@@ -2,7 +2,18 @@
 
 import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, RefreshCw, MoreVertical, ChevronDown, Clock, Loader2, XCircle, CheckCircle2 } from "lucide-react";
+import {
+    Trash2,
+    RefreshCw,
+    MoreVertical,
+    ChevronDown,
+    Clock,
+    Loader2,
+    XCircle,
+    CheckCircle2,
+    AlertTriangle,
+    X,
+} from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,69 +23,77 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { SerializedTaskRun } from "../server/actions/task-queue";
+import type { QueueItem, QueueItemStatus } from "../types/queue-item";
 import { SourceDocumentPreview } from "./SourceDocumentPreview";
 
-interface TaskCardProps {
-    task: SerializedTaskRun;
-    /** Whether this task type supports retry/delete operations */
-    supportsActions?: boolean;
+interface QueueItemCardProps {
+    item: QueueItem;
+    ledgerId: string;
+    /** Cancel handler - for pending/running tasks */
+    onCancel?: () => void | Promise<void>;
+    /** Retry handler - for failed/completed tasks and anomalies with sourceDocumentId */
     onRetry?: () => void | Promise<void>;
+    /** Delete handler - for failed/pending tasks and anomalies with sourceDocumentId */
     onDelete?: () => void;
-    /** Called when user wants to dismiss (soft delete) the task */
+    /** Dismiss handler - for failed tasks without sourceDocumentId */
     onDismiss?: () => void | Promise<void>;
     className?: string;
-    /** Ledger ID for fetching source document data */
-    ledgerId?: string;
-    /** Whether to show original input preview for source document tasks */
-    showSourcePreview?: boolean;
 }
 
-function getSourceDocumentIdFromInput(input: unknown): string | null {
-    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
-        return (input as { sourceDocumentId?: string }).sourceDocumentId ?? null;
-    }
-    return null;
-}
-
-function TaskStatusIcon({ status }: { status: string }) {
+function StatusIcon({ status }: { status: QueueItemStatus }) {
     switch (status) {
         case "running":
             return <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />;
         case "completed":
-            return <CheckCircle2 className="w-3.5 h-3.5 text-primary" />;
+            return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />;
         case "failed":
             return <XCircle className="w-3.5 h-3.5 text-red-500" />;
-        case "queued":
+        case "anomaly":
+            return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
+        case "pending":
         default:
             return <Clock className="w-3.5 h-3.5 text-muted-foreground" />;
     }
 }
 
-export const TaskCard = memo(function TaskCard({
-    task,
-    supportsActions = false,
+// Status-based styling
+const statusStyles: Record<QueueItemStatus, string> = {
+    pending: "border-l-muted/30 bg-muted/5",
+    running: "border-l-primary bg-primary/5",
+    failed: "border-l-red-500 bg-red-50/50 dark:bg-red-900/10",
+    completed: "border-l-green-500 bg-green-50/50 dark:bg-green-900/10",
+    anomaly: "border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10",
+};
+
+export const QueueItemCard = memo(function QueueItemCard({
+    item,
+    ledgerId,
+    onCancel,
     onRetry,
     onDelete,
     onDismiss,
     className,
-    ledgerId,
-    showSourcePreview = false,
-}: TaskCardProps) {
+}: QueueItemCardProps) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("TaskQueue");
+    const tEntries = useTranslations("LedgerEntriesTab");
 
     const [isRetrying, setIsRetrying] = useState(false);
     const [isDismissing, setIsDismissing] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
-    // Determine status-specific styling
-    const statusColors = {
-        queued: "border-l-muted/30 bg-muted/5",
-        running: "border-l-primary bg-primary/5",
-        failed: "border-l-red-500 bg-red-50/50 dark:bg-red-900/10",
-        completed: "border-l-primary/50 bg-surface",
-    };
+    // Determine available actions based on item state
+    const canCancel = item.kind === 'task' && (item.status === 'pending' || item.status === 'running') && onCancel;
+    const canRetry = item.sourceDocumentId && onRetry && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'completed');
+    const canDelete = item.sourceDocumentId && onDelete && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending');
+    const canDismiss = item.kind === 'task' && item.status === 'failed' && !item.sourceDocumentId && onDismiss;
+
+    // Running tasks get a direct cancel button, everything else uses dropdown
+    const showDirectCancel = item.status === 'running' && canCancel;
+    const showDropdown = (item.status !== 'running') && (canRetry || canDelete || canDismiss || canCancel);
+
+    // Can expand if has source document preview
+    const canExpand = !!item.sourceDocumentId;
 
     async function handleRetry() {
         if (!onRetry) return;
@@ -96,52 +115,73 @@ export const TaskCard = memo(function TaskCard({
         }
     }
 
-    const sourceDocumentId = task.type === "parse_source_document"
-        ? getSourceDocumentIdFromInput(task.input)
-        : null;
-    const hasSourcePreview = showSourcePreview && ledgerId && sourceDocumentId;
-    const hasDetails = task.progress || task.error || hasSourcePreview;
-    const showActions = supportsActions && (onRetry || onDelete || onDismiss) && task.status === "failed";
+    // Show subtitle (error/reason/progress) in collapsed state only
+    const showSubtitleInline = !isExpanded && item.subtitle;
+    const showProgressInline = item.status === 'running' && item.progress && !isExpanded;
 
     return (
         <div className={cn(
             "rounded-lg border border-l-4 overflow-hidden transition-colors",
-            statusColors[task.status as keyof typeof statusColors] || statusColors.queued,
+            statusStyles[item.status],
             className
         )}>
             {/* Header */}
             <div
                 className={cn(
                     "px-3 py-2.5 flex justify-between items-center transition-all",
-                    hasDetails && "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
+                    canExpand && "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
                 )}
-                onClick={() => hasDetails && setIsExpanded(!isExpanded)}
+                onClick={() => canExpand && setIsExpanded(!isExpanded)}
             >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {hasDetails && (
+                    {canExpand && (
                         <ChevronDown className={cn(
                             "h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground",
                             isExpanded && "rotate-180"
                         )} />
                     )}
 
-                    <TaskStatusIcon status={task.status} />
+                    <StatusIcon status={item.status} />
 
                     {/* Title */}
-                    <span className="text-sm font-medium text-text truncate" title={task.title}>
-                        {task.title}
+                    <span className="text-sm font-medium text-text truncate" title={item.title}>
+                        {item.title}
                     </span>
 
-                    {/* Progress message (inline for running tasks) */}
-                    {task.status === "running" && task.progress && (
+                    {/* Subtitle (error/reason) - inline for collapsed state */}
+                    {showSubtitleInline && (
+                        <span className={cn(
+                            "text-xs truncate hidden sm:inline",
+                            item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
+                        )}>
+                            — {item.subtitle}
+                        </span>
+                    )}
+
+                    {/* Progress - inline for running tasks */}
+                    {showProgressInline && (
                         <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                            — {task.progress}
+                            — {item.progress}
                         </span>
                     )}
                 </div>
 
-                {/* Actions */}
-                {showActions && (
+                {/* Direct Cancel Button (for running tasks) */}
+                {showDirectCancel && (
+                    <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="h-6 w-6 text-muted-foreground hover:text-text"
+                            onClick={onCancel}
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                )}
+
+                {/* Dropdown Menu (for pending/failed/completed/anomaly) */}
+                {showDropdown && (
                     <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
@@ -154,13 +194,19 @@ export const TaskCard = memo(function TaskCard({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-36">
-                                {onRetry && (
+                                {canRetry && (
                                     <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                                         <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isRetrying && "animate-spin")} />
                                         {tCommon("retry")}
                                     </DropdownMenuItem>
                                 )}
-                                {onDelete && (
+                                {canCancel && (
+                                    <DropdownMenuItem onClick={onCancel}>
+                                        <X className="mr-2 h-3.5 w-3.5" />
+                                        {t("cancel")}
+                                    </DropdownMenuItem>
+                                )}
+                                {canDelete && (
                                     <DropdownMenuItem
                                         onClick={onDelete}
                                         className="text-danger focus:text-danger"
@@ -169,7 +215,7 @@ export const TaskCard = memo(function TaskCard({
                                         {tCommon("delete")}
                                     </DropdownMenuItem>
                                 )}
-                                {onDismiss && (
+                                {canDismiss && (
                                     <DropdownMenuItem onClick={handleDismiss} disabled={isDismissing}>
                                         <XCircle className={cn("mr-2 h-3.5 w-3.5", isDismissing && "animate-pulse")} />
                                         {t("dismiss")}
@@ -183,7 +229,7 @@ export const TaskCard = memo(function TaskCard({
 
             {/* Expandable Content */}
             <AnimatePresence initial={false}>
-                {isExpanded && hasDetails && (
+                {isExpanded && canExpand && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
@@ -191,33 +237,21 @@ export const TaskCard = memo(function TaskCard({
                         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                         className="overflow-hidden"
                     >
-                        <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/50">
-                            {/* Progress */}
-                            {task.progress && (
-                                <div className="flex items-start gap-2">
+                        <div className="px-3 pb-3 pt-1 border-t border-border/50">
+                            {/* Progress (shown in expanded view for running tasks) */}
+                            {item.status === 'running' && item.progress && (
+                                <div className="flex items-start gap-2 mb-2">
                                     <span className="text-xs font-medium text-muted-foreground shrink-0">
                                         {t("progress")}:
                                     </span>
                                     <span className="text-xs text-text">
-                                        {task.progress}
+                                        {item.progress}
                                     </span>
                                 </div>
                             )}
 
-                            {/* Error */}
-                            {task.error && (
-                                <div className="flex items-start gap-2">
-                                    <span className="text-xs font-medium text-red-500 shrink-0">
-                                        {t("error")}:
-                                    </span>
-                                    <span className="text-xs text-red-600 dark:text-red-400">
-                                        {task.error}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Original Input Preview */}
-                            {hasSourcePreview && ledgerId && sourceDocumentId && (
+                            {/* Source Document Preview */}
+                            {item.sourceDocumentId && (
                                 <div className="pt-2 border-t border-border/30">
                                     <div className="flex items-start gap-2">
                                         <span className="text-xs font-medium text-muted-foreground shrink-0">
@@ -227,7 +261,7 @@ export const TaskCard = memo(function TaskCard({
                                     <div className="mt-1.5">
                                         <SourceDocumentPreview
                                             ledgerId={ledgerId}
-                                            sourceDocumentId={sourceDocumentId}
+                                            sourceDocumentId={item.sourceDocumentId}
                                         />
                                     </div>
                                 </div>

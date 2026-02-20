@@ -13,7 +13,12 @@ import {
     dismissTaskAction,
     batchDismissTasksAction,
 } from "../../server/actions/dismiss-task";
+import {
+    cancelTaskAction,
+    batchCancelTasksAction,
+} from "../../server/actions/cancel-task";
 import type { TaskQueueResult } from "../../server/actions/task-queue";
+import type { QueueItem } from "../../types/queue-item";
 
 export function useTaskQueueMutations(ledgerId: string) {
     const queryClient = useQueryClient();
@@ -23,6 +28,37 @@ export function useTaskQueueMutations(ledgerId: string) {
 
     const taskQueueKey = queryKeys.taskQueue(ledgerId);
 
+    // Helper to remove items from the flat items array
+    const removeItemsById = (old: TaskQueueResult | undefined, ids: string[]): TaskQueueResult | undefined => {
+        if (!old) return old;
+        const idsSet = new Set(ids);
+        return {
+            ...old,
+            items: old.items.filter(item => !idsSet.has(item.id)),
+            stats: {
+                ...old.stats,
+                total: old.stats.total - old.items.filter(item => idsSet.has(item.id)).length,
+            },
+        };
+    };
+
+    // Helper to remove items by sourceDocumentId
+    const removeItemsBySourceDocId = (old: TaskQueueResult | undefined, sourceDocIds: string[]): TaskQueueResult | undefined => {
+        if (!old) return old;
+        const idsSet = new Set(sourceDocIds);
+        const newItems = old.items.filter(item => !item.sourceDocumentId || !idsSet.has(item.sourceDocumentId));
+        const removedCount = old.items.length - newItems.length;
+        return {
+            ...old,
+            items: newItems,
+            stats: {
+                ...old.stats,
+                total: old.stats.total - removedCount,
+            },
+        };
+    };
+
+    // Delete a single source document (and associated task)
     const deleteSourceDocument = useMutation({
         mutationFn: async (sourceDocumentId: string) => {
             await deleteSourceDocumentAction(ledgerId, sourceDocumentId);
@@ -30,36 +66,11 @@ export function useTaskQueueMutations(ledgerId: string) {
         onMutate: async (sourceDocumentId) => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
-            // Snapshot previous data
             const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
 
-            // Optimistically remove the task from all groups
-            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
-                if (!old) return old;
-
-                return {
-                    ...old,
-                    groups: {
-                        pending: old.groups.pending.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return input.sourceDocumentId !== sourceDocumentId;
-                        }),
-                        running: old.groups.running.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return input.sourceDocumentId !== sourceDocumentId;
-                        }),
-                        failed: old.groups.failed.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return input.sourceDocumentId !== sourceDocumentId;
-                        }),
-                        completed: old.groups.completed.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return input.sourceDocumentId !== sourceDocumentId;
-                        }),
-                        anomaly: old.groups.anomaly.filter(bill => bill.id !== sourceDocumentId),
-                    },
-                };
-            });
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsBySourceDocId(old, [sourceDocumentId])
+            );
 
             return { previousTaskQueue };
         },
@@ -68,7 +79,6 @@ export function useTaskQueueMutations(ledgerId: string) {
         },
         onError: (_err, _vars, context) => {
             toast.error(tCommon("deleteFailed"));
-            // Rollback on error
             if (context?.previousTaskQueue) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
@@ -78,6 +88,7 @@ export function useTaskQueueMutations(ledgerId: string) {
         }
     });
 
+    // Batch delete source documents
     const batchDelete = useMutation({
         mutationFn: async (ids: string[]) => {
             await batchDeleteSourceDocumentsAction(ledgerId, ids);
@@ -85,38 +96,11 @@ export function useTaskQueueMutations(ledgerId: string) {
         onMutate: async (ids) => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
-            // Snapshot previous data
             const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
 
-            // Optimistically remove multiple tasks
-            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
-                if (!old) return old;
-
-                const idsSet = new Set(ids);
-
-                return {
-                    ...old,
-                    groups: {
-                        pending: old.groups.pending.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return !input.sourceDocumentId || !idsSet.has(input.sourceDocumentId);
-                        }),
-                        running: old.groups.running.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return !input.sourceDocumentId || !idsSet.has(input.sourceDocumentId);
-                        }),
-                        failed: old.groups.failed.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return !input.sourceDocumentId || !idsSet.has(input.sourceDocumentId);
-                        }),
-                        completed: old.groups.completed.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return !input.sourceDocumentId || !idsSet.has(input.sourceDocumentId);
-                        }),
-                        anomaly: old.groups.anomaly.filter(bill => !idsSet.has(bill.id)),
-                    },
-                };
-            });
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsBySourceDocId(old, ids)
+            );
 
             return { previousTaskQueue };
         },
@@ -125,7 +109,6 @@ export function useTaskQueueMutations(ledgerId: string) {
         },
         onError: (_err, _vars, context) => {
             toast.error(tCommon("deleteFailed"));
-            // Rollback on error
             if (context?.previousTaskQueue) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
@@ -135,6 +118,7 @@ export function useTaskQueueMutations(ledgerId: string) {
         }
     });
 
+    // Batch retry source documents
     const batchRetry = useMutation({
         mutationFn: async (ids: string[]) => {
             await batchRetrySourceDocumentsAction(ledgerId, ids);
@@ -142,33 +126,22 @@ export function useTaskQueueMutations(ledgerId: string) {
         onMutate: async (ids) => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
-            // Snapshot previous data
             const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
 
-            // Optimistically move tasks from failed to pending
             queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
                 if (!old) return old;
 
                 const idsSet = new Set(ids);
-                const tasksToRetry = old.groups.failed.filter(task => {
-                    const input = task.input as { sourceDocumentId?: string };
-                    return input.sourceDocumentId && idsSet.has(input.sourceDocumentId);
+
+                // Find items to retry and update their status to pending
+                const newItems = old.items.map(item => {
+                    if (item.sourceDocumentId && idsSet.has(item.sourceDocumentId)) {
+                        return { ...item, status: 'pending' as const, subtitle: undefined };
+                    }
+                    return item;
                 });
 
-                return {
-                    ...old,
-                    groups: {
-                        ...old.groups,
-                        failed: old.groups.failed.filter(task => {
-                            const input = task.input as { sourceDocumentId?: string };
-                            return !input.sourceDocumentId || !idsSet.has(input.sourceDocumentId);
-                        }),
-                        pending: [...old.groups.pending, ...tasksToRetry.map(task => ({
-                            ...task,
-                            status: 'pending' as const,
-                        }))],
-                    },
-                };
+                return { ...old, items: newItems };
             });
 
             return { previousTaskQueue };
@@ -178,7 +151,6 @@ export function useTaskQueueMutations(ledgerId: string) {
         },
         onError: (_err, _vars, context) => {
             toast.error(tCommon("error"));
-            // Rollback on error
             if (context?.previousTaskQueue) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
@@ -188,6 +160,67 @@ export function useTaskQueueMutations(ledgerId: string) {
         }
     });
 
+    // Cancel a single task
+    const cancelTask = useMutation({
+        mutationFn: async (taskId: string) => {
+            await cancelTaskAction(ledgerId, taskId);
+        },
+        onMutate: async (taskId) => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
+
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsById(old, [taskId])
+            );
+
+            return { previousTaskQueue };
+        },
+        onSuccess: () => {
+            toast.success(t("cancelled"));
+        },
+        onError: (_err, _vars, context) => {
+            toast.error(tCommon("error"));
+            if (context?.previousTaskQueue) {
+                queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
+    });
+
+    // Batch cancel tasks
+    const batchCancel = useMutation({
+        mutationFn: async (taskIds: string[]) => {
+            await batchCancelTasksAction(ledgerId, taskIds);
+        },
+        onMutate: async (taskIds) => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+
+            const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
+
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsById(old, taskIds)
+            );
+
+            return { previousTaskQueue };
+        },
+        onSuccess: () => {
+            toast.success(t("cancelled"));
+        },
+        onError: (_err, _vars, context) => {
+            toast.error(tCommon("error"));
+            if (context?.previousTaskQueue) {
+                queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
+    });
+
+    // Dismiss a single task (for non-source-document tasks)
     const dismissTask = useMutation({
         mutationFn: async (taskId: string) => {
             await dismissTaskAction(ledgerId, taskId);
@@ -195,24 +228,11 @@ export function useTaskQueueMutations(ledgerId: string) {
         onMutate: async (taskId) => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
-            // Snapshot previous data
             const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
 
-            // Optimistically remove the task
-            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
-                if (!old) return old;
-
-                return {
-                    ...old,
-                    groups: {
-                        pending: old.groups.pending.filter(task => task.id !== taskId),
-                        running: old.groups.running.filter(task => task.id !== taskId),
-                        failed: old.groups.failed.filter(task => task.id !== taskId),
-                        completed: old.groups.completed.filter(task => task.id !== taskId),
-                        anomaly: old.groups.anomaly,
-                    },
-                };
-            });
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsById(old, [taskId])
+            );
 
             return { previousTaskQueue };
         },
@@ -221,7 +241,6 @@ export function useTaskQueueMutations(ledgerId: string) {
         },
         onError: (_err, _vars, context) => {
             toast.error(tCommon("error"));
-            // Rollback on error
             if (context?.previousTaskQueue) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
@@ -231,6 +250,7 @@ export function useTaskQueueMutations(ledgerId: string) {
         }
     });
 
+    // Batch dismiss tasks
     const batchDismiss = useMutation({
         mutationFn: async (taskIds: string[]) => {
             await batchDismissTasksAction(ledgerId, taskIds);
@@ -238,26 +258,11 @@ export function useTaskQueueMutations(ledgerId: string) {
         onMutate: async (taskIds) => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
-            // Snapshot previous data
             const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
 
-            // Optimistically remove multiple tasks
-            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
-                if (!old) return old;
-
-                const idsSet = new Set(taskIds);
-
-                return {
-                    ...old,
-                    groups: {
-                        pending: old.groups.pending.filter(task => !idsSet.has(task.id)),
-                        running: old.groups.running.filter(task => !idsSet.has(task.id)),
-                        failed: old.groups.failed.filter(task => !idsSet.has(task.id)),
-                        completed: old.groups.completed.filter(task => !idsSet.has(task.id)),
-                        anomaly: old.groups.anomaly,
-                    },
-                };
-            });
+            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) =>
+                removeItemsById(old, taskIds)
+            );
 
             return { previousTaskQueue };
         },
@@ -266,7 +271,6 @@ export function useTaskQueueMutations(ledgerId: string) {
         },
         onError: (_err, _vars, context) => {
             toast.error(tCommon("error"));
-            // Rollback on error
             if (context?.previousTaskQueue) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
@@ -280,6 +284,8 @@ export function useTaskQueueMutations(ledgerId: string) {
         deleteSourceDocument,
         batchDelete,
         batchRetry,
+        cancelTask,
+        batchCancel,
         dismissTask,
         batchDismiss,
     };

@@ -1,11 +1,24 @@
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { queryKeys } from '@/lib/query-keys';
-import { getTaskQueueAction, type TaskQueueResult, type SerializedTaskRun, type SerializedAnomalyBill } from '@/features/tasks/server/actions/task-queue';
+import { getTaskQueueAction, type TaskQueueResult, type TaskQueueStats } from '@/features/tasks/server/actions/task-queue';
+import type { QueueItem } from '@/features/tasks/types/queue-item';
+
+const defaultStats: TaskQueueStats = {
+    pendingCount: 0,
+    runningCount: 0,
+    failedCount: 0,
+    completedCount: 0,
+    anomalyCount: 0,
+    total: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    avgTokensPerTask: 0,
+};
 
 /**
- * Hook for fetching the unified task queue from task_runs table.
- * Also includes anomaly bills from source_documents table.
- * 
+ * Hook for fetching the unified task queue.
+ * Returns a flat list of QueueItems from both task_runs and source_documents (anomaly).
+ *
  * Uses smart polling - polls every 3 seconds while there are pending or running tasks.
  */
 export function useTaskQueue(ledgerId: string) {
@@ -18,24 +31,8 @@ export function useTaskQueue(ledgerId: string) {
     });
 
     return {
-        groups: data?.groups ?? {
-            pending: [] as SerializedTaskRun[],
-            running: [] as SerializedTaskRun[],
-            failed: [] as SerializedTaskRun[],
-            completed: [] as SerializedTaskRun[],
-            anomaly: [] as SerializedAnomalyBill[],
-        },
-        stats: data?.stats ?? {
-            pendingCount: 0,
-            runningCount: 0,
-            failedCount: 0,
-            completedCount: 0,
-            anomalyCount: 0,
-            total: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            avgTokensPerTask: 0,
-        },
+        items: data?.items ?? [] as QueueItem[],
+        stats: data?.stats ?? defaultStats,
         isLoading: isLoading && !data,
         refetch,
     };

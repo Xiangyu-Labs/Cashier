@@ -502,6 +502,8 @@
         "emptyDesc": "新的处理任务将显示在这里",
         "retryAll": "全部重试",
         "deleteAll": "全部删除",
+        "cancel": "取消",
+        "cancelled": "已取消",
         "dismiss": "忽略",
         "dismissAll": "忽略全部",
         "dismissed": "已忽略",
