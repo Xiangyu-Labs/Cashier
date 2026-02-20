@@ -322,7 +322,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-            <DialogContent className="w-full sm:w-[calc(100vw-2rem)] sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-2xl border-none sm:border">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border">
                 <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         <FileText className="h-5 w-5" />
@@ -549,15 +549,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 text-muted-foreground"
-                            onClick={handleClose}
-                        >
-                            {tCommon("cancel")}
-                        </Button>
-
                         <AnimatePresence>
                             {hasPendingChanges && (
                                 <motion.div

@@ -166,7 +166,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                     onSourceDocChange({ entryDate: e.target.value });
                                 }
                             }}
-                            className="h-8 text-sm w-[140px] pr-8"
+                            className="h-8 text-sm w-[140px] pr-8 shrink-0"
                         />
                         <span className="text-muted-foreground/30 hidden sm:inline">|</span>
                         <span className="text-muted-foreground/50 text-[10px] hidden sm:inline">
