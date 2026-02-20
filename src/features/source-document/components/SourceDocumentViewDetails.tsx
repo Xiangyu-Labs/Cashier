@@ -5,12 +5,12 @@ import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, FileText, ImagePlay, Maximize2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
-import { EditableField } from "@/components/ui/editable-field";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { cn } from "@/lib/utils";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -39,20 +39,14 @@ function CurrencyBreakdownItem({ currency, amount, mainCurrency, entries }: Curr
     }, [entries, currency, mainCurrency, amount]);
 
     return (
-        <div className="flex items-center gap-3 text-xs text-muted-foreground/80 font-medium whitespace-nowrap">
-            <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-text/90 tabular-nums">{currency}</span>
-                <span className="text-text tabular-nums text-[13px] font-bold">{amount.toFixed(2)}</span>
-            </div>
-            <span className="opacity-30 text-[10px]">×</span>
-            <div className="bg-surface2/80 px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono tabular-nums text-primary/70">
-                {rate.toFixed(4)}
-            </div>
-            <span className="opacity-30 text-[10px]">≈</span>
-            <div className="font-mono text-primary tabular-nums font-bold">
-                {converted.toFixed(2)}
-            </div>
-        </div>
+        <span className="text-xs text-muted-foreground/80">
+            <span className="font-mono tabular-nums">{currency} {amount.toFixed(2)}</span>
+            {currency !== mainCurrency && (
+                <span className="ml-1.5 text-[10px]">
+                    (≈ {mainCurrency} {converted.toFixed(2)})
+                </span>
+            )}
+        </span>
     );
 }
 
@@ -79,10 +73,12 @@ interface SourceDocumentViewDetailsProps {
     mainCurrency?: string;
     pendingChanges: PendingChanges;
     selectedEntryIds: string[];
+    isSelectionMode: boolean;
     onSourceDocChange: (changes: SourceDocPendingChanges) => void;
     onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
     onSelectEntry: (entryId: string, selected: boolean) => void;
     onSelectAllEntries: (selected: boolean) => void;
+    onToggleSelectionMode: () => void;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -93,19 +89,21 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     mainCurrency = "CNY",
     pendingChanges,
     selectedEntryIds,
+    isSelectionMode,
     onSourceDocChange,
     onEntryChange,
     onSelectEntry,
     onSelectAllEntries,
+    onToggleSelectionMode,
 }: SourceDocumentViewDetailsProps): ReactNode {
     const t = useTranslations("SourceDocumentDetail");
     const tCard = useTranslations("SourceDocumentCard");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+    const [isRawExpanded, setIsRawExpanded] = useState(false);
 
     // Merge pending changes with original data
-    const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument.title ?? "";
     const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
 
     const { subtotalsByCurrency, totalInMainCurrency } = useMemo(() => {
@@ -146,117 +144,179 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
     const isAnomaly = sourceDocument.status === "anomaly";
     const allSelected = selectedEntryIds.length === ledgerEntries.length && ledgerEntries.length > 0;
+    const hasImages = (sourceDocument.imageUrls?.length ?? 0) > 0;
+    const hasRawText = sourceDocument.text && sourceDocument.text.trim().length > 0;
+
+    const handleSelectAll = useCallback(() => {
+        onSelectAllEntries(!allSelected);
+    }, [allSelected, onSelectAllEntries]);
 
     return (
-        <div className="h-full flex flex-col mx-auto lg:h-[calc(100vh-140px)]">
-            <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-                <Tabs defaultValue="entries" className="h-full flex flex-col gap-2">
-                    <div className="shrink-0 flex items-center justify-between gap-2">
-                        {/* Header with editable date */}
-                        <div className="min-w-0 flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={displayEntryDate}
-                                onChange={(e) => {
-                                    if (e.target.value) {
-                                        onSourceDocChange({ entryDate: e.target.value });
-                                    }
-                                }}
-                                className="h-8 text-sm w-[150px] pr-8"
-                            />
-                            <span className="text-muted-foreground/40">|</span>
-                            <span className="text-muted-foreground/60 text-[10px] md:text-xs">
-                                {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
-                            </span>
-                            {isAnomaly && (
-                                <Badge variant="error" className="h-3.5 px-1 text-[8px] md:text-[9px] uppercase font-black tracking-tighter rounded-full">
-                                    {tCommon("error")}
-                                </Badge>
-                            )}
-                        </div>
-                        <TabsList className="bg-surface2/50 p-1 border border-border/40 rounded-xl h-9 md:h-10">
-                            <TabsTrigger value="entries" className="rounded-lg px-3 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">{t("entries")}</TabsTrigger>
-                            <TabsTrigger value="raw" className="rounded-lg px-3 md:px-4 text-[10px] md:text-xs font-bold uppercase tracking-wider">{t("rawEvidence")}</TabsTrigger>
-                        </TabsList>
+        <div className="h-full flex flex-col gap-4">
+            {/* Header Section */}
+            <div className="shrink-0 space-y-2">
+                {/* Date row */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex items-center gap-2">
+                        <Input
+                            type="date"
+                            value={displayEntryDate}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    onSourceDocChange({ entryDate: e.target.value });
+                                }
+                            }}
+                            className="h-8 text-sm w-[140px] pr-8"
+                        />
+                        <span className="text-muted-foreground/30 hidden sm:inline">|</span>
+                        <span className="text-muted-foreground/50 text-[10px] hidden sm:inline">
+                            {t("createdAt")}: {new Date(sourceDocument.createdAt).toLocaleString(locale, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
+                        </span>
+                        {isAnomaly && (
+                            <Badge variant="error" className="h-4 px-1.5 text-[8px] uppercase font-black tracking-tighter rounded-full">
+                                {tCommon("error")}
+                            </Badge>
+                        )}
                     </div>
+                </div>
 
-                    <TabsContent value="entries" className="flex-1 min-h-0 m-0 p-0 flex flex-col gap-2 focus-visible:outline-none">
-                        {/* Financial Summary */}
-                        <div className="rounded-lg border border-border/80 bg-surface shadow-sm p-3 space-y-2">
-                            <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em] opacity-60">
-                                    <Wallet className="h-2.5 w-2.5" />
-                                    {t("totalAmount")}
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-2xl font-black text-primary tabular-nums tracking-tight">
-                                        {totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                    <span className="text-base font-bold text-primary/40 leading-none">{mainCurrency}</span>
-                                </div>
-                            </div>
+                {/* Financial Summary - simplified one-line display */}
+                <div className="flex items-center gap-2 text-sm py-1">
+                    <Wallet className="h-3.5 w-3.5 text-primary/60" />
+                    <span className="text-muted-foreground/60 text-xs font-medium uppercase tracking-wider">
+                        {t("totalAmount")}:
+                    </span>
+                    <span className="font-bold text-primary tabular-nums">
+                        {totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-muted-foreground/50 text-xs">{mainCurrency}</span>
+                    {uniqueCurrencies.length > 1 && (
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <span className="text-muted-foreground/30">·</span>
+                            {uniqueCurrencies.map(curr => (
+                                <CurrencyBreakdownItem
+                                    key={curr}
+                                    currency={curr}
+                                    amount={subtotalsByCurrency[curr]}
+                                    mainCurrency={mainCurrency}
+                                    entries={ledgerEntries}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                            {uniqueCurrencies.length > 0 && (
-                                <div className="pt-2 border-t border-border/40 flex flex-col gap-1.5">
-                                    {uniqueCurrencies.map(curr => (
-                                        <CurrencyBreakdownItem
-                                            key={curr}
-                                            currency={curr}
-                                            amount={subtotalsByCurrency[curr]}
-                                            mainCurrency={mainCurrency}
-                                            entries={ledgerEntries}
-                                        />
-                                    ))}
-                                </div>
+            {/* Entries Section */}
+            <div className="flex-1 min-h-0 flex flex-col">
+                {/* Section Header with Select button */}
+                <div className="flex items-center justify-between mb-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
+                            {t("entries")} ({ledgerEntries.length})
+                        </span>
+                        {isSelectionMode && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-[10px] px-2"
+                                onClick={handleSelectAll}
+                            >
+                                {allSelected ? (
+                                    <>
+                                        <CheckCircle2 className="h-3 w-3 mr-1 text-primary" />
+                                        {t("deselectAll")}
+                                    </>
+                                ) : (
+                                    t("selectAll")
+                                )}
+                            </Button>
+                        )}
+                    </div>
+                    <Button
+                        variant={isSelectionMode ? "default" : "ghost"}
+                        size="sm"
+                        className={cn(
+                            "h-6 text-[10px] px-2.5",
+                            isSelectionMode && "shadow-sm"
+                        )}
+                        onClick={onToggleSelectionMode}
+                    >
+                        {isSelectionMode ? t("done") : t("select")}
+                    </Button>
+                </div>
+
+                {/* Entries List */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 pb-2 scrollbar-none">
+                    {sortedEntries.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
+                            <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
+                        </div>
+                    ) : (
+                        sortedEntries.map((entry) => (
+                            <EditableBillEntryItem
+                                key={entry.id}
+                                ledgerEntry={entry}
+                                categories={categories}
+                                categoryPlaceholder={t("selectCategory")}
+                                preferredCurrencies={preferredCurrencies}
+                                mainCurrency={mainCurrency}
+                                selected={selectedEntryIds.includes(entry.id)}
+                                onSelect={isSelectionMode ? (selected) => onSelectEntry(entry.id, selected) : undefined}
+                                onChange={(changes) => onEntryChange(entry.id, changes)}
+                                pendingChanges={pendingChanges.entries[entry.id]}
+                                sourceDocumentEntryDate={displayEntryDate}
+                            />
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* Raw Evidence Section - Collapsible */}
+            {(hasImages || hasRawText) && (
+                <div className="shrink-0 border border-border/60 rounded-xl bg-surface2/20 overflow-hidden">
+                    <button
+                        onClick={() => setIsRawExpanded(!isRawExpanded)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-surface2/40 transition-colors"
+                    >
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
+                            <FileText className="h-3 w-3 text-primary/70" />
+                            {t("rawEvidence")}
+                            {(hasImages || hasRawText) && (
+                                <span className="text-muted-foreground/40 font-normal lowercase">
+                                    ({[
+                                        hasImages && `${sourceDocument.imageUrls?.length} ${tCard("image")}`,
+                                        hasRawText && t("rawContent")
+                                    ].filter(Boolean).join(", ")})
+                                </span>
                             )}
                         </div>
+                        {isRawExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground/50" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                        )}
+                    </button>
 
-                        {/* Entries List */}
-                        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                            <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 pb-2 scrollbar-none">
-                                {sortedEntries.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
-                                        <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
-                                    </div>
-                                ) : (
-                                    sortedEntries.map((entry) => (
-                                        <EditableBillEntryItem
-                                            key={entry.id}
-                                            ledgerEntry={entry}
-                                            categories={categories}
-                                            categoryPlaceholder={t("selectCategory")}
-                                            preferredCurrencies={preferredCurrencies}
-                                            mainCurrency={mainCurrency}
-                                            selected={selectedEntryIds.includes(entry.id)}
-                                            onSelect={(selected) => onSelectEntry(entry.id, selected)}
-                                            onChange={(changes) => onEntryChange(entry.id, changes)}
-                                            pendingChanges={pendingChanges.entries[entry.id]}
-                                            sourceDocumentEntryDate={displayEntryDate}
-                                        />
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="raw" className="flex-1 min-h-0 m-0 p-0 overflow-y-auto focus-visible:outline-none scrollbar-none">
-                        <div className="space-y-6 pb-20 sm:pb-10">
-                            {(sourceDocument.imageUrls?.length ?? 0) > 0 && (
-                                <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
-                                    <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                        <ImagePlay className="h-3 w-3 text-primary" />
+                    {isRawExpanded && (
+                        <div className="px-3 pb-3 space-y-4 border-t border-border/40 pt-3">
+                            {/* Images */}
+                            {hasImages && (
+                                <div>
+                                    <h5 className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                                        <ImagePlay className="h-2.5 w-2.5 text-primary/60" />
                                         {tCard("image")}
                                     </h5>
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
+                                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                                         {(sourceDocument.imageUrls || []).map((url, idx) => (
                                             <div
                                                 key={idx}
-                                                className="aspect-square relative rounded-xl overflow-hidden border border-border/60 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
+                                                className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
                                                 onClick={() => setViewerIndex(idx)}
                                             >
                                                 <Image
@@ -266,8 +326,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                                                 />
                                                 <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <div className="bg-black/40 text-white h-7 w-7 rounded-full flex items-center justify-center backdrop-blur-md translate-y-2 group-hover:translate-y-0 transition-all">
-                                                        <Maximize2 className="h-3.5 w-3.5" />
+                                                    <div className="bg-black/40 text-white h-6 w-6 rounded-full flex items-center justify-center backdrop-blur-md">
+                                                        <Maximize2 className="h-3 w-3" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -276,29 +336,29 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 </div>
                             )}
 
-                            <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
-                                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                    <FileText className="h-3 w-3 text-primary" />
-                                    {t("rawContent")}
-                                </h5>
-                                <div className="space-y-2">
-                                    <div className="text-[11px] md:text-xs text-text/80 font-mono leading-relaxed whitespace-pre-wrap bg-surface/50 p-4 rounded-xl border border-border/40">
-                                        {sourceDocument.text || t("noRawText")}
+                            {/* Raw Text */}
+                            {hasRawText && (
+                                <div>
+                                    <h5 className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2">
+                                        {t("rawContent")}
+                                    </h5>
+                                    <div className="text-[11px] text-text/70 font-mono leading-relaxed whitespace-pre-wrap bg-surface/50 p-3 rounded-lg border border-border/40 max-h-40 overflow-y-auto">
+                                        {sourceDocument.text}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
+                    )}
+                </div>
+            )}
 
-                        <ImageViewer
-                            images={sourceDocument.imageUrls || []}
-                            initialIndex={viewerIndex ?? 0}
-                            open={viewerIndex !== null}
-                            onOpenChange={(open: boolean) => !open && setViewerIndex(null)}
-                        />
-                    </TabsContent>
-
-                </Tabs>
-            </div>
+            {/* Image Viewer */}
+            <ImageViewer
+                images={sourceDocument.imageUrls || []}
+                initialIndex={viewerIndex ?? 0}
+                open={viewerIndex !== null}
+                onOpenChange={(open: boolean) => !open && setViewerIndex(null)}
+            />
         </div>
     );
 })

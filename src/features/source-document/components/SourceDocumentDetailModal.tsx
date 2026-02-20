@@ -27,9 +27,7 @@ import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges, Ent
 import { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem"
 import { EditableField } from "@/components/ui/editable-field"
 import { Textarea } from "@/components/ui/textarea"
-import { DateFilter } from "@/components/ui/date-filter"
 import { Badge } from "@/components/ui/badge"
-import { formatDateTimeForApi } from "@/lib/date-utils"
 
 interface SourceDocumentDetailModalProps {
     sourceDocument: SourceDocument | null
@@ -78,6 +76,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         entries: {}
     })
     const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [isSelectionMode, setIsSelectionMode] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
@@ -91,6 +90,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         if (open && sourceDocument) {
             setPendingChanges({ sourceDoc: {}, entries: {} })
             setSelectedIds([])
+            setIsSelectionMode(false)
             setBatchDate("")
             setBatchDescription("")
         }
@@ -204,6 +204,17 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const handleSelectAllEntries = useCallback((selected: boolean) => {
         setSelectedIds(selected ? ledgerEntries.map(e => e.id) : [])
     }, [ledgerEntries])
+
+    // Toggle selection mode
+    const handleToggleSelectionMode = useCallback(() => {
+        setIsSelectionMode(prev => {
+            if (prev) {
+                // Exiting selection mode, clear selections
+                setSelectedIds([])
+            }
+            return !prev
+        })
+    }, [])
 
     // Save all pending changes
     const handleSaveAll = useCallback(async () => {
@@ -364,10 +375,12 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             mainCurrency={_mainCurrency}
                             pendingChanges={pendingChanges}
                             selectedEntryIds={selectedIds}
+                            isSelectionMode={isSelectionMode}
                             onSourceDocChange={handleSourceDocChange}
                             onEntryChange={handleEntryChange}
                             onSelectEntry={handleSelectEntry}
                             onSelectAllEntries={handleSelectAllEntries}
+                            onToggleSelectionMode={handleToggleSelectionMode}
                         />
                     )}
                 </div>
@@ -448,10 +461,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-3" align="start">
                                             <div className="space-y-2">
-                                                <DateFilter
+                                                <input
+                                                    type="date"
                                                     value={batchDate}
-                                                    onChange={(date) => setBatchDate(date ? formatDateTimeForApi(date) : "")}
-                                                    size="sm"
+                                                    onChange={(e) => setBatchDate(e.target.value)}
+                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                                 />
                                                 <Button
                                                     size="sm"
