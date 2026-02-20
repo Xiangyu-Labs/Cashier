@@ -46,9 +46,17 @@ export function EditableDateField({
         setIsEditing(false);
     };
 
+    // Shared container styles for both modes to prevent layout shift
+    const containerStyles = cn(
+        "relative inline-flex items-center gap-1.5",
+        "rounded px-1.5 py-0.5 -mx-1.5 -my-0.5",
+        "transition-all duration-150 ease-out",
+        className
+    );
+
     if (disabled) {
         return (
-            <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+            <div className={cn(containerStyles, "text-sm")}>
                 <Calendar className="h-3 w-3 text-primary/60 shrink-0" />
                 <span>{formatDisplayDate(value)}</span>
             </div>
@@ -57,13 +65,13 @@ export function EditableDateField({
 
     if (isEditing) {
         return (
-            <div className={cn("flex items-center gap-1.5", className)}>
+            <div className={cn(containerStyles, "bg-surface2 border border-border/50")}>
                 <Calendar className="h-3 w-3 text-primary/60 shrink-0" />
                 <DateFilter
                     value={value}
                     onChange={handleDateChange}
                     size="sm"
-                    className="flex-1 min-w-0"
+                    className="flex-1 min-w-0 border-0 bg-transparent shadow-none p-0 focus-visible:ring-0"
                 />
             </div>
         );
@@ -73,10 +81,8 @@ export function EditableDateField({
         <div
             onClick={() => setIsEditing(true)}
             className={cn(
-                "flex items-center gap-1.5 cursor-pointer rounded px-1.5 py-0.5 -mx-1.5 -my-0.5",
-                "hover:bg-surface2 transition-colors",
-                "border border-transparent hover:border-border/50",
-                className
+                containerStyles,
+                "cursor-pointer hover:bg-surface2 border border-transparent hover:border-border/50"
             )}
         >
             <Calendar className="h-3 w-3 text-primary/60 shrink-0" />

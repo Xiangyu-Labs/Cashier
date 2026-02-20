@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,10 @@ interface EditableFieldProps {
     disabled?: boolean;
     /** If true, save on blur. If false, show confirm/cancel buttons */
     saveOnBlur?: boolean;
+    /** Minimum rows for textarea */
+    minRows?: number;
+    /** Maximum rows for textarea before scrolling */
+    maxRows?: number;
 }
 
 export function EditableField({
@@ -31,17 +35,38 @@ export function EditableField({
     renderDisplay,
     disabled = false,
     saveOnBlur = true,
+    minRows = 1,
+    maxRows = 10,
 }: EditableFieldProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [localValue, setLocalValue] = useState(value);
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Sync local value when prop changes
     useEffect(() => {
         setLocalValue(value);
     }, [value]);
 
-    // Focus input when entering edit mode
+    // Auto-resize textarea
+    const autoResizeTextarea = useCallback(() => {
+        const textarea = textareaRef.current;
+        if (!textarea || type !== "textarea") return;
+
+        // Reset height to auto to get the correct scrollHeight
+        textarea.style.height = "auto";
+
+        // Calculate line height (approximate if not available)
+        const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+        const minHeight = lineHeight * minRows;
+        const maxHeight = lineHeight * maxRows;
+
+        // Set new height based on content, clamped to min/max
+        const newHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight));
+        textarea.style.height = `${newHeight}px`;
+    }, [type, minRows, maxRows]);
+
+    // Focus input and auto-resize textarea when entering edit mode
     useEffect(() => {
         if (isEditing && inputRef.current) {
             inputRef.current.focus();
@@ -49,7 +74,18 @@ export function EditableField({
                 inputRef.current.select();
             }
         }
-    }, [isEditing]);
+        if (isEditing && type === "textarea") {
+            // Small delay to ensure content is rendered
+            requestAnimationFrame(autoResizeTextarea);
+        }
+    }, [isEditing, type, autoResizeTextarea]);
+
+    // Auto-resize when value changes during editing
+    useEffect(() => {
+        if (isEditing && type === "textarea") {
+            autoResizeTextarea();
+        }
+    }, [localValue, isEditing, type, autoResizeTextarea]);
 
     const handleConfirm = () => {
         onChange(localValue);
@@ -76,9 +112,22 @@ export function EditableField({
         }
     };
 
+    // Shared container styles for both modes to prevent layout shift
+    const containerStyles = cn(
+        "relative inline-flex items-center w-full",
+        "rounded px-1.5 py-0.5 -mx-1.5 -my-0.5",
+        "transition-all duration-150 ease-out",
+        className
+    );
+
+    // Interactive styles only applied when not disabled and not editing
+    const interactiveStyles = !disabled && !isEditing
+        ? "cursor-pointer hover:bg-surface2 border border-transparent hover:border-border/50"
+        : "";
+
     if (disabled) {
         return (
-            <div className={cn("cursor-default", displayClassName, className)}>
+            <div className={cn(containerStyles, displayClassName)}>
                 {renderDisplay ? renderDisplay(value) : (value || placeholder)}
             </div>
         );
@@ -86,24 +135,41 @@ export function EditableField({
 
     if (isEditing) {
         const InputComponent = type === "textarea" ? Textarea : Input;
+        const isTextarea = type === "textarea";
+
         return (
-            <div className={cn("flex items-center gap-1", className)}>
-                <InputComponent
-                    ref={inputRef as React.RefObject<HTMLInputElement & HTMLTextAreaElement>}
-                    type={type === "number" ? "number" : "text"}
-                    value={localValue}
-                    onChange={(e) => setLocalValue(e.target.value)}
-                    onBlur={handleBlur}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    className={cn(
-                        "h-auto py-0.5 px-1.5 min-h-0",
-                        type === "textarea" ? "min-h-[60px]" : "",
-                        inputClassName
-                    )}
-                />
+            <div className={cn(containerStyles, "bg-surface2 border-border/50", displayClassName)}>
+                <div className="flex-1 min-w-0 relative">
+                    <InputComponent
+                        ref={isTextarea ? textareaRef : inputRef as React.RefObject<HTMLInputElement>}
+                        type={type === "number" ? "number" : "text"}
+                        value={localValue}
+                        onChange={(e) => setLocalValue(e.target.value)}
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
+                        placeholder={placeholder}
+                        rows={isTextarea ? minRows : undefined}
+                        className={cn(
+                            // Remove default styling that causes shifts
+                            "border-0 bg-transparent shadow-none",
+                            "p-0 m-0 w-full",
+                            "focus-visible:ring-0 focus-visible:ring-offset-0",
+                            // Inherit typography from display mode
+                            "text-inherit font-inherit leading-inherit",
+                            // Textarea specific
+                            isTextarea && "resize-none overflow-hidden min-h-0",
+                            inputClassName
+                        )}
+                        style={{
+                            // Ensure font size matches display
+                            fontSize: "inherit",
+                            lineHeight: "inherit",
+                            fontWeight: "inherit",
+                        }}
+                    />
+                </div>
                 {!saveOnBlur && (
-                    <div className="flex items-center gap-0.5 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0 ml-1">
                         <button
                             type="button"
                             onClick={handleConfirm}
@@ -127,16 +193,10 @@ export function EditableField({
     return (
         <div
             onClick={() => setIsEditing(true)}
-            className={cn(
-                "cursor-pointer rounded px-1.5 py-0.5 -mx-1.5 -my-0.5",
-                "hover:bg-surface2 transition-colors",
-                "border border-transparent hover:border-border/50",
-                displayClassName,
-                className
-            )}
+            className={cn(containerStyles, interactiveStyles, displayClassName)}
         >
             {renderDisplay ? renderDisplay(value) : (
-                <span className={cn(!value && "text-muted-foreground/50")}>
+                <span className={cn(!value && "text-muted-foreground/50", "truncate")}>
                     {value || placeholder}
                 </span>
             )}
