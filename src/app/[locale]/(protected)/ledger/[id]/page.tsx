@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getLedgerAction, getLedgersAction, getDefaultLedgerIdAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getPendingSourceDocumentsAction, getUnifiedSourceDocumentsAction } from "@/features/source-document/server/actions/main";
@@ -60,6 +60,11 @@ export default async function LedgerPage({
     queryClient.prefetchQuery({
       queryKey: queryKeys.ledgers(),
       queryFn: () => getLedgersAction(),
+      staleTime: STALE_TIME,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.defaultLedgerId(),
+      queryFn: () => getDefaultLedgerIdAction(),
       staleTime: STALE_TIME,
     }),
     queryClient.prefetchQuery({

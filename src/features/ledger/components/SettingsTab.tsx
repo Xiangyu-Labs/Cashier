@@ -183,6 +183,23 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                             ))}
                         </select>
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* Collapse Bills Setting */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('collapseBills')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
+                        </div>
+                        <Switch
+                            checked={ledger.metadata?.settings?.collapseBillsDefault || false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ collapseBillsDefault: checked });
+                            }}
+                            disabled={isPending}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -198,27 +215,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                 </CollapsibleSection>
             )}
 
-            {/* Advanced Settings - Collapsible, default closed */}
-            <CollapsibleSection title={t('advancedSettings')} defaultOpen={false}>
-                {/* Collapse Bills Setting */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
-                    <div>
-                        <h3 className="text-base font-medium">{t('collapseBills')}</h3>
-                        <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
-                    </div>
-                    <Switch
-                        checked={ledger.metadata?.settings?.collapseBillsDefault || false}
-                        onCheckedChange={(checked: boolean) => {
-                            updateLedgerMutation.mutate({ collapseBillsDefault: checked });
-                        }}
-                        disabled={isPending}
-                    />
-                </div>
-
-                <div className="h-px bg-[var(--border)]" />
-
+            {/* AI Settings - Collapsible, default closed */}
+            <CollapsibleSection title={t('aiSettings')} defaultOpen={false}>
                 {/* AI Language Setting */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
                     <div>
                         <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
                         <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
@@ -295,33 +295,34 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                 </div>
             </CollapsibleSection>
 
-            {/* Service Credentials Settings - Collapsible, default closed */}
-            <CollapsibleSection title={t('serviceCredentialsSection')} defaultOpen={false}>
-                <div className="pt-4">
+            {/* Account Settings - Always visible */}
+            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
+                <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
+                <div className="space-y-6">
+                    {/* Service Credentials */}
                     <ServiceCredentialSection
                         credentials={credentials || []}
                         onCreateCredential={(name) => createCredential.mutateAsync(name)}
                         onDeleteCredential={(id) => deleteCredential.mutate(id)}
                     />
-                </div>
-            </CollapsibleSection>
 
-            {/* Account Settings (Sign Out) - Always visible */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h3 className="text-base font-medium">{t('signOut')}</h3>
-                        <p className="text-sm text-[var(--muted)]">{t('signOutDesc')}</p>
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* Sign Out */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('signOut')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('signOutDesc')}</p>
+                        </div>
+                        <button
+                            onClick={() => signOut({ callbackUrl: "/login" })}
+                            disabled={isPending}
+                            className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
+                        >
+                            <LogOut className="h-4 w-4" />
+                            <span>{t('signOut')}</span>
+                        </button>
                     </div>
-                    <button
-                        onClick={() => signOut({ callbackUrl: "/login" })}
-                        disabled={isPending}
-                        className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-md hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
-                    >
-                        <LogOut className="h-4 w-4" />
-                        <span>{t('signOut')}</span>
-                    </button>
                 </div>
             </section>
         </div >

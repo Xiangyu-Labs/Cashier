@@ -13,6 +13,7 @@ export const queryKeys = {
     // === Ledger ===
     ledger: (ledgerId: string) => ['ledger', ledgerId] as const,
     ledgers: () => ['ledgers'] as const,
+    defaultLedgerId: () => ['defaultLedgerId'] as const,
 
     // === Ledger Entries ===
     ledgerEntries: (ledgerId: string, ...filters: (string | null | undefined)[]) =>

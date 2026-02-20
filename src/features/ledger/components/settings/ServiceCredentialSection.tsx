@@ -67,7 +67,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
         <div>
             <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h2 className="text-lg font-medium">{t("title")}</h2>
+                    <h3 className="text-base font-medium">{t("title")}</h3>
                     <p className="text-sm text-muted">
                         {t("description")}
                     </p>

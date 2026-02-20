@@ -170,114 +170,111 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
 
     return (
         <>
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-4">{t("ledgerManagement")}</h2>
-                <div className="space-y-2">
-                    {allLedgers.map((ledger) => {
-                        const isCurrent = ledger.id === ledgerId;
-                        const isPrimary = defaultLedgerId === ledger.id;
-                        const canDelete = !isOnlyLedger && !isPrimary;
+            <div className="space-y-2">
+                {allLedgers.map((ledger) => {
+                    const isCurrent = ledger.id === ledgerId;
+                    const isPrimary = defaultLedgerId === ledger.id;
+                    const canDelete = !isOnlyLedger && !isPrimary;
 
-                        return (
-                            <div
-                                key={ledger.id}
-                                className={cn(
-                                    "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                                    isCurrent ? "bg-[var(--surface2)]" : "hover:bg-[var(--surface2)]/50"
-                                )}
-                            >
-                                {/* Ledger name and badges */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <EditableField
-                                            value={ledger.name}
-                                            onChange={(newName) => {
-                                                if (newName.trim() && newName.trim() !== ledger.name) {
-                                                    renameMutation.mutate({ id: ledger.id, name: newName.trim() });
-                                                }
-                                            }}
-                                            displayClassName="font-medium truncate"
-                                        />
-                                        {isPrimary && (
-                                            <Badge variant="success" className="gap-1 text-xs shrink-0">
-                                                <Star className="h-3 w-3 fill-current" />
-                                                {t("primaryLedger")}
-                                            </Badge>
-                                        )}
-                                        {isCurrent && !isPrimary && (
-                                            <Badge variant="outline" className="text-xs shrink-0">
-                                                {t("currentLedger")}
-                                            </Badge>
-                                        )}
-                                    </div>
+                    return (
+                        <div
+                            key={ledger.id}
+                            className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg transition-colors",
+                                isCurrent ? "bg-[var(--surface2)]" : "hover:bg-[var(--surface2)]/50"
+                            )}
+                        >
+                            {/* Ledger name and badges */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <EditableField
+                                        value={ledger.name}
+                                        onChange={(newName) => {
+                                            if (newName.trim() && newName.trim() !== ledger.name) {
+                                                renameMutation.mutate({ id: ledger.id, name: newName.trim() });
+                                            }
+                                        }}
+                                        displayClassName="font-medium truncate"
+                                    />
+                                    {isPrimary && (
+                                        <Badge variant="success" className="gap-1 text-xs shrink-0">
+                                            <Star className="h-3 w-3 fill-current" />
+                                            {t("primaryLedger")}
+                                        </Badge>
+                                    )}
+                                    {isCurrent && !isPrimary && (
+                                        <Badge variant="outline" className="text-xs shrink-0">
+                                            {t("currentLedger")}
+                                        </Badge>
+                                    )}
                                 </div>
+                            </div>
 
-                                {/* Action buttons */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {!isCurrent && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleSwitch(ledger.id)}
-                                            disabled={isPending}
-                                            className="h-8 px-2"
-                                        >
-                                            <ArrowRight className="h-4 w-4 mr-1" />
-                                            {t("switchTo")}
-                                        </Button>
-                                    )}
-
-                                    {!isPrimary && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleSetPrimary(ledger.id)}
-                                            disabled={isPending || setPrimaryMutation.isPending}
-                                            className="h-8 px-2"
-                                        >
-                                            <Star className="h-4 w-4 mr-1" />
-                                            {t("setAsPrimary")}
-                                        </Button>
-                                    )}
-
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 shrink-0">
+                                {!isCurrent && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleDelete(ledger)}
-                                        disabled={isPending || !canDelete || deleteMutation.isPending}
-                                        className={cn(
-                                            "h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-500/10",
-                                            !canDelete && "cursor-not-allowed opacity-50"
-                                        )}
-                                        title={
-                                            isOnlyLedger
-                                                ? t("cannotDeleteLastLedger")
-                                                : isPrimary
-                                                    ? t("cannotDeletePrimaryLedger")
-                                                    : undefined
-                                        }
+                                        onClick={() => handleSwitch(ledger.id)}
+                                        disabled={isPending}
+                                        className="h-8 px-2"
                                     >
-                                        <Trash2 className="h-4 w-4" />
+                                        <ArrowRight className="h-4 w-4 mr-1" />
+                                        {t("switchTo")}
                                     </Button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                                )}
 
-                {/* Create new ledger button */}
-                <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowCreateModal(true)}
-                        disabled={isPending || createMutation.isPending}
-                        className="w-full"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        {t("createLedger")}
-                    </Button>
-                </div>
-            </section>
+                                {!isPrimary && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleSetPrimary(ledger.id)}
+                                        disabled={isPending || setPrimaryMutation.isPending}
+                                        className="h-8 px-2"
+                                    >
+                                        <Star className="h-4 w-4 mr-1" />
+                                        {t("setAsPrimary")}
+                                    </Button>
+                                )}
+
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(ledger)}
+                                    disabled={isPending || !canDelete || deleteMutation.isPending}
+                                    className={cn(
+                                        "h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-500/10",
+                                        !canDelete && "cursor-not-allowed opacity-50"
+                                    )}
+                                    title={
+                                        isOnlyLedger
+                                            ? t("cannotDeleteLastLedger")
+                                            : isPrimary
+                                                ? t("cannotDeletePrimaryLedger")
+                                                : undefined
+                                    }
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Create new ledger button */}
+            <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                <Button
+                    variant="outline"
+                    onClick={() => setShowCreateModal(true)}
+                    disabled={isPending || createMutation.isPending}
+                    className="w-full"
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t("createLedger")}
+                </Button>
+            </div>
 
             {/* Create Ledger Dialog */}
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>

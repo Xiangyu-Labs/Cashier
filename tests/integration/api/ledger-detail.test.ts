@@ -28,7 +28,16 @@ describe("Ledger Actions", () => {
 
   it("should delete ledger", async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "To Delete");
+    const { ledgerId, userId } = await createTestUserWithLedger(db, "test@example.com", "To Delete");
+
+    // Create a second ledger so we can delete the first one (can't delete the only ledger)
+    const secondLedgerId = crypto.randomUUID();
+    await db.insert(ledgers).values({
+      id: secondLedgerId,
+      userId,
+      name: "Second Ledger",
+      metadata: {},
+    });
 
     // deleteLedgerAction returns void in new format
     await deleteLedgerAction(ledgerId);

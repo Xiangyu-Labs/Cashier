@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
+import { ledgers, entryCategories, ledgerEntries, serviceCredentials, users } from "@/lib/db/schema";
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 import { z } from "zod";
@@ -216,6 +216,24 @@ export async function deleteLedgerAction(id: string): Promise<void> {
         throw new Error("Ledger not found or access denied");
     }
 
+    // Check if this is the only ledger
+    const allUserLedgers = await db.query.ledgers.findMany({
+        where: and(eq(ledgers.userId, session.user.id), isNull(ledgers.deletedAt)),
+    });
+
+    if (allUserLedgers.length <= 1) {
+        throw new Error("Cannot delete the only ledger. You must have at least one ledger.");
+    }
+
+    // Check if this is the user's default ledger
+    const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+    });
+
+    if (user?.defaultLedgerId === id) {
+        throw new Error("Cannot delete the primary ledger. Please set another ledger as primary first.");
+    }
+
     const { sourceDocuments, taskRuns } = await import("@/lib/db/schema");
     const { flowEngine } = await import("@/lib/flow");
     const { inArray } = await import("drizzle-orm");
@@ -266,7 +284,13 @@ export async function deleteLedgerAction(id: string): Promise<void> {
                 .run();
         }
 
-        // 5. Finally soft delete the ledger itself
+        // 5. Soft delete all associated service credentials
+        tx.update(serviceCredentials)
+            .set({ deletedAt: now })
+            .where(and(eq(serviceCredentials.ledgerId, id), isNull(serviceCredentials.deletedAt)))
+            .run();
+
+        // 6. Finally soft delete the ledger itself
         tx.update(ledgers)
             .set({ deletedAt: now })
             .where(eq(ledgers.id, id))
@@ -319,5 +343,25 @@ export async function getLedgersAction(): Promise<import("@/types/api").Ledger[]
         updatedAt: row.updatedAt.toISOString(),
         deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     }));
+}
+
+export async function setDefaultLedgerAction(ledgerId: string): Promise<void> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized: Please log in to set default ledger");
+    }
+
+    const { setUserDefaultLedger } = await import("@/features/auth/server/services/user-setup");
+    await setUserDefaultLedger(session.user.id, ledgerId);
+}
+
+export async function getDefaultLedgerIdAction(): Promise<string | null> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized");
+    }
+
+    const { getUserDefaultLedgerId } = await import("@/features/auth/server/services/user-setup");
+    return getUserDefaultLedgerId(session.user.id);
 }
 
