@@ -104,7 +104,12 @@ export function EditableField({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && type !== "textarea") {
+        if (e.key === "Enter") {
+            if (e.shiftKey && type === "textarea") {
+                // Shift+Enter in textarea: allow default (new line)
+                return;
+            }
+            // Enter (or Shift+Enter in non-textarea): save
             e.preventDefault();
             handleConfirm();
         } else if (e.key === "Escape") {
@@ -138,7 +143,10 @@ export function EditableField({
         const isTextarea = type === "textarea";
 
         return (
-            <div className={cn(containerStyles, "bg-surface2/50 border-border/50", displayClassName)}>
+            <div
+                className={cn(containerStyles, "bg-surface2/50 border-border/50", displayClassName)}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
                 <div className="flex-1 min-w-0 relative">
                     <InputComponent
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
