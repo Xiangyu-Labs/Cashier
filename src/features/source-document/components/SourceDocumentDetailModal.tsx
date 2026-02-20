@@ -389,7 +389,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                 <div className="h-4 w-px bg-border mx-1" />
 
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                    <Popover>
+                                    <Popover modal={true}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
                                                 <Tag className="h-3 w-3" />
@@ -414,7 +414,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </PopoverContent>
                                     </Popover>
 
-                                    <Popover>
+                                    <Popover modal={true}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
                                                 <Coins className="h-3 w-3" />
@@ -438,7 +438,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </PopoverContent>
                                     </Popover>
 
-                                    <Popover>
+                                    <Popover modal={true}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
                                                 <Calendar className="h-3 w-3" />
@@ -465,7 +465,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </PopoverContent>
                                     </Popover>
 
-                                    <Popover>
+                                    <Popover modal={true}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
                                                 <AlignLeft className="h-3 w-3" />

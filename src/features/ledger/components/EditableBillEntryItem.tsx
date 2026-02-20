@@ -151,7 +151,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
 
             {/* Amount + Currency */}
             <div className="flex items-center gap-1 shrink-0">
-                <Popover>
+                <Popover modal={true}>
                     <PopoverTrigger asChild>
                         <button className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5">
                             {displayData.currency || "?"}
