@@ -31,6 +31,18 @@ interface DetailsTabProps {
     periodParams: PeriodParams;
     onPeriodChange: (params: PeriodParams) => void;
     onFiltersChange: (filters: EntryFilters) => void;
+    advancedFilters: {
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+    };
+    onAdvancedFiltersChange: (filters: {
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+    }) => void;
 }
 
 export function DetailsTab({
@@ -40,6 +52,8 @@ export function DetailsTab({
     periodParams,
     onPeriodChange,
     onFiltersChange,
+    advancedFilters,
+    onAdvancedFiltersChange,
 }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
@@ -50,20 +64,12 @@ export function DetailsTab({
     // Convert periodParams to date range
     const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
 
-    // Initialize additional filters (category, currency, amount range)
-    const [additionalFilters, setAdditionalFilters] = useState<Partial<EntryFilters>>({
-        categoryId: null,
-        currency: null,
-        minAmount: null,
-        maxAmount: null,
-    });
-
-    // Combine period-based dates with additional filters
+    // Combine period-based dates with advanced filters from parent
     const filters: EntryFilters = useMemo(() => ({
         startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
         endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
-        ...additionalFilters,
-    }), [dateRange, additionalFilters]);
+        ...advancedFilters,
+    }), [dateRange, advancedFilters]);
 
     const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
     const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
@@ -232,14 +238,14 @@ export function DetailsTab({
             onFiltersChange(newFilters);
         }
 
-        // Update additional filters (category, currency, amount)
-        setAdditionalFilters({
+        // Update advanced filters (category, currency, amount)
+        onAdvancedFiltersChange({
             categoryId: newFilters.categoryId,
             currency: newFilters.currency,
             minAmount: newFilters.minAmount,
             maxAmount: newFilters.maxAmount,
         });
-    }, [filters.startDate, filters.endDate, onFiltersChange]);
+    }, [filters.startDate, filters.endDate, onFiltersChange, onAdvancedFiltersChange]);
 
     // Batch action handlers
     const handleBatchAiCategorize = () => {

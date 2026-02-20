@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
@@ -66,6 +66,19 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
         () => searchParams.get("tab") || "history"
     );
 
+    // Lift advanced filters state to page level - shared across tabs for drilldown
+    const [advancedFilters, setAdvancedFilters] = useState<{
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+    }>(() => ({
+        categoryId: null,
+        currency: null,
+        minAmount: null,
+        maxAmount: null,
+    }));
+
     // Lift period filter state to page level - shared across all tabs
     const {
         periodParams,
@@ -83,6 +96,33 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
         params.set("tab", value);
         window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     };
+
+    const handleCategoryDrilldown = useCallback((categoryId: string, startDate: string, endDate: string) => {
+        // 1. Update all React state atomically (skip individual URL updates)
+        setAdvancedFilters(prev => ({
+            ...prev,
+            categoryId: categoryId === "__uncategorized__" ? null : categoryId,
+        }));
+        setActiveTab("details");
+        handlePeriodChange({ period: 'custom', startDate, endDate }, { skipUrlUpdate: true });
+
+        // 2. Single atomic URL update with ALL params
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "details");
+        params.set("period", "custom");
+        params.set("startDate", startDate);
+        params.set("endDate", endDate);
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+    }, [searchParams, pathname, handlePeriodChange]);
+
+    const handleAdvancedFiltersChange = useCallback((filters: {
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+    }) => {
+        setAdvancedFilters(filters);
+    }, []);
 
     const [isInputOpen, setIsInputOpen] = useState(false);
     const [isPendingOpen, setIsPendingOpen] = useState(false);
@@ -198,11 +238,13 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                             periodParams={periodParams}
                             onPeriodChange={handlePeriodChange}
                             onFiltersChange={handleFiltersChange}
+                            advancedFilters={advancedFilters}
+                            onAdvancedFiltersChange={handleAdvancedFiltersChange}
                         />
                     </TabsContent>
 
                     <TabsContent value="stats" className="mt-0">
-                        <StatsTab ledgerId={ledgerId} ledger={ledger} />
+                        <StatsTab ledgerId={ledgerId} ledger={ledger} onCategoryDrilldown={handleCategoryDrilldown} />
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-0">

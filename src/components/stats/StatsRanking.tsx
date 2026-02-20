@@ -23,9 +23,10 @@ interface StatsRankingProps {
     data: CategoryStat[];
     isLoading?: boolean;
     currencySymbol?: string;
+    onCategoryClick?: (categoryId: string) => void;
 }
 
-export function StatsRanking({ data, isLoading, currencySymbol = "¥" }: StatsRankingProps) {
+export function StatsRanking({ data, isLoading, currencySymbol = "¥", onCategoryClick }: StatsRankingProps) {
     const t = useTranslations("StatsTab");
 
     if (isLoading) {
@@ -61,9 +62,24 @@ export function StatsRanking({ data, isLoading, currencySymbol = "¥" }: StatsRa
             <div className="space-y-5">
                 {sorted.map((cat, idx) => {
                     const percent = cat.percent;
+                    const handleClick = () => {
+                        if (onCategoryClick) {
+                            // Use "__uncategorized__" for null ids to match DetailsTab convention
+                            onCategoryClick(cat.id ?? "__uncategorized__");
+                        }
+                    };
 
                     return (
-                        <div key={idx} className="flex items-center gap-3 group">
+                        <div
+                            key={idx}
+                            className={cn(
+                                "flex items-center gap-3 group",
+                                onCategoryClick && "cursor-pointer hover:bg-surface2/50 rounded-lg -mx-2 px-2 py-1 transition-colors"
+                            )}
+                            onClick={handleClick}
+                            role={onCategoryClick ? "button" : undefined}
+                            tabIndex={onCategoryClick ? 0 : undefined}
+                        >
                             {/* Icon Circle */}
                             <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-lg shrink-0 group-hover:bg-primary/10 transition-colors">
                                 <CategoryIcon iconName={cat.icon} className="w-5 h-5 text-text/80 group-hover:text-primary transition-colors" />

@@ -24,8 +24,10 @@ export function usePeriodFilter({ pathname, searchParams, initialPeriod }: UsePe
     }), [dateRange]);
 
     // Handle period change - update both state and URL
-    const handlePeriodChange = useCallback((newPeriod: PeriodParams) => {
+    const handlePeriodChange = useCallback((newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
         setPeriodParams(newPeriod);
+
+        if (options?.skipUrlUpdate) return;
 
         // Update URL without navigation
         const params = new URLSearchParams(searchParams.toString());

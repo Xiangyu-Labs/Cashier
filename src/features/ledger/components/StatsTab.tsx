@@ -18,9 +18,10 @@ import { useTranslations, useFormatter } from "next-intl";
 interface StatsTabProps {
     ledgerId?: string;
     ledger?: import("@/types/api").Ledger;
+    onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
 }
 
-export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
+export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProps) {
     const t = useTranslations("StatsTab");
     const format = useFormatter();
     const queryClient = useQueryClient();
@@ -81,6 +82,14 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId || '') });
     };
 
+    const handleCategoryClick = (categoryId: string) => {
+        if (onCategoryDrilldown) {
+            const startStr = formatDateTimeForApi(startDate);
+            const endStr = formatDateTimeForApi(endDate);
+            onCategoryDrilldown(categoryId, startStr, endStr);
+        }
+    };
+
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-6 pb-24">
@@ -113,6 +122,7 @@ export function StatsTab({ ledgerId, ledger }: StatsTabProps) {
                     data={stats?.categories || []}
                     isLoading={isLoading}
                     currencySymbol={currencySymbol}
+                    onCategoryClick={handleCategoryClick}
                 />
             </div>
         </PullToRefresh>
