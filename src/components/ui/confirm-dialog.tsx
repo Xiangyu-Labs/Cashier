@@ -22,6 +22,10 @@ interface ConfirmDialogProps {
     confirmLabel?: string;
     cancelLabel?: string;
     variant?: "default" | "destructive";
+    onSave?: () => void;
+    saveLabel?: string;
+    onDiscard?: () => void;
+    discardLabel?: string;
 }
 
 import { useTranslations } from "next-intl";
@@ -36,10 +40,19 @@ export const ConfirmDialog = memo(function ConfirmDialog({
     confirmLabel,
     cancelLabel,
     variant = "default",
+    onSave,
+    saveLabel,
+    onDiscard,
+    discardLabel,
 }: ConfirmDialogProps) {
     const t = useTranslations("Common");
     const displayConfirmLabel = confirmLabel || t("confirm");
     const displayCancelLabel = cancelLabel || t("cancel");
+    const displaySaveLabel = saveLabel || t("save");
+    const displayDiscardLabel = discardLabel || t("discard");
+
+    // Check if we're using the three-button layout (for unsaved changes dialog)
+    const hasThreeButtonLayout = onSave !== undefined || onDiscard !== undefined;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,22 +62,53 @@ export const ConfirmDialog = memo(function ConfirmDialog({
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline">{displayCancelLabel}</Button>
-                    </DialogClose>
-                    <Button
-                        variant={variant}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onConfirm();
-                            if (onOpenChange) {
-                                onOpenChange(false);
-                            }
-                        }}
-                    >
-                        {displayConfirmLabel}
-                    </Button>
+                <DialogFooter className={hasThreeButtonLayout ? "justify-between sm:justify-between" : undefined}>
+                    {hasThreeButtonLayout && onDiscard && (
+                        <Button
+                            variant="destructive"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDiscard();
+                                if (onOpenChange) {
+                                    onOpenChange(false);
+                                }
+                            }}
+                        >
+                            {displayDiscardLabel}
+                        </Button>
+                    )}
+                    <div className="flex gap-2">
+                        <DialogClose asChild>
+                            <Button variant="outline">{displayCancelLabel}</Button>
+                        </DialogClose>
+                        {hasThreeButtonLayout && onSave ? (
+                            <Button
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSave();
+                                    if (onOpenChange) {
+                                        onOpenChange(false);
+                                    }
+                                }}
+                            >
+                                {displaySaveLabel}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant={variant}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onConfirm();
+                                    if (onOpenChange) {
+                                        onOpenChange(false);
+                                    }
+                                }}
+                            >
+                                {displayConfirmLabel}
+                            </Button>
+                        )}
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -126,7 +126,14 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         }
     }, [hasPendingChanges, onClose])
 
-    // Discard all changes and close
+    // Save all changes and close (for unsaved changes dialog)
+    const handleSaveAllAndClose = useCallback(async () => {
+        await handleSaveAll()
+        setShowUnsavedConfirm(false)
+        onClose()
+    }, [handleSaveAll, onClose])
+
+    // Discard all changes and close (for unsaved changes dialog) - only discards changes, does NOT delete the document
     const handleDiscardAndClose = useCallback(() => {
         setPendingChanges({ sourceDoc: {}, entries: {} })
         setShowUnsavedConfirm(false)
@@ -612,9 +619,12 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 onOpenChange={setShowUnsavedConfirm}
                 title={t("unsavedChanges")}
                 description={t("unsavedChangesDesc")}
-                onConfirm={handleDiscardAndClose}
-                variant="destructive"
-                confirmLabel={t("discardAndClose")}
+                onConfirm={() => setShowUnsavedConfirm(false)}
+                cancelLabel={tCommon("cancel")}
+                onSave={handleSaveAllAndClose}
+                saveLabel={tCommon("save")}
+                onDiscard={handleDiscardAndClose}
+                discardLabel={t("discardChanges")}
             />
 
             {/* Edit Retry Dialog */}

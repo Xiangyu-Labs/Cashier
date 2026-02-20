@@ -137,7 +137,14 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     }
   }, [hasPendingChanges, onClose]);
 
-  // Handle discard and close
+  // Handle save and close (for unsaved changes dialog)
+  const handleSaveAndClose = useCallback(() => {
+    handleSave();
+    setShowUnsavedConfirm(false);
+    onClose();
+  }, [handleSave, onClose]);
+
+  // Handle discard and close (for unsaved changes dialog) - only discards changes, does NOT delete the entry
   const handleDiscardAndClose = useCallback(() => {
     setPendingChanges({});
     setShowUnsavedConfirm(false);
@@ -214,9 +221,12 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
         onOpenChange={setShowUnsavedConfirm}
         title={t("unsavedChanges")}
         description={t("unsavedChangesDesc")}
-        onConfirm={handleDiscardAndClose}
-        variant="destructive"
-        confirmLabel={t("discardAndClose")}
+        onConfirm={() => setShowUnsavedConfirm(false)}
+        cancelLabel={tCommon("cancel")}
+        onSave={handleSaveAndClose}
+        saveLabel={tCommon("save")}
+        onDiscard={handleDiscardAndClose}
+        discardLabel={t("discardChanges")}
       />
     </>
   );
