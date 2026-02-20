@@ -6,8 +6,9 @@ import { type ReactNode, useMemo, useState, memo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckCircle2, CheckSquare, X } from "lucide-react";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";
@@ -221,6 +222,22 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 {/* Section Header with Select button */}
                 <div className="flex items-center justify-between mb-2 shrink-0">
                     <div className="flex items-center gap-2">
+                        {/* Select/Cancel button - leftmost position */}
+                        {sortedEntries.length > 0 && (
+                            <Button
+                                variant={isSelectionMode ? "secondary" : "ghost"}
+                                size="icon"
+                                onClick={onToggleSelectionMode}
+                                className="shrink-0 h-8 w-8"
+                                title={isSelectionMode ? t("cancelSelect") : t("select")}
+                            >
+                                {isSelectionMode ? (
+                                    <X className="w-4 h-4" />
+                                ) : (
+                                    <CheckSquare className="w-4 h-4" />
+                                )}
+                            </Button>
+                        )}
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
                             {t("entries")} ({ledgerEntries.length})
                         </span>
@@ -242,40 +259,36 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             </Button>
                         )}
                     </div>
-                    <Button
-                        variant={isSelectionMode ? "default" : "ghost"}
-                        size="sm"
-                        className={cn(
-                            "h-6 text-[10px] px-2.5",
-                            isSelectionMode && "shadow-sm"
-                        )}
-                        onClick={onToggleSelectionMode}
-                    >
-                        {isSelectionMode ? t("done") : t("select")}
-                    </Button>
                 </div>
 
                 {/* Entries List */}
-                <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 pb-2 scrollbar-none">
+                <div className="flex-1 overflow-y-auto pr-1 space-y-2 pb-2 scrollbar-none">
                     {sortedEntries.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center p-8 md:p-12 text-center border border-dashed border-border/80 rounded-2xl bg-surface2/5">
                             <p className="text-muted-foreground text-sm font-medium">{t("noEntries")}</p>
                         </div>
                     ) : (
                         sortedEntries.map((entry) => (
-                            <EditableBillEntryItem
+                            <Card
                                 key={entry.id}
-                                ledgerEntry={entry}
-                                categories={categories}
-                                categoryPlaceholder={t("selectCategory")}
-                                preferredCurrencies={preferredCurrencies}
-                                mainCurrency={mainCurrency}
-                                selected={selectedEntryIds.includes(entry.id)}
-                                onSelect={isSelectionMode ? (selected) => onSelectEntry(entry.id, selected) : undefined}
-                                onChange={(changes) => onEntryChange(entry.id, changes)}
-                                pendingChanges={pendingChanges.entries[entry.id]}
-                                sourceDocumentEntryDate={displayEntryDate}
-                            />
+                                className={cn(
+                                    "overflow-hidden",
+                                    selectedEntryIds.includes(entry.id) && isSelectionMode && "border-primary bg-primary/5"
+                                )}
+                            >
+                                <EditableBillEntryItem
+                                    ledgerEntry={entry}
+                                    categories={categories}
+                                    categoryPlaceholder={t("selectCategory")}
+                                    preferredCurrencies={preferredCurrencies}
+                                    mainCurrency={mainCurrency}
+                                    selected={selectedEntryIds.includes(entry.id)}
+                                    onSelect={isSelectionMode ? (selected) => onSelectEntry(entry.id, selected) : undefined}
+                                    onChange={(changes) => onEntryChange(entry.id, changes)}
+                                    pendingChanges={pendingChanges.entries[entry.id]}
+                                    sourceDocumentEntryDate={displayEntryDate}
+                                />
+                            </Card>
                         ))
                     )}
                 </div>

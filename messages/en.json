@@ -214,6 +214,7 @@
         "titlePlaceholder": "Enter bill title",
         "entries": "Detail Items",
         "select": "Select",
+        "cancelSelect": "Cancel",
         "done": "Done",
         "selectAll": "Select All",
         "deselectAll": "Deselect All",

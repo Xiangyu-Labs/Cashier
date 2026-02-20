@@ -106,7 +106,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                 <Checkbox
                     checked={selected}
                     onCheckedChange={onSelect}
-                    className="h-4 w-4 shrink-0"
+                    className="h-5 w-5 shrink-0"
                 />
             )}
 

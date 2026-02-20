@@ -218,6 +218,7 @@
         "titlePlaceholder": "输入账单标题",
         "entries": "明细项目",
         "select": "选择",
+        "cancelSelect": "取消",
         "done": "完成",
         "selectAll": "全选",
         "deselectAll": "取消全选",
