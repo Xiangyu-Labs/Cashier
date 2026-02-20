@@ -87,7 +87,16 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             aiCustomPrompt: input.settings.aiCustomPrompt,
         };
 
-        const stage1Result = await executeStage1(stage1Input, ai, signal);
+        let stage1Result;
+        try {
+            stage1Result = await executeStage1(stage1Input, ai, signal);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('ARBITRATION_FAILED')) {
+                logger.info({ docId: input.sourceDocumentId, error: error.message }, "Stage 1: Arbitration failed");
+                return { ledgerEntries: [], anomalyReason: "预分析结果存在分歧", verificationStatus: 'anomaly' };
+            }
+            throw error;
+        }
 
         // Check validity from Stage 1
         if (!stage1Result.isValid) {
