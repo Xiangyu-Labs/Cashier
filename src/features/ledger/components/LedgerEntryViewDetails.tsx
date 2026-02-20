@@ -140,7 +140,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                         <CategoryIcon iconName={category?.icon} className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                     </div>
 
-                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0 pr-8">
                         {/* Editable Item Name */}
                         <EditableField
                             value={displayData.itemName}
@@ -154,7 +154,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                         <div className="mt-1">
                             <div className="flex items-baseline gap-1.5 sm:gap-2">
                                 {/* Currency Selector - Always shows actual currency */}
-                                <Popover>
+                                <Popover modal={true}>
                                     <PopoverTrigger asChild>
                                         <button className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
                                             {displayData.currency === "unknown" ? "?" : displayData.currency}
