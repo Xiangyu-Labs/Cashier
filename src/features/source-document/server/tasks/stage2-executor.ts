@@ -126,7 +126,7 @@ export async function executeStage2(
     );
 
     // Use more capable model for detailed parsing
-    const model = "gemini-3-flash";
+    const model = "gemini-3-flash-preview";
 
     // Dual GPT calls
     const [response1, response2] = await Promise.all([
@@ -187,7 +187,7 @@ Look for:
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         responseFormat: "json_object",
-        model: "gemini-3-pro", // Use pro for arbitration
+        model: "gemini-3-pro-preview", // Use pro for arbitration
     });
 
     const arbitrationResult = parseJsonResponse(

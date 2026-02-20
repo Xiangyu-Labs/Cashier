@@ -89,7 +89,7 @@ This significantly reduces "silent failures" where an LLM confidently outputs wr
 The parsing pipeline is being refactored into multiple specialized stages for improved accuracy:
 
 ### Stage 1: Pre-Analysis (Parallel)
-Uses `gemini-3-flash` for fast, parallel pre-checks:
+Uses `gemini-3-flash-preview` for fast, parallel pre-checks:
 - **1.1 Validity Check**: Is this a valid financial document? (Dual GPT)
 - **1.2 Completeness Check**: Is the content complete, with no obvious missing/unreadable areas?
 - **1.3 Currency Recognition**: What currencies are present? (Dual GPT)
