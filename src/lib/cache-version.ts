@@ -2,7 +2,7 @@
  * Cache version for localStorage invalidation.
  * Increment this when making breaking changes to data structure.
  */
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;
 
 /**
  * Check and clear cache if version mismatch.

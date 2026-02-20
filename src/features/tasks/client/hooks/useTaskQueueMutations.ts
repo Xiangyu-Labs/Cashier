@@ -8,7 +8,7 @@ import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+} from "@/features/source-document/server/actions/main";
 import {
     dismissTaskAction,
     batchDismissTasksAction,

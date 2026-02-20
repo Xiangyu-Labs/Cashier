@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getProcessingTasksAction } from "@/features/source-document/server/actions";
+import { getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { auth } from "@/auth";

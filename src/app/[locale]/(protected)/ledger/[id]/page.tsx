@@ -50,6 +50,11 @@ export default async function LedgerPage({
   const ledger = queryClient.getQueryData(queryKeys.ledger(ledgerId)) as Awaited<ReturnType<typeof getLedgerAction>> | undefined;
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
 
+  // Calculate dates for stats prefetch (must match StatsTab.tsx exactly)
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
   // Prefetch remaining data in parallel
   await Promise.all([
     queryClient.prefetchQuery({
@@ -80,19 +85,15 @@ export default async function LedgerPage({
       }),
       staleTime: 30 * 1000,
     }),
-    // Prefetch stats tab data
+    // Prefetch stats tab data - query key must match StatsTab.tsx exactly
     queryClient.prefetchQuery({
       queryKey: [
         ...queryKeys.enhancedStats(ledgerId),
-        dateRange.startDate || formatDateTimeForApi(new Date()),
-        periodParams.period || 'thisMonth',
+        formatDateTimeForApi(startOfMonth),
+        'month',
         mainCurrency,
       ],
       queryFn: async () => {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
         // Calculate previous period for comparison
         const prevStartOfMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const prevEndOfMonth = new Date(now.getFullYear(), now.getMonth(), 0);

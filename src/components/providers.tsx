@@ -4,10 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { SessionProvider } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { validateCacheVersion } from "@/lib/cache-version";
+import { CACHE_VERSION } from "@/lib/cache-version";
 
 // Only persist specific query types (not real-time data)
 function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
@@ -23,7 +23,7 @@ function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
     'batchConvert',
     'convert',
     'summary',
-    'enhancedStats',
+    'enhanced-stats',
   ].includes(queryType as string);
 }
 
@@ -55,11 +55,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       : undefined
   );
 
-  // Validate cache version on mount
-  useEffect(() => {
-    validateCacheVersion();
-  }, []);
-
   return (
     <SessionProvider>
       {persister ? (
@@ -68,9 +63,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
           persistOptions={{
             persister,
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            buster: String(CACHE_VERSION),
             dehydrateOptions: {
               shouldDehydrateQuery: shouldPersistQuery,
             },
+          }}
+          onSuccess={() => {
+            // After restore, mark all queries as stale to trigger background refetch
+            // This implements stale-while-revalidate: show cached data immediately,
+            // then refresh in background
+            queryClient.invalidateQueries({
+              predicate: (query) => shouldPersistQuery(query),
+            });
           }}
         >
           <ThemeProvider

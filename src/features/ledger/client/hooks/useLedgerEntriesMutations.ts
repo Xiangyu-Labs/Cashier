@@ -11,7 +11,7 @@ import {
 import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+} from "@/features/source-document/server/actions/main";
 import type { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
 import type { SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 

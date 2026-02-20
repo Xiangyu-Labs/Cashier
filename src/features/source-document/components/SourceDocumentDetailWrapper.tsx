@@ -6,7 +6,7 @@ import { getSourceDocumentByIdAction } from "@/features/source-document/server/a
 import {
     updateSourceDocumentAction,
     deleteSourceDocumentAction
-} from "@/features/source-document/server/actions";
+} from "@/features/source-document/server/actions/main";
 import {
     deleteLedgerEntryAction,
     batchUpdateLedgerEntriesAction,

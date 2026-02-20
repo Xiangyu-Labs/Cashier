@@ -14,7 +14,7 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
-  disable: false,
+  disable: process.env.NODE_ENV === 'development',
   workboxOptions: {
     disableDevLogs: false,
     importScripts: ["/push-worker.js"],
