@@ -115,7 +115,7 @@ export function EditableField({
     // Shared container styles for both modes to prevent layout shift
     const containerStyles = cn(
         "relative inline-flex items-center w-full",
-        "rounded px-1.5 py-0.5 -mx-1.5 -my-0.5",
+        "rounded px-0.5 py-0 -mx-0.5 -my-0",
         "transition-all duration-150 ease-out",
         className
     );
@@ -138,7 +138,7 @@ export function EditableField({
         const isTextarea = type === "textarea";
 
         return (
-            <div className={cn(containerStyles, "bg-surface2 border-border/50", displayClassName)}>
+            <div className={cn(containerStyles, "bg-surface2/50 border-border/50", displayClassName)}>
                 <div className="flex-1 min-w-0 relative">
                     <InputComponent
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,6 +157,8 @@ export function EditableField({
                             "focus-visible:ring-0 focus-visible:ring-offset-0",
                             // Inherit typography from display mode
                             "text-inherit font-inherit leading-inherit",
+                            // Compact height for non-textarea inputs
+                            !isTextarea && "h-auto px-1",
                             // Textarea specific
                             isTextarea && "resize-none overflow-hidden min-h-0",
                             inputClassName

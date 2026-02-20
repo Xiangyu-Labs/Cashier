@@ -232,7 +232,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                             type="textarea"
                             placeholder={t("addDescription")}
                             displayClassName="text-sm text-text"
-                            inputClassName="min-h-[80px] text-sm"
+                            inputClassName="text-sm"
                             renderDisplay={(value) => (
                                 value ? (
                                     <div className="text-sm text-text">
