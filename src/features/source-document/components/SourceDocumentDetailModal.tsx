@@ -126,6 +126,31 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         }
     }, [hasPendingChanges, onClose])
 
+    // Save all pending changes
+    const handleSaveAll = useCallback(async () => {
+        setIsSaving(true)
+        try {
+            // Save source doc changes
+            if (Object.keys(pendingChanges.sourceDoc).length > 0) {
+                await onUpdateSourceDoc(pendingChanges.sourceDoc)
+            }
+
+            // Save entry changes
+            for (const [entryId, changes] of Object.entries(pendingChanges.entries)) {
+                if (Object.keys(changes).length > 0) {
+                    await onUpdateEntry(entryId, changes)
+                }
+            }
+
+            // Clear pending changes after successful save
+            setPendingChanges({ sourceDoc: {}, entries: {} })
+        } catch (error) {
+            console.error("Failed to save changes:", error)
+        } finally {
+            setIsSaving(false)
+        }
+    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry])
+
     // Save all changes and close (for unsaved changes dialog)
     const handleSaveAllAndClose = useCallback(async () => {
         await handleSaveAll()
@@ -227,31 +252,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             return !prev
         })
     }, [])
-
-    // Save all pending changes
-    const handleSaveAll = useCallback(async () => {
-        setIsSaving(true)
-        try {
-            // Save source doc changes
-            if (Object.keys(pendingChanges.sourceDoc).length > 0) {
-                await onUpdateSourceDoc(pendingChanges.sourceDoc)
-            }
-
-            // Save entry changes
-            for (const [entryId, changes] of Object.entries(pendingChanges.entries)) {
-                if (Object.keys(changes).length > 0) {
-                    await onUpdateEntry(entryId, changes)
-                }
-            }
-
-            // Clear pending changes after successful save
-            setPendingChanges({ sourceDoc: {}, entries: {} })
-        } catch (error) {
-            console.error("Failed to save changes:", error)
-        } finally {
-            setIsSaving(false)
-        }
-    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry])
 
     // Discard all changes
     const handleDiscardAll = useCallback(() => {
