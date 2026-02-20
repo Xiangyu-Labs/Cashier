@@ -109,6 +109,10 @@ vi.mock("./settings/ProcessingSystemSection", () => ({
     ProcessingSystemSection: () => <div>ProcessingSystemSection</div>,
 }));
 
+vi.mock("./settings/LedgerManagementSection", () => ({
+    LedgerManagementSection: () => <div>LedgerManagementSection</div>,
+}));
+
 describe("SettingsTab", () => {
     const mockLedger: Ledger = {
         id: "l1",
@@ -202,32 +206,6 @@ describe("SettingsTab", () => {
                 })
             }));
         }, { timeout: 3000 });
-    });
-
-    it("renders ledger name input and handles update", async () => {
-        const user = userEvent.setup();
-        render(
-            <QueryClientProvider client={queryClient}>
-                <SettingsTab
-                    ledger={mockLedger}
-                    initialCategories={mockCategories}
-                    ledgerId="l1"
-                />
-            </QueryClientProvider>
-        );
-
-        const input = screen.getByDisplayValue("Test Ledger");
-        expect(input).toBeDefined();
-
-        await user.clear(input);
-        await user.type(input, "Updated Ledger Name");
-        await user.tab();
-
-        await waitFor(() => {
-            expect(mockUpdateLedgerAction).toHaveBeenCalledWith("l1", expect.objectContaining({
-                name: "Updated Ledger Name"
-            }));
-        });
     });
 
     it("renders sign out button and handles click", async () => {

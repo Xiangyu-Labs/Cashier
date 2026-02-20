@@ -8,6 +8,7 @@ import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/cat
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
+import { LedgerManagementSection } from "./settings/LedgerManagementSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { useCategoryMutations } from "@/features/ledger/client/hooks/useCategoryMutations";
@@ -28,6 +29,7 @@ interface SettingsTabProps {
     ledger: Ledger;
     initialCategories: EntryCategoryWithCount[];
     ledgerId: string;
+    allLedgers?: Ledger[];
 }
 
 // Collapsible Section wrapper component
@@ -69,7 +71,7 @@ function CollapsibleSection({
     );
 }
 
-export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTabProps) {
+export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = [] }: SettingsTabProps) {
     const router = useRouter();
     const pathname = usePathname();
     const locale = useLocale();
@@ -80,7 +82,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     const queryClient = useQueryClient();
 
     // Local state for input fields (for controlled inputs during editing)
-    const [localLedgerName, setLocalLedgerName] = useState(ledger.name);
     const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
 
     const handleRefresh = async () => {
@@ -112,33 +113,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
     return (
         <PullToRefresh onRefresh={handleRefresh}>
         <div className="space-y-6 sm:space-y-8">
-            {/* Ledger Name Settings - Always visible */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('ledgerName')}</h2>
-                <div className="space-y-4">
-                    <div>
-                        <p className="text-sm text-[var(--muted)] mb-2">{t('ledgerNameDesc')}</p>
-                        <input
-                            type="text"
-                            value={localLedgerName}
-                            onChange={(e) => setLocalLedgerName(e.target.value)}
-                            onBlur={() => {
-                                const newName = localLedgerName.trim();
-                                if (newName && newName !== ledger.name) {
-                                    updateLedgerMutation.mutate({ name: newName });
-                                } else {
-                                    // Reset to original if empty or unchanged
-                                    setLocalLedgerName(ledger.name);
-                                }
-                            }}
-                            disabled={isPending}
-                            placeholder={t('ledgerNamePlaceholder')}
-                            className="w-full bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50"
-                        />
-                    </div>
-                </div>
-            </section>
-
             {/* Appearance Settings - Always visible */}
             <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
                 <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
@@ -211,6 +185,18 @@ export function SettingsTab({ ledger, initialCategories, ledgerId }: SettingsTab
                     </div>
                 </div>
             </section>
+
+            {/* Ledger Management Section - Collapsible, default closed */}
+            {allLedgers.length > 0 && (
+                <CollapsibleSection title={t('ledgerManagement')} defaultOpen={false}>
+                    <div className="pt-4">
+                        <LedgerManagementSection
+                            ledgerId={ledgerId}
+                            allLedgers={allLedgers}
+                        />
+                    </div>
+                </CollapsibleSection>
+            )}
 
             {/* Advanced Settings - Collapsible, default closed */}
             <CollapsibleSection title={t('advancedSettings')} defaultOpen={false}>
