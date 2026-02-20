@@ -39,6 +39,7 @@ export const PendingBillCard = memo(function PendingBillCard({
 }: PendingBillCardProps) {
     const _t = useTranslations("PendingBills");
     const tCommon = useTranslations("Common");
+    const tCard = useTranslations("SourceDocumentCard");
     const locale = useLocale();
 
     const [isRetrying, setIsRetrying] = useState(false);
@@ -163,7 +164,7 @@ export const PendingBillCard = memo(function PendingBillCard({
                                         >
                                             <Image
                                                 src={getSafeImageSrc(img)}
-                                                alt={`Source image ${idx + 1}`}
+                                                alt={tCard("imageAlt", { index: idx + 1 })}
                                                 fill
                                                 className="object-cover"
                                             />

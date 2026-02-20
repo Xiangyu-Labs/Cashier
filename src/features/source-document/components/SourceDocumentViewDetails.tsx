@@ -174,7 +174,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             </span>
                             {isAnomaly && (
                                 <Badge variant="error" className="h-3.5 px-1 text-[8px] md:text-[9px] uppercase font-black tracking-tighter rounded-full">
-                                    Anomaly
+                                    {tCommon("error")}
                                 </Badge>
                             )}
                         </div>
@@ -249,7 +249,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 <div className="bg-surface2/30 p-4 md:p-6 rounded-2xl border border-border/60">
                                     <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                         <ImagePlay className="h-3 w-3 text-primary" />
-                                        {tCard("image") || "Images"}
+                                        {tCard("image")}
                                     </h5>
                                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                                         {(sourceDocument.imageUrls || []).map((url, idx) => (
@@ -282,7 +282,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                 </h5>
                                 <div className="space-y-2">
                                     <div className="text-[11px] md:text-xs text-text/80 font-mono leading-relaxed whitespace-pre-wrap bg-surface/50 p-4 rounded-xl border border-border/40">
-                                        {sourceDocument.text || "No raw text available."}
+                                        {sourceDocument.text || t("noRawText")}
                                     </div>
                                 </div>
                             </div>

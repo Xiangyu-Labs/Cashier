@@ -346,7 +346,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                         >
                           <Image
                             src={getSafeImageSrc(img)}
-                            alt={`Source image ${idx + 1}`}
+                            alt={t("imageAlt", { index: idx + 1 })}
                             fill
                             className="object-cover"
                           />

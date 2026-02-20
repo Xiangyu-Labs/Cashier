@@ -146,7 +146,9 @@
         "editRetry": "编辑重试",
         "moreActions": "更多操作",
         "currencyBreakdown": "货币明细",
-        "convertedTotal": "折合"
+        "convertedTotal": "折合",
+        "image": "图片",
+        "imageAlt": "图片 {index}"
     },
     "Common": {
         "confirm": "确认",
@@ -172,7 +174,8 @@
         "noMore": "没有更多了",
         "edit": "编辑",
         "selectAll": "全选",
-        "deselectAll": "取消全选"
+        "deselectAll": "取消全选",
+        "loadMore": "加载更多"
     },
     "SourceDocumentInput": {
         "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
@@ -232,6 +235,7 @@
         "originalText": "识别原文",
         "createdAt": "创建于",
         "untitled": "未命名账单",
+        "noRawText": "暂无原始文本。",
         "saveChanges": "保存 ({count}处修改)",
         "discardChanges": "放弃修改",
         "unsavedChanges": "有未保存的修改",

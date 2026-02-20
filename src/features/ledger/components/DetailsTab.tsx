@@ -56,6 +56,7 @@ export function DetailsTab({
     onAdvancedFiltersChange,
 }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
+    const tLedgerEntries = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
@@ -417,7 +418,7 @@ export function DetailsTab({
                                 disabled={isFetchingNextPage}
                                 className="px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
                             >
-                                {isFetchingNextPage ? tCommon("loading") : tCommon("loadMore")}
+                                {isFetchingNextPage ? tCommon("loading") : tLedgerEntries("loadMore")}
                             </button>
                         </div>
                     )}

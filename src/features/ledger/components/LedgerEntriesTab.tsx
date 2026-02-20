@@ -328,7 +328,7 @@ export function LedgerEntriesTab({
                                         disabled={isFetchingNextPage}
                                         className="px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
                                     >
-                                        {isFetchingNextPage ? tCommon("loading") : tCommon("loadMore")}
+                                        {isFetchingNextPage ? tCommon("loading") : t("loadMore")}
                                     </button>
                                 </div>
                             )}
