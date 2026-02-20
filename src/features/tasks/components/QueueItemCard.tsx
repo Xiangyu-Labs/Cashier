@@ -115,9 +115,9 @@ export const QueueItemCard = memo(function QueueItemCard({
         }
     }
 
-    // Show subtitle (error/reason/progress) in collapsed state only
-    const showSubtitleInline = !isExpanded && item.subtitle;
-    const showProgressInline = item.status === 'running' && item.progress && !isExpanded;
+    // Show subtitle (error/reason/progress) in title line always
+    const showSubtitleInline = !!item.subtitle;
+    const showProgressInline = item.status === 'running' && !!item.progress;
 
     return (
         <div className={cn(
@@ -148,19 +148,22 @@ export const QueueItemCard = memo(function QueueItemCard({
                         {item.title}
                     </span>
 
-                    {/* Subtitle (error/reason) - inline for collapsed state */}
+                    {/* Subtitle (error/reason) - inline in title line */}
                     {showSubtitleInline && (
-                        <span className={cn(
-                            "text-xs truncate hidden sm:inline",
-                            item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
-                        )}>
+                        <span
+                            className={cn(
+                                "text-xs truncate hidden sm:inline",
+                                item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
+                            )}
+                            title={item.subtitle}
+                        >
                             — {item.subtitle}
                         </span>
                     )}
 
                     {/* Progress - inline for running tasks */}
                     {showProgressInline && (
-                        <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                        <span className="text-xs text-muted-foreground truncate hidden sm:inline" title={item.progress}>
                             — {item.progress}
                         </span>
                     )}
@@ -238,18 +241,6 @@ export const QueueItemCard = memo(function QueueItemCard({
                         className="overflow-hidden"
                     >
                         <div className="px-3 pb-3 pt-1 border-t border-border/50">
-                            {/* Progress (shown in expanded view for running tasks) */}
-                            {item.status === 'running' && item.progress && (
-                                <div className="flex items-start gap-2 mb-2">
-                                    <span className="text-xs font-medium text-muted-foreground shrink-0">
-                                        {t("progress")}:
-                                    </span>
-                                    <span className="text-xs text-text">
-                                        {item.progress}
-                                    </span>
-                                </div>
-                            )}
-
                             {/* Source Document Preview */}
                             {item.sourceDocumentId && (
                                 <div className="pt-2 border-t border-border/30">
