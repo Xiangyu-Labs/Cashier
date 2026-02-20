@@ -107,6 +107,7 @@ export function StatsChart({
                 {/* SVG for line only - stretched horizontally */}
                 <svg
                     className="absolute inset-0 w-full h-full overflow-visible"
+                    viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                 >
                     {/* Line Path */}
@@ -118,7 +119,7 @@ export function StatsChart({
                                     : (i / (chartPoints.length - 1)) * 100;
                                 // Calculate y position (inverted: 0 at top)
                                 const yPercent = paddingTop + (1 - p.value / maxVal) * (100 - paddingTop - paddingBottom);
-                                return `${xPercent}%,${yPercent}%`;
+                                return `${xPercent},${yPercent}`;
                             }).join(" ")}
                             fill="none"
                             stroke="currentColor"
