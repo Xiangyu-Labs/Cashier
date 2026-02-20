@@ -84,7 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             disableTransitionOnChange
           >
             {children}
-            <Toaster position="top-center" richColors />
+            <Toaster position="top-center" richColors closeButton />
           </ThemeProvider>
         </PersistQueryClientProvider>
       ) : (
@@ -96,7 +96,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             disableTransitionOnChange
           >
             {children}
-            <Toaster position="top-center" richColors />
+            <Toaster position="top-center" richColors closeButton />
           </ThemeProvider>
         </QueryClientProvider>
       )}
