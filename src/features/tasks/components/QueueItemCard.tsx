@@ -103,7 +103,9 @@ export const QueueItemCard = memo(function QueueItemCard({
 
     // Running tasks with sourceDocumentId get the dropdown menu; running tasks without it keep the direct cancel button
     const showDirectCancel = item.status === 'running' && canCancel && !item.sourceDocumentId;
-    const showDropdown = canRetry || canDelete || canDismiss || canCancel;
+    // For running tasks with sourceDocumentId, don't show cancel in dropdown (retry already includes cancellation)
+    const showCancelInDropdown = canCancel && !(item.status === 'running' && item.sourceDocumentId);
+    const showDropdown = canRetry || canDelete || canDismiss || showCancelInDropdown;
 
     // Can expand if has source document preview
     const canExpand = !!item.sourceDocumentId;
@@ -216,7 +218,7 @@ export const QueueItemCard = memo(function QueueItemCard({
                                         {tCommon("retry")}
                                     </DropdownMenuItem>
                                 )}
-                                {canCancel && (
+                                {showCancelInDropdown && (
                                     <DropdownMenuItem onClick={onCancel}>
                                         <X className="mr-2 h-3.5 w-3.5" />
                                         {t("cancel")}
