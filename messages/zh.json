@@ -556,8 +556,5 @@
         "taskType_parse_source_document": "解析原始凭证",
         "taskType_categorize_entry": "自动分类",
         "taskType_generate_category_metadata": "生成分类信息"
-    },
-    "BackgroundRefresh": {
-        "syncing": "同步中..."
     }
 }
