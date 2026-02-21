@@ -13,7 +13,10 @@ export const SourceDocumentStatus = {
     Processing: "processing",
     Completed: "completed",
     Anomaly: "anomaly",
+    Failed: "failed",
 } as const;
+
+export type SourceDocumentStatusType = typeof SourceDocumentStatus[keyof typeof SourceDocumentStatus];
 
 // SourceDocuments (原始凭证)
 export const sourceDocuments = sqliteTable("source_documents", {

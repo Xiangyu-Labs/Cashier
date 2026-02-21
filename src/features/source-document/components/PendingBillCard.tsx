@@ -3,6 +3,7 @@ import { SourceDocument, SourceDocumentLight } from "@/types/api";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { Button } from "@/components/ui/button";
 import { Trash2, RefreshCw, MoreVertical, ChevronDown } from "lucide-react";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,7 +25,7 @@ function getSafeImageSrc(data: string): string {
 
 interface PendingBillCardProps {
     sourceDocument: SourceDocument | SourceDocumentLight;
-    status: "queued" | "processing" | "anomaly";
+    status: Exclude<SourceDocumentStatusType, "completed">;
     onRetry?: () => void | Promise<void>;
     onDelete?: () => void;
     className?: string;
@@ -70,7 +71,7 @@ export const PendingBillCard = memo(function PendingBillCard({
                 ? "border-muted/50 bg-muted/5"
                 : status === "processing"
                     ? "border-primary/30 bg-primary/5"
-                    : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10",
+                    : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10", // anomaly & failed
             className
         )}>
             {/* Header */}
@@ -99,7 +100,7 @@ export const PendingBillCard = memo(function PendingBillCard({
 
                     {/* Status with dynamic label */}
                     <ProcessingStatus
-                        status={status === "anomaly" ? "error" : status}
+                        status={(status === "anomaly" || status === "failed") ? "error" : status}
                         label={
                             status === "anomaly" && displayReason
                                 ? displayReason

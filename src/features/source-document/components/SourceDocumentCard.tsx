@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { parseDateString } from "@/lib/date-utils";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -164,7 +165,7 @@ interface SourceDocumentCardProps {
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => void | Promise<void>;
-  status: "queued" | "processing" | "completed" | "anomaly";
+  status: SourceDocumentStatusType;
   anomalyReason?: string | null;
   className?: string;
 }
@@ -254,7 +255,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
               day: "numeric",
             })}
           </span>
-          {status !== "processing" && status !== "queued" && sourceDocument.title && (
+          {status !== "processing" && status !== "queued" && status !== "failed" && sourceDocument.title && (
             <>
               <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
               <span className="text-sm font-semibold text-text truncate">
@@ -265,14 +266,14 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-          {(ledgerEntries.length === 0 || status === "anomaly") && (
+          {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
-              status={status === "anomaly" ? "error" : status}
+              status={(status === "anomaly" || status === "failed") ? "error" : status}
               label={status === "anomaly" && anomalyReason ? anomalyReason : undefined}
             />
           )}
 
-          {!["queued", "processing", "anomaly"].includes(status) && (
+          {!["queued", "processing", "anomaly", "failed"].includes(status) && (
             <SourceDocumentTotal
               entries={ledgerEntries}
               mainCurrency={mainCurrency}
@@ -301,7 +302,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 {onRetry && (
                   <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                    {status === "queued" || status === "processing" ? tCommon("retry") : t("editRetry")}
+                    {status === "queued" || status === "processing" || status === "failed" ? tCommon("retry") : t("editRetry")}
                   </DropdownMenuItem>
                 )}
 
@@ -364,8 +365,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
               </div>
             )}
 
-            {/* Entries Section - only for completed status (anomaly doesn't have entries) */}
-            {status !== "processing" && status !== "anomaly" && sortedEntries.length > 0 && (
+            {/* Entries Section - only for completed status */}
+            {status === "completed" && sortedEntries.length > 0 && (
               <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
                 {sortedEntries.map((entry) => (
                   <BillEntryItem
@@ -374,7 +375,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
                     sourceDocumentEntryDate={sourceDocument.entryDate}
-                    variant={status === "queued" ? "info" : "default"}
+                    variant="default"
                   />
                 ))}
               </div>

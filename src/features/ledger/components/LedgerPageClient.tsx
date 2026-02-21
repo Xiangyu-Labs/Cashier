@@ -21,8 +21,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { TaskQueueModal } from "@/features/tasks/components/TaskQueueModal";
-import { useTaskQueue } from "@/features/tasks/client/hooks/useTaskQueue";
+import { TaskQueueModal } from "@/features/task-queue/components/TaskQueueModal";
+import { useTaskQueue } from "@/features/task-queue/client/hooks/useTaskQueue";
 import { useTranslations } from "next-intl";
 import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";

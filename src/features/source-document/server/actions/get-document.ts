@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 
 /**
  * Fetch a source document by its global ID.
@@ -53,7 +54,7 @@ export async function getSourceDocumentByIdAction(id: string) {
         ...doc,
         createdAt: doc.createdAt.toISOString(),
         deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-        status: doc.status as "queued" | "processing" | "completed" | "anomaly",
+        status: doc.status as SourceDocumentStatusType,
         ledgerEntries: doc.ledgerEntries.map(entry => ({
             ...entry,
             amount: String(entry.amount),

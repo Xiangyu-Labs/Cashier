@@ -12,7 +12,7 @@ import {
 import {
     dismissTaskAction,
     batchDismissTasksAction,
-} from "../../server/actions/dismiss-task";
+} from "@/features/tasks/server/actions/dismiss-task";
 import {
     cancelTaskAction,
     batchCancelTasksAction,

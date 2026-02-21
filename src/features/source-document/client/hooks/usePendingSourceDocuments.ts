@@ -8,8 +8,10 @@ export interface PendingSourceDocumentsResult {
     queued: SourceDocumentGroup[];
     /** Documents currently being processed */
     processing: SourceDocumentGroup[];
-    /** Documents that failed processing or have anomalies */
+    /** Documents that failed with business anomalies */
     anomaly: SourceDocumentGroup[];
+    /** Documents that failed with system errors */
+    failed: SourceDocumentGroup[];
 }
 
 /**
@@ -31,8 +33,9 @@ export function usePendingSourceDocuments(ledgerId: string) {
             queued: (data?.groups?.queued || []) as SourceDocumentGroup[],
             processing: (data?.groups?.processing || []) as SourceDocumentGroup[],
             anomaly: (data?.groups?.anomaly || []) as SourceDocumentGroup[],
+            failed: (data?.groups?.failed || []) as SourceDocumentGroup[],
         },
-        stats: data?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0, total: 0 },
+        stats: data?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0, failedCount: 0, total: 0 },
         isLoading: isLoading && !data,
         refetch,
     };

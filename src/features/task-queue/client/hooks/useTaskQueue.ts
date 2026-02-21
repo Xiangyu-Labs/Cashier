@@ -1,7 +1,7 @@
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { queryKeys } from '@/lib/query-keys';
-import { getTaskQueueAction, type TaskQueueResult, type TaskQueueStats } from '@/features/tasks/server/actions/task-queue';
-import type { QueueItem } from '@/features/tasks/types/queue-item';
+import { getTaskQueueAction, type TaskQueueResult, type TaskQueueStats } from '../../server/actions/task-queue';
+import type { QueueItem } from '../../types/queue-item';
 
 const defaultStats: TaskQueueStats = {
     pendingCount: 0,

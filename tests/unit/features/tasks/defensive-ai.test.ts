@@ -33,7 +33,7 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("queued");
+        expect(updatedDoc?.status).toBe("failed");
     });
 
     it("should map JSON parsing errors to 'internal_error'", async () => {
@@ -62,6 +62,35 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("queued");
+        expect(updatedDoc?.status).toBe("failed");
+    });
+});
+
+describe("parseSourceDocumentHandler.onCancel", () => {
+    it("should soft delete document on cancellation", async () => {
+        const db = getTestDb();
+        const { ledgerId } = await createTestUserWithLedger(db, "cancel1@example.com");
+        const [sourceDoc] = await db.insert(sourceDocuments).values({ ledgerId, status: "processing" }).returning();
+
+        const input: ParseSourceDocumentInput = {
+            ledgerId,
+            sourceDocumentId: sourceDoc.id,
+            categories: [],
+            settings: {}
+        };
+
+        const context = {
+            id: "task-cancel-1",
+            type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+            input,
+        } as unknown as FlowContext;
+
+        await parseSourceDocumentHandler.onCancel!(input, context);
+
+        const updatedDoc = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, sourceDoc.id)
+        });
+
+        expect(updatedDoc?.deletedAt).not.toBeNull();
     });
 });

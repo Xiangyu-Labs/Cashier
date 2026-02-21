@@ -44,16 +44,16 @@ export async function cancelTaskAction(ledgerId: string, taskId: string): Promis
     await flowEngine.cancel(taskId);
 
     // For orphaned parse_source_document tasks, the onCancel handler won't fire.
-    // Reset the source document status if needed.
+    // Soft delete the source document if needed.
     if (task.entityType === 'source_document' && task.entityId) {
         const q = forLedger(sourceDocuments, ledgerId);
         const doc = await db.query.sourceDocuments.findFirst({
             where: q.whereId(task.entityId),
         });
-        // Only reset if still in 'processing' or 'queued' state
+        // Only soft delete if still in 'processing' or 'queued' state
         if (doc && (doc.status === 'processing' || doc.status === 'queued')) {
             await db.update(sourceDocuments)
-                .set({ status: 'queued' })
+                .set({ deletedAt: new Date() })
                 .where(q.whereId(task.entityId));
         }
     }
@@ -91,7 +91,7 @@ export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]
     // Cancel each task
     await Promise.all(validTasks.map(task => flowEngine.cancel(task.id)));
 
-    // For orphaned parse_source_document tasks, reset source document status
+    // For orphaned parse_source_document tasks, soft delete source documents
     const sourceDocTasks = validTasks.filter(
         task => task.entityType === 'source_document' && task.entityId
     );
@@ -100,7 +100,7 @@ export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]
         const q = forLedger(sourceDocuments, ledgerId);
         const entityIds = sourceDocTasks.map(t => t.entityId!);
 
-        // Fetch docs that need status reset
+        // Fetch docs that need soft delete
         const docs = await db.query.sourceDocuments.findMany({
             where: and(
                 inArray(sourceDocuments.id, entityIds),
@@ -108,16 +108,16 @@ export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]
             ),
         });
 
-        // Reset status for docs still in processing/queued
-        const docsToReset = docs.filter(
+        // Soft delete docs still in processing/queued
+        const docsToDelete = docs.filter(
             doc => doc.status === 'processing' || doc.status === 'queued'
         );
 
-        if (docsToReset.length > 0) {
+        if (docsToDelete.length > 0) {
             await db.update(sourceDocuments)
-                .set({ status: 'queued' })
+                .set({ deletedAt: new Date() })
                 .where(and(
-                    inArray(sourceDocuments.id, docsToReset.map(d => d.id)),
+                    inArray(sourceDocuments.id, docsToDelete.map(d => d.id)),
                     q.whereActive
                 ));
         }

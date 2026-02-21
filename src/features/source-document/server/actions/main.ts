@@ -10,6 +10,7 @@ import { desc, lte, gte, inArray, and, eq, isNull, or, lt, sql } from "drizzle-o
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/lib/date-utils";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -284,7 +285,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     if (status) {
         const statuses = status.split(",").filter(Boolean);
         if (statuses.length > 0) {
-            conditions.push(inArray(sourceDocuments.status, statuses as ("queued" | "processing" | "completed" | "anomaly")[]));
+            conditions.push(inArray(sourceDocuments.status, statuses as SourceDocumentStatusType[]));
         }
     }
 
@@ -385,7 +386,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
     return {
         items: resultItems.map(item => {
             const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.metadata || {};
-            const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly';
+            const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly' || item.status === 'failed';
 
             if (isActiveDocument) {
                 return {
@@ -394,7 +395,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     createdAt: item.createdAt.toISOString(),
                     updatedAt: item.updatedAt.toISOString(),
                     deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-                    status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                    status: item.status as SourceDocumentStatusType | undefined,
                     ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
                 };
             } else {
@@ -406,7 +407,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
                     createdAt: item.createdAt.toISOString(),
                     updatedAt: item.updatedAt.toISOString(),
                     deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-                    status: item.status as "queued" | "processing" | "completed" | "anomaly" | undefined,
+                    status: item.status as SourceDocumentStatusType | undefined,
                     ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
                 };
             }
@@ -544,7 +545,7 @@ export interface SourceDocumentGroup {
         createdAt: string;
         updatedAt: string;
         deletedAt?: string | null;
-        status: "queued" | "processing" | "completed" | "anomaly" | undefined;
+        status: SourceDocumentStatusType | undefined;
         ledgerEntries?: SourceDocumentGroup['ledgerEntries'];
     };
     ledgerEntries: (Omit<LedgerEntry, 'amount' | 'createdAt' | 'updatedAt' | 'entryDate' | 'deletedAt'> & {
@@ -560,6 +561,7 @@ export interface GroupedSourceDocuments {
     queued: SourceDocumentGroup[];
     processing: SourceDocumentGroup[];
     anomaly: SourceDocumentGroup[];
+    failed: SourceDocumentGroup[];
     completed: SourceDocumentGroup[];
 }
 
@@ -580,9 +582,9 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     try {
         const { startDate, endDate, limit = 20, cursor } = params;
 
-        // 1. Fetch active documents (queued, processing, anomaly)
+        // 1. Fetch active documents (queued, processing, anomaly, failed)
         const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
-            status: 'queued,processing,anomaly',
+            status: 'queued,processing,anomaly,failed',
             includeLedgerEntries: true,
             startDate,
             endDate,
@@ -602,6 +604,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             queued: [],
             processing: [],
             anomaly: [],
+            failed: [],
             completed: [],
         };
 
@@ -610,7 +613,9 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
                 sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
                 ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
             };
-            if (doc.status === 'anomaly') {
+            if (doc.status === 'failed') {
+                groups.failed.push(group);
+            } else if (doc.status === 'anomaly') {
                 groups.anomaly.push(group);
             } else if (doc.status === 'queued') {
                 groups.queued.push(group);
@@ -651,6 +656,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
             groups.queued = groups.queued.filter(filterByAmount);
             groups.processing = groups.processing.filter(filterByAmount);
             groups.anomaly = groups.anomaly.filter(filterByAmount);
+            groups.failed = groups.failed.filter(filterByAmount);
             groups.completed = groups.completed.filter(filterByAmount);
         }
 
@@ -661,6 +667,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
                 queuedCount: groups.queued.length,
                 processingCount: groups.processing.length,
                 anomalyCount: groups.anomaly.length,
+                failedCount: groups.failed.length,
             }
         };
     } catch (error) {
@@ -694,9 +701,9 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
     try {
-        // Fetch active documents (queued, processing, anomaly) WITHOUT date filtering
+        // Fetch active documents (queued, processing, anomaly, failed) WITHOUT date filtering
         const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
-            status: 'queued,processing,anomaly',
+            status: 'queued,processing,anomaly,failed',
             includeLedgerEntries: true,
             // No date filters - show ALL pending items
         });
@@ -705,6 +712,7 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
             queued: [] as SourceDocumentGroup[],
             processing: [] as SourceDocumentGroup[],
             anomaly: [] as SourceDocumentGroup[],
+            failed: [] as SourceDocumentGroup[],
         };
 
         activeDocsResult.items.forEach((doc) => {
@@ -712,7 +720,9 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
                 sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
                 ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
             };
-            if (doc.status === 'anomaly') {
+            if (doc.status === 'failed') {
+                groups.failed.push(group);
+            } else if (doc.status === 'anomaly') {
                 groups.anomaly.push(group);
             } else if (doc.status === 'queued') {
                 groups.queued.push(group);
@@ -727,7 +737,8 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
                 queuedCount: groups.queued.length,
                 processingCount: groups.processing.length,
                 anomalyCount: groups.anomaly.length,
-                total: groups.queued.length + groups.processing.length + groups.anomaly.length,
+                failedCount: groups.failed.length,
+                total: groups.queued.length + groups.processing.length + groups.anomaly.length + groups.failed.length,
             }
         };
     } catch (error) {

@@ -9,6 +9,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "./EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -308,7 +309,7 @@ export function LedgerEntriesTab({
                                                                 onViewDetails={() => handleViewSourceDetail(group)}
                                                                 onRetry={() => handleRetry(group.sourceDocument)}
                                                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
-                                                                status={(group.sourceDocument.status || "completed") as "queued" | "processing" | "completed" | "anomaly"}
+                                                                status={(group.sourceDocument.status || "completed") as SourceDocumentStatusType}
                                                                 anomalyReason={group.sourceDocument.anomalyReason}
                                                             />
                                                         </motion.div>

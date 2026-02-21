@@ -359,10 +359,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, input.ledgerId);
 
-        // 系统错误时重置为 queued，让用户可以重试
-        // 不要标记为 anomaly，因为 anomaly 应该只用于业务异常（用户输入问题）
+        // 系统错误时标记为 failed，让用户可以重试
+        // anomaly 用于业务异常（用户输入问题），failed 用于系统错误
         await db.update(sourceDocuments)
-            .set({ status: 'queued' })
+            .set({ status: 'failed' })
             .where(q.whereId(input.sourceDocumentId));
     },
 
@@ -375,9 +375,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, input.ledgerId);
 
-        // Reset document status back to queued on cancellation
+        // 软删除文档（取消 = 用户不想要了）
         await db.update(sourceDocuments)
-            .set({ status: 'queued' })
+            .set({ deletedAt: new Date() })
             .where(q.whereId(input.sourceDocumentId));
     }
 };

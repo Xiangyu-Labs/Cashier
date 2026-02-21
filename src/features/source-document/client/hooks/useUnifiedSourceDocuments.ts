@@ -5,8 +5,7 @@ import { getUnifiedSourceDocumentsAction } from "@/features/source-document/serv
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
 import { SourceDocument, LedgerEntry } from '@/types/api';
-
-export type SourceDocumentStatus = 'processing' | 'anomaly' | 'completed';
+import { type SourceDocumentStatusType } from '@/features/source-document/server/schema';
 
 export interface SourceDocumentGroup {
     sourceDocument: SourceDocument;
@@ -22,8 +21,10 @@ export interface GroupedSourceDocuments {
     queued: SourceDocumentGroup[];
     /** Documents currently being processed */
     processing: SourceDocumentGroup[];
-    /** Documents that failed processing or have anomalies */
+    /** Documents that failed with business anomalies */
     anomaly: SourceDocumentGroup[];
+    /** Documents that failed with system errors */
+    failed: SourceDocumentGroup[];
     /** Documents with all entries confirmed (for infinite scroll) */
     completed: SourceDocumentGroup[];
 }
@@ -57,20 +58,23 @@ export function useUnifiedSourceDocuments(
     const prevProcessingCount = useRef<number | null>(null);
 
     // Prepare initial data if provided
-     
+
     const initialUnifiedData = useMemo(() => {
         if (!initialActiveSourceDocuments && !initialCompletedSourceDocuments) return undefined;
 
         const queued: SourceDocumentGroup[] = [];
         const processing: SourceDocumentGroup[] = [];
         const anomaly: SourceDocumentGroup[] = [];
+        const failed: SourceDocumentGroup[] = [];
 
         initialActiveSourceDocuments?.forEach(doc => {
             const group = {
                 sourceDocument: doc,
                 ledgerEntries: doc.ledgerEntries || []
             };
-            if (doc.status === 'anomaly') {
+            if (doc.status === 'failed') {
+                failed.push(group);
+            } else if (doc.status === 'anomaly') {
                 anomaly.push(group);
             } else if (doc.status === 'queued') {
                 queued.push(group);
@@ -84,6 +88,7 @@ export function useUnifiedSourceDocuments(
                 queued,
                 processing,
                 anomaly,
+                failed,
                 completed: initialCompletedSourceDocuments?.map(doc => ({
                     sourceDocument: doc,
                     ledgerEntries: doc.ledgerEntries || []
@@ -93,7 +98,8 @@ export function useUnifiedSourceDocuments(
             stats: {
                 queuedCount: queued.length,
                 processingCount: processing.length,
-                anomalyCount: anomaly.length
+                anomalyCount: anomaly.length,
+                failedCount: failed.length
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Initial data only, dependencies are intentionally not tracked
@@ -161,6 +167,7 @@ export function useUnifiedSourceDocuments(
                 queued: [],
                 processing: [],
                 anomaly: [],
+                failed: [],
                 completed: [],
             };
         }
@@ -185,6 +192,7 @@ export function useUnifiedSourceDocuments(
             queued: unifiedData.groups.queued as unknown as SourceDocumentGroup[],
             processing: unifiedData.groups.processing as unknown as SourceDocumentGroup[],
             anomaly: unifiedData.groups.anomaly as unknown as SourceDocumentGroup[],
+            failed: (unifiedData.groups.failed || []) as unknown as SourceDocumentGroup[],
             // Deduplicate to prevent duplicates when cache is invalidated and pages are refetched
             completed: deduplicateByDocId(completedItems)
         };
@@ -192,7 +200,7 @@ export function useUnifiedSourceDocuments(
 
     return {
         groups,
-        stats: unifiedData?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0 },
+        stats: unifiedData?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0, failedCount: 0 },
         isLoading: isUnifiedLoading && !unifiedData,
         fetchNextPage,
         hasNextPage,
