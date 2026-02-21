@@ -336,6 +336,11 @@ export function LedgerEntriesTab({
                                     <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
                                 </div>
                             )}
+                            {!hasNextPage && groupedCompletedByDate.length > 0 && (
+                                <div className="flex justify-center py-4">
+                                    <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
