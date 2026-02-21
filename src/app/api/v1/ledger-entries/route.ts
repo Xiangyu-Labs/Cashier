@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
                     },
                 },
                 {
-                    title: text ? `API 解析: ${text.slice(0, 20)}...` : "API 解析图片账单",
+                    title: "parse_source_document",
                     scopeId: credential.ledgerId,
                     entityType: 'source_document',
                     entityId: savedDoc.id,

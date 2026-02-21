@@ -359,10 +359,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, input.ledgerId);
 
-        // 系统错误时重置为 pending，让用户可以重试
+        // 系统错误时重置为 queued，让用户可以重试
         // 不要标记为 anomaly，因为 anomaly 应该只用于业务异常（用户输入问题）
         await db.update(sourceDocuments)
-            .set({ status: 'pending' })
+            .set({ status: 'queued' })
             .where(q.whereId(input.sourceDocumentId));
     },
 
@@ -375,9 +375,9 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, input.ledgerId);
 
-        // Reset document status back to pending on cancellation
+        // Reset document status back to queued on cancellation
         await db.update(sourceDocuments)
-            .set({ status: 'pending' })
+            .set({ status: 'queued' })
             .where(q.whereId(input.sourceDocumentId));
     }
 };

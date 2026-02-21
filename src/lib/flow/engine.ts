@@ -89,15 +89,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     // Wait for an available slot (concurrency control)
     await acquireSlot(taskId)
 
-    // Check if cancelled while waiting in queue
-    if (signal.aborted) {
-      releaseSlot()
-      await config.storage.update(taskId, { status: 'cancelled', progress: null })
-      logger.info({ taskId }, 'Task cancelled while waiting in queue')
-      abortControllers.delete(taskId)
-      return
-    }
-
+    // Get handler early so we can call onCancel if cancelled in queue
     const handler = handlers.get(name)
     if (!handler) {
       releaseSlot()
@@ -106,6 +98,32 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         status: 'failed',
         error: `No handler registered for task: ${name}`,
       })
+      return
+    }
+
+    // Check if cancelled while waiting in queue
+    if (signal.aborted) {
+      releaseSlot()
+
+      // Call onCancel if handler exists, so domain cleanup happens
+      if (handler.onCancel) {
+        try {
+          const context: FlowContext = {
+            taskId,
+            signal,
+            reportTokens: () => {}, // No-op for cancellation
+            updateProgress: async () => {},
+            ai: createAIContext(signal, () => {}),
+          }
+          await handler.onCancel(input, context)
+        } catch (cancelError) {
+          logger.error({ error: cancelError, taskId }, 'Error in task onCancel handler during queue cancellation')
+        }
+      }
+
+      await config.storage.update(taskId, { status: 'cancelled', progress: null })
+      logger.info({ taskId }, 'Task cancelled while waiting in queue')
+      abortControllers.delete(taskId)
       return
     }
 
@@ -276,8 +294,15 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         controller.abort()
         logger.info({ taskId }, 'Task cancellation requested')
       } else {
-        // Task might already be completed or doesn't exist
-        logger.warn({ taskId }, 'No active abort controller for task')
+        // No AbortController found - task is orphaned (e.g., server restarted)
+        // Check if the task is still marked as running/pending in DB and force-cancel it
+        const task = await config.storage.get(taskId)
+        if (task && (task.status === 'running' || task.status === 'pending')) {
+          await config.storage.update(taskId, { status: 'cancelled', progress: null })
+          logger.info({ taskId }, 'Orphaned task force-cancelled in DB')
+        } else {
+          logger.warn({ taskId, status: task?.status }, 'No active abort controller for task, task not in cancellable state')
+        }
       }
     },
 

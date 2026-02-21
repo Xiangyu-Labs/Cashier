@@ -98,11 +98,11 @@ export function canCancel(item: QueueItem): boolean {
  * Helper to check if an item supports delete operation
  */
 export function canDelete(item: QueueItem): boolean {
-  // Failed tasks with source docs, anomalies can be deleted
-  // Pending/completed tasks with source docs can also be deleted
+  // Failed/running tasks with source docs, anomalies can be deleted
+  // Pending tasks with source docs can also be deleted
   return (
     item.sourceDocumentId !== undefined &&
-    (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending')
+    (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'running')
   );
 }
 

@@ -538,7 +538,10 @@
         "tokenStats": "In: {input} | Out: {output} | Avg: {avg}/task",
         "anomaly": "Anomaly Bills",
         "reason": "Reason",
-        "untitledBill": "Untitled Bill"
+        "untitledBill": "Untitled Bill",
+        "taskType_parse_source_document": "Parse Source Document",
+        "taskType_categorize_entry": "Auto Categorize",
+        "taskType_generate_category_metadata": "Generate Category Metadata"
     },
     "BackgroundRefresh": {
         "syncing": "Syncing..."

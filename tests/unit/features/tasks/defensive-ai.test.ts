@@ -33,7 +33,7 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("pending");
+        expect(updatedDoc?.status).toBe("queued");
     });
 
     it("should map JSON parsing errors to 'internal_error'", async () => {
@@ -62,6 +62,6 @@ describe("parseSourceDocumentHandler.onError", () => {
             where: eq(sourceDocuments.id, sourceDoc.id)
         });
 
-        expect(updatedDoc?.status).toBe("pending");
+        expect(updatedDoc?.status).toBe("queued");
     });
 });

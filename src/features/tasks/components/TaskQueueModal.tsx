@@ -242,6 +242,8 @@ export function TaskQueueModal({
                                                 item={item}
                                                 ledgerId={ledgerId}
                                                 onCancel={() => handleCancel(item)}
+                                                onRetry={item.sourceDocumentId ? () => handleRetry(item) : undefined}
+                                                onDelete={item.sourceDocumentId ? () => handleDeleteSingle(item) : undefined}
                                             />
                                         ))}
                                     </TaskGroupSection>

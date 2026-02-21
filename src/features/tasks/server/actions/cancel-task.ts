@@ -1,9 +1,10 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
+import { taskRuns, sourceDocuments } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
+import { forLedger } from "@/lib/db/scoped-query";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 
 /**
@@ -41,6 +42,21 @@ export async function cancelTaskAction(ledgerId: string, taskId: string): Promis
 
     // Call the flow engine to cancel the task
     await flowEngine.cancel(taskId);
+
+    // For orphaned parse_source_document tasks, the onCancel handler won't fire.
+    // Reset the source document status if needed.
+    if (task.entityType === 'source_document' && task.entityId) {
+        const q = forLedger(sourceDocuments, ledgerId);
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: q.whereId(task.entityId),
+        });
+        // Only reset if still in 'processing' or 'queued' state
+        if (doc && (doc.status === 'processing' || doc.status === 'queued')) {
+            await db.update(sourceDocuments)
+                .set({ status: 'queued' })
+                .where(q.whereId(task.entityId));
+        }
+    }
 }
 
 /**
@@ -65,15 +81,45 @@ export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]
     });
 
     // Filter to only tasks that belong to this ledger and are cancellable
-    const validTaskIds = tasks
-        .filter(task =>
-            task.scopeId === ledgerId &&
-            (task.status === 'pending' || task.status === 'running')
-        )
-        .map(task => task.id);
+    const validTasks = tasks.filter(task =>
+        task.scopeId === ledgerId &&
+        (task.status === 'pending' || task.status === 'running')
+    );
 
-    if (validTaskIds.length === 0) return;
+    if (validTasks.length === 0) return;
 
     // Cancel each task
-    await Promise.all(validTaskIds.map(taskId => flowEngine.cancel(taskId)));
+    await Promise.all(validTasks.map(task => flowEngine.cancel(task.id)));
+
+    // For orphaned parse_source_document tasks, reset source document status
+    const sourceDocTasks = validTasks.filter(
+        task => task.entityType === 'source_document' && task.entityId
+    );
+
+    if (sourceDocTasks.length > 0) {
+        const q = forLedger(sourceDocuments, ledgerId);
+        const entityIds = sourceDocTasks.map(t => t.entityId!);
+
+        // Fetch docs that need status reset
+        const docs = await db.query.sourceDocuments.findMany({
+            where: and(
+                inArray(sourceDocuments.id, entityIds),
+                q.whereActive
+            ),
+        });
+
+        // Reset status for docs still in processing/queued
+        const docsToReset = docs.filter(
+            doc => doc.status === 'processing' || doc.status === 'queued'
+        );
+
+        if (docsToReset.length > 0) {
+            await db.update(sourceDocuments)
+                .set({ status: 'queued' })
+                .where(and(
+                    inArray(sourceDocuments.id, docsToReset.map(d => d.id)),
+                    q.whereActive
+                ));
+        }
+    }
 }

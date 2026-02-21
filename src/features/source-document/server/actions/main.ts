@@ -62,7 +62,7 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
             },
         },
         {
-            title: text ? `解析: ${text.slice(0, 20)}...` : "解析图片账单",
+            title: "parse_source_document",
             scopeId: ledgerId,
             entityType: 'source_document',
             entityId: sourceDocumentId,
@@ -126,6 +126,21 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
     });
     if (!existingDoc) throw new Error("Source document not found");
 
+    // Cancel any running/pending tasks for this source document before retrying
+    const { taskRuns } = await import("@/lib/db/schema");
+    const runningTasks = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.entityType, 'source_document'),
+            eq(taskRuns.entityId, sourceDocumentId),
+            eq(taskRuns.scopeId, ledgerId),
+            inArray(taskRuns.status, ['pending', 'running'])
+        ),
+    });
+    for (const task of runningTasks) {
+        await flowEngine.cancel(task.id);
+    }
+
     const text = input?.text || existingDoc.text || undefined;
     const images = input?.images;
 
@@ -149,7 +164,6 @@ export async function retrySourceDocumentAction(ledgerId: string, sourceDocument
     }
 
     // Atomically delete old task_runs and reset document status in a transaction
-    const { taskRuns } = await import("@/lib/db/schema");
     db.transaction((tx) => {
         // 1. Soft delete old failed/completed task_runs for this source document
         tx.update(taskRuns)
@@ -212,6 +226,14 @@ export async function deleteSourceDocumentAction(ledgerId: string, sourceId: str
             eq(taskRuns.scopeId, ledgerId)
         ),
     });
+
+    // Cancel any running/pending tasks before deleting
+    const runningTasks = relatedTaskRuns.filter(
+        task => task.status === 'pending' || task.status === 'running'
+    );
+    for (const task of runningTasks) {
+        await flowEngine.cancel(task.id);
+    }
 
     const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
 
@@ -413,6 +435,14 @@ export async function batchDeleteSourceDocumentsAction(ledgerId: string, sourceD
         ),
     });
 
+    // Cancel any running/pending tasks before deleting
+    const runningTasks = relatedTaskRuns.filter(
+        task => task.status === 'pending' || task.status === 'running'
+    );
+    for (const task of runningTasks) {
+        await flowEngine.cancel(task.id);
+    }
+
     const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
 
     // better-sqlite3 transactions are synchronous
@@ -471,6 +501,14 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
             inArray(taskRuns.entityId, sourceDocumentIds)
         ),
     });
+
+    // Cancel any running/pending tasks before retrying
+    const runningTasks = relatedTaskRuns.filter(
+        task => task.status === 'pending' || task.status === 'running'
+    );
+    for (const task of runningTasks) {
+        await flowEngine.cancel(task.id);
+    }
 
     const taskIdsToDelete = relatedTaskRuns.map(t => t.id);
 

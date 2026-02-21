@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Trash2,
@@ -25,6 +25,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import type { QueueItem, QueueItemStatus } from "../types/queue-item";
 import { SourceDocumentPreview } from "./SourceDocumentPreview";
+
+// Task type to i18n key mapping for unified display names
+const TASK_TYPE_I18N: Record<string, string> = {
+    'parse_source_document': 'taskType_parse_source_document',
+    'categorize_entry': 'taskType_categorize_entry',
+    'generate_category_metadata': 'taskType_generate_category_metadata',
+};
 
 interface QueueItemCardProps {
     item: QueueItem;
@@ -82,15 +89,21 @@ export const QueueItemCard = memo(function QueueItemCard({
     const [isDismissing, setIsDismissing] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
+    // Resolve display title: use i18n for known task types, fall back to stored title
+    const displayTitle = useMemo(() => {
+        const key = item.taskType ? TASK_TYPE_I18N[item.taskType] : undefined;
+        return key ? t(key as any) : item.title;
+    }, [item.taskType, item.title, t]);
+
     // Determine available actions based on item state
     const canCancel = item.kind === 'task' && (item.status === 'pending' || item.status === 'running') && onCancel;
-    const canRetry = item.sourceDocumentId && onRetry && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'completed');
-    const canDelete = item.sourceDocumentId && onDelete && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending');
+    const canRetry = item.sourceDocumentId && onRetry && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'completed' || item.status === 'running');
+    const canDelete = item.sourceDocumentId && onDelete && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'running');
     const canDismiss = item.kind === 'task' && item.status === 'failed' && !item.sourceDocumentId && onDismiss;
 
-    // Running tasks get a direct cancel button, everything else uses dropdown
-    const showDirectCancel = item.status === 'running' && canCancel;
-    const showDropdown = (item.status !== 'running') && (canRetry || canDelete || canDismiss || canCancel);
+    // Running tasks with sourceDocumentId get the dropdown menu; running tasks without it keep the direct cancel button
+    const showDirectCancel = item.status === 'running' && canCancel && !item.sourceDocumentId;
+    const showDropdown = canRetry || canDelete || canDismiss || canCancel;
 
     // Can expand if has source document preview
     const canExpand = !!item.sourceDocumentId;
@@ -144,8 +157,8 @@ export const QueueItemCard = memo(function QueueItemCard({
                     <StatusIcon status={item.status} />
 
                     {/* Title */}
-                    <span className="text-sm font-medium text-text truncate" title={item.title}>
-                        {item.title}
+                    <span className="text-sm font-medium text-text truncate" title={displayTitle}>
+                        {displayTitle}
                     </span>
 
                     {/* Subtitle (error/reason) - inline in title line */}
