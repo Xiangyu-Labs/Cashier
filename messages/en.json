@@ -178,7 +178,11 @@
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
         "image": "Image",
         "send": "Send",
-        "advancedFeatures": "Advanced Features"
+        "advancedFeatures": "Advanced Features",
+        "uploadSuccess": "Submitted successfully",
+        "uploadError": "Failed to submit",
+        "retrySuccess": "Retry submitted",
+        "retryError": "Failed to retry"
     },
     "SourceDocumentEditRetryDialog": {
         "title": "Edit and Retry"
@@ -243,7 +247,13 @@
         "discardChanges": "Discard",
         "unsavedChanges": "Unsaved Changes",
         "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
-        "discardAndClose": "Discard & Close"
+        "discardAndClose": "Discard & Close",
+        "batchUpdateSuccess": "Updated {count} {count, plural, one {entry} other {entries}}",
+        "batchUpdateError": "Failed to update entries",
+        "batchDeleteSuccess": "Deleted {count} {count, plural, one {entry} other {entries}}",
+        "batchDeleteError": "Failed to delete entries",
+        "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
+        "saveAllError": "Failed to save changes"
     },
     "ImageViewer": {
         "clickToZoom": "Click to Zoom",

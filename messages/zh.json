@@ -182,7 +182,11 @@
         "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
         "image": "图片",
         "send": "发送",
-        "advancedFeatures": "高级功能"
+        "advancedFeatures": "高级功能",
+        "uploadSuccess": "提交成功",
+        "uploadError": "提交失败",
+        "retrySuccess": "重试已提交",
+        "retryError": "重试失败"
     },
     "SourceDocumentEditRetryDialog": {
         "title": "编辑重试"
@@ -247,7 +251,13 @@
         "discardChanges": "放弃修改",
         "unsavedChanges": "有未保存的修改",
         "unsavedChangesDesc": "您有未保存的修改，确定要放弃这些修改吗？",
-        "discardAndClose": "放弃并关闭"
+        "discardAndClose": "放弃并关闭",
+        "batchUpdateSuccess": "已更新 {count} 条记录",
+        "batchUpdateError": "更新失败",
+        "batchDeleteSuccess": "已删除 {count} 条记录",
+        "batchDeleteError": "删除失败",
+        "saveAllSuccess": "已保存 {count} 处修改",
+        "saveAllError": "保存失败"
     },
     "ImageViewer": {
         "clickToZoom": "点击放大",

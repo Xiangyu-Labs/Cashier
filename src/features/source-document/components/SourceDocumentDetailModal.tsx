@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
+import { toast } from "sonner"
 import { SUPPORTED_CURRENCIES } from "@/config/currencies"
 import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges } from "./SourceDocumentViewDetails"
 import { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem"
@@ -142,12 +143,14 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
             // Clear pending changes after successful save
             setPendingChanges({ sourceDoc: {}, entries: {} })
+            toast.success(t("saveAllSuccess", { count: pendingChangesCount }))
         } catch (error) {
             console.error("Failed to save changes:", error)
+            toast.error(t("saveAllError"))
         } finally {
             setIsSaving(false)
         }
-    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry])
+    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry, pendingChangesCount, t])
 
     // Save all changes and close (for unsaved changes dialog)
     const handleSaveAllAndClose = useCallback(async () => {
@@ -262,7 +265,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onBatchUpdate(selectedIds, { categoryId })
+            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
             setSelectedIds([])
+        } catch {
+            toast.error(t("batchUpdateError"))
         } finally {
             setIsSaving(false)
         }
@@ -273,7 +279,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onBatchUpdate(selectedIds, { currency })
+            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
             setSelectedIds([])
+        } catch {
+            toast.error(t("batchUpdateError"))
         } finally {
             setIsSaving(false)
         }
@@ -284,8 +293,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onBatchUpdate(selectedIds, { entryDate: batchDate })
+            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
             setSelectedIds([])
             setBatchDate("")
+        } catch {
+            toast.error(t("batchUpdateError"))
         } finally {
             setIsSaving(false)
         }
@@ -296,8 +308,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onBatchUpdate(selectedIds, { description: batchDescription })
+            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
             setSelectedIds([])
             setBatchDescription("")
+        } catch {
+            toast.error(t("batchUpdateError"))
         } finally {
             setIsSaving(false)
         }
@@ -310,7 +325,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         setIsSaving(true)
         try {
             await onBatchDelete(selectedIds)
+            toast.success(t("batchDeleteSuccess", { count: selectedIds.length }))
             setSelectedIds([])
+        } catch {
+            toast.error(t("batchDeleteError"))
         } finally {
             setIsSaving(false)
         }

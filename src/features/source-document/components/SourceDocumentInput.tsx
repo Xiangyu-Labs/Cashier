@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, RefreshCw } from "lucide-react";
 import { Ledger, SourceDocument } from "@/types/api";
+import { toast } from "sonner";
 
 import { useTranslations } from "next-intl";
 import { compressImage } from "@/lib/image-utils";
@@ -141,8 +142,10 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             if (context?.previousImages !== undefined) {
                 setImages(context.previousImages);
             }
+            toast.error(t("uploadError"));
         },
         onSuccess: () => {
+            toast.success(t("uploadSuccess"));
             onSuccess?.();
         },
         onSettled: () => {
@@ -184,6 +187,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             return { previousDocument };
         },
         onSuccess: () => {
+            toast.success(t("retrySuccess"));
             onSuccess?.();
         },
         onError: (_err, _vars, context) => {
@@ -191,6 +195,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             if (context?.previousDocument && sourceDocumentId) {
                 queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), context.previousDocument);
             }
+            toast.error(t("retryError"));
         },
         onSettled: () => {
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
