@@ -246,6 +246,25 @@ export const QueueItemCard = memo(function QueueItemCard({
                 )}
             </div>
 
+            {/* Mobile-only subtitle/progress line */}
+            {(showSubtitleInline || showProgressInline) && (
+                <div className="px-3 pb-2 sm:hidden">
+                    {showSubtitleInline && (
+                        <p className={cn(
+                            "text-xs truncate",
+                            item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
+                        )}>
+                            {item.subtitle}
+                        </p>
+                    )}
+                    {showProgressInline && (
+                        <p className="text-xs text-muted-foreground truncate">
+                            {item.progress}
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Expandable Content */}
             <AnimatePresence initial={false}>
                 {isExpanded && canExpand && (
