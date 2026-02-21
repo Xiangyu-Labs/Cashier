@@ -1,7 +1,7 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, FileText, Coins } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -237,15 +237,24 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
   return (
     <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
-      <div
-        className={cn(
-          "px-4 py-3 bg-surface2/50 border-b border-border flex justify-between items-center transition-all group",
-          "cursor-pointer hover:bg-surface2 active:scale-[0.995] active:brightness-95"
-        )}
-        onClick={() => setIsItemsExpanded(!isItemsExpanded)}
-      >
-        <div className="flex items-center gap-2 overflow-hidden flex-1">
-          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform text-muted-foreground group-hover:text-text", isItemsExpanded && "rotate-180")} />
+      <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
+        {/* 左侧折叠按钮 */}
+        <button
+          onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+          className="p-1.5 -ml-1.5 hover:bg-accent/10 rounded shrink-0 transition-colors"
+          aria-label={isItemsExpanded ? t("collapse") : t("expand")}
+        >
+          <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground hover:text-text", isItemsExpanded && "rotate-180")} />
+        </button>
+
+        {/* 中间主体 - 点击打开详情 */}
+        <div
+          onClick={_onViewDetails}
+          className={cn(
+            "flex items-center gap-2 overflow-hidden flex-1 px-2 py-1 -my-1 rounded",
+            _onViewDetails && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
+          )}
+        >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
             {(sourceDocument.entryDate
               ? parseDateString(sourceDocument.entryDate)
@@ -265,7 +274,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
+        {/* 右侧 - 状态、金额和菜单 */}
+        <div className="flex items-center gap-2 shrink-0">
           {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
               status={(status === "anomaly" || status === "failed") ? "error" : status}
@@ -293,12 +303,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                {_onViewDetails && status === "completed" && (
-                  <DropdownMenuItem onClick={_onViewDetails}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t("viewDetails")}
-                  </DropdownMenuItem>
-                )}
                 {onRetry && (
                   <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
