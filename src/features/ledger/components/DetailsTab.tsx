@@ -23,6 +23,7 @@ import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMod
 import { useEntryMutations } from "@/features/ledger/client/hooks/useEntryMutations";
 import { useBatchEntryActions } from "@/features/ledger/client/hooks/useBatchEntryActions";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -56,7 +57,6 @@ export function DetailsTab({
     onAdvancedFiltersChange,
 }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
-    const tLedgerEntries = useTranslations("LedgerEntriesTab");
     const tCommon = useTranslations("Common");
     const locale = useLocale();
     const queryClient = useQueryClient();
@@ -174,6 +174,13 @@ export function DetailsTab({
         batchChangeCategory,
         batchDelete,
     } = useBatchEntryActions(ledgerId, clearSelection);
+
+    // Infinite scroll
+    const sentinelRef = useInfiniteScroll({
+        hasNextPage,
+        isFetchingNextPage,
+        fetchNextPage,
+    });
 
     // Helper to get date string (yyyy-MM-dd) from entry's source document
     const getDateStr = (entry: LedgerEntry) => {
@@ -411,15 +418,11 @@ export function DetailsTab({
                         </div>
                     )}
 
-                    {hasNextPage && (
+                    {/* Infinite scroll sentinel & loading indicator */}
+                    <div ref={sentinelRef} className="h-1" />
+                    {isFetchingNextPage && (
                         <div className="flex justify-center py-4">
-                            <button
-                                onClick={() => fetchNextPage()}
-                                disabled={isFetchingNextPage}
-                                className="px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
-                            >
-                                {isFetchingNextPage ? tCommon("loading") : tLedgerEntries("loadMore")}
-                            </button>
+                            <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
                         </div>
                     )}
                 </div>

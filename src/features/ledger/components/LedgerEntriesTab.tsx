@@ -16,6 +16,7 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
 import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -84,6 +85,13 @@ export function LedgerEntriesTab({
         dateRange: { start: filters.startDate, end: filters.endDate },
         minAmount: filters.minAmount ?? undefined,
         maxAmount: filters.maxAmount ?? undefined,
+    });
+
+    // Infinite scroll
+    const sentinelRef = useInfiniteScroll({
+        hasNextPage,
+        isFetchingNextPage,
+        fetchNextPage,
     });
 
     // Handlers
@@ -321,16 +329,11 @@ export function LedgerEntriesTab({
                                 )}
                             </div>
 
-                            {/* Load More Button */}
-                            {hasNextPage && (
+                            {/* Infinite scroll sentinel & loading indicator */}
+                            <div ref={sentinelRef} className="h-1" />
+                            {isFetchingNextPage && (
                                 <div className="flex justify-center py-4">
-                                    <button
-                                        onClick={() => fetchNextPage()}
-                                        disabled={isFetchingNextPage}
-                                        className="px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
-                                    >
-                                        {isFetchingNextPage ? tCommon("loading") : t("loadMore")}
-                                    </button>
+                                    <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
                                 </div>
                             )}
                         </>
