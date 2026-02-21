@@ -121,6 +121,7 @@
 html {
   background-color: var(--bg);
   scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
 }
 
 body {
@@ -128,6 +129,7 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 /* Utilities based on UI.md */
