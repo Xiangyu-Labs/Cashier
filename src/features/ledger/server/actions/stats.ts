@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { ledgers, ledgerEntries, currencyRates, sourceDocuments } from "@/lib/db/schema";
-import { eq, and, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { convertAmount } from "@/features/stats/server/utils";
 

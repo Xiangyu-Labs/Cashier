@@ -24,7 +24,8 @@ export function BackgroundRefreshIndicator({
       const timer = setTimeout(() => setShowIndicator(true), delay);
       return () => clearTimeout(timer);
     } else {
-      setShowIndicator(false);
+      const timer = setTimeout(() => setShowIndicator(false), 0);
+      return () => clearTimeout(timer);
     }
   }, [isFetching, delay]);
 

@@ -78,7 +78,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
     },
 
     // 2. Completion
-    async onComplete(output: GenerateCategoryMetadataOutput, input: GenerateCategoryMetadataInput, context: FlowContext): Promise<void> {
+    async onComplete(output: GenerateCategoryMetadataOutput, input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
         if (!output.success) return;
         if (!input.ledgerId) return;
 
@@ -98,7 +98,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
     },
 
     // 3. Error handling - set default values to stop "generating" state in UI
-    async onError(error: Error, input: GenerateCategoryMetadataInput, context: FlowContext): Promise<void> {
+    async onError(error: Error, input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
         logger.error({ err: error, categoryId: input.categoryId }, "Generate category metadata task failed");
 
         // Set default values to prevent UI from showing "generating" forever

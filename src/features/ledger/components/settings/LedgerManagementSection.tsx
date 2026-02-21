@@ -50,7 +50,7 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
     const tLedgerSwitcher = useTranslations("LedgerSwitcher");
     const router = useRouter();
     const queryClient = useQueryClient();
-    const [isPending, startTransition] = useTransition();
+    const [isPending] = useTransition();
 
     // Get default ledger ID
     const { data: defaultLedgerId } = useQuery({

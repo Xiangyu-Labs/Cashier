@@ -22,7 +22,7 @@ interface CurrencyBreakdownItemProps {
 
 function CurrencyBreakdownItem({ currency, amount, mainCurrency, entries }: CurrencyBreakdownItemProps) {
     // Calculate converted amount and average rate from entries
-    const { converted, rate } = useMemo(() => {
+    const { converted, rate: _rate } = useMemo(() => {
         const currencyEntries = entries.filter(e => (e.currency || mainCurrency) === currency);
 
         let totalConverted = 0;

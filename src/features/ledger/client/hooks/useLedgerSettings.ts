@@ -15,7 +15,7 @@ interface UseLedgerSettingsParams {
     initialCategories: EntryCategoryWithCount[];
 }
 
-export function useLedgerSettings({ ledgerId, ledger, initialCategories }: UseLedgerSettingsParams) {
+export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories }: UseLedgerSettingsParams) {
     const queryClient = useQueryClient();
     const t = useTranslations("Settings");
 

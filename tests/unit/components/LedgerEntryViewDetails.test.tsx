@@ -91,13 +91,14 @@ describe("LedgerEntryViewDetails", () => {
         categoryId: "c1",
         amount: "100.50",
         currency: "CNY",
-        sourceDocumentId: null,
+        sourceDocumentId: "sd-1",
         description: "Test description",
-        entryDate: "2023-01-28T10:00:00Z",
         createdAt: "2023-01-28T10:00:00Z",
+        updatedAt: "2023-01-28T10:00:00Z",
         deletedAt: null,
-        metadata: null,
         itemName: "Test Item",
+        convertedAmount: null,
+        exchangeRate: null,
         category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, isEditable: true, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1" }
     };
 

@@ -18,7 +18,6 @@ import {
     batchCancelTasksAction,
 } from "../../server/actions/cancel-task";
 import type { TaskQueueResult } from "../../server/actions/task-queue";
-import type { QueueItem } from "../../types/queue-item";
 
 export function useTaskQueueMutations(ledgerId: string) {
     const queryClient = useQueryClient();

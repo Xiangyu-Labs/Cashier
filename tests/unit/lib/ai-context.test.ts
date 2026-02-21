@@ -14,7 +14,7 @@ vi.mock('@/features/ai/server/services/openai', () => ({
 }))
 
 import { createAIContext } from '@/lib/flow/ai-context'
-import type { TokenUsage, AIModelTier } from '@/lib/flow/types'
+import type { TokenUsage } from '@/lib/flow/types'
 
 describe('AI Context', () => {
     let reportTokensSpy: ReturnType<typeof vi.fn<(usage: TokenUsage) => void>>

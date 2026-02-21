@@ -24,7 +24,6 @@ import { SourceDocumentInput } from "@/features/source-document/components/Sourc
 import { TaskQueueModal } from "@/features/task-queue/components/TaskQueueModal";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/useTaskQueue";
 import { useTranslations } from "next-intl";
-import { Ledger, EntryCategory } from "@/types/api";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 import { PeriodParams } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
@@ -82,8 +81,8 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     // Lift period filter state to page level - shared across all tabs
     const {
         periodParams,
-        dateRange,
-        filters,
+        dateRange: _dateRange,
+        filters: _filters,
         handlePeriodChange,
         handleFiltersChange,
     } = usePeriodFilter({ pathname, searchParams, initialPeriod });

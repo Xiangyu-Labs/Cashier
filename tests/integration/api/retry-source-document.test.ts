@@ -126,7 +126,7 @@ describe("SourceDocument Retry Action", () => {
                     item_name: "午餐",
                     amount: 25,
                     currency: "CNY",
-                    category: "餐饮",
+                    category_index: 1,
                     entry_date: "2025-01-25",
                 }],
                 title: "午餐消费"
@@ -153,7 +153,7 @@ describe("SourceDocument Retry Action", () => {
                     item_name: "晚餐",
                     amount: 50,
                     currency: "CNY",
-                    category: "餐饮",
+                    category_index: 1,
                     entry_date: "2025-01-25",
                 }],
                 title: "晚餐费用"

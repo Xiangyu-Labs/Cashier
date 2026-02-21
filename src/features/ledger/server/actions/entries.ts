@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
 import { z } from "zod";
-import { eq, inArray, and, gte, lte, or, lt, isNull, sql } from "drizzle-orm";
+import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
@@ -309,7 +309,7 @@ export async function getLedgerEntriesAction(
             deletedAt: item.category.deletedAt ? item.category.deletedAt.toISOString() : null,
         } : null,
         sourceDocument: item.sourceDocument ? (() => {
-            const { aiRawResponse, rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
+            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
              
             const { imageUrls, ...docWithoutImages } = item.sourceDocument;
             return {

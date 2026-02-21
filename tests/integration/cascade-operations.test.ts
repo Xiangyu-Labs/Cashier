@@ -336,7 +336,7 @@ describe("L1: Delete Ledger → All Data Inaccessible", () => {
 
         const ledger = await createTestLedger(db);
         // Create a second ledger so we can delete the first one (can't delete the only ledger)
-        const secondLedger = await createTestLedger(db);
+        const _secondLedger = await createTestLedger(db);
         const category = await createTestCategory(db, ledger.id);
         await createTestEntry(db, ledger.id, { categoryId: category.id });
 

@@ -45,7 +45,7 @@ export function LedgerEntryDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.ledgerEntry(id) });
             const previousData = queryClient.getQueryData(queryKeys.ledgerEntry(id));
 
-            queryClient.setQueryData(queryKeys.ledgerEntry(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.ledgerEntry(id), (old: unknown) => {
                 if (!old) return old;
                 return { ...old, ...data };
             });

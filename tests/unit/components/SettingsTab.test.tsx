@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsTab } from "@/features/ledger/components/SettingsTab";
-import { Ledger, EntryCategory, ServiceCredential } from "@/types/api";
+import { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Create tracked mocks
@@ -133,7 +133,7 @@ describe("SettingsTab", () => {
         deletedAt: null
     };
 
-    const mockCategories: EntryCategory[] = [];
+    const mockCategories: EntryCategoryWithCount[] = [];
     const _mockCredentials: ServiceCredential[] = [];
 
     let queryClient: QueryClient;

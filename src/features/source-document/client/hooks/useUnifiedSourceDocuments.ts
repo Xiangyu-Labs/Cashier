@@ -5,7 +5,6 @@ import { getUnifiedSourceDocumentsAction } from "@/features/source-document/serv
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
 import { SourceDocument, LedgerEntry } from '@/types/api';
-import { type SourceDocumentStatusType } from '@/features/source-document/server/schema';
 
 export interface SourceDocumentGroup {
     sourceDocument: SourceDocument;

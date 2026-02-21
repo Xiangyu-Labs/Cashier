@@ -9,9 +9,8 @@ import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/features/source-document/server/actions/main";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Send, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Ledger } from "@/types/api";
+import { Camera, Send, RefreshCw } from "lucide-react";
+import { Ledger, SourceDocument } from "@/types/api";
 
 import { useTranslations } from "next-intl";
 import { compressImage } from "@/lib/image-utils";
@@ -30,12 +29,11 @@ interface SourceDocumentInputProps {
 
 export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sourceDocumentId, initialData }: SourceDocumentInputProps) {
     const t = useTranslations("SourceDocumentInput");
-    const tSettings = useTranslations("Settings");
     const tCommon = useTranslations("Common");
     const queryClient = useQueryClient();
     const [text, setText] = useState(initialData?.text || "");
     const [images, setImages] = useState<{ data: string; mimeType: string }[]>(initialData?.images || []);
-    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+    const [_isAdvancedOpen, _setIsAdvancedOpen] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const [isTransitionPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,12 +48,12 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         }
     }, [initialData]);
 
-    const { data: ledger } = useQuery({
+    const { data: _ledger } = useQuery({
         queryKey: queryKeys.ledger(ledgerId),
         queryFn: () => getLedgerAction(ledgerId),
     });
 
-    const updateLedgerMutation = useMutation({
+    const _updateLedgerMutation = useMutation({
         mutationFn: async (data: Partial<Ledger> & { name?: string; settings?: Record<string, unknown> }) => {
             const settingsUpdate: Record<string, unknown> = data.settings || {};
 
@@ -74,7 +72,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             const previousLedger = queryClient.getQueryData(queryKeys.ledger(ledgerId));
 
             // Optimistically update cache
-            queryClient.setQueryData(queryKeys.ledger(ledgerId), (old: any) => {
+            queryClient.setQueryData(queryKeys.ledger(ledgerId), (old: Ledger | undefined) => {
                 if (!old) return old;
                 return {
                     ...old,
@@ -111,7 +109,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
         }) => {
             return await createSourceDocumentAction(ledgerId, data);
         },
-        onMutate: async (newData) => {
+        onMutate: async (_newData) => {
             // Cancel any outgoing refetches to prevent race conditions
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocuments(ledgerId, 'pending') });
 
@@ -173,7 +171,7 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
             // Optimistically update document status to "processing"
             if (sourceDocumentId) {
-                queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), (old: any) => {
+                queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), (old: SourceDocument | undefined) => {
                     if (!old) return old;
                     return {
                         ...old,

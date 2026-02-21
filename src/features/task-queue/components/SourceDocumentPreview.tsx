@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSourceDocumentFullAction } from "@/features/source-document/server/actions/main";
 import { ImageIcon, FileText, Loader2 } from "lucide-react";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import Image from "next/image";
 
 interface SourceDocumentPreviewProps {
     ledgerId: string;
@@ -88,13 +89,19 @@ export function SourceDocumentPreview({
                         <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="flex gap-1.5 flex-wrap">
                             {state.data.imageUrls!.slice(0, 4).map((url, idx) => (
-                                <img
+                                <div
                                     key={idx}
-                                    src={url}
-                                    alt={`Input image ${idx + 1}`}
-                                    className="h-12 w-12 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="relative h-12 w-12 cursor-pointer"
                                     onClick={() => handleImageClick(idx)}
-                                />
+                                >
+                                    <Image
+                                        src={url}
+                                        alt={`Input image ${idx + 1}`}
+                                        fill
+                                        unoptimized
+                                        className="object-cover rounded border border-border hover:opacity-80 transition-opacity"
+                                    />
+                                </div>
                             ))}
                             {state.data.imageUrls!.length > 4 && (
                                 <div

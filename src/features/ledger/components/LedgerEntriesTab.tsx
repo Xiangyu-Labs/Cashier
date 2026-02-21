@@ -161,7 +161,7 @@ export function LedgerEntriesTab({
             total: number;
         }> = {};
 
-        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
+        const _mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
 
         groups.completed.forEach(group => {
             const dateStr = getSourceDocDateStr(group);

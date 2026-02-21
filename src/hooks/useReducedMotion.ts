@@ -17,10 +17,10 @@ export function useReducedMotion(): boolean {
     useEffect(() => {
         // Check system preference for reduced motion
         const prefersReducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        const prefersReduced = prefersReducedQuery.matches;
+        const _prefersReduced = prefersReducedQuery.matches;
 
         // Check if mobile device (screen width < 768px)
-        const isMobile = window.innerWidth < 768;
+        const _isMobile = window.innerWidth < 768;
 
         // Listen for changes in reduced motion preference
         const handleReducedChange = (e: MediaQueryListEvent) => {

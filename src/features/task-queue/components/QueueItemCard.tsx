@@ -83,7 +83,7 @@ export const QueueItemCard = memo(function QueueItemCard({
 }: QueueItemCardProps) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("TaskQueue");
-    const tEntries = useTranslations("LedgerEntriesTab");
+    const _tEntries = useTranslations("LedgerEntriesTab");
 
     const [isRetrying, setIsRetrying] = useState(false);
     const [isDismissing, setIsDismissing] = useState(false);
@@ -92,7 +92,7 @@ export const QueueItemCard = memo(function QueueItemCard({
     // Resolve display title: use i18n for known task types, fall back to stored title
     const displayTitle = useMemo(() => {
         const key = item.taskType ? TASK_TYPE_I18N[item.taskType] : undefined;
-        return key ? t(key as any) : item.title;
+        return key ? t(key) : item.title;
     }, [item.taskType, item.title, t]);
 
     // Determine available actions based on item state

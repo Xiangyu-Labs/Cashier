@@ -137,7 +137,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
         };
     },
 
-    async onComplete(output: CategorizeEntryOutput, input: CategorizeEntryInput, context: FlowContext): Promise<void> {
+    async onComplete(output: CategorizeEntryOutput, input: CategorizeEntryInput, _context: FlowContext): Promise<void> {
         if (!input.ledgerId || !input.entryId) return;
 
         // Only update if we have a valid category match
@@ -169,7 +169,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
         }
     },
 
-    async onError(error: Error, input: CategorizeEntryInput, context: FlowContext): Promise<void> {
+    async onError(error: Error, input: CategorizeEntryInput, _context: FlowContext): Promise<void> {
         logger.error({
             err: error,
             entryId: input.entryId,

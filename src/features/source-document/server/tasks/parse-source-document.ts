@@ -212,7 +212,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
     },
 
-    async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+    async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         const { ledgerId } = input;
         if (!ledgerId) throw new Error("Missing ledgerId in task input");
 
@@ -349,7 +349,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         });
     },
 
-    async onError(error: Error, input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+    async onError(error: Error, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
         if (!input.ledgerId) {
@@ -366,7 +366,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             .where(q.whereId(input.sourceDocumentId));
     },
 
-    async onCancel(input: ParseSourceDocumentInput, context: FlowContext): Promise<void> {
+    async onCancel(input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         logger.info({ sourceDocumentId: input.sourceDocumentId }, "Parse source document task cancelled");
 
         if (!input.ledgerId) {

@@ -74,13 +74,14 @@ describe("LedgerEntryDetailModal", () => {
         categoryId: "c1",
         amount: "100",
         currency: "CNY",
-        sourceDocumentId: null,
+        sourceDocumentId: "sd-1",
         description: null,
-        entryDate: "2023-01-01",
         createdAt: "2023-01-01",
+        updatedAt: "2023-01-01",
         deletedAt: null,
-        metadata: null,
         itemName: "Test Item",
+        convertedAmount: null,
+        exchangeRate: null,
         category: { id: "c1", name: "Food", icon: "food", sortOrder: 0, description: null, createdAt: "", updatedAt: "", deletedAt: null, ledgerId: "l1", isEditable: true }
     };
 

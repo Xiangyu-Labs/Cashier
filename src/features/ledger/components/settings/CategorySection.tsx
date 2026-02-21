@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
-import { toast } from "sonner";
 import { EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 
@@ -15,7 +14,8 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragEndEvent
+    DragEndEvent,
+    UniqueIdentifier
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -142,7 +142,7 @@ export function CategorySection({
     onDeleteCategory,
     onReorderCategories,
     onCategoryCreated,
-    onAutoCategorize,
+    onAutoCategorize: _onAutoCategorize,
 }: CategorySectionProps) {
     const t = useTranslations("Settings");
     const [newCategoryName, setNewCategoryName] = useState("");
@@ -163,7 +163,8 @@ export function CategorySection({
     // Clear input on successful creation - listen to onCategoryCreated change
     useEffect(() => {
         if (onCategoryCreated) {
-            setNewCategoryName("");
+            const timer = setTimeout(() => setNewCategoryName(""), 0);
+            return () => clearTimeout(timer);
         }
     }, [onCategoryCreated]);
 
@@ -189,7 +190,7 @@ export function CategorySection({
         setDraggedCategories([...categories]);
     };
 
-    const handleDragOver = (event: { active: any; over: any }) => {
+    const handleDragOver = (event: { active: { id: UniqueIdentifier }; over: { id: UniqueIdentifier } | null }) => {
         const { active, over } = event;
 
         if (over && active.id !== over.id && draggedCategories) {

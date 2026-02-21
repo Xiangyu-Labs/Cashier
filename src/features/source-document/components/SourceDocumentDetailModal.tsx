@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, memo, useCallback } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -11,7 +11,6 @@ import {
     Tag,
     Coins,
     ChevronDown,
-    Check,
     Trash2,
     FileText,
     Calendar,
@@ -22,9 +21,8 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
-import { cn } from "@/lib/utils"
 import { SUPPORTED_CURRENCIES } from "@/config/currencies"
-import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges, EntriesPendingChanges } from "./SourceDocumentViewDetails"
+import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges } from "./SourceDocumentViewDetails"
 import { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem"
 import { EditableField } from "@/components/ui/editable-field"
 import { Textarea } from "@/components/ui/textarea"
@@ -67,7 +65,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     onUpdateSourceDoc,
     onUpdateEntry,
     onBatchUpdate,
-    onDeleteEntry,
+    onDeleteEntry: _onDeleteEntry,
     onBatchDelete,
     onDelete,
 }: SourceDocumentDetailModalProps) {

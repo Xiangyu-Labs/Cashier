@@ -25,7 +25,7 @@ export async function getLedgerEntryAction(id: string): Promise<import("@/types/
     // Strip large metadata fields from sourceDocument to reduce payload size
     let cleanedSourceDocument = null;
     if (entry.sourceDocument) {
-        const { aiRawResponse, rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
+        const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
         // Strip imageUrls (Base64 encoded images)
          
         const { imageUrls, ...docWithoutImages } = entry.sourceDocument;

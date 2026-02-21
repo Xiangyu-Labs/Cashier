@@ -87,7 +87,7 @@ describe('period-utils', () => {
     });
 
     it('should default to thisMonth for unknown period', () => {
-      const params = { period: 'invalid' as any };
+      const params = { period: 'invalid' as unknown as Parameters<typeof periodToDateRange>[0]['period'] };
       const result = periodToDateRange(params);
 
       // Should behave like thisMonth

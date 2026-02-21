@@ -21,6 +21,10 @@ import { useEffect } from "react";
 import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 
+interface SourceDocumentQueryData extends SourceDocument {
+    ledgerEntries: LedgerEntry[];
+}
+
 interface SourceDocumentDetailWrapperProps {
     id: string;
     open: boolean;
@@ -60,7 +64,7 @@ export function SourceDocumentDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
             const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
 
-            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: SourceDocumentQueryData | undefined) => {
                 if (!old) return old;
                 return { ...old, ...data };
             });
@@ -97,11 +101,11 @@ export function SourceDocumentDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
             const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
 
-            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: SourceDocumentQueryData | undefined) => {
                 if (!old?.ledgerEntries) return old;
                 return {
                     ...old,
-                    ledgerEntries: old.ledgerEntries.map((entry: any) =>
+                    ledgerEntries: old.ledgerEntries.map((entry) =>
                         entry.id === entryId ? { ...entry, ...data } : entry
                     )
                 };
@@ -134,11 +138,11 @@ export function SourceDocumentDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
             const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
 
-            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: SourceDocumentQueryData | undefined) => {
                 if (!old?.ledgerEntries) return old;
                 return {
                     ...old,
-                    ledgerEntries: old.ledgerEntries.map((entry: any) =>
+                    ledgerEntries: old.ledgerEntries.map((entry) =>
                         ids.includes(entry.id) ? { ...entry, ...data } : entry
                     )
                 };
@@ -171,11 +175,11 @@ export function SourceDocumentDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
             const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
 
-            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: SourceDocumentQueryData | undefined) => {
                 if (!old?.ledgerEntries) return old;
                 return {
                     ...old,
-                    ledgerEntries: old.ledgerEntries.filter((entry: any) => entry.id !== entryId)
+                    ledgerEntries: old.ledgerEntries.filter((entry) => entry.id !== entryId)
                 };
             });
 
@@ -206,11 +210,11 @@ export function SourceDocumentDetailWrapper({
             await queryClient.cancelQueries({ queryKey: queryKeys.sourceDocument(id) });
             const previousData = queryClient.getQueryData(queryKeys.sourceDocument(id));
 
-            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: any) => {
+            queryClient.setQueryData(queryKeys.sourceDocument(id), (old: SourceDocumentQueryData | undefined) => {
                 if (!old?.ledgerEntries) return old;
                 return {
                     ...old,
-                    ledgerEntries: old.ledgerEntries.filter((entry: any) => !ids.includes(entry.id))
+                    ledgerEntries: old.ledgerEntries.filter((entry) => !ids.includes(entry.id))
                 };
             });
 
