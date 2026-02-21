@@ -174,14 +174,14 @@ describe("Stage 2 Executor", () => {
     });
 
     describe("API Configuration", () => {
-        it("should use pro model for parsing and flash model for arbitration", async () => {
+        it("should use fast tier for parsing and smart tier for arbitration", async () => {
             let callCount = 0;
             const mockAI: AIContext = {
                 generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
                     callCount++;
                     if (callCount <= 2) {
-                        // Parsing calls should use pro model
-                        expect(opts.model).toBe("gemini-3-flash-preview");
+                        // Parsing calls should use fast tier
+                        expect(opts.model).toBe('fast');
                         return {
                             content: JSON.stringify({
                                 ledger_entries: [{ item_name: "a", amount: callCount * 10, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
@@ -190,8 +190,8 @@ describe("Stage 2 Executor", () => {
                             usage: { promptTokens: 100, completionTokens: 50 },
                         };
                     }
-                    // Arbitration should use pro model
-                    expect(opts.model).toBe("gemini-3-pro-preview");
+                    // Arbitration should use smart tier
+                    expect(opts.model).toBe('smart');
                     return {
                         content: JSON.stringify({ choice: 1, reason: "ok" }),
                         usage: { promptTokens: 100, completionTokens: 50 },

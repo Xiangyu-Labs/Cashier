@@ -1,10 +1,10 @@
 import { getOpenAIClient } from '@/features/ai/server/services/openai'
-import type { AIContext, AIGenerateOptions, AIResponse, TokenUsage } from './types'
+import type { AIContext, AIGenerateOptions, AIResponse, AIModelTier, TokenUsage } from './types'
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from 'openai/resources/chat/completions'
 
 /**
  * Create AI context for task execution
- * 
+ *
  * Provides AI capabilities to tasks with automatic token reporting
  * and abort signal propagation.
  */
@@ -29,8 +29,16 @@ export function createAIContext(
                     }) as ChatCompletionContentPart[],
             })) as ChatCompletionMessageParam[]
 
-            // Get model from options or environment
-            const model = options.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o'
+            // Resolve model tier to concrete model name from environment
+            const modelMap: Record<AIModelTier, string | undefined> = {
+                fast: process.env.AI_MODEL_FAST,
+                smart: process.env.AI_MODEL_SMART,
+            }
+            const model = modelMap[options.model]
+            if (!model) {
+                throw new Error(`AI_MODEL_${options.model.toUpperCase()} environment variable is required`)
+            }
+
             const maxTokens = options.maxTokens ?? 16384
             const temperature = options.temperature ?? 1
 

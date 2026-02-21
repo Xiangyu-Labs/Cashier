@@ -105,7 +105,7 @@ describe("Stage 1.5 Validator", () => {
             expect(callArgs.prompt).toContain("validation AI");
             expect(callArgs.prompt).toContain("Stage 1 Results");
             expect(callArgs.responseFormat).toBe("json_object");
-            expect(callArgs.model).toBe("gemini-3-pro-preview");
+            expect(callArgs.model).toBe('smart');
         });
     });
 });

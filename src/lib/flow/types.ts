@@ -184,6 +184,11 @@ export interface FlowEngine {
 // ===== AI Integration Types =====
 
 /**
+ * AI model tier - business code selects tier, flow engine resolves to concrete model
+ */
+export type AIModelTier = 'fast' | 'smart'
+
+/**
  * Response format for AI generation
  */
 export type AIResponseFormat =
@@ -197,7 +202,7 @@ export type AIResponseFormat =
 export interface AIGenerateOptions {
   prompt: string                      // System prompt
   messages: AIMessage[]               // User messages (can include images)
-  model?: string                      // Model name, defaults to OPENAI_MODEL env
+  model: AIModelTier                  // Required: 'fast' or 'smart' tier
   maxTokens?: number                  // Max output tokens, defaults to 16384
   temperature?: number                // Creativity (0-2), defaults to 1
   responseFormat?: AIResponseFormat   // Output format, defaults to 'text'

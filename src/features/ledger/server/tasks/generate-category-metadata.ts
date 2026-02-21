@@ -45,12 +45,12 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
             input.aiLanguage
         );
 
-        // Use context.ai - uses environment default model (OPENAI_MODEL)
-        // Any errors (network, API key, model not found, etc.) will propagate to onError
+        // Use context.ai with fast tier for category metadata generation
         const { content } = await context.ai.generate({
             prompt,
             messages: [{ role: 'user', content: 'Generate the category metadata as specified.' }],
             responseFormat: 'json_object',
+            model: 'fast',
         });
 
         // Basic JSON extraction

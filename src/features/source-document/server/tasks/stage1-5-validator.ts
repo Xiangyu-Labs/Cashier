@@ -147,7 +147,7 @@ export async function executeStage1_5Validation(
         prompt,
         messages: [{ role: "user", content: messageContent }],
         responseFormat: "json_object",
-        model: "gemini-3-pro-preview",
+        model: 'smart',
     });
 
     const result = parseJsonResponse(response.content, validationOutputSchema);

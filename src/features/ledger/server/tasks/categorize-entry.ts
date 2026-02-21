@@ -117,7 +117,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
             prompt,
             messages: [{ role: "user", content }],
             responseFormat: "json_object",
-            model: "gemini-3-flash-preview",
+            model: 'fast',
         });
 
         // Parse response

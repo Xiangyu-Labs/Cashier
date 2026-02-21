@@ -23,21 +23,16 @@ export class OpenAIClient {
     async generateContent(
         systemPrompt: string,
         messages: ChatCompletionMessageParam[],
-        model?: string,
+        model: string,
         maxTokens?: number,
         temperature?: number,
         responseFormat?: { type: 'text' } | { type: 'json_object' } | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } },
         signal?: AbortSignal
     ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
-        const effectiveModel = model ?? process.env.OPENAI_MODEL;
         const effectiveMaxTokens = maxTokens ?? 16384;
         const effectiveTemperature = temperature ?? 1;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
-
-        if (!effectiveModel) {
-            throw new Error("OPENAI_MODEL is required");
-        }
 
         let lastError: unknown;
 
@@ -49,7 +44,7 @@ export class OpenAIClient {
 
             try {
                 const response = await this.client.chat.completions.create({
-                    model: effectiveModel,
+                    model: model,
                     messages: [
                         { role: "system", content: systemPrompt },
                         ...messages,

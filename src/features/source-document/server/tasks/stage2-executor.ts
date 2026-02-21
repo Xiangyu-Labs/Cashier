@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { AIContext } from "@/lib/flow/types";
+import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type { ValidationSummary, ParsedEntry } from "./types";
 import { buildDetailedParsePrompt } from "./stage2-prompts";
 
@@ -125,8 +125,8 @@ export async function executeStage2(
         input.aiLanguage
     );
 
-    // Use more capable model for detailed parsing
-    const model = "gemini-3-flash-preview";
+    // Use fast tier for dual GPT calls
+    const model: AIModelTier = 'fast';
 
     // Dual GPT calls
     const [response1, response2] = await Promise.all([
@@ -187,7 +187,7 @@ Look for:
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         responseFormat: "json_object",
-        model: "gemini-3-pro-preview", // Use pro for arbitration
+        model: 'smart',
     });
 
     const arbitrationResult = parseJsonResponse(

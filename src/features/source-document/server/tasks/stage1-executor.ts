@@ -14,7 +14,7 @@
  */
 
 import { z } from "zod";
-import type { AIContext } from "@/lib/flow/types";
+import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type {
     ValidityCheckOutput,
     CompletenessCheckOutput,
@@ -122,7 +122,7 @@ async function runDualGptWithArbitration<T>(
     messageContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
     schema: z.ZodSchema<T>,
     ai: AIContext,
-    model: string = "gemini-3-flash-preview",
+    model: AIModelTier = 'fast',
     compareResults: (r1: T, r2: T) => boolean
 ): Promise<{ result: T; reasoning: string; wasArbitrated: boolean }> {
     // Run dual GPT calls in parallel
@@ -178,7 +178,7 @@ Determine which result is more accurate based on the original input.
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         responseFormat: "json_object",
-        model: "gemini-3-pro-preview", // 仲裁使用 pro 模型
+        model: 'smart',
     });
 
     const arbitrationResult = parseJsonResponse(
@@ -213,7 +213,7 @@ export async function executeStage1(
     | { isValid: true; isIncomplete: false; results: Stage1Results }
 > {
     const messageContent = buildMessageContent(input.text, input.imageUrls);
-    const model = "gemini-3-flash-preview";
+    const model: AIModelTier = 'fast';
 
     // Step 1: Check validity first
     const validityPrompt = buildValidityCheckPrompt(input.aiLanguage);
