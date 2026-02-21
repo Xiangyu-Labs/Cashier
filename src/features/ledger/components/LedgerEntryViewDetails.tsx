@@ -12,6 +12,7 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { motion, AnimatePresence } from "framer-motion";
 import { EditableField } from "@/components/ui/editable-field";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "lucide-react";
@@ -179,13 +180,11 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                                     </PopoverContent>
                                 </Popover>
 
-                                {/* Editable Amount - Always edit original currency amount */}
-                                <EditableField
-                                    value={displayData.amount.toFixed(2)}
-                                    onChange={(v) => handleFieldChange("amount", parseFloat(v) || 0)}
-                                    type="number"
-                                    displayClassName="text-2xl sm:text-3xl font-bold text-primary"
-                                    inputClassName="text-2xl sm:text-3xl font-bold text-primary w-28 sm:w-36"
+                                {/* Calculator Amount - Always edit original currency amount */}
+                                <CalculatorInput
+                                    value={displayData.amount}
+                                    onChange={(v) => handleFieldChange("amount", v)}
+                                    displayClassName="text-2xl sm:text-3xl font-bold text-primary font-mono"
                                 />
                             </div>
 

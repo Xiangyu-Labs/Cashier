@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { EditableField } from "@/components/ui/editable-field";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
@@ -176,12 +177,10 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
                     </PopoverContent>
                 </Popover>
 
-                <EditableField
-                    value={parseFloat(displayData.amount).toFixed(2)}
-                    onChange={(v) => handleChange("amount", v)}
-                    type="number"
+                <CalculatorInput
+                    value={parseFloat(displayData.amount)}
+                    onChange={(v) => handleChange("amount", v.toFixed(2))}
                     displayClassName="font-mono font-semibold text-sm text-text"
-                    inputClassName="w-20 text-right font-mono font-semibold text-sm"
                 />
             </div>
 
