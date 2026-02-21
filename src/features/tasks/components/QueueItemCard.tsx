@@ -101,10 +101,11 @@ export const QueueItemCard = memo(function QueueItemCard({
     const canDelete = item.sourceDocumentId && onDelete && (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'running');
     const canDismiss = item.kind === 'task' && item.status === 'failed' && !item.sourceDocumentId && onDismiss;
 
-    // Running tasks with sourceDocumentId get the dropdown menu; running tasks without it keep the direct cancel button
+    // Running tasks without sourceDocumentId get direct cancel button (non-source-document tasks)
     const showDirectCancel = item.status === 'running' && canCancel && !item.sourceDocumentId;
-    // For running tasks with sourceDocumentId, don't show cancel in dropdown (retry already includes cancellation)
-    const showCancelInDropdown = canCancel && !(item.status === 'running' && item.sourceDocumentId);
+    // For tasks with sourceDocumentId (pending/running), don't show cancel in dropdown
+    // Users should use "Edit Retry" (modify+resubmit) or "Delete" (remove data) instead
+    const showCancelInDropdown = canCancel && !item.sourceDocumentId;
     const showDropdown = canRetry || canDelete || canDismiss || showCancelInDropdown;
 
     // Can expand if has source document preview
