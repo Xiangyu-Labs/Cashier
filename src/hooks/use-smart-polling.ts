@@ -7,6 +7,8 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
     interval?: number;
     /** Cooldown interval when no changes detected (default 10000) */
     cooldownInterval?: number;
+    /** Interval when idle (no active tasks). Default: false (stop polling). Set to a number like 60000 to enable background checks. */
+    idleInterval?: number;
 }
 
 /**
@@ -18,7 +20,7 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
 export function useSmartPolling<TData = unknown, TError = unknown>(
     options: SmartPollingOptions<TData, TError>
 ) {
-    const { isActive, interval = 3000, cooldownInterval = 10000, ...queryOptions } = options;
+    const { isActive, interval = 3000, cooldownInterval = 10000, idleInterval, ...queryOptions } = options;
 
     // Track consecutive unchanged polls
     const unchangedCountRef = useRef(0);
@@ -46,7 +48,7 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
             if (!isActive(data)) {
                 // Reset counters when not active
                 unchangedCountRef.current = 0;
-                return false;
+                return idleInterval ?? false;
             }
 
             checkDataChanged(data);

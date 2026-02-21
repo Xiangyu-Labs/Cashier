@@ -27,6 +27,7 @@ export function useTaskQueue(ledgerId: string) {
         queryFn: () => getTaskQueueAction(ledgerId),
         isActive: (data) => (data?.stats?.pendingCount || 0) > 0 || (data?.stats?.runningCount || 0) > 0,
         interval: 3000,
+        idleInterval: 60000, // Check every 60s when idle to detect new tasks from API/other sources
         enabled: !!ledgerId,
     });
 

@@ -26,6 +26,7 @@ export function usePendingSourceDocuments(ledgerId: string) {
         queryFn: () => getPendingSourceDocumentsAction(ledgerId),
         isActive: (data) => (data?.stats?.queuedCount || 0) > 0 || (data?.stats?.processingCount || 0) > 0,
         interval: 3000,
+        idleInterval: 60000, // Check every 60s when idle to detect new documents from API/other sources
     });
 
     return {
