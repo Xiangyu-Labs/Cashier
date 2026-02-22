@@ -166,7 +166,7 @@ export function BatchActionToolbar({
                     >
                         <div className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}>
                             <div className={cn(
-                                "border border-border shadow-lg p-2 sm:p-3",
+                                "border border-border shadow-lg p-2 sm:p-3 bg-surface",
                                 variant === "fixed" && "rounded-xl",
                                 variant === "inline" && "border-x-0 border-b-0"
                             )}>

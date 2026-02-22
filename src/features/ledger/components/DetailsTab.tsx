@@ -279,27 +279,6 @@ export function DetailsTab({
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-4">
-                {/* Expense Summary - Total amount on top, right aligned */}
-                <div className="px-2 pt-1 flex flex-col items-end gap-0.5">
-                    {/* Original currencies breakdown - small text on top */}
-                    {monthStats.hasMultipleCurrencies && (
-                        <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
-                            {monthStats.breakdown.map((b, idx) => (
-                                <span key={b.currency}>
-                                    {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
-                                    <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
-                                </span>
-                            ))}
-                            <span className="text-muted-foreground/50 ml-0.5">=</span>
-                        </div>
-                    )}
-                    {/* Main currency total - large text on bottom */}
-                    <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
-                        <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
-                        {monthStats.mainTotal.toFixed(2)}
-                    </div>
-                </div>
-
                 {/* Filter Section */}
                 <div className="px-2 mb-2 sm:mb-4">
                     <div className="flex items-center gap-2 w-full sm:w-auto">

@@ -77,7 +77,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
                             {displayDiscardLabel}
                         </Button>
                     )}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 justify-end">
                         <DialogClose asChild>
                             <Button variant="outline">{displayCancelLabel}</Button>
                         </DialogClose>
