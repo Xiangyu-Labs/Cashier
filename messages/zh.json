@@ -49,6 +49,7 @@
         "aiCategorizeSkipped": "跳过 {count} 项（快速入账或正在处理中）",
         "categoryChanged": "已更改 {count} 项的分类",
         "setCurrency": "修改货币",
+        "setCurrencyShort": "货币",
         "currencyChanged": "已更改 {count} 项的货币",
         "entriesDeleted": "已删除 {count} 项",
         "deleteConfirmTitle": "删除 {count} 项？",

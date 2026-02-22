@@ -246,7 +246,7 @@ export function BatchActionToolbar({
                                                     <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
                                                 )}
                                                 <span className="hidden sm:inline">{t("setCurrency")}</span>
-                                                <span className="sm:hidden">货币</span>
+                                                <span className="sm:hidden">{t("setCurrencyShort")}</span>
                                                 <ChevronDown className="w-3 h-3 ml-0.5 sm:ml-1 opacity-50" />
                                             </Button>
                                         </DropdownMenuTrigger>
