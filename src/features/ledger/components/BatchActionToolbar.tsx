@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Trash2, ChevronDown, Loader2, Tag } from "lucide-react";
+import { Sparkles, Trash2, ChevronDown, Loader2, Tag, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -16,6 +16,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 
 interface BatchActionToolbarProps {
     selectedCount: number;
@@ -26,11 +27,14 @@ interface BatchActionToolbarProps {
     onClearSelection: () => void;
     onAiCategorize: () => void;
     onChangeCategory: (categoryId: string | null) => void;
+    onChangeCurrency: (currency: string) => void;
     onDelete: () => void;
     categories: EntryCategory[];
+    preferredCurrencies?: string[];
     // Optional loading states from mutations
     isAiCategorizing?: boolean;
     isChangingCategory?: boolean;
+    isChangingCurrency?: boolean;
     isDeleting?: boolean;
 }
 
@@ -43,10 +47,13 @@ export function BatchActionToolbar({
     onClearSelection,
     onAiCategorize,
     onChangeCategory,
+    onChangeCurrency,
     onDelete,
     categories,
+    preferredCurrencies = [],
     isAiCategorizing: isAiCategorizingProp,
     isChangingCategory: isChangingCategoryProp,
+    isChangingCurrency: isChangingCurrencyProp,
     isDeleting: isDeletingProp,
 }: BatchActionToolbarProps) {
     const t = useTranslations("BatchActions");
@@ -56,10 +63,12 @@ export function BatchActionToolbar({
     const [internalAiCategorizing, setInternalAiCategorizing] = useState(false);
     const [internalDeleting, setInternalDeleting] = useState(false);
     const [internalChangingCategory, setInternalChangingCategory] = useState(false);
+    const [internalChangingCurrency, setInternalChangingCurrency] = useState(false);
 
     const isAiCategorizing = isAiCategorizingProp ?? internalAiCategorizing;
     const isDeleting = isDeletingProp ?? internalDeleting;
     const isChangingCategory = isChangingCategoryProp ?? internalChangingCategory;
+    const isChangingCurrency = isChangingCurrencyProp ?? internalChangingCurrency;
 
     const handleAiCategorize = async () => {
         if (isAiCategorizingProp === undefined) {
@@ -102,7 +111,26 @@ export function BatchActionToolbar({
         }
     };
 
-    const isProcessing = isAiCategorizing || isDeleting || isChangingCategory;
+    const handleChangeCurrency = async (currency: string) => {
+        if (isChangingCurrencyProp === undefined) {
+            setInternalChangingCurrency(true);
+            try {
+                await onChangeCurrency(currency);
+            } finally {
+                setInternalChangingCurrency(false);
+            }
+        } else {
+            onChangeCurrency(currency);
+        }
+    };
+
+    const isProcessing = isAiCategorizing || isDeleting || isChangingCategory || isChangingCurrency;
+
+    // Build currency list: preferred first, then others
+    const currencyList = [
+        ...preferredCurrencies.filter(c => SUPPORTED_CURRENCIES.includes(c as typeof SUPPORTED_CURRENCIES[number])),
+        ...SUPPORTED_CURRENCIES.filter(c => !preferredCurrencies.includes(c))
+    ];
 
     return (
         <>
@@ -196,6 +224,39 @@ export function BatchActionToolbar({
                                                 >
                                                     <CategoryIcon iconName={category.icon} className="w-4 h-4 mr-2" />
                                                     {category.name}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    {/* Currency Selection Dropdown */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={isProcessing}
+                                                className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                                            >
+                                                {isChangingCurrency ? (
+                                                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
+                                                ) : (
+                                                    <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+                                                )}
+                                                {t("setCurrency")}
+                                                <ChevronDown className="w-3 h-3 ml-0.5 sm:ml-1 opacity-50" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="center" className="w-32 max-h-64 overflow-y-auto">
+                                            {currencyList.map((currency) => (
+                                                <DropdownMenuItem
+                                                    key={currency}
+                                                    onClick={() => handleChangeCurrency(currency)}
+                                                    className={cn(
+                                                        preferredCurrencies.includes(currency) && "font-medium"
+                                                    )}
+                                                >
+                                                    {currency}
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuContent>

@@ -171,6 +171,7 @@ export function DetailsTab({
     const {
         batchCategorize,
         batchChangeCategory,
+        batchChangeCurrency,
         batchDelete,
     } = useBatchEntryActions(ledgerId, clearSelection);
 
@@ -263,6 +264,11 @@ export function DetailsTab({
     const handleBatchChangeCategory = (categoryId: string | null) => {
         const ids = Array.from(selectedIds);
         batchChangeCategory.mutate({ ids, categoryId });
+    };
+
+    const handleBatchChangeCurrency = (currency: string) => {
+        const ids = Array.from(selectedIds);
+        batchChangeCurrency.mutate({ ids, currency });
     };
 
     const handleBatchDelete = () => {
@@ -436,10 +442,13 @@ export function DetailsTab({
                         onClearSelection={clearSelection}
                         onAiCategorize={handleBatchAiCategorize}
                         onChangeCategory={handleBatchChangeCategory}
+                        onChangeCurrency={handleBatchChangeCurrency}
                         onDelete={handleBatchDelete}
                         categories={categories}
+                        preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                         isAiCategorizing={batchCategorize.isPending}
                         isChangingCategory={batchChangeCategory.isPending}
+                        isChangingCurrency={batchChangeCurrency.isPending}
                         isDeleting={batchDelete.isPending}
                     />
                 )}

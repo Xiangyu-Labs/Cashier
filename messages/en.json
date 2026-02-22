@@ -48,6 +48,8 @@
         "aiCategorizeSubmitted": "Submitted {count} items for AI categorization",
         "aiCategorizeSkipped": "Skipped {count} items (quick entries or already processing)",
         "categoryChanged": "Changed category for {count} items",
+        "setCurrency": "Set Currency",
+        "currencyChanged": "Changed currency for {count} items",
         "entriesDeleted": "Deleted {count} items",
         "deleteConfirmTitle": "Delete {count} items?",
         "deleteConfirmDesc": "This action cannot be undone. The selected entries will be permanently deleted.",

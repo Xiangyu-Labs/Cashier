@@ -43,6 +43,18 @@ export function useBatchEntryActions(ledgerId: string, clearSelection: () => voi
         },
     });
 
+    const batchChangeCurrency = useLedgerMutation(ledgerId, {
+        mutationFn: async ({ ids, currency }: { ids: string[]; currency: string }) => {
+            await batchUpdateLedgerEntriesAction(ledgerId, ids, { currency });
+        },
+        successMessage: "",
+        errorMessage: tCommon("error"),
+        onSuccessExtra: (_data, { ids }) => {
+            toast.success(tBatch("currencyChanged", { count: ids.length }));
+            clearSelection();
+        },
+    });
+
     const batchDelete = useLedgerMutation(ledgerId, {
         mutationFn: async (ids: string[]) => {
             await batchDeleteLedgerEntriesAction(ledgerId, ids);
@@ -58,6 +70,7 @@ export function useBatchEntryActions(ledgerId: string, clearSelection: () => voi
     return {
         batchCategorize,
         batchChangeCategory,
+        batchChangeCurrency,
         batchDelete,
     };
 }
