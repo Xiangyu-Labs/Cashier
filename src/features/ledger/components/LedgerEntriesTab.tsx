@@ -288,12 +288,11 @@ export function LedgerEntriesTab({
                                                 className="space-y-2"
                                             >
                                                 {/* Date Header with indicator and daily total */}
-                                                <div className="py-2 px-2 flex items-center gap-3">
+                                                <div className="py-2 px-2 flex items-center justify-between">
                                                     <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
                                                         {dateGroup.title}
                                                     </h3>
-                                                    <span className="text-[10px] sm:text-xs text-muted-foreground/50">·</span>
                                                     <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
                                                         {ledger?.metadata?.settings?.mainCurrency || 'CNY'} {dateGroup.total.toFixed(2)}
                                                     </span>

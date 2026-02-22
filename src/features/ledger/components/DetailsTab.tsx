@@ -279,64 +279,64 @@ export function DetailsTab({
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-4">
-                {/* Header Section - Responsive layout */}
-                <div className="px-2 mb-2 sm:mb-4 pt-1">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-                        {/* Filter Panel and Select Button */}
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            {/* Select/Cancel button - leftmost position */}
-                            {monthEntries.length > 0 && (
-                                <Button
-                                    variant={selectionMode ? "secondary" : "ghost"}
-                                    size="icon"
-                                    onClick={() => {
-                                        if (selectionMode) {
-                                            clearSelection();
-                                        } else {
-                                            setSelectionMode(true);
-                                        }
-                                    }}
-                                    className="shrink-0 h-8 w-8"
-                                    title={selectionMode ? t("cancelSelect") : t("select")}
-                                >
-                                    {selectionMode ? (
-                                        <X className="w-4 h-4" />
-                                    ) : (
-                                        <CheckSquare className="w-4 h-4" />
-                                    )}
-                                </Button>
-                            )}
-                            <EntryFilterPanel
-                                filters={filters}
-                                onFiltersChange={handleLocalFiltersChange}
-                                periodParams={periodParams}
-                                onPeriodChange={onPeriodChange}
-                                categories={categories}
-                                preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
-                                className="flex-1 sm:flex-none"
-                            />
-                        </div>
-
-                        {/* Expense Summary - Right aligned on desktop, full width on mobile */}
-                        <div className="flex flex-col items-end gap-0.5 py-1 sm:py-0">
-                            {/* Original currencies breakdown - small text on top */}
-                            {monthStats.hasMultipleCurrencies && (
-                                <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
-                                    {monthStats.breakdown.map((b, idx) => (
-                                        <span key={b.currency}>
-                                            {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
-                                            <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
-                                        </span>
-                                    ))}
-                                    <span className="text-muted-foreground/50 ml-0.5">=</span>
-                                </div>
-                            )}
-                            {/* Main currency total - large text on bottom */}
-                            <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
-                                <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
-                                {monthStats.mainTotal.toFixed(2)}
+                {/* Expense Summary - Total amount on top */}
+                <div className="px-2 pt-1">
+                    <div className="flex flex-col items-end gap-0.5">
+                        <div className="text-muted-foreground text-xs">{t("expenseSummary")}</div>
+                        {/* Original currencies breakdown - small text on top */}
+                        {monthStats.hasMultipleCurrencies && (
+                            <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
+                                {monthStats.breakdown.map((b, idx) => (
+                                    <span key={b.currency}>
+                                        {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
+                                        <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
+                                    </span>
+                                ))}
+                                <span className="text-muted-foreground/50 ml-0.5">=</span>
                             </div>
+                        )}
+                        {/* Main currency total - large text on bottom */}
+                        <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
+                            <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
+                            {monthStats.mainTotal.toFixed(2)}
                         </div>
+                    </div>
+                </div>
+
+                {/* Filter Section */}
+                <div className="px-2 mb-2 sm:mb-4">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {/* Select/Cancel button - leftmost position */}
+                        {monthEntries.length > 0 && (
+                            <Button
+                                variant={selectionMode ? "secondary" : "ghost"}
+                                size="icon"
+                                onClick={() => {
+                                    if (selectionMode) {
+                                        clearSelection();
+                                    } else {
+                                        setSelectionMode(true);
+                                    }
+                                }}
+                                className="shrink-0 h-8 w-8"
+                                title={selectionMode ? t("cancelSelect") : t("select")}
+                            >
+                                {selectionMode ? (
+                                    <X className="w-4 h-4" />
+                                ) : (
+                                    <CheckSquare className="w-4 h-4" />
+                                )}
+                            </Button>
+                        )}
+                        <EntryFilterPanel
+                            filters={filters}
+                            onFiltersChange={handleLocalFiltersChange}
+                            periodParams={periodParams}
+                            onPeriodChange={onPeriodChange}
+                            categories={categories}
+                            preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
+                            className="flex-1 sm:flex-none"
+                        />
                     </div>
                 </div>
 
