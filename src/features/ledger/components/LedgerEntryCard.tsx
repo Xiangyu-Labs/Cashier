@@ -42,6 +42,7 @@ export function LedgerEntryCard({
   onToggleSelect,
 }: LedgerEntryCardProps) {
   const t = useTranslations("Common");
+  const tSourceDocumentCard = useTranslations("SourceDocumentCard");
   const { converted } = useConvertedAmount(
     parseFloat(ledgerEntry.amount),
     ledgerEntry.currency,
@@ -100,7 +101,14 @@ export function LedgerEntryCard({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm text-text truncate">{ledgerEntry.itemName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium text-sm text-text truncate">{ledgerEntry.itemName}</p>
+                  {ledgerEntry.sourceDocument?.type === "manual" && (
+                    <span className="text-[10px] text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
+                      {tSourceDocumentCard("quickEntry")}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {ledgerEntry.category ? (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
