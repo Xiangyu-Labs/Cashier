@@ -297,6 +297,8 @@
         "aiLanguageDesc": "Set the language preference for AI recognition and summaries in this ledger",
         "collapseBills": "Collapse Bills by Default",
         "collapseBillsDesc": "If enabled, confirmed bills will have their detail items collapsed by default.",
+        "showMonthlyExpense": "Show Monthly Expense",
+        "showMonthlyExpenseDesc": "Display current month's expense at the top of the home page",
         "aiSettings": "AI Settings",
         "serviceCredentialsSection": "Service Credentials",
         "dataConfig": "Currency & Categories",
@@ -371,7 +373,12 @@
         "primaryLedgerSet": "Primary ledger set successfully",
         "setPrimaryFailed": "Failed to set primary ledger",
         "deleteLedgerConfirmTitle": "Delete Ledger",
-        "deleteLedgerConfirmDesc": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
+        "deleteLedgerConfirmDesc": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        "showMonthlyExpense": "Show Monthly Expense",
+        "showMonthlyExpenseDesc": "Display current month's expense at the top of the home page",
+        "ledgerSettings": "Ledger Settings",
+        "monthStartDay": "Billing Cycle Start",
+        "monthStartDayDesc": "The day of the month when the billing cycle starts"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

@@ -200,20 +200,91 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                             disabled={isPending}
                         />
                     </div>
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* Show Monthly Expense Setting */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('showMonthlyExpense')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('showMonthlyExpenseDesc')}</p>
+                        </div>
+                        <Switch
+                            checked={ledger.metadata?.settings?.showMonthlyExpense !== false}
+                            onCheckedChange={(checked: boolean) => {
+                                updateLedgerMutation.mutate({ showMonthlyExpense: checked });
+                            }}
+                            disabled={isPending}
+                        />
+                    </div>
                 </div>
             </section>
 
-            {/* Ledger Management Section - Collapsible, default closed */}
-            {allLedgers.length > 0 && (
-                <CollapsibleSection title={t('ledgerManagement')} defaultOpen={false}>
-                    <div className="pt-4">
-                        <LedgerManagementSection
-                            ledgerId={ledgerId}
-                            allLedgers={allLedgers}
+            {/* Ledger Settings - Collapsible, default closed (combines management, currency, category, billing cycle) */}
+            <CollapsibleSection title={t('ledgerSettings')} defaultOpen={false}>
+                <div className="space-y-8 pt-4">
+                    {/* Ledger Management */}
+                    {allLedgers.length > 0 && (
+                        <>
+                            <LedgerManagementSection
+                                ledgerId={ledgerId}
+                                allLedgers={allLedgers}
+                            />
+                            <div className="h-px bg-[var(--border)]" />
+                        </>
+                    )}
+
+                    {/* Currency Settings */}
+                    <CurrencySection
+                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
+                        onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
+                    />
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* Category Settings */}
+                    {categories && (
+                        <CategorySection
+                            categories={categories}
+                            uncategorizedCount={uncategorizedCount}
+                            onCreateCategory={(name) => createCategory.mutate({ name })}
+                            onUpdateCategory={(id, data) => updateCategory.mutate({ id, data })}
+                            onDeleteCategory={(id) => deleteCategory.mutate(id)}
+                            onReorderCategories={(ids) => reorderCategories.mutate(ids)}
+                            onCategoryCreated={categoryCreatedTrigger}
+                            onAutoCategorize={async () => {
+                                const result = await submitAutoCategorizeAction(ledgerId);
+                                // Invalidate uncategorized count and task queue after submitting tasks
+                                queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+                                queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+                                return { submittedCount: result.submittedCount, skippedCount: result.skippedCount };
+                            }}
                         />
+                    )}
+
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* Billing Cycle - Month Start Day */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('monthStartDay')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('monthStartDayDesc')}</p>
+                        </div>
+                        <select
+                            value={ledger.metadata?.settings?.monthStartDay || 1}
+                            onChange={(e) => {
+                                updateLedgerMutation.mutate({ monthStartDay: parseInt(e.target.value) });
+                            }}
+                            disabled={isPending}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[100px] disabled:opacity-50"
+                        >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                <option key={day} value={day}>{day}</option>
+                            ))}
+                        </select>
                     </div>
-                </CollapsibleSection>
-            )}
+                </div>
+            </CollapsibleSection>
 
             {/* AI Settings - Collapsible, default closed */}
             <CollapsibleSection title={t('aiSettings')} defaultOpen={false}>
@@ -259,39 +330,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                         placeholder={t('aiPromptPlaceholder')}
                         className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
                     />
-                </div>
-            </CollapsibleSection>
-
-            {/* Data Configuration - Collapsible, default closed */}
-            <CollapsibleSection title={t('dataConfig')} defaultOpen={false}>
-                <div className="space-y-8 pt-4">
-                    {/* Currency Settings */}
-                    <CurrencySection
-                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
-                        onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
-                    />
-
-                    <div className="h-px bg-[var(--border)]" />
-
-                    {/* Category Settings */}
-                    {categories && (
-                        <CategorySection
-                            categories={categories}
-                            uncategorizedCount={uncategorizedCount}
-                            onCreateCategory={(name) => createCategory.mutate({ name })}
-                            onUpdateCategory={(id, data) => updateCategory.mutate({ id, data })}
-                            onDeleteCategory={(id) => deleteCategory.mutate(id)}
-                            onReorderCategories={(ids) => reorderCategories.mutate(ids)}
-                            onCategoryCreated={categoryCreatedTrigger}
-                            onAutoCategorize={async () => {
-                                const result = await submitAutoCategorizeAction(ledgerId);
-                                // Invalidate uncategorized count and task queue after submitting tasks
-                                queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
-                                queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
-                                return { submittedCount: result.submittedCount, skippedCount: result.skippedCount };
-                            }}
-                        />
-                    )}
                 </div>
             </CollapsibleSection>
 

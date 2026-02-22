@@ -301,6 +301,8 @@
         "aiLanguageDesc": "设置此账本内 AI 识别和摘要所使用的语言偏好",
         "collapseBills": "默认折叠账单",
         "collapseBillsDesc": "如果开启，已入账的账单默认收起明细项目。",
+        "showMonthlyExpense": "显示月支出",
+        "showMonthlyExpenseDesc": "在主页顶部显示当月支出金额",
         "aiSettings": "AI 设置",
         "serviceCredentialsSection": "服务凭证",
         "dataConfig": "货币与分类",
@@ -375,7 +377,12 @@
         "primaryLedgerSet": "已设为主账本",
         "setPrimaryFailed": "设置主账本失败",
         "deleteLedgerConfirmTitle": "删除账本",
-        "deleteLedgerConfirmDesc": "确定要删除账本「{name}」吗？此操作无法撤销。"
+        "deleteLedgerConfirmDesc": "确定要删除账本「{name}」吗？此操作无法撤销。",
+        "showMonthlyExpense": "显示月支出",
+        "showMonthlyExpenseDesc": "在主页顶部显示当月支出金额",
+        "ledgerSettings": "账本设置",
+        "monthStartDay": "每月起始日",
+        "monthStartDayDesc": "账单周期从每月第几天开始计算"
     },
     "ServiceCredentials": {
         "title": "服务密钥",

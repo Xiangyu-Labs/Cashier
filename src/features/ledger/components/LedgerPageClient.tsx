@@ -14,6 +14,7 @@ import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
 import { StatsTab } from "./StatsTab";
 import { SettingsTab } from "./SettingsTab";
+import { MonthlyExpenseDisplay } from "./MonthlyExpenseDisplay";
 import {
     Dialog,
     DialogContent,
@@ -194,6 +195,15 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                                 <ListTodo className="h-4 w-4 text-muted-foreground" />
                             )}
                         </Button>
+
+                        {/* Monthly Expense Display */}
+                        {ledger.metadata?.settings?.showMonthlyExpense !== false && (
+                            <MonthlyExpenseDisplay
+                                ledgerId={ledgerId}
+                                monthStartDay={ledger.metadata?.settings?.monthStartDay || 1}
+                                mainCurrency={ledger.metadata?.settings?.mainCurrency || 'CNY'}
+                            />
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
 

@@ -51,9 +51,11 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
             aiLanguage?: string;
             collapseBillsDefault?: boolean;
             aiCustomPrompt?: string;
+            showMonthlyExpense?: boolean;
+            monthStartDay?: number;
         }) => {
             // Transform flat structure to nested structure expected by updateLedgerAction
-            const { name, preferredCurrencies, mainCurrency, aiLanguage, collapseBillsDefault, aiCustomPrompt } = data;
+            const { name, preferredCurrencies, mainCurrency, aiLanguage, collapseBillsDefault, aiCustomPrompt, showMonthlyExpense, monthStartDay } = data;
             const payload: { name?: string; settings?: Record<string, unknown> } = {};
 
             if (name !== undefined) {
@@ -66,6 +68,8 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
             if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
             if (collapseBillsDefault !== undefined) settings.collapseBillsDefault = collapseBillsDefault;
             if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
+            if (showMonthlyExpense !== undefined) settings.showMonthlyExpense = showMonthlyExpense;
+            if (monthStartDay !== undefined) settings.monthStartDay = monthStartDay;
 
             if (Object.keys(settings).length > 0) {
                 payload.settings = settings;
@@ -96,7 +100,9 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
                     newData.mainCurrency !== undefined ||
                     newData.aiLanguage !== undefined ||
                     newData.collapseBillsDefault !== undefined ||
-                    newData.aiCustomPrompt !== undefined) {
+                    newData.aiCustomPrompt !== undefined ||
+                    newData.showMonthlyExpense !== undefined ||
+                    newData.monthStartDay !== undefined) {
 
                     updated.metadata = {
                         ...old.metadata,
@@ -107,6 +113,8 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
                             ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
                             ...(newData.collapseBillsDefault !== undefined && { collapseBillsDefault: newData.collapseBillsDefault }),
                             ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
+                            ...(newData.showMonthlyExpense !== undefined && { showMonthlyExpense: newData.showMonthlyExpense }),
+                            ...(newData.monthStartDay !== undefined && { monthStartDay: newData.monthStartDay }),
                         }
                     };
                 }
