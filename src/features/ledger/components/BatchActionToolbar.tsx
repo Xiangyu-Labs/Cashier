@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Trash2, ChevronDown, Loader2, Tag, DollarSign } from "lucide-react";
+import { Sparkles, Trash2, ChevronDown, Loader2, Tag, DollarSign, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -174,7 +174,7 @@ export function BatchActionToolbar({
 
                                 {/* Bottom row: action buttons */}
                                 <div className="flex items-center gap-1.5 sm:gap-2">
-                                    {/* AI Auto Categorize */}
+                                    {/* AI Auto Categorize - always visible */}
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -187,17 +187,18 @@ export function BatchActionToolbar({
                                         ) : (
                                             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
                                         )}
-                                        {t("aiCategorize")}
+                                        <span className="hidden xs:inline">{t("aiCategorize")}</span>
+                                        <span className="xs:hidden">{t("aiCategorizeShort")}</span>
                                     </Button>
 
-                                    {/* Manual Category Selection Dropdown */}
+                                    {/* Desktop: Category Dropdown */}
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={isProcessing}
-                                                className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                                                className="hidden sm:flex flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
                                             >
                                                 {isChangingCategory ? (
                                                     <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
@@ -229,14 +230,14 @@ export function BatchActionToolbar({
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
-                                    {/* Currency Selection Dropdown */}
+                                    {/* Desktop: Currency Dropdown */}
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={isProcessing}
-                                                className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                                                className="hidden sm:flex flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
                                             >
                                                 {isChangingCurrency ? (
                                                     <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
@@ -262,7 +263,54 @@ export function BatchActionToolbar({
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
-                                    {/* Delete */}
+                                    {/* Mobile: More Menu (Category + Currency) */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={isProcessing}
+                                                className="sm:hidden h-8 px-2"
+                                            >
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                            {/* Category submenu items */}
+                                            <DropdownMenuItem
+                                                onClick={() => handleChangeCategory(null)}
+                                                className="text-muted-foreground"
+                                            >
+                                                <CategoryIcon iconName="CircleSlash" className="w-4 h-4 mr-2 opacity-50" />
+                                                {t("uncategorized")}
+                                            </DropdownMenuItem>
+                                            {categories.slice(0, 5).map((category) => (
+                                                <DropdownMenuItem
+                                                    key={category.id}
+                                                    onClick={() => handleChangeCategory(category.id)}
+                                                >
+                                                    <CategoryIcon iconName={category.icon} className="w-4 h-4 mr-2" />
+                                                    {category.name}
+                                                </DropdownMenuItem>
+                                            ))}
+                                            <DropdownMenuSeparator />
+                                            {/* Currency submenu items */}
+                                            {currencyList.slice(0, 6).map((currency) => (
+                                                <DropdownMenuItem
+                                                    key={currency}
+                                                    onClick={() => handleChangeCurrency(currency)}
+                                                    className={cn(
+                                                        preferredCurrencies.includes(currency) && "font-medium"
+                                                    )}
+                                                >
+                                                    <DollarSign className="w-4 h-4 mr-2" />
+                                                    {currency}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    {/* Delete - always visible */}
                                     <Button
                                         variant="outline"
                                         size="sm"
