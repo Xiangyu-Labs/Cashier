@@ -13,8 +13,6 @@ import {
     ChevronDown,
     Trash2,
     FileText,
-    Calendar,
-    AlignLeft,
     X,
     Save,
     RefreshCw
@@ -26,7 +24,6 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies"
 import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges } from "./SourceDocumentViewDetails"
 import { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem"
 import { EditableField } from "@/components/ui/editable-field"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
 
@@ -85,18 +82,12 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
     const [showRetryDialog, setShowRetryDialog] = useState(false)
 
-    // Batch operation states
-    const [batchDate, setBatchDate] = useState("")
-    const [batchDescription, setBatchDescription] = useState("")
-
     // Reset state when modal opens
     useEffect(() => {
         if (open && sourceDocument) {
             setPendingChanges({ sourceDoc: {}, entries: {} })
             setSelectedIds([])
             setIsSelectionMode(false)
-            setBatchDate("")
-            setBatchDescription("")
         }
     }, [open, sourceDocument])
 
@@ -288,36 +279,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         }
     }
 
-    const handleBatchDate = async () => {
-        if (selectedIds.length === 0 || !batchDate) return
-        setIsSaving(true)
-        try {
-            await onBatchUpdate(selectedIds, { entryDate: batchDate })
-            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
-            setSelectedIds([])
-            setBatchDate("")
-        } catch {
-            toast.error(t("batchUpdateError"))
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
-    const handleBatchDescription = async () => {
-        if (selectedIds.length === 0) return
-        setIsSaving(true)
-        try {
-            await onBatchUpdate(selectedIds, { description: batchDescription })
-            toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
-            setSelectedIds([])
-            setBatchDescription("")
-        } catch {
-            toast.error(t("batchUpdateError"))
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
     const handleBatchDelete = async () => {
         if (selectedIds.length === 0 || !onBatchDelete) return
         if (!confirm(t("confirmDeleteSelected", { count: selectedIds.length }))) return
@@ -479,61 +440,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </PopoverContent>
                                     </Popover>
 
-                                    <Popover modal={true}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {t("batchDate")}
-                                                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-3" align="start">
-                                            <div className="space-y-2">
-                                                <input
-                                                    type="date"
-                                                    value={batchDate}
-                                                    onChange={(e) => setBatchDate(e.target.value)}
-                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    className="w-full h-8"
-                                                    onClick={handleBatchDate}
-                                                    disabled={!batchDate}
-                                                >
-                                                    {tCommon("apply")}
-                                                </Button>
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-
-                                    <Popover modal={true}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
-                                                <AlignLeft className="h-3 w-3" />
-                                                {t("batchDescription")}
-                                                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-64 p-3" align="start">
-                                            <div className="space-y-2">
-                                                <Textarea
-                                                    value={batchDescription}
-                                                    onChange={(e) => setBatchDescription(e.target.value)}
-                                                    placeholder={t("batchDescriptionPlaceholder")}
-                                                    className="min-h-[60px] text-xs"
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    className="w-full h-8"
-                                                    onClick={handleBatchDescription}
-                                                >
-                                                    {tCommon("apply")}
-                                                </Button>
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-
                                     {onBatchDelete && (
                                         <Button
                                             variant="outline"
@@ -546,17 +452,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         </Button>
                                     )}
                                 </div>
-
-                                <div className="flex-1" />
-
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-[10px]"
-                                    onClick={() => setSelectedIds([])}
-                                >
-                                    {t("deselectAll")}
-                                </Button>
                             </div>
                         </motion.div>
                     )}
