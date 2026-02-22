@@ -28,6 +28,7 @@ async function submitCategorizeTasksForEntries(
         currency: string | null;
         description: string | null;
         sourceDocument?: {
+            type?: string | null;
             entryDate: string | null;
             text: string | null;
             imageUrls: string[] | null;
@@ -91,8 +92,8 @@ async function submitCategorizeTasksForEntries(
     let skippedCount = 0;
 
     for (const entry of entries) {
-        // Skip entries that already have a category (e.g., manual entries)
-        if (entry.categoryId) {
+        // Skip quick entries (manual type source documents) - user's explicit choice
+        if (entry.sourceDocument?.type === 'manual') {
             skippedCount++;
             continue;
         }

@@ -24,6 +24,9 @@ export function useBatchEntryActions(ledgerId: string, clearSelection: () => voi
             if (result.submittedCount > 0) {
                 toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
             }
+            if (result.skippedCount > 0) {
+                toast.info(tBatch("aiCategorizeSkipped", { count: result.skippedCount }));
+            }
             clearSelection();
         },
     });

@@ -46,6 +46,7 @@
         "delete": "Delete",
         "uncategorized": "Uncategorized",
         "aiCategorizeSubmitted": "Submitted {count} items for AI categorization",
+        "aiCategorizeSkipped": "Skipped {count} items (quick entries or already processing)",
         "categoryChanged": "Changed category for {count} items",
         "entriesDeleted": "Deleted {count} items",
         "deleteConfirmTitle": "Delete {count} items?",
