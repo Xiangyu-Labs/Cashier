@@ -30,7 +30,7 @@ export function CalculatorInput({
 }: CalculatorInputProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [state, setState] = React.useState<CalculatorState>({
-        displayValue: value.toFixed(2),
+        displayValue: value === 0 ? "0" : value.toFixed(2),
         operator: null,
         operand: "",
         hasResult: false,
@@ -40,7 +40,7 @@ export function CalculatorInput({
     React.useEffect(() => {
         if (isOpen) {
             setState({
-                displayValue: value.toFixed(2),
+                displayValue: value === 0 ? "0" : value.toFixed(2),
                 operator: null,
                 operand: "",
                 hasResult: false,
@@ -137,7 +137,7 @@ export function CalculatorInput({
     const handleDelete = () => {
         setState(prev => {
             if (prev.hasResult) {
-                return { displayValue: value.toFixed(2), operator: null, operand: "", hasResult: false };
+                return { displayValue: value === 0 ? "0" : value.toFixed(2), operator: null, operand: "", hasResult: false };
             }
             if (!prev.operator) {
                 const newDisplay = prev.displayValue.slice(0, -1) || "0";
