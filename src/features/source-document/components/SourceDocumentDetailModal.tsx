@@ -4,13 +4,8 @@ import { useState, useMemo, useEffect, memo, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api"
-import { CategoryIcon } from "@/components/CategoryIcon"
 import {
-    Tag,
-    Coins,
-    ChevronDown,
     Trash2,
     FileText,
     X,
@@ -20,12 +15,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { SUPPORTED_CURRENCIES } from "@/config/currencies"
 import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges } from "./SourceDocumentViewDetails"
 import { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem"
 import { EditableField } from "@/components/ui/editable-field"
-import { Badge } from "@/components/ui/badge"
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
+import { BatchActionToolbar } from "@/features/ledger/components/BatchActionToolbar"
 
 interface SourceDocumentDetailModalProps {
     ledgerId: string
@@ -281,7 +275,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
     const handleBatchDelete = async () => {
         if (selectedIds.length === 0 || !onBatchDelete) return
-        if (!confirm(t("confirmDeleteSelected", { count: selectedIds.length }))) return
 
         setIsSaving(true)
         try {
@@ -299,12 +292,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         onDelete?.()
         setShowDeleteConfirm(false)
     }
-
-    const sortedCurrencies = useMemo(() => {
-        const preferred = preferredCurrencies.filter(c => c !== "unknown")
-        const remaining = SUPPORTED_CURRENCIES.filter(c => !preferred.includes(c))
-        return [...preferred, ...remaining.sort()]
-    }, [preferredCurrencies])
 
     // Display title with pending changes
     const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument?.title ?? ""
@@ -375,87 +362,22 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 </div>
 
                 {/* Batch Actions Toolbar - appears when entries are selected */}
-                <AnimatePresence>
-                    {selectedIds.length > 0 && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="shrink-0 px-4 py-2 border-t bg-primary/5 border-primary/20"
-                        >
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="default" className="bg-primary/20 text-primary border-none">
-                                    {t("selectedCount", { count: selectedIds.length })}
-                                </Badge>
-
-                                <div className="h-4 w-px bg-border mx-1" />
-
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <Popover modal={true}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
-                                                <Tag className="h-3 w-3" />
-                                                {t("batchCategory")}
-                                                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-48 p-1" align="start">
-                                            <div className="max-h-48 overflow-y-auto">
-                                                {categories.map(cat => (
-                                                    <Button
-                                                        key={cat.id}
-                                                        variant="ghost"
-                                                        className="w-full justify-start text-xs h-8 gap-2 px-2"
-                                                        onClick={() => handleBatchCategory(cat.id)}
-                                                    >
-                                                        <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
-                                                        {cat.name}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-
-                                    <Popover modal={true}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1">
-                                                <Coins className="h-3 w-3" />
-                                                {t("batchCurrency")}
-                                                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-32 p-1" align="start">
-                                            <div className="max-h-48 overflow-y-auto">
-                                                {sortedCurrencies.map(curr => (
-                                                    <Button
-                                                        key={curr}
-                                                        variant="ghost"
-                                                        className="w-full justify-start text-xs h-8 px-2"
-                                                        onClick={() => handleBatchCurrency(curr)}
-                                                    >
-                                                        {curr}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-
-                                    {onBatchDelete && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-7 text-[10px] px-2 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                            onClick={handleBatchDelete}
-                                        >
-                                            <Trash2 className="h-3 w-3" />
-                                            {tCommon("delete")}
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <BatchActionToolbar
+                    selectedCount={selectedIds.length}
+                    totalCount={ledgerEntries.length}
+                    isAllSelected={selectedIds.length === ledgerEntries.length}
+                    onSelectAll={() => handleSelectAllEntries(true)}
+                    onClearSelection={() => handleSelectAllEntries(false)}
+                    onChangeCategory={(categoryId) => handleBatchCategory(categoryId ?? "")}
+                    onChangeCurrency={handleBatchCurrency}
+                    onDelete={onBatchDelete ? handleBatchDelete : undefined}
+                    categories={categories}
+                    preferredCurrencies={preferredCurrencies}
+                    isChangingCategory={isSaving}
+                    isChangingCurrency={isSaving}
+                    isDeleting={isSaving}
+                    variant="inline"
+                />
 
                 {/* Bottom Actions */}
                 <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-50">

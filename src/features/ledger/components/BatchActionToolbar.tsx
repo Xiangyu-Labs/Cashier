@@ -25,10 +25,10 @@ interface BatchActionToolbarProps {
     hasMoreData?: boolean;
     onSelectAll: () => void;
     onClearSelection: () => void;
-    onAiCategorize: () => void;
+    onAiCategorize?: () => void;  // Optional - not all contexts support AI categorization
     onChangeCategory: (categoryId: string | null) => void;
     onChangeCurrency: (currency: string) => void;
-    onDelete: () => void;
+    onDelete?: () => void;  // Optional - not all contexts support batch delete
     categories: EntryCategory[];
     preferredCurrencies?: string[];
     // Optional loading states from mutations
@@ -36,6 +36,8 @@ interface BatchActionToolbarProps {
     isChangingCategory?: boolean;
     isChangingCurrency?: boolean;
     isDeleting?: boolean;
+    // Layout variant
+    variant?: "fixed" | "inline";  // "fixed" for full-screen, "inline" for modal/container
 }
 
 export function BatchActionToolbar({
@@ -55,6 +57,7 @@ export function BatchActionToolbar({
     isChangingCategory: isChangingCategoryProp,
     isChangingCurrency: isChangingCurrencyProp,
     isDeleting: isDeletingProp,
+    variant = "fixed",
 }: BatchActionToolbarProps) {
     const t = useTranslations("BatchActions");
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -71,6 +74,8 @@ export function BatchActionToolbar({
     const isChangingCurrency = isChangingCurrencyProp ?? internalChangingCurrency;
 
     const handleAiCategorize = async () => {
+        if (!onAiCategorize) return;
+
         if (isAiCategorizingProp === undefined) {
             setInternalAiCategorizing(true);
             try {
@@ -84,6 +89,8 @@ export function BatchActionToolbar({
     };
 
     const handleDelete = async () => {
+        if (!onDelete) return;
+
         if (isDeletingProp === undefined) {
             setInternalDeleting(true);
             try {
@@ -126,25 +133,42 @@ export function BatchActionToolbar({
 
     const isProcessing = isAiCategorizing || isDeleting || isChangingCategory || isChangingCurrency;
 
+    // Determine if AI categorize should be shown
+    const showAiCategorize = onAiCategorize !== undefined;
+    // Determine if delete should be shown
+    const showDelete = onDelete !== undefined;
+
     // Build currency list: preferred first, then others
     const currencyList = [
         ...preferredCurrencies.filter(c => SUPPORTED_CURRENCIES.includes(c as typeof SUPPORTED_CURRENCIES[number])),
         ...SUPPORTED_CURRENCIES.filter(c => !preferredCurrencies.includes(c))
     ];
 
+    // Container classes based on variant
+    const containerClasses = variant === "fixed"
+        ? "fixed bottom-0 left-0 right-0 z-50 px-2 sm:px-4 pb-2 sm:pb-4 pointer-events-none"
+        : "shrink-0 pointer-events-auto";
+
+    const innerWrapperClasses = variant === "fixed"
+        ? "max-w-lg mx-auto pointer-events-auto"
+        : "";
+
     return (
         <>
             <AnimatePresence>
                 {selectedCount > 0 && (
                     <motion.div
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 100, opacity: 0 }}
+                        initial={variant === "fixed" ? { y: 100, opacity: 0 } : { height: 0, opacity: 0 }}
+                        animate={variant === "fixed" ? { y: 0, opacity: 1 } : { height: "auto", opacity: 1 }}
+                        exit={variant === "fixed" ? { y: 100, opacity: 0 } : { height: 0, opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed bottom-0 left-0 right-0 z-50 px-2 sm:px-4 pb-2 sm:pb-4 pointer-events-none"
+                        className={containerClasses}
                     >
-                        <div className="max-w-lg mx-auto pointer-events-auto">
-                            <div className="bg-surface border border-border rounded-xl shadow-lg p-2 sm:p-3">
+                        <div className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}>
+                            <div className={cn(
+                                "border border-border rounded-xl shadow-lg p-2 sm:p-3",
+                                variant === "inline" && "rounded-none border-x-0 border-b-0 rounded-t-xl"
+                            )}>
                                 {/* Top row: selection info */}
                                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                                     <div className="flex flex-col">
@@ -174,22 +198,24 @@ export function BatchActionToolbar({
 
                                 {/* Bottom row: action buttons */}
                                 <div className="flex items-center gap-1 sm:gap-2">
-                                    {/* AI Auto Categorize - flex-1 */}
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAiCategorize}
-                                        disabled={isProcessing}
-                                        className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-                                    >
-                                        {isAiCategorizing ? (
-                                            <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
-                                        ) : (
-                                            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
-                                        )}
-                                        <span className="hidden sm:inline">{t("aiCategorize")}</span>
-                                        <span className="sm:hidden">{t("aiCategorizeShort")}</span>
-                                    </Button>
+                                    {/* AI Auto Categorize - flex-1 (only shown when supported) */}
+                                    {showAiCategorize && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAiCategorize}
+                                            disabled={isProcessing}
+                                            className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                                        >
+                                            {isAiCategorizing ? (
+                                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
+                                            ) : (
+                                                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+                                            )}
+                                            <span className="hidden sm:inline">{t("aiCategorize")}</span>
+                                            <span className="sm:hidden">{t("aiCategorizeShort")}</span>
+                                        </Button>
+                                    )}
 
                                     {/* Category Dropdown - flex-1 */}
                                     <DropdownMenu>
@@ -265,24 +291,26 @@ export function BatchActionToolbar({
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
-                                    {/* Delete - fixed width */}
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setDeleteConfirmOpen(true)}
-                                        disabled={isProcessing}
-                                        className={cn(
-                                            "h-8 sm:h-9 px-2 sm:px-3",
-                                            "text-destructive hover:text-destructive hover:bg-destructive/10",
-                                            "border-destructive/30"
-                                        )}
-                                    >
-                                        {isDeleting ? (
-                                            <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-                                        ) : (
-                                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                        )}
-                                    </Button>
+                                    {/* Delete - fixed width (only shown when supported) */}
+                                    {showDelete && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setDeleteConfirmOpen(true)}
+                                            disabled={isProcessing}
+                                            className={cn(
+                                                "h-8 sm:h-9 px-2 sm:px-3",
+                                                "text-destructive hover:text-destructive hover:bg-destructive/10",
+                                                "border-destructive/30"
+                                            )}
+                                        >
+                                            {isDeleting ? (
+                                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                            )}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -290,15 +318,17 @@ export function BatchActionToolbar({
                 )}
             </AnimatePresence>
 
-            <ConfirmDialog
-                open={deleteConfirmOpen}
-                onOpenChange={setDeleteConfirmOpen}
-                title={t("deleteConfirmTitle", { count: selectedCount })}
-                description={t("deleteConfirmDesc")}
-                onConfirm={handleDelete}
-                variant="destructive"
-                confirmLabel={t("delete")}
-            />
+            {showDelete && (
+                <ConfirmDialog
+                    open={deleteConfirmOpen}
+                    onOpenChange={setDeleteConfirmOpen}
+                    title={t("deleteConfirmTitle", { count: selectedCount })}
+                    description={t("deleteConfirmDesc")}
+                    onConfirm={handleDelete}
+                    variant="destructive"
+                    confirmLabel={t("delete")}
+                />
+            )}
         </>
     );
 }
