@@ -2,11 +2,11 @@
 
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
 import Image from "next/image";
-import { type ReactNode, useMemo, useState, memo, useCallback } from "react";
+import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckCircle2, CheckSquare, X } from "lucide-react";
+import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckSquare, X } from "lucide-react";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -144,13 +144,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     }, [ledgerEntries]);
 
     const isAnomaly = sourceDocument.status === "anomaly";
-    const allSelected = selectedEntryIds.length === ledgerEntries.length && ledgerEntries.length > 0;
     const hasImages = (sourceDocument.imageUrls?.length ?? 0) > 0;
     const hasRawText = sourceDocument.text && sourceDocument.text.trim().length > 0;
-
-    const handleSelectAll = useCallback(() => {
-        onSelectAllEntries(!allSelected);
-    }, [allSelected, onSelectAllEntries]);
 
     return (
         <div className="h-full flex flex-col gap-4">
@@ -241,23 +236,6 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
                             {t("entries")} ({ledgerEntries.length})
                         </span>
-                        {isSelectionMode && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-[10px] px-2"
-                                onClick={handleSelectAll}
-                            >
-                                {allSelected ? (
-                                    <>
-                                        <CheckCircle2 className="h-3 w-3 mr-1 text-primary" />
-                                        {t("deselectAll")}
-                                    </>
-                                ) : (
-                                    t("selectAll")
-                                )}
-                            </Button>
-                        )}
                     </div>
                 </div>
 
