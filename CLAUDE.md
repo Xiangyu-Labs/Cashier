@@ -102,3 +102,8 @@ Required in `.env.local`:
 - `AUTH_SECRET` - Session signing key
 - `AUTH_RESEND_KEY` - Resend API key for Magic Links
 - `OPENAI_API_KEY` - For AI features
+
+## Workflow
+
+### Task Completion
+After completing a significant task or feature implementation, always ask the user whether to commit and push or continue adjusting. Present options using the `<options>` XML block at the end of the response.
