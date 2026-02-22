@@ -130,13 +130,13 @@ async function runDualGptWithArbitration<T>(
         ai.generate({
             prompt,
             messages: [{ role: "user", content: messageContent }],
-            responseFormat: "json_object",
+            requireJson: true,
             model,
         }),
         ai.generate({
             prompt,
             messages: [{ role: "user", content: messageContent }],
-            responseFormat: "json_object",
+            requireJson: true,
             model,
         }),
     ]);
@@ -177,7 +177,7 @@ Determine which result is more accurate based on the original input.
     const arbitrationResponse = await ai.generate({
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
-        responseFormat: "json_object",
+        requireJson: true,
         model: 'smart',
     });
 
@@ -244,7 +244,7 @@ export async function executeStage1(
             const response = await ai.generate({
                 prompt: buildCompletenessCheckPrompt(input.aiLanguage),
                 messages: [{ role: "user", content: messageContent }],
-                responseFormat: "json_object",
+                requireJson: true,
                 model,
             });
             return parseJsonResponse(response.content, completenessSchema);
@@ -277,7 +277,7 @@ export async function executeStage1(
             const response = await ai.generate({
                 prompt: buildTitleExtractionPrompt(input.aiLanguage),
                 messages: [{ role: "user", content: messageContent }],
-                responseFormat: "json_object",
+                requireJson: true,
                 model,
             });
             return parseJsonResponse(response.content, titleSchema);
@@ -291,7 +291,7 @@ export async function executeStage1(
             const response = await ai.generate({
                 prompt: buildUserRequirementsPrompt(input.aiLanguage, input.aiCustomPrompt),
                 messages: [{ role: "user", content: messageContent }],
-                responseFormat: "json_object",
+                requireJson: true,
                 model,
             });
             return parseJsonResponse(response.content, rulesSchema);

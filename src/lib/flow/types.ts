@@ -192,14 +192,6 @@ export interface FlowEngine {
 export type AIModelTier = 'fast' | 'smart' | 'text'
 
 /**
- * Response format for AI generation
- */
-export type AIResponseFormat =
-  | 'text'
-  | 'json_object'
-  | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } }
-
-/**
  * Options for AI generation
  */
 export interface AIGenerateOptions {
@@ -208,7 +200,7 @@ export interface AIGenerateOptions {
   model: AIModelTier                  // Required: 'fast', 'smart', or 'text' tier
   maxTokens?: number                  // Max output tokens, defaults to 16384
   temperature?: number                // Creativity (0-2), defaults to 1
-  responseFormat?: AIResponseFormat   // Output format, defaults to 'text'
+  requireJson?: boolean               // Require valid JSON response, defaults to false
   autoReportTokens?: boolean          // Auto-report tokens, defaults to true
 }
 

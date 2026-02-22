@@ -49,7 +49,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<GenerateCategoryMe
         const { content } = await context.ai.generate({
             prompt,
             messages: [{ role: 'user', content: 'Generate the category metadata as specified.' }],
-            responseFormat: 'json_object',
+            requireJson: true,
             model: 'text',
         });
 

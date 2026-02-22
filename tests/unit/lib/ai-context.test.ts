@@ -201,5 +201,19 @@ describe('AI Context', () => {
 
             expect(result.content).toBeDefined()
         })
+
+        it('returns cleaned JSON content when requireJson is true', async () => {
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
+            const result = await aiContext.generate({
+                prompt: 'Test prompt',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'fast',
+                requireJson: true,
+            })
+
+            // The mock returns valid JSON, so content should be returned as-is (after extraction)
+            expect(result.content).toBe('{"result": "success"}')
+        })
     })
 })

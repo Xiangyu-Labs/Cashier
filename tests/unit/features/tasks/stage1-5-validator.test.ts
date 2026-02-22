@@ -104,7 +104,7 @@ describe("Stage 1.5 Validator", () => {
             const callArgs = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
             expect(callArgs.prompt).toContain("validation AI");
             expect(callArgs.prompt).toContain("Stage 1 Results");
-            expect(callArgs.responseFormat).toBe("json_object");
+            expect(callArgs.requireJson).toBe(true);
             expect(callArgs.model).toBe('smart');
         });
     });

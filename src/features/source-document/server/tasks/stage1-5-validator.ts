@@ -146,7 +146,7 @@ export async function executeStage1_5Validation(
     const response = await ai.generate({
         prompt,
         messages: [{ role: "user", content: messageContent }],
-        responseFormat: "json_object",
+        requireJson: true,
         model: 'smart',
     });
 

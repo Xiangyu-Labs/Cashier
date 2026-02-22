@@ -133,13 +133,13 @@ export async function executeStage2(
         ai.generate({
             prompt,
             messages: [{ role: "user", content: messageContent }],
-            responseFormat: "json_object",
+            requireJson: true,
             model,
         }),
         ai.generate({
             prompt,
             messages: [{ role: "user", content: messageContent }],
-            responseFormat: "json_object",
+            requireJson: true,
             model,
         }),
     ]);
@@ -186,7 +186,7 @@ Look for:
     const arbitrationResponse = await ai.generate({
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
-        responseFormat: "json_object",
+        requireJson: true,
         model: 'smart',
     });
 

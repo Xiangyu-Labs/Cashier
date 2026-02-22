@@ -1,6 +1,8 @@
 import { getOpenAIClient } from '@/features/ai/server/services/openai'
 import type { AIContext, AIGenerateOptions, AIResponse, AIModelTier, TokenUsage } from './types'
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from 'openai/resources/chat/completions'
+import { isValidJson, extractJson, buildRepairPrompt } from './json-utils'
+import { logger } from '@/lib/logger'
 
 /**
  * Create AI context for task execution
@@ -43,17 +45,10 @@ export function createAIContext(
             const maxTokens = options.maxTokens ?? 16384
             const temperature = options.temperature ?? 1
 
-            // Build response format for OpenAI
-            let responseFormat: { type: 'text' } | { type: 'json_object' } | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } } | undefined
-            if (options.responseFormat) {
-                if (options.responseFormat === 'text') {
-                    responseFormat = { type: 'text' }
-                } else if (options.responseFormat === 'json_object') {
-                    responseFormat = { type: 'json_object' }
-                } else {
-                    responseFormat = options.responseFormat
-                }
-            }
+            // Build response format for OpenAI based on requireJson
+            const responseFormat = options.requireJson
+                ? { type: 'json_object' as const }
+                : undefined
 
             // Call OpenAI (signal is passed internally for cancellation)
             const result = await client.generateContent(
@@ -65,6 +60,57 @@ export function createAIContext(
                 responseFormat,
                 signal
             )
+
+            // === JSON validation and repair (internal to task center) ===
+            if (options.requireJson) {
+                const extracted = extractJson(result.content)
+
+                if (!isValidJson(extracted)) {
+                    logger.warn({ content: result.content.substring(0, 500) }, 'AI returned invalid JSON, attempting repair')
+
+                    // Use text model for repair (via AIModelTier selection)
+                    const textModel = modelMap['text']
+                    if (!textModel) {
+                        throw new Error('AI_MODEL_TEXT is required for JSON repair')
+                    }
+
+                    const repairPrompt = buildRepairPrompt(result.content)
+
+                    // Internal call to client.generateContent, not through generate()
+                    // to avoid recursion - this is an internal implementation detail
+                    const repairResult = await client.generateContent(
+                        repairPrompt,
+                        [{ role: 'user', content: 'Please fix the JSON.' }],
+                        textModel,
+                        16384,
+                        1,
+                        { type: 'json_object' },
+                        signal
+                    )
+
+                    const repairedExtracted = extractJson(repairResult.content)
+
+                    if (!isValidJson(repairedExtracted)) {
+                        logger.error({
+                            original: result.content.substring(0, 500),
+                            repaired: repairResult.content.substring(0, 500)
+                        }, 'JSON repair failed')
+                        throw new Error('AI returned invalid JSON and repair attempt also failed')
+                    }
+
+                    logger.info('JSON repair successful')
+                    result.content = repairedExtracted
+
+                    // Merge token usage statistics
+                    if (result.usage && repairResult.usage) {
+                        result.usage.promptTokens += repairResult.usage.promptTokens
+                        result.usage.completionTokens += repairResult.usage.completionTokens
+                    }
+                } else {
+                    // Use extracted content (stripped markdown etc.)
+                    result.content = extracted
+                }
+            }
 
             // Auto-report tokens unless disabled
             if (options.autoReportTokens !== false && result.usage) {

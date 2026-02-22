@@ -116,7 +116,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
         const response = await ai.generate({
             prompt,
             messages: [{ role: "user", content }],
-            responseFormat: "json_object",
+            requireJson: true,
             model: 'text',
         });
 
