@@ -272,6 +272,11 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
               </span>
             </>
           )}
+          {sourceDocument.type === "manual" && (
+            <span className="text-xs text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
+              {t("quickEntry")}
+            </span>
+          )}
         </div>
 
         {/* 右侧 - 状态、金额和菜单 */}
@@ -303,7 +308,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                {onRetry && (
+                {onRetry && sourceDocument.type !== "manual" && (
                   <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
                     {status === "queued" || status === "processing" || status === "failed" ? tCommon("retry") : t("editRetry")}

@@ -18,6 +18,14 @@ export const SourceDocumentStatus = {
 
 export type SourceDocumentStatusType = typeof SourceDocumentStatus[keyof typeof SourceDocumentStatus];
 
+// Source Document Types
+export const SourceDocumentType = {
+    AiParsed: "ai_parsed",
+    Manual: "manual",
+} as const;
+
+export type SourceDocumentTypeValue = typeof SourceDocumentType[keyof typeof SourceDocumentType];
+
 // SourceDocuments (原始凭证)
 export const sourceDocuments = sqliteTable("source_documents", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -32,6 +40,7 @@ export const sourceDocuments = sqliteTable("source_documents", {
         .default([]),
 
     status: text("status").notNull().default("queued"),
+    type: text("type").notNull().default("ai_parsed"),
     anomalyReason: text("anomaly_reason"),  // 异常原因（直接显示给用户）
     entryDate: text("entry_date"),  // 交易日期 yyyy-MM-dd 格式
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),

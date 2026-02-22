@@ -18,7 +18,9 @@
         "history": "Stream",
         "details": "Details",
         "stats": "Stats",
-        "newRecord": "New Record"
+        "newRecord": "New Record",
+        "aiParse": "AI Parse",
+        "quickEntry": "Quick Entry"
     },
     "LedgerItem": {
         "totalExpense": "Total Expense ({count} entries)"
@@ -147,7 +149,19 @@
         "currencyBreakdown": "Currency Breakdown",
         "convertedTotal": "Converted",
         "image": "Images",
-        "imageAlt": "Image {index}"
+        "imageAlt": "Image {index}",
+        "quickEntry": "Quick Entry"
+    },
+    "QuickEntryForm": {
+        "selectCategory": "Select a category",
+        "amount": "Amount",
+        "itemName": "Item name (optional)",
+        "itemNamePlaceholder": "Defaults to category name: ",
+        "record": "Record",
+        "quickEntrySuccess": "Recorded successfully",
+        "quickEntryError": "Failed to record",
+        "amountRequired": "Please enter an amount",
+        "categoryRequired": "Please select a category"
     },
     "Common": {
         "confirm": "Confirm",

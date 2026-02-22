@@ -21,6 +21,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
+import { QuickEntryForm } from "@/features/source-document/components/QuickEntryForm";
+import { cn } from "@/lib/utils";
 import { TaskQueueModal } from "@/features/task-queue/components/TaskQueueModal";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/useTaskQueue";
 import { useTranslations } from "next-intl";
@@ -124,6 +126,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     }, []);
 
     const [isInputOpen, setIsInputOpen] = useState(false);
+    const [inputMode, setInputMode] = useState<"ai" | "quick">("ai");
     const [isPendingOpen, setIsPendingOpen] = useState(false);
 
     // Fetch task queue data for the header button
@@ -257,15 +260,53 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                 </Tabs>
             </main>
 
-            <Dialog open={isInputOpen} onOpenChange={setIsInputOpen}>
+            <Dialog open={isInputOpen} onOpenChange={(open) => {
+                setIsInputOpen(open);
+                if (!open) setInputMode("ai");
+            }}>
                 <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl">
                     <DialogHeader>
                         <DialogTitle>{t("newRecord")}</DialogTitle>
                     </DialogHeader>
-                    <SourceDocumentInput
-                        ledgerId={ledgerId}
-                        onSuccess={() => setIsInputOpen(false)}
-                    />
+
+                    {/* Mode Toggle */}
+                    <div className="flex gap-1 p-1 bg-surface2 rounded-lg">
+                        <button
+                            onClick={() => setInputMode("ai")}
+                            className={cn(
+                                "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                                inputMode === "ai"
+                                    ? "bg-surface text-text shadow-sm"
+                                    : "text-muted-foreground hover:text-text"
+                            )}
+                        >
+                            {t("aiParse")}
+                        </button>
+                        <button
+                            onClick={() => setInputMode("quick")}
+                            className={cn(
+                                "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                                inputMode === "quick"
+                                    ? "bg-surface text-text shadow-sm"
+                                    : "text-muted-foreground hover:text-text"
+                            )}
+                        >
+                            {t("quickEntry")}
+                        </button>
+                    </div>
+
+                    {inputMode === "ai" ? (
+                        <SourceDocumentInput
+                            ledgerId={ledgerId}
+                            onSuccess={() => setIsInputOpen(false)}
+                        />
+                    ) : (
+                        <QuickEntryForm
+                            ledgerId={ledgerId}
+                            categories={categories}
+                            onSuccess={() => setIsInputOpen(false)}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 

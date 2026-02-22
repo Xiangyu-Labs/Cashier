@@ -18,7 +18,9 @@
         "history": "流水",
         "details": "明细",
         "stats": "统计",
-        "newRecord": "记一笔"
+        "newRecord": "记一笔",
+        "aiParse": "智能记账",
+        "quickEntry": "快速记账"
     },
     "LedgerItem": {
         "totalExpense": "总支出 ({count} 笔)"
@@ -148,7 +150,19 @@
         "currencyBreakdown": "货币明细",
         "convertedTotal": "折合",
         "image": "图片",
-        "imageAlt": "图片 {index}"
+        "imageAlt": "图片 {index}",
+        "quickEntry": "快速记账"
+    },
+    "QuickEntryForm": {
+        "selectCategory": "选择分类",
+        "amount": "金额",
+        "itemName": "名称（可选）",
+        "itemNamePlaceholder": "默认使用分类名称：",
+        "record": "记一笔",
+        "quickEntrySuccess": "记录成功",
+        "quickEntryError": "记录失败",
+        "amountRequired": "请输入金额",
+        "categoryRequired": "请选择分类"
     },
     "Common": {
         "confirm": "确认",

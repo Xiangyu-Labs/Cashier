@@ -574,15 +574,17 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             <Trash2 className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">{tCommon("delete")}</span>
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 px-3 gap-1.5 text-muted-foreground"
-                            onClick={() => setShowRetryDialog(true)}
-                        >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">{t("editRetry")}</span>
-                        </Button>
+                        {sourceDocument?.type !== "manual" && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-3 gap-1.5 text-muted-foreground"
+                                onClick={() => setShowRetryDialog(true)}
+                            >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">{t("editRetry")}</span>
+                            </Button>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
