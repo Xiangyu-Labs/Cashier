@@ -160,8 +160,7 @@ describe("SettingsTab", () => {
         );
 
         expect(screen.getByText("appearance")).toBeDefined();
-        expect(screen.getByText("aiSettings")).toBeDefined();
-        expect(screen.getByText("dataConfig")).toBeDefined();
+        expect(screen.getByText("ledgerSettings")).toBeDefined();
     });
 
     it("handles theme switching", () => {
@@ -192,9 +191,9 @@ describe("SettingsTab", () => {
             </QueryClientProvider>
         );
 
-        // Expand the AI Settings section first (it's collapsed by default)
-        const aiSettingsButton = screen.getByText("aiSettings");
-        await user.click(aiSettingsButton);
+        // Expand the Ledger Settings section first (AI settings are now inside, collapsed by default)
+        const ledgerSettingsButton = screen.getByText("ledgerSettings");
+        await user.click(ledgerSettingsButton);
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
         await user.type(textarea, "New Custom Prompt");

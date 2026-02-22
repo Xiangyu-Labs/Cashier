@@ -23,6 +23,8 @@ const updateLedgerSchema = z.object({
         mainCurrency: z.string().optional(),
         collapseBillsDefault: z.boolean().optional(),
         aiCustomPrompt: z.string().optional(),
+        showMonthlyExpense: z.boolean().optional(),
+        monthStartDay: z.number().min(1).max(31).optional(),
     }).optional(),
 });
 

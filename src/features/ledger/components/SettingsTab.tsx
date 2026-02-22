@@ -283,53 +283,52 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                             ))}
                         </select>
                     </div>
-                </div>
-            </CollapsibleSection>
 
-            {/* AI Settings - Collapsible, default closed */}
-            <CollapsibleSection title={t('aiSettings')} defaultOpen={false}>
-                {/* AI Language Setting */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
-                    <div>
-                        <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
-                        <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
+                    <div className="h-px bg-[var(--border)]" />
+
+                    {/* AI Language Setting */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
+                        </div>
+                        <select
+                            value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
+                            onChange={(e) => {
+                                updateLedgerMutation.mutate({ aiLanguage: e.target.value });
+                            }}
+                            disabled={isPending}
+                            className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
+                        >
+                            {AI_LANGUAGES.map(lang => (
+                                <option key={lang.value} value={lang.value}>{lang.label}</option>
+                            ))}
+                        </select>
                     </div>
-                    <select
-                        value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
-                        onChange={(e) => {
-                            updateLedgerMutation.mutate({ aiLanguage: e.target.value });
-                        }}
-                        disabled={isPending}
-                        className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
-                    >
-                        {AI_LANGUAGES.map(lang => (
-                            <option key={lang.value} value={lang.value}>{lang.label}</option>
-                        ))}
-                    </select>
-                </div>
 
-                <div className="h-px bg-[var(--border)]" />
+                    <div className="h-px bg-[var(--border)]" />
 
-                {/* AI Prompt */}
-                <div className="space-y-4">
-                    <div>
-                        <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
-                        <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
+                    {/* AI Prompt */}
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
+                            <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
+                        </div>
+                        <textarea
+                            value={localAiPrompt}
+                            onChange={(e) => {
+                                setLocalAiPrompt(e.target.value);
+                            }}
+                            onBlur={() => {
+                                if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
+                                    updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
+                                }
+                            }}
+                            disabled={isPending}
+                            placeholder={t('aiPromptPlaceholder')}
+                            className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
+                        />
                     </div>
-                    <textarea
-                        value={localAiPrompt}
-                        onChange={(e) => {
-                            setLocalAiPrompt(e.target.value);
-                        }}
-                        onBlur={() => {
-                            if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
-                                updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
-                            }
-                        }}
-                        disabled={isPending}
-                        placeholder={t('aiPromptPlaceholder')}
-                        className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
-                    />
                 </div>
             </CollapsibleSection>
 
