@@ -318,35 +318,23 @@ export function DetailsTab({
                         </div>
 
                         {/* Expense Summary - Right aligned on desktop, full width on mobile */}
-                        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1 py-1 sm:py-0">
-                            <div className="text-muted-foreground text-xs sm:text-[10px]">{t("expenseSummary")}</div>
-                            <div className="flex items-baseline gap-1.5 flex-wrap justify-end">
-                                {monthStats.hasMultipleCurrencies ? (
-                                    <>
-                                        {/* Original currencies breakdown - small text */}
-                                        <span className="text-[10px] font-mono text-muted-foreground opacity-80">
-                                            {monthStats.breakdown.map((b, idx) => (
-                                                <span key={b.currency}>
-                                                    {idx > 0 && <span className="mx-0.5 opacity-50">·</span>}
-                                                    {b.currency || "?"} {b.total.toFixed(0)}
-                                                </span>
-                                            ))}
+                        <div className="flex flex-col items-end gap-0.5 py-1 sm:py-0">
+                            {/* Original currencies breakdown - small text on top */}
+                            {monthStats.hasMultipleCurrencies && (
+                                <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
+                                    {monthStats.breakdown.map((b, idx) => (
+                                        <span key={b.currency}>
+                                            {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
+                                            <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
                                         </span>
-                                        {/* Approximately equals */}
-                                        <span className="text-sm text-muted-foreground">≈</span>
-                                        {/* Main currency total */}
-                                        <span className="text-lg sm:text-xl font-bold font-mono tracking-tight leading-none">
-                                            <span className="text-xs text-muted-foreground font-normal mr-0.5">{monthStats.mainCurrency}</span>
-                                            {monthStats.mainTotal.toFixed(2)}
-                                        </span>
-                                    </>
-                                ) : (
-                                    /* Single currency - just show total */
-                                    <span className="text-lg sm:text-xl font-bold font-mono tracking-tight leading-none">
-                                        <span className="text-xs text-muted-foreground font-normal mr-0.5">{monthStats.mainCurrency}</span>
-                                        {monthStats.mainTotal.toFixed(2)}
-                                    </span>
-                                )}
+                                    ))}
+                                    <span className="text-muted-foreground/50 ml-0.5">=</span>
+                                </div>
+                            )}
+                            {/* Main currency total - large text on bottom */}
+                            <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
+                                <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
+                                {monthStats.mainTotal.toFixed(2)}
                             </div>
                         </div>
                     </div>
@@ -362,12 +350,11 @@ export function DetailsTab({
                                 exit={{ opacity: 0 }}
                                 className="space-y-2"
                             >
-                                <div className="py-2 px-2 flex items-center gap-3">
+                                <div className="py-2 px-2 flex items-center justify-between">
                                     <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
                                         {group.title}
                                     </h3>
-                                    <span className="text-[10px] sm:text-xs text-muted-foreground/50">·</span>
                                     <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
                                         {monthStats.mainCurrency} {group.total.toFixed(2)}
                                     </span>
