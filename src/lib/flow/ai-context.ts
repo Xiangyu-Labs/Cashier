@@ -33,6 +33,7 @@ export function createAIContext(
             const modelMap: Record<AIModelTier, string | undefined> = {
                 fast: process.env.AI_MODEL_FAST,
                 smart: process.env.AI_MODEL_SMART,
+                text: process.env.AI_MODEL_TEXT,
             }
             const model = modelMap[options.model]
             if (!model) {

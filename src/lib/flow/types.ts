@@ -185,8 +185,11 @@ export interface FlowEngine {
 
 /**
  * AI model tier - business code selects tier, flow engine resolves to concrete model
+ * - fast: multimodal (vision+text), low cost, high throughput
+ * - smart: multimodal (vision+text), high cost, arbitration/validation
+ * - text: text-only, lowest cost, categorization/metadata tasks
  */
-export type AIModelTier = 'fast' | 'smart'
+export type AIModelTier = 'fast' | 'smart' | 'text'
 
 /**
  * Response format for AI generation
@@ -202,7 +205,7 @@ export type AIResponseFormat =
 export interface AIGenerateOptions {
   prompt: string                      // System prompt
   messages: AIMessage[]               // User messages (can include images)
-  model: AIModelTier                  // Required: 'fast' or 'smart' tier
+  model: AIModelTier                  // Required: 'fast', 'smart', or 'text' tier
   maxTokens?: number                  // Max output tokens, defaults to 16384
   temperature?: number                // Creativity (0-2), defaults to 1
   responseFormat?: AIResponseFormat   // Output format, defaults to 'text'

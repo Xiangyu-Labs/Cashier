@@ -27,6 +27,7 @@ describe('AI Context', () => {
         // Set required env vars for tests
         process.env.AI_MODEL_FAST = 'test-fast-model'
         process.env.AI_MODEL_SMART = 'test-smart-model'
+        process.env.AI_MODEL_TEXT = 'test-text-model'
     })
 
     afterEach(() => {
@@ -141,6 +142,45 @@ describe('AI Context', () => {
                 messages: [{ role: 'user', content: 'Hello' }],
                 model: 'smart',
             })).rejects.toThrow('AI_MODEL_SMART environment variable is required')
+        })
+
+        it('generates content with text tier', async () => {
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
+            const result = await aiContext.generate({
+                prompt: 'Test prompt',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'text',
+            })
+
+            expect(result.content).toBe('{"result": "success"}')
+        })
+
+        it('uses text model from environment', async () => {
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
+            await aiContext.generate({
+                prompt: 'Test prompt',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'text',
+            })
+
+            expect(reportTokensSpy).toHaveBeenCalledWith({
+                model: 'test-text-model',
+                input: 100,
+                output: 50,
+            })
+        })
+
+        it('throws error when AI_MODEL_TEXT is not set', async () => {
+            delete process.env.AI_MODEL_TEXT
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
+            await expect(aiContext.generate({
+                prompt: 'Test prompt',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'text',
+            })).rejects.toThrow('AI_MODEL_TEXT environment variable is required')
         })
 
         it('supports image messages', async () => {

@@ -112,8 +112,9 @@ Required in `.env.local`:
 **OpenAI Configuration:**
 - `OPENAI_API_KEY` - Your OpenAI API Key
 - `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies or compatible APIs
-- `AI_MODEL_FAST` - Fast model for high-volume extraction (e.g., `gpt-4o-mini`)
-- `AI_MODEL_SMART` - Smart model for arbitration/validation (e.g., `gpt-4o`)
+- `AI_MODEL_FAST` - Fast model for high-volume extraction (e.g., `gpt-4o-mini`, needs vision)
+- `AI_MODEL_SMART` - Smart model for arbitration/validation (e.g., `gpt-4o`, needs vision)
+- `AI_MODEL_TEXT` - Text-only model for categorization (e.g., `gpt-4o-mini`, no vision needed)
 - `AI_MAX_RETRIES` - (Optional) Max retry attempts, default 3
 - `AI_RETRY_DELAY_MS` - (Optional) Retry delay in ms, default 1000
 
