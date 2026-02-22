@@ -281,24 +281,28 @@ export function DetailsTab({
             <div className="space-y-4">
                 {/* Expense Summary - Total amount on top */}
                 <div className="px-2 pt-1">
-                    <div className="flex flex-col items-end gap-0.5">
-                        <div className="text-muted-foreground text-xs">{t("expenseSummary")}</div>
-                        {/* Original currencies breakdown - small text on top */}
-                        {monthStats.hasMultipleCurrencies && (
-                            <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
-                                {monthStats.breakdown.map((b, idx) => (
-                                    <span key={b.currency}>
-                                        {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
-                                        <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
-                                    </span>
-                                ))}
-                                <span className="text-muted-foreground/50 ml-0.5">=</span>
+                    <div className="flex items-center justify-between">
+                        {/* Label on the left */}
+                        <div className="text-sm text-muted-foreground">{t("expenseSummary")}</div>
+                        {/* Amount on the right */}
+                        <div className="flex flex-col items-end gap-0.5">
+                            {/* Original currencies breakdown - small text on top */}
+                            {monthStats.hasMultipleCurrencies && (
+                                <div className="text-[10px] font-mono text-muted-foreground/70 flex items-center gap-1">
+                                    {monthStats.breakdown.map((b, idx) => (
+                                        <span key={b.currency}>
+                                            {idx > 0 && <span className="text-muted-foreground/30 mx-0.5">+</span>}
+                                            <span>{b.currency || "?"} {b.total.toFixed(0)}</span>
+                                        </span>
+                                    ))}
+                                    <span className="text-muted-foreground/50 ml-0.5">=</span>
+                                </div>
+                            )}
+                            {/* Main currency total - large text on bottom */}
+                            <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
+                                <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
+                                {monthStats.mainTotal.toFixed(2)}
                             </div>
-                        )}
-                        {/* Main currency total - large text on bottom */}
-                        <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
-                            <span className="text-sm text-muted-foreground font-normal mr-1">{monthStats.mainCurrency}</span>
-                            {monthStats.mainTotal.toFixed(2)}
                         </div>
                     </div>
                 </div>
