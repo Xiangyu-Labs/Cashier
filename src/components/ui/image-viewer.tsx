@@ -183,6 +183,7 @@ export function ImageViewer({
                                 style={{
                                     transform: `translate(${position.x}px, ${position.y}px) rotate(${rotation}deg) scale(${scale})`,
                                 }}
+                                draggable={false}
                             />
                         </motion.div>
                     </AnimatePresence>
