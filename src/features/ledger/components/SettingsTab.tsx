@@ -113,40 +113,42 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
         <div className="space-y-6 sm:space-y-8">
-            {/* Appearance Settings - Always visible */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('appearance')}</h2>
-                <div className="space-y-6">
+            {/* Appearance Settings - Collapsible */}
+            <CollapsibleSection title={t('appearance')} defaultOpen={true}>
+                <div className="space-y-6 pt-4">
                     {/* Theme Setting */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-base font-medium">{t('theme')}</h3>
                             <p className="text-sm text-[var(--muted)]">{t('themeDescription')}</p>
                         </div>
-                        <div className="flex bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
+                        <div className="flex w-full sm:w-auto bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
                             <button
                                 onClick={() => setTheme("system")}
-                                className={`p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 p-1.5 rounded-md transition-all ${theme === 'system' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeAuto')}
                                 disabled={isPending}
                             >
                                 <Monitor className="h-4 w-4" />
+                                <span className="sm:hidden text-xs">{t('themeAuto')}</span>
                             </button>
                             <button
                                 onClick={() => setTheme("light")}
-                                className={`p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 p-1.5 rounded-md transition-all ${theme === 'light' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeLight')}
                                 disabled={isPending}
                             >
                                 <Sun className="h-4 w-4" />
+                                <span className="sm:hidden text-xs">{t('themeLight')}</span>
                             </button>
                             <button
                                 onClick={() => setTheme("dark")}
-                                className={`p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 p-1.5 rounded-md transition-all ${theme === 'dark' ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
                                 title={t('themeDark')}
                                 disabled={isPending}
                             >
                                 <Moon className="h-4 w-4" />
+                                <span className="sm:hidden text-xs">{t('themeDark')}</span>
                             </button>
                         </div>
                     </div>
@@ -218,7 +220,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                         />
                     </div>
                 </div>
-            </section>
+            </CollapsibleSection>
 
             {/* Ledger Settings - Collapsible, default closed (combines management, currency, category, billing cycle) */}
             <CollapsibleSection title={t('ledgerSettings')} defaultOpen={false}>
@@ -332,10 +334,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                 </div>
             </CollapsibleSection>
 
-            {/* Account Settings - Always visible */}
-            <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] p-4 sm:p-6">
-                <h2 className="text-lg font-medium mb-6">{t('account')}</h2>
-                <div className="space-y-6">
+            {/* Account Settings - Collapsible */}
+            <CollapsibleSection title={t('account')} defaultOpen={true}>
+                <div className="space-y-6 pt-4">
                     {/* Service Credentials */}
                     <ServiceCredentialSection
                         credentials={credentials || []}
@@ -361,7 +362,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                         </button>
                     </div>
                 </div>
-            </section>
+            </CollapsibleSection>
         </div >
         </PullToRefresh>
     );
