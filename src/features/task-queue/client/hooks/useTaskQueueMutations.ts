@@ -244,7 +244,8 @@ export function useTaskQueueMutations(ledgerId: string) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
         },
-        onSettled: () => {
+        onSettled: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });
@@ -274,7 +275,8 @@ export function useTaskQueueMutations(ledgerId: string) {
                 queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
             }
         },
-        onSettled: () => {
+        onSettled: async () => {
+            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
             queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
         }
     });

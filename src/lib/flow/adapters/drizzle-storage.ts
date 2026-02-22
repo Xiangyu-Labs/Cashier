@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { taskRuns } from '@/lib/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, isNull } from 'drizzle-orm'
 import type {
   StorageAdapter,
   TaskInput,
@@ -68,7 +68,7 @@ export function createDrizzleStorage(): StorageAdapter {
       await db
         .update(taskRuns)
         .set(updateData)
-        .where(eq(taskRuns.id, id))
+        .where(and(eq(taskRuns.id, id), isNull(taskRuns.deletedAt)))
     },
 
     async get(id: string): Promise<TaskRecord | null> {

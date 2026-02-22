@@ -22,6 +22,7 @@ async function submitCategorizeTasksForEntries(
     ledgerId: string,
     entries: Array<{
         id: string;
+        categoryId: string | null;
         itemName: string;
         amount: string;
         currency: string | null;
@@ -90,6 +91,13 @@ async function submitCategorizeTasksForEntries(
     let skippedCount = 0;
 
     for (const entry of entries) {
+        // Skip entries that already have a category (e.g., manual entries)
+        if (entry.categoryId) {
+            skippedCount++;
+            continue;
+        }
+
+        // Skip entries with pending tasks (duplicate prevention)
         if (pendingEntryIds.has(entry.id)) {
             skippedCount++;
             continue;
