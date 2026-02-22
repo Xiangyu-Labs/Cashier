@@ -10,7 +10,6 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     env: {
       NODE_ENV: "test",
-      REDIS_URL: "redis://127.0.0.1:6380",
     },
     coverage: {
       provider: "v8",

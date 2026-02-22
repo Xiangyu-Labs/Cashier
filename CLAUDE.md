@@ -12,6 +12,7 @@ Cashier is an AI-powered bookkeeping application that uses LLMs to parse receipt
 # Development
 npm run dev              # Start dev server
 npm run build            # Production build
+npm run start            # Start production server
 npm run lint             # ESLint
 
 # Testing (uses in-memory SQLite, no external DB needed)
@@ -28,10 +29,13 @@ npm run db:push          # Push schema changes
 npm run db:generate      # Generate migrations
 npm run db:migrate       # Run migrations
 npm run db:studio        # Launch Drizzle Studio GUI
+npm run db:drop          # Drop database
 
 # Docker
 npm run docker:dev       # Dev with hot reload
+npm run docker:build     # Build Docker image
 npm run docker:prod      # Production deployment
+npm run docker:down      # Stop containers
 ```
 
 ## Architecture
@@ -39,9 +43,10 @@ npm run docker:prod      # Production deployment
 ### Directory Structure
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
-- `src/features/` - Domain modules, each self-contained with `server/` (actions, services, schema), `components/`, and `client/` (hooks)
+- `src/features/` - Domain modules: `ai`, `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `tasks`. Each self-contained with `server/` (actions, services, schema), `components/`, and `client/` (hooks)
 - `src/lib/` - Core infrastructure: `db/` (Drizzle), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
+- `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
 - `messages/` - Translation files (en.json, zh.json) for next-intl
 - `tests/` - Unit tests in `unit/`, integration tests in `integration/`, shared fixtures in `fixtures/`
 
@@ -61,6 +66,8 @@ src/features/{domain}/
 ### Key Architectural Decisions
 
 **Server Actions over API Routes**: All data mutations use Server Actions. API Routes exist only for NextAuth and a minimal v1 public API.
+
+**Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
 **In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are registered in `src/instrumentation.ts`.
 
@@ -98,10 +105,32 @@ src/features/{domain}/
 
 ### Environment Variables
 Required in `.env.local`:
+
+**Database:**
 - `DATABASE_URL` - SQLite path (e.g., `file:./data/sqlite.db`)
-- `AUTH_SECRET` - Session signing key
-- `AUTH_RESEND_KEY` - Resend API key for Magic Links
-- `OPENAI_API_KEY` - For AI features
+
+**OpenAI Configuration:**
+- `OPENAI_API_KEY` - Your OpenAI API Key
+- `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies or compatible APIs
+- `AI_MODEL_FAST` - Fast model for high-volume extraction (e.g., `gpt-4o-mini`)
+- `AI_MODEL_SMART` - Smart model for arbitration/validation (e.g., `gpt-4o`)
+- `AI_MAX_RETRIES` - (Optional) Max retry attempts, default 3
+- `AI_RETRY_DELAY_MS` - (Optional) Retry delay in ms, default 1000
+
+**Authentication:**
+- `AUTH_SECRET` - Secret key for signing cookies and tokens
+- `AUTH_URL` - Base URL for auth callbacks (e.g., `http://localhost:3000`)
+- `AUTH_RESEND_KEY` - Resend API key for OTP emails
+- `AUTH_EMAIL_FROM` - Email address for sending OTPs
+- `AUTH_RATE_LIMIT_MAX` - (Optional) Max login attempts, default 5
+- `AUTH_RATE_LIMIT_WINDOW` - (Optional) Rate limit window in seconds, default 60
+- `DISABLE_REGISTRATION` - (Optional) Set to 'true' to disable new registrations
+
+**App Configuration:**
+- `NEXT_PUBLIC_APP_URL` - Public app URL for frontend
+- `APP_DOMAIN` - (Optional) Application domain
+- `LOG_LEVEL` - (Optional) Logging level (debug, info, warn, error), default info
+- `MAX_TASK_WORKER` - (Optional) Maximum concurrent background tasks, default 10
 
 ## Workflow
 
