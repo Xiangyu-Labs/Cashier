@@ -198,7 +198,7 @@ export interface AIGenerateOptions {
   prompt: string                      // System prompt
   messages: AIMessage[]               // User messages (can include images)
   model: AIModelTier                  // Required: 'fast', 'smart', or 'text' tier
-  maxTokens?: number                  // Max output tokens, defaults to 16384
+  maxTokens?: number                  // Max output tokens, defaults to 8192
   temperature?: number                // Creativity (0-2), defaults to 1
   requireJson?: boolean               // Require valid JSON response, defaults to false
   autoReportTokens?: boolean          // Auto-report tokens, defaults to true

@@ -42,7 +42,7 @@ export function createAIContext(
                 throw new Error(`AI_MODEL_${options.model.toUpperCase()} environment variable is required`)
             }
 
-            const maxTokens = options.maxTokens ?? 16384
+            const maxTokens = options.maxTokens ?? 8192
             const temperature = options.temperature ?? 1
 
             // Build response format for OpenAI based on requireJson
@@ -82,7 +82,7 @@ export function createAIContext(
                         repairPrompt,
                         [{ role: 'user', content: 'Please fix the JSON.' }],
                         textModel,
-                        16384,
+                        8192,
                         1,
                         { type: 'json_object' },
                         signal

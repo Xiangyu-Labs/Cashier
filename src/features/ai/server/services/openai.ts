@@ -29,7 +29,7 @@ export class OpenAIClient {
         responseFormat?: { type: 'text' } | { type: 'json_object' } | { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean } },
         signal?: AbortSignal
     ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
-        const effectiveMaxTokens = maxTokens ?? 16384;
+        const effectiveMaxTokens = maxTokens ?? 8192;
         const effectiveTemperature = temperature ?? 1;
         const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
         const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
