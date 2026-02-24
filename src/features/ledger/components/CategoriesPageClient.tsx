@@ -341,7 +341,7 @@ export function CategoriesPageClient({ ledgerId, categories: initialCategories }
             </main>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent>
+                <DialogContent aria-describedby={undefined}>
                     <DialogHeader>
                         <DialogTitle>{editingCategory ? t("editCategory") : t("newCategory")}</DialogTitle>
                     </DialogHeader>

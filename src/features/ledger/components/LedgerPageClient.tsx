@@ -274,7 +274,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                 setIsInputOpen(open);
                 if (!open) setInputMode("ai");
             }}>
-                <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl">
+                <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl" aria-describedby={undefined}>
                     <DialogHeader>
                         <DialogTitle>{t("newRecord")}</DialogTitle>
                     </DialogHeader>

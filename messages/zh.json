@@ -143,8 +143,8 @@
         "retry": "编辑重试"
     },
     "SourceDocumentCard": {
-        "collapseContent": "折叠内容",
-        "viewContent": "查看内容",
+        "expand": "展开",
+        "collapse": "折叠",
         "records": "{count} 笔记录",
         "requireEdit": "(待修正)",
         "viewDetails": "查看详情",

@@ -163,7 +163,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg">
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg" aria-describedby={undefined}>
           <VisuallyHidden.Root>
             <DialogTitle>{t("unsavedChanges")}</DialogTitle>
           </VisuallyHidden.Root>

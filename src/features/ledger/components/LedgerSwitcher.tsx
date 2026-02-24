@@ -117,7 +117,7 @@ export function LedgerSwitcher({ currentLedgerId, currentLedgerName, ledgers = [
             </Popover>
 
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogContent>
+                <DialogContent aria-describedby={undefined}>
                     <DialogHeader>
                         <DialogTitle>{t("newLedger")}</DialogTitle>
                     </DialogHeader>

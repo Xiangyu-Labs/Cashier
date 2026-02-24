@@ -278,7 +278,7 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
 
             {/* Create Ledger Dialog */}
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogContent>
+                <DialogContent aria-describedby={undefined}>
                     <DialogHeader>
                         <DialogTitle>{tLedgerSwitcher("newLedger")}</DialogTitle>
                     </DialogHeader>

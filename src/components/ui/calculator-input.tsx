@@ -192,7 +192,7 @@ export function CalculatorInput({
             </button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="w-72 max-w-[calc(100vw-2rem)] p-4 gap-0 [&>button:last-child]:hidden">
+                <DialogContent className="w-72 max-w-[calc(100vw-2rem)] p-4 gap-0 [&>button:last-child]:hidden" aria-describedby={undefined}>
                     <VisuallyHidden.Root>
                         <DialogTitle>Calculator</DialogTitle>
                     </VisuallyHidden.Root>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, memo, useCallback } from "react"
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api"
@@ -301,8 +301,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             <DialogContent
                     className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border"
                     onOpenAutoFocus={(e) => e.preventDefault()}
+                    aria-describedby={undefined}
                 >
                 <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
+                    <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         <FileText className="h-5 w-5" />
                     </div>

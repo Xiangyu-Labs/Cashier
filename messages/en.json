@@ -142,8 +142,8 @@
         "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
     },
     "SourceDocumentCard": {
-        "collapseContent": "Collapse Content",
-        "viewContent": "View Content",
+        "expand": "Expand",
+        "collapse": "Collapse",
         "records": "{count} {count, plural, one {entry} other {entries}}",
         "requireEdit": "(Correction Required)",
         "viewDetails": "View Details",
