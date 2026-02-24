@@ -81,6 +81,22 @@ export function extractJson(content: string): string {
  * Build repair prompt for fixing malformed JSON
  */
 export function buildRepairPrompt(originalContent: string): string {
+  const hasJson = originalContent.includes('{') || originalContent.includes('[')
+
+  if (!hasJson) {
+    return `You are a JSON extraction assistant. The AI model was supposed to return a JSON object but instead returned natural language text. Extract the relevant information from the text below and format it as a valid JSON object.
+
+Rules:
+1. Identify what structured data the text is describing
+2. Convert it into a proper JSON object
+3. Return ONLY the JSON object, no explanations or markdown
+
+Text to convert:
+${originalContent}
+
+Return the JSON object now:`
+  }
+
   return `You are a JSON repair assistant. Fix the malformed JSON content below.
 
 Rules:

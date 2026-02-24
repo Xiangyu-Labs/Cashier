@@ -14,6 +14,7 @@
  */
 
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type {
     ValidityCheckOutput,
@@ -100,7 +101,12 @@ function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T {
     cleaned = cleaned.trim();
 
     const parsed = JSON.parse(cleaned);
-    return schema.parse(parsed);
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+        logger.error({ content: cleaned.substring(0, 500), errors: result.error.issues }, 'Zod validation failed for AI response')
+        throw result.error;
+    }
+    return result.data;
 }
 
 // ===== Stage 1 Input Interface =====

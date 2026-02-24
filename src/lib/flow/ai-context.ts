@@ -62,7 +62,9 @@ export function createAIContext(
 
             // === JSON validation and repair (internal to task center) ===
             if (options.requireJson) {
+                logger.debug({ rawContent: result.content.substring(0, 1000) }, 'AI raw response (requireJson)')
                 const extracted = extractJson(result.content)
+                logger.debug({ extracted: extracted.substring(0, 1000) }, 'AI extracted JSON')
 
                 if (!isValidJson(extracted)) {
                     logger.warn({ content: result.content.substring(0, 500) }, 'AI returned invalid JSON, attempting repair')

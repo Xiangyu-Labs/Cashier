@@ -10,8 +10,7 @@ export function buildCategoryMetadataPrompt(
         .map(c => `- ${c.name}: ${c.description || "无描述"} (图标: ${c.icon || "无"})`)
         .join("\n");
 
-    const prompt = `
-You are a helpful assistant for a ledger application.
+    const prompt = `You are a helpful assistant for a ledger application. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 Your task is to suggest a suitable icon and a short description for a new category created by the user.
 
 Analyze the existing category system to understand the style and granularity.

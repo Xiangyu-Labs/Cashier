@@ -6,7 +6,7 @@
  */
 
 export function buildValidityCheckPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a financial document validation AI.
+    return `You are a financial document validation AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Determine if the input is a valid financial record that contains at least one identifiable monetary amount.
@@ -19,12 +19,12 @@ Determine if the input is a valid financial record that contains at least one id
    - The content is not financial in nature
 3. Provide reasoning in the user's preferred language: ${aiLanguage}
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {"is_valid": boolean, "reasoning": "..."}`;
 }
 
 export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a financial document completeness checker.
+    return `You are a financial document completeness checker. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Determine if this financial record can be accurately recorded for bookkeeping.
@@ -61,7 +61,7 @@ Look at all "visible" line items:
 ### Core Principle
 > As long as a usable amount can be determined (either total or sum of line items), judge as COMPLETE.
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 If COMPLETE: {"is_complete": true}
 If INCOMPLETE: {"is_complete": false, "issue": "Description in ${aiLanguage}"}`;
 }
@@ -74,7 +74,7 @@ export function buildCurrencyRecognitionPrompt(
         ? `User's preferred currencies (as hints, not restrictions): ${preferredCurrencies.join(", ")}`
         : "No preferred currencies specified";
 
-    return `You are a currency recognition AI.
+    return `You are a currency recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Identify all currencies present in the financial document.
@@ -90,7 +90,7 @@ Identify all currencies present in the financial document.
 4. Explain your reasoning, especially for inferred currencies
 5. For inferred currencies, clearly state what evidence led to the inference
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {"currencies": ["CNY"], "reasoning": "..."}`;
 }
 
@@ -102,7 +102,7 @@ export function buildCategoryRecognitionPrompt(
         .map(c => `- ${c.name}${c.description ? `: ${c.description}` : ""}`)
         .join("\n");
 
-    return `You are a category recognition AI.
+    return `You are a category recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Identify which categories from the provided list are present in this financial document.
@@ -119,12 +119,12 @@ ${categoryList}
 3. Multiple categories are allowed if the document contains items from different categories
 4. Explain your reasoning
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {"categories": ["餐饮"], "reasoning": "..."}`;
 }
 
 export function buildTitleExtractionPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a title extraction AI.
+    return `You are a title extraction AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Generate a concise, descriptive title for this financial document.
@@ -138,7 +138,7 @@ Generate a concise, descriptive title for this financial document.
 3. Use the user's preferred language
 4. Focus on the main purpose of the expense
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {"title": "..."}`;
 }
 
@@ -146,7 +146,7 @@ export function buildUserRequirementsPrompt(
     aiLanguage: string = "zh-CN",
     userPrompt: string
 ): string {
-    return `You are a requirements interpreter AI.
+    return `You are a requirements interpreter AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Convert the user's custom requirements into specific processing rules for the financial document parser.
@@ -165,6 +165,6 @@ ${userPrompt}
 3. Be specific about what to merge, split, or transform
 4. If the user's requirements don't apply to this specific document, return an empty rules array
 
-### Output (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {"rules": ["Rule 1", "Rule 2"]}`;
 }

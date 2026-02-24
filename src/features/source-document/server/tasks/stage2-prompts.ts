@@ -27,7 +27,7 @@ export function buildDetailedParsePrompt(
     ? `### User-Defined Rules\n${validationSummary.summary.rules.map(r => `- ${r}`).join("\n")}`
     : "";
 
-  return `You are a detailed financial document parser.
+  return `You are a detailed financial document parser. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Parse the financial document into structured ledger entries. Use the pre-analysis context provided.
@@ -54,7 +54,7 @@ ${userRules}
 4. Amount must be positive numbers
 5. Provide reasoning for any non-obvious parsing decisions
 
-### Output Schema (raw JSON only, no markdown)
+### Required output (JSON only, start your response with {)
 {
   "ledger_entries": [
     {
