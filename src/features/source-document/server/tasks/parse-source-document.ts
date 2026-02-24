@@ -161,7 +161,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         logger.info({
             docId: input.sourceDocumentId,
             currencies: stage1Result.results.currency.currencies,
-            categories: stage1Result.results.category.categories.map(c => c.name),
+            categories: stage1Result.results.category.categories,
         }, "Stage 1: Pre-analysis completed");
 
         // ===== Stage 1.5: Validation =====
