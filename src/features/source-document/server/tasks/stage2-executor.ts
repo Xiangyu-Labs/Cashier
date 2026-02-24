@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type { ValidationSummary, ParsedEntry } from "./types";
 import { buildDetailedParsePrompt } from "./stage2-prompts";
+import { buildMessageContent } from "./message-content";
 
 // ===== Zod Schema for Output =====
 
@@ -25,27 +26,6 @@ const parseOutputSchema = z.object({
     ledger_entries: z.array(entrySchema),
     reasoning: z.string(),
 });
-
-// ===== Helper: Build Message Content =====
-
-function buildMessageContent(
-    text?: string,
-    imageUrls?: string[]
-): Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> {
-    const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [];
-
-    if (text) {
-        content.push({ type: "text", text });
-    }
-
-    if (imageUrls?.length) {
-        for (const url of imageUrls) {
-            content.push({ type: "image_url", image_url: { url } });
-        }
-    }
-
-    return content.length > 0 ? content : [{ type: "text", text: "[No input provided]" }];
-}
 
 // ===== Helper: Parse JSON Response =====
 
@@ -101,6 +81,7 @@ function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boole
 export interface Stage2Input {
     text?: string;
     imageUrls?: string[];
+    visionDescription?: string;
     aiLanguage?: string;
     validationSummary: ValidationSummary;
     originalCategories: { name: string; description: string | null }[];
@@ -117,7 +98,7 @@ export async function executeStage2(
     input: Stage2Input,
     ai: AIContext
 ): Promise<Stage2Output> {
-    const messageContent = buildMessageContent(input.text, input.imageUrls);
+    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
 
     const prompt = buildDetailedParsePrompt(
         input.validationSummary,
@@ -125,8 +106,8 @@ export async function executeStage2(
         input.aiLanguage
     );
 
-    // Use fast tier for dual GPT calls
-    const model: AIModelTier = 'fast';
+    // Use text tier for dual GPT calls
+    const model: AIModelTier = 'text';
 
     // Dual GPT calls
     const [response1, response2] = await Promise.all([
@@ -187,7 +168,7 @@ Look for:
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         requireJson: true,
-        model: 'smart',
+        model: 'text',
     });
 
     const arbitrationResult = parseJsonResponse(

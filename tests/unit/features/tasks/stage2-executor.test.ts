@@ -180,8 +180,8 @@ describe("Stage 2 Executor", () => {
                 generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
                     callCount++;
                     if (callCount <= 2) {
-                        // Parsing calls should use fast tier
-                        expect(opts.model).toBe('fast');
+                        // Parsing calls should use text tier
+                        expect(opts.model).toBe('text');
                         return {
                             content: JSON.stringify({
                                 ledger_entries: [{ item_name: "a", amount: callCount * 10, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null }],
@@ -190,8 +190,8 @@ describe("Stage 2 Executor", () => {
                             usage: { promptTokens: 100, completionTokens: 50 },
                         };
                     }
-                    // Arbitration should use smart tier
-                    expect(opts.model).toBe('smart');
+                    // Arbitration should use text tier
+                    expect(opts.model).toBe('text');
                     return {
                         content: JSON.stringify({ choice: 1, reason: "ok" }),
                         usage: { promptTokens: 100, completionTokens: 50 },

@@ -10,8 +10,8 @@ import { cleanup } from "@testing-library/react";
 import type { Mock } from "vitest";
 
 // Set required AI model environment variables for tests
-process.env.AI_MODEL_FAST = process.env.AI_MODEL_FAST || "test-fast-model";
-process.env.AI_MODEL_SMART = process.env.AI_MODEL_SMART || "test-smart-model";
+process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT || "test-text-model";
+process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION || "test-vision-model";
 
 // Test database connection
 let testClient: Database.Database;

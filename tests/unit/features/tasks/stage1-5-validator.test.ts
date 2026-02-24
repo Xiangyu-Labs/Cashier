@@ -105,7 +105,7 @@ describe("Stage 1.5 Validator", () => {
             expect(callArgs.prompt).toContain("validation AI");
             expect(callArgs.prompt).toContain("Stage 1 Results");
             expect(callArgs.requireJson).toBe(true);
-            expect(callArgs.model).toBe('smart');
+            expect(callArgs.model).toBe('text');
         });
     });
 });

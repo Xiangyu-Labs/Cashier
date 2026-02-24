@@ -33,6 +33,7 @@ import {
     buildTitleExtractionPrompt,
     buildUserRequirementsPrompt,
 } from "./stage1-prompts";
+import { buildMessageContent } from "./message-content";
 
 // ===== Zod Schemas for Response Validation =====
 
@@ -64,27 +65,6 @@ const rulesSchema = z.object({
     rules: z.array(z.string()).default([]),
 });
 
-// ===== Helper: Build Message Content =====
-
-function buildMessageContent(
-    text?: string,
-    imageUrls?: string[]
-): Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> {
-    const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [];
-
-    if (text) {
-        content.push({ type: "text", text });
-    }
-
-    if (imageUrls?.length) {
-        for (const url of imageUrls) {
-            content.push({ type: "image_url", image_url: { url } });
-        }
-    }
-
-    return content.length > 0 ? content : [{ type: "text", text: "[No input provided]" }];
-}
-
 // ===== Helper: Parse JSON Response =====
 
 function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T {
@@ -114,6 +94,7 @@ function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T {
 export interface Stage1Input {
     text?: string;
     imageUrls?: string[];
+    visionDescription?: string;
     aiLanguage?: string;
     preferredCurrencies?: string[];
     categories: { name: string; description: string | null }[];
@@ -128,7 +109,7 @@ async function runDualGptWithArbitration<T>(
     messageContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
     schema: z.ZodSchema<T>,
     ai: AIContext,
-    model: AIModelTier = 'fast',
+    model: AIModelTier = 'text',
     compareResults: (r1: T, r2: T) => boolean
 ): Promise<{ result: T; reasoning: string; wasArbitrated: boolean }> {
     // Run dual GPT calls in parallel
@@ -184,7 +165,7 @@ Determine which result is more accurate based on the original input.
         prompt: arbitrationPrompt,
         messages: [{ role: "user", content: messageContent }],
         requireJson: true,
-        model: 'smart',
+        model: 'text',
     });
 
     const arbitrationResult = parseJsonResponse(
@@ -218,8 +199,8 @@ export async function executeStage1(
     | { isValid: true; isIncomplete: true; incompleteReason?: string }
     | { isValid: true; isIncomplete: false; results: Stage1Results }
 > {
-    const messageContent = buildMessageContent(input.text, input.imageUrls);
-    const model: AIModelTier = 'fast';
+    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
+    const model: AIModelTier = 'text';
 
     // Step 1: Check validity first
     const validityPrompt = buildValidityCheckPrompt(input.aiLanguage);

@@ -25,9 +25,8 @@ describe('AI Context', () => {
         abortController = new AbortController()
         vi.clearAllMocks()
         // Set required env vars for tests
-        process.env.AI_MODEL_FAST = 'test-fast-model'
-        process.env.AI_MODEL_SMART = 'test-smart-model'
         process.env.AI_MODEL_TEXT = 'test-text-model'
+        process.env.AI_MODEL_VISION = 'test-vision-model'
     })
 
     afterEach(() => {
@@ -36,26 +35,26 @@ describe('AI Context', () => {
     })
 
     describe('generate', () => {
-        it('generates content with fast tier', async () => {
+        it('generates content with text tier', async () => {
             const aiContext = createAIContext(abortController.signal, reportTokensSpy)
 
             const result = await aiContext.generate({
                 prompt: 'Test prompt',
                 messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
+                model: 'text',
             })
 
             expect(result.content).toBe('{"result": "success"}')
             expect(result.usage).toEqual({ promptTokens: 100, completionTokens: 50 })
         })
 
-        it('generates content with smart tier', async () => {
+        it('generates content with vision tier', async () => {
             const aiContext = createAIContext(abortController.signal, reportTokensSpy)
 
             const result = await aiContext.generate({
-                prompt: 'Test prompt',
+                prompt: 'Describe this image',
                 messages: [{ role: 'user', content: 'Hello' }],
-                model: 'smart',
+                model: 'vision',
             })
 
             expect(result.content).toBe('{"result": "success"}')
@@ -67,11 +66,11 @@ describe('AI Context', () => {
             await aiContext.generate({
                 prompt: 'Test prompt',
                 messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
+                model: 'text',
             })
 
             expect(reportTokensSpy).toHaveBeenCalledWith({
-                model: 'test-fast-model',
+                model: 'test-text-model',
                 input: 100,
                 output: 50,
             })
@@ -83,77 +82,11 @@ describe('AI Context', () => {
             await aiContext.generate({
                 prompt: 'Test prompt',
                 messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
+                model: 'text',
                 autoReportTokens: false,
             })
 
             expect(reportTokensSpy).not.toHaveBeenCalled()
-        })
-
-        it('uses fast model from environment', async () => {
-            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
-
-            await aiContext.generate({
-                prompt: 'Test prompt',
-                messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
-            })
-
-            expect(reportTokensSpy).toHaveBeenCalledWith({
-                model: 'test-fast-model',
-                input: 100,
-                output: 50,
-            })
-        })
-
-        it('uses smart model from environment', async () => {
-            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
-
-            await aiContext.generate({
-                prompt: 'Test prompt',
-                messages: [{ role: 'user', content: 'Hello' }],
-                model: 'smart',
-            })
-
-            expect(reportTokensSpy).toHaveBeenCalledWith({
-                model: 'test-smart-model',
-                input: 100,
-                output: 50,
-            })
-        })
-
-        it('throws error when AI_MODEL_FAST is not set', async () => {
-            delete process.env.AI_MODEL_FAST
-            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
-
-            await expect(aiContext.generate({
-                prompt: 'Test prompt',
-                messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
-            })).rejects.toThrow('AI_MODEL_FAST environment variable is required')
-        })
-
-        it('throws error when AI_MODEL_SMART is not set', async () => {
-            delete process.env.AI_MODEL_SMART
-            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
-
-            await expect(aiContext.generate({
-                prompt: 'Test prompt',
-                messages: [{ role: 'user', content: 'Hello' }],
-                model: 'smart',
-            })).rejects.toThrow('AI_MODEL_SMART environment variable is required')
-        })
-
-        it('generates content with text tier', async () => {
-            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
-
-            const result = await aiContext.generate({
-                prompt: 'Test prompt',
-                messages: [{ role: 'user', content: 'Hello' }],
-                model: 'text',
-            })
-
-            expect(result.content).toBe('{"result": "success"}')
         })
 
         it('uses text model from environment', async () => {
@@ -172,6 +105,22 @@ describe('AI Context', () => {
             })
         })
 
+        it('uses vision model from environment', async () => {
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
+            await aiContext.generate({
+                prompt: 'Describe this image',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'vision',
+            })
+
+            expect(reportTokensSpy).toHaveBeenCalledWith({
+                model: 'test-vision-model',
+                input: 100,
+                output: 50,
+            })
+        })
+
         it('throws error when AI_MODEL_TEXT is not set', async () => {
             delete process.env.AI_MODEL_TEXT
             const aiContext = createAIContext(abortController.signal, reportTokensSpy)
@@ -183,10 +132,20 @@ describe('AI Context', () => {
             })).rejects.toThrow('AI_MODEL_TEXT environment variable is required')
         })
 
-        it('supports image messages', async () => {
+        it('throws error when AI_MODEL_VISION is not set', async () => {
+            delete process.env.AI_MODEL_VISION
             const aiContext = createAIContext(abortController.signal, reportTokensSpy)
 
-            // This should not throw
+            await expect(aiContext.generate({
+                prompt: 'Describe this image',
+                messages: [{ role: 'user', content: 'Hello' }],
+                model: 'vision',
+            })).rejects.toThrow('AI_MODEL_VISION environment variable is required')
+        })
+
+        it('supports image messages with vision tier', async () => {
+            const aiContext = createAIContext(abortController.signal, reportTokensSpy)
+
             const result = await aiContext.generate({
                 prompt: 'Describe this image',
                 messages: [{
@@ -196,7 +155,7 @@ describe('AI Context', () => {
                         { type: 'image_url', image_url: { url: 'data:image/png;base64,abc123' } },
                     ],
                 }],
-                model: 'fast',
+                model: 'vision',
             })
 
             expect(result.content).toBeDefined()
@@ -208,11 +167,10 @@ describe('AI Context', () => {
             const result = await aiContext.generate({
                 prompt: 'Test prompt',
                 messages: [{ role: 'user', content: 'Hello' }],
-                model: 'fast',
+                model: 'text',
                 requireJson: true,
             })
 
-            // The mock returns valid JSON, so content should be returned as-is (after extraction)
             expect(result.content).toBe('{"result": "success"}')
         })
     })

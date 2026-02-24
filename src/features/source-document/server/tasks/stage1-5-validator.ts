@@ -9,6 +9,7 @@
 import { z } from "zod";
 import type { AIContext } from "@/lib/flow/types";
 import type { Stage1Results, ValidationSummary } from "./types";
+import { buildMessageContent } from "./message-content";
 
 // ===== Zod Schema for Validation Output =====
 
@@ -28,27 +29,6 @@ const validationOutputSchema = z.object({
     }).optional(),
     rejection_reason: z.string().optional(),
 });
-
-// ===== Helper: Build Message Content =====
-
-function buildMessageContent(
-    text?: string,
-    imageUrls?: string[]
-): Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> {
-    const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [];
-
-    if (text) {
-        content.push({ type: "text", text });
-    }
-
-    if (imageUrls?.length) {
-        for (const url of imageUrls) {
-            content.push({ type: "image_url", image_url: { url } });
-        }
-    }
-
-    return content.length > 0 ? content : [{ type: "text", text: "[No input provided]" }];
-}
 
 // ===== Helper: Parse JSON Response =====
 
@@ -132,6 +112,7 @@ If REASONABLE:
 export interface ValidationInput {
     text?: string;
     imageUrls?: string[];
+    visionDescription?: string;
     aiLanguage?: string;
     stage1Results: Stage1Results;
 }
@@ -140,14 +121,14 @@ export async function executeStage1_5Validation(
     input: ValidationInput,
     ai: AIContext
 ): Promise<ValidationSummary> {
-    const messageContent = buildMessageContent(input.text, input.imageUrls);
+    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
     const prompt = buildValidationPrompt(input.stage1Results, input.aiLanguage);
 
     const response = await ai.generate({
         prompt,
         messages: [{ role: "user", content: messageContent }],
         requireJson: true,
-        model: 'smart',
+        model: 'text',
     });
 
     const result = parseJsonResponse(response.content, validationOutputSchema);

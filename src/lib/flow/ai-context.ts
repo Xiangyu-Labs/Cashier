@@ -31,11 +31,21 @@ export function createAIContext(
                     }) as ChatCompletionContentPart[],
             })) as ChatCompletionMessageParam[]
 
+            // Guard: text tier must not receive image content
+            if (options.model === 'text') {
+                const hasImages = options.messages.some(msg =>
+                    Array.isArray(msg.content) &&
+                    msg.content.some(part => part.type === 'image_url')
+                )
+                if (hasImages) {
+                    throw new Error('text model tier does not support image content — use vision tier for image inputs')
+                }
+            }
+
             // Resolve model tier to concrete model name from environment
             const modelMap: Record<AIModelTier, string | undefined> = {
-                fast: process.env.AI_MODEL_FAST,
-                smart: process.env.AI_MODEL_SMART,
                 text: process.env.AI_MODEL_TEXT,
+                vision: process.env.AI_MODEL_VISION,
             }
             const model = modelMap[options.model]
             if (!model) {
