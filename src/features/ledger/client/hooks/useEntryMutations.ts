@@ -81,9 +81,6 @@ export function useEntryMutations({
 
             return { prevEntries };
         },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
         onError: (_err, _vars, ctx) => {
             // Rollback
             if (ctx?.prevEntries) {

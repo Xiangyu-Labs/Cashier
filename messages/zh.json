@@ -194,7 +194,8 @@
         "selectAll": "全选",
         "deselectAll": "取消全选",
         "loadMore": "加载更多",
-        "discard": "放弃"
+        "discard": "放弃",
+        "saveAllSuccess": "已保存 {count} 处修改"
     },
     "SourceDocumentInput": {
         "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",

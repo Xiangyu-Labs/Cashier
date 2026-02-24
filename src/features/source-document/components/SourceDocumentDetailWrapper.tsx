@@ -71,9 +71,6 @@ export function SourceDocumentDetailWrapper({
 
             return { previousData };
         },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
         onError: (_err, _vars, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
@@ -113,9 +110,6 @@ export function SourceDocumentDetailWrapper({
 
             return { previousData };
         },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
         onError: (_err, _vars, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(queryKeys.sourceDocument(id), context.previousData);
@@ -149,9 +143,6 @@ export function SourceDocumentDetailWrapper({
             });
 
             return { previousData };
-        },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
         },
         onError: (_err, _vars, context) => {
             if (context?.previousData) {

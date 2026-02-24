@@ -52,9 +52,6 @@ export function LedgerEntryDetailWrapper({
 
             return { previousData };
         },
-        onSuccess: () => {
-            toast.success(tCommon("saveSuccess"));
-        },
         onError: (_err, _vars, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(queryKeys.ledgerEntry(id), context.previousData);

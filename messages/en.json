@@ -190,7 +190,8 @@
         "noRecords": "No records",
         "noMore": "No more items",
         "loadMore": "Load More",
-        "discard": "Discard"
+        "discard": "Discard",
+        "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
     },
     "SourceDocumentInput": {
         "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",

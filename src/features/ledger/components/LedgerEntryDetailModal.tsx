@@ -120,9 +120,11 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
       updateData.description = pendingChanges.description;
     }
 
+    const changeCount = Object.keys(updateData).length;
     onUpdate(updateData);
+    toast.success(tCommon("saveAllSuccess", { count: changeCount }));
     setPendingChanges({});
-  }, [ledgerEntry, pendingChanges, onUpdate]);
+  }, [ledgerEntry, pendingChanges, onUpdate, tCommon]);
 
   // Handle discard
   const handleDiscard = useCallback(() => {
