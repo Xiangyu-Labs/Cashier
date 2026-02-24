@@ -9,6 +9,7 @@ import { ExchangeRateService } from "@/features/currency/server/exchange-rate-se
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 // Import multi-stage executors
+import { executeStage0 } from "./stage0-vision";
 import { executeStage1, type Stage1Input } from "./stage1-executor";
 import { executeStage1_5Validation } from "./stage1-5-validator";
 import { executeStage2 } from "./stage2-executor";
@@ -71,8 +72,30 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             .set({ status: 'processing' })
             .where(q.whereId(input.sourceDocumentId));
 
+        // ===== Stage 0: Vision Description =====
+        let visionDescription: string | undefined;
+        if (input.imageUrls?.length) {
+            await setProgress('正在读取图片...');
+
+            if (signal.aborted) {
+                throw new Error('Task cancelled');
+            }
+
+            const stage0Result = await executeStage0({
+                imageUrls: input.imageUrls,
+                aiLanguage: input.aiLanguage,
+            }, ai);
+            if (stage0Result.description) {
+                visionDescription = stage0Result.description;
+                // Store in metadata for debugging/retry reuse
+                await db.update(sourceDocuments)
+                    .set({ metadata: { ...doc.metadata, visionDescription } })
+                    .where(q.whereId(input.sourceDocumentId));
+            }
+        }
+
         // ===== Stage 1: Pre-Analysis =====
-        await setProgress('正在预分析...');
+        await setProgress('正在分析单据信息...');
 
         if (signal.aborted) {
             throw new Error('Task cancelled');
@@ -81,6 +104,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const stage1Input: Stage1Input = {
             text: input.text,
             imageUrls: input.imageUrls,
+            visionDescription,
             aiLanguage: input.aiLanguage,
             preferredCurrencies: input.preferredCurrencies,
             categories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
@@ -134,8 +158,14 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             };
         }
 
+        logger.info({
+            docId: input.sourceDocumentId,
+            currencies: stage1Result.results.currency.currencies,
+            categories: stage1Result.results.category.categories.map(c => c.name),
+        }, "Stage 1: Pre-analysis completed");
+
         // ===== Stage 1.5: Validation =====
-        await setProgress('正在校验货币与类别...');
+        await setProgress('正在核对分析结果...');
 
         if (signal.aborted) {
             throw new Error('Task cancelled');
@@ -144,6 +174,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         const validationResult = await executeStage1_5Validation({
             text: input.text,
             imageUrls: input.imageUrls,
+            visionDescription,
             aiLanguage: input.aiLanguage,
             stage1Results: stage1Result.results,
         }, ai);
@@ -162,7 +193,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
         }
 
         // ===== Stage 2: Detailed Parsing =====
-        await setProgress('正在解析账单条目...');
+        await setProgress('正在生成账单条目...');
 
         if (signal.aborted) {
             throw new Error('Task cancelled');
@@ -172,6 +203,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
             const stage2Result = await executeStage2({
                 text: input.text,
                 imageUrls: input.imageUrls,
+                visionDescription,
                 aiLanguage: input.aiLanguage,
                 validationSummary: validationResult,
                 originalCategories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),

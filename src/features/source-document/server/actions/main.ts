@@ -65,7 +65,7 @@ async function prepareSourceDocumentTask(ledgerId: string, ledger: Ledger, text:
             },
         },
         {
-            title: "parse_source_document",
+            title: "解析单据",
             scopeId: ledgerId,
             entityType: 'source_document',
             entityId: sourceDocumentId,
@@ -387,7 +387,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
 
     return {
         items: resultItems.map(item => {
-            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.metadata || {};
+            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
             const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly' || item.status === 'failed';
 
             if (isActiveDocument) {
