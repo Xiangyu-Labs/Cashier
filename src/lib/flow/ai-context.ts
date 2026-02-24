@@ -45,10 +45,9 @@ export function createAIContext(
             const maxTokens = options.maxTokens ?? 8192
             const temperature = options.temperature ?? 1
 
-            // Build response format for OpenAI based on requireJson
-            const responseFormat = options.requireJson
-                ? { type: 'json_object' as const }
-                : undefined
+            // Do not send response_format to the API — not all models support it.
+            // JSON validation and repair is handled post-response via extractJson/isValidJson.
+            const responseFormat = undefined
 
             // Call OpenAI (signal is passed internally for cancellation)
             const result = await client.generateContent(
@@ -84,7 +83,7 @@ export function createAIContext(
                         textModel,
                         8192,
                         1,
-                        { type: 'json_object' },
+                        undefined,
                         signal
                     )
 
