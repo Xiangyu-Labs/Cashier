@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { PeriodParams, PeriodPreset } from "@/lib/period-utils";
+import { PeriodParams, PeriodPreset, getBillingPeriod } from "@/lib/period-utils";
 
 export interface EntryFilters {
     startDate?: Date;
@@ -40,6 +40,7 @@ interface EntryFilterPanelProps {
     preferredCurrencies?: string[];
     showCategory?: boolean;
     showCurrency?: boolean;
+    monthStartDay?: number;
     className?: string;
 }
 
@@ -52,6 +53,7 @@ export function EntryFilterPanel({
     preferredCurrencies = [],
     showCategory = true,
     showCurrency = true,
+    monthStartDay = 1,
     className,
 }: EntryFilterPanelProps) {
     const t = useTranslations("EntryFilterPanel");
@@ -88,7 +90,7 @@ export function EntryFilterPanel({
 
     // Get active preset from periodParams if available, otherwise derive from filters
     const activePreset: PeriodPreset = periodParams?.period ?? (() => {
-        if (!filters.startDate && !filters.endDate) return "all";
+        if (!filters.startDate && !filters.endDate) return "currentPeriod";
 
         const now = new Date();
         const start = filters.startDate;
@@ -117,7 +119,7 @@ export function EntryFilterPanel({
 
     // Map preset string to PeriodPreset type (only named presets, not legacy-only ones)
     const toNamedPreset = (preset: string): PeriodPreset | null => {
-        if (preset === "all" || preset === "week" || preset === "thisMonth") return preset;
+        if (preset === "currentPeriod" || preset === "week" || preset === "thisMonth") return preset;
         return null;
     };
 
@@ -125,8 +127,13 @@ export function EntryFilterPanel({
     const handleDatePresetLegacy = (preset: string, applyImmediately = false) => {
         let newFilters = { ...filters };
 
-        if (preset === "all") {
-            newFilters = { ...newFilters, startDate: undefined, endDate: undefined };
+        if (preset === "currentPeriod") {
+            const billing = getBillingPeriod(monthStartDay);
+            newFilters = {
+                ...newFilters,
+                startDate: new Date(`${billing.startDate}T00:00:00`),
+                endDate: new Date(`${billing.endDate}T23:59:59.999`),
+            };
         } else if (preset !== "custom") {
             const end = new Date();
             const start = new Date();
@@ -169,22 +176,23 @@ export function EntryFilterPanel({
     const handleApply = () => {
         onFiltersChange(tempFilters);
         if (tempPeriod !== null && onPeriodChange) {
-            onPeriodChange({ period: tempPeriod });
+            onPeriodChange({ period: tempPeriod, monthStartDay });
         }
         setOpen(false);
     };
 
     const handleReset = () => {
-        const now = new Date();
+        const billing = getBillingPeriod(monthStartDay);
         const defaultFilters: EntryFilters = {
-            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
-            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+            startDate: new Date(`${billing.startDate}T00:00:00`),
+            endDate: new Date(`${billing.endDate}T23:59:59.999`),
             categoryId: null,
             currency: null,
             minAmount: null,
             maxAmount: null,
         };
         setTempFilters(defaultFilters);
+        setTempPeriod('currentPeriod');
     };
 
     return (
@@ -220,7 +228,7 @@ export function EntryFilterPanel({
                             </div>
                             <div className="grid grid-cols-5 gap-1">
                                 {([
-                                    { preset: "all", label: t("allTime") },
+                                    { preset: "currentPeriod", label: t("currentPeriod") },
                                     { preset: "week", label: tDateRange("pastWeek") },
                                     { preset: "thisMonth", label: tDateRange("thisMonth") },
                                     { preset: "month", label: tDateRange("pastMonth") },

@@ -8,9 +8,10 @@ interface UsePeriodFilterParams {
     pathname: string;
     searchParams: URLSearchParams;
     initialPeriod: PeriodParams;
+    monthStartDay?: number;
 }
 
-export function usePeriodFilter({ pathname, searchParams, initialPeriod }: UsePeriodFilterParams) {
+export function usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay = 1 }: UsePeriodFilterParams) {
     // Period state - initialized from URL (via props), no useEffect needed
     const [periodParams, setPeriodParams] = useState<PeriodParams>(initialPeriod);
 
@@ -61,10 +62,10 @@ export function usePeriodFilter({ pathname, searchParams, initialPeriod }: UsePe
                 endDate: formatDate(newFilters.endDate),
             });
         } else {
-            // No dates means "all"
-            handlePeriodChange({ period: 'all' });
+            // No dates means "currentPeriod"
+            handlePeriodChange({ period: 'currentPeriod', monthStartDay });
         }
-    }, [handlePeriodChange]);
+    }, [handlePeriodChange, monthStartDay]);
 
     return {
         periodParams,

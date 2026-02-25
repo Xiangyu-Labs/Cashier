@@ -82,13 +82,14 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     }));
 
     // Lift period filter state to page level - shared across all tabs
+    const monthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
     const {
         periodParams,
         dateRange: _dateRange,
         filters: _filters,
         handlePeriodChange,
         handleFiltersChange,
-    } = usePeriodFilter({ pathname, searchParams, initialPeriod });
+    } = usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay });
 
     const handleTabChange = (value: string) => {
         // Instant client-side update
@@ -239,6 +240,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                             periodParams={periodParams}
                             onPeriodChange={handlePeriodChange}
                             onFiltersChange={handleFiltersChange}
+                            monthStartDay={monthStartDay}
                         />
                     </TabsContent>
 
@@ -252,6 +254,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                             onFiltersChange={handleFiltersChange}
                             advancedFilters={advancedFilters}
                             onAdvancedFiltersChange={handleAdvancedFiltersChange}
+                            monthStartDay={monthStartDay}
                         />
                     </TabsContent>
 

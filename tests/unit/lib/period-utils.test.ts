@@ -3,10 +3,26 @@ import {
   periodToDateRange,
   parsePeriodFromSearchParams,
   datesToPeriodParams,
+  getBillingPeriod,
   type PeriodParams,
 } from '@/lib/period-utils';
 
 describe('period-utils', () => {
+  describe('getBillingPeriod', () => {
+    it('should return current period when today >= monthStartDay', () => {
+      // monthStartDay=1 means period is always current calendar month
+      const result = getBillingPeriod(1);
+      const now = new Date();
+      expect(result.startDate).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
+    });
+
+    it('should handle month-end boundary (startDay=31 in Feb)', () => {
+      const result = getBillingPeriod(31);
+      expect(result.startDate).toBeTruthy();
+      expect(result.endDate).toBeTruthy();
+    });
+  });
+
   describe('periodToDateRange', () => {
     it('should return null dates for "all" period', () => {
       const params: PeriodParams = { period: 'all' };
@@ -14,6 +30,19 @@ describe('period-utils', () => {
 
       expect(result.startDate).toBeNull();
       expect(result.endDate).toBeNull();
+    });
+
+    it('should return billing period for "currentPeriod" with monthStartDay=1', () => {
+      const params: PeriodParams = { period: 'currentPeriod', monthStartDay: 1 };
+      const result = periodToDateRange(params);
+
+      expect(result.startDate).not.toBeNull();
+      expect(result.endDate).not.toBeNull();
+
+      const now = new Date();
+      const startDate = new Date(result.startDate!);
+      expect(startDate.getDate()).toBe(1);
+      expect(startDate.getMonth()).toBe(now.getMonth());
     });
 
     it('should return current month range for "thisMonth"', () => {
@@ -86,27 +115,20 @@ describe('period-utils', () => {
       expect(endDate.getDate()).toBe(20);
     });
 
-    it('should default to thisMonth for unknown period', () => {
+    it('should default to currentPeriod for unknown period', () => {
       const params = { period: 'invalid' as unknown as Parameters<typeof periodToDateRange>[0]['period'] };
       const result = periodToDateRange(params);
 
-      // Should behave like thisMonth
+      // Should behave like currentPeriod (non-null dates)
       expect(result.startDate).not.toBeNull();
       expect(result.endDate).not.toBeNull();
-
-      const now = new Date();
-      const startDate = new Date(result.startDate!);
-
-      expect(startDate.getFullYear()).toBe(now.getFullYear());
-      expect(startDate.getMonth()).toBe(now.getMonth());
-      expect(startDate.getDate()).toBe(1);
     });
 
-    it('should default to thisMonth for custom without dates', () => {
+    it('should default to currentPeriod for custom without dates', () => {
       const params: PeriodParams = { period: 'custom' };
       const result = periodToDateRange(params);
 
-      // Should behave like thisMonth when dates are missing
+      // Should behave like currentPeriod when dates are missing
       expect(result.startDate).not.toBeNull();
       expect(result.endDate).not.toBeNull();
     });
@@ -138,18 +160,18 @@ describe('period-utils', () => {
       expect(result.endDate).toBe('2024-01-31');
     });
 
-    it('should default to thisMonth for invalid period', () => {
+    it('should default to currentPeriod for invalid period', () => {
       const searchParams = new URLSearchParams('period=invalid');
       const result = parsePeriodFromSearchParams(searchParams);
 
-      expect(result.period).toBe('thisMonth');
+      expect(result.period).toBe('currentPeriod');
     });
 
-    it('should default to thisMonth when no period provided', () => {
+    it('should default to currentPeriod when no period provided', () => {
       const searchParams = new URLSearchParams('');
       const result = parsePeriodFromSearchParams(searchParams);
 
-      expect(result.period).toBe('thisMonth');
+      expect(result.period).toBe('currentPeriod');
     });
 
     it('should handle array values from Next.js searchParams', () => {
@@ -161,7 +183,7 @@ describe('period-utils', () => {
     });
 
     it('should validate period against allowed values', () => {
-      const validPeriods = ['all', 'thisMonth', 'week', 'custom'];
+      const validPeriods = ['currentPeriod', 'all', 'thisMonth', 'week', 'custom'];
 
       validPeriods.forEach(period => {
         const searchParams = new URLSearchParams(`period=${period}`);
@@ -172,24 +194,24 @@ describe('period-utils', () => {
   });
 
   describe('datesToPeriodParams', () => {
-    it('should return "all" when no dates provided', () => {
+    it('should return "currentPeriod" when no dates provided', () => {
       const result = datesToPeriodParams();
 
-      expect(result.period).toBe('all');
+      expect(result.period).toBe('currentPeriod');
       expect(result.startDate).toBeUndefined();
       expect(result.endDate).toBeUndefined();
     });
 
-    it('should return "all" when only start date provided', () => {
+    it('should return "currentPeriod" when only start date provided', () => {
       const result = datesToPeriodParams(new Date('2024-01-01'));
 
-      expect(result.period).toBe('all');
+      expect(result.period).toBe('currentPeriod');
     });
 
-    it('should return "all" when only end date provided', () => {
+    it('should return "currentPeriod" when only end date provided', () => {
       const result = datesToPeriodParams(undefined, new Date('2024-01-31'));
 
-      expect(result.period).toBe('all');
+      expect(result.period).toBe('currentPeriod');
     });
 
     it('should return custom period with formatted dates', () => {
@@ -250,3 +272,4 @@ describe('period-utils', () => {
     });
   });
 });
+

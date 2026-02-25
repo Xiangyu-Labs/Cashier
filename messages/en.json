@@ -70,6 +70,7 @@
         "reset": "Reset",
         "apply": "Apply Filters",
         "moreFilters": "More Filters",
+        "currentPeriod": "Current Period",
         "filteredTotal": "Total"
     },
     "HistoryTab": {

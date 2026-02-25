@@ -46,23 +46,28 @@ export function usePrefetchAdjacentPeriods(
 function getAdjacentPeriods(current: PeriodParams): PeriodParams[] {
   const periods: PeriodParams[] = [];
 
-  // If viewing "thisMonth", prefetch "all" and "week"
-  if (current.period === 'thisMonth') {
-    periods.push({ period: 'all' });
+  // If viewing "currentPeriod", prefetch "week" and "thisMonth"
+  if (current.period === 'currentPeriod') {
+    periods.push({ period: 'week' });
+    periods.push({ period: 'thisMonth' });
+  }
+  // If viewing "thisMonth", prefetch "currentPeriod" and "week"
+  else if (current.period === 'thisMonth') {
+    periods.push({ period: 'currentPeriod', monthStartDay: current.monthStartDay });
     periods.push({ period: 'week' });
   }
-  // If viewing "all", prefetch "thisMonth"
+  // If viewing "all", prefetch "currentPeriod"
   else if (current.period === 'all') {
-    periods.push({ period: 'thisMonth' });
+    periods.push({ period: 'currentPeriod', monthStartDay: current.monthStartDay });
   }
-  // If viewing "week", prefetch "thisMonth"
+  // If viewing "week", prefetch "currentPeriod"
   else if (current.period === 'week') {
-    periods.push({ period: 'thisMonth' });
+    periods.push({ period: 'currentPeriod', monthStartDay: current.monthStartDay });
   }
-  // If viewing custom date range, prefetch "thisMonth" and "all"
+  // If viewing custom date range, prefetch "currentPeriod" and "thisMonth"
   else if (current.startDate || current.endDate) {
+    periods.push({ period: 'currentPeriod', monthStartDay: current.monthStartDay });
     periods.push({ period: 'thisMonth' });
-    periods.push({ period: 'all' });
   }
 
   return periods;

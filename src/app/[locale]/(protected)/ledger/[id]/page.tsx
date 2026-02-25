@@ -23,9 +23,8 @@ export default async function LedgerPage({
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
 
-  // Parse period from URL (default: thisMonth)
+  // Parse period from URL (default: currentPeriod)
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
-  const dateRange = periodToDateRange(periodParams);
   const session = await auth();
   const t = await getTranslations("LedgerPage");
 
@@ -49,6 +48,13 @@ export default async function LedgerPage({
 
   const ledger = queryClient.getQueryData(queryKeys.ledger(ledgerId)) as Awaited<ReturnType<typeof getLedgerAction>> | undefined;
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
+  const monthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
+
+  // Inject monthStartDay into periodParams for currentPeriod preset
+  const enrichedPeriodParams = periodParams.period === 'currentPeriod'
+    ? { ...periodParams, monthStartDay }
+    : periodParams;
+  const dateRange = periodToDateRange(enrichedPeriodParams);
 
   // Calculate dates for stats prefetch (must match StatsTab.tsx exactly)
   const now = new Date();
@@ -168,7 +174,7 @@ export default async function LedgerPage({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <LedgerPageClient ledgerId={ledgerId} initialPeriod={periodParams} />
+      <LedgerPageClient ledgerId={ledgerId} initialPeriod={enrichedPeriodParams} />
     </HydrationBoundary>
   );
 }
