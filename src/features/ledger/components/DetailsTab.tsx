@@ -57,6 +57,7 @@ export function DetailsTab({
 }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
+    const tFilter = useTranslations("EntryFilterPanel");
     const locale = useLocale();
     const queryClient = useQueryClient();
     const push = useModalStackStore(state => state.push);
@@ -313,6 +314,9 @@ export function DetailsTab({
                             preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                             className="flex-1 sm:flex-none"
                         />
+                        <span className="text-xs text-muted-foreground font-mono ml-auto">
+                            {tFilter("filteredTotal")} {monthStats.mainCurrency} {monthStats.mainTotal.toFixed(2)}
+                        </span>
                     </div>
                 </div>
 

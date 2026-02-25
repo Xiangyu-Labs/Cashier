@@ -69,7 +69,8 @@
         "allCurrencies": "全部货币",
         "reset": "重置",
         "apply": "应用筛选",
-        "moreFilters": "更多筛选"
+        "moreFilters": "更多筛选",
+        "filteredTotal": "合计"
     },
     "HistoryTab": {
         "noHistory": "暂无已确认记录",

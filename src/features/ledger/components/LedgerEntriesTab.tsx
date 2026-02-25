@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -11,12 +11,14 @@ import { useTranslations, useLocale } from "next-intl";
 import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
-import { invalidateLedgerCache } from "@/lib/query-keys";
+import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
 import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -38,6 +40,7 @@ export function LedgerEntriesTab({
     const t = useTranslations("LedgerEntriesTab");
     const tDetails = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
+    const tFilter = useTranslations("EntryFilterPanel");
     const locale = useLocale();
     const queryClient = useQueryClient();
 
@@ -50,6 +53,20 @@ export function LedgerEntriesTab({
         startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
         endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
     }), [dateRange]);
+
+    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
+    const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
+    const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
+
+    const { data: summaryData } = useQuery({
+        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, mainCurrency, null),
+        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
+            minAmount: filters.minAmount,
+            maxAmount: filters.maxAmount,
+        }),
+    });
+
+    const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
 
     const {
         updateEntry,
@@ -220,7 +237,7 @@ export function LedgerEntriesTab({
             <PullToRefresh onRefresh={handleRefresh}>
                 <div className="space-y-4" {...containerProps}>
                     {/* Filter Panel */}
-                    <div className="px-2 mb-2 sm:mb-4 pt-1">
+                    <div className="px-2 mb-2 sm:mb-4 pt-1 flex items-center gap-2">
                         <EntryFilterPanel
                             filters={filters}
                             onFiltersChange={onFiltersChange}
@@ -228,8 +245,11 @@ export function LedgerEntriesTab({
                             onPeriodChange={onPeriodChange}
                             showCategory={false}
                             showCurrency={false}
-                            className="w-full sm:w-auto"
+                            className="w-auto"
                         />
+                        <span className="text-xs text-muted-foreground font-mono ml-auto">
+                            {tFilter("filteredTotal")} {mainCurrency} {filteredTotal.toFixed(2)}
+                        </span>
                     </div>
 
                     {/* Unified Loading State */}

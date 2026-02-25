@@ -69,7 +69,8 @@
         "allCurrencies": "All Currencies",
         "reset": "Reset",
         "apply": "Apply Filters",
-        "moreFilters": "More Filters"
+        "moreFilters": "More Filters",
+        "filteredTotal": "Total"
     },
     "HistoryTab": {
         "noHistory": "No confirmed records",

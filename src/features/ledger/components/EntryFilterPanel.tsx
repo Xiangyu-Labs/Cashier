@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations } from "next-intl";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PeriodParams, PeriodPreset } from "@/lib/period-utils";
@@ -57,15 +57,16 @@ export function EntryFilterPanel({
     const t = useTranslations("EntryFilterPanel");
     const tDateRange = useTranslations("DateRangeFilter");
     const tSettings = useTranslations("Settings");
-    const format = useFormatter();
     const [open, setOpen] = React.useState(false);
 
     // Internal state for editing before applying
     const [tempFilters, setTempFilters] = React.useState<EntryFilters>(filters);
+    const [tempPeriod, setTempPeriod] = React.useState<PeriodPreset | null>(null);
 
     // Sync temp filters when external filters change or popover opens
     React.useEffect(() => {
         setTempFilters(filters);
+        setTempPeriod(null);
     }, [filters, open]);
 
     // Format date for input[type="date"]
@@ -114,15 +115,10 @@ export function EntryFilterPanel({
         return "custom";
     })();
 
-    // Handle preset button clicks - use onPeriodChange if available
-    const handlePresetClick = (preset: PeriodPreset) => {
-        if (onPeriodChange) {
-            // Use URL-driven period change
-            onPeriodChange({ period: preset });
-        } else {
-            // Fallback to legacy behavior
-            handleDatePresetLegacy(preset, true);
-        }
+    // Map preset string to PeriodPreset type (only named presets, not legacy-only ones)
+    const toNamedPreset = (preset: string): PeriodPreset | null => {
+        if (preset === "all" || preset === "week" || preset === "thisMonth") return preset;
+        return null;
     };
 
     // Legacy date preset handler for backward compatibility
@@ -166,11 +162,15 @@ export function EntryFilterPanel({
             onFiltersChange(newFilters);
         } else {
             setTempFilters(newFilters);
+            setTempPeriod(toNamedPreset(preset));
         }
     };
 
     const handleApply = () => {
         onFiltersChange(tempFilters);
+        if (tempPeriod !== null && onPeriodChange) {
+            onPeriodChange({ period: tempPeriod });
+        }
         setOpen(false);
     };
 
@@ -187,67 +187,9 @@ export function EntryFilterPanel({
         setTempFilters(defaultFilters);
     };
 
-    // Format display for custom date range
-    const getDateRangeText = () => {
-        if (!filters.startDate && !filters.endDate) {
-            return t("allTime");
-        }
-        if (filters.startDate && filters.endDate) {
-            const startStr = format.dateTime(filters.startDate, { month: "short", day: "numeric" });
-            const endStr = format.dateTime(filters.endDate, { month: "short", day: "numeric" });
-            return `${startStr} - ${endStr}`;
-        }
-        return t("filter");
-    };
-
     return (
         <div className={cn("flex flex-wrap items-center gap-2", className)}>
-            {/* Quick Date Presets - Exposed */}
-            <div className="flex items-center gap-1 bg-[var(--surface2)] rounded-lg p-0.5">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                        "h-7 px-2.5 text-xs rounded-md transition-all",
-                        activePreset === "all" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
-                    )}
-                    onClick={() => handlePresetClick("all")}
-                >
-                    {t("allTime")}
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                        "h-7 px-2.5 text-xs rounded-md transition-all",
-                        activePreset === "thisMonth" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
-                    )}
-                    onClick={() => handlePresetClick("thisMonth")}
-                >
-                    {tDateRange("thisMonth")}
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                        "h-7 px-2.5 text-xs rounded-md transition-all",
-                        activePreset === "week" && "bg-[var(--surface)] shadow-sm text-primary font-medium"
-                    )}
-                    onClick={() => handlePresetClick("week")}
-                >
-                    {tDateRange("pastWeek")}
-                </Button>
-            </div>
-
-            {/* Custom date range indicator when not matching presets */}
-            {activePreset === "custom" && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-primary/5 px-2 py-1 rounded-md border border-primary/20">
-                    <CalendarIcon className="h-3 w-3" />
-                    <span>{getDateRangeText()}</span>
-                </div>
-            )}
-
-            {/* More Filters Button with Popover */}
+            {/* Filters Button with Popover */}
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
@@ -276,19 +218,31 @@ export function EntryFilterPanel({
                                 <CalendarIcon className="h-3 w-3" />
                                 {t("dateRange")}
                             </div>
-                            <div className="grid grid-cols-4 gap-1">
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("all")}>
-                                    {t("allTime")}
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("thisMonth")}>
-                                    {tDateRange("thisMonth")}
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("month")}>
-                                    {tDateRange("pastMonth")}
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => handleDatePresetLegacy("3months")}>
-                                    {tDateRange("past3Months")}
-                                </Button>
+                            <div className="grid grid-cols-5 gap-1">
+                                {([
+                                    { preset: "all", label: t("allTime") },
+                                    { preset: "week", label: tDateRange("pastWeek") },
+                                    { preset: "thisMonth", label: tDateRange("thisMonth") },
+                                    { preset: "month", label: tDateRange("pastMonth") },
+                                    { preset: "3months", label: tDateRange("past3Months") },
+                                ] as const).map(({ preset, label }) => {
+                                    const displayPreset = tempPeriod ?? activePreset;
+                                    const isActive = displayPreset === preset;
+                                    return (
+                                        <Button
+                                            key={preset}
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                                "text-xs h-7",
+                                                isActive && "bg-primary/10 text-primary font-medium"
+                                            )}
+                                            onClick={() => handleDatePresetLegacy(preset)}
+                                        >
+                                            {label}
+                                        </Button>
+                                    );
+                                })}
                             </div>
                             <div className="flex gap-2 items-center">
                                 <Input
