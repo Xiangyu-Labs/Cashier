@@ -124,37 +124,15 @@ export function useTaskQueueMutations(ledgerId: string) {
         mutationFn: async (ids: string[]) => {
             await batchRetrySourceDocumentsAction(ledgerId, ids);
         },
-        onMutate: async (ids) => {
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
-
-            const previousTaskQueue = queryClient.getQueryData<TaskQueueResult>(taskQueueKey);
-
-            queryClient.setQueryData<TaskQueueResult>(taskQueueKey, (old) => {
-                if (!old) return old;
-
-                const idsSet = new Set(ids);
-
-                // Find items to retry and update their status to pending
-                const newItems = old.items.map(item => {
-                    if (item.sourceDocumentId && idsSet.has(item.sourceDocumentId)) {
-                        return { ...item, status: 'pending' as const, subtitle: undefined };
-                    }
-                    return item;
-                });
-
-                return { ...old, items: newItems };
-            });
-
-            return { previousTaskQueue };
-        },
+        // Note: No optimistic update for batchRetry to avoid race conditions.
+        // The server operation involves: deleting old task_runs, updating source_documents,
+        // and creating new tasks. Optimistic updates can cause duplicate items
+        // when invalidateQueries fetches new data before the optimistic data is cleared.
         onSuccess: () => {
             toast.success(tEntries("retrySubmitted"));
         },
-        onError: (_err, _vars, context) => {
+        onError: () => {
             toast.error(tCommon("error"));
-            if (context?.previousTaskQueue) {
-                queryClient.setQueryData(taskQueueKey, context.previousTaskQueue);
-            }
         },
         onSettled: async () => {
             await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });

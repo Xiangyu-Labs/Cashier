@@ -35,7 +35,6 @@ export function TaskQueueModal({
 }: TaskQueueModalProps) {
     const t = useTranslations("TaskQueue");
     const tCommon = useTranslations("Common");
-    const tEntries = useTranslations("LedgerEntriesTab");
     const queryClient = useQueryClient();
 
     const { items, stats, isLoading } = useTaskQueue(ledgerId);
@@ -408,7 +407,7 @@ export function TaskQueueModal({
                     open={!!retrySourceDocId}
                     onOpenChange={(open) => !open && setRetrySourceDocId(null)}
                     onSuccess={() => {
-                        toast.success(tEntries("retrySubmitted"));
+                        // Toast is shown by SourceDocumentInput, just invalidate here
                         queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
                     }}
                 />

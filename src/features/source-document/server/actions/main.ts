@@ -516,6 +516,7 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
     const taskIdsToDelete = relatedTaskRuns.map(t => t.id);
 
     // 3. Atomically delete old task_runs and reset document status in a transaction
+    // Note: better-sqlite3 uses synchronous transactions (no await needed)
     db.transaction((tx) => {
         // 3a. Soft delete old task_runs for these source documents
         if (taskIdsToDelete.length > 0) {
