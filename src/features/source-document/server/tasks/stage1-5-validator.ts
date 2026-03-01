@@ -75,9 +75,10 @@ ${resultsJson}
 
 ### Your Responsibilities
 
-1. **Veto Power**: If the results are clearly wrong or inconsistent, set is_reasonable: false
-   - Examples: currency doesn't match obvious symbols, category contradicts content
-   
+1. **Verify Analysis Accuracy**: Check if Stage 1 results correctly reflect the document content. Only set is_reasonable: false for obvious analysis errors:
+   - Currency doesn't match visible symbols
+   - Category contradicts actual content
+
 2. **Consolidate & Add Hints**: If reasonable, create a summary with guidance hints
    - For each currency: explain WHY it was identified (symbol, inference, etc.)
    - For each category: explain WHAT content led to this category
