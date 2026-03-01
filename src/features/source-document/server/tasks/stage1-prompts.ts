@@ -16,7 +16,6 @@ Determine if the input is a valid financial record that contains at least one id
 2. Return is_valid: false if:
    - The image is blurry/unreadable
    - No amounts are visible
-   - The content is not financial in nature
 3. Provide reasoning in the user's preferred language: ${aiLanguage}
 
 ### Required output (JSON only, start your response with {)
