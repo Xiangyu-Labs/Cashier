@@ -23,42 +23,40 @@ Determine if the input is a valid financial record that contains at least one id
 }
 
 export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a financial document completeness checker. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+    return `You are a bookkeeping record completeness checker. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
-Determine if this financial record can be accurately recorded for bookkeeping.
+Determine if the input contains sufficient information for personal expense tracking. Accept various forms of records, not limited to formal transaction receipts.
+
+### Acceptable Record Types (including but not limited to)
+- Transaction receipts, invoices, bank statements
+- Service pricing pages, subscription plan screenshots
+- Menu prices, product price tags
+- Any image or text containing clear amount information
 
 ### Judgment Logic (check in order)
 
-**Step 1: Check for total amount**
-If you can find a clear total/sum/amount due → Judge as COMPLETE, end check.
-(Even if line items are unclear or incomplete, having a total is enough for bookkeeping)
+**Step 1: Check for any identifiable amount**
+If you can find any clear amount (total, monthly fee, unit price, pricing, etc.) → Judge as COMPLETE, end check.
+Examples: ¥39/month, Total ¥100, Unit price 50 yuan, etc.
 
-**Step 2: If no total amount, check visible line items**
-Look at all "visible" line items:
-- If every visible line item has a readable amount → Judge as COMPLETE
-- If a line item is "half visible" (can see product name but price is cut off or unreadable) → Judge as INCOMPLETE
+**Step 2: If no explicit amount, check for pricing information**
+If pricing, rates, or plan prices are shown but no specific transaction amount → Judge as COMPLETE (use the pricing as the bookkeeping amount).
+Examples: Monthly plan ¥39, Package price ¥199, etc.
 
-### What is "main content" (should check)
-- Actual purchased goods or services
-- Total amount, subtotal, amount due
+### What is NOT a completeness issue (do NOT reject for these reasons)
+- No merchant name, brand information
+- No transaction date, time
+- Not a formal invoice or receipt (e.g., pricing pages, menu screenshots)
+- Only has pricing but no actual payment amount shown
 
-### What is NOT "main content" (should ignore)
-- Content unrelated to this purchase (recommendations, ads, promotions, etc.)
-- Decorative page elements
-
-### What is NOT a completeness issue
-- No total line (as long as line items are complete)
-- No date, time, or merchant name
-- Low image quality but amounts are still readable
-
-### What IS a completeness issue
-- A line item is cut off: can see product name but price is cut
-- No total amount AND line items are also incomplete
-- Main content has obvious blur or obstruction
+### What IS a completeness issue (only reject for these)
+- No visible amount or pricing information at all
+- Amount/pricing information is obscured, blurry, or unreadable
+- Image quality too poor to identify any numbers
 
 ### Core Principle
-> As long as a usable amount can be determined (either total or sum of line items), judge as COMPLETE.
+> As long as any amount information can be identified (transaction amount, pricing, monthly fee, etc.), judge as COMPLETE.
 
 ### Required output (JSON only, start your response with {)
 If COMPLETE: {"is_complete": true}
