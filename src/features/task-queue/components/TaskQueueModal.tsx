@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Inbox, ListTodo } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
+import { useModalStackStore } from "@/lib/store/modal-stack";
 import type { QueueItem } from "../types/queue-item";
 
 interface TaskQueueModalProps {
@@ -159,6 +160,14 @@ export function TaskQueueModal({
             dismissTask.mutate(item.taskId);
         }
     }, [dismissTask]);
+
+    const push = useModalStackStore(state => state.push);
+
+    const handleViewDetails = useCallback((item: QueueItem) => {
+        if (item.sourceDocumentId) {
+            push({ type: 'source-document', id: item.sourceDocumentId });
+        }
+    }, [push]);
 
     const isEmpty = stats.total === 0 && groupedItems.completed.length === 0;
 
@@ -365,6 +374,7 @@ export function TaskQueueModal({
                                                 item={item}
                                                 ledgerId={ledgerId}
                                                 onRetry={item.sourceDocumentId ? () => handleRetry(item) : undefined}
+                                                onViewDetails={item.sourceDocumentId ? () => handleViewDetails(item) : undefined}
                                             />
                                         ))}
                                     </TaskGroupSection>

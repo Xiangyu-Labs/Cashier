@@ -44,6 +44,8 @@ interface QueueItemCardProps {
     onDelete?: () => void;
     /** Dismiss handler - for failed tasks without sourceDocumentId */
     onDismiss?: () => void | Promise<void>;
+    /** View details handler - for completed parse_source_document tasks to open source document detail */
+    onViewDetails?: () => void;
     className?: string;
 }
 
@@ -79,6 +81,7 @@ export const QueueItemCard = memo(function QueueItemCard({
     onRetry,
     onDelete,
     onDismiss,
+    onViewDetails,
     className,
 }: QueueItemCardProps) {
     const tCommon = useTranslations("Common");
@@ -110,6 +113,9 @@ export const QueueItemCard = memo(function QueueItemCard({
 
     // Can expand if has source document preview
     const canExpand = !!item.sourceDocumentId;
+
+    // Special interaction for completed parse_source_document tasks: click title to view details, click chevron to expand
+    const useSpecialInteraction = item.status === 'completed' && item.taskType === 'parse_source_document' && !!onViewDetails;
 
     async function handleRetry() {
         if (!onRetry) return;
@@ -145,24 +151,49 @@ export const QueueItemCard = memo(function QueueItemCard({
             <div
                 className={cn(
                     "px-3 py-2.5 flex justify-between items-center transition-all",
-                    canExpand && "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
+                    canExpand && !useSpecialInteraction && "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
                 )}
-                onClick={() => canExpand && setIsExpanded(!isExpanded)}
+                onClick={() => canExpand && !useSpecialInteraction && setIsExpanded(!isExpanded)}
             >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {canExpand && (
+                    {canExpand && useSpecialInteraction ? (
+                        // Special interaction: Chevron is a separate button for expand/collapse
+                        <button
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="p-1 -ml-1 hover:bg-accent/10 rounded shrink-0 transition-colors"
+                            aria-label={isExpanded ? t("collapse") : t("expand")}
+                        >
+                            <ChevronDown className={cn(
+                                "h-3.5 w-3.5 transition-transform text-muted-foreground",
+                                isExpanded && "rotate-180"
+                            )} />
+                        </button>
+                    ) : canExpand ? (
+                        // Normal interaction: Chevron is just visual indicator
                         <ChevronDown className={cn(
                             "h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground",
                             isExpanded && "rotate-180"
                         )} />
-                    )}
+                    ) : null}
 
                     <StatusIcon status={item.status} />
 
                     {/* Title */}
-                    <span className="text-sm font-medium text-text truncate" title={displayTitle}>
-                        {displayTitle}
-                    </span>
+                    {useSpecialInteraction ? (
+                        // Special interaction: Title is clickable to view details
+                        <div
+                            onClick={onViewDetails}
+                            className="text-sm font-medium text-text truncate cursor-pointer hover:text-primary transition-colors"
+                            title={displayTitle}
+                        >
+                            {displayTitle}
+                        </div>
+                    ) : (
+                        // Normal interaction: Title is not clickable
+                        <span className="text-sm font-medium text-text truncate" title={displayTitle}>
+                            {displayTitle}
+                        </span>
+                    )}
 
                     {/* Subtitle (error/reason) - inline in title line */}
                     {showSubtitleInline && (

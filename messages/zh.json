@@ -579,6 +579,8 @@
         "anomaly": "异常账单",
         "reason": "原因",
         "untitledBill": "未命名账单",
+        "expand": "展开",
+        "collapse": "收起",
         "taskType_parse_source_document": "解析原始凭证",
         "taskType_categorize_entry": "自动分类",
         "taskType_generate_category_metadata": "生成分类信息"

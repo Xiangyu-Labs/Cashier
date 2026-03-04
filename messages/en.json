@@ -575,6 +575,8 @@
         "anomaly": "Anomaly Bills",
         "reason": "Reason",
         "untitledBill": "Untitled Bill",
+        "expand": "Expand",
+        "collapse": "Collapse",
         "taskType_parse_source_document": "Parse Source Document",
         "taskType_categorize_entry": "Auto Categorize",
         "taskType_generate_category_metadata": "Generate Category Metadata"
