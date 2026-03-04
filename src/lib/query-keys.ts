@@ -48,6 +48,20 @@ export const queryKeys = {
 
     // === Service Credentials ===
     serviceCredentials: (ledgerId: string) => ['serviceCredentials', ledgerId] as const,
+
+    // === Calendar ===
+    calendarHeatmap: (
+        ledgerId: string,
+        viewType: string,
+        anchorDate: string,
+        filters?: { currency?: string; categoryId?: string }
+    ) => ['calendar', 'heatmap', ledgerId, viewType, anchorDate, filters] as const,
+
+    calendarDayDetail: (
+        ledgerId: string,
+        date: string,
+        filters?: { currency?: string; categoryId?: string }
+    ) => ['calendar', 'day', ledgerId, date, filters] as const,
 } as const;
 
 // Type helper for extracting query key type
