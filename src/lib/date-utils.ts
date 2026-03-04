@@ -13,7 +13,7 @@ import {
     parseISO,
 } from "date-fns";
 
-export type DateRangeType = "week" | "month" | "year";
+export type DateRangeType = "week" | "month" | "year" | "currentPeriod";
 
 export interface DateRange {
     startDate: Date;
@@ -44,7 +44,7 @@ export function getEndOfYear(date: Date): Date {
     return endOfYear(date);
 }
 
-export function getDateRange(date: Date, type: DateRangeType): DateRange {
+export function getDateRange(date: Date, type: DateRangeType, monthStartDay?: number): DateRange {
     let start: Date;
     let end: Date;
 
@@ -61,9 +61,42 @@ export function getDateRange(date: Date, type: DateRangeType): DateRange {
             start = getStartOfYear(date);
             end = getEndOfYear(date);
             break;
+        case "currentPeriod":
+            return getBillingPeriodRange(date, monthStartDay || 1);
     }
 
     return { startDate: start, endDate: end };
+}
+
+/**
+ * Calculate billing period range based on month start day.
+ * Returns the billing period that contains the given date.
+ */
+function getBillingPeriodRange(date: Date, monthStartDay: number): DateRange {
+    const currentDay = date.getDate();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    function getActualDate(y: number, m: number, targetDay: number): Date {
+        const lastDayOfMonth = new Date(y, m + 1, 0).getDate();
+        const actualDay = Math.min(targetDay, lastDayOfMonth);
+        return new Date(y, m, actualDay);
+    }
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (currentDay >= monthStartDay) {
+        // Current date is on or after period start day, belongs to current period
+        startDate = getActualDate(year, month, monthStartDay);
+        endDate = getActualDate(year, month + 1, monthStartDay - 1);
+    } else {
+        // Current date is before period start day, belongs to previous period
+        startDate = getActualDate(year, month - 1, monthStartDay);
+        endDate = getActualDate(year, month, monthStartDay - 1);
+    }
+
+    return { startDate, endDate };
 }
 
 export function addPeriod(date: Date, type: DateRangeType, amount: number): Date {
@@ -74,6 +107,9 @@ export function addPeriod(date: Date, type: DateRangeType, amount: number): Date
             return addMonths(date, amount);
         case "year":
             return addYears(date, amount);
+        case "currentPeriod":
+            // For billing periods, we move by months (since billing periods are month-based)
+            return addMonths(date, amount);
     }
 }
 

@@ -55,7 +55,7 @@ export function StatsHeader({
         <div className="flex flex-col gap-6 bg-surface">
             {/* 1. Date Range Switcher (Segmented Control) */}
             <div className="flex p-1 bg-surface2 rounded-lg self-center w-full max-w-xs">
-                {(["week", "month", "year"] as DateRangeType[]).map((type) => (
+                {(["week", "month", "year", "currentPeriod"] as DateRangeType[]).map((type) => (
                     <button
                         key={type}
                         onClick={() => {

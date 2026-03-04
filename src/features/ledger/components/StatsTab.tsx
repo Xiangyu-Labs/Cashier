@@ -28,9 +28,12 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProp
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
     const [currentDate, setCurrentDate] = useState(new Date());
 
+    // Get monthStartDay from ledger settings (default to 1)
+    const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
+
     const { startDate, endDate } = useMemo(
-        () => getDateRange(currentDate, rangeType),
-        [currentDate, rangeType]
+        () => getDateRange(currentDate, rangeType, monthStartDay),
+        [currentDate, rangeType, monthStartDay]
     );
 
     const { startDate: prevDateStart, endDate: prevDateEnd } = useMemo(() => {
@@ -38,9 +41,10 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProp
         if (rangeType === 'week') prevAnchor.setDate(prevAnchor.getDate() - 7);
         if (rangeType === 'month') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
         if (rangeType === 'year') prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
+        if (rangeType === 'currentPeriod') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
 
-        return getDateRange(prevAnchor, rangeType);
-    }, [currentDate, rangeType]);
+        return getDateRange(prevAnchor, rangeType, monthStartDay);
+    }, [currentDate, rangeType, monthStartDay]);
 
     const label = useMemo(() => {
         switch (rangeType) {
@@ -50,6 +54,8 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProp
                 return format.dateTime(startDate, { year: "numeric", month: "long" });
             case "year":
                 return format.dateTime(startDate, { year: "numeric" });
+            case "currentPeriod":
+                return `${format.dateTime(startDate, { month: "numeric", day: "numeric" })} - ${format.dateTime(endDate, { month: "numeric", day: "numeric" })}`;
             default:
                 return "";
         }

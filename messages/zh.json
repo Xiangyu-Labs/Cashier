@@ -119,6 +119,7 @@
         "month": "月",
         "week": "周",
         "year": "年",
+        "currentPeriod": "本期",
         "vsPreviousPeriod": "较上期"
     },
     "LedgerEntriesTab": {

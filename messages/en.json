@@ -119,6 +119,7 @@
         "month": "Month",
         "week": "Week",
         "year": "Year",
+        "currentPeriod": "Period",
         "vsPreviousPeriod": "vs previous period"
     },
     "LedgerEntriesTab": {
