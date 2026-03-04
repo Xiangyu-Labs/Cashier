@@ -53,3 +53,6 @@ public/workbox-*.js
 public/swe-worker-*.js
 
 .agent
+
+# documentation plans (temporary planning files)
+docs/plans/
