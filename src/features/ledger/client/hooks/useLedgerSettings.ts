@@ -1,12 +1,13 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
 
 interface UseLedgerSettingsParams {
@@ -29,24 +30,31 @@ interface UpdateLedgerData {
 export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories }: UseLedgerSettingsParams) {
     const t = useTranslations("Settings");
 
-    // Batch fetch all settings data - Use smart polling for categories that need metadata generation
+    // Separate query for categories (same key as useCategoryMutations)
+    // This ensures optimistic updates from useCategoryMutations are reflected immediately
+    const { data: categories = initialCategories } = useQuery<EntryCategoryWithCount[]>({
+        queryKey: queryKeys.entryCategories(ledgerId),
+        queryFn: () => getEntryCategoriesAction(ledgerId),
+        initialData: initialCategories,
+    });
+
+    // Use smart polling for settings data that may need background updates
+    // (e.g., uncategorizedCount and credentials don't change often)
     const { data: settingsData } = useSmartPolling<{
-        categories: EntryCategoryWithCount[];
         uncategorizedCount: number;
         credentials: ServiceCredential[];
     }>({
         queryKey: queryKeys.ledgerSettings(ledgerId),
         queryFn: () => getLedgerSettingsAction(ledgerId),
-        isActive: (data) => data?.categories?.some((c) => !c.icon || !c.description) ?? false,
+        // Polling is active when any category needs metadata generation (icon/description)
+        isActive: () => categories?.some((c) => !c.icon || !c.description) ?? false,
         interval: 3000,
         initialData: {
-            categories: initialCategories,
             uncategorizedCount: 0,
             credentials: [],
         }
     });
 
-    const categories = settingsData?.categories || [];
     const uncategorizedCount = settingsData?.uncategorizedCount || 0;
     const credentials = settingsData?.credentials || [];
 

@@ -12,6 +12,19 @@ vi.mock("@/features/ledger/server/actions/categories", () => ({
   updateEntryCategoryAction: vi.fn().mockResolvedValue(undefined),
   deleteEntryCategoryAction: vi.fn().mockResolvedValue(undefined),
   reorderEntryCategoriesAction: vi.fn().mockResolvedValue(undefined),
+  getEntryCategoriesAction: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/features/ledger/server/actions/settings", () => ({
+  getLedgerSettingsAction: vi.fn().mockResolvedValue({
+    uncategorizedCount: 0,
+    credentials: [],
+  }),
+}));
+
+// Mock next-intl
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
 }));
 
 // Mock sonner toast
@@ -34,22 +47,20 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       },
     });
 
-    // 初始化两个不同的 cache
+    // Initialize only the entryCategories cache
+    // After the fix, useLedgerSettings reads from entryCategories key directly
     queryClient.setQueryData(queryKeys.entryCategories(ledgerId), [
       { id: "cat-1", name: "餐饮", description: "吃饭", entryCount: 0 },
     ]);
 
+    // ledgerSettings no longer contains categories
     queryClient.setQueryData(queryKeys.ledgerSettings(ledgerId), {
-      categories: [{ id: "cat-1", name: "餐饮", description: "吃饭" }],
       uncategorizedCount: 0,
       credentials: [],
     });
   });
 
-  it("修改 category 后，entryCategories 和 ledgerSettings 应该同时更新", async () => {
-    // 问题：乐观更新只修改 entryCategories
-    // UI 从 ledgerSettings 读取，看到的是旧值
-
+  it("修改 category 后，entryCategories 应该立即更新（乐观更新）", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -59,7 +70,7 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       { wrapper }
     );
 
-    // 触发更新
+    // Trigger update
     act(() => {
       result.current.updateCategory.mutate({
         id: "cat-1",
@@ -67,17 +78,13 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       });
     });
 
-    // 检查 entryCategories 已更新（乐观更新生效）
+    // Verify entryCategories is updated immediately (optimistic update)
     await waitFor(() => {
       const entryCats = queryClient.getQueryData<Record<string, unknown>[]>(queryKeys.entryCategories(ledgerId));
       expect(entryCats?.[0]?.description).toBe("吃饭和饮料");
     });
 
-    // 问题：ledgerSettings 还是旧值！
-    const settings = queryClient.getQueryData<{ categories: Record<string, unknown>[] }>(queryKeys.ledgerSettings(ledgerId));
-    expect(settings?.categories[0]?.description).toBe("吃饭"); // 仍然是旧值！
-
-    // 期望（修复后）：两个 cache 都更新
-    // expect(settings.categories[0].description).toBe("吃饭和饮料");
+    // After the fix, useLedgerSettings reads from entryCategories key
+    // So the UI will see the updated value immediately
   });
 });
