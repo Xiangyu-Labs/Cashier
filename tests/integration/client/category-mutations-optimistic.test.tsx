@@ -15,13 +15,6 @@ vi.mock("@/features/ledger/server/actions/categories", () => ({
   getEntryCategoriesAction: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("@/features/ledger/server/actions/settings", () => ({
-  getLedgerSettingsAction: vi.fn().mockResolvedValue({
-    uncategorizedCount: 0,
-    credentials: [],
-  }),
-}));
-
 // Mock next-intl
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -35,7 +28,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-describe("类型 A: Entity 级别的 key 分裂", () => {
+describe("Category mutations optimistic updates", () => {
   let queryClient: QueryClient;
   const ledgerId = "ledger-test-123";
 
@@ -47,20 +40,13 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       },
     });
 
-    // Initialize only the entryCategories cache
-    // After the fix, useLedgerSettings reads from entryCategories key directly
+    // Initialize the cache with a category
     queryClient.setQueryData(queryKeys.entryCategories(ledgerId), [
       { id: "cat-1", name: "餐饮", description: "吃饭", entryCount: 0 },
     ]);
-
-    // ledgerSettings no longer contains categories
-    queryClient.setQueryData(queryKeys.ledgerSettings(ledgerId), {
-      uncategorizedCount: 0,
-      credentials: [],
-    });
   });
 
-  it("修改 category 后，entryCategories 应该立即更新（乐观更新）", async () => {
+  it("修改 category 后，乐观更新应立即生效", async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -70,7 +56,7 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       { wrapper }
     );
 
-    // Trigger update
+    // 触发更新
     act(() => {
       result.current.updateCategory.mutate({
         id: "cat-1",
@@ -78,13 +64,13 @@ describe("类型 A: Entity 级别的 key 分裂", () => {
       });
     });
 
-    // Verify entryCategories is updated immediately (optimistic update)
+    // 乐观更新应立即生效 - cache 已更新
     await waitFor(() => {
-      const entryCats = queryClient.getQueryData<Record<string, unknown>[]>(queryKeys.entryCategories(ledgerId));
-      expect(entryCats?.[0]?.description).toBe("吃饭和饮料");
+      const categories = queryClient.getQueryData<Record<string, unknown>[]>(queryKeys.entryCategories(ledgerId));
+      expect(categories?.[0]?.description).toBe("吃饭和饮料");
     });
 
-    // After the fix, useLedgerSettings reads from entryCategories key
-    // So the UI will see the updated value immediately
+    // 验证：UI 从同一个 cache 读取，也会看到新值
+    // 这就是修复后的行为 - 乐观更新立即反映
   });
 });
