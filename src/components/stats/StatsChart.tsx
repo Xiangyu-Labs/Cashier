@@ -80,7 +80,32 @@ export function StatsChart({
         return points;
     }, [data, rangeType, startDate, endDate, isLoading, locale]);
 
-    const maxVal = Math.max(...chartPoints.map(p => p.value), 1); // Avoid div by 0
+    // 计算95th percentile作为Y轴显示上限，处理异常值
+    const { yAxisMax, hasOutliers } = useMemo(() => {
+        if (chartPoints.length === 0) return { yAxisMax: 1, hasOutliers: false };
+
+        const values = chartPoints.map(p => p.value);
+        const maxVal = Math.max(...values, 1);
+
+        // 数据点少于10个时，使用最大值（避免过度压缩）
+        if (values.length < 10) {
+            return { yAxisMax: maxVal, hasOutliers: false };
+        }
+
+        // 计算95th percentile
+        const sorted = [...values].sort((a, b) => a - b);
+        const p95Index = Math.floor(sorted.length * 0.95);
+        const p95Value = sorted[p95Index] || maxVal;
+
+        // 如果95th percentile与最大值差距不大（<20%），直接使用最大值
+        if (maxVal - p95Value < maxVal * 0.2) {
+            return { yAxisMax: maxVal, hasOutliers: false };
+        }
+
+        // 确保封顶线至少是最大值的20%（避免过度拉伸）
+        const yAxisMax = Math.max(p95Value, maxVal * 0.2);
+        return { yAxisMax, hasOutliers: true };
+    }, [chartPoints]);
 
     if (isLoading) {
         return <div className="h-48 w-full bg-surface2/30 animate-pulse rounded-lg" />;
@@ -95,6 +120,12 @@ export function StatsChart({
 
     return (
         <div className="w-full h-52 relative pt-6 pb-6 select-none">
+            {/* Outlier indicator */}
+            {hasOutliers && (
+                <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
+                    已调整显示比例
+                </div>
+            )}
             {/* Grid Lines */}
             <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none">
                 <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
@@ -117,8 +148,9 @@ export function StatsChart({
                                 const xPercent = chartPoints.length === 1
                                     ? 50
                                     : (i / (chartPoints.length - 1)) * 100;
-                                // Calculate y position (inverted: 0 at top)
-                                const yPercent = paddingTop + (1 - p.value / maxVal) * (100 - paddingTop - paddingBottom);
+                                // Calculate y position (inverted: 0 at top) using capped value
+                                const displayValue = Math.min(p.value, yAxisMax);
+                                const yPercent = paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
                                 return `${xPercent},${yPercent}`;
                             }).join(" ")}
                             fill="none"
@@ -137,13 +169,28 @@ export function StatsChart({
                     const leftPercent = chartPoints.length === 1
                         ? 50
                         : (i / (chartPoints.length - 1)) * 100;
-                    // Calculate top position
-                    const topPercent = paddingTop + (1 - p.value / maxVal) * (100 - paddingTop - paddingBottom);
+                    // Calculate top position using capped value
+                    const isCapped = p.value > yAxisMax;
+                    const displayValue = Math.min(p.value, yAxisMax);
+                    const topPercent = paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
+
+                    // Tooltip text
+                    const tooltipText = isCapped
+                        ? `${p.label}: ${p.value.toLocaleString()} (超出显示上限)`
+                        : `${p.label}: ${p.value.toLocaleString()}`;
 
                     return (
                         <div
                             key={i}
-                            className="absolute w-[7px] h-[7px] rounded-full bg-bg border-2 border-primary -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
+                            title={tooltipText}
+                            className={`
+                                absolute w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
+                                transition-all duration-300 cursor-pointer group
+                                ${isCapped
+                                    ? 'border-2 border-red-500 after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-red-500'
+                                    : 'border-2 border-primary hover:scale-125'
+                                }
+                            `}
                             style={{
                                 left: `${leftPercent}%`,
                                 top: `${topPercent}%`,
