@@ -61,17 +61,28 @@ npm run docker:dev
 
 This mounts your source code with hot reload support.
 
+<!-- AUTO-GENERATED: Synced from package.json -->
 ## Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run test` | Run tests in watch mode |
+| `npm run dev` | Start development server with hot reload |
+| `npm run build` | Production build with type checking |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run tests in watch mode |
 | `npm run test:run` | Run tests once |
-| `npm run db:push` | Push schema to database |
-| `npm run db:studio` | Open Drizzle Studio |
-| `npm run docker:dev` | Start Docker dev environment |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run db:push` | Push schema changes to database |
+| `npm run db:generate` | Generate Drizzle migrations |
+| `npm run db:migrate` | Run Drizzle migrations |
+| `npm run db:studio` | Launch Drizzle Studio GUI |
+| `npm run db:drop` | Drop database (use with caution) |
+| `npm run docker:dev` | Start dev container with hot reload |
+| `npm run docker:build` | Build Docker image only |
+| `npm run docker:prod` | Build and start production container |
+| `npm run docker:down` | Stop and remove containers |
+<!-- END AUTO-GENERATED -->
 
 ## Troubleshooting
 
