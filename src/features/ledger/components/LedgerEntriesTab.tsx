@@ -280,17 +280,7 @@ export function LedgerEntriesTab({
             <PullToRefresh onRefresh={handleRefresh}>
                 <div className="space-y-4" {...containerProps}>
                     {/* Filter Panel */}
-                    <div className="px-2 mb-2 sm:mb-4 pt-1 flex items-center gap-2">
-                        <EntryFilterPanel
-                            filters={filters}
-                            onFiltersChange={onFiltersChange}
-                            periodParams={periodParams}
-                            onPeriodChange={onPeriodChange}
-                            showCategory={false}
-                            showCurrency={false}
-                            monthStartDay={monthStartDay}
-                            className="w-auto"
-                        />
+                    <div className="px-2 mb-2 sm:mb-4 flex items-center gap-2">
                         <Button
                             variant={selectionMode ? "secondary" : "ghost"}
                             size="icon"
@@ -301,10 +291,20 @@ export function LedgerEntriesTab({
                                     setSelectionMode(true);
                                 }
                             }}
-                            className="shrink-0"
+                            className="shrink-0 h-8 w-8"
                         >
                             {selectionMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
                         </Button>
+                        <EntryFilterPanel
+                            filters={filters}
+                            onFiltersChange={onFiltersChange}
+                            periodParams={periodParams}
+                            onPeriodChange={onPeriodChange}
+                            showCategory={false}
+                            showCurrency={false}
+                            monthStartDay={monthStartDay}
+                            className="w-auto"
+                        />
                         <span className="text-xs text-muted-foreground font-mono ml-auto">
                             {tFilter("filteredTotal")} {mainCurrency} {filteredTotal.toFixed(2)}
                         </span>
@@ -350,7 +350,7 @@ export function LedgerEntriesTab({
                     ) : (
                         <>
                             {/* Completed Section - Only show processed bills */}
-                            <div className="space-y-6 px-2">
+                            <div className="space-y-6 px-2 pt-2">
                                 {groupedCompletedByDate.length === 0 ? (
                                     <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                                         <span>{tCommon("noRecords")}</span>
