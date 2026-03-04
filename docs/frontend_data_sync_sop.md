@@ -800,7 +800,7 @@ return (
 
 | 场景 | 文件路径 | 说明 |
 |------|---------|------|
-| **协同模式** | `src/features/ledger/components/CategoriesPageClient.tsx` | 乐观更新 + Smart Polling 完整示例 |
+| **协同模式** | `src/features/ledger/components/settings/CategorySection.tsx` | 乐观更新 + 拖拽排序完整示例 |
 | **纯 Smart Polling** | `src/features/ledger/components/settings/ProcessingSystemSection.tsx` | 任务中心监控示例 |
 | **Smart Polling Hook** | `src/hooks/use-smart-polling.ts` | 核心实现 |
 | **Modal 响应优化** | `src/features/ledger/components/LedgerEntryDetailWrapper.tsx` | Modal 立即显示 + 骨架屏示例 |
