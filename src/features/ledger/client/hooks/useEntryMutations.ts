@@ -1,9 +1,11 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
+import {
+    useLedgerMutation,
+    createListSnapshots,
+} from "@/lib/mutations/use-ledger-mutation";
 import {
     updateLedgerEntryAction,
     deleteLedgerEntryAction,
@@ -18,6 +20,10 @@ interface UseEntryMutationsParams {
     setIsDetailModalOpen: (open: boolean) => void;
 }
 
+interface InfiniteData {
+    pages?: { items?: LedgerEntry[] }[];
+}
+
 export function useEntryMutations({
     ledgerId,
     categories,
@@ -25,23 +31,22 @@ export function useEntryMutations({
     setSelectedLedgerEntry,
     setIsDetailModalOpen,
 }: UseEntryMutationsParams) {
-    const queryClient = useQueryClient();
     const tCommon = useTranslations("Common");
     const tLedger = useTranslations("LedgerEntriesTab");
 
-    const updateEntry = useMutation({
-        mutationFn: async ({ ledgerEntryId, data }: { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }) => {
-            return await updateLedgerEntryAction(ledgerId, ledgerEntryId, data) as unknown as LedgerEntry;
+    const updateEntry = useLedgerMutation<
+        LedgerEntry,
+        { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }
+    >(ledgerId, {
+        mutationFn: async ({ ledgerEntryId, data }) => {
+            const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
+            return result as unknown as LedgerEntry;
         },
-        onMutate: async ({ ledgerEntryId, data }) => {
-            // Cancel in-flight queries
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        errorMessage: tCommon("saveFailed"),
+        onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
+            const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
 
-            // Snapshot for rollback
-            const prevEntries = queryClient.getQueriesData({ queryKey: queryKeys.ledgerEntries(ledgerId) });
-
-            // Optimistic update: update entry in infinite query data
-            queryClient.setQueriesData<{ pages?: { items?: LedgerEntry[] }[] }>(
+            queryClient.setQueriesData<InfiniteData>(
                 { queryKey: queryKeys.ledgerEntries(ledgerId) },
                 (old) => {
                     if (!old?.pages) return old;
@@ -54,7 +59,6 @@ export function useEntryMutations({
                                     ? {
                                         ...e,
                                         ...data,
-                                        // Ensure amount stays as string type
                                         amount: data.amount !== undefined ? String(data.amount) : e.amount,
                                         category: data.categoryId
                                             ? categories.find(c => c.id === data.categoryId) || e.category
@@ -79,35 +83,22 @@ export function useEntryMutations({
                 } as LedgerEntry);
             }
 
-            return { prevEntries };
-        },
-        onError: (_err, _vars, ctx) => {
-            // Rollback
-            if (ctx?.prevEntries) {
-                ctx.prevEntries.forEach(([queryKey, data]) => {
-                    queryClient.setQueryData(queryKey, data);
-                });
-            }
-            toast.error(tCommon("saveFailed"));
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+            return { snapshots };
         },
     });
 
-    const deleteEntry = useMutation({
-        mutationFn: async (ledgerEntryId: string) => {
-            await deleteLedgerEntryAction(ledgerId, ledgerEntryId);
+    const deleteEntry = useLedgerMutation<void, string>(ledgerId, {
+        mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
+        successMessage: tLedger("deleteSuccess"),
+        errorMessage: tCommon("deleteFailed"),
+        onSuccessExtra: () => {
+            setIsDetailModalOpen(false);
+            setSelectedLedgerEntry(null);
         },
-        onMutate: async (ledgerEntryId) => {
-            // Cancel in-flight queries
-            await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        onOptimisticUpdate: (queryClient, ledgerEntryId) => {
+            const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
 
-            // Snapshot for rollback
-            const prevEntries = queryClient.getQueryData(queryKeys.ledgerEntries(ledgerId));
-
-            // Optimistic update: remove entry from infinite query data
-            queryClient.setQueriesData<{ pages?: { items?: LedgerEntry[] }[] }>(
+            queryClient.setQueriesData<InfiniteData>(
                 { queryKey: queryKeys.ledgerEntries(ledgerId) },
                 (old) => {
                     if (!old?.pages) return old;
@@ -121,22 +112,7 @@ export function useEntryMutations({
                 }
             );
 
-            return { prevEntries };
-        },
-        onSuccess: () => {
-            toast.success(tLedger("deleteSuccess"));
-            setIsDetailModalOpen(false);
-            setSelectedLedgerEntry(null);
-        },
-        onError: (_err, _id, ctx) => {
-            // Rollback
-            if (ctx?.prevEntries) {
-                queryClient.setQueryData(queryKeys.ledgerEntries(ledgerId), ctx.prevEntries);
-            }
-            toast.error(tCommon("deleteFailed"));
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+            return { snapshots };
         },
     });
 

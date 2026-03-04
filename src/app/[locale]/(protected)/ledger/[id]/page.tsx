@@ -37,7 +37,7 @@ export default async function LedgerPage({
 
   // Prefetch all first-screen data using unified fetchers
   // These will be hydrated to the client and won't trigger additional requests
-  const STALE_TIME = 10 * 60 * 1000; // 10 minutes (increased for better caching)
+  const STALE_TIME = 5 * 60 * 1000; // 5 minutes (matches global default)
 
   // First, prefetch ledger to get main currency
   await queryClient.prefetchQuery({

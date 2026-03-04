@@ -163,7 +163,8 @@ describe("SettingsTab", () => {
         expect(screen.getByText("ledgerSettings")).toBeDefined();
     });
 
-    it("handles theme switching", () => {
+    it("handles theme switching", async () => {
+        const user = userEvent.setup();
         render(
             <QueryClientProvider client={queryClient}>
                 <SettingsTab
@@ -173,6 +174,10 @@ describe("SettingsTab", () => {
                 />
             </QueryClientProvider>
         );
+
+        // Expand the Appearance section first
+        const appearanceButton = screen.getByText("appearance");
+        await user.click(appearanceButton);
 
         const darkButton = screen.getByTitle("themeDark");
         fireEvent.click(darkButton);
@@ -218,6 +223,10 @@ describe("SettingsTab", () => {
                 />
             </QueryClientProvider>
         );
+
+        // Expand the Account section first
+        const accountButton = screen.getByText("account");
+        await user.click(accountButton);
 
         const signOutButton = screen.getAllByText("signOut")[1]; // Get the button text, not the section header
         expect(signOutButton).toBeDefined();

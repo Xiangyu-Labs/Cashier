@@ -1,10 +1,10 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
-import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
+import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
@@ -15,8 +15,18 @@ interface UseLedgerSettingsParams {
     initialCategories: EntryCategoryWithCount[];
 }
 
+interface UpdateLedgerData {
+    name?: string;
+    preferredCurrencies?: string[];
+    mainCurrency?: string;
+    aiLanguage?: string;
+    collapseBillsDefault?: boolean;
+    aiCustomPrompt?: string;
+    showMonthlyExpense?: boolean;
+    monthStartDay?: number;
+}
+
 export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories }: UseLedgerSettingsParams) {
-    const queryClient = useQueryClient();
     const t = useTranslations("Settings");
 
     // Batch fetch all settings data - Use smart polling for categories that need metadata generation
@@ -41,21 +51,22 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
     const credentials = settingsData?.credentials || [];
 
     const ledgerQueryKey = queryKeys.ledger(ledgerId);
+    const queryClient = useQueryClient();
 
     // Mutation for updating ledger settings with proper optimistic updates
-    const updateLedgerMutation = useMutation({
-        mutationFn: async (data: {
-            name?: string;
-            preferredCurrencies?: string[];
-            mainCurrency?: string;
-            aiLanguage?: string;
-            collapseBillsDefault?: boolean;
-            aiCustomPrompt?: string;
-            showMonthlyExpense?: boolean;
-            monthStartDay?: number;
-        }) => {
+    const updateLedgerMutation = useLedgerMutation<void, UpdateLedgerData>(ledgerId, {
+        mutationFn: async (data) => {
             // Transform flat structure to nested structure expected by updateLedgerAction
-            const { name, preferredCurrencies, mainCurrency, aiLanguage, collapseBillsDefault, aiCustomPrompt, showMonthlyExpense, monthStartDay } = data;
+            const {
+                name,
+                preferredCurrencies,
+                mainCurrency,
+                aiLanguage,
+                collapseBillsDefault,
+                aiCustomPrompt,
+                showMonthlyExpense,
+                monthStartDay,
+            } = data;
             const payload: { name?: string; settings?: Record<string, unknown> } = {};
 
             if (name !== undefined) {
@@ -77,14 +88,11 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
 
             await updateLedgerAction(ledgerId, payload);
         },
-        onMutate: async (newData) => {
-            // Cancel any outgoing queries
-            await queryClient.cancelQueries({ queryKey: ledgerQueryKey });
+        successMessage: t("updateSuccess"),
+        errorMessage: t("updateFailed"),
+        onOptimisticUpdate: (_, newData) => {
+            const snapshots = queryClient.getQueriesData<Ledger>({ queryKey: ledgerQueryKey });
 
-            // Snapshot the previous value
-            const previousLedger = queryClient.getQueryData<Ledger>(ledgerQueryKey);
-
-            // Optimistically update the cache
             queryClient.setQueryData<Ledger>(ledgerQueryKey, (old) => {
                 if (!old) return old;
 
@@ -96,14 +104,15 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
                 }
 
                 // Update settings if provided
-                if (newData.preferredCurrencies !== undefined ||
+                if (
+                    newData.preferredCurrencies !== undefined ||
                     newData.mainCurrency !== undefined ||
                     newData.aiLanguage !== undefined ||
                     newData.collapseBillsDefault !== undefined ||
                     newData.aiCustomPrompt !== undefined ||
                     newData.showMonthlyExpense !== undefined ||
-                    newData.monthStartDay !== undefined) {
-
+                    newData.monthStartDay !== undefined
+                ) {
                     updated.metadata = {
                         ...old.metadata,
                         settings: {
@@ -115,31 +124,17 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
                             ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
                             ...(newData.showMonthlyExpense !== undefined && { showMonthlyExpense: newData.showMonthlyExpense }),
                             ...(newData.monthStartDay !== undefined && { monthStartDay: newData.monthStartDay }),
-                        }
+                        },
                     };
                 }
 
                 return updated;
             });
 
-            // Return context with the previous value
-            return { previousLedger };
+            return { snapshots };
         },
-        onSuccess: () => {
-            toast.success(t("updateSuccess"));
-        },
-        onError: (_err, _variables, context) => {
-            toast.error(t("updateFailed"));
-
-            // Rollback to previous value on error
-            if (context?.previousLedger) {
-                queryClient.setQueryData(ledgerQueryKey, context.previousLedger);
-            }
-        },
-        onSettled: () => {
-            // Invalidate to sync with server
-            queryClient.invalidateQueries({ queryKey: ledgerQueryKey });
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+        onSettledExtra: (qc) => {
+            qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
         },
     });
 

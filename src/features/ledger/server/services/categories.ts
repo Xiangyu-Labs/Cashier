@@ -1,14 +1,13 @@
 import { db } from "@/lib/db";
 import { entryCategories, ledgerEntries } from "@/lib/db/schema";
 import { eq, or, isNull, asc, and, sql } from "drizzle-orm";
-import { cache } from "react";
 import { EntryCategoryWithCount } from "@/types/api";
 
 /**
  * Data Access Layer for Entry Categories
  */
 
-export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryCategoryWithCount[]> => {
+export async function getEntryCategories(ledgerId: string): Promise<EntryCategoryWithCount[]> {
     const rows = await db.query.entryCategories.findMany({
         where: and(or(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.ledgerId)), isNull(entryCategories.deletedAt)),
         orderBy: [asc(entryCategories.sortOrder)],
@@ -43,6 +42,6 @@ export const getEntryCategories = cache(async (ledgerId: string): Promise<EntryC
         deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
         entryCount: countMap.get(row.id) || 0,
     }));
-});
+}
 
 

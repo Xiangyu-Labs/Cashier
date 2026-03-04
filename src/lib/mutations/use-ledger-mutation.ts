@@ -1,33 +1,46 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { invalidateLedgerCache } from "@/lib/query-keys";
 import { toast } from "sonner";
 
-interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown> {
+// Type for snapshot data returned by onOptimisticUpdate
+export type MutationSnapshot = [QueryKey, unknown][];
+
+export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown> {
   /**
    * The mutation function to execute
    */
   mutationFn: (variables: TVariables) => Promise<TData>;
 
   /**
-   * Success toast message
+   * Success toast message (set to null to disable)
    */
-  successMessage?: string;
+  successMessage?: string | null;
 
   /**
-   * Error toast message
+   * Error toast message (set to null to disable)
    */
-  errorMessage?: string;
+  errorMessage?: string | null;
 
   /**
-   * Optional function to perform optimistic updates
-   * Should return context data for rollback
+   * Optional function to perform optimistic updates.
+   * Should modify queryClient cache directly and return context for rollback.
+   * Return { snapshots: MutationSnapshot } to enable automatic rollback,
+   * or return any custom context for manual rollback.
    */
-  onOptimisticUpdate?: (queryClient: ReturnType<typeof useQueryClient>, variables: TVariables) => TContext;
+  onOptimisticUpdate?: (
+    queryClient: ReturnType<typeof useQueryClient>,
+    variables: TVariables
+  ) => TContext | Promise<TContext>;
 
   /**
-   * Optional function to rollback optimistic updates on error
+   * Optional function for custom rollback logic.
+   * Only needed if not using the standard snapshot pattern.
+   * If onOptimisticUpdate returns { snapshots }, this is not needed.
    */
-  onRollback?: (queryClient: ReturnType<typeof useQueryClient>, context: TContext | undefined) => void;
+  onRollback?: (
+    queryClient: ReturnType<typeof useQueryClient>,
+    context: TContext | undefined
+  ) => void;
 
   /**
    * Additional callback to run on success (e.g., close modal, clear selection)
@@ -40,10 +53,39 @@ interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown> {
   onErrorExtra?: (error: Error, variables: TVariables) => void;
 
   /**
-   * Override default invalidation behavior
-   * By default, invalidates all queries related to the ledger
+   * Callback to run after invalidation is complete in onSettled.
+   * Use this for additional invalidations or side effects.
+   */
+  onSettledExtra?: (
+    queryClient: ReturnType<typeof useQueryClient>,
+    variables: TVariables,
+    data: TData | undefined,
+    error: Error | null
+  ) => void;
+
+  /**
+   * Override default invalidation behavior.
+   * By default, invalidates all queries related to the ledger.
    */
   customInvalidation?: (queryClient: ReturnType<typeof useQueryClient>) => void;
+
+  /**
+   * Whether to skip default ledger cache invalidation.
+   * Set to true if using customInvalidation or onSettledExtra for invalidation.
+   */
+  skipInvalidation?: boolean;
+}
+
+/**
+ * Check if context contains standard snapshots for automatic rollback
+ */
+function hasSnapshots(context: unknown): context is { snapshots: MutationSnapshot } {
+  return (
+    typeof context === "object" &&
+    context !== null &&
+    "snapshots" in context &&
+    Array.isArray((context as { snapshots: unknown }).snapshots)
+  );
 }
 
 /**
@@ -55,11 +97,15 @@ interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown> {
  * 4. Rollback on error (onError)
  * 5. Invalidate queries (onSettled)
  *
+ * Supports two rollback patterns:
+ * 1. Standard: onOptimisticUpdate returns { snapshots: MutationSnapshot } - automatic rollback
+ * 2. Custom: onOptimisticUpdate returns any context + provide onRollback function
+ *
  * @param ledgerId - The ledger ID for scoped cache invalidation
  * @param options - Mutation configuration
  */
 export function useLedgerMutation<TData = unknown, TVariables = void, TContext = unknown>(
-  ledgerId: string,
+  ledgerId: string | null | undefined,
   options: UseLedgerMutationOptions<TData, TVariables, TContext>
 ) {
   const queryClient = useQueryClient();
@@ -72,7 +118,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     onRollback,
     onSuccessExtra,
     onErrorExtra,
+    onSettledExtra,
     customInvalidation,
+    skipInvalidation = false,
   } = options;
 
   return useMutation<TData, Error, TVariables, TContext>({
@@ -80,11 +128,13 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
     onMutate: async (variables) => {
       // Cancel outgoing queries to prevent race conditions
-      await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      if (ledgerId) {
+        await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      }
 
       // Perform optimistic update if provided
       if (onOptimisticUpdate) {
-        return onOptimisticUpdate(queryClient, variables);
+        return await onOptimisticUpdate(queryClient, variables);
       }
 
       return undefined as TContext;
@@ -92,7 +142,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
     onSuccess: (data, variables) => {
       // Show success toast if message provided
-      if (successMessage) {
+      if (successMessage !== null && successMessage !== undefined) {
         toast.success(successMessage);
       }
 
@@ -104,12 +154,21 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
     onError: (error, variables, context) => {
       // Rollback optimistic updates if provided
-      if (onRollback && context !== undefined) {
-        onRollback(queryClient, context);
+      if (context !== undefined) {
+        // Pattern 1: Standard snapshots - automatic rollback
+        if (hasSnapshots(context)) {
+          context.snapshots.forEach(([queryKey, data]) => {
+            queryClient.setQueryData(queryKey, data);
+          });
+        }
+        // Pattern 2: Custom rollback function
+        else if (onRollback) {
+          onRollback(queryClient, context);
+        }
       }
 
       // Show error toast if message provided
-      if (errorMessage) {
+      if (errorMessage !== null && errorMessage !== undefined) {
         toast.error(errorMessage);
       }
 
@@ -119,13 +178,84 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       }
     },
 
-    onSettled: () => {
+    onSettled: async (data, error, variables) => {
       // Always invalidate queries to ensure fresh data
-      if (customInvalidation) {
-        customInvalidation(queryClient);
-      } else {
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      if (!skipInvalidation) {
+        if (customInvalidation) {
+          customInvalidation(queryClient);
+        } else if (ledgerId) {
+          await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        }
+      }
+
+      // Run additional settled callback
+      if (onSettledExtra) {
+        onSettledExtra(queryClient, variables, data, error);
       }
     },
   });
+}
+
+/**
+ * Helper to create standard snapshots for list operations.
+ * Captures all queries matching the given queryKey pattern.
+ */
+export function createListSnapshots<T>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey
+): MutationSnapshot {
+  return queryClient.getQueriesData<T>({ queryKey });
+}
+
+/**
+ * Helper for standard list item deletion optimistic update.
+ * Returns snapshots for automatic rollback.
+ */
+export function optimisticallyDeleteFromList<T extends { id: string }>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  idToDelete: string
+): { snapshots: MutationSnapshot } {
+  const snapshots = createListSnapshots<T[]>(queryClient, queryKey);
+
+  queryClient.setQueriesData<T[]>({ queryKey }, (old) =>
+    old?.filter((item) => item.id !== idToDelete) ?? []
+  );
+
+  return { snapshots };
+}
+
+/**
+ * Helper for standard list item addition optimistic update.
+ * Returns snapshots for automatic rollback.
+ */
+export function optimisticallyAddToList<T>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  newItem: T
+): { snapshots: MutationSnapshot } {
+  const snapshots = createListSnapshots<T[]>(queryClient, queryKey);
+
+  queryClient.setQueriesData<T[]>({ queryKey }, (old) => [...(old ?? []), newItem]);
+
+  return { snapshots };
+}
+
+/**
+ * Helper for standard list item update optimistic update.
+ * Returns snapshots for automatic rollback.
+ */
+export function optimisticallyUpdateInList<T extends { id: string }>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  idToUpdate: string,
+  updates: Partial<T>
+): { snapshots: MutationSnapshot } {
+  const snapshots = createListSnapshots<T[]>(queryClient, queryKey);
+
+  queryClient.setQueriesData<T[]>({ queryKey }, (old) =>
+    old?.map((item) => (item.id === idToUpdate ? { ...item, ...updates } : item)) ?? []
+  );
+
+  return { snapshots };
 }

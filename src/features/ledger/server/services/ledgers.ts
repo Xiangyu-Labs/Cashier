@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
-import { cache } from "react";
 import { Ledger } from "@/types/api";
 
 /**
@@ -9,23 +8,23 @@ import { Ledger } from "@/types/api";
  * Direct database access functions to be used by Server Components and Server Actions.
  */
 
-export const getLedgers = cache(async (userId: string): Promise<Ledger[]> => {
+export async function getLedgers(userId: string): Promise<Ledger[]> {
     const rows = await db.query.ledgers.findMany({
         where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
         orderBy: [desc(ledgers.createdAt)],
     });
 
     return rows.map(mapLedgerToApi);
-});
+}
 
-export const getLedger = cache(async (ledgerId: string): Promise<Ledger | undefined> => {
+export async function getLedger(ledgerId: string): Promise<Ledger | undefined> {
     const row = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
     });
 
     if (!row) return undefined;
     return mapLedgerToApi(row);
-});
+}
 
 function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
     return {

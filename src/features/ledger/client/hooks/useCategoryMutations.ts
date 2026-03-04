@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import {
+    useLedgerMutation,
+    createListSnapshots,
+    type MutationSnapshot,
+} from "@/lib/mutations/use-ledger-mutation";
 import {
     createEntryCategoryAction,
     updateEntryCategoryAction,
@@ -14,114 +17,85 @@ import {
 import type { EntryCategory, EntryCategoryWithCount } from "@/types/api";
 
 export function useCategoryMutations(ledgerId: string, categories: EntryCategoryWithCount[]) {
-    const queryClient = useQueryClient();
     const t = useTranslations("Settings");
     const queryKey = queryKeys.entryCategories(ledgerId);
 
     // Track category creation success to clear input
     const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => { });
 
-    const createCategory = useMutation({
-        mutationFn: async (data: { name: string }) => {
-            return await createEntryCategoryAction(ledgerId, data);
+    const createCategory = useLedgerMutation<EntryCategory, { name: string }>(ledgerId, {
+        mutationFn: async (data) => {
+            const result = await createEntryCategoryAction(ledgerId, data);
+            return result as unknown as EntryCategory;
         },
-        onMutate: async (newCategory: { name: string }) => {
-            await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
-
-            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) => [
-                ...old,
-                {
-                    id: `temp-${Date.now()}`,
-                    name: newCategory.name,
-                    icon: null,
-                    description: null,
-                    isEditable: true,
-                    sortOrder: categories.length,
-                    ledgerId,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    deletedAt: null,
-                    entryCount: 0,
-                } as EntryCategoryWithCount
-            ]);
-
-            return { previousCategories };
-        },
-        onSuccess: () => {
-            toast.success(t("categoryCreated"));
+        successMessage: t("categoryCreated"),
+        errorMessage: t("createCategoryFailed"),
+        onSuccessExtra: () => {
             setCategoryCreatedTrigger(() => () => { });
         },
-        onError: (_err: Error, _: { name: string }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
-            toast.error(t("createCategoryFailed"));
-            if (context?.previousCategories) {
-                queryClient.setQueryData(queryKey, context.previousCategories);
-            }
+        onOptimisticUpdate: (queryClient, { name }) => {
+            const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
+
+            const tempCategory: EntryCategoryWithCount = {
+                id: `temp-${Date.now()}`,
+                name,
+                icon: null,
+                description: null,
+                isEditable: true,
+                sortOrder: categories.length,
+                ledgerId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null,
+                entryCount: 0,
+            };
+
+            queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) => [
+                ...old,
+                tempCategory,
+            ]);
+
+            return { snapshots };
         },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey });
+        onSettledExtra: (queryClient) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
         },
     });
 
-    const updateCategory = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: Partial<EntryCategory> }) => {
-            await updateEntryCategoryAction(ledgerId, id, {
-                ...data,
-                description: data.description ?? undefined,
-                icon: data.icon ?? undefined,
-            });
-        },
-        onMutate: async ({ id, data }: { id: string; data: Partial<EntryCategory> }) => {
-            await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
+    const updateCategory = useLedgerMutation<void, { id: string; data: Partial<EntryCategory> }>(ledgerId, {
+        mutationFn: ({ id, data }) => updateEntryCategoryAction(ledgerId, id, {
+            ...data,
+            description: data.description ?? undefined,
+            icon: data.icon ?? undefined,
+        }),
+        successMessage: t("categoryUpdated"),
+        errorMessage: t("updateCategoryFailed"),
+        onOptimisticUpdate: (queryClient, { id, data }) => {
+            const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
-            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) =>
-                old.map((c) => c.id === id ? { ...c, ...data } : c)
+            queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) =>
+                old.map((c) => (c.id === id ? { ...c, ...data } : c))
             );
 
-            return { previousCategories };
-        },
-        onSuccess: () => {
-            toast.success(t("categoryUpdated"));
-        },
-        onError: (_err: Error, _: { id: string; data: Partial<EntryCategory> }, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
-            toast.error(t("updateCategoryFailed"));
-            if (context?.previousCategories) {
-                queryClient.setQueryData(queryKey, context.previousCategories);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey });
+            return { snapshots };
         },
     });
 
-    const deleteCategory = useMutation({
-        mutationFn: async (id: string) => {
-            await deleteEntryCategoryAction(ledgerId, id);
-        },
-        onMutate: async (id: string) => {
-            await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
+    const deleteCategory = useLedgerMutation<void, string>(ledgerId, {
+        mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
+        successMessage: t("categoryDeleted"),
+        errorMessage: t("deleteCategoryFailed"),
+        onOptimisticUpdate: (queryClient, id) => {
+            const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
-            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) =>
+            queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) =>
                 old.filter((c) => c.id !== id)
             );
 
-            return { previousCategories };
+            return { snapshots };
         },
-        onSuccess: () => {
-            toast.success(t("categoryDeleted"));
-        },
-        onError: (_err: Error, _: string, context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
-            toast.error(t("deleteCategoryFailed"));
-            if (context?.previousCategories) {
-                queryClient.setQueryData(queryKey, context.previousCategories);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey });
+        onSettledExtra: (queryClient) => {
             // Also invalidate uncategorized count since deleted category's entries become uncategorized
             queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
             // Invalidate task queue to immediately reflect cancelled tasks
@@ -129,17 +103,15 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
         },
     });
 
-    const reorderCategories = useMutation({
-        mutationFn: async (categoryIds: string[]) => {
-            await reorderEntryCategoriesAction(ledgerId, categoryIds);
-        },
-        onMutate: async (categoryIds: string[]) => {
-            await queryClient.cancelQueries({ queryKey });
-            const previousCategories = queryClient.getQueryData<EntryCategoryWithCount[]>(queryKey);
+    const reorderCategories = useLedgerMutation<void, string[]>(ledgerId, {
+        mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
+        successMessage: t("categoriesReordered"),
+        errorMessage: t("reorderCategoriesFailed"),
+        onOptimisticUpdate: (queryClient, categoryIds) => {
+            const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
-            // Optimistically reorder categories
-            queryClient.setQueryData<EntryCategoryWithCount[]>(queryKey, (old = []) => {
-                const categoryMap = new Map(old.map(c => [c.id, c]));
+            queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) => {
+                const categoryMap = new Map(old.map((c) => [c.id, c]));
                 return categoryIds
                     .map((id, index) => {
                         const cat = categoryMap.get(id);
@@ -148,19 +120,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
                     .filter((c): c is EntryCategoryWithCount => c !== null);
             });
 
-            return { previousCategories };
-        },
-        onSuccess: () => {
-            toast.success(t("categoriesReordered"));
-        },
-        onError: (_err: Error, _: string[], context: { previousCategories?: EntryCategoryWithCount[] } | undefined) => {
-            toast.error(t("reorderCategoriesFailed"));
-            if (context?.previousCategories) {
-                queryClient.setQueryData(queryKey, context.previousCategories);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey });
+            return { snapshots };
         },
     });
 
