@@ -114,7 +114,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
         <PullToRefresh onRefresh={handleRefresh}>
         <div className="space-y-6 sm:space-y-8">
             {/* Appearance Settings - Collapsible */}
-            <CollapsibleSection title={t('appearance')} defaultOpen={true}>
+            <CollapsibleSection title={t('appearance')} defaultOpen={false}>
                 <div className="space-y-6 pt-4">
                     {/* Theme Setting */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -335,7 +335,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
             </CollapsibleSection>
 
             {/* Account Settings - Collapsible */}
-            <CollapsibleSection title={t('account')} defaultOpen={true}>
+            <CollapsibleSection title={t('account')} defaultOpen={false}>
                 <div className="space-y-6 pt-4">
                     {/* Service Credentials */}
                     <ServiceCredentialSection
