@@ -54,7 +54,14 @@
         "entriesDeleted": "Deleted {count} items",
         "deleteConfirmTitle": "Delete {count} items?",
         "deleteConfirmDesc": "This action cannot be undone. The selected entries will be permanently deleted.",
-        "loadedOnly": "Only loaded items are selected"
+        "loadedOnly": "Only loaded items are selected",
+        "setDate": "Set Date",
+        "setDateShort": "Date",
+        "datesUpdated": "Updated dates for {count} items",
+        "retry": "Retry",
+        "retryShort": "Retry",
+        "retrySubmitted": "Submitted {count} items for retry",
+        "confirm": "Confirm"
     },
     "EntryFilterPanel": {
         "filter": "Filter",

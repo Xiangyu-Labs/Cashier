@@ -679,7 +679,7 @@ export async function getUnifiedSourceDocumentsAction(ledgerId: string, params: 
     }
 }
 
-export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string }): Promise<void> {
+export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string, entryDate?: string }): Promise<void> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 

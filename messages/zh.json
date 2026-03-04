@@ -54,7 +54,14 @@
         "entriesDeleted": "已删除 {count} 项",
         "deleteConfirmTitle": "删除 {count} 项？",
         "deleteConfirmDesc": "此操作无法撤销，选中的条目将被永久删除。",
-        "loadedOnly": "仅选中已加载的条目"
+        "loadedOnly": "仅选中已加载的条目",
+        "setDate": "修改日期",
+        "setDateShort": "日期",
+        "datesUpdated": "已更新 {count} 项的日期",
+        "retry": "重新解析",
+        "retryShort": "重试",
+        "retrySubmitted": "已提交 {count} 项重新解析",
+        "confirm": "确认"
     },
     "EntryFilterPanel": {
         "filter": "筛选",

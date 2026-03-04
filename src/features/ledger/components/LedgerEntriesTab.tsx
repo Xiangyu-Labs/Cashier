@@ -19,6 +19,11 @@ import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePr
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
+import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/useBatchSourceDocumentActions";
+import { BatchActionToolbar } from "./BatchActionToolbar";
+import { Button } from "@/components/ui/button";
+import { CheckSquare, X } from "lucide-react";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -234,6 +239,42 @@ export function LedgerEntriesTab({
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     }, [queryClient, ledgerId]);
 
+    // --- Batch Operations ---
+
+    // Collect all visible source document IDs
+    const allSourceDocumentIds = useMemo(() => {
+        return groupedCompletedByDate.flatMap(group =>
+            group.items.map(item => item.sourceDocument.id)
+        );
+    }, [groupedCompletedByDate]);
+
+    // Selection mode
+    const {
+        selectionMode,
+        setSelectionMode,
+        selectedIds,
+        toggleSelection,
+        selectAll,
+        clearSelection,
+        isAllSelected,
+    } = useSelectionMode(allSourceDocumentIds);
+
+    // Batch actions
+    const { batchUpdateDates, batchDelete, batchRetry } = useBatchSourceDocumentActions(ledgerId, clearSelection);
+
+    // Handlers for batch actions
+    const handleBatchUpdateDates = useCallback((date: string) => {
+        batchUpdateDates.mutate({ ids: Array.from(selectedIds), entryDate: date });
+    }, [batchUpdateDates, selectedIds]);
+
+    const handleBatchDelete = useCallback(() => {
+        batchDelete.mutate(Array.from(selectedIds));
+    }, [batchDelete, selectedIds]);
+
+    const handleBatchRetry = useCallback(() => {
+        batchRetry.mutate(Array.from(selectedIds));
+    }, [batchRetry, selectedIds]);
+
     return (
         <LayoutGroup id={layoutGroupId}>
             <PullToRefresh onRefresh={handleRefresh}>
@@ -250,6 +291,20 @@ export function LedgerEntriesTab({
                             monthStartDay={monthStartDay}
                             className="w-auto"
                         />
+                        <Button
+                            variant={selectionMode ? "secondary" : "ghost"}
+                            size="icon"
+                            onClick={() => {
+                                if (selectionMode) {
+                                    clearSelection();
+                                } else {
+                                    setSelectionMode(true);
+                                }
+                            }}
+                            className="shrink-0"
+                        >
+                            {selectionMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+                        </Button>
                         <span className="text-xs text-muted-foreground font-mono ml-auto">
                             {tFilter("filteredTotal")} {mainCurrency} {filteredTotal.toFixed(2)}
                         </span>
@@ -341,6 +396,9 @@ export function LedgerEntriesTab({
                                                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
                                                                 status={(group.sourceDocument.status || "completed") as SourceDocumentStatusType}
                                                                 anomalyReason={group.sourceDocument.anomalyReason}
+                                                                selectionMode={selectionMode}
+                                                                isSelected={selectedIds.has(group.sourceDocument.id)}
+                                                                onToggleSelect={() => toggleSelection(group.sourceDocument.id)}
                                                             />
                                                         </motion.div>
                                                     ))}
@@ -376,6 +434,22 @@ export function LedgerEntriesTab({
                     onConfirm={handleDeleteConfirmAction}
                     confirmLabel={tCommon("delete")}
                     variant="destructive"
+                />
+
+                {/* Batch Action Toolbar */}
+                <BatchActionToolbar
+                    selectedCount={selectedIds.size}
+                    totalCount={allSourceDocumentIds.length}
+                    isAllSelected={isAllSelected}
+                    onSelectAll={selectAll}
+                    onClearSelection={clearSelection}
+                    onUpdateDates={handleBatchUpdateDates}
+                    onRetry={handleBatchRetry}
+                    onDelete={handleBatchDelete}
+                    isUpdatingDates={batchUpdateDates.isPending}
+                    isRetrying={batchRetry.isPending}
+                    isDeleting={batchDelete.isPending}
+                    mode="sourceDocuments"
                 />
 
                 {retrySourceDocument && (

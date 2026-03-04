@@ -1,8 +1,9 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { parseDateString } from "@/lib/date-utils";
@@ -168,6 +169,10 @@ interface SourceDocumentCardProps {
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
   className?: string;
+  // Selection mode
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export const SourceDocumentCard = memo(function SourceDocumentCard({
@@ -185,6 +190,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   status,
   anomalyReason,
   className,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelect,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
@@ -236,23 +244,47 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   }
 
   return (
-    <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden mb-6", className)}>
+    <div
+      className={cn(
+        "bg-surface rounded-xl shadow-sm border overflow-hidden mb-6 transition-all",
+        isSelected ? "border-primary ring-1 ring-primary/20" : "border-border",
+        className
+      )}
+      onClick={selectionMode ? onToggleSelect : undefined}
+    >
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <div
+            className="mr-2 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={onToggleSelect}
+              className="h-5 w-5"
+            />
+          </div>
+        )}
+
         {/* 左侧折叠按钮 */}
         <button
-          onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsItemsExpanded(!isItemsExpanded);
+          }}
           className="p-1.5 -ml-1.5 hover:bg-accent/10 rounded shrink-0 transition-colors"
           aria-label={isItemsExpanded ? t("collapse") : t("expand")}
         >
           <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground hover:text-text", isItemsExpanded && "rotate-180")} />
         </button>
 
-        {/* 中间主体 - 点击打开详情 */}
+        {/* 中间主体 - 点击打开详情（非选择模式下） */}
         <div
-          onClick={_onViewDetails}
+          onClick={!selectionMode ? _onViewDetails : undefined}
           className={cn(
             "flex items-center gap-2 overflow-hidden flex-1 px-2 py-1 -my-1 rounded",
-            _onViewDetails && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
+            _onViewDetails && !selectionMode && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
           )}
         >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
