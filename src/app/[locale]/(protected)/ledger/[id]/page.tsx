@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction, getDefaultLedgerIdAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
-import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";

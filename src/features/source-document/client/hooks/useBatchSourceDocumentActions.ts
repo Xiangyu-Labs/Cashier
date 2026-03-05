@@ -11,7 +11,7 @@ import {
     batchUpdateSourceDocumentsAction,
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions/main";
+} from "@/features/source-document/server/actions";
 import type { SourceDocumentWithEntries } from "./useSourceDocuments";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {

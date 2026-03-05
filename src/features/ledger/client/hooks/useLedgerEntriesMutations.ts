@@ -13,7 +13,7 @@ import {
 import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
-} from "@/features/source-document/server/actions/main";
+} from "@/features/source-document/server/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 

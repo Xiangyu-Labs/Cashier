@@ -12,7 +12,7 @@ import {
 } from "../../helpers/schema-setup";
 import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions/main";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 

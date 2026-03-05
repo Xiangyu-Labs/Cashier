@@ -10,7 +10,7 @@ import {
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 import { SourceDocument, SourceDocumentLight } from "@/types/api";
 import { useTranslations } from "next-intl";
-import { getSourceDocumentFullAction } from "@/features/source-document/server/actions/main";
+import { getSourceDocumentFullAction } from "@/features/source-document/server/actions";
 
 interface SourceDocumentEditRetryDialogProps {
     ledgerId: string;

@@ -17,7 +17,7 @@ import { eq, isNull, and } from "drizzle-orm";
 import { deleteEntryCategoryAction, getEntryCategoriesAction, getUncategorizedCountAction } from "@/features/ledger/server/actions/categories";
 import { deleteLedgerEntryAction, createLedgerEntryAction, updateLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { deleteLedgerAction, createLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
-import { deleteSourceDocumentAction } from "@/features/source-document/server/actions/main";
+import { deleteSourceDocumentAction } from "@/features/source-document/server/actions";
 
 const testUserId = "00000000-0000-0000-0000-000000000000";
 

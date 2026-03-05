@@ -6,7 +6,7 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
-import { createSourceDocumentAction, retrySourceDocumentAction } from "@/features/source-document/server/actions/main";
+import { createSourceDocumentAction, retrySourceDocumentAction } from "@/features/source-document/server/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, RefreshCw } from "lucide-react";

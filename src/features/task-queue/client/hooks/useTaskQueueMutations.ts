@@ -10,7 +10,7 @@ import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions/main";
+} from "@/features/source-document/server/actions";
 import {
     dismissTaskAction,
     batchDismissTasksAction,

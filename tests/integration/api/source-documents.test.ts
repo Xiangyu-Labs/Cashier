@@ -5,7 +5,7 @@ import {
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
   getSourceDocumentsAction
-} from "@/features/source-document/server/actions/main";
+} from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { createQuickEntryAction } from "@/features/source-document/server/actions/main";
+import { createQuickEntryAction } from "@/features/source-document/server/actions";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";

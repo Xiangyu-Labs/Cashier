@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
-import { getAllSourceDocumentsAction } from '@/features/source-document/server/actions/main';
+import { getAllSourceDocumentsAction } from '@/features/source-document/server/actions';
 import { type PeriodParams, periodToDateRange } from '@/lib/period-utils';
 
 /**

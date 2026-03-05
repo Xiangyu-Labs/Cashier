@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { getAllSourceDocumentsAction, type SourceDocumentWithEntries } from "@/features/source-document/server/actions/main";
+import { getAllSourceDocumentsAction, type SourceDocumentWithEntries } from "@/features/source-document/server/actions";
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
 
