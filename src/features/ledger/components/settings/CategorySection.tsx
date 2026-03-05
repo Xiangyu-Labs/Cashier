@@ -259,7 +259,7 @@ export function CategorySection({
                     value={newCategoryName}
                     onChange={e => setNewCategoryName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                    className="flex-1 p-2 text-sm bg-[var(--surface)] border border(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    className="flex-1 p-2 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 />
                 <button
                     onClick={handleCreate}

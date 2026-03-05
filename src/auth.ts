@@ -134,14 +134,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
 
                 if (!dbUser) {
-                    return null as unknown as Session;
+                    throw new Error("User not found in database");
                 }
 
-                session.user.id = dbUser.id;
-                session.user.email = dbUser.email;
-                session.user.name = dbUser.name;
-                session.user.image = dbUser.image;
-                session.user.defaultLedgerId = dbUser.defaultLedgerId ?? undefined;
+                return {
+                    ...session,
+                    user: {
+                        ...session.user,
+                        id: dbUser.id,
+                        email: dbUser.email,
+                        name: dbUser.name,
+                        image: dbUser.image,
+                        defaultLedgerId: dbUser.defaultLedgerId ?? undefined,
+                    },
+                };
             }
             return session;
         },
