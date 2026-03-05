@@ -22,6 +22,13 @@ export function StatsChart({
 }: StatsChartProps) {
     const locale = useLocale();
 
+    // Find the latest date with actual data
+    const latestDataDate = useMemo(() => {
+        if (data.length === 0) return null;
+        const sortedDates = [...data].sort((a, b) => a.date.localeCompare(b.date));
+        return sortedDates[sortedDates.length - 1].date;
+    }, [data]);
+
     // Process Data based on Range Type
     const chartPoints = useMemo(() => {
         if (isLoading) return [];
@@ -29,9 +36,13 @@ export function StatsChart({
         const points: { label: string; value: number; fullDate: string }[] = [];
 
         if (rangeType === "year") {
-            // Aggregate by Month (12 points)
+            // Aggregate by Month - only show up to the month with latest data
             const year = startDate.getFullYear();
-            for (let month = 0; month < 12; month++) {
+            const maxMonth = latestDataDate
+                ? parseInt(latestDataDate.split('-')[1], 10)
+                : 12;
+
+            for (let month = 0; month < maxMonth; month++) {
                 // Determine pattern for this month: "YYYY-MM"
                 const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
 
@@ -49,9 +60,11 @@ export function StatsChart({
                 });
             }
         } else {
-            // Daily granularity (Week or Month)
+            // Daily granularity (Week or Month) - only show up to latest data date
             const curr = new Date(startDate);
-            const end = new Date(endDate);
+            const end = latestDataDate
+                ? new Date(latestDataDate)
+                : new Date(endDate);
 
             // Safety break to prevent infinite loops if dates are weird
             let safety = 0;
@@ -78,7 +91,7 @@ export function StatsChart({
             }
         }
         return points;
-    }, [data, rangeType, startDate, endDate, isLoading, locale]);
+    }, [data, rangeType, startDate, endDate, isLoading, locale, latestDataDate]);
 
     // 计算95th percentile作为Y轴显示上限，处理异常值
     const { yAxisMax, hasOutliers } = useMemo(() => {

@@ -123,15 +123,6 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                         </h3>
                         <div className="flex items-center gap-1">
                             <Button
-                                variant={chartView === 'trend' ? 'default' : 'ghost'}
-                                size="sm"
-                                onClick={() => setChartView('trend')}
-                                className="h-7 px-2"
-                            >
-                                <BarChart3 className="h-4 w-4 mr-1" />
-                                {t("trend")}
-                            </Button>
-                            <Button
                                 variant={chartView === 'heatmap' ? 'default' : 'ghost'}
                                 size="sm"
                                 onClick={() => setChartView('heatmap')}
@@ -139,6 +130,15 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                             >
                                 <Grid3X3 className="h-4 w-4 mr-1" />
                                 {t("heatmap")}
+                            </Button>
+                            <Button
+                                variant={chartView === 'trend' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartView('trend')}
+                                className="h-7 px-2"
+                            >
+                                <BarChart3 className="h-4 w-4 mr-1" />
+                                {t("trend")}
                             </Button>
                         </div>
                     </div>

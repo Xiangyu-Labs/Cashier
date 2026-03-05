@@ -8,26 +8,29 @@
 import type { CalendarHeatmapStats, HeatmapLevel } from '../types';
 
 // Heatmap color configuration using brand color (#10a37f)
-// Based on UI design system - using primary color with different opacities
-// Note: CSS variables are hex colors, not hsl(), so we use them directly
+// Using rgba with primary color mixed with surface background for reliability
+const PRIMARY_RGB = '16, 163, 127'; // #10a37f in RGB
+const SURFACE2_LIGHT = '#f7f7f8';
+const SURFACE2_DARK = '#202123';
+
 const HEATMAP_COLORS = {
-    // Light mode colors (CSS variable compatible)
+    // Light mode colors - using rgba for reliable rendering
     light: [
-        'var(--surface2)', // Level 0: No spending
-        'color-mix(in srgb, var(--primary) 15%, var(--surface2))', // Level 1: Very low
-        'color-mix(in srgb, var(--primary) 30%, var(--surface2))', // Level 2: Low
-        'color-mix(in srgb, var(--primary) 50%, var(--surface2))', // Level 3: Medium
-        'color-mix(in srgb, var(--primary) 70%, var(--surface2))', // Level 4: High
-        'var(--primary)', // Level 5: Very high
+        SURFACE2_LIGHT, // Level 0: No spending
+        `rgba(${PRIMARY_RGB}, 0.15)`, // Level 1: Very low
+        `rgba(${PRIMARY_RGB}, 0.30)`, // Level 2: Low
+        `rgba(${PRIMARY_RGB}, 0.50)`, // Level 3: Medium
+        `rgba(${PRIMARY_RGB}, 0.70)`, // Level 4: High
+        `rgb(${PRIMARY_RGB})`, // Level 5: Very high
     ],
     // Dark mode colors
     dark: [
-        'var(--surface2)', // Level 0: No spending
-        'color-mix(in srgb, var(--primary) 20%, var(--surface2))', // Level 1: Very low
-        'color-mix(in srgb, var(--primary) 35%, var(--surface2))', // Level 2: Low
-        'color-mix(in srgb, var(--primary) 55%, var(--surface2))', // Level 3: Medium
-        'color-mix(in srgb, var(--primary) 75%, var(--surface2))', // Level 4: High
-        'var(--primary)', // Level 5: Very high
+        SURFACE2_DARK, // Level 0: No spending
+        `rgba(${PRIMARY_RGB}, 0.20)`, // Level 1: Very low
+        `rgba(${PRIMARY_RGB}, 0.35)`, // Level 2: Low
+        `rgba(${PRIMARY_RGB}, 0.55)`, // Level 3: Medium
+        `rgba(${PRIMARY_RGB}, 0.75)`, // Level 4: High
+        `rgb(${PRIMARY_RGB})`, // Level 5: Very high
     ],
 };
 
@@ -52,6 +55,10 @@ export function getHeatmapLevel(
 
     // Use P80 as the effective max to handle outliers
     const effectiveMax = Math.max(stats.p80Amount, stats.avgAmount * 2);
+
+    // Guard against division by zero
+    if (effectiveMax <= 0) return 0;
+
     const ratio = Math.min(amount / effectiveMax, 1);
 
     if (ratio < 0.1) return 1;
