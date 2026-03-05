@@ -13,12 +13,13 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 
 interface BatchActionToolbarProps {
     selectedCount: number;
@@ -79,7 +80,7 @@ export function BatchActionToolbar({
     const tCommon = useTranslations("Common");
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [datePickerOpen, setDatePickerOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<string>(formatDateTimeForApi(new Date()) ?? "");
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
     // Use provided loading states or fall back to internal state management
     const [internalAiCategorizing, setInternalAiCategorizing] = useState(false);
@@ -157,16 +158,19 @@ export function BatchActionToolbar({
     const handleUpdateDates = async () => {
         if (!onUpdateDates) return;
 
+        const dateStr = formatDateTimeForApi(selectedDate);
+        if (!dateStr) return;
+
         if (isUpdatingDatesProp === undefined) {
             setInternalUpdatingDates(true);
             try {
-                await onUpdateDates(selectedDate);
+                await onUpdateDates(dateStr);
             } finally {
                 setInternalUpdatingDates(false);
                 setDatePickerOpen(false);
             }
         } else {
-            onUpdateDates(selectedDate);
+            onUpdateDates(dateStr);
             setDatePickerOpen(false);
         }
     };
@@ -370,31 +374,32 @@ export function BatchActionToolbar({
                                                             <span className="sm:hidden">{t("setDateShort")}</span>
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-3" align="center">
-                                                        <div className="space-y-3">
-                                                            <input
-                                                                type="date"
-                                                                value={selectedDate}
-                                                                onChange={(e) => setSelectedDate(e.target.value)}
-                                                                className="w-full px-3 py-2 border rounded-md text-sm"
-                                                            />
-                                                            <div className="flex justify-end gap-2">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => setDatePickerOpen(false)}
-                                                                >
-                                                                    {tCommon("cancel")}
-                                                                </Button>
-                                                                <Button
-                                                                    variant="default"
-                                                                    size="sm"
-                                                                    onClick={handleUpdateDates}
-                                                                    disabled={isUpdatingDates || !selectedDate}
-                                                                >
-                                                                    {t("confirm")}
-                                                                </Button>
-                                                            </div>
+                                                    <PopoverContent className="w-auto p-0" align="center">
+                                                        <CalendarComponent
+                                                            value={selectedDate}
+                                                            onChange={(date) => {
+                                                                if (date) {
+                                                                    setSelectedDate(date);
+                                                                }
+                                                            }}
+                                                            showShortcuts={false}
+                                                        />
+                                                        <div className="flex justify-end gap-2 p-3 border-t">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => setDatePickerOpen(false)}
+                                                            >
+                                                                {tCommon("cancel")}
+                                                            </Button>
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                onClick={handleUpdateDates}
+                                                                disabled={isUpdatingDates}
+                                                            >
+                                                                {t("confirm")}
+                                                            </Button>
                                                         </div>
                                                     </PopoverContent>
                                                 </Popover>

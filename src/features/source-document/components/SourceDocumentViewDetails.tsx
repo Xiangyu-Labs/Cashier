@@ -6,10 +6,11 @@ import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckSquare, X } from "lucide-react";
+import { parseDateString, formatDateTimeForApi } from "@/lib/date-utils";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";
 
@@ -157,16 +158,15 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         <span className="text-xs text-muted-foreground shrink-0">
                             {t("transactionTime")}:
                         </span>
-                        <Input
-                            type="date"
+                        <DateFilter
                             value={displayEntryDate}
-                            onChange={(e) => {
-                                if (e.target.value) {
-                                    onSourceDocChange({ entryDate: e.target.value });
+                            onChange={(date) => {
+                                if (date) {
+                                    onSourceDocChange({ entryDate: formatDateTimeForApi(date) });
                                 }
                             }}
-                            className="h-8 text-sm w-[160px] shrink-0"
-                            autoComplete="off"
+                            size="sm"
+                            className="h-8 w-[160px] shrink-0"
                         />
                         {isAnomaly && (
                             <Badge variant="error" className="h-4 px-1.5 text-[8px] uppercase font-black tracking-tighter rounded-full">

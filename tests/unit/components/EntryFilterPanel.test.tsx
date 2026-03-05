@@ -4,17 +4,35 @@ import { EntryFilterPanel, EntryFilters } from "@/features/ledger/components/Ent
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => {
-    const translations: Record<string, string> = {
+  useTranslations: (ns?: string) => {
+    const translations: Record<string, string | string[]> = {
       moreFilters: "更多筛选",
       dateRange: "日期范围",
       all: "全部",
       thisMonth: "本月",
       week: "最近7天",
       custom: "自定义",
+      selectDate: "选择日期",
+      today: "今天",
+      yesterday: "昨天",
+      clear: "清除",
+      weekDays: ["日", "一", "二", "三", "四", "五", "六"],
     };
-    return translations[key] || key;
+    const t = (key: string) => {
+      const fullKey = ns ? `${ns}.${key}` : key;
+      const value = translations[key] || translations[fullKey] || key;
+      return Array.isArray(value) ? value : value;
+    };
+    t.raw = (key: string) => {
+      const fullKey = ns ? `${ns}.${key}` : key;
+      return translations[key] || translations[fullKey] || key;
+    };
+    return t;
   },
+  useFormatter: () => ({
+    dateTime: (date: Date) => date.toLocaleDateString(),
+    number: (num: number) => num.toString(),
+  }),
 }));
 
 // Mock CategoryIcon

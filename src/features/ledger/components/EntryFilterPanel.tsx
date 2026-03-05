@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { DateFilter } from "@/components/ui/date-filter";
 import { PeriodParams, PeriodPreset, getBillingPeriod } from "@/lib/period-utils";
 
 export interface EntryFilters {
@@ -253,29 +254,26 @@ export function EntryFilterPanel({
                                 })}
                             </div>
                             <div className="flex gap-2 items-center">
-                                <Input
-                                    type="date"
-                                    value={formatDateInput(tempFilters.startDate)}
-                                    onChange={(e) => setTempFilters(prev => ({
+                                <DateFilter
+                                    value={tempFilters.startDate}
+                                    onChange={(date) => setTempFilters(prev => ({
                                         ...prev,
-                                        startDate: e.target.value ? new Date(e.target.value) : undefined
+                                        startDate: date || undefined
                                     }))}
-                                    className="flex-1 h-8 text-sm"
+                                    size="sm"
+                                    className="flex-1 h-8"
+                                    showClear={false}
                                 />
                                 <span className="text-muted-foreground text-sm">-</span>
-                                <Input
-                                    type="date"
-                                    value={formatDateInput(tempFilters.endDate)}
-                                    onChange={(e) => {
-                                        if (e.target.value) {
-                                            const d = new Date(e.target.value);
-                                            d.setHours(23, 59, 59, 999);
-                                            setTempFilters(prev => ({ ...prev, endDate: d }));
-                                        } else {
-                                            setTempFilters(prev => ({ ...prev, endDate: undefined }));
-                                        }
-                                    }}
-                                    className="flex-1 h-8 text-sm"
+                                <DateFilter
+                                    value={tempFilters.endDate}
+                                    onChange={(date) => setTempFilters(prev => ({
+                                        ...prev,
+                                        endDate: date || undefined
+                                    }))}
+                                    size="sm"
+                                    className="flex-1 h-8"
+                                    showClear={false}
                                 />
                             </div>
                         </div>
