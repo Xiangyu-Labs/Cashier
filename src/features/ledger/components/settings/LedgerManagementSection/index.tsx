@@ -2,16 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/routing";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { useLedgerMutation } from "@/lib/mutations";
-import {
-    deleteLedgerAction,
-    setDefaultLedgerAction,
-    createLedgerAction,
-    getDefaultLedgerIdAction,
-    updateLedgerAction,
-} from "@/features/ledger/server/actions/ledgers";
+import { getDefaultLedgerIdAction } from "@/features/ledger/server/actions/ledgers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,20 +17,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Star, Plus, Trash2, ArrowRight, Loader2 } from "lucide-react";
+import { Star, Plus, Trash2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Ledger } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { EditableField } from "@/components/ui/editable-field";
+import { useLedgerMutations } from "./useLedgerMutations";
+import { CreateLedgerDialog } from "./CreateLedgerDialog";
 
 interface LedgerManagementSectionProps {
     ledgerId: string;
@@ -47,9 +34,7 @@ interface LedgerManagementSectionProps {
 export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManagementSectionProps) {
     const t = useTranslations("Settings");
     const tCommon = useTranslations("Common");
-    const tLedgerSwitcher = useTranslations("LedgerSwitcher");
     const router = useRouter();
-    const queryClient = useQueryClient();
     const [isPending] = useTransition();
 
     // Get default ledger ID
@@ -61,64 +46,20 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
 
     // State for dialogs
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newLedgerName, setNewLedgerName] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<Ledger | null>(null);
 
-    // Delete mutation
-    const deleteMutation = useLedgerMutation(ledgerId, {
-        mutationFn: (id: string) => deleteLedgerAction(id),
-        successMessage: t("ledgerDeleted"),
-        errorMessage: t("deleteLedgerFailed"),
-        onSuccessExtra: () => {
-            setDeleteTarget(null);
-            // Invalidate ledgers and defaultLedgerId queries
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgers() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.defaultLedgerId() });
-        },
-        onErrorExtra: (error) => {
-            // Show specific error message from server
-            toast.error(error.message);
-        },
+    const {
+        deleteMutation,
+        setPrimaryMutation,
+        createMutation,
+        renameMutation,
+        handleDeleteWithNavigation,
+    } = useLedgerMutations({
+        ledgerId,
+        allLedgers,
+        defaultLedgerId: defaultLedgerId ?? null,
+        onCreateSuccess: () => setShowCreateModal(false),
     });
-
-    // Set as primary mutation
-    const setPrimaryMutation = useLedgerMutation(ledgerId, {
-        mutationFn: (id: string) => setDefaultLedgerAction(id),
-        successMessage: t("primaryLedgerSet"),
-        errorMessage: t("setPrimaryFailed"),
-        onSuccessExtra: () => {
-            // Invalidate defaultLedgerId query
-            queryClient.invalidateQueries({ queryKey: queryKeys.defaultLedgerId() });
-        },
-    });
-
-    // Create ledger mutation
-    const createMutation = useLedgerMutation(ledgerId, {
-        mutationFn: (name: string) => createLedgerAction({ name }),
-        successMessage: tLedgerSwitcher("createSuccess"),
-        errorMessage: tLedgerSwitcher("createFailed"),
-        onSuccessExtra: (newLedger) => {
-            setShowCreateModal(false);
-            setNewLedgerName("");
-            // Invalidate ledgers query
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgers() });
-            // Navigate to the new ledger
-            router.push(`/ledger/${newLedger.id}`);
-        },
-    });
-
-    // Rename ledger mutation
-    const renameMutation = useLedgerMutation(ledgerId, {
-        mutationFn: ({ id, name }: { id: string; name: string }) => updateLedgerAction(id, { name }),
-        onSuccessExtra: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgers() });
-        },
-    });
-
-    const handleCreate = () => {
-        if (!newLedgerName.trim()) return;
-        createMutation.mutate(newLedgerName.trim());
-    };
 
     const handleDelete = (ledger: Ledger) => {
         const isOnlyLedger = allLedgers.length <= 1;
@@ -139,23 +80,8 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
 
     const confirmDelete = () => {
         if (!deleteTarget) return;
-
-        // If deleting current ledger, navigate to primary ledger or first ledger
-        if (deleteTarget.id === ledgerId) {
-            const targetId = defaultLedgerId && defaultLedgerId !== deleteTarget.id
-                ? defaultLedgerId
-                : allLedgers.find(l => l.id !== deleteTarget.id)?.id;
-
-            deleteMutation.mutate(deleteTarget.id);
-            if (targetId) {
-                router.push(`/ledger/${targetId}`);
-            } else {
-                // Fallback: navigate to home which will redirect
-                router.push("/");
-            }
-        } else {
-            deleteMutation.mutate(deleteTarget.id);
-        }
+        handleDeleteWithNavigation(deleteTarget);
+        setDeleteTarget(null);
     };
 
     const handleSwitch = (targetId: string) => {
@@ -277,55 +203,12 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
             </div>
 
             {/* Create Ledger Dialog */}
-            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>{tLedgerSwitcher("newLedger")}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-text">
-                                {tLedgerSwitcher("ledgerName")}
-                            </label>
-                            <Input
-                                value={newLedgerName}
-                                onChange={(e) => setNewLedgerName(e.target.value)}
-                                placeholder={tLedgerSwitcher("placeholder")}
-                                autoFocus
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && newLedgerName.trim()) {
-                                        handleCreate();
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                setShowCreateModal(false);
-                                setNewLedgerName("");
-                            }}
-                        >
-                            {tCommon("cancel")}
-                        </Button>
-                        <Button
-                            onClick={handleCreate}
-                            disabled={!newLedgerName.trim() || createMutation.isPending}
-                        >
-                            {createMutation.isPending ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    {tLedgerSwitcher("creating")}
-                                </>
-                            ) : (
-                                tLedgerSwitcher("create")
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <CreateLedgerDialog
+                open={showCreateModal}
+                onOpenChange={setShowCreateModal}
+                onCreate={(name) => createMutation.mutate(name)}
+                isPending={createMutation.isPending}
+            />
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
@@ -350,3 +233,6 @@ export function LedgerManagementSection({ ledgerId, allLedgers }: LedgerManageme
         </>
     );
 }
+
+export { useLedgerMutations } from "./useLedgerMutations";
+export { CreateLedgerDialog } from "./CreateLedgerDialog";
