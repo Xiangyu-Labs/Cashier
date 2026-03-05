@@ -151,17 +151,16 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
 
   return (
     <div className={cn('flex flex-col', className)}>
-      {/* Month labels */}
-      <div className="flex mb-1 ml-6">
-        {monthLabels.map(({ month, weekIndex, label }, index) => {
-          // Calculate position based on week index
-          const leftOffset = weekIndex * 12;
+      {/* Month labels - with relative positioning container */}
+      <div className="relative h-5 mb-1 ml-7">
+        {monthLabels.map(({ month, weekIndex, label }) => {
+          const leftOffset = weekIndex * 14; // 12px cell + 2px gap
           return (
             <div
               key={month}
-              className="text-xs text-muted-foreground whitespace-nowrap absolute"
+              className="absolute text-xs text-muted-foreground whitespace-nowrap"
               style={{
-                marginLeft: `${leftOffset}px`,
+                left: `${leftOffset}px`,
               }}
             >
               {label}
@@ -170,17 +169,17 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
         })}
       </div>
 
-      <div className="flex mt-5">
+      <div className="flex">
         {/* Weekday labels */}
-        <div className="flex flex-col mr-2 gap-[2px]">
+        <div className="flex flex-col mr-2 gap-[3px] pt-[1px]">
           {weekdayLabels.map((day, index) => (
             <div
               key={day}
               className={cn(
-                'text-[10px] text-muted-foreground w-4 flex items-center justify-center',
+                'text-[11px] text-muted-foreground w-5 flex items-center justify-center',
                 index % 2 === 1 && 'invisible' // Show every other label to save space
               )}
-              style={{ height: '10px' }}
+              style={{ height: '12px' }}
             >
               {day}
             </div>
@@ -264,7 +263,7 @@ function DayCell({ day, onClick }: DayCellProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          'w-[10px] h-[10px] rounded-sm transition-all duration-150',
+          'w-3 h-3 rounded-sm transition-all duration-150',
           'hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary',
           !day.isInYear && 'opacity-30'
         )}

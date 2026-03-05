@@ -65,7 +65,7 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
               key={date}
               onClick={() => onDayClick(date)}
               className={cn(
-                'relative flex flex-col items-center justify-center rounded-lg transition-all duration-200',
+                'relative flex flex-col items-center justify-start pt-1.5 rounded-lg transition-all duration-200',
                 'h-16 min-h-[4rem]',
                 'hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary',
                 !isCurrentMonth && 'opacity-30',
@@ -75,21 +75,21 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
                 backgroundColor: getHeatmapColor(level),
               }}
             >
-              {/* Day number - top left */}
+              {/* Day number - top center */}
               <span
                 className={cn(
-                  'absolute top-1.5 left-2 text-xs font-medium',
+                  'text-xs font-medium leading-none',
                   level >= 4 ? 'text-white' : 'text-foreground'
                 )}
               >
                 {dayNumber}
               </span>
 
-              {/* Amount - center */}
+              {/* Amount - center (if has data) */}
               {amount > 0 && (
                 <span
                   className={cn(
-                    'mt-3 text-sm font-semibold',
+                    'mt-1 text-sm font-semibold leading-tight',
                     level >= 4 ? 'text-white' : 'text-foreground'
                   )}
                 >
@@ -97,11 +97,11 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
                 </span>
               )}
 
-              {/* Count indicator - bottom */}
-              {count > 0 && (
+              {/* Count indicator (only if no amount or small amount) */}
+              {count > 0 && amount === 0 && (
                 <span
                   className={cn(
-                    'absolute bottom-1 text-[10px]',
+                    'mt-1 text-[10px]',
                     level >= 4 ? 'text-white/80' : 'text-muted-foreground'
                   )}
                 >
