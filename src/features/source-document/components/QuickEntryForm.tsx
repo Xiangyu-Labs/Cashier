@@ -56,6 +56,14 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
 
     return (
         <div className="space-y-4">
+            {/* Item Name (optional) */}
+            <Input
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                placeholder={selectedCategory ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")}
+                className="text-sm"
+            />
+
             {/* Category Grid */}
             <div>
                 <p className="text-sm text-muted-foreground mb-2">{t("selectCategory")}</p>
@@ -99,14 +107,6 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
                     displayClassName="text-3xl font-bold font-mono text-center"
                 />
             </div>
-
-            {/* Item Name (optional) */}
-            <Input
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-                placeholder={selectedCategory ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")}
-                className="text-sm"
-            />
 
             {/* Submit */}
             <Button
