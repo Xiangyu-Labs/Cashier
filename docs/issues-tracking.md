@@ -54,11 +54,18 @@
 
 - [ ] **21. `parse-source-document.ts` 419行** - 超过400行限制
 - [ ] **22. `stage1-executor.ts` 309行** - 接近上限
-- [ ] **23. `main.ts` 915行** - 严重超过400行限制，建议拆分：
-  - `crud.ts` - 基础 CRUD
-  - `batch.ts` - 批量操作
-  - `query.ts` - 查询相关
-  - `quick-entry.ts` - 快速录入
+- [x] **23. `main.ts` 915行** - 严重超过400行限制 ✅ 已修复
+  - 拆分结果：
+    - `types.ts` - 类型定义 (83行)
+    - `helpers.ts` - 任务准备工具 (46行)
+    - `create.ts` - 创建单据 (40行)
+    - `retry.ts` - 重试单据 (84行)
+    - `update.ts` - 更新单据 (42行)
+    - `delete.ts` - 删除单据 (96行)
+    - `batch-retry.ts` - 批量重试 (74行)
+    - `queries.ts` - 查询操作 (246行)
+    - `quick-entry.ts` - 快速录入 (79行)
+    - `index.ts` - 统一导出 (36行)
 
 - [ ] **24. `TaskQueueModal.tsx` 427行** - 超过400行限制
 - [ ] **25. `QueueItemCard.tsx` 332行** - 接近上限
