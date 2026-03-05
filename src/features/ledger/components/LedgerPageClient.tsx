@@ -127,6 +127,29 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
         setAdvancedFilters(filters);
     }, []);
 
+    const handleDateDrilldown = useCallback((date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
+        // 1. Update advanced filters if provided (preserve currency/category from calendar)
+        if (filters) {
+            setAdvancedFilters(prev => ({
+                ...prev,
+                ...(filters.currency !== undefined && { currency: filters.currency }),
+                ...(filters.categoryId !== undefined && { categoryId: filters.categoryId }),
+            }));
+        }
+
+        // 2. Switch to details tab and set date range (single day)
+        setActiveTab("details");
+        handlePeriodChange({ period: 'custom', startDate: date, endDate: date }, { skipUrlUpdate: true });
+
+        // 3. Single atomic URL update with ALL params
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "details");
+        params.set("period", "custom");
+        params.set("startDate", date);
+        params.set("endDate", date);
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+    }, [searchParams, pathname, handlePeriodChange]);
+
     const [isInputOpen, setIsInputOpen] = useState(false);
     const [inputMode, setInputMode] = useState<"ai" | "quick">("ai");
     const [isPendingOpen, setIsPendingOpen] = useState(false);
@@ -255,6 +278,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                             ledgerId={ledgerId}
                             categories={categories || []}
                             ledger={ledger}
+                            onDateDrilldown={handleDateDrilldown}
                         />
                     </TabsContent>
 

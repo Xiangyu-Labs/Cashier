@@ -14,7 +14,6 @@ import { CalendarFilters } from './CalendarFilters';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { YearView } from './YearView';
-import { DayDetailDialog } from './DayDetailDialog';
 import { useCalendarHeatmap } from '../client/hooks/useCalendarData';
 import { queryKeys } from '@/lib/query-keys';
 import type { EntryCategory, Ledger } from '@/types/api';
@@ -33,14 +32,14 @@ interface CalendarTabProps {
   ledgerId: string;
   categories: EntryCategory[];
   ledger?: Ledger;
+  onDateDrilldown?: (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => void;
   className?: string;
 }
 
-export function CalendarTab({ ledgerId, categories, ledger, className }: CalendarTabProps) {
+export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, className }: CalendarTabProps) {
   const queryClient = useQueryClient();
   const [viewType, setViewType] = useState<CalendarViewType>('month');
   const [anchorDate, setAnchorDate] = useState<string>(formatDate(new Date()));
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<CalendarFiltersType>({});
 
@@ -80,10 +79,16 @@ export function CalendarTab({ ledgerId, categories, ledger, className }: Calenda
     [viewType]
   );
 
-  // Handle day click
+  // Handle day click - navigate to details tab with date filter
   const handleDayClick = useCallback((date: string) => {
-    setSelectedDate(date);
-  }, []);
+    if (onDateDrilldown) {
+      // Pass current filters (currency/category) to preserve them in details view
+      onDateDrilldown(date, {
+        currency: filters.currency,
+        categoryId: filters.categoryId,
+      });
+    }
+  }, [onDateDrilldown, filters]);
 
   // Handle month click (switch to month view)
   const handleMonthClick = useCallback((month: number) => {
@@ -92,11 +97,6 @@ export function CalendarTab({ ledgerId, categories, ledger, className }: Calenda
     setAnchorDate(newDate);
     setViewType('month');
   }, [anchorDate]);
-
-  // Close day detail dialog
-  const handleCloseDialog = useCallback(() => {
-    setSelectedDate(null);
-  }, []);
 
   // Handle view change
   const handleViewChange = useCallback((newView: CalendarViewType) => {
@@ -201,14 +201,6 @@ export function CalendarTab({ ledgerId, categories, ledger, className }: Calenda
           </>
         )}
       </div>
-
-      {/* Day Detail Dialog */}
-      <DayDetailDialog
-        ledgerId={ledgerId}
-        date={selectedDate}
-        filters={filters}
-        onClose={handleCloseDialog}
-      />
     </div>
   );
 }
