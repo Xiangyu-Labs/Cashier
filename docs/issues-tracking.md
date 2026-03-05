@@ -53,7 +53,9 @@
   - 修复：提取 `createErrorResponse`, `unauthorized()`, `notFound()` 辅助函数
   - 减少重复代码 ~30 行
 
-- [ ] **17. 倒计时逻辑重复** - `ResendCountdown` 和 `ExpiryTimer` 实现类似
+- [x] **17. 倒计时逻辑重复** - `ResendCountdown` 和 `ExpiryTimer` 实现类似 ✅ 已修复
+  - 修复：创建共享 `useCountdown` hook，两个组件统一使用
+  - 文件：`src/hooks/use-countdown.ts`
 - [x] **18. 日期工具函数重复** - `AdaptiveHeatmap.tsx` 和 `YearView.tsx` 都定义了 `formatDate` ✅ 已修复
   - 已提取到 `src/features/calendar/lib/date-utils.ts`
 
@@ -184,8 +186,8 @@
 - [ ] **76. credentials.email as string** - `src/features/auth/server/actions/auth.ts:35`
 - [ ] **77. credentials.otp as string** - `src/features/auth/server/actions/auth.ts:36`
 - [ ] **78-79. `as unknown as Record<string, SQL>`** - `src/lib/db/scoped-query.ts:16-17,32-33`
-- [ ] **80. error as Error** - `src/lib/flow/engine.ts:186`
-  - 建议：使用 `error instanceof Error ? error : new Error(String(error))`
+- [x] **80. error as Error** - `src/lib/flow/engine.ts:186` ✅ 已修复
+  - 修复：`error as Error` → `error instanceof Error ? error : new Error(String(error))`
 
 - [ ] **81-84. as 类型断言** - `src/lib/flow/ai-context.ts:28,30,31,32`
 - [ ] **85. status as TaskRecord['status']** - `src/lib/flow/adapters/drizzle-storage.ts:124`
@@ -246,9 +248,12 @@
 
 ### Immutability 违规
 
-- [ ] **118. setDate 修改 Date 对象** - `src/features/calendar/lib/date-utils.ts:47-48`
-- [ ] **119. setDate 修改 Date 对象** - `src/features/calendar/lib/date-utils.ts:103-104`
-- [ ] **120. setDate 修改 Date 对象** - `src/features/calendar/components/YearView.tsx:68-69`
+- [x] **118. setDate 修改 Date 对象** - `src/features/calendar/lib/date-utils.ts:47-48` ✅ 已修复
+  - 修复：`new Date(date)` → `new Date(date.getTime())`
+- [x] **119. setDate 修改 Date 对象** - `src/features/calendar/lib/date-utils.ts:103-104` ✅ 已修复
+  - 修复：`getPreviousWeek` 创建新 Date 对象而不是修改原对象
+- [x] **120. setDate 修改 Date 对象** - `src/features/calendar/components/YearView.tsx:68-69` ✅ 已修复
+  - 修复：`getNextWeek` 创建新 Date 对象而不是修改原对象
 - [ ] **121. 命令式编程风格** - `user-setup.ts` 使用 `let` 和闭包赋值
 - [ ] **122. 可变状态累积** - `processing.ts` 使用 `for` 循环累加而不是 `reduce`
 
@@ -264,8 +269,10 @@
 
 ### 魔法数字和硬编码
 
-- [ ] **130. 魔术数字** - `login/page.tsx` `otp.length !== 6`
-- [ ] **131. 魔术数字** - `otp.ts` 多处硬编码数字
+- [x] **130. 魔术数字** - `login/page.tsx` `otp.length !== 6` ✅ 已修复
+  - 修复：使用 `OTP_LENGTH` 常量替代硬编码 `6`
+- [x] **131. 魔术数字** - `otp.ts` 多处硬编码数字 ✅ 已修复
+  - 修复：提取 `OTP_LENGTH`, `DEFAULT_OTP_EXPIRES_SECONDS`, `DEFAULT_LOCKOUT_MINUTES`, `DEFAULT_MAX_ATTEMPTS`, `DEFAULT_RESEND_COOLDOWN_SECONDS` 常量
 - [ ] **132. 硬编码时区** - `notifications.ts` "Asia/Shanghai"
 - [ ] **133. 硬编码限制** - `task-queue.ts` limit: 100 和 slice(0, 5)
 
@@ -314,13 +321,13 @@
 | 优先级 | 总数 | 已修复 | 进度 |
 |--------|------|--------|------|
 | P0 关键Bug | 8 | 2 | 25% |
-| P1 架构问题 | 45 | 0 | 0% |
-| P2 类型安全 | 33 | 0 | 0% |
+| P1 架构问题 | 45 | 18 | 40% |
+| P2 类型安全 | 33 | 1 | 3% |
 | P3 测试覆盖 | 26 | 0 | 0% |
-| P4 代码规范 | 22 | 0 | 0% |
+| P4 代码规范 | 22 | 5 | 23% |
 | P5 功能缺失 | 5 | 0 | 0% |
 | P6 可访问性/性能 | 7 | 0 | 0% |
-| **总计** | **146** | **2** | **1.4%** |
+| **总计** | **146** | **26** | **17.8%** |
 
 **说明：**
 - P0 中 6 个事务问题被标记为**误报**（better-sqlite3 同步事务不需要 await）
@@ -357,9 +364,20 @@
 
 | 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
 |---------|---------|---------|--------|------|
-| | | | | |
+| 80 | src/lib/flow/engine.ts:186 | 修复 `error as Error` → 使用类型守卫 | Claude | 2026-03-06 |
 
-### 批次 5 - 测试添加 (P3)
+### 批次 5 - 代码规范修复 (P4)
+
+| 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
+|---------|---------|---------|--------|------|
+| 17 | src/hooks/use-countdown.ts | 提取共享倒计时 hook，消除重复逻辑 | Claude | 2026-03-06 |
+| 118-120 | src/features/calendar/lib/date-utils.ts | 修复 Immutability 违规，使用 `new Date(date.getTime())` | Claude | 2026-03-06 |
+| 130 | src/app/[locale]/login/page.tsx | 使用 `OTP_LENGTH` 常量替代硬编码 `6` | Claude | 2026-03-06 |
+| 131 | src/features/auth/server/services/otp.ts | 提取 OTP 相关常量 | Claude | 2026-03-06 |
+
+**提交**: `1476ee5` refactor: code quality improvements - Plan A cleanup
+
+### 批次 6 - 测试添加 (P3)
 
 | 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
 |---------|---------|---------|--------|------|
@@ -367,6 +385,7 @@
 
 ---
 
-*最后更新: 2026-03-05*
+*最后更新: 2026-03-06*
 *P0 修复完成: 2026-03-05*
+*方案A 修复完成: 2026-03-06*
 *创建: Claude Code*
