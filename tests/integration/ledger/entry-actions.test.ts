@@ -421,6 +421,62 @@ describe("getLedgerEntriesAction", () => {
         expect(result.items[0].itemName).toBe("Jun");
     });
 
+    it("filters by entryDate not createdAt", async () => {
+        const db = getTestDb();
+
+        // Create doc with entryDate in Jan but created in March
+        const [docA] = await db.insert(sourceDocuments).values({
+            id: uuidv4(),
+            ledgerId,
+            text: "test",
+            status: "completed",
+            type: "ai_parsed",
+            imageUrls: [],
+            entryDate: "2024-01-15",
+            createdAt: new Date("2024-03-01"),
+        }).returning();
+
+        // Create doc with entryDate in March but created in January
+        const [docB] = await db.insert(sourceDocuments).values({
+            id: uuidv4(),
+            ledgerId,
+            text: "test",
+            status: "completed",
+            type: "ai_parsed",
+            imageUrls: [],
+            entryDate: "2024-03-15",
+            createdAt: new Date("2024-01-01"),
+        }).returning();
+
+        await db.insert(ledgerEntries).values({
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: docA.id,
+            itemName: "Jan Item",
+            amount: "10.00",
+            currency: "CNY",
+        });
+
+        await db.insert(ledgerEntries).values({
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: docB.id,
+            itemName: "Mar Item",
+            amount: "10.00",
+            currency: "CNY",
+        });
+
+        // Filter for January 2024
+        const result = await getLedgerEntriesAction(ledgerId, {
+            startDate: "2024-01-01",
+            endDate: "2024-01-31",
+        });
+
+        // Should only return entry from docA (entryDate in January)
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].itemName).toBe("Jan Item");
+    });
+
     it("filters by minAmount and maxAmount", async () => {
         const db = getTestDb();
         const doc = await seedDoc(db, ledgerId);

@@ -1,0 +1,286 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
+
+describe("usePeriodFilter", () => {
+  const mockPathname = "/ledger/test-id";
+  let mockSearchParams: URLSearchParams;
+
+  beforeEach(() => {
+    mockSearchParams = new URLSearchParams();
+    // Mock window.history.replaceState
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should initialize with provided initialPeriod", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    expect(result.current.periodParams.period).toBe("thisMonth");
+    expect(result.current.dateRange.startDate).toBeDefined();
+    expect(result.current.dateRange.endDate).toBeDefined();
+  });
+
+  it("should calculate correct date range for 'thisMonth' period", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    const now = new Date();
+    const startDate = new Date(result.current.dateRange.startDate!);
+    const endDate = new Date(result.current.dateRange.endDate!);
+
+    // Should be current month
+    expect(startDate.getMonth()).toBe(now.getMonth());
+    expect(startDate.getDate()).toBe(1);
+    expect(endDate.getMonth()).toBe(now.getMonth());
+  });
+
+  it("should calculate correct date range for 'week' period", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "week" },
+      })
+    );
+
+    const now = new Date();
+    const startDate = new Date(result.current.dateRange.startDate!);
+    const endDate = new Date(result.current.dateRange.endDate!);
+
+    // Should be 7 days ago to now
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    expect(diffDays).toBe(7);
+    expect(endDate.getDate()).toBe(now.getDate());
+  });
+
+  it("should return null dates for 'all' period", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "all" },
+      })
+    );
+
+    expect(result.current.dateRange.startDate).toBeNull();
+    expect(result.current.dateRange.endDate).toBeNull();
+  });
+
+  it("should handle custom date range", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: {
+          period: "custom",
+          startDate: "2024-01-01",
+          endDate: "2024-01-31",
+        },
+      })
+    );
+
+    const startDate = new Date(result.current.dateRange.startDate!);
+    const endDate = new Date(result.current.dateRange.endDate!);
+
+    expect(startDate.getFullYear()).toBe(2024);
+    expect(startDate.getMonth()).toBe(0); // January
+    expect(startDate.getDate()).toBe(1);
+
+    expect(endDate.getFullYear()).toBe(2024);
+    expect(endDate.getMonth()).toBe(0);
+    expect(endDate.getDate()).toBe(31);
+  });
+
+  it("should update URL when period changes", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handlePeriodChange({ period: "week" });
+    });
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("period=week")
+    );
+  });
+
+  it("should update URL with custom dates when custom period is selected", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handlePeriodChange({
+        period: "custom",
+        startDate: "2024-03-01",
+        endDate: "2024-03-31",
+      });
+    });
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("period=custom")
+    );
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("startDate=2024-03-01")
+    );
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("endDate=2024-03-31")
+    );
+  });
+
+  it("should not update URL when skipUrlUpdate is true", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handlePeriodChange({ period: "week" }, { skipUrlUpdate: true });
+    });
+
+    expect(window.history.replaceState).not.toHaveBeenCalled();
+  });
+
+  it("should update period from filter changes with dates", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handleFiltersChange({
+        startDate: new Date("2024-06-01"),
+        endDate: new Date("2024-06-30"),
+      });
+    });
+
+    expect(result.current.periodParams.period).toBe("custom");
+    expect(result.current.periodParams.startDate).toBe("2024-06-01");
+    expect(result.current.periodParams.endDate).toBe("2024-06-30");
+  });
+
+  it("should reset to currentPeriod when filter changes have no dates", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "custom", startDate: "2024-01-01", endDate: "2024-01-31" },
+        monthStartDay: 15,
+      })
+    );
+
+    act(() => {
+      result.current.handleFiltersChange({});
+    });
+
+    expect(result.current.periodParams.period).toBe("currentPeriod");
+  });
+
+  it("should use monthStartDay for currentPeriod calculation", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "currentPeriod" },
+        monthStartDay: 15,
+      })
+    );
+
+    // The hook should use monthStartDay in the period params
+    expect(result.current.periodParams.period).toBe("currentPeriod");
+    expect(result.current.dateRange.startDate).toBeDefined();
+    expect(result.current.dateRange.endDate).toBeDefined();
+  });
+
+  it("should memoize dateRange to prevent unnecessary recalculations", () => {
+    const { result, rerender } = renderHook(
+      ({ period }) =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams: mockSearchParams,
+          initialPeriod: { period },
+        }),
+      { initialProps: { period: "thisMonth" as const } }
+    );
+
+    const firstDateRange = result.current.dateRange;
+
+    // Re-render with same period
+    rerender({ period: "thisMonth" });
+
+    // Date range should be the same reference (memoized)
+    expect(result.current.dateRange).toBe(firstDateRange);
+  });
+
+  it("should convert filters to Date objects", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    // Filters should be Date objects
+    expect(result.current.filters.startDate).toBeInstanceOf(Date);
+    expect(result.current.filters.endDate).toBeInstanceOf(Date);
+  });
+
+  it("should handle leap year in custom date range", () => {
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+        initialPeriod: {
+          period: "custom",
+          startDate: "2024-02-01",
+          endDate: "2024-02-29", // 2024 is a leap year
+        },
+      })
+    );
+
+    const endDate = new Date(result.current.dateRange.endDate!);
+    expect(endDate.getMonth()).toBe(1); // February
+    expect(endDate.getDate()).toBe(29);
+  });
+});

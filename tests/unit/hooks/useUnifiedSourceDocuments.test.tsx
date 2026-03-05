@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnifiedSourceDocuments } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
 import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
@@ -231,5 +231,168 @@ describe("useUnifiedSourceDocuments", () => {
         // Only doc_q1 (Jan 4, in range) should be in queued, doc_out (Jan 1, out of range) filtered out
         expect(result2.current.groups.queued).toHaveLength(1);
         expect(result2.current.groups.queued[0].sourceDocument.id).toBe("doc_q1");
+    });
+
+    it("filters by minAmount and maxAmount", async () => {
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockResolvedValue({
+            groups: {
+                queued: [],
+                processing: [],
+                anomaly: [],
+                completed: [
+                    { sourceDocument: { ...mockSourceDocs.completed, id: "doc_low", amount: 50 }, ledgerEntries: [] },
+                    { sourceDocument: { ...mockSourceDocs.completed, id: "doc_mid", amount: 150 }, ledgerEntries: [] },
+                    { sourceDocument: { ...mockSourceDocs.completed, id: "doc_high", amount: 500 }, ledgerEntries: [] }
+                ]
+            },
+            nextCursor: null,
+            stats: { processingCount: 0, anomalyCount: 0 }
+        });
+
+        const { result } = renderHook(
+            () => useUnifiedSourceDocuments("ledger_1", { minAmount: 100, maxAmount: 200 }),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        // Verify that min/max amount params were passed to the API
+        expect(getUnifiedSourceDocumentsAction).toHaveBeenCalledWith(
+            "ledger_1",
+            expect.objectContaining({
+                minAmount: 100,
+                maxAmount: 200
+            })
+        );
+    });
+
+    it("handles infinite scroll for completed documents", async () => {
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation((_id: string, params: unknown) => {
+            const p = params as { cursor?: string };
+
+            if (p?.cursor === "page2") {
+                return Promise.resolve({
+                    groups: {
+                        queued: [],
+                        processing: [],
+                        anomaly: [],
+                        completed: [
+                            { sourceDocument: { ...mockSourceDocs.completed, id: "doc_page2_1" }, ledgerEntries: [] },
+                            { sourceDocument: { ...mockSourceDocs.completed, id: "doc_page2_2" }, ledgerEntries: [] }
+                        ]
+                    },
+                    nextCursor: null, // No more pages
+                    stats: { processingCount: 0, anomalyCount: 0 }
+                });
+            }
+
+            // First page
+            return Promise.resolve({
+                groups: {
+                    queued: [],
+                    processing: [],
+                    anomaly: [],
+                    completed: [
+                        { sourceDocument: { ...mockSourceDocs.completed, id: "doc_page1_1" }, ledgerEntries: [] }
+                    ]
+                },
+                nextCursor: "page2",
+                stats: { processingCount: 0, anomalyCount: 0 }
+            });
+        });
+
+        const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        // First page should be loaded
+        expect(result.current.groups.completed).toHaveLength(1);
+        expect(result.current.hasNextPage).toBe(true);
+
+        // Fetch next page
+        act(() => {
+            result.current.fetchNextPage();
+        });
+
+        await waitFor(() => expect(result.current.isFetchingNextPage).toBe(false));
+
+        // Should now have both pages
+        expect(result.current.groups.completed).toHaveLength(3);
+        expect(result.current.hasNextPage).toBe(false);
+    });
+
+    it("deduplicates completed documents when cache is invalidated", async () => {
+        const doc1 = { sourceDocument: { ...mockSourceDocs.completed, id: "doc_dup" }, ledgerEntries: [] };
+
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockResolvedValue({
+            groups: {
+                queued: [],
+                processing: [],
+                anomaly: [],
+                completed: [doc1, doc1] // Duplicate entries
+            },
+            nextCursor: null,
+            stats: { processingCount: 0, anomalyCount: 0 }
+        });
+
+        const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        // Should deduplicate - only 1 unique document
+        expect(result.current.groups.completed).toHaveLength(1);
+        expect(result.current.groups.completed[0].sourceDocument.id).toBe("doc_dup");
+    });
+
+    it("uses initial data when provided", async () => {
+        const initialActiveDocs = [
+            { ...mockSourceDocs.queued, ledgerEntries: [] },
+            { ...mockSourceDocs.processing, ledgerEntries: [] }
+        ];
+
+        const initialCompletedDocs = [
+            { ...mockSourceDocs.completed, ledgerEntries: [mockEntries.confirmedForDocCompleted1] }
+        ];
+
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockImplementation(() => {
+            return Promise.resolve({
+                groups: {
+                    queued: [{ sourceDocument: initialActiveDocs[0], ledgerEntries: [] }],
+                    processing: [{ sourceDocument: initialActiveDocs[1], ledgerEntries: [] }],
+                    anomaly: [],
+                    completed: [{ sourceDocument: initialCompletedDocs[0], ledgerEntries: initialCompletedDocs[0].ledgerEntries }]
+                },
+                nextCursor: null,
+                stats: { queuedCount: 1, processingCount: 1, anomalyCount: 0 }
+            });
+        });
+
+        const { result } = renderHook(
+            () => useUnifiedSourceDocuments("ledger_1", {
+                initialActiveSourceDocuments: initialActiveDocs as unknown as SourceDocumentWithEntries[],
+                initialCompletedSourceDocuments: initialCompletedDocs as unknown as SourceDocumentWithEntries[]
+            }),
+            { wrapper }
+        );
+
+        // Should use initial data immediately
+        expect(result.current.groups.queued).toHaveLength(1);
+        expect(result.current.groups.processing).toHaveLength(1);
+        expect(result.current.groups.completed).toHaveLength(1);
+    });
+
+    it("returns empty groups when no data", async () => {
+        (getUnifiedSourceDocumentsAction as unknown as Mock).mockResolvedValue(null);
+
+        const { result } = renderHook(() => useUnifiedSourceDocuments("ledger_1"), { wrapper });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.groups.queued).toHaveLength(0);
+        expect(result.current.groups.processing).toHaveLength(0);
+        expect(result.current.groups.anomaly).toHaveLength(0);
+        expect(result.current.groups.completed).toHaveLength(0);
+        expect(result.current.stats.queuedCount).toBe(0);
+        expect(result.current.stats.processingCount).toBe(0);
     });
 });
