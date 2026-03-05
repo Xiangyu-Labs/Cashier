@@ -9,7 +9,7 @@
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { getMonthGrid, getWeekdayName, formatDate } from '../lib/date-utils';
+import { getMonthGrid, formatDate } from '../lib/date-utils';
 import { getHeatmapLevel, getHeatmapColor, formatCellAmount } from '../lib/heatmap-colors';
 import type { CalendarHeatmapData } from '../types';
 
@@ -52,7 +52,7 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
 
       {/* Calendar grid - borderless, clean design */}
       <div className="grid grid-cols-7 gap-1.5">
-        {grid.map(({ date, isCurrentMonth, isToday: isTodayFlag }) => {
+        {grid.map(({ date, isCurrentMonth }) => {
           const dayData = dayDataMap.get(date);
           const amount = dayData?.amount || 0;
           const count = dayData?.count || 0;

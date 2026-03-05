@@ -94,7 +94,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     onSourceDocChange,
     onEntryChange,
     onSelectEntry,
-    onSelectAllEntries,
+    onSelectAllEntries: _onSelectAllEntries,
     onToggleSelectionMode,
 }: SourceDocumentViewDetailsProps): ReactNode {
     const t = useTranslations("SourceDocumentDetail");

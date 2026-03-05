@@ -7,7 +7,7 @@ import {
 } from "@/lib/db/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";
 import { v4 as uuidv4 } from "uuid";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // Mock ExchangeRateService to avoid external API calls
 vi.mock("@/features/currency/server/exchange-rate-service", () => ({

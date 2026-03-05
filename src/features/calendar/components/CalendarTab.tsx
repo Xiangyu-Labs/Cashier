@@ -7,14 +7,12 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { MonthView } from './MonthView';
 import { YearView } from './YearView';
 import { useCalendarHeatmap } from '../client/hooks/useCalendarData';
-import { queryKeys } from '@/lib/query-keys';
 import type { EntryCategory, Ledger } from '@/types/api';
 import type { CalendarViewType, CalendarFilters as CalendarFiltersType } from '../types';
 import {
@@ -34,7 +32,6 @@ interface CalendarTabProps {
 }
 
 export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, className }: CalendarTabProps) {
-  const queryClient = useQueryClient();
   const [viewType, setViewType] = useState<CalendarViewType>('month');
   const [anchorDate, setAnchorDate] = useState<string>(formatDate(new Date()));
   const [showFilters, setShowFilters] = useState(false);
@@ -108,26 +105,7 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
     });
   }, []);
 
-  // Prefetch adjacent periods for smoother navigation
-  const prefetchAdjacent = useCallback(() => {
-    if (!calendarData) return;
-
-    const prefetch = (date: string) => {
-      queryClient.prefetchQuery({
-        queryKey: queryKeys.calendarHeatmap(ledgerId, viewType, date, filters),
-        queryFn: async () => {
-          const { getCalendarHeatmapData } = await import('../server/actions/heatmap');
-          return getCalendarHeatmapData({ ledgerId, viewType, anchorDate: date, filters });
-        },
-      });
-    };
-
-    // Prefetch previous and next periods
-    if (viewType === 'month') {
-      prefetch(getPreviousMonth(anchorDate));
-      prefetch(getNextMonth(anchorDate));
-    }
-  }, [calendarData, queryClient, ledgerId, viewType, anchorDate, filters]);
+  // Prefetch logic removed - can be added back when needed for performance optimization
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>

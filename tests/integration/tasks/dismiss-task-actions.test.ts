@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { ledgers, taskRuns, users } from "@/lib/db/schema";
 import { v4 as uuidv4 } from "uuid";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
     dismissTaskAction,
     batchDismissTasksAction,

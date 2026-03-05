@@ -1,7 +1,7 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins, Check } from "lucide-react";
+import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/ProcessingStatus";

@@ -36,7 +36,7 @@ export function HeatmapCell({
   isCurrentMonth = true,
   isToday = false,
   size = 'md',
-  showWeekday = false,
+  showWeekday: _showWeekday = false,
   onClick,
   className,
 }: HeatmapCellProps) {

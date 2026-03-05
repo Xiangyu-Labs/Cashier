@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import {
     updateLedgerEntryAction,

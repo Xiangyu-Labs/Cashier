@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
-import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";

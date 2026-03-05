@@ -19,7 +19,6 @@ import type {
     CalendarDayDetailResponse,
     CalendarDayDetailEntry,
     CalendarViewType,
-    CalendarFilters,
 } from '../../types';
 
 // Validation schemas
@@ -65,12 +64,11 @@ function getDateRange(
     viewType: CalendarViewType,
     anchorDate: string
 ): { startDate: string; endDate: string } {
-    const [year, month, day] = anchorDate.split('-').map(Number);
+    const [year, month] = anchorDate.split('-').map(Number);
 
     switch (viewType) {
         case 'month': {
             // Get all days in the month
-            const start = new Date(year, month - 1, 1);
             const end = new Date(year, month, 0);
             return {
                 startDate: `${year}-${String(month).padStart(2, '0')}-01`,
@@ -84,13 +82,6 @@ function getDateRange(
             };
         }
     }
-}
-
-function formatDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
 }
 
 /**

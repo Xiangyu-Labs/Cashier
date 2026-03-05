@@ -35,8 +35,7 @@ export function StatsChart({
 
         const points: { label: string; value: number; fullDate: string }[] = [];
 
-        // Get today's date string for comparison
-        const todayStr = formatDateTimeForApi(new Date());
+        // Get today's date for comparison
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
