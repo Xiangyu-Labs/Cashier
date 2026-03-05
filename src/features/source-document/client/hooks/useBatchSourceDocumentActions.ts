@@ -2,12 +2,17 @@
 
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { useLedgerMutation } from "@/lib/mutations";
+import { queryKeys } from "@/lib/query-keys";
+import {
+    useLedgerMutation,
+    createListSnapshots,
+} from "@/lib/mutations/use-ledger-mutation";
 import {
     batchUpdateSourceDocumentsAction,
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions/main";
+import type { SourceDocumentWithEntries } from "./useSourceDocuments";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
     const tCommon = useTranslations("Common");
@@ -23,6 +28,23 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             toast.success(tBatch("datesUpdated", { count: ids.length }));
             clearSelection();
         },
+        onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
+            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+                queryClient,
+                listKey
+            );
+
+            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                { queryKey: listKey },
+                (old) =>
+                    old?.map((doc) =>
+                        ids.includes(doc.id) ? { ...doc, entryDate } : doc
+                    ) ?? []
+            );
+
+            return { snapshots };
+        },
     });
 
     const batchDelete = useLedgerMutation(ledgerId, {
@@ -35,6 +57,20 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             toast.success(tBatch("entriesDeleted", { count: ids.length }));
             clearSelection();
         },
+        onOptimisticUpdate: (queryClient, ids) => {
+            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+                queryClient,
+                listKey
+            );
+
+            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                { queryKey: listKey },
+                (old) => old?.filter((doc) => !ids.includes(doc.id)) ?? []
+            );
+
+            return { snapshots };
+        },
     });
 
     const batchRetry = useLedgerMutation(ledgerId, {
@@ -46,6 +82,24 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
         onSuccessExtra: (_data, ids) => {
             toast.success(tBatch("retrySubmitted", { count: ids.length }));
             clearSelection();
+        },
+        onOptimisticUpdate: (queryClient, ids) => {
+            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+                queryClient,
+                listKey
+            );
+
+            // Move documents to 'queued' status
+            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                { queryKey: listKey },
+                (old) =>
+                    old?.map((doc) =>
+                        ids.includes(doc.id) ? { ...doc, status: 'queued' as const } : doc
+                    ) ?? []
+            );
+
+            return { snapshots };
         },
     });
 

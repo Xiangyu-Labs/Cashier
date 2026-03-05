@@ -870,3 +870,71 @@ export async function createQuickEntryAction(
         status: "completed" as const,
     };
 }
+
+/**
+ * Get all source documents as a flat array (not grouped).
+ * Used for the new optimistic update architecture.
+ * Client will use React Query's `select` to group/filter.
+ */
+export async function getAllSourceDocumentsAction(ledgerId: string, params: {
+    startDate?: string | null;
+    endDate?: string | null;
+} = {}) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
+
+    try {
+        const { startDate, endDate } = params;
+        const q = forLedger(sourceDocuments, ledgerId);
+
+        // Build conditions
+        const conditions = [q.whereActive];
+
+        if (startDate) {
+            const parsedStart = parseDateRangeStart(startDate);
+            if (parsedStart) conditions.push(gte(sourceDocuments.entryDate, format(parsedStart, 'yyyy-MM-dd')));
+        }
+        if (endDate) {
+            const parsedEnd = parseDateRangeEnd(endDate);
+            if (parsedEnd) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, 'yyyy-MM-dd')));
+        }
+
+        // Fetch all source documents (not paginated, for now)
+        // For large datasets, consider adding a limit
+        const items = await db.query.sourceDocuments.findMany({
+            where: and(...conditions),
+            orderBy: [desc(sourceDocuments.entryDate), desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
+        });
+
+        // Fetch ledger entries for all documents
+        const docIds = items.map(d => d.id);
+        const entriesByDocId = new Map<string, typeof ledgerEntries.$inferSelect[]>();
+
+        if (docIds.length > 0) {
+            const qEntries = forLedger(ledgerEntries, ledgerId);
+            const entries = await db.query.ledgerEntries.findMany({
+                where: and(
+                    qEntries.whereActive,
+                    inArray(ledgerEntries.sourceDocumentId, docIds)
+                ),
+                with: { category: true }
+            });
+
+            // Group entries by sourceDocumentId
+            entries.forEach(entry => {
+                const list = entriesByDocId.get(entry.sourceDocumentId) || [];
+                list.push(entry);
+                entriesByDocId.set(entry.sourceDocumentId, list);
+            });
+        }
+
+        // Return flat array with entries attached
+        return items.map(doc => ({
+            ...doc,
+            ledgerEntries: entriesByDocId.get(doc.id) || [],
+        })) as (SourceDocument & { ledgerEntries: (typeof ledgerEntries.$inferSelect & { category: typeof entryCategories.$inferSelect | null })[] })[];
+    } catch (error) {
+        logger.error({ error, ledgerId }, "Failed to get all source documents");
+        throw new Error(safeError(error));
+    }
+}

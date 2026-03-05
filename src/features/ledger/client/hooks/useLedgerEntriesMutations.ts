@@ -14,60 +14,14 @@ import {
     deleteSourceDocumentAction,
     batchDeleteSourceDocumentsAction,
 } from "@/features/source-document/server/actions/main";
-import type { LedgerEntry, EntryCategory, SourceDocument } from "@/types/api";
-import type { SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
-
-interface UnifiedData {
-    groups?: {
-        processing?: SourceDocumentGroup[];
-        anomaly?: SourceDocumentGroup[];
-        completed?: SourceDocumentGroup[];
-    };
-}
-
-function updateEntriesInGroups(
-    groups: SourceDocumentGroup[] | undefined,
-    ledgerEntryId: string,
-    data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number },
-    categories: EntryCategory[]
-): SourceDocumentGroup[] | undefined {
-    return groups?.map(group => ({
-        ...group,
-        ledgerEntries: group.ledgerEntries.map(e =>
-            e.id === ledgerEntryId
-                ? {
-                    ...e,
-                    ...data,
-                    amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                    category: data.categoryId
-                        ? categories.find(c => c.id === data.categoryId) || e.category
-                        : e.category
-                } as LedgerEntry
-                : e
-        )
-    }));
-}
-
-function filterEntriesFromGroups(
-    groups: SourceDocumentGroup[] | undefined,
-    ledgerEntryId: string
-): SourceDocumentGroup[] | undefined {
-    return groups?.map(group => ({
-        ...group,
-        ledgerEntries: group.ledgerEntries.filter(e => e.id !== ledgerEntryId)
-    }));
-}
-
-function filterDocumentsFromGroups(
-    groups: SourceDocumentGroup[] | undefined,
-    ids: string[]
-): SourceDocumentGroup[] | undefined {
-    return groups?.filter(g => !ids.includes(g.sourceDocument.id));
-}
+import type { LedgerEntry, EntryCategory } from "@/types/api";
+import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("LedgerEntriesTab");
+
+    const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
 
     const updateEntry = useLedgerMutation<LedgerEntry, { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }>(ledgerId, {
         mutationFn: async ({ ledgerEntryId, data }) => {
@@ -77,20 +31,26 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("saveSuccess"),
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
-            const snapshots = createListSnapshots<UnifiedData>(queryClient, queryKeys.sourceDocuments(ledgerId));
+            const snapshots = createListSnapshots(queryClient, listKey);
 
-            queryClient.setQueriesData<UnifiedData>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    return {
-                        ...old,
-                        groups: {
-                            processing: updateEntriesInGroups(old.groups.processing, ledgerEntryId, data, categories),
-                            anomaly: updateEntriesInGroups(old.groups.anomaly, ledgerEntryId, data, categories),
-                            completed: updateEntriesInGroups(old.groups.completed, ledgerEntryId, data, categories),
-                        }
-                    };
+            queryClient.setQueriesData(
+                { queryKey: listKey },
+                (old: SourceDocumentWithEntries[] | undefined) => {
+                    if (!old) return [];
+                    return old.map((doc) => {
+                        const updatedEntries = doc.ledgerEntries?.map((e) => {
+                            if (e.id !== ledgerEntryId) return e;
+                            return {
+                                ...e,
+                                ...data,
+                                amount: data.amount !== undefined ? String(data.amount) : e.amount,
+                                category: data.categoryId
+                                    ? categories.find(c => c.id === data.categoryId) || e.category
+                                    : e.category
+                            };
+                        }) ?? [];
+                        return { ...doc, ledgerEntries: updatedEntries };
+                    });
                 }
             );
 
@@ -103,20 +63,18 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ledgerEntryId) => {
-            const snapshots = createListSnapshots<UnifiedData>(queryClient, queryKeys.sourceDocuments(ledgerId));
+            const snapshots = createListSnapshots(queryClient, listKey);
 
-            queryClient.setQueriesData<UnifiedData>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    return {
-                        ...old,
-                        groups: {
-                            processing: filterEntriesFromGroups(old.groups.processing, ledgerEntryId),
-                            anomaly: filterEntriesFromGroups(old.groups.anomaly, ledgerEntryId),
-                            completed: filterEntriesFromGroups(old.groups.completed, ledgerEntryId),
-                        }
-                    };
+            queryClient.setQueriesData(
+                { queryKey: listKey },
+                (old: SourceDocumentWithEntries[] | undefined) => {
+                    if (!old) return [];
+                    return old.map((doc) => {
+                        const filteredEntries = doc.ledgerEntries?.filter(
+                            (e) => e.id !== ledgerEntryId
+                        ) ?? [];
+                        return { ...doc, ledgerEntries: filteredEntries };
+                    });
                 }
             );
 
@@ -129,11 +87,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: t("deleteFailed"),
         onOptimisticUpdate: (queryClient, id) => {
-            const activeKey = queryKeys.sourceDocuments(ledgerId, "active");
-            const snapshots = createListSnapshots<SourceDocument[]>(queryClient, activeKey);
+            const snapshots = createListSnapshots(queryClient, listKey);
 
-            queryClient.setQueriesData<SourceDocument[]>({ queryKey: activeKey }, (old) =>
-                old?.filter(d => d.id !== id) ?? []
+            queryClient.setQueriesData(
+                { queryKey: listKey },
+                (old: SourceDocumentWithEntries[] | undefined) => old?.filter(d => d.id !== id) ?? []
             );
 
             return { snapshots };
@@ -145,21 +103,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshots = createListSnapshots<UnifiedData>(queryClient, queryKeys.sourceDocuments(ledgerId));
+            const snapshots = createListSnapshots(queryClient, listKey);
 
-            queryClient.setQueriesData<UnifiedData>(
-                { queryKey: queryKeys.sourceDocuments(ledgerId) },
-                (old) => {
-                    if (!old?.groups) return old;
-                    return {
-                        ...old,
-                        groups: {
-                            processing: filterDocumentsFromGroups(old.groups.processing, ids),
-                            anomaly: filterDocumentsFromGroups(old.groups.anomaly, ids),
-                            completed: filterDocumentsFromGroups(old.groups.completed, ids),
-                        }
-                    };
-                }
+            queryClient.setQueriesData(
+                { queryKey: listKey },
+                (old: SourceDocumentWithEntries[] | undefined) => old?.filter(d => !ids.includes(d.id)) ?? []
             );
 
             return { snapshots };

@@ -21,6 +21,7 @@ import {
     useLedgerMutation,
     createListSnapshots,
 } from "@/lib/mutations/use-ledger-mutation";
+import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
 import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
@@ -68,16 +69,34 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, data) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
+            // 1. Update detail query
             queryClient.setQueriesData(
-                { queryKey: snapshotKey },
+                { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
                     if (!old) return old;
                     return { ...old, ...data };
                 }
             );
+
+            // 2. Update flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                    { queryKey: listKey },
+                    (old) =>
+                        old?.map((doc) =>
+                            doc.id === id ? { ...doc, ...data } : doc
+                        ) ?? []
+                );
+            }
 
             return { snapshots };
         },
@@ -101,11 +120,11 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { entryId, data }) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
+            // 1. Update detail query
             queryClient.setQueriesData(
-                { queryKey: snapshotKey },
+                { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
                     if (!old?.ledgerEntries) return old;
                     return {
@@ -116,6 +135,32 @@ export function SourceDocumentDetailWrapper({
                     };
                 }
             );
+
+            // 2. Update flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData(
+                    { queryKey: listKey },
+                    (old: SourceDocumentWithEntries[] | undefined) => {
+                        if (!old) return [];
+                        return old.map((doc) => {
+                            if (doc.id !== id) return doc;
+                            const updatedEntries = doc.ledgerEntries?.map((entry) =>
+                                entry.id === entryId
+                                    ? { ...entry, ...data }
+                                    : entry
+                            ) ?? [];
+                            return { ...doc, ledgerEntries: updatedEntries };
+                        });
+                    }
+                );
+            }
 
             return { snapshots };
         },
@@ -135,11 +180,11 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { ids, data }) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
+            // 1. Update detail query
             queryClient.setQueriesData(
-                { queryKey: snapshotKey },
+                { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
                     if (!old?.ledgerEntries) return old;
                     return {
@@ -150,6 +195,32 @@ export function SourceDocumentDetailWrapper({
                     };
                 }
             );
+
+            // 2. Update flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData(
+                    { queryKey: listKey },
+                    (old: SourceDocumentWithEntries[] | undefined) => {
+                        if (!old) return [];
+                        return old.map((doc) => {
+                            if (doc.id !== id) return doc;
+                            const updatedEntries = doc.ledgerEntries?.map((entry) =>
+                                ids.includes(entry.id)
+                                    ? { ...entry, ...data }
+                                    : entry
+                            ) ?? [];
+                            return { ...doc, ledgerEntries: updatedEntries };
+                        });
+                    }
+                );
+            }
 
             return { snapshots };
         },
@@ -167,11 +238,11 @@ export function SourceDocumentDetailWrapper({
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, entryId) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
+            // 1. Update detail query
             queryClient.setQueriesData(
-                { queryKey: snapshotKey },
+                { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
                     if (!old?.ledgerEntries) return old;
                     return {
@@ -180,6 +251,30 @@ export function SourceDocumentDetailWrapper({
                     };
                 }
             );
+
+            // 2. Update flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData(
+                    { queryKey: listKey },
+                    (old: SourceDocumentWithEntries[] | undefined) => {
+                        if (!old) return [];
+                        return old.map((doc) => {
+                            if (doc.id !== id) return doc;
+                            const filteredEntries = doc.ledgerEntries?.filter(
+                                (entry) => entry.id !== entryId
+                            ) ?? [];
+                            return { ...doc, ledgerEntries: filteredEntries };
+                        });
+                    }
+                );
+            }
 
             return { snapshots };
         },
@@ -197,11 +292,11 @@ export function SourceDocumentDetailWrapper({
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
+            // 1. Update detail query
             queryClient.setQueriesData(
-                { queryKey: snapshotKey },
+                { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
                     if (!old?.ledgerEntries) return old;
                     return {
@@ -210,6 +305,30 @@ export function SourceDocumentDetailWrapper({
                     };
                 }
             );
+
+            // 2. Update flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData(
+                    { queryKey: listKey },
+                    (old: SourceDocumentWithEntries[] | undefined) => {
+                        if (!old) return [];
+                        return old.map((doc) => {
+                            if (doc.id !== id) return doc;
+                            const filteredEntries = doc.ledgerEntries?.filter(
+                                (entry) => !ids.includes(entry.id)
+                            ) ?? [];
+                            return { ...doc, ledgerEntries: filteredEntries };
+                        });
+                    }
+                );
+            }
 
             return { snapshots };
         },
@@ -230,10 +349,25 @@ export function SourceDocumentDetailWrapper({
             onClose();
         },
         onOptimisticUpdate: (queryClient) => {
-            const snapshotKey = queryKeys.sourceDocument(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
-            queryClient.setQueriesData({ queryKey: snapshotKey }, () => undefined);
+            // 1. Remove from detail query
+            queryClient.setQueriesData({ queryKey: queryKeys.sourceDocument(id) }, () => undefined);
+
+            // 2. Remove from flat list cache (new architecture)
+            if (ledgerId) {
+                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+                const listSnapshots = createListSnapshots(
+                    queryClient,
+                    listKey
+                );
+                snapshots.push(...listSnapshots);
+
+                queryClient.setQueriesData(
+                    { queryKey: listKey },
+                    (old: SourceDocumentWithEntries[] | undefined) => old?.filter((doc) => doc.id !== id) ?? []
+                );
+            }
 
             return { snapshots };
         },
