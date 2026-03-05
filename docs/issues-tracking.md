@@ -67,7 +67,12 @@
     - `quick-entry.ts` - 快速录入 (79行)
     - `index.ts` - 统一导出 (36行)
 
-- [ ] **24. `TaskQueueModal.tsx` 427行** - 超过400行限制
+- [x] **24. `TaskQueueModal.tsx` 427行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：
+    - `hooks/useTaskQueueModal.ts` - 状态管理和逻辑 (180行)
+    - `components/TaskQueueContent.tsx` - 内容渲染 (215行)
+    - `components/TaskQueueDialogs.tsx` - 对话框管理 (35行)
+    - `TaskQueueModal.tsx` - 主组件协调 (75行)
 - [ ] **25. `QueueItemCard.tsx` 332行** - 接近上限
 - [ ] **26. `AdaptiveHeatmap.tsx` 402行** - 超过400行限制
 - [ ] **27. `YearView.tsx` 316行** - 接近上限

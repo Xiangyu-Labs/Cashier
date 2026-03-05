@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
-import { LedgerEntry, EntryCategory, Ledger } from "@/types/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations, useLocale } from "next-intl";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckSquare, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { useModalStackStore } from "@/lib/store/modal-stack";
+import { invalidateLedgerCache } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
 import { BatchActionToolbar } from "./BatchActionToolbar";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations, useLocale } from "next-intl";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { formatDateTimeForApi } from "@/lib/date-utils";
-import { useModalStackStore } from "@/lib/store/modal-stack";
-import { CheckSquare, X } from "lucide-react";
-import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
-import { useEntryMutations } from "@/features/ledger/client/hooks/useEntryMutations";
-import { useBatchEntryActions } from "@/features/ledger/client/hooks/useBatchEntryActions";
-import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useSelectionMode } from "../client/hooks/useSelectionMode";
+import { useEntryMutations } from "../client/hooks/useEntryMutations";
+import { useBatchEntryActions } from "../client/hooks/useBatchEntryActions";
+import { useDetailsTabState } from "../client/hooks/useDetailsTabState";
+import { useDetailsTabData } from "../client/hooks/useDetailsTabData";
+import { useDetailsTabGrouping } from "../client/hooks/useDetailsTabGrouping";
+import { useDetailsTabFilters } from "../client/hooks/useDetailsTabFilters";
+import type { EntryCategory, Ledger } from "@/types/api";
+import type { PeriodParams } from "@/lib/period-utils";
 
 interface DetailsTabProps {
     ledgerId: string;
@@ -62,94 +62,46 @@ export function DetailsTab({
     const tFilter = useTranslations("EntryFilterPanel");
     const locale = useLocale();
     const queryClient = useQueryClient();
-    const push = useModalStackStore(state => state.push);
+    const push = useModalStackStore((state) => state.push);
 
-    // Convert periodParams to date range
-    const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
-
-    // Combine period-based dates with advanced filters from parent
-    const filters: EntryFilters = useMemo(() => ({
-        startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-        endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
-        ...advancedFilters,
-    }), [dateRange, advancedFilters]);
-
-    const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
-    const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
-    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
-
-    // Build filter key for queryKey (serialized to string for type compatibility)
-    const filterKey = useMemo(() => {
-        const parts: string[] = [];
-        if (filters.categoryId) parts.push(`cat:${filters.categoryId}`);
-        if (filters.currency) parts.push(`cur:${filters.currency}`);
-        if (filters.minAmount !== undefined && filters.minAmount !== null) parts.push(`min:${filters.minAmount}`);
-        if (filters.maxAmount !== undefined && filters.maxAmount !== null) parts.push(`max:${filters.maxAmount}`);
-        return parts.length > 0 ? parts.join('|') : null;
-    }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
-
-    const { data: summaryData } = useQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'summary', startDateStr, endDateStr, mainCurrency, filterKey),
-        queryFn: () => getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
-            categoryId: filters.categoryId,
-            currency: filters.currency,
-            minAmount: filters.minAmount,
-            maxAmount: filters.maxAmount,
-        }),
-        enabled: true
-    });
-
+    // State management
     const {
-        data,
-        fetchNextPage,
-        hasNextPage,
+        deleteConfirm,
+        setDeleteConfirm,
+        selectedLedgerEntry,
+        setSelectedLedgerEntry,
+        isDetailModalOpen,
+        setIsDetailModalOpen,
+        handleDeleteConfirm,
+        handleViewEntry,
+        handleCloseDetail,
+    } = useDetailsTabState();
+
+    // Data fetching
+    const {
+        entries,
+        isLoading,
         isFetchingNextPage,
-        isLoading
-    } = useInfiniteQuery({
-        queryKey: queryKeys.ledgerEntries(ledgerId, 'infinite', startDateStr, endDateStr, filterKey),
-        queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
-            startDate: startDateStr || undefined,
-            endDate: endDateStr || undefined,
-            categoryId: filters.categoryId,
-            currency: filters.currency,
-            minAmount: filters.minAmount,
-            maxAmount: filters.maxAmount,
-            cursor: pageParam,
-            limit: 50
-        }),
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-        initialPageParam: undefined as string | undefined,
-        placeholderData: (previousData) => previousData,
+        hasNextPage,
+        fetchNextPage,
+        monthStats,
+    } = useDetailsTabData({
+        ledgerId,
+        ledger,
+        periodParams,
+        advancedFilters,
     });
 
-    const monthEntries = useMemo(() => {
-        if (!data?.pages) return [];
-        const allItems = data.pages.flatMap(page => page.items);
-        const uniqueMap = new Map<string, LedgerEntry>();
-        allItems.forEach(item => uniqueMap.set(item.id, item));
-        return Array.from(uniqueMap.values());
-    }, [data]);
+    // Grouping
+    const { groupedItems } = useDetailsTabGrouping(entries);
 
-    const monthStats = useMemo(() => {
-        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
-        const totals = summaryData?.totals || [];
-        const convertedTotal = summaryData?.convertedTotal;
-        const mainTotal = convertedTotal?.total || 0;
-        const hasMultipleCurrencies = totals.length > 1;
+    // Filters
+    const { filters, handleFiltersChange } = useDetailsTabFilters({
+        periodParams,
+        advancedFilters,
+    });
 
-        return {
-            mainTotal,
-            mainCurrency: convertedTotal?.currency || mainCurrency,
-            hasMultipleCurrencies,
-            breakdown: totals
-        };
-    }, [summaryData, ledger]);
-
-    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
-    const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-    // Use extracted hooks
+    // Selection mode
     const {
         selectionMode,
         setSelectionMode,
@@ -158,12 +110,10 @@ export function DetailsTab({
         selectAll,
         clearSelection,
         isAllSelected,
-    } = useSelectionMode(monthEntries.map(e => e.id));
+    } = useSelectionMode(entries.map((e) => e.id));
 
-    const {
-        updateEntry,
-        deleteEntry,
-    } = useEntryMutations({
+    // Mutations
+    const { updateEntry, deleteEntry } = useEntryMutations({
         ledgerId,
         categories,
         selectedLedgerEntry,
@@ -185,99 +135,17 @@ export function DetailsTab({
         fetchNextPage,
     });
 
-    // Helper to get date string (yyyy-MM-dd) from entry's source document
-    const getDateStr = (entry: LedgerEntry) => {
-        if (entry.sourceDocument?.entryDate) return entry.sourceDocument.entryDate;
-        return new Date(entry.createdAt).toLocaleDateString('sv');
-    };
-
-    const groupedItems = useMemo(() => {
-        const sortedEntries = [...monthEntries].sort((a, b) => {
-            const dateA = getDateStr(a);
-            const dateB = getDateStr(b);
-            return dateB.localeCompare(dateA);
+    // Handlers
+    const handleRefresh = async () => {
+        await queryClient.invalidateQueries({
+            predicate: invalidateLedgerCache(ledgerId),
         });
-
-        const groups: Record<string, { timestamp: number; title: string; items: LedgerEntry[]; total: number }> = {};
-
-        const todayStr = new Date().toLocaleDateString('sv');
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterdayStr = yesterdayDate.toLocaleDateString('sv');
-
-        sortedEntries.forEach(entry => {
-            const dateStr = getDateStr(entry);
-            const [year, month, day] = dateStr.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            const sortTimestamp = date.getTime();
-
-            let dateKey = "";
-            if (dateStr === todayStr) {
-                dateKey = t("today");
-            } else if (dateStr === yesterdayStr) {
-                dateKey = t("yesterday");
-            } else {
-                dateKey = date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
-            }
-
-            if (!groups[dateKey]) {
-                groups[dateKey] = {
-                    title: dateKey,
-                    timestamp: sortTimestamp,
-                    items: [],
-                    total: 0
-                };
-            }
-
-            groups[dateKey].items.push(entry);
-            groups[dateKey].total += entry.convertedAmount
-                ? parseFloat(entry.convertedAmount)
-                : parseFloat(entry.amount);
-        });
-
-        return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [monthEntries, locale, t]);
-
-    const handleRefresh = useCallback(async () => {
-        await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-    }, [queryClient, ledgerId]);
-
-    // Handle filter changes - distinguish between period changes and additional filter changes
-    const handleLocalFiltersChange = useCallback((newFilters: EntryFilters) => {
-        // If dates changed, propagate to parent (period change)
-        if (newFilters.startDate !== filters.startDate || newFilters.endDate !== filters.endDate) {
-            onFiltersChange(newFilters);
-        }
-
-        // Update advanced filters (category, currency, amount)
-        onAdvancedFiltersChange({
-            categoryId: newFilters.categoryId,
-            currency: newFilters.currency,
-            minAmount: newFilters.minAmount,
-            maxAmount: newFilters.maxAmount,
-        });
-    }, [filters.startDate, filters.endDate, onFiltersChange, onAdvancedFiltersChange]);
-
-    // Batch action handlers
-    const handleBatchAiCategorize = () => {
-        const ids = Array.from(selectedIds);
-        batchCategorize.mutate(ids);
     };
 
-    const handleBatchChangeCategory = (categoryId: string | null) => {
-        const ids = Array.from(selectedIds);
-        batchChangeCategory.mutate({ ids, categoryId });
-    };
-
-    const handleBatchChangeCurrency = (currency: string) => {
-        const ids = Array.from(selectedIds);
-        batchChangeCurrency.mutate({ ids, currency });
-    };
-
-    const handleBatchDelete = () => {
-        const ids = Array.from(selectedIds);
-        batchDelete.mutate(ids);
-    };
+    const handleLocalFiltersChange = handleFiltersChange(
+        onPeriodChange,
+        onAdvancedFiltersChange
+    );
 
     return (
         <PullToRefresh onRefresh={handleRefresh}>
@@ -285,8 +153,7 @@ export function DetailsTab({
                 {/* Filter Section */}
                 <div className="px-2 mb-2 sm:mb-4">
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        {/* Select/Cancel button - leftmost position */}
-                        {monthEntries.length > 0 && (
+                        {entries.length > 0 && (
                             <Button
                                 variant={selectionMode ? "secondary" : "ghost"}
                                 size="icon"
@@ -318,11 +185,13 @@ export function DetailsTab({
                             className="flex-1 sm:flex-none"
                         />
                         <span className="text-xs text-muted-foreground font-mono ml-auto">
-                            {tFilter("filteredTotal")} {monthStats.mainCurrency} {monthStats.mainTotal.toFixed(2)}
+                            {tFilter("filteredTotal")} {monthStats.mainCurrency}{" "}
+                            {monthStats.mainTotal.toFixed(2)}
                         </span>
                     </div>
                 </div>
 
+                {/* Entry Groups */}
                 <div className="space-y-6 pt-2">
                     <AnimatePresence mode="popLayout">
                         {groupedItems.map((group) => (
@@ -356,11 +225,12 @@ export function DetailsTab({
                                             <LedgerEntryCard
                                                 ledgerEntry={entry}
                                                 categories={categories}
-                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency}
+                                                mainCurrency={
+                                                    ledger?.metadata?.settings?.mainCurrency
+                                                }
                                                 onView={() => {
                                                     if (!selectionMode) {
-                                                        setSelectedLedgerEntry(entry);
-                                                        setIsDetailModalOpen(true);
+                                                        handleViewEntry(entry);
                                                     }
                                                 }}
                                                 selectionMode={selectionMode}
@@ -374,30 +244,39 @@ export function DetailsTab({
                         ))}
                     </AnimatePresence>
 
+                    {/* Loading State */}
                     {isLoading && (
                         <div className="space-y-4 px-2 animate-pulse">
                             {[1, 2, 3].map((idx) => (
-                                <div key={idx} className="bg-surface rounded-xl border border-border p-4 h-20" />
+                                <div
+                                    key={idx}
+                                    className="bg-surface rounded-xl border border-border p-4 h-20"
+                                />
                             ))}
                         </div>
                     )}
 
-                    {!isLoading && monthEntries.length === 0 && (
+                    {/* Empty State */}
+                    {!isLoading && entries.length === 0 && (
                         <div className="text-center py-20 text-muted-foreground">
                             <p>{tCommon("noRecords")}</p>
                         </div>
                     )}
 
-                    {/* Infinite scroll sentinel & loading indicator */}
+                    {/* Infinite Scroll Sentinel */}
                     <div ref={sentinelRef} className="h-1" />
                     {isFetchingNextPage && (
                         <div className="flex justify-center py-4">
-                            <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
+                            <span className="text-sm text-muted-foreground">
+                                {tCommon("loading")}
+                            </span>
                         </div>
                     )}
-                    {!hasNextPage && monthEntries.length > 0 && (
+                    {!hasNextPage && entries.length > 0 && (
                         <div className="flex justify-center py-4">
-                            <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
+                            <span className="text-xs text-muted-foreground/50">
+                                — {t("noMore")} —
+                            </span>
                         </div>
                     )}
                 </div>
@@ -406,14 +285,24 @@ export function DetailsTab({
                 {selectionMode && selectedIds.size > 0 && (
                     <BatchActionToolbar
                         selectedCount={selectedIds.size}
-                        totalCount={monthEntries.length}
+                        totalCount={entries.length}
                         isAllSelected={isAllSelected}
                         onSelectAll={selectAll}
                         onClearSelection={clearSelection}
-                        onAiCategorize={handleBatchAiCategorize}
-                        onChangeCategory={handleBatchChangeCategory}
-                        onChangeCurrency={handleBatchChangeCurrency}
-                        onDelete={handleBatchDelete}
+                        onAiCategorize={() => batchCategorize.mutate(Array.from(selectedIds))}
+                        onChangeCategory={(categoryId) =>
+                            batchChangeCategory.mutate({
+                                ids: Array.from(selectedIds),
+                                categoryId,
+                            })
+                        }
+                        onChangeCurrency={(currency) =>
+                            batchChangeCurrency.mutate({
+                                ids: Array.from(selectedIds),
+                                currency,
+                            })
+                        }
+                        onDelete={() => batchDelete.mutate(Array.from(selectedIds))}
                         categories={categories}
                         preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                         isAiCategorizing={batchCategorize.isPending}
@@ -429,13 +318,25 @@ export function DetailsTab({
                         ledgerEntry={selectedLedgerEntry}
                         categories={categories}
                         open={isDetailModalOpen}
-                        onClose={() => {
-                            setIsDetailModalOpen(false);
-                            setSelectedLedgerEntry(null);
-                        }}
-                        onUpdate={(data) => updateEntry.mutate({ ledgerEntryId: selectedLedgerEntry.id, data })}
-                        onDelete={() => setDeleteConfirm({ open: true, id: selectedLedgerEntry.id })}
-                        onViewSourceDocument={selectedLedgerEntry.sourceDocumentId ? () => push({ type: 'source-document', id: selectedLedgerEntry.sourceDocumentId! }) : undefined}
+                        onClose={handleCloseDetail}
+                        onUpdate={(data) =>
+                            updateEntry.mutate({
+                                ledgerEntryId: selectedLedgerEntry.id,
+                                data,
+                            })
+                        }
+                        onDelete={() =>
+                            setDeleteConfirm({ open: true, id: selectedLedgerEntry.id })
+                        }
+                        onViewSourceDocument={
+                            selectedLedgerEntry.sourceDocumentId
+                                ? () =>
+                                      push({
+                                          type: "source-document",
+                                          id: selectedLedgerEntry.sourceDocumentId!,
+                                      })
+                                : undefined
+                        }
                     />
                 )}
 
@@ -445,12 +346,7 @@ export function DetailsTab({
                     onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
                     title={t("deleteConfirmTitle")}
                     description={t("deleteConfirmDesc")}
-                    onConfirm={() => {
-                        if (deleteConfirm.id) {
-                            deleteEntry.mutate(deleteConfirm.id);
-                            setDeleteConfirm({ open: false, id: null });
-                        }
-                    }}
+                    onConfirm={() => handleDeleteConfirm((id) => deleteEntry.mutate(id))}
                     confirmLabel={tCommon("delete")}
                     variant="destructive"
                 />
