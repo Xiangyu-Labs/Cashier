@@ -155,6 +155,10 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                             days={stats?.heatmap?.days || []}
                             stats={stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }}
                             onDateDrilldown={onDateDrilldown}
+                            queryRange={{
+                                startDate: formatDateTimeForApi(startDate),
+                                endDate: formatDateTimeForApi(endDate)
+                            }}
                         />
                     )}
                 </div>

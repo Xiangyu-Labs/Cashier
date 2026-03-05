@@ -24,6 +24,14 @@ interface AdaptiveHeatmapProps {
   stats: CalendarHeatmapStats;
   onDayClick?: (date: string) => void;
   className?: string;
+  /**
+   * Query range for the heatmap display.
+   * If not provided, falls back to data-driven range.
+   */
+  queryRange?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
 export function AdaptiveHeatmap({
@@ -31,6 +39,7 @@ export function AdaptiveHeatmap({
   stats,
   onDayClick,
   className,
+  queryRange,
 }: AdaptiveHeatmapProps) {
   const dayCount = days.length;
 
@@ -42,6 +51,7 @@ export function AdaptiveHeatmap({
         stats={stats}
         onDayClick={onDayClick}
         className={className}
+        queryRange={queryRange}
       />
     );
   }
@@ -52,6 +62,7 @@ export function AdaptiveHeatmap({
       stats={stats}
       onDayClick={onDayClick}
       className={className}
+      queryRange={queryRange}
     />
   );
 }
@@ -67,11 +78,20 @@ interface LargeGridHeatmapProps {
   className?: string;
 }
 
+interface LargeGridHeatmapProps {
+  days: CalendarDayData[];
+  stats: CalendarHeatmapStats;
+  onDayClick?: (date: string) => void;
+  className?: string;
+  queryRange?: { startDate: string; endDate: string };
+}
+
 function LargeGridHeatmap({
   days,
   stats,
   onDayClick,
   className,
+  queryRange,
 }: LargeGridHeatmapProps) {
   // Create a map for quick lookup
   const dayMap = useMemo(() => {
@@ -82,17 +102,29 @@ function LargeGridHeatmap({
     return map;
   }, [days]);
 
-  // Generate continuous grid from min date to max date
+  // Generate continuous grid from query start to max(latest data, today)
   const gridDays = useMemo(() => {
     if (days.length === 0) return [];
 
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-    const startDate = sortedDays[0].date;
-    const endDate = sortedDays[sortedDays.length - 1].date;
+
+    // Start from query range if provided, otherwise from earliest data
+    const startDate = queryRange?.startDate || sortedDays[0].date;
+
+    // End is the later of: today or latest data date (capped by query end)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const latestDataDate = new Date(sortedDays[sortedDays.length - 1].date);
+    const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
+
+    // Cap by query end if provided
+    const queryEnd = queryRange?.endDate ? new Date(queryRange.endDate) : null;
+    const endDate = queryEnd && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
 
     const result: { date: string; dayData?: CalendarDayData }[] = [];
     const current = new Date(startDate);
-    const end = new Date(endDate);
+    const end = endDate;
 
     while (current <= end) {
       const dateStr = formatDate(current);
@@ -104,7 +136,7 @@ function LargeGridHeatmap({
     }
 
     return result;
-  }, [days, dayMap]);
+  }, [days, dayMap, queryRange]);
 
   return (
     <div className={cn('w-full', className)}>
@@ -140,6 +172,7 @@ interface SmallGridHeatmapProps {
   stats: CalendarHeatmapStats;
   onDayClick?: (date: string) => void;
   className?: string;
+  queryRange?: { startDate: string; endDate: string };
 }
 
 function SmallGridHeatmap({
@@ -147,6 +180,7 @@ function SmallGridHeatmap({
   stats,
   onDayClick,
   className,
+  queryRange,
 }: SmallGridHeatmapProps) {
   // Create a map for quick lookup
   const dayMap = useMemo(() => {
@@ -157,13 +191,25 @@ function SmallGridHeatmap({
     return map;
   }, [days]);
 
-  // Generate weeks from min date to max date
+  // Generate weeks from query start to max(latest data, today)
   const weeks = useMemo(() => {
     if (days.length === 0) return [];
 
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-    const startDate = sortedDays[0].date;
-    const endDate = sortedDays[sortedDays.length - 1].date;
+
+    // Start from query range if provided, otherwise from earliest data
+    const startDate = queryRange?.startDate || sortedDays[0].date;
+
+    // End is the later of: today or latest data date (capped by query end)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const latestDataDate = new Date(sortedDays[sortedDays.length - 1].date);
+    const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
+
+    // Cap by query end if provided
+    const queryEnd = queryRange?.endDate ? new Date(queryRange.endDate) : null;
+    const endDate = queryEnd && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
 
     // Find the Monday of the week containing startDate
     const start = new Date(startDate);
@@ -200,7 +246,7 @@ function SmallGridHeatmap({
     }
 
     return result;
-  }, [days, dayMap]);
+  }, [days, dayMap, queryRange]);
 
   return (
     <div className={cn('w-full', className)}>

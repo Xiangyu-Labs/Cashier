@@ -22,6 +22,14 @@ interface CalendarHeatmapSectionProps {
   stats: CalendarHeatmapStats;
   onDateDrilldown?: (date: string) => void;
   className?: string;
+  /**
+   * Query range for the heatmap display.
+   * If not provided, falls back to data-driven range.
+   */
+  queryRange?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
 export function CalendarHeatmapSection({
@@ -29,6 +37,7 @@ export function CalendarHeatmapSection({
   stats,
   onDateDrilldown,
   className,
+  queryRange,
 }: CalendarHeatmapSectionProps) {
   // Handle day click
   const handleDayClick = useCallback(
@@ -60,7 +69,7 @@ export function CalendarHeatmapSection({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Heatmap grid */}
-      <AdaptiveHeatmap days={days} stats={stats} onDayClick={handleDayClick} />
+      <AdaptiveHeatmap days={days} stats={stats} onDayClick={handleDayClick} queryRange={queryRange} />
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 pt-2">

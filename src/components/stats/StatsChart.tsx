@@ -35,12 +35,24 @@ export function StatsChart({
 
         const points: { label: string; value: number; fullDate: string }[] = [];
 
+        // Get today's date string for comparison
+        const todayStr = formatDateTimeForApi(new Date());
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         if (rangeType === "year") {
-            // Aggregate by Month - only show up to the month with latest data
+            // Aggregate by Month - show up to max(latest data month, current month)
             const year = startDate.getFullYear();
-            const maxMonth = latestDataDate
-                ? parseInt(latestDataDate.split('-')[1], 10)
-                : 12;
+            const currentMonth = today.getMonth() + 1; // 1-12
+
+            // Find month with latest data
+            let dataMaxMonth = currentMonth;
+            if (latestDataDate && latestDataDate.startsWith(String(year))) {
+                dataMaxMonth = parseInt(latestDataDate.split('-')[1], 10);
+            }
+
+            // Show up to the later of: current month or month with latest data
+            const maxMonth = Math.max(currentMonth, dataMaxMonth);
 
             for (let month = 0; month < maxMonth; month++) {
                 // Determine pattern for this month: "YYYY-MM"
@@ -60,11 +72,21 @@ export function StatsChart({
                 });
             }
         } else {
-            // Daily granularity (Week or Month) - only show up to latest data date
+            // Daily granularity (Week or Month) - show up to max(latest data, today)
             const curr = new Date(startDate);
-            const end = latestDataDate
-                ? new Date(latestDataDate)
-                : new Date(endDate);
+
+            // End date is the later of: today or latest data date
+            let effectiveEndDate: Date;
+            if (latestDataDate) {
+                const latestDate = new Date(latestDataDate);
+                effectiveEndDate = latestDate > today ? latestDate : today;
+            } else {
+                effectiveEndDate = today;
+            }
+
+            // Don't exceed original endDate (for future periods)
+            const originalEnd = new Date(endDate);
+            const end = effectiveEndDate < originalEnd ? effectiveEndDate : originalEnd;
 
             // Safety break to prevent infinite loops if dates are weird
             let safety = 0;
