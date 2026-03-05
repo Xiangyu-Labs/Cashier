@@ -65,7 +65,7 @@ export function CalendarHeader({
         {/* View Toggle and Filter */}
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-lg border bg-muted p-1">
-            {(['month', 'week', 'year'] as CalendarViewType[]).map((view) => (
+            {(['month', 'year'] as CalendarViewType[]).map((view) => (
               <button
                 key={view}
                 onClick={() => onViewChange(view)}
@@ -97,29 +97,15 @@ export function CalendarHeader({
 
 const viewLabels: Record<CalendarViewType, string> = {
   month: '月',
-  week: '周',
   year: '年',
 };
 
 function formatDateDisplay(dateStr: string, viewType: CalendarViewType): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  const [year, month] = dateStr.split('-').map(Number);
 
   switch (viewType) {
     case 'month':
       return `${year}年${month}月`;
-    case 'week': {
-      // Show week range
-      const date = new Date(year, month - 1, day);
-      const dayOfWeek = date.getDay();
-      const startOfWeek = new Date(date);
-      startOfWeek.setDate(date.getDate() - dayOfWeek);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-      const startStr = `${startOfWeek.getMonth() + 1}/${startOfWeek.getDate()}`;
-      const endStr = `${endOfWeek.getMonth() + 1}/${endOfWeek.getDate()}`;
-      return `${startStr} - ${endStr}`;
-    }
     case 'year':
       return `${year}年`;
     default:

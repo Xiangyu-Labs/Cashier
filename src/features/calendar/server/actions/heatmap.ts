@@ -25,7 +25,7 @@ import type {
 // Validation schemas
 const GetCalendarHeatmapSchema = z.object({
     ledgerId: z.string(),
-    viewType: z.enum(['month', 'week', 'year']),
+    viewType: z.enum(['month', 'year']),
     anchorDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     filters: z
         .object({
@@ -63,19 +63,6 @@ function getDateRange(
             return {
                 startDate: `${year}-${String(month).padStart(2, '0')}-01`,
                 endDate: `${year}-${String(month).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
-            };
-        }
-        case 'week': {
-            // Get the week containing the anchor date (Sunday to Saturday)
-            const date = new Date(year, month - 1, day);
-            const dayOfWeek = date.getDay();
-            const start = new Date(date);
-            start.setDate(date.getDate() - dayOfWeek);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            return {
-                startDate: formatDate(start),
-                endDate: formatDate(end),
             };
         }
         case 'year': {

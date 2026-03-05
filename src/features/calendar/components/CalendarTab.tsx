@@ -1,7 +1,7 @@
 /**
  * Calendar Tab Component
  *
- * Main container for calendar heatmap visualization with month/week/year views.
+ * Main container for calendar heatmap visualization with month/year views.
  */
 
 'use client';
@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { MonthView } from './MonthView';
-import { WeekView } from './WeekView';
 import { YearView } from './YearView';
 import { useCalendarHeatmap } from '../client/hooks/useCalendarData';
 import { queryKeys } from '@/lib/query-keys';
@@ -22,8 +21,6 @@ import {
   formatDate,
   getPreviousMonth,
   getNextMonth,
-  getPreviousWeek,
-  getNextWeek,
   getPreviousYear,
   getNextYear,
 } from '../lib/date-utils';
@@ -65,10 +62,6 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
             return direction === 'prev'
               ? getPreviousMonth(current)
               : getNextMonth(current);
-          case 'week':
-            return direction === 'prev'
-              ? getPreviousWeek(current)
-              : getNextWeek(current);
           case 'year':
             return direction === 'prev'
               ? getPreviousYear(current)
@@ -103,14 +96,11 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
     setViewType(newView);
     // Adjust anchor date if needed
     setAnchorDate((current) => {
-      const [year, month, day] = current.split('-').map(Number);
+      const [year, month] = current.split('-').map(Number);
       switch (newView) {
         case 'month':
           // Keep year and month, set to first day
           return `${year}-${String(month).padStart(2, '0')}-01`;
-        case 'week':
-          // Keep current date, will be adjusted to week view
-          return current;
         case 'year':
           // Keep year, set to Jan 1
           return `${year}-01-01`;
@@ -136,9 +126,6 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
     if (viewType === 'month') {
       prefetch(getPreviousMonth(anchorDate));
       prefetch(getNextMonth(anchorDate));
-    } else if (viewType === 'week') {
-      prefetch(getPreviousWeek(anchorDate));
-      prefetch(getNextWeek(anchorDate));
     }
   }, [calendarData, queryClient, ledgerId, viewType, anchorDate, filters]);
 
@@ -178,13 +165,6 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
           <>
             {viewType === 'month' && (
               <MonthView
-                anchorDate={anchorDate}
-                data={calendarData}
-                onDayClick={handleDayClick}
-              />
-            )}
-            {viewType === 'week' && (
-              <WeekView
                 anchorDate={anchorDate}
                 data={calendarData}
                 onDayClick={handleDayClick}

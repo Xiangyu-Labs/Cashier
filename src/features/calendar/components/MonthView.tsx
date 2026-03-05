@@ -2,14 +2,15 @@
  * Month View Component
  *
  * Monthly calendar view with heatmap visualization.
+ * Clean, borderless design optimized for readability.
  */
 
 'use client';
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { HeatmapCell } from './HeatmapCell';
-import { getMonthGrid, getWeekdayName } from '../lib/date-utils';
+import { getMonthGrid, getWeekdayName, formatDate } from '../lib/date-utils';
+import { getHeatmapLevel, getHeatmapColor, formatCellAmount } from '../lib/heatmap-colors';
 import type { CalendarHeatmapData } from '../types';
 
 interface MonthViewProps {
@@ -21,6 +22,7 @@ interface MonthViewProps {
 
 export function MonthView({ anchorDate, data, onDayClick, className }: MonthViewProps) {
   const grid = useMemo(() => getMonthGrid(anchorDate), [anchorDate]);
+  const today = formatDate(new Date());
 
   // Create a map of date -> day data for quick lookup
   const dayDataMap = useMemo(() => {
@@ -37,7 +39,7 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
   return (
     <div className={cn('flex flex-col', className)}>
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="grid grid-cols-7 gap-1 mb-3">
         {weekdays.map((day) => (
           <div
             key={day}
@@ -48,25 +50,65 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {grid.map(({ date, isCurrentMonth, isToday }) => {
+      {/* Calendar grid - borderless, clean design */}
+      <div className="grid grid-cols-7 gap-1.5">
+        {grid.map(({ date, isCurrentMonth, isToday: isTodayFlag }) => {
           const dayData = dayDataMap.get(date);
           const amount = dayData?.amount || 0;
           const count = dayData?.count || 0;
+          const isToday = date === today;
+          const level = getHeatmapLevel(amount, data.stats);
+          const dayNumber = parseInt(date.split('-')[2], 10);
 
           return (
-            <HeatmapCell
+            <button
               key={date}
-              date={date}
-              amount={amount}
-              count={count}
-              stats={data.stats}
-              isCurrentMonth={isCurrentMonth}
-              isToday={isToday}
-              size="md"
-              onClick={onDayClick}
-            />
+              onClick={() => onDayClick(date)}
+              className={cn(
+                'relative flex flex-col items-center justify-center rounded-lg transition-all duration-200',
+                'h-16 min-h-[4rem]',
+                'hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary',
+                !isCurrentMonth && 'opacity-30',
+                isToday && 'ring-2 ring-primary ring-offset-2'
+              )}
+              style={{
+                backgroundColor: getHeatmapColor(level),
+              }}
+            >
+              {/* Day number - top left */}
+              <span
+                className={cn(
+                  'absolute top-1.5 left-2 text-xs font-medium',
+                  level >= 4 ? 'text-white' : 'text-foreground'
+                )}
+              >
+                {dayNumber}
+              </span>
+
+              {/* Amount - center */}
+              {amount > 0 && (
+                <span
+                  className={cn(
+                    'mt-3 text-sm font-semibold',
+                    level >= 4 ? 'text-white' : 'text-foreground'
+                  )}
+                >
+                  {formatCellAmount(amount)}
+                </span>
+              )}
+
+              {/* Count indicator - bottom */}
+              {count > 0 && (
+                <span
+                  className={cn(
+                    'absolute bottom-1 text-[10px]',
+                    level >= 4 ? 'text-white/80' : 'text-muted-foreground'
+                  )}
+                >
+                  {count}笔
+                </span>
+              )}
+            </button>
           );
         })}
       </div>

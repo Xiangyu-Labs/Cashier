@@ -4,7 +4,7 @@
  * Type definitions for calendar heatmap feature.
  */
 
-export type CalendarViewType = 'month' | 'week' | 'year';
+export type CalendarViewType = 'month' | 'year';
 
 export interface CalendarFilters {
     currency?: string;
