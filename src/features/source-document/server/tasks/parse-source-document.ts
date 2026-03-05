@@ -1,12 +1,15 @@
 import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
+import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
-import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import {
+    handleParseResult,
+    handleParseError,
+    handleParseCancel,
+} from "./parse-result-handler";
 
 // Import multi-stage executors
 import { executeStage0 } from "./stage0-vision";
@@ -39,7 +42,7 @@ export interface ParseSourceDocumentOutput {
 
 /**
  * Parse Source Document Task Handler
- * 
+ *
  * Multi-stage architecture:
  * - Stage 1: Pre-analysis (validity, currency, category, title, user rules)
  * - Stage 1.5: Validation (veto power + consolidation)
@@ -245,172 +248,34 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
     },
 
     async onComplete(output: ParseSourceDocumentOutput, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
-        const { ledgerId } = input;
-        if (!ledgerId) throw new Error("Missing ledgerId in task input");
-
-        const { ledgerEntries: parsedEntries, title, anomalyReason, verificationStatus } = output;
-
-        const q = forLedger(sourceDocuments, ledgerId);
-        const qEntries = forLedger(ledgerEntries, ledgerId);
-
-        // Query source document to get its entryDate for fallback
-        const doc = await db.query.sourceDocuments.findFirst({
-            where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
-        });
-
-        // Handle anomaly - do NOT save entries, just update document status
-        if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
-            const reason = anomalyReason || (verificationStatus === 'invalid' ? '无效内容' : '解析结果存在分歧');
-
-            await db.update(sourceDocuments)
-                .set({
-                    status: 'anomaly',
-                    anomalyReason: reason,
-                    title: title || undefined
-                })
-                .where(q.whereId(input.sourceDocumentId));
-            return;
-        }
-
-        const validEntries = parsedEntries.filter(entry => entry.amount > 0);
-
-        // Handle empty valid entries
-        if (validEntries.length === 0) {
-            await db.update(sourceDocuments)
-                .set({
-                    status: 'anomaly',
-                    anomalyReason: '无有效金额的条目',
-                    title: title || undefined
-                })
-                .where(q.whereId(input.sourceDocumentId));
-            return;
-        }
-
-        // Check for unknown currency - should trigger anomaly
-        const unknownCurrencyEntries = validEntries.filter(
-            entry => !entry.currency || entry.currency.toLowerCase() === 'unknown'
-        );
-        if (unknownCurrencyEntries.length > 0) {
-            await db.update(sourceDocuments)
-                .set({
-                    status: 'anomaly',
-                    anomalyReason: '无法识别货币类型',
-                    title: title || undefined
-                })
-                .where(q.whereId(input.sourceDocumentId));
-            return;
-        }
-        // Save entries
-        // Get ledger's main currency for conversion
-        const ledger = await db.query.ledgers.findFirst({
-            where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-        });
-        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
-
-        const entriesToInsert = await Promise.all(validEntries.map(async entry => {
-            // categoryIndex is 1-based, so index 1 = categories[0]
-            const categoryId = entry.categoryIndex > 0 && entry.categoryIndex <= input.categories.length
-                ? input.categories[entry.categoryIndex - 1]?.id ?? null
-                : null;
-
-            // Use source document's entryDate as primary fallback, then today's date
-            const todayDate = formatDateTimeForApi(new Date());
-            const fallbackDate = doc?.entryDate || todayDate;
-            const entryCurrency = entry.currency || "CNY";
-
-            // Calculate converted amount
-            let convertedAmount: string | null = null;
-            let exchangeRate: string | null = null;
-
-            if (entryCurrency === mainCurrency) {
-                convertedAmount = entry.amount.toFixed(2);
-                exchangeRate = "1";
-            } else {
-                try {
-                    const converted = await ExchangeRateService.convert(
-                        entry.amount,
-                        entryCurrency,
-                        mainCurrency,
-                        fallbackDate
-                    );
-                    convertedAmount = converted.toFixed(2);
-                    exchangeRate = (converted / entry.amount).toFixed(6);
-                } catch (err) {
-                    logger.warn({ err, entryCurrency, mainCurrency }, "Failed to convert amount in batch insert");
-                }
-            }
-
-            return {
-                ledgerId: ledgerId!,
-                categoryId,
-                sourceDocumentId: input.sourceDocumentId,
-                amount: entry.amount.toFixed(2),
-                currency: entryCurrency,
-                itemName: entry.itemName || "未分类",
-                description: entry.notes || null,
-                entryDate: fallbackDate,
-                convertedAmount,
-                exchangeRate,
-            };
-        }));
-
-        // Atomically update entries and document status in a transaction
-        db.transaction((tx) => {
-            // 1. Delete existing entries for this source document (enables retry)
-            tx.update(ledgerEntries)
-                .set({ deletedAt: new Date() })
-                .where(and(
-                    eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
-                    qEntries.whereActive
-                ))
-                .run();
-
-            // 2. Insert new entries
-            if (entriesToInsert.length > 0) {
-                tx.insert(ledgerEntries).values(entriesToInsert).run();
-            }
-
-            // 3. Update document status to completed and title (merged into single statement)
-            tx.update(sourceDocuments)
-                .set({
-                    status: 'completed',
-                    ...(title ? { title } : {})
-                })
-                .where(q.whereId(input.sourceDocumentId))
-                .run();
+        await handleParseResult({
+            ledgerId: input.ledgerId,
+            sourceDocumentId: input.sourceDocumentId,
+            parsedEntries: output.ledgerEntries,
+            title: output.title,
+            anomalyReason: output.anomalyReason,
+            verificationStatus: output.verificationStatus,
+            categories: input.categories,
         });
     },
 
     async onError(error: Error, input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         logger.error({ error, sourceDocumentId: input.sourceDocumentId }, "Parse source document task failed");
 
-        if (!input.ledgerId) {
-            logger.warn({ sourceDocumentId: input.sourceDocumentId }, "Missing ledgerId in input, cannot update status");
-            return;
-        }
-
-        const q = forLedger(sourceDocuments, input.ledgerId);
-
-        // 系统错误时标记为 failed，让用户可以重试
-        // anomaly 用于业务异常（用户输入问题），failed 用于系统错误
-        await db.update(sourceDocuments)
-            .set({ status: 'failed' })
-            .where(q.whereId(input.sourceDocumentId));
+        await handleParseError({
+            ledgerId: input.ledgerId,
+            sourceDocumentId: input.sourceDocumentId,
+            error,
+        });
     },
 
     async onCancel(input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
         logger.info({ sourceDocumentId: input.sourceDocumentId }, "Parse source document task cancelled");
 
-        if (!input.ledgerId) {
-            return;
-        }
-
-        const q = forLedger(sourceDocuments, input.ledgerId);
-
-        // 软删除文档（取消 = 用户不想要了）
-        await db.update(sourceDocuments)
-            .set({ deletedAt: new Date() })
-            .where(q.whereId(input.sourceDocumentId));
+        await handleParseCancel({
+            ledgerId: input.ledgerId,
+            sourceDocumentId: input.sourceDocumentId,
+        });
     }
 };
 

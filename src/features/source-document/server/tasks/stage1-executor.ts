@@ -1,6 +1,6 @@
 /**
  * Stage 1 Executor
- * 
+ *
  * Executes pre-analysis tasks in parallel:
  * - 1.1 Validity Check (dual GPT + arbitration)
  * - 1.2 Completeness Check (single GPT) - detect obvious missing content
@@ -8,14 +8,13 @@
  * - 1.4 Category Recognition (dual GPT + arbitration)
  * - 1.5 Title Extraction (single GPT)
  * - 1.6 User Requirements (single GPT, only if aiCustomPrompt exists)
- * 
+ *
  * Note: 1.1 runs first. If invalid, other tasks are skipped.
  * Note: 1.2 runs with 1.1. If incomplete, other tasks are skipped.
  */
 
-import { z } from "zod";
-import { logger } from "@/lib/logger";
 import { parseJsonResponse } from "@/lib/ai/response-parser";
+import { runDualGptWithArbitration } from "@/lib/ai/dual-gpt-runner";
 import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type {
     ValidityCheckOutput,
@@ -27,6 +26,14 @@ import type {
     Stage1Results,
 } from "./types";
 import {
+    validitySchema,
+    completenessSchema,
+    currencySchema,
+    categorySchema,
+    titleSchema,
+    rulesSchema,
+} from "./schemas";
+import {
     buildValidityCheckPrompt,
     buildCompletenessCheckPrompt,
     buildCurrencyRecognitionPrompt,
@@ -35,38 +42,6 @@ import {
     buildUserRequirementsPrompt,
 } from "./stage1-prompts";
 import { buildMessageContent } from "./message-content";
-
-// ===== Zod Schemas for Response Validation =====
-
-const validitySchema = z.object({
-    is_valid: z.boolean(),
-    reasoning: z.string(),
-});
-
-const completenessSchema = z.object({
-    is_complete: z.boolean(),
-    issue: z.string().optional(),
-});
-
-const currencySchema = z.object({
-    currencies: z.array(z.string()),
-    reasoning: z.string(),
-});
-
-const categorySchema = z.object({
-    categories: z.array(z.string()),
-    reasoning: z.string(),
-});
-
-const titleSchema = z.object({
-    title: z.string(),
-});
-
-const rulesSchema = z.object({
-    rules: z.array(z.string()).default([]),
-});
-
-// ===== Stage 1 Input Interface =====
 
 export interface Stage1Input {
     text?: string;
@@ -77,95 +52,6 @@ export interface Stage1Input {
     categories: { name: string; description: string | null }[];
     aiCustomPrompt?: string;
 }
-
-// ===== Dual GPT Runner with Arbitration =====
-
-async function runDualGptWithArbitration<T>(
-    taskName: string,
-    prompt: string,
-    messageContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
-    schema: z.ZodSchema<T>,
-    ai: AIContext,
-    model: AIModelTier = 'text',
-    compareResults: (r1: T, r2: T) => boolean
-): Promise<{ result: T; reasoning: string; wasArbitrated: boolean }> {
-    // Run dual GPT calls in parallel
-    const [response1, response2] = await Promise.all([
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-    ]);
-
-    const result1 = parseJsonResponse(response1.content, schema);
-    const result2 = parseJsonResponse(response2.content, schema);
-
-    // If results match, return GPT1's result
-    if (compareResults(result1, result2)) {
-        return {
-            result: result1,
-            reasoning: (result1 as { reasoning?: string }).reasoning || "",
-            wasArbitrated: false,
-        };
-    }
-
-    // Results don't match - run arbitration
-    const arbitrationPrompt = `You are an arbitration AI.
-
-### Task Description
-${taskName}
-
-### GPT 1 Result
-${JSON.stringify(result1, null, 2)}
-
-### GPT 2 Result
-${JSON.stringify(result2, null, 2)}
-
-### Your Task
-Determine which result is more accurate based on the original input.
-- Return choice: 1 to use GPT 1's result
-- Return choice: 2 to use GPT 2's result
-- Return choice: 0 if both are incorrect (mark as anomaly)
-
-### Output (raw JSON only)
-{"choice": 1 | 2 | 0, "reason": "..."}`;
-
-    const arbitrationResponse = await ai.generate({
-        prompt: arbitrationPrompt,
-        messages: [{ role: "user", content: messageContent }],
-        requireJson: true,
-        model: 'text',
-    });
-
-    const arbitrationResult = parseJsonResponse(
-        arbitrationResponse.content,
-        z.object({
-            choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-            reason: z.string().optional(),
-        })
-    );
-
-    if (arbitrationResult.choice === 0) {
-        throw new Error(`ARBITRATION_FAILED: ${taskName} - ${arbitrationResult.reason || "Both results invalid"}`);
-    }
-
-    const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
-    return {
-        result: chosenResult,
-        reasoning: (chosenResult as { reasoning?: string }).reasoning || "",
-        wasArbitrated: true,
-    };
-}
-
-// ===== Main Stage 1 Executor =====
 
 export async function executeStage1(
     input: Stage1Input,
@@ -181,15 +67,15 @@ export async function executeStage1(
 
     // Step 1: Check validity first
     const validityPrompt = buildValidityCheckPrompt(input.aiLanguage);
-    const validityResult = await runDualGptWithArbitration<ValidityCheckOutput>(
-        "Validity Check - Determine if input contains valid financial data",
-        validityPrompt,
+    const validityResult = await runDualGptWithArbitration<ValidityCheckOutput>({
+        taskName: "Validity Check - Determine if input contains valid financial data",
+        prompt: validityPrompt,
         messageContent,
-        validitySchema,
+        schema: validitySchema,
         ai,
         model,
-        (r1, r2) => r1.is_valid === r2.is_valid
-    );
+        compareResults: (r1, r2) => r1.is_valid === r2.is_valid,
+    });
 
     // If not valid, return early
     if (!validityResult.result.is_valid) {
@@ -215,26 +101,26 @@ export async function executeStage1(
         })(),
 
         // 1.3 Currency Recognition (dual GPT)
-        runDualGptWithArbitration<CurrencyRecognitionOutput>(
-            "Currency Recognition - Identify currencies in the document",
-            buildCurrencyRecognitionPrompt(input.aiLanguage, input.preferredCurrencies),
+        runDualGptWithArbitration<CurrencyRecognitionOutput>({
+            taskName: "Currency Recognition - Identify currencies in the document",
+            prompt: buildCurrencyRecognitionPrompt(input.aiLanguage, input.preferredCurrencies),
             messageContent,
-            currencySchema,
+            schema: currencySchema,
             ai,
             model,
-            (r1, r2) => JSON.stringify(r1.currencies.sort()) === JSON.stringify(r2.currencies.sort())
-        ),
+            compareResults: (r1, r2) => JSON.stringify(r1.currencies.sort()) === JSON.stringify(r2.currencies.sort()),
+        }),
 
         // 1.4 Category Recognition (dual GPT)
-        runDualGptWithArbitration<CategoryRecognitionOutput>(
-            "Category Recognition - Identify expense categories",
-            buildCategoryRecognitionPrompt(input.aiLanguage, input.categories),
+        runDualGptWithArbitration<CategoryRecognitionOutput>({
+            taskName: "Category Recognition - Identify expense categories",
+            prompt: buildCategoryRecognitionPrompt(input.aiLanguage, input.categories),
             messageContent,
-            categorySchema,
+            schema: categorySchema,
             ai,
             model,
-            (r1, r2) => JSON.stringify(r1.categories.sort()) === JSON.stringify(r2.categories.sort())
-        ),
+            compareResults: (r1, r2) => JSON.stringify(r1.categories.sort()) === JSON.stringify(r2.categories.sort()),
+        }),
 
         // 1.5 Title Extraction (single GPT)
         (async (): Promise<TitleExtractionOutput> => {
