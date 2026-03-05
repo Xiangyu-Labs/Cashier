@@ -57,6 +57,13 @@ export const queryKeys = {
         filters?: { currency?: string; categoryId?: string }
     ) => ['calendar', 'heatmap', ledgerId, viewType, anchorDate, filters] as const,
 
+    calendarHeatmapForRange: (
+        ledgerId: string,
+        startDate: string,
+        endDate: string,
+        filters?: { currency?: string; categoryId?: string }
+    ) => ['calendar', 'heatmap-range', ledgerId, startDate, endDate, filters] as const,
+
     calendarDayDetail: (
         ledgerId: string,
         date: string,

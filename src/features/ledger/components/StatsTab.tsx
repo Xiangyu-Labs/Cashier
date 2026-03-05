@@ -139,7 +139,8 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                     </h3>
                     <CalendarHeatmapSection
                         ledgerId={ledgerId}
-                        ledger={ledger}
+                        startDate={formatDateTimeForApi(startDate)}
+                        endDate={formatDateTimeForApi(endDate)}
                         onDateDrilldown={onDateDrilldown}
                     />
                 </div>

@@ -8,7 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
-import { getCalendarHeatmapData, getCalendarDayDetail } from '../../server/actions/heatmap';
+import { getCalendarHeatmapData, getCalendarDayDetail, getCalendarHeatmapForRange } from '../../server/actions/heatmap';
 import type {
     CalendarViewType,
     CalendarFilters,
@@ -42,5 +42,23 @@ export function useCalendarDayDetail(
         queryFn: () => getCalendarDayDetail({ ledgerId, date: date!, filters }),
         staleTime: CALENDAR_STALE_TIME,
         enabled: !!date,
+    });
+}
+
+/**
+ * Hook for fetching calendar heatmap data for a custom date range
+ * Used by StatsTab to show heatmap synchronized with selected time range
+ */
+export function useCalendarHeatmapForRange(
+    ledgerId: string,
+    startDate: string,
+    endDate: string,
+    filters?: CalendarFilters
+) {
+    return useQuery<CalendarHeatmapData>({
+        queryKey: queryKeys.calendarHeatmapForRange(ledgerId, startDate, endDate, filters),
+        queryFn: () => getCalendarHeatmapForRange({ ledgerId, startDate, endDate, filters }),
+        staleTime: CALENDAR_STALE_TIME,
+        placeholderData: (previousData) => previousData,
     });
 }

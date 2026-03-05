@@ -2,59 +2,39 @@
  * Calendar Heatmap Section
  *
  * Simplified heatmap component for StatsTab.
- * Shows monthly heatmap with navigation.
+ * Shows heatmap synchronized with StatsTab's selected time range.
  */
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { useCalendarHeatmap } from '../client/hooks/useCalendarData';
+import { useCalendarHeatmapForRange } from '../client/hooks/useCalendarData';
 import { MonthView } from './MonthView';
 import { getHeatmapLegend } from '../lib/heatmap-colors';
-import {
-  formatDate,
-  getPreviousMonth,
-  getNextMonth,
-} from '../lib/date-utils';
 import type { Ledger } from '@/types/api';
 
 interface CalendarHeatmapSectionProps {
   ledgerId?: string;
-  ledger?: Ledger;
+  startDate: string; // yyyy-MM-dd
+  endDate: string;   // yyyy-MM-dd
   onDateDrilldown?: (date: string) => void;
   className?: string;
 }
 
 export function CalendarHeatmapSection({
   ledgerId,
-  ledger,
+  startDate,
+  endDate,
   onDateDrilldown,
   className,
 }: CalendarHeatmapSectionProps) {
-  const [anchorDate, setAnchorDate] = useState<string>(formatDate(new Date()));
-
-  // Fetch calendar data
-  const { data: calendarData, isLoading } = useCalendarHeatmap(
+  // Fetch calendar data for the date range
+  const { data: calendarData, isLoading } = useCalendarHeatmapForRange(
     ledgerId || '',
-    'month',
-    anchorDate
+    startDate,
+    endDate
   );
-
-  // Navigation handlers
-  const handlePrevMonth = useCallback(() => {
-    setAnchorDate((current) => getPreviousMonth(current));
-  }, []);
-
-  const handleNextMonth = useCallback(() => {
-    setAnchorDate((current) => getNextMonth(current));
-  }, []);
-
-  const handleToday = useCallback(() => {
-    setAnchorDate(formatDate(new Date()));
-  }, []);
 
   // Handle day click
   const handleDayClick = useCallback(
@@ -66,17 +46,22 @@ export function CalendarHeatmapSection({
     [onDateDrilldown]
   );
 
-  // Format month label
-  const monthLabel = useMemo(() => {
-    const [year, month] = anchorDate.split('-').map(Number);
-    return `${year}年${month}月`;
-  }, [anchorDate]);
+  // Format date range label
+  const dateRangeLabel = useMemo(() => {
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
 
-  // Check if current month is today
-  const isCurrentMonth = useMemo(() => {
-    const today = formatDate(new Date());
-    return anchorDate.slice(0, 7) === today.slice(0, 7);
-  }, [anchorDate]);
+    // Same month
+    if (startYear === endYear && startMonth === endMonth) {
+      return `${startYear}年${startMonth}月${startDay}日-${endDay}日`;
+    }
+    // Same year
+    if (startYear === endYear) {
+      return `${startYear}年${startMonth}月${startDay}日-${endMonth}月${endDay}日`;
+    }
+    // Different years
+    return `${startYear}年${startMonth}月${startDay}日-${endYear}年${endMonth}月${endDay}日`;
+  }, [startDate, endDate]);
 
   // Legend items
   const legend = useMemo(() => getHeatmapLegend(), []);
@@ -87,42 +72,14 @@ export function CalendarHeatmapSection({
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePrevMonth}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[80px] text-center">
-            {monthLabel}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNextMonth}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentMonth && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToday}
-            className="h-8 text-xs"
-          >
-            今天
-          </Button>
-        )}
+      {/* Date range label */}
+      <div className="flex items-center justify-center">
+        <span className="text-sm font-medium text-muted-foreground">
+          {dateRangeLabel}
+        </span>
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar grid - use startDate as anchor for MonthView */}
       {isLoading ? (
         <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
           加载中…
@@ -133,7 +90,7 @@ export function CalendarHeatmapSection({
         </div>
       ) : (
         <MonthView
-          anchorDate={anchorDate}
+          anchorDate={startDate}
           data={calendarData}
           onDayClick={handleDayClick}
         />

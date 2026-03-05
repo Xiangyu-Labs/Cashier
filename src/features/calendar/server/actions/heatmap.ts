@@ -46,6 +46,18 @@ const GetDayDetailSchema = z.object({
         .optional(),
 });
 
+const GetCalendarHeatmapForRangeSchema = z.object({
+    ledgerId: z.string(),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    filters: z
+        .object({
+            currency: z.string().optional(),
+            categoryId: z.string().optional(),
+        })
+        .optional(),
+});
+
 /**
  * Calculate date range based on view type and anchor date
  */
@@ -266,5 +278,67 @@ function calculateStats(amounts: number[]) {
         maxAmount: max,
         avgAmount: avg,
         p80Amount: p80,
+    };
+}
+
+/**
+ * Get calendar heatmap data for a custom date range
+ * Used by StatsTab to show heatmap synchronized with selected time range
+ */
+export async function getCalendarHeatmapForRange(
+    input: z.infer<typeof GetCalendarHeatmapForRangeSchema>
+): Promise<CalendarHeatmapData> {
+    const { ledgerId, startDate, endDate, filters } = GetCalendarHeatmapForRangeSchema.parse(input);
+
+    // Verify ledger access
+    await requireLedgerAccess(ledgerId);
+
+    // Build base conditions
+    const conditions = [
+        eq(ledgerEntries.ledgerId, ledgerId),
+        isNull(ledgerEntries.deletedAt),
+        sql`${sourceDocuments.entryDate} >= ${startDate} AND ${sourceDocuments.entryDate} <= ${endDate}`,
+    ];
+
+    // Add optional filters
+    if (filters?.currency) {
+        conditions.push(eq(ledgerEntries.currency, filters.currency));
+    }
+    if (filters?.categoryId) {
+        conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
+    }
+
+    // Query aggregated data by date
+    const results = await db
+        .select({
+            date: sourceDocuments.entryDate,
+            total: sql<string>`COALESCE(SUM(CAST(COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) AS REAL)), 0)`,
+            count: sql<number>`COUNT(*)`,
+            currencies: sql<string>`GROUP_CONCAT(DISTINCT ${ledgerEntries.currency})`,
+        })
+        .from(ledgerEntries)
+        .innerJoin(sourceDocuments, eq(ledgerEntries.sourceDocumentId, sourceDocuments.id))
+        .where(and(...conditions))
+        .groupBy(sourceDocuments.entryDate)
+        .orderBy(sourceDocuments.entryDate);
+
+    // Transform to day data
+    const days: CalendarDayData[] = results
+        .filter((row) => row.date !== null)
+        .map((row) => ({
+            date: normalizeDate(row.date!),
+            totalAmount: parseFloat(row.total) || 0,
+            entryCount: row.count,
+            currencies: row.currencies ? row.currencies.split(',').filter(Boolean) : [],
+        }));
+
+    // Calculate stats for color mapping
+    const amounts = days.map((d) => d.totalAmount).filter((a) => a > 0);
+    const stats = calculateStats(amounts);
+
+    return {
+        days,
+        range: { startDate, endDate },
+        stats,
     };
 }
