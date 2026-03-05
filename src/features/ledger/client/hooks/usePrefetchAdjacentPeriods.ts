@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
-import { getUnifiedSourceDocumentsAction } from '@/features/source-document/server/actions/main';
+import { getAllSourceDocumentsAction } from '@/features/source-document/server/actions/main';
 import { type PeriodParams, periodToDateRange } from '@/lib/period-utils';
 
 /**
@@ -25,12 +25,12 @@ export function usePrefetchAdjacentPeriods(
         queryClient.prefetchQuery({
           queryKey: queryKeys.sourceDocuments(
             ledgerId,
-            'unified',
+            'all',
             dateRange.startDate,
             dateRange.endDate
           ),
           queryFn: () =>
-            getUnifiedSourceDocumentsAction(ledgerId, {
+            getAllSourceDocumentsAction(ledgerId, {
               startDate: dateRange.startDate ?? undefined,
               endDate: dateRange.endDate ?? undefined,
             }),

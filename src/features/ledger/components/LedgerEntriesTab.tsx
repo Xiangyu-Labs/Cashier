@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "./EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
-import { useUnifiedSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useUnifiedSourceDocuments";
+import { useSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useSourceDocuments";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
 import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
@@ -16,7 +16,6 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
 import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
@@ -101,21 +100,11 @@ export function LedgerEntriesTab({
     // Unified Data Hook
     const {
         groups,
-        isLoading,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage
-    } = useUnifiedSourceDocuments(ledgerId, {
+        isLoading
+    } = useSourceDocuments(ledgerId, {
         dateRange: { start: filters.startDate, end: filters.endDate },
         minAmount: filters.minAmount ?? undefined,
         maxAmount: filters.maxAmount ?? undefined,
-    });
-
-    // Infinite scroll
-    const sentinelRef = useInfiniteScroll({
-        hasNextPage,
-        isFetchingNextPage,
-        fetchNextPage,
     });
 
     // Handlers
@@ -409,14 +398,8 @@ export function LedgerEntriesTab({
                                 )}
                             </div>
 
-                            {/* Infinite scroll sentinel & loading indicator */}
-                            <div ref={sentinelRef} className="h-1" />
-                            {isFetchingNextPage && (
-                                <div className="flex justify-center py-4">
-                                    <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
-                                </div>
-                            )}
-                            {!hasNextPage && groupedCompletedByDate.length > 0 && (
+                            {/* End of list indicator */}
+                            {groupedCompletedByDate.length > 0 && (
                                 <div className="flex justify-center py-4">
                                     <span className="text-xs text-muted-foreground/50">— {t("noMore")} —</span>
                                 </div>
