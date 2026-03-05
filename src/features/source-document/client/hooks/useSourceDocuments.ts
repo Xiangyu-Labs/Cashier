@@ -4,14 +4,50 @@ import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions/main";
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
-import type { sourceDocuments, ledgerEntries, entryCategories } from '@/lib/db/schema';
+import type { SourceDocument, LedgerEntry, EntryCategory } from '@/types/api';
 
 // Type matching the actual data returned from getAllSourceDocumentsAction
-export type SourceDocumentWithEntries = typeof sourceDocuments.$inferSelect & {
-    ledgerEntries: (typeof ledgerEntries.$inferSelect & {
-        category: typeof entryCategories.$inferSelect | null;
+export interface SourceDocumentWithEntries extends SourceDocument {
+    ledgerEntries: (LedgerEntry & {
+        category: EntryCategory | null;
     })[];
-};
+}
+
+// Internal type for handling raw data with Date objects
+interface RawSourceDocument {
+    id: string;
+    text: string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    deletedAt: Date | string | null;
+    type: string;
+    title: string | null;
+    status: string;
+    metadata: SourceDocument['metadata'];
+    ledgerId: string;
+    imageUrls: string[] | null;
+    anomalyReason: string | null;
+    entryDate: string | null;
+    ledgerEntries: RawLedgerEntry[];
+}
+
+interface RawLedgerEntry {
+    id: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    deletedAt: Date | string | null;
+    ledgerId: string;
+    description: string | null;
+    categoryId: string | null;
+    sourceDocumentId: string;
+    amount: string | number;
+    currency: string | null;
+    itemName: string;
+    convertedAmount: string | null;
+    entryDate?: string | null;
+    exchangeRate: string | null;
+    category: EntryCategory | null;
+}
 
 export interface SourceDocumentGroup {
     sourceDocument: SourceDocumentWithEntries;
@@ -50,13 +86,13 @@ interface UseSourceDocumentsOptions {
 /**
  * Helper to calculate total converted amount for a source document
  */
-function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
+function calculateTotalAmount(doc: RawSourceDocument): number {
     if (!doc.ledgerEntries?.length) return 0;
     return doc.ledgerEntries.reduce((sum, entry) => {
-        const convertedAmount = (entry as unknown as { convertedAmount?: string | null }).convertedAmount;
+        const convertedAmount = entry.convertedAmount;
         const amount = convertedAmount
             ? parseFloat(convertedAmount)
-            : parseFloat(entry.amount) || 0;
+            : parseFloat(String(entry.amount)) || 0;
         return sum + Math.abs(amount);
     }, 0);
 }
@@ -65,7 +101,7 @@ function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
  * Helper to group source documents by status
  */
 function groupByStatus(
-    docs: SourceDocumentWithEntries[]
+    docs: RawSourceDocument[]
 ): GroupedSourceDocuments {
     const groups: GroupedSourceDocuments = {
         queued: [],
@@ -77,8 +113,8 @@ function groupByStatus(
 
     docs.forEach((doc) => {
         const group: SourceDocumentGroup = {
-            sourceDocument: doc,
-            ledgerEntries: doc.ledgerEntries || [],
+            sourceDocument: doc as unknown as SourceDocumentWithEntries,
+            ledgerEntries: doc.ledgerEntries as unknown as SourceDocumentWithEntries['ledgerEntries'] || [],
         };
 
         switch (doc.status) {
@@ -108,7 +144,7 @@ function groupByStatus(
  * Helper to filter and group source documents
  */
 function filterAndGroup(
-    docs: SourceDocumentWithEntries[],
+    docs: RawSourceDocument[],
     minAmount?: number,
     maxAmount?: number
 ): { groups: GroupedSourceDocuments; stats: SourceDocumentsStats } {
@@ -202,7 +238,7 @@ export function useSourceDocuments(
             };
         }
 
-        return filterAndGroup(rawData, minAmount, maxAmount);
+        return filterAndGroup(rawData as unknown as RawSourceDocument[], minAmount, maxAmount);
     }, [rawData, minAmount, maxAmount]);
 
     return {

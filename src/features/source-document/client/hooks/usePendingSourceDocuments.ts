@@ -31,10 +31,10 @@ export function usePendingSourceDocuments(ledgerId: string) {
 
     return {
         groups: {
-            queued: (data?.groups?.queued || []) as SourceDocumentGroup[],
-            processing: (data?.groups?.processing || []) as SourceDocumentGroup[],
-            anomaly: (data?.groups?.anomaly || []) as SourceDocumentGroup[],
-            failed: (data?.groups?.failed || []) as SourceDocumentGroup[],
+            queued: (data?.groups?.queued || []) as unknown as SourceDocumentGroup[],
+            processing: (data?.groups?.processing || []) as unknown as SourceDocumentGroup[],
+            anomaly: (data?.groups?.anomaly || []) as unknown as SourceDocumentGroup[],
+            failed: (data?.groups?.failed || []) as unknown as SourceDocumentGroup[],
         },
         stats: data?.stats || { queuedCount: 0, processingCount: 0, anomalyCount: 0, failedCount: 0, total: 0 },
         isLoading: isLoading && !data,

@@ -24,7 +24,7 @@ export interface SourceDocumentActionInput {
 /**
  * Common logic to normalize images and prepare task data
  */
-import { type Ledger, type LedgerEntry, type SourceDocument } from "@/lib/db/schema";
+import { type Ledger, type LedgerEntry, type SourceDocument, type EntryCategory } from "@/lib/db/schema";
 
 /**
  * Common logic to normalize images and prepare task data
@@ -810,10 +810,11 @@ export async function getAllSourceDocumentsAction(ledgerId: string, params: {
         }
 
         // Return flat array with entries attached
+        // Data is serialized to JSON by Next.js, Dates become strings
         return items.map(doc => ({
             ...doc,
             ledgerEntries: entriesByDocId.get(doc.id) || [],
-        })) as (SourceDocument & { ledgerEntries: (typeof ledgerEntries.$inferSelect & { category: typeof entryCategories.$inferSelect | null })[] })[];
+        })) as unknown as (SourceDocument & { ledgerEntries: (LedgerEntry & { category: EntryCategory | null })[] })[];
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
         throw new Error(safeError(error));
