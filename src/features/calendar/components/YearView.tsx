@@ -187,9 +187,9 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
         </div>
 
         {/* Heatmap grid */}
-        <div className="flex gap-[2px] overflow-x-auto pb-2">
+        <div className="flex gap-[2px] overflow-x-auto pb-2 min-h-[100px]">
           {weeks.map((week) => (
-            <div key={week.weekIndex} className="flex flex-col gap-[2px]">
+            <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
               {week.days.map((day) => (
                 <DayCell
                   key={day.date}
@@ -211,8 +211,12 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
             {[0, 1, 2, 3, 4, 5].map((level) => (
               <div
                 key={level}
-                className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5) }}
+                className="w-3 h-3 rounded-sm flex-shrink-0"
+                style={{
+                  backgroundColor: level === 0
+                    ? 'hsl(var(--muted))'
+                    : getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5)
+                }}
                 title={getHeatmapLabel(level as 0 | 1 | 2 | 3 | 4 | 5)}
               />
             ))}
@@ -263,12 +267,14 @@ function DayCell({ day, onClick }: DayCellProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          'w-3 h-3 rounded-sm transition-all duration-150',
+          'w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0',
           'hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary',
           !day.isInYear && 'opacity-30'
         )}
         style={{
-          backgroundColor: getHeatmapColor(day.level as 0 | 1 | 2 | 3 | 4 | 5),
+          backgroundColor: day.level === 0
+            ? 'hsl(var(--muted))'
+            : getHeatmapColor(day.level as 0 | 1 | 2 | 3 | 4 | 5),
         }}
         title={tooltipText}
       />
