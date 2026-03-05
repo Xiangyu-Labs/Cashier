@@ -13,15 +13,17 @@ import {
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
+import { CalendarHeatmapSection } from "@/features/calendar/components/CalendarHeatmapSection";
 import { useTranslations, useFormatter } from "next-intl";
 
 interface StatsTabProps {
     ledgerId?: string;
     ledger?: import("@/types/api").Ledger;
     onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
+    onDateDrilldown?: (date: string) => void;
 }
 
-export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProps) {
+export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldown }: StatsTabProps) {
     const t = useTranslations("StatsTab");
     const format = useFormatter();
     const queryClient = useQueryClient();
@@ -130,6 +132,17 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown }: StatsTabProp
                     currencySymbol={currencySymbol}
                     onCategoryClick={handleCategoryClick}
                 />
+
+                <div className="space-y-2">
+                    <h3 className="font-semibold px-2 text-sm text-muted-foreground uppercase tracking-wider">
+                        {t("dailyHeatmap")}
+                    </h3>
+                    <CalendarHeatmapSection
+                        ledgerId={ledgerId}
+                        ledger={ledger}
+                        onDateDrilldown={onDateDrilldown}
+                    />
+                </div>
             </div>
         </PullToRefresh>
     );

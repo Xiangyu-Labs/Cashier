@@ -14,7 +14,6 @@ import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import { DetailsTab } from "./DetailsTab";
 import { StatsTab } from "./StatsTab";
 import { SettingsTab } from "./SettingsTab";
-import { CalendarTab } from "@/features/calendar/components/CalendarTab";
 import {
     Dialog,
     DialogContent,
@@ -239,10 +238,9 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                     onValueChange={handleTabChange}
                     className="w-full space-y-4"
                 >
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="history">{t("history")}</TabsTrigger>
                         <TabsTrigger value="details">{t("details")}</TabsTrigger>
-                        <TabsTrigger value="calendar">{t("calendar")}</TabsTrigger>
                         <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
                         <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
                     </TabsList>
@@ -273,17 +271,13 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                         />
                     </TabsContent>
 
-                    <TabsContent value="calendar" className="mt-0">
-                        <CalendarTab
+                    <TabsContent value="stats" className="mt-0">
+                        <StatsTab
                             ledgerId={ledgerId}
-                            categories={categories || []}
                             ledger={ledger}
+                            onCategoryDrilldown={handleCategoryDrilldown}
                             onDateDrilldown={handleDateDrilldown}
                         />
-                    </TabsContent>
-
-                    <TabsContent value="stats" className="mt-0">
-                        <StatsTab ledgerId={ledgerId} ledger={ledger} onCategoryDrilldown={handleCategoryDrilldown} />
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-0">

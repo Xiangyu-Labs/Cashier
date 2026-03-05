@@ -17,7 +17,6 @@
         "settings": "Settings",
         "history": "Stream",
         "details": "Details",
-        "calendar": "Calendar",
         "stats": "Stats",
         "newRecord": "New Record",
         "aiParse": "AI Parse",
@@ -122,6 +121,7 @@
     "StatsTab": {
         "expenseTrend": "Expense Trend",
         "expenseRanking": "Expense Ranking",
+        "dailyHeatmap": "Daily Heatmap",
         "averageDaily": "Avg Daily",
         "totalExpense": "Total Expense",
         "month": "Month",

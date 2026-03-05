@@ -17,7 +17,6 @@
         "settings": "设置",
         "history": "流水",
         "details": "明细",
-        "calendar": "日历",
         "stats": "统计",
         "newRecord": "记一笔",
         "aiParse": "智能记账",
@@ -122,6 +121,7 @@
     "StatsTab": {
         "expenseTrend": "支出趋势",
         "expenseRanking": "支出排行",
+        "dailyHeatmap": "每日热力图",
         "averageDaily": "日均支出",
         "totalExpense": "总支出",
         "month": "月",
