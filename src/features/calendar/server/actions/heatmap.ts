@@ -12,7 +12,7 @@ import { ledgerEntries } from '@/features/ledger/server/schema';
 import { sourceDocuments } from '@/features/source-document/server/schema';
 import { entryCategories } from '@/features/ledger/server/schema';
 import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
-import { and, eq, isNull, sql, between, gte, lte } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type {
     CalendarHeatmapData,
     CalendarDayData,
@@ -82,6 +82,28 @@ function formatDate(date: Date): string {
 }
 
 /**
+ * Normalize date string to yyyy-MM-dd format
+ * Handles various input formats like:
+ * - 2026-1-1 -> 2026-01-01
+ * - 2026-01-01 -> 2026-01-01
+ * - 2026/01/01 -> 2026-01-01
+ */
+function normalizeDate(dateStr: string): string {
+    // Remove time component if present
+    const datePart = dateStr.split('T')[0].split(' ')[0];
+
+    // Parse the date parts
+    const parts = datePart.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (!parts) {
+        // Return original if can't parse
+        return dateStr;
+    }
+
+    const [, year, month, day] = parts;
+    return `${year}-${String(parseInt(month, 10)).padStart(2, '0')}-${String(parseInt(day, 10)).padStart(2, '0')}`;
+}
+
+/**
  * Get calendar heatmap data for a specific view
  */
 export async function getCalendarHeatmapData(
@@ -95,10 +117,12 @@ export async function getCalendarHeatmapData(
     const { startDate, endDate } = getDateRange(viewType, anchorDate);
 
     // Build base conditions
+    // Note: Using SQL expression for date comparison to handle text dates in SQLite
     const conditions = [
         eq(ledgerEntries.ledgerId, ledgerId),
         isNull(ledgerEntries.deletedAt),
-        between(sourceDocuments.entryDate, startDate, endDate),
+        // Use raw SQL for date range comparison on text field
+        sql`${sourceDocuments.entryDate} >= ${startDate} AND ${sourceDocuments.entryDate} <= ${endDate}`,
     ];
 
     // Add optional filters
@@ -127,7 +151,8 @@ export async function getCalendarHeatmapData(
     const days: CalendarDayData[] = results
         .filter((row) => row.date !== null)
         .map((row) => ({
-            date: row.date!,
+            // Normalize date format to ensure yyyy-MM-dd
+            date: normalizeDate(row.date!),
             totalAmount: parseFloat(row.total) || 0,
             entryCount: row.count,
             currencies: row.currencies ? row.currencies.split(',').filter(Boolean) : [],
@@ -156,10 +181,11 @@ export async function getCalendarDayDetail(
     await requireLedgerAccess(ledgerId);
 
     // Build base conditions
+    // Use SQL expression for exact date match on text field
     const conditions = [
         eq(ledgerEntries.ledgerId, ledgerId),
         isNull(ledgerEntries.deletedAt),
-        eq(sourceDocuments.entryDate, date),
+        sql`${sourceDocuments.entryDate} = ${date}`,
     ];
 
     // Add optional filters

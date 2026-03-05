@@ -9,24 +9,25 @@ import type { CalendarHeatmapStats, HeatmapLevel } from '../types';
 
 // Heatmap color configuration using brand color (#10a37f)
 // Based on UI design system - using primary color with different opacities
+// Note: CSS variables are hex colors, not hsl(), so we use them directly
 const HEATMAP_COLORS = {
     // Light mode colors (CSS variable compatible)
     light: [
-        'hsl(var(--surface2))', // Level 0: No spending
-        'color-mix(in srgb, hsl(var(--primary)) 15%, hsl(var(--surface2)))', // Level 1: Very low
-        'color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--surface2)))', // Level 2: Low
-        'color-mix(in srgb, hsl(var(--primary)) 50%, hsl(var(--surface2)))', // Level 3: Medium
-        'color-mix(in srgb, hsl(var(--primary)) 70%, hsl(var(--surface2)))', // Level 4: High
-        'hsl(var(--primary))', // Level 5: Very high
+        'var(--surface2)', // Level 0: No spending
+        'color-mix(in srgb, var(--primary) 15%, var(--surface2))', // Level 1: Very low
+        'color-mix(in srgb, var(--primary) 30%, var(--surface2))', // Level 2: Low
+        'color-mix(in srgb, var(--primary) 50%, var(--surface2))', // Level 3: Medium
+        'color-mix(in srgb, var(--primary) 70%, var(--surface2))', // Level 4: High
+        'var(--primary)', // Level 5: Very high
     ],
     // Dark mode colors
     dark: [
-        'hsl(var(--surface2))', // Level 0: No spending
-        'color-mix(in srgb, hsl(var(--primary)) 20%, hsl(var(--surface2)))', // Level 1: Very low
-        'color-mix(in srgb, hsl(var(--primary)) 35%, hsl(var(--surface2)))', // Level 2: Low
-        'color-mix(in srgb, hsl(var(--primary)) 55%, hsl(var(--surface2)))', // Level 3: Medium
-        'color-mix(in srgb, hsl(var(--primary)) 75%, hsl(var(--surface2)))', // Level 4: High
-        'hsl(var(--primary))', // Level 5: Very high
+        'var(--surface2)', // Level 0: No spending
+        'color-mix(in srgb, var(--primary) 20%, var(--surface2))', // Level 1: Very low
+        'color-mix(in srgb, var(--primary) 35%, var(--surface2))', // Level 2: Low
+        'color-mix(in srgb, var(--primary) 55%, var(--surface2))', // Level 3: Medium
+        'color-mix(in srgb, var(--primary) 75%, var(--surface2))', // Level 4: High
+        'var(--primary)', // Level 5: Very high
     ],
 };
 

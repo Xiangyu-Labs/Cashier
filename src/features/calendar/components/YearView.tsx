@@ -214,7 +214,7 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
                 className="w-3 h-3 rounded-sm flex-shrink-0"
                 style={{
                   backgroundColor: level === 0
-                    ? 'hsl(var(--muted))'
+                    ? 'var(--muted)'
                     : getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5)
                 }}
                 title={getHeatmapLabel(level as 0 | 1 | 2 | 3 | 4 | 5)}
@@ -273,7 +273,7 @@ function DayCell({ day, onClick }: DayCellProps) {
         )}
         style={{
           backgroundColor: day.level === 0
-            ? 'hsl(var(--muted))'
+            ? 'var(--muted)'
             : getHeatmapColor(day.level as 0 | 1 | 2 | 3 | 4 | 5),
         }}
         title={tooltipText}
