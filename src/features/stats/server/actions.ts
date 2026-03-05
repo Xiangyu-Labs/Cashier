@@ -6,6 +6,7 @@ import { currencyRates } from "@/features/currency/server/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "./utils";
 import { forLedger } from "@/lib/db/scoped-query";
+import type { CalendarDayData, CalendarHeatmapStats } from "@/features/calendar/types";
 
 export interface EnhancedCategoryStat {
     id: string | null;
@@ -34,6 +35,10 @@ export interface EnhancedStats {
     };
     categories: EnhancedCategoryStat[];
     chart: { date: string; total: number }[];
+    heatmap: {
+        days: CalendarDayData[];
+        stats: CalendarHeatmapStats;
+    };
 }
 
 export async function getEnhancedStats({
@@ -214,6 +219,16 @@ export async function getEnhancedStats({
     const daysDiff = Math.round(Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
     const dailyAvg = daysDiff > 0 ? currentStats.total / daysDiff : 0;
 
+    // Calculate heatmap stats
+    const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries()).map(([date, total]) => ({
+        date,
+        totalAmount: total,
+        entryCount: currentEntries.filter(e => e.sourceDocument?.entryDate === date).length,
+        currencies: [...new Set(currentEntries.filter(e => e.sourceDocument?.entryDate === date).map(e => e.currency || mainCurrency))],
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    const heatmapStats = calculateStats(heatmapDays.map(d => d.totalAmount));
+
     return {
         summary: {
             total: currentStats.total,
@@ -222,6 +237,40 @@ export async function getEnhancedStats({
             dailyAverage: dailyAvg
         },
         categories,
-        chart: chartData
+        chart: chartData,
+        heatmap: {
+            days: heatmapDays,
+            stats: heatmapStats,
+        },
+    };
+}
+
+/**
+ * Calculate statistics for heatmap color mapping
+ */
+function calculateStats(amounts: number[]): CalendarHeatmapStats {
+    if (amounts.length === 0) {
+        return {
+            minAmount: 0,
+            maxAmount: 0,
+            avgAmount: 0,
+            p80Amount: 0,
+        };
+    }
+
+    const sorted = [...amounts].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+
+    // Calculate 80th percentile
+    const p80Index = Math.floor(sorted.length * 0.8);
+    const p80 = sorted[p80Index] || max;
+
+    return {
+        minAmount: min,
+        maxAmount: max,
+        avgAmount: avg,
+        p80Amount: p80,
     };
 }
