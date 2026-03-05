@@ -757,10 +757,55 @@ export async function createQuickEntryAction(
  * Used for the new optimistic update architecture.
  * Client will use React Query's `select` to group/filter.
  */
+// Serialized source document with entries for client consumption
+// All Date objects are converted to ISO strings for JSON serialization
+export type SourceDocumentWithEntries = {
+    id: string;
+    text: string | null;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+    type: string;
+    title: string | null;
+    status: string;
+    metadata: Record<string, unknown> | null;
+    ledgerId: string;
+    imageUrls: string[] | null;
+    anomalyReason: string | null;
+    entryDate: string | null;
+    ledgerEntries: {
+        id: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | null;
+        ledgerId: string;
+        description: string | null;
+        categoryId: string | null;
+        sourceDocumentId: string;
+        amount: string;
+        currency: string | null;
+        itemName: string;
+        convertedAmount: string | null;
+        exchangeRate: string | null;
+        category: {
+            id: string;
+            name: string;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt: string | null;
+            ledgerId: string;
+            description: string | null;
+            icon: string | null;
+            sortOrder: number;
+            isEditable: boolean;
+        } | null;
+    }[];
+};
+
 export async function getAllSourceDocumentsAction(ledgerId: string, params: {
     startDate?: string | null;
     endDate?: string | null;
-} = {}) {
+} = {}): Promise<SourceDocumentWithEntries[]> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized");
 
@@ -789,7 +834,11 @@ export async function getAllSourceDocumentsAction(ledgerId: string, params: {
 
         // Fetch ledger entries for all documents
         const docIds = items.map(d => d.id);
-        const entriesByDocId = new Map<string, typeof ledgerEntries.$inferSelect[]>();
+        // Type includes category relation from the "with" clause below
+        type LedgerEntryWithCategory = typeof ledgerEntries.$inferSelect & {
+            category: typeof entryCategories.$inferSelect | null;
+        };
+        const entriesByDocId = new Map<string, LedgerEntryWithCategory[]>();
 
         if (docIds.length > 0) {
             const qEntries = forLedger(ledgerEntries, ledgerId);
@@ -804,17 +853,58 @@ export async function getAllSourceDocumentsAction(ledgerId: string, params: {
             // Group entries by sourceDocumentId
             entries.forEach(entry => {
                 const list = entriesByDocId.get(entry.sourceDocumentId) || [];
-                list.push(entry);
+                list.push(entry as LedgerEntryWithCategory);
                 entriesByDocId.set(entry.sourceDocumentId, list);
             });
         }
 
         // Return flat array with entries attached
-        // Data is serialized to JSON by Next.js, Dates become strings
-        return items.map(doc => ({
-            ...doc,
-            ledgerEntries: entriesByDocId.get(doc.id) || [],
-        })) as unknown as (SourceDocument & { ledgerEntries: (LedgerEntry & { category: EntryCategory | null })[] })[];
+        // Explicitly serialize Date objects to strings for JSON compatibility
+        return items.map(doc => {
+            const rawEntries = entriesByDocId.get(doc.id) || [];
+            const serializedEntries = rawEntries.map(entry => {
+                // Serialize category if it exists
+                const serializedCategory = entry.category
+                    ? {
+                        id: entry.category.id,
+                        name: entry.category.name,
+                        createdAt: entry.category.createdAt.toISOString(),
+                        updatedAt: entry.category.updatedAt.toISOString(),
+                        deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
+                        ledgerId: entry.category.ledgerId,
+                        description: entry.category.description,
+                        icon: entry.category.icon,
+                        sortOrder: entry.category.sortOrder,
+                        isEditable: entry.category.isEditable,
+                    }
+                    : null;
+
+                return {
+                    id: entry.id,
+                    createdAt: entry.createdAt.toISOString(),
+                    updatedAt: entry.updatedAt.toISOString(),
+                    deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
+                    ledgerId: entry.ledgerId,
+                    description: entry.description,
+                    categoryId: entry.categoryId,
+                    sourceDocumentId: entry.sourceDocumentId,
+                    amount: String(entry.amount),
+                    currency: entry.currency,
+                    itemName: entry.itemName,
+                    convertedAmount: entry.convertedAmount,
+                    exchangeRate: entry.exchangeRate,
+                    category: serializedCategory,
+                };
+            });
+
+            return {
+                ...doc,
+                createdAt: doc.createdAt.toISOString(),
+                updatedAt: doc.updatedAt.toISOString(),
+                deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
+                ledgerEntries: serializedEntries,
+            };
+        }) as SourceDocumentWithEntries[];
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
         throw new Error(safeError(error));

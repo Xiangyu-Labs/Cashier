@@ -14,13 +14,16 @@ export function usePrefetchAdjacentPeriods(
 ) {
   const queryClient = useQueryClient();
 
+  // Extract primitive values to avoid object reference issues in dependency array
+  const { period, startDate, endDate, monthStartDay } = currentPeriod;
+
   useEffect(() => {
     // Wait 2 seconds before prefetching (user likely to switch)
     const timer = setTimeout(() => {
-      const periodsToPreload = getAdjacentPeriods(currentPeriod);
+      const periodsToPreload = getAdjacentPeriods({ period, startDate, endDate, monthStartDay });
 
-      periodsToPreload.forEach(period => {
-        const dateRange = periodToDateRange(period);
+      periodsToPreload.forEach(periodToLoad => {
+        const dateRange = periodToDateRange(periodToLoad);
 
         queryClient.prefetchQuery({
           queryKey: queryKeys.sourceDocuments(
@@ -40,7 +43,7 @@ export function usePrefetchAdjacentPeriods(
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [ledgerId, currentPeriod, queryClient]);
+  }, [ledgerId, period, startDate, endDate, monthStartDay, queryClient]);
 }
 
 function getAdjacentPeriods(current: PeriodParams): PeriodParams[] {

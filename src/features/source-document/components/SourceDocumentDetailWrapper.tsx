@@ -25,10 +25,10 @@ import type { SourceDocumentWithEntries } from "@/features/source-document/clien
 
 import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
+import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 
-interface SourceDocumentQueryData extends SourceDocument {
-    ledgerEntries: LedgerEntry[];
-}
+// Use the server type for query data (they are compatible)
+type SourceDocumentQueryData = ServerSourceDocumentWithEntries;
 
 interface SourceDocumentDetailWrapperProps {
     id: string;
@@ -391,19 +391,12 @@ export function SourceDocumentDetailWrapper({
         }
     }, [isLoading, sourceDocument, open, onClose]);
 
-    const currentLedgerEntries: LedgerEntry[] = sourceDocument
-        ? (
-            (sourceDocument as unknown as { ledgerEntries: LedgerEntry[] }).ledgerEntries ||
-            initialLedgerEntries ||
-            []
-        )
-        : [];
+    // Source document from query includes ledgerEntries directly
+    const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
 
+    // Ensure status has a default value
     const safeSourceDocument = sourceDocument
-        ? ({
-            ...sourceDocument,
-            status: sourceDocument.status || "queued",
-        } as unknown as SourceDocument)
+        ? { ...sourceDocument, status: sourceDocument.status || "queued" }
         : null;
 
     return (
