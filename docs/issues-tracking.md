@@ -76,7 +76,13 @@
 - [ ] **25. `QueueItemCard.tsx` 332行** - 接近上限
 - [ ] **26. `AdaptiveHeatmap.tsx` 402行** - 超过400行限制
 - [ ] **27. `YearView.tsx` 316行** - 接近上限
-- [ ] **28. `DetailsTab.tsx` 460行** - 超过400行限制
+- [x] **28. `DetailsTab.tsx` 460行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：
+    - `hooks/useDetailsTabState.ts` - 状态和弹窗管理 (50行)
+    - `hooks/useDetailsTabData.ts` - 数据获取 (110行)
+    - `hooks/useDetailsTabGrouping.ts` - 按日期分组 (60行)
+    - `hooks/useDetailsTabFilters.ts` - 过滤器逻辑 (75行)
+    - `DetailsTab.tsx` - 主组件协调 (165行)
 - [ ] **29. `LedgerEntriesTab.tsx` 449行** - 超过400行限制
 - [ ] **30. `BatchActionToolbar.tsx` 469行** - 超过400行限制
 - [ ] **31. `SettingsTab.tsx` 369行** - 接近上限
