@@ -11,6 +11,7 @@ import { desc, lte, gte, inArray, and, eq, isNull, or, lt } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/lib/date-utils";
+import { format } from "date-fns";
 import { type SourceDocumentStatusType, SourceDocumentType } from "@/features/source-document/server/schema";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 
@@ -293,11 +294,11 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
 
     if (startDate) {
         const parsedStart = parseDateRangeStart(startDate);
-        if (parsedStart) conditions.push(gte(sourceDocuments.createdAt, parsedStart));
+        if (parsedStart) conditions.push(gte(sourceDocuments.entryDate, format(parsedStart, 'yyyy-MM-dd')));
     }
     if (endDate) {
         const parsedEnd = parseDateRangeEnd(endDate);
-        if (parsedEnd) conditions.push(lte(sourceDocuments.createdAt, parsedEnd));
+        if (parsedEnd) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, 'yyyy-MM-dd')));
     }
 
     // Handle cursor with precise composite condition

@@ -301,4 +301,39 @@ describe("SourceDocument Actions", () => {
     expect(foundDoc?.ledgerEntries?.[0].category).toBeDefined();
     expect(foundDoc?.ledgerEntries?.[0].category?.id).toBe(testCategoryId);
   });
+
+  it("should filter by entryDate not createdAt", async () => {
+    const db = getTestDb();
+
+    // Create doc with entryDate in Jan but created now (March)
+    const [docA] = await db.insert(sourceDocuments).values({
+      ledgerId: testLedgerId,
+      text: "January expense",
+      status: "completed",
+      imageUrls: [],
+      entryDate: "2024-01-15",  // Entry date in January
+      createdAt: new Date("2024-03-01"), // Created in March
+    }).returning();
+
+    // Create doc with entryDate in March but created in January
+    const [docB] = await db.insert(sourceDocuments).values({
+      ledgerId: testLedgerId,
+      text: "March expense",
+      status: "completed",
+      imageUrls: [],
+      entryDate: "2024-03-15",  // Entry date in March
+      createdAt: new Date("2024-01-01"), // Created in January
+    }).returning();
+
+    // Filter for January 2024
+    const result = await getSourceDocumentsAction(testLedgerId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    // Should only return docA (entryDate in January), not docB
+    const ids = result.items.map(d => d.id);
+    expect(ids).toContain(docA.id);
+    expect(ids).not.toContain(docB.id);
+  });
 });
