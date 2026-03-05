@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";
 import { type EntryCategory } from "@/types/api";
+import { DateFilter } from "@/components/ui/date-filter";
 
 interface QuickEntryFormProps {
     ledgerId: string;
@@ -25,6 +26,7 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [amount, setAmount] = useState(0);
     const [itemName, setItemName] = useState("");
+    const [entryDate, setEntryDate] = useState<Date>(new Date());
 
     const mutation = useLedgerMutation(ledgerId, {
         mutationFn: (data: { categoryId: string; amount: number; itemName?: string; entryDate: string }) =>
@@ -35,6 +37,7 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
             setSelectedCategoryId(null);
             setAmount(0);
             setItemName("");
+            setEntryDate(new Date());
             onSuccess?.();
         },
     });
@@ -45,7 +48,7 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
             categoryId: selectedCategoryId,
             amount,
             itemName: itemName || undefined,
-            entryDate: formatDateTimeForApi(new Date()),
+            entryDate: formatDateTimeForApi(entryDate),
         });
     };
 
@@ -74,6 +77,18 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Date Selector */}
+            <div>
+                <p className="text-sm text-muted-foreground mb-2">{t("selectDate")}</p>
+                <DateFilter
+                    value={entryDate}
+                    onChange={(date) => setEntryDate(date || new Date())}
+                    placeholder={t("selectDate")}
+                    size="sm"
+                    className="w-full"
+                />
             </div>
 
             {/* Amount */}

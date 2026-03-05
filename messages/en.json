@@ -171,6 +171,7 @@
     },
     "QuickEntryForm": {
         "selectCategory": "Select a category",
+        "selectDate": "Date",
         "amount": "Amount",
         "itemName": "Item name (optional)",
         "itemNamePlaceholder": "Defaults to category name: ",
