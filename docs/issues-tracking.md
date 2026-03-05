@@ -8,31 +8,23 @@
 
 ### 事务处理 Bug（数据不一致风险）
 
-- [ ] **1. `db.transaction` 缺少 `await`** - `src/features/source-document/server/tasks/parse-source-document.ts:358`
-  - 影响：事务可能在后台执行，函数在事务完成前返回，导致数据不一致
-  - 修复：添加 `await db.transaction(async (tx) => { ... })`
-
-- [ ] **2. `db.transaction` 缺少 `await`** - `src/features/source-document/server/actions/main.ts:177-194` (retrySourceDocumentAction)
-
-- [ ] **3. `db.transaction` 缺少 `await`** - `src/features/source-document/server/actions/main.ts:251-274` (deleteSourceDocumentAction)
-
-- [ ] **4. `db.transaction` 缺少 `await`** - `src/features/ledger/server/actions/categories.ts` 多处
-
-- [ ] **5. `db.transaction` 缺少 `await`** - `src/features/ledger/server/actions/ledgers.ts` 多处
-
-- [ ] **6. `db.transaction` 缺少 `await`** - `src/features/auth/server/services/user-setup.ts:18`
+- [x] **1-6. `db.transaction` 缺少 `await`** - 6 个文件
+  - **状态：误报（False Positive）** - 2026-03-05 验证
+  - 原因：`better-sqlite3` 使用**同步事务**，不需要 `await`
+  - 验证：所有相关测试通过（`npx vitest run tests/integration/api/`）
+  - 结论：原代码正确，无需修复
 
 ### 类型安全 Bug（运行时崩溃风险）
 
-- [ ] **7. Session 类型不安全** - `src/auth.ts:137` `null as unknown as Session`
-  - 风险：返回 null 但类型系统认为是 Session，可能导致调用方崩溃
-  - 修复：返回 `null` 并修改返回类型为 `Session | null`，或抛出错误
+- [x] **7. Session 类型不安全** - `src/auth.ts:137` `null as unknown as Session` ✅ 已修复
+  - 修复：抛出错误 `throw new Error("User not found in database")`，使用 immutable spread 模式返回新对象
+  - 提交：`0d2a602`
 
 ### UI Bug
 
-- [ ] **8. CSS 语法错误** - `src/features/ledger/components/settings/CategorySection.tsx:262`
-  - 当前：`border(--border)]`
-  - 应改为：`border-[var(--border)]`
+- [x] **8. CSS 语法错误** - `src/features/ledger/components/settings/CategorySection.tsx:262` ✅ 已修复
+  - 修复：`border(--border)]` → `border-[var(--border)]`
+  - 提交：`0d2a602`
 
 ---
 
@@ -40,16 +32,18 @@
 
 ### 代码重复
 
-- [ ] **9. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage1-executor.ts:70-90`
-- [ ] **10. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage1-5-validator.ts:35-49`
-- [ ] **11. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage2-executor.ts:32-46`
-  - 建议：提取到 `src/lib/ai/response-parser.ts`
+- [x] **9. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage1-executor.ts:70-90` ✅ 已修复
+- [x] **10. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage1-5-validator.ts:35-49` ✅ 已修复
+- [x] **11. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage2-executor.ts:32-46` ✅ 已修复
+  - 修复：提取到 `src/lib/ai/response-parser.ts`，三个文件统一导入使用
 
 - [ ] **12. 映射逻辑重复** - `src/features/ledger/server/services/ledgers.ts` 和 `actions/ledgers.ts` 都有 `mapLedgerToApi`
 - [ ] **13. 序列化逻辑重复** - `services/categories.ts` 内联映射 vs `lib/serialization/utils.ts` 的 `serializeEntryCategory`
 
-- [ ] **14. IP获取逻辑重复** - `src/features/auth/server/actions/auth.ts:34-36` 和 `services/otp.ts:144-146`
-- [ ] **15. 邮箱规范化重复** - 多处使用 `email.toLowerCase().trim()`
+- [x] **14. IP获取逻辑重复** - `src/features/auth/server/actions/auth.ts:34-36` 和 `auth.ts:144-146` ✅ 已修复
+  - 修复：提取到 `src/lib/utils/ip.ts`，两处改为导入使用
+- [x] **15. 邮箱规范化重复** - 多处使用 `email.toLowerCase().trim()` ✅ 已修复
+  - 修复：提取到 `src/lib/utils/email.ts`，auth.ts 两处改为导入使用
 - [ ] **16. 错误响应构造重复** - `src/features/auth/server/utils/helpers.ts` 多处
 - [ ] **17. 倒计时逻辑重复** - `ResendCountdown` 和 `ExpiryTimer` 实现类似
 - [ ] **18. 日期工具函数重复** - `AdaptiveHeatmap.tsx` 和 `YearView.tsx` 都定义了 `formatDate`
@@ -267,14 +261,18 @@
 
 | 优先级 | 总数 | 已修复 | 进度 |
 |--------|------|--------|------|
-| P0 关键Bug | 8 | 0 | 0% |
+| P0 关键Bug | 8 | 2 | 25% |
 | P1 架构问题 | 45 | 0 | 0% |
 | P2 类型安全 | 33 | 0 | 0% |
 | P3 测试覆盖 | 26 | 0 | 0% |
 | P4 代码规范 | 22 | 0 | 0% |
 | P5 功能缺失 | 5 | 0 | 0% |
 | P6 可访问性/性能 | 7 | 0 | 0% |
-| **总计** | **146** | **0** | **0%** |
+| **总计** | **146** | **2** | **1.4%** |
+
+**说明：**
+- P0 中 6 个事务问题被标记为**误报**（better-sqlite3 同步事务不需要 await）
+- 实际修复：Session 类型安全、CSS 语法错误
 
 ---
 
@@ -284,7 +282,12 @@
 
 | 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
 |---------|---------|---------|--------|------|
-| | | | | |
+| 1-6 | 6个文件 | db.transaction await 问题 | 无需修复 | 2026-03-05 |
+| | | - 验证为误报（better-sqlite3同步事务） | | |
+| 7 | src/auth.ts | 移除 `null as unknown as Session`，使用 immutable spread | Claude | 2026-03-05 |
+| 8 | CategorySection.tsx | 修复 CSS 语法 `border(--border)]` → `border-[var(--border)]` | Claude | 2026-03-05 |
+
+**提交**: `0d2a602` fix: P0 critical bugs - session type safety and CSS syntax
 
 ### 批次 2 - 代码重复清理 (P1)
 
@@ -313,4 +316,5 @@
 ---
 
 *最后更新: 2026-03-05*
+*P0 修复完成: 2026-03-05*
 *创建: Claude Code*

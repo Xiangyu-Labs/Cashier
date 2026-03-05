@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { parseJsonResponse } from "@/lib/ai/response-parser";
 import type { AIContext } from "@/lib/flow/types";
 import type { Stage1Results, ValidationSummary } from "./types";
 import { buildMessageContent } from "./message-content";
@@ -29,24 +30,6 @@ const validationOutputSchema = z.object({
     }).optional(),
     rejection_reason: z.string().optional(),
 });
-
-// ===== Helper: Parse JSON Response =====
-
-function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T {
-    let cleaned = content.trim();
-    if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.slice(7);
-    } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.slice(3);
-    }
-    if (cleaned.endsWith("```")) {
-        cleaned = cleaned.slice(0, -3);
-    }
-    cleaned = cleaned.trim();
-
-    const parsed = JSON.parse(cleaned);
-    return schema.parse(parsed);
-}
 
 // ===== Build Validation Prompt =====
 

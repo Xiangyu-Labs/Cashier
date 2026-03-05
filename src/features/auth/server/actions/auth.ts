@@ -13,7 +13,8 @@ import {
 } from "@/features/auth/server/services/otp-rate-limit";
 import { logger } from "@/lib/logger";
 import OTPEmail from "@/emails/otp-email";
-import { headers } from "next/headers";
+import { getClientIP } from "@/lib/utils/ip";
+import { normalizeEmail } from "@/lib/utils/email";
 
 const resend = new Resend(process.env.AUTH_RESEND_KEY);
 
@@ -24,16 +25,14 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
             return { success: false, error: "Invalid email address" };
         }
 
-        const normalizedEmail = email.toLowerCase().trim();
+        const normalizedEmail = normalizeEmail(email);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(normalizedEmail)) {
             return { success: false, error: "Invalid email format" };
         }
 
         // Get IP address from headers
-        const headersList = await headers();
-        const forwarded = headersList.get("x-forwarded-for");
-        const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+        const ip = await getClientIP();
 
         // Check resend cooldown
         const cooldownCheck = await checkResendCooldown(normalizedEmail);
@@ -138,12 +137,10 @@ export async function verifyOTPAction(email: string, otp: string) {
             return { success: false, error: "Verification code must be 6 digits" };
         }
 
-        const normalizedEmail = email.toLowerCase().trim();
+        const normalizedEmail = normalizeEmail(email);
 
         // Get IP address for rate limiting
-        const headersList = await headers();
-        const forwarded = headersList.get("x-forwarded-for");
-        const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+        const ip = await getClientIP();
 
         // Check verify rate limit
         const isAllowed = await checkVerifyRateLimit(ip);

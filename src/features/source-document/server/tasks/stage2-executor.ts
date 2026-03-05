@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { parseJsonResponse } from "@/lib/ai/response-parser";
 import type { AIContext, AIModelTier } from "@/lib/flow/types";
 import type { ValidationSummary, ParsedEntry } from "./types";
 import { buildDetailedParsePrompt } from "./stage2-prompts";
@@ -26,24 +27,6 @@ const parseOutputSchema = z.object({
     ledger_entries: z.array(entrySchema),
     reasoning: z.string(),
 });
-
-// ===== Helper: Parse JSON Response =====
-
-function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T {
-    let cleaned = content.trim();
-    if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.slice(7);
-    } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.slice(3);
-    }
-    if (cleaned.endsWith("```")) {
-        cleaned = cleaned.slice(0, -3);
-    }
-    cleaned = cleaned.trim();
-
-    const parsed = JSON.parse(cleaned);
-    return schema.parse(parsed);
-}
 
 // ===== Helper: Compare Entry Arrays =====
 
