@@ -83,7 +83,6 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([
     displayData.description,
-    isExpanded,
   ]);
 
   const formatDateTime = (dateStr: string) => {

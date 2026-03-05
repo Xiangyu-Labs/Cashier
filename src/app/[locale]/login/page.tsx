@@ -12,6 +12,7 @@ import { OTPInput } from "@/components/auth/otp-input";
 import { ResendCountdown } from "@/components/auth/resend-countdown";
 import { ExpiryTimer } from "@/components/auth/expiry-timer";
 import { sendOTPAction, verifyOTPAction } from "@/features/auth/server/actions/auth";
+import { OTP_LENGTH } from "@/features/auth/server/services/otp";
 
 type LoginStep = "email" | "otp";
 
@@ -55,7 +56,7 @@ export default function LoginPage() {
     };
 
     const handleVerifyOTP = async () => {
-        if (!otp || otp.length !== 6) {
+        if (!otp || otp.length !== OTP_LENGTH) {
             setError(t("invalidCode"));
             return;
         }
@@ -210,7 +211,7 @@ export default function LoginPage() {
                             <Button
                                 type="button"
                                 className="w-full h-11"
-                                disabled={isLoading || otp.length !== 6}
+                                disabled={isLoading || otp.length !== OTP_LENGTH}
                                 onClick={handleVerifyOTP}
                             >
                                 {isLoading ? (

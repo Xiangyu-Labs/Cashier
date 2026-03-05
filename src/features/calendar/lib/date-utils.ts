@@ -44,12 +44,13 @@ export function getWeekDates(dateStr: string): string[] {
     const date = parseDate(dateStr);
     const dayOfWeek = date.getDay();
 
-    const startOfWeek = new Date(date);
+    // Create new Date without modifying the original (immutability)
+    const startOfWeek = new Date(date.getTime());
     startOfWeek.setDate(date.getDate() - dayOfWeek);
 
     const days: string[] = [];
     for (let i = 0; i < 7; i++) {
-        const d = new Date(startOfWeek);
+        const d = new Date(startOfWeek.getTime());
         d.setDate(startOfWeek.getDate() + i);
         days.push(formatDate(d));
     }
@@ -100,8 +101,10 @@ export function getNextMonth(dateStr: string): string {
  */
 export function getPreviousWeek(dateStr: string): string {
     const date = parseDate(dateStr);
-    date.setDate(date.getDate() - 7);
-    return formatDate(date);
+    // Create new Date without modifying the original (immutability)
+    const result = new Date(date.getTime());
+    result.setDate(date.getDate() - 7);
+    return formatDate(result);
 }
 
 /**
@@ -109,8 +112,10 @@ export function getPreviousWeek(dateStr: string): string {
  */
 export function getNextWeek(dateStr: string): string {
     const date = parseDate(dateStr);
-    date.setDate(date.getDate() + 7);
-    return formatDate(date);
+    // Create new Date without modifying the original (immutability)
+    const result = new Date(date.getTime());
+    result.setDate(date.getDate() + 7);
+    return formatDate(result);
 }
 
 /**

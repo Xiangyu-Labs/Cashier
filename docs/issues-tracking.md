@@ -37,18 +37,33 @@
 - [x] **11. `parseJsonResponse` 函数重复** - `src/features/source-document/server/tasks/stage2-executor.ts:32-46` ✅ 已修复
   - 修复：提取到 `src/lib/ai/response-parser.ts`，三个文件统一导入使用
 
-- [ ] **12. 映射逻辑重复** - `src/features/ledger/server/services/ledgers.ts` 和 `actions/ledgers.ts` 都有 `mapLedgerToApi`
-- [ ] **13. 序列化逻辑重复** - `services/categories.ts` 内联映射 vs `lib/serialization/utils.ts` 的 `serializeEntryCategory`
+- [x] **12. 映射逻辑重复** - `src/features/ledger/server/services/ledgers.ts` 和 `actions/ledgers.ts` 都有 `mapLedgerToApi` ✅ 已修复
+  - 修复：`services/ledgers.ts` 现在导入并使用 `serializeLedger` 替代 `mapLedgerToApi`
+  - 删除了 `mapLedgerToApi` 函数
+
+- [x] **13. 序列化逻辑重复** - `services/categories.ts` 内联映射 vs `lib/serialization/utils.ts` 的 `serializeEntryCategory` ✅ 已修复
+  - 修复：`services/categories.ts` 现在导入并使用 `serializeEntryCategory`
+  - 使用 spread 模式添加 `entryCount` 字段
 
 - [x] **14. IP获取逻辑重复** - `src/features/auth/server/actions/auth.ts:34-36` 和 `auth.ts:144-146` ✅ 已修复
   - 修复：提取到 `src/lib/utils/ip.ts`，两处改为导入使用
 - [x] **15. 邮箱规范化重复** - 多处使用 `email.toLowerCase().trim()` ✅ 已修复
   - 修复：提取到 `src/lib/utils/email.ts`，auth.ts 两处改为导入使用
-- [ ] **16. 错误响应构造重复** - `src/features/auth/server/utils/helpers.ts` 多处
+- [x] **16. 错误响应构造重复** - `src/features/auth/server/utils/helpers.ts` 多处 ✅ 已修复
+  - 修复：提取 `createErrorResponse`, `unauthorized()`, `notFound()` 辅助函数
+  - 减少重复代码 ~30 行
+
 - [ ] **17. 倒计时逻辑重复** - `ResendCountdown` 和 `ExpiryTimer` 实现类似
-- [ ] **18. 日期工具函数重复** - `AdaptiveHeatmap.tsx` 和 `YearView.tsx` 都定义了 `formatDate`
-- [ ] **19. 分组逻辑重复** - `useSourceDocuments.ts` 和 `usePendingSourceDocuments.ts` 两种分组方式
-- [ ] **20. 仲裁提示词构建重复** - `stage1-executor.ts:144-162` 和 `stage2-executor.ts:142-165`
+- [x] **18. 日期工具函数重复** - `AdaptiveHeatmap.tsx` 和 `YearView.tsx` 都定义了 `formatDate` ✅ 已修复
+  - 已提取到 `src/features/calendar/lib/date-utils.ts`
+
+- [x] **19. 分组逻辑重复** - `useSourceDocuments.ts` 和 `queries.ts` 两种分组方式 ✅ 已修复
+  - 修复：创建共享的 `src/features/source-document/lib/grouping.ts`
+  - 提供 `groupSourceDocumentsByStatus`, `groupPendingSourceDocuments`, `calculateSourceDocumentStats` 函数
+  - 服务器端和客户端统一使用
+
+- [x] **20. 仲裁提示词构建重复** - `stage1-executor.ts:144-162` 和 `stage2-executor.ts:142-165` ✅ 已修复
+  - 已提取到 `lib/ai/dual-gpt-runner.ts`
 
 ### 文件/函数大小超标
 
@@ -82,9 +97,12 @@
     - `components/TaskQueueContent.tsx` - 内容渲染 (215行)
     - `components/TaskQueueDialogs.tsx` - 对话框管理 (35行)
     - `TaskQueueModal.tsx` - 主组件协调 (75行)
-- [ ] **25. `QueueItemCard.tsx` 332行** - 接近上限
-- [ ] **26. `AdaptiveHeatmap.tsx` 402行** - 超过400行限制
-- [ ] **27. `YearView.tsx` 316行** - 接近上限
+- [x] **25. `QueueItemCard.tsx` 332行** - 接近上限 ✅ 已修复
+  - 拆分结果：`QueueItemCard/index.tsx` (264行), `StatusIcon.tsx`, `useQueueItemActions.ts`, `constants.ts`
+- [x] **26. `AdaptiveHeatmap.tsx` 402行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：`AdaptiveHeatmap/index.tsx` (156行), `LargeGrid.tsx`, `SmallGrid.tsx`, `DayCellLarge.tsx`, `DayCellSmall.tsx`
+- [x] **27. `YearView.tsx` 316行** - 接近上限 ✅ 已修复
+  - 拆分结果：`YearView/index.tsx` (139行), `DayCell.tsx`, `useYearData.ts`
 - [x] **28. `DetailsTab.tsx` 460行** - 超过400行限制 ✅ 已修复
   - 拆分结果：
     - `hooks/useDetailsTabState.ts` - 状态和弹窗管理 (50行)
@@ -92,13 +110,20 @@
     - `hooks/useDetailsTabGrouping.ts` - 按日期分组 (60行)
     - `hooks/useDetailsTabFilters.ts` - 过滤器逻辑 (75行)
     - `DetailsTab.tsx` - 主组件协调 (165行)
-- [ ] **29. `LedgerEntriesTab.tsx` 449行** - 超过400行限制
-- [ ] **30. `BatchActionToolbar.tsx` 469行** - 超过400行限制
-- [ ] **31. `SettingsTab.tsx` 369行** - 接近上限
-- [ ] **32. `LedgerManagementSection.tsx` 352行** - 接近上限
-- [ ] **33. `LedgerPageClient.tsx` 356行** - 接近上限
-- [ ] **34. `LedgerEntryViewDetails.tsx` 341行** - 接近上限
-- [ ] **35. `heatmap.ts` 336行** - 接近上限
+- [x] **29. `LedgerEntriesTab.tsx` 449行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：`LedgerEntriesTab/index.tsx` (379行), `useGroupedEntries.ts`
+- [x] **30. `BatchActionToolbar.tsx` 469行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：`BatchActionToolbar/index.tsx` (238行), `LedgerEntriesActions.tsx`, `SourceDocumentActions.tsx`, `useBatchActions.ts`
+- [x] **31. `SettingsTab.tsx` 369行** - 接近上限 ✅ 已修复
+  - 拆分结果：`SettingsTab.tsx` (309行), `settings/CollapsibleSection.tsx`
+- [x] **32. `LedgerManagementSection.tsx` 352行** - 接近上限 ✅ 已修复
+  - 拆分结果：`LedgerManagementSection/index.tsx` (238行), `useLedgerMutations.ts`, `CreateLedgerDialog.tsx`
+- [x] **33. `LedgerPageClient.tsx` 356行** - 接近上限 ✅ 已修复
+  - 拆分结果：`LedgerPageClient/index.tsx` (223行), `useLedgerTabs.ts`, `useDrilldownNavigation.ts`, `Header.tsx`
+- [x] **34. `LedgerEntryViewDetails.tsx` 341行** - 接近上限 ✅ 已修复
+  - 拆分结果：`LedgerEntryViewDetails/index.tsx` (222行), `EntryHeader.tsx`, `EntryActions.tsx`, `useTextFolding.ts`
+- [x] **35. `heatmap.ts` 336行** - 接近上限 ✅ 已修复
+  - 拆分结果：`heatmap/index.ts`, `getHeatmapData.ts`, `getDayDetail.ts`, `getHeatmapForRange.ts`, `schemas.ts`, `utils.ts`
 
 ### 函数过长
 

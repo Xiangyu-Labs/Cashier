@@ -183,7 +183,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
       logger.info({ taskName: name, taskId }, 'Task completed successfully')
     } catch (error) {
-      const err = error as Error
+      const err = error instanceof Error ? error : new Error(String(error))
 
       if (signal.aborted) {
         // Task was cancelled

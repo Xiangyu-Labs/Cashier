@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { Ledger } from "@/types/api";
+import { serializeLedger } from "@/lib/serialization/utils";
 
 /**
  * Data Access Layer for Ledgers
@@ -14,7 +15,7 @@ export async function getLedgers(userId: string): Promise<Ledger[]> {
         orderBy: [desc(ledgers.createdAt)],
     });
 
-    return rows.map(mapLedgerToApi);
+    return rows.map(serializeLedger);
 }
 
 export async function getLedger(ledgerId: string): Promise<Ledger | undefined> {
@@ -23,19 +24,7 @@ export async function getLedger(ledgerId: string): Promise<Ledger | undefined> {
     });
 
     if (!row) return undefined;
-    return mapLedgerToApi(row);
-}
-
-function mapLedgerToApi(row: typeof ledgers.$inferSelect): Ledger {
-    return {
-        id: row.id,
-        userId: row.userId,
-        name: row.name,
-        metadata: row.metadata,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
-    };
+    return serializeLedger(row);
 }
 
 

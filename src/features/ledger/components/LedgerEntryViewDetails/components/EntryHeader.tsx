@@ -1,4 +1,4 @@
-/"**
+/**
  * Entry Header Component
  *
  * Displays the entry title, category icon, and amount.

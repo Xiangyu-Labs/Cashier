@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useCountdown } from "@/hooks/use-countdown";
 
 interface ResendCountdownProps {
   canResendAt: number | null; // Unix timestamp in seconds
@@ -16,26 +17,8 @@ export function ResendCountdown({
   onResend,
   disabled = false,
 }: ResendCountdownProps) {
-  const [remaining, setRemaining] = useState(0);
+  const { remaining } = useCountdown({ targetTime: canResendAt });
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!canResendAt) {
-      setRemaining(0);
-      return;
-    }
-
-    const updateRemaining = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const diff = canResendAt - now;
-      setRemaining(Math.max(0, diff));
-    };
-
-    updateRemaining();
-    const interval = setInterval(updateRemaining, 1000);
-
-    return () => clearInterval(interval);
-  }, [canResendAt]);
 
   const handleResend = async () => {
     setIsLoading(true);

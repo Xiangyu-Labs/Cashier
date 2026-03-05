@@ -1,4 +1,4 @@
-/"**
+/**
  * Text Folding Hook
  *
  * Detects if text content needs folding based on height.

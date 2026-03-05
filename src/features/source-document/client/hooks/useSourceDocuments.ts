@@ -4,27 +4,17 @@ import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getAllSourceDocumentsAction, type SourceDocumentWithEntries } from "@/features/source-document/server/actions";
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
+import {
+    groupSourceDocumentsByStatus,
+    calculateSourceDocumentStats,
+    type GroupedSourceDocuments,
+} from "@/features/source-document/lib/grouping";
 
 // Re-export type for convenience
 export type { SourceDocumentWithEntries };
 
-export interface SourceDocumentGroup {
-    sourceDocument: SourceDocumentWithEntries;
-    ledgerEntries: SourceDocumentWithEntries['ledgerEntries'];
-}
-
-export interface GroupedSourceDocuments {
-    /** Documents waiting in queue */
-    queued: SourceDocumentGroup[];
-    /** Documents currently being processed */
-    processing: SourceDocumentGroup[];
-    /** Documents that failed with business anomalies */
-    anomaly: SourceDocumentGroup[];
-    /** Documents that failed with system errors */
-    failed: SourceDocumentGroup[];
-    /** Documents with all entries confirmed */
-    completed: SourceDocumentGroup[];
-}
+// Re-export types from grouping lib for backward compatibility
+export type { GroupedSourceDocuments };
 
 export interface SourceDocumentsStats {
     queuedCount: number;
@@ -57,49 +47,6 @@ function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
 }
 
 /**
- * Helper to group source documents by status
- */
-function groupByStatus(
-    docs: SourceDocumentWithEntries[]
-): GroupedSourceDocuments {
-    const groups: GroupedSourceDocuments = {
-        queued: [],
-        processing: [],
-        anomaly: [],
-        failed: [],
-        completed: [],
-    };
-
-    docs.forEach((doc) => {
-        const group: SourceDocumentGroup = {
-            sourceDocument: doc,
-            ledgerEntries: doc.ledgerEntries,
-        };
-
-        switch (doc.status) {
-            case 'queued':
-                groups.queued.push(group);
-                break;
-            case 'processing':
-            case 'parsing':
-                groups.processing.push(group);
-                break;
-            case 'anomaly':
-                groups.anomaly.push(group);
-                break;
-            case 'failed':
-                groups.failed.push(group);
-                break;
-            case 'completed':
-                groups.completed.push(group);
-                break;
-        }
-    });
-
-    return groups;
-}
-
-/**
  * Helper to filter and group source documents
  */
 function filterAndGroup(
@@ -118,17 +65,10 @@ function filterAndGroup(
         });
     }
 
-    const groups = groupByStatus(filtered);
+    const groups = groupSourceDocumentsByStatus(filtered);
+    const stats = calculateSourceDocumentStats(groups);
 
-    return {
-        groups,
-        stats: {
-            queuedCount: groups.queued.length,
-            processingCount: groups.processing.length,
-            anomalyCount: groups.anomaly.length,
-            failedCount: groups.failed.length,
-        },
-    };
+    return { groups, stats };
 }
 
 /**

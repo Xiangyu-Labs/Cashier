@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { entryCategories, ledgerEntries } from "@/lib/db/schema";
 import { eq, or, isNull, asc, and, sql } from "drizzle-orm";
 import { EntryCategoryWithCount } from "@/types/api";
+import { serializeEntryCategory } from "@/lib/serialization/utils";
 
 /**
  * Data Access Layer for Entry Categories
@@ -30,16 +31,7 @@ export async function getEntryCategories(ledgerId: string): Promise<EntryCategor
     const countMap = new Map(entryCounts.map(e => [e.categoryId, e.count]));
 
     return rows.map(row => ({
-        id: row.id,
-        ledgerId: row.ledgerId,
-        name: row.name,
-        description: row.description || null,
-        icon: row.icon || null,
-        sortOrder: row.sortOrder,
-        isEditable: row.isEditable ?? false,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+        ...serializeEntryCategory(row),
         entryCount: countMap.get(row.id) || 0,
     }));
 }

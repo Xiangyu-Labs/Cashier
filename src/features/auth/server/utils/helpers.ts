@@ -10,6 +10,31 @@ function isValidUuid(id: string): boolean {
     return UUID_REGEX.test(id);
 }
 
+// ============================================================================
+// Error Response Helpers
+// ============================================================================
+
+/**
+ * Create a standardized error response
+ */
+function createErrorResponse(message: string, status: number): NextResponse {
+    return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * Create an unauthorized (401) error response
+ */
+function unauthorized(): NextResponse {
+    return createErrorResponse("Unauthorized", 401);
+}
+
+/**
+ * Create a not found (404) error response
+ */
+function notFound(message = "Not found"): NextResponse {
+    return createErrorResponse(message, 404);
+}
+
 /**
  * Get the current authenticated user from the session.
  * Returns null if not authenticated.
@@ -39,12 +64,7 @@ export async function requireAuth(): Promise<
     const user = await getCurrentUser();
 
     if (!user) {
-        return {
-            error: NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            ),
-        };
+        return { error: unauthorized() };
     }
 
     return { user };
@@ -62,21 +82,11 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     const userId = await getCurrentUserId();
 
     if (!userId) {
-        return {
-            error: NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            ),
-        };
+        return { error: unauthorized() };
     }
 
     if (!isValidUuid(ledgerId)) {
-        return {
-            error: NextResponse.json(
-                { error: "Invalid ledger ID" },
-                { status: 404 }
-            ),
-        };
+        return { error: notFound("Invalid ledger ID") };
     }
 
     const ledger = await db.query.ledgers.findFirst({
@@ -88,12 +98,7 @@ export async function verifyLedgerOwnership(ledgerId: string): Promise<
     });
 
     if (!ledger) {
-        return {
-            error: NextResponse.json(
-                { error: "Ledger not found" },
-                { status: 404 }
-            ),
-        };
+        return { error: notFound("Ledger not found") };
     }
 
     return { ledger };

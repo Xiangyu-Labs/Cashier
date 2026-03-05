@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { useCountdown } from "@/hooks/use-countdown";
 
 interface ExpiryTimerProps {
   expiresAt: number | null; // Unix timestamp in seconds
@@ -15,37 +15,10 @@ export function ExpiryTimer({
   onExpired,
   className,
 }: ExpiryTimerProps) {
-  const calculateRemaining = () => {
-    if (!expiresAt) return 0;
-    const now = Math.floor(Date.now() / 1000);
-    return Math.max(0, expiresAt - now);
-  };
-
-  const [remaining, setRemaining] = useState(calculateRemaining);
-  const [hasExpired, setHasExpired] = useState(false);
-
-  useEffect(() => {
-    if (!expiresAt) {
-      return;
-    }
-
-    const updateRemaining = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const diff = expiresAt - now;
-      const newRemaining = Math.max(0, diff);
-      setRemaining(newRemaining);
-
-      if (newRemaining === 0 && !hasExpired) {
-        setHasExpired(true);
-        onExpired?.();
-      }
-    };
-
-    updateRemaining();
-    const interval = setInterval(updateRemaining, 1000);
-
-    return () => clearInterval(interval);
-  }, [expiresAt, hasExpired, onExpired]);
+  const { remaining, isExpired } = useCountdown({
+    targetTime: expiresAt,
+    onExpired,
+  });
 
   const t = useTranslations("Auth");
 
@@ -60,7 +33,7 @@ export function ExpiryTimer({
 
   return (
     <div className={cn("text-sm", className)}>
-      {remaining > 0 ? (
+      {!isExpired ? (
         <p
           className={cn(
             "text-muted-foreground",

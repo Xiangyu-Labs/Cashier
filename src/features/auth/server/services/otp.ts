@@ -1,12 +1,28 @@
 import crypto from "crypto";
 
+/** OTP length in digits */
+export const OTP_LENGTH = 6;
+
+/** Default OTP expiration time in seconds (5 minutes) */
+export const DEFAULT_OTP_EXPIRES_SECONDS = 300;
+
+/** Default account lockout duration in minutes (15 minutes) */
+export const DEFAULT_LOCKOUT_MINUTES = 15;
+
+/** Default maximum allowed OTP attempts before lockout */
+export const DEFAULT_MAX_ATTEMPTS = 5;
+
+/** Default resend cooldown period in seconds (60 seconds) */
+export const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+
 /**
  * Generate a 6-digit random OTP code
  * @returns A string of 6 random digits (e.g., "482917")
  */
 export function generateOTP(): string {
   // Generate random number between 0 and 999999, pad with leading zeros
-  return crypto.randomInt(0, 1000000).toString().padStart(6, "0");
+  const maxValue = Math.pow(10, OTP_LENGTH);
+  return crypto.randomInt(0, maxValue).toString().padStart(OTP_LENGTH, "0");
 }
 
 /**
@@ -34,7 +50,8 @@ export function verifyOTP(otp: string, hash: string): boolean {
  * @returns True if the OTP is valid format
  */
 export function isValidOTPFormat(otp: string): boolean {
-  return /^\d{6}$/.test(otp);
+  const otpPattern = new RegExp(`^\\d{${OTP_LENGTH}}$`);
+  return otpPattern.test(otp);
 }
 
 /**
@@ -42,7 +59,10 @@ export function isValidOTPFormat(otp: string): boolean {
  * @returns Date object representing expiration time
  */
 export function getOTPExpiration(): Date {
-  const expiresInSeconds = parseInt(process.env.OTP_EXPIRES_SECONDS || "300", 10);
+  const expiresInSeconds = parseInt(
+    process.env.OTP_EXPIRES_SECONDS || String(DEFAULT_OTP_EXPIRES_SECONDS),
+    10
+  );
   return new Date(Date.now() + expiresInSeconds * 1000);
 }
 
@@ -51,7 +71,10 @@ export function getOTPExpiration(): Date {
  * @returns Date object representing lockout end time
  */
 export function getLockoutExpiration(): Date {
-  const lockoutMinutes = parseInt(process.env.OTP_LOCKOUT_MINUTES || "15", 10);
+  const lockoutMinutes = parseInt(
+    process.env.OTP_LOCKOUT_MINUTES || String(DEFAULT_LOCKOUT_MINUTES),
+    10
+  );
   return new Date(Date.now() + lockoutMinutes * 60 * 1000);
 }
 
@@ -60,7 +83,7 @@ export function getLockoutExpiration(): Date {
  * @returns Number of allowed attempts
  */
 export function getMaxAttempts(): number {
-  return parseInt(process.env.OTP_MAX_ATTEMPTS || "5", 10);
+  return parseInt(process.env.OTP_MAX_ATTEMPTS || String(DEFAULT_MAX_ATTEMPTS), 10);
 }
 
 /**
@@ -68,5 +91,8 @@ export function getMaxAttempts(): number {
  * @returns Cooldown duration in seconds
  */
 export function getResendCooldown(): number {
-  return parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || "60", 10);
+  return parseInt(
+    process.env.OTP_RESEND_COOLDOWN_SECONDS || String(DEFAULT_RESEND_COOLDOWN_SECONDS),
+    10
+  );
 }

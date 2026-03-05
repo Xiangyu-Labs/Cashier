@@ -13,13 +13,18 @@ import type { SourceDocumentStatusType } from "@/features/source-document/server
 import {
     type SerializedSourceDocument,
     type SerializedLedgerEntry,
-    type SourceDocumentGroup,
     serializeLedgerEntry,
 } from "@/lib/serialization";
 import type {
     SourceDocumentWithEntries,
     PendingSourceDocumentsResponse,
 } from "./types";
+import {
+    groupPendingSourceDocuments,
+    calculateSourceDocumentStats,
+    calculatePendingTotal,
+    type SourceDocumentGroup,
+} from "@/features/source-document/lib/grouping";
 
 interface GetSourceDocumentsParams {
     status?: string | null;
@@ -291,38 +296,20 @@ export async function getPendingSourceDocumentsAction(
             includeLedgerEntries: true,
         });
 
-        const groups: PendingSourceDocumentsResponse['groups'] = {
-            queued: [],
-            processing: [],
-            anomaly: [],
-            failed: [],
-        };
+        // Map items to include proper types for grouping
+        const typedItems = activeDocsResult.items.map((doc) => ({
+            ...(doc as SerializedSourceDocument),
+            ledgerEntries: (doc.ledgerEntries || []) as SerializedLedgerEntry[],
+        }));
 
-        activeDocsResult.items.forEach((doc) => {
-            const sourceDocument = doc as SerializedSourceDocument;
-            const group: SourceDocumentGroup = {
-                sourceDocument,
-                ledgerEntries: (doc.ledgerEntries || []) as SerializedLedgerEntry[],
-            };
-            if (doc.status === 'failed') {
-                groups.failed.push(group);
-            } else if (doc.status === 'anomaly') {
-                groups.anomaly.push(group);
-            } else if (doc.status === 'queued') {
-                groups.queued.push(group);
-            } else {
-                groups.processing.push(group);
-            }
-        });
+        const groups = groupPendingSourceDocuments(typedItems);
+        const stats = calculateSourceDocumentStats(groups);
 
         return {
             groups,
             stats: {
-                queuedCount: groups.queued.length,
-                processingCount: groups.processing.length,
-                anomalyCount: groups.anomaly.length,
-                failedCount: groups.failed.length,
-                total: groups.queued.length + groups.processing.length + groups.anomaly.length + groups.failed.length,
+                ...stats,
+                total: calculatePendingTotal(groups),
             }
         };
     } catch (error) {
