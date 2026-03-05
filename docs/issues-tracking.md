@@ -52,8 +52,17 @@
 
 ### 文件/函数大小超标
 
-- [ ] **21. `parse-source-document.ts` 419行** - 超过400行限制
-- [ ] **22. `stage1-executor.ts` 309行** - 接近上限
+- [x] **21. `parse-source-document.ts` 419行** - 超过400行限制 ✅ 已修复
+  - 拆分结果：
+    - `entry-builder.ts` - 条目构建与货币转换 (100行)
+    - `parse-result-handler.ts` - 结果处理器 (100行)
+    - `parse-source-document.ts` - 主执行器 (145行)
+
+- [x] **22. `stage1-executor.ts` 309行** - 接近上限 ✅ 已修复
+  - 拆分结果：
+    - `lib/ai/dual-gpt-runner.ts` - 可复用的双GPT运行器 (85行)
+    - `schemas.ts` - Zod校验模式 (35行)
+    - `stage1-executor.ts` - 主执行器 (120行)
 - [x] **23. `main.ts` 915行** - 严重超过400行限制 ✅ 已修复
   - 拆分结果：
     - `types.ts` - 类型定义 (83行)

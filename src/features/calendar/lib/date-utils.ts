@@ -147,6 +147,22 @@ export function getYearMonthRange(year: number): { month: number; year: number }
 }
 
 /**
+ * Format amount for display
+ * - >= 10000: shows as X万
+ * - >= 1000: shows as Xk
+ * - < 1000: shows as X.XX
+ */
+export function formatAmount(amount: number): string {
+  if (amount >= 10000) {
+    return `${(amount / 10000).toFixed(1)}万`;
+  }
+  if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(1)}k`;
+  }
+  return amount.toFixed(2);
+}
+
+/**
  * Get month grid (6 rows x 7 cols) for month view
  * Includes days from previous/next month to fill the grid
  */
