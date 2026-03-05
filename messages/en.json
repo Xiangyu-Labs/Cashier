@@ -122,6 +122,8 @@
         "expenseTrend": "Expense Trend",
         "expenseRanking": "Expense Ranking",
         "dailyHeatmap": "Daily Heatmap",
+        "trend": "Trend",
+        "heatmap": "Heatmap",
         "averageDaily": "Avg Daily",
         "totalExpense": "Total Expense",
         "month": "Month",

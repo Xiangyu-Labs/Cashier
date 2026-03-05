@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { Button } from "@/components/ui/button";
 import {
     DateRangeType,
     getDateRange,
@@ -15,6 +16,7 @@ import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
 import { CalendarHeatmapSection } from "@/features/calendar/components/CalendarHeatmapSection";
 import { useTranslations, useFormatter } from "next-intl";
+import { BarChart3, Grid3X3 } from "lucide-react";
 
 interface StatsTabProps {
     ledgerId?: string;
@@ -29,6 +31,7 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
     const queryClient = useQueryClient();
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [chartView, setChartView] = useState<'trend' | 'heatmap'>('heatmap');
 
     // Get monthStartDay from ledger settings (default to 1)
     const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
@@ -114,16 +117,46 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                 />
 
                 <div className="space-y-2">
-                    <h3 className="font-semibold px-2 text-sm text-muted-foreground uppercase tracking-wider">
-                        {t("expenseTrend")}
-                    </h3>
-                    <StatsChart
-                        data={stats?.chart || []}
-                        rangeType={rangeType}
-                        startDate={startDate}
-                        endDate={endDate}
-                        isLoading={isLoading}
-                    />
+                    <div className="flex items-center justify-between px-2">
+                        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                            {chartView === 'trend' ? t("expenseTrend") : t("dailyHeatmap")}
+                        </h3>
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant={chartView === 'trend' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartView('trend')}
+                                className="h-7 px-2"
+                            >
+                                <BarChart3 className="h-4 w-4 mr-1" />
+                                {t("trend")}
+                            </Button>
+                            <Button
+                                variant={chartView === 'heatmap' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartView('heatmap')}
+                                className="h-7 px-2"
+                            >
+                                <Grid3X3 className="h-4 w-4 mr-1" />
+                                {t("heatmap")}
+                            </Button>
+                        </div>
+                    </div>
+                    {chartView === 'trend' ? (
+                        <StatsChart
+                            data={stats?.chart || []}
+                            rangeType={rangeType}
+                            startDate={startDate}
+                            endDate={endDate}
+                            isLoading={isLoading}
+                        />
+                    ) : (
+                        <CalendarHeatmapSection
+                            days={stats?.heatmap?.days || []}
+                            stats={stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }}
+                            onDateDrilldown={onDateDrilldown}
+                        />
+                    )}
                 </div>
 
                 <StatsRanking
@@ -132,17 +165,6 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                     currencySymbol={currencySymbol}
                     onCategoryClick={handleCategoryClick}
                 />
-
-                <div className="space-y-2">
-                    <h3 className="font-semibold px-2 text-sm text-muted-foreground uppercase tracking-wider">
-                        {t("dailyHeatmap")}
-                    </h3>
-                    <CalendarHeatmapSection
-                        days={stats?.heatmap?.days || []}
-                        stats={stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }}
-                        onDateDrilldown={onDateDrilldown}
-                    />
-                </div>
             </div>
         </PullToRefresh>
     );

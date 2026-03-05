@@ -122,6 +122,8 @@
         "expenseTrend": "支出趋势",
         "expenseRanking": "支出排行",
         "dailyHeatmap": "每日热力图",
+        "trend": "趋势",
+        "heatmap": "热力",
         "averageDaily": "日均支出",
         "totalExpense": "总支出",
         "month": "月",
