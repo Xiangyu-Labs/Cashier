@@ -3,10 +3,10 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
+import { SourceDocumentEditRetryDialog } from "../SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { EntryFilterPanel, type EntryFilters } from "./EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { useSourceDocuments, SourceDocumentGroup } from "@/features/source-document/client/hooks/useSourceDocuments";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
@@ -20,9 +20,10 @@ import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
 import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/useBatchSourceDocumentActions";
-import { BatchActionToolbar } from "./BatchActionToolbar";
+import { BatchActionToolbar } from "../BatchActionToolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
+import { useGroupedEntries } from "./useGroupedEntries";
 
 interface LedgerEntriesTabProps {
     ledgerId: string;
@@ -97,6 +98,7 @@ export function LedgerEntriesTab({
     const [retrySourceDocument, setRetrySourceDocument] = useState<SourceDocument | null>(null);
 
     const pushModal = useModalStackStore(state => state.push);
+
     // Unified Data Hook
     const {
         groups,
@@ -151,91 +153,17 @@ export function LedgerEntriesTab({
         }
     }
 
-    // --- Date Grouping for Completed Documents ---
-
-    // Helper to get date string from source document
-    const getSourceDocDateStr = useCallback((group: SourceDocumentGroup): string => {
-        // Use sourceDocument's entryDate (authoritative source for the document's date)
-        if (group.sourceDocument.entryDate) {
-            return group.sourceDocument.entryDate;
-        }
-        // Fallback to sourceDocument createdAt
-        const createdAt = group.sourceDocument.createdAt;
-        if (createdAt) {
-            const date = new Date(createdAt);
-            return date.toLocaleDateString('sv'); // Returns YYYY-MM-DD
-        }
-        return new Date().toLocaleDateString('sv');
-    }, []);
-
-    // Group completed documents by date
-    const groupedCompletedByDate = useMemo(() => {
-        const todayStr = new Date().toLocaleDateString('sv');
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterdayStr = yesterdayDate.toLocaleDateString('sv');
-
-        const dateGroups: Record<string, {
-            title: string;
-            timestamp: number;
-            items: SourceDocumentGroup[];
-            total: number;
-        }> = {};
-
-        const _mainCurrency = ledger?.metadata?.settings?.mainCurrency || 'CNY';
-
-        groups.completed.forEach(group => {
-            const dateStr = getSourceDocDateStr(group);
-            const [year, month, day] = dateStr.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            const sortTimestamp = date.getTime();
-
-            let dateKey = "";
-            if (dateStr === todayStr) {
-                dateKey = tDetails("today");
-            } else if (dateStr === yesterdayStr) {
-                dateKey = tDetails("yesterday");
-            } else {
-                dateKey = date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
-            }
-
-            if (!dateGroups[dateKey]) {
-                dateGroups[dateKey] = {
-                    title: dateKey,
-                    timestamp: sortTimestamp,
-                    items: [],
-                    total: 0
-                };
-            }
-
-            dateGroups[dateKey].items.push(group);
-
-            // Calculate total for this date using converted amount for foreign currency
-            group.ledgerEntries.forEach(entry => {
-                const amount = entry.convertedAmount
-                    ? parseFloat(entry.convertedAmount)
-                    : parseFloat(entry.amount);
-                dateGroups[dateKey].total += amount;
-            });
-        });
-
-        return Object.values(dateGroups).sort((a, b) => b.timestamp - a.timestamp);
-    }, [groups.completed, getSourceDocDateStr, locale, ledger?.metadata?.settings?.mainCurrency, tDetails]);
-
-
+    // Group entries by date
+    const { groupedCompletedByDate, allSourceDocumentIds } = useGroupedEntries({
+        completedGroups: groups.completed,
+        locale,
+        mainCurrency,
+        tDetails,
+    });
 
     const handleRefresh = useCallback(async () => {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     }, [queryClient, ledgerId]);
-
-    // --- Batch Operations ---
-
-    // Collect all visible source document IDs
-    const allSourceDocumentIds = useMemo(() => {
-        return groupedCompletedByDate.flatMap(group =>
-            group.items.map(item => item.sourceDocument.id)
-        );
-    }, [groupedCompletedByDate]);
 
     // Selection mode
     const {
@@ -361,7 +289,7 @@ export function LedgerEntriesTab({
                                                         {dateGroup.title}
                                                     </h3>
                                                     <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
-                                                        {ledger?.metadata?.settings?.mainCurrency || 'CNY'} {dateGroup.total.toFixed(2)}
+                                                        {mainCurrency} {dateGroup.total.toFixed(2)}
                                                     </span>
                                                 </div>
                                                 {/* Documents for this date */}
@@ -377,7 +305,7 @@ export function LedgerEntriesTab({
                                                                 sourceDocument={group.sourceDocument}
                                                                 ledgerEntries={group.ledgerEntries}
                                                                 categories={categories}
-                                                                mainCurrency={ledger?.metadata?.settings?.mainCurrency}
+                                                                mainCurrency={mainCurrency}
                                                                 onUpdateLedgerEntry={handleUpdateLedgerEntry}
                                                                 onViewLedgerEntry={handleViewLedgerEntry}
                                                                 onViewDetails={() => handleViewSourceDetail(group)}
@@ -447,3 +375,5 @@ export function LedgerEntriesTab({
         </LayoutGroup>
     );
 }
+
+export { useGroupedEntries } from "./useGroupedEntries";
