@@ -424,13 +424,24 @@
         "past6Months": "Past 6 Months",
         "pastYear": "Past 1 Year",
         "customRange": "Custom Range",
-        "apply": "Apply"
+        "apply": "Apply",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "clear": "Clear",
+        "startDate": "Start",
+        "endDate": "End"
     },
     "DateFilter": {
         "selectDate": "Select date",
         "today": "Today",
         "clear": "Clear",
         "apply": "Apply"
+    },
+    "Calendar": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "clear": "Clear",
+        "weekDays": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
     },
     "NotFound": {
         "title": "Page Not Found",

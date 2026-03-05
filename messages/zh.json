@@ -428,13 +428,24 @@
         "past6Months": "过去半年",
         "pastYear": "过去1年",
         "customRange": "自定义区间",
-        "apply": "应用"
+        "apply": "应用",
+        "today": "今天",
+        "yesterday": "昨天",
+        "clear": "清除",
+        "startDate": "开始日期",
+        "endDate": "结束日期"
     },
     "DateFilter": {
         "selectDate": "选择日期",
         "today": "今天",
         "clear": "清除",
         "apply": "确定"
+    },
+    "Calendar": {
+        "today": "今天",
+        "yesterday": "昨天",
+        "clear": "清除",
+        "weekDays": ["日", "一", "二", "三", "四", "五", "六"]
     },
     "NotFound": {
         "title": "页面未找到",

@@ -2,15 +2,16 @@
 
 import * as React from "react";
 
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { startOfDay, endOfDay, isAfter, isBefore, format } from "date-fns";
 
 import { useTranslations, useFormatter } from "next-intl";
 
@@ -25,10 +26,24 @@ interface DateRangeFilterProps {
 
 export function DateRangeFilter({ startDate, endDate, onRangeChange, className, compact = false }: DateRangeFilterProps) {
     const t = useTranslations("DateRangeFilter");
-    const format = useFormatter();
+    const formatter = useFormatter();
     const [open, setOpen] = React.useState(false);
 
-    // Auto-detect very small screen for compact mode (only for extremely narrow screens)
+    // Selection state for range picking
+    const [selecting, setSelecting] = React.useState<"start" | "end">("start");
+    const [tempStart, setTempStart] = React.useState<Date | null>(startDate || null);
+    const [tempEnd, setTempEnd] = React.useState<Date | null>(endDate || null);
+
+    // Reset temp state when opening
+    React.useEffect(() => {
+        if (open) {
+            setTempStart(startDate || null);
+            setTempEnd(endDate || null);
+            setSelecting("start");
+        }
+    }, [open, startDate, endDate]);
+
+    // Auto-detect very small screen for compact mode
     const [isSmallScreen, setIsSmallScreen] = React.useState(false);
     React.useEffect(() => {
         const mediaQuery = window.matchMedia('(max-width: 400px)');
@@ -40,31 +55,30 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className, 
 
     const useCompactMode = compact || isSmallScreen;
 
-    // Internal state for manual inputs to allow typing before committing
-    const [tempStart, setTempStart] = React.useState<string>(startDate ? formatDateInput(startDate) : "");
-    const [tempEnd, setTempEnd] = React.useState<string>(endDate ? formatDateInput(endDate) : "");
-
-    React.useEffect(() => {
-        setTempStart(startDate ? formatDateInput(startDate) : "");
-        setTempEnd(endDate ? formatDateInput(endDate) : "");
-    }, [startDate, endDate, open]);
-
-    const handlePreset = (days: number | "month" | "year" | "week") => {
+    const handlePreset = (type: "today" | "yesterday" | "week" | "month" | "year") => {
         const end = new Date();
         const start = new Date();
 
-        if (days === "week") {
-            start.setDate(end.getDate() - 7);
-        } else if (days === "month") {
-            start.setMonth(end.getMonth() - 1);
-        } else if (days === "year") {
-            start.setFullYear(end.getFullYear() - 1);
-        } else if (typeof days === "number") {
-            // specific months count
-            start.setMonth(end.getMonth() - days);
+        switch (type) {
+            case "today":
+                // start and end are both today
+                break;
+            case "yesterday":
+                start.setDate(end.getDate() - 1);
+                end.setDate(end.getDate() - 1);
+                break;
+            case "week":
+                start.setDate(end.getDate() - 7);
+                break;
+            case "month":
+                start.setMonth(end.getMonth() - 1);
+                break;
+            case "year":
+                start.setFullYear(end.getFullYear() - 1);
+                break;
         }
 
-        onRangeChange({ start, end });
+        onRangeChange({ start: startOfDay(start), end: endOfDay(end) });
         setOpen(false);
     };
 
@@ -74,15 +88,57 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className, 
         const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         onRangeChange({ start, end });
         setOpen(false);
-    }
+    };
 
-    const handleManualApply = () => {
-        const s = tempStart ? new Date(tempStart) : undefined;
-        const e = tempEnd ? new Date(tempEnd) : undefined;
-        if (e) e.setHours(23, 59, 59, 999);
+    const handleStartDateChange = (date: Date | null) => {
+        if (date) {
+            const start = startOfDay(date);
+            setTempStart(start);
+            if (tempEnd && isBefore(tempEnd, start)) {
+                // If end is before new start, reset end
+                setTempEnd(null);
+            }
+            setSelecting("end");
+        } else {
+            setTempStart(null);
+        }
+    };
 
-        onRangeChange({ start: s, end: e });
+    const handleEndDateChange = (date: Date | null) => {
+        if (date) {
+            const end = endOfDay(date);
+            if (tempStart && isBefore(end, tempStart)) {
+                // If end is before start, swap them
+                setTempEnd(startOfDay(tempStart));
+                setTempStart(end);
+            } else {
+                setTempEnd(end);
+            }
+        } else {
+            setTempEnd(null);
+        }
+    };
+
+    const handleApply = () => {
+        if (tempStart || tempEnd) {
+            onRangeChange({
+                start: tempStart || undefined,
+                end: tempEnd || undefined,
+            });
+        }
         setOpen(false);
+    };
+
+    const handleClear = () => {
+        onRangeChange({ start: undefined, end: undefined });
+        setOpen(false);
+    };
+
+    const formatDisplayDate = (date: Date) => {
+        if (useCompactMode) {
+            return format(date, "M/d");
+        }
+        return formatter.dateTime(date, { year: 'numeric', month: 'short', day: 'numeric' });
     };
 
     return (
@@ -91,87 +147,112 @@ export function DateRangeFilter({ startDate, endDate, onRangeChange, className, 
                 <Button
                     variant="outline"
                     size="sm"
-                    className={cn("h-8 justify-start text-left font-normal", !startDate && "text-muted-foreground", className)}
+                    className={cn("h-8 justify-start text-left font-normal", !startDate && !endDate && "text-muted-foreground", className)}
                 >
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">
+                    <span className="truncate flex-1">
                         {startDate && endDate ? (
                             useCompactMode ? (
-                                // Compact format: M/D - M/D (or M/D/Y if different years)
                                 startDate.getFullYear() === endDate.getFullYear() ? (
-                                    `${startDate.getMonth() + 1}/${startDate.getDate()} - ${endDate.getMonth() + 1}/${endDate.getDate()}`
+                                    `${format(startDate, "M/d")} - ${format(endDate, "M/d")}`
                                 ) : (
-                                    `${startDate.getMonth() + 1}/${startDate.getDate()}/${startDate.getFullYear()} - ${endDate.getMonth() + 1}/${endDate.getDate()}/${endDate.getFullYear()}`
+                                    `${format(startDate, "M/d/yy")} - ${format(endDate, "M/d/yy")}`
                                 )
                             ) : (
                                 <>
-                                    {format.dateTime(startDate, { year: 'numeric', month: 'short', day: 'numeric' })} - {format.dateTime(endDate, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}
                                 </>
                             )
+                        ) : startDate ? (
+                            `${formatDisplayDate(startDate)} - ...`
+                        ) : endDate ? (
+                            `... - ${formatDisplayDate(endDate)}`
                         ) : (
                             t("selectRange")
                         )}
                     </span>
-                    <ChevronDown className="ml-auto h-4 w-4 opacity-50 shrink-0" />
+                    {(startDate || endDate) ? (
+                        <X
+                            className="ml-2 h-4 w-4 opacity-50 hover:opacity-100 shrink-0 cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleClear();
+                            }}
+                        />
+                    ) : (
+                        <ChevronDown className="ml-auto h-4 w-4 opacity-50 shrink-0" />
+                    )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0" align="start">
                 <div className="flex flex-col sm:flex-row">
-                    <div className="border-b sm:border-b-0 sm:border-r p-4 space-y-2 w-full sm:w-[140px]">
+                    {/* Left Panel: Shortcuts */}
+                    <div className="border-b sm:border-b-0 sm:border-r p-3 w-full sm:w-[130px] space-y-2">
                         <div className="text-xs font-medium text-muted-foreground mb-2">{t("commonRanges")}</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-1 gap-1">
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={handleThisMonth}>
+                        <div className="grid grid-cols-3 sm:grid-cols-1 gap-1">
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={() => handlePreset("today")}>
+                                {t("today")}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={() => handlePreset("yesterday")}>
+                                {t("yesterday")}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={handleThisMonth}>
                                 {t("thisMonth")}
                             </Button>
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("week")}>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={() => handlePreset("week")}>
                                 {t("pastWeek")}
                             </Button>
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("month")}>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={() => handlePreset("month")}>
                                 {t("pastMonth")}
                             </Button>
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(3)}>
-                                {t("past3Months")}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset(6)}>
-                                {t("past6Months")}
-                            </Button>
-                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => handlePreset("year")}>
+                            <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 px-2" onClick={() => handlePreset("year")}>
                                 {t("pastYear")}
                             </Button>
                         </div>
                     </div>
-                    <div className="p-4 space-y-4 w-full">
-                        <div className="space-y-2">
-                            <div className="text-xs font-medium text-muted-foreground">{t("customRange")}</div>
-                            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                                <Input
-                                    type="date"
+
+                    {/* Right Panel: Two Calendars */}
+                    <div className="p-3">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            {/* Start Date Calendar */}
+                            <div className={cn("relative", selecting === "start" ? "opacity-100" : "opacity-70")}>
+                                <div className="text-xs font-medium text-muted-foreground mb-2 text-center">
+                                    {t("startDate")}
+                                </div>
+                                <Calendar
                                     value={tempStart}
-                                    onChange={(e) => setTempStart(e.target.value)}
-                                    className="w-full sm:w-[140px]"
+                                    onChange={handleStartDateChange}
+                                    showShortcuts={false}
+                                    maxDate={tempEnd || undefined}
                                 />
-                                <span className="hidden sm:inline text-muted-foreground">-</span>
-                                <Input
-                                    type="date"
+                            </div>
+
+                            {/* End Date Calendar */}
+                            <div className={cn("relative", selecting === "end" ? "opacity-100" : "opacity-70")}>
+                                <div className="text-xs font-medium text-muted-foreground mb-2 text-center">
+                                    {t("endDate")}
+                                </div>
+                                <Calendar
                                     value={tempEnd}
-                                    onChange={(e) => setTempEnd(e.target.value)}
-                                    className="w-full sm:w-[140px]"
+                                    onChange={handleEndDateChange}
+                                    showShortcuts={false}
+                                    minDate={tempStart || undefined}
                                 />
                             </div>
                         </div>
-                        <div className="flex justify-end pt-2">
-                            <Button size="sm" className="w-full sm:w-auto" onClick={handleManualApply}>{t("apply")}</Button>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                            <Button variant="ghost" size="sm" onClick={handleClear} className="text-xs text-muted-foreground">
+                                {t("clear")}
+                            </Button>
+                            <Button size="sm" onClick={handleApply} className="text-xs">
+                                {t("apply")}
+                            </Button>
                         </div>
                     </div>
                 </div>
             </PopoverContent>
         </Popover>
     );
-}
-
-function formatDateInput(date: Date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
 }

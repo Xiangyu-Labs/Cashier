@@ -2,14 +2,14 @@
 
 import * as React from "react";
 
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 import { useTranslations, useFormatter } from "next-intl";
@@ -24,6 +24,8 @@ interface DateFilterProps {
     placeholder?: string;
     /** Size variant */
     size?: "sm" | "default";
+    /** Show clear button when date is selected */
+    showClear?: boolean;
 }
 
 export function DateFilter({
@@ -31,7 +33,8 @@ export function DateFilter({
     onChange,
     className,
     placeholder,
-    size = "default"
+    size = "default",
+    showClear = true,
 }: DateFilterProps) {
     const t = useTranslations("DateFilter");
     const format = useFormatter();
@@ -46,38 +49,16 @@ export function DateFilter({
         return isNaN(parsed.getTime()) ? null : parsed;
     }, [value]);
 
-    // Internal state for manual input
-    const [tempValue, setTempValue] = React.useState<string>(
-        dateValue ? formatDateInput(dateValue) : ""
-    );
-
-    React.useEffect(() => {
-        setTempValue(dateValue ? formatDateInput(dateValue) : "");
-    }, [dateValue, open]);
-
-    const handleApply = () => {
-        if (tempValue) {
-            const parsed = new Date(tempValue);
-            if (!isNaN(parsed.getTime())) {
-                onChange(parsed);
-            }
-        } else {
-            onChange(null);
+    const handleDateChange = (date: Date | null) => {
+        onChange(date);
+        if (date !== undefined) {
+            setOpen(false);
         }
-        setOpen(false);
     };
 
-    const handleClear = () => {
-        setTempValue("");
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation();
         onChange(null);
-        setOpen(false);
-    };
-
-    const handleToday = () => {
-        const today = new Date();
-        setTempValue(formatDateInput(today));
-        onChange(today);
-        setOpen(false);
     };
 
     const isSmall = size === "sm";
@@ -96,62 +77,29 @@ export function DateFilter({
                     )}
                 >
                     <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                    <span className="truncate">
+                    <span className="truncate flex-1">
                         {dateValue
                             ? format.dateTime(dateValue, { year: 'numeric', month: 'short', day: 'numeric' })
                             : (placeholder || t("selectDate"))
                         }
                     </span>
-                    <ChevronDown className={cn("ml-auto opacity-50 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    {showClear && dateValue ? (
+                        <X
+                            className={cn("ml-2 opacity-50 hover:opacity-100 shrink-0 cursor-pointer", isSmall ? "h-3 w-3" : "h-4 w-4")}
+                            onClick={handleClear}
+                        />
+                    ) : (
+                        <ChevronDown className={cn("ml-auto opacity-50 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    )}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
-                <div className="p-3 space-y-3">
-                    {/* Quick actions */}
-                    <div className="flex gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="flex-1 text-xs"
-                            onClick={handleToday}
-                        >
-                            {t("today")}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="flex-1 text-xs text-muted-foreground"
-                            onClick={handleClear}
-                        >
-                            {t("clear")}
-                        </Button>
-                    </div>
-
-                    {/* Date input */}
-                    <div className="space-y-2">
-                        <Input
-                            type="date"
-                            value={tempValue}
-                            onChange={(e) => setTempValue(e.target.value)}
-                            className="w-full"
-                        />
-                    </div>
-
-                    {/* Apply button */}
-                    <div className="flex justify-end">
-                        <Button size="sm" onClick={handleApply}>
-                            {t("apply")}
-                        </Button>
-                    </div>
-                </div>
+                <Calendar
+                    value={dateValue}
+                    onChange={handleDateChange}
+                    showShortcuts={true}
+                />
             </PopoverContent>
         </Popover>
     );
-}
-
-function formatDateInput(date: Date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
 }
