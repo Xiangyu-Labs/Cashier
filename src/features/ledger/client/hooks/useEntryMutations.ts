@@ -40,7 +40,7 @@ export function useEntryMutations({
     >(ledgerId, {
         mutationFn: async ({ ledgerEntryId, data }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            return result as unknown as LedgerEntry;
+            return result;
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {

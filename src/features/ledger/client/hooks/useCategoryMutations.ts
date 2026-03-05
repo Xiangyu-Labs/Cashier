@@ -25,7 +25,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     const createCategory = useLedgerMutation<EntryCategory, { name: string }>(ledgerId, {
         mutationFn: async (data) => {
             const result = await createEntryCategoryAction(ledgerId, data);
-            return result as unknown as EntryCategory;
+            return result;
         },
         successMessage: t("categoryCreated"),
         errorMessage: t("createCategoryFailed"),

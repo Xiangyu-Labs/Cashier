@@ -26,7 +26,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     const updateEntry = useLedgerMutation<LedgerEntry, { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }>(ledgerId, {
         mutationFn: async ({ ledgerEntryId, data }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            return result as unknown as LedgerEntry;
+            return result;
         },
         successMessage: tCommon("saveSuccess"),
         errorMessage: tCommon("saveFailed"),

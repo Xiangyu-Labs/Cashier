@@ -6,6 +6,7 @@ import { z } from "zod";
 import { eq, asc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
 
 const createCategorySchema = z.object({
     name: z.string().min(1),
@@ -20,7 +21,7 @@ const updateCategorySchema = createCategorySchema.partial().extend({
 
 import { forLedger } from "@/lib/db/scoped-query";
 
-export async function createEntryCategoryAction(ledgerId: string, data: z.infer<typeof createCategorySchema>): Promise<import("@/lib/db/schema").EntryCategory> {
+export async function createEntryCategoryAction(ledgerId: string, data: z.infer<typeof createCategorySchema>): Promise<SerializedEntryCategory> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
@@ -70,7 +71,7 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
         }
     }
 
-    return category;
+    return serializeEntryCategory(category);
 }
 
 export async function updateEntryCategoryAction(ledgerId: string, categoryId: string, data: z.infer<typeof updateCategorySchema>): Promise<void> {

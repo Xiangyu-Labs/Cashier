@@ -40,7 +40,7 @@ export type LedgerEntry = Serialized<DbLedgerEntry> & {
 import { LedgerMetadata } from "@/features/ledger/server/schema";
 
 export type Settings = {
-  id: string;
+  id?: string;
 } & NonNullable<LedgerMetadata["settings"]>;
 
 

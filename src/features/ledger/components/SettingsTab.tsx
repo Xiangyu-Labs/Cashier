@@ -238,7 +238,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
 
                     {/* Currency Settings */}
                     <CurrencySection
-                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] } as unknown as Settings}
+                        settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] }}
                         onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
                     />
 

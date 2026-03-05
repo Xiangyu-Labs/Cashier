@@ -7,6 +7,7 @@ import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
 
 const createLedgerEntrySchema = z.object({
     amount: z.number(),
@@ -85,7 +86,7 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     return entry;
 }
 
-export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>) {
+export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>): Promise<SerializedLedgerEntry> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
@@ -152,11 +153,7 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
 
     if (!updatedEntry) throw new Error("Entry not found or access denied");
 
-    return {
-        ...updatedEntry,
-        amount: updatedEntry.amount,
-        createdAt: updatedEntry.createdAt.toISOString(),
-    };
+    return serializeLedgerEntry(updatedEntry);
 }
 
 export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string): Promise<void> {

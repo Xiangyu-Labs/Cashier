@@ -14,6 +14,12 @@ import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/
 import { format } from "date-fns";
 import { type SourceDocumentStatusType, SourceDocumentType } from "@/features/source-document/server/schema";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import {
+    type SerializedSourceDocument,
+    type SerializedLedgerEntry,
+    type SourceDocumentGroup,
+    serializeLedgerEntry,
+} from "@/lib/serialization";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -375,12 +381,7 @@ export async function getSourceDocumentsAction(ledgerId: string, params: {
             const docId = entry.sourceDocumentId;
             if (docId) {
                 const existing = entriesByDocId.get(docId) || [];
-                existing.push({
-                    ...entry,
-                    amount: String(entry.amount),
-                    createdAt: entry.createdAt.toISOString(),
-                    updatedAt: entry.updatedAt.toISOString(),
-                } as unknown as SourceDocumentGroup['ledgerEntries'][number]);
+                existing.push(serializeLedgerEntry({ ...entry, sourceDocument: null }));
                 entriesByDocId.set(docId, existing);
             }
         });
@@ -544,23 +545,6 @@ export async function batchRetrySourceDocumentsAction(ledgerId: string, sourceDo
     }));
 }
 
-export interface SourceDocumentGroup {
-    sourceDocument: Omit<SourceDocument, 'createdAt' | 'updatedAt' | 'deletedAt' | 'status'> & {
-        createdAt: string;
-        updatedAt: string;
-        deletedAt?: string | null;
-        status: SourceDocumentStatusType | undefined;
-        ledgerEntries?: SourceDocumentGroup['ledgerEntries'];
-    };
-    ledgerEntries: (Omit<LedgerEntry, 'amount' | 'createdAt' | 'updatedAt' | 'entryDate' | 'deletedAt'> & {
-        amount: string;
-        createdAt: string;
-        updatedAt: string;
-        entryDate: string | null;
-        deletedAt?: string | null;
-    })[];
-}
-
 export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceDocumentIds: string[], data: { status?: string, title?: string, entryDate?: string }): Promise<void> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
@@ -581,7 +565,23 @@ export async function batchUpdateSourceDocumentsAction(ledgerId: string, sourceD
  * Get all pending source documents (processing + anomaly) without date filtering.
  * Used for the pending bills modal that should always show ALL pending items.
  */
-export async function getPendingSourceDocumentsAction(ledgerId: string) {
+interface PendingSourceDocumentsResponse {
+    groups: {
+        queued: SourceDocumentGroup[];
+        processing: SourceDocumentGroup[];
+        anomaly: SourceDocumentGroup[];
+        failed: SourceDocumentGroup[];
+    };
+    stats: {
+        queuedCount: number;
+        processingCount: number;
+        anomalyCount: number;
+        failedCount: number;
+        total: number;
+    };
+}
+
+export async function getPendingSourceDocumentsAction(ledgerId: string): Promise<PendingSourceDocumentsResponse> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
@@ -593,17 +593,20 @@ export async function getPendingSourceDocumentsAction(ledgerId: string) {
             // No date filters - show ALL pending items
         });
 
-        const groups = {
-            queued: [] as SourceDocumentGroup[],
-            processing: [] as SourceDocumentGroup[],
-            anomaly: [] as SourceDocumentGroup[],
-            failed: [] as SourceDocumentGroup[],
+        const groups: PendingSourceDocumentsResponse['groups'] = {
+            queued: [],
+            processing: [],
+            anomaly: [],
+            failed: [],
         };
 
         activeDocsResult.items.forEach((doc) => {
+            // Active documents have imageUrls (not hasImages), so they match SerializedSourceDocument
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+            const sourceDocument = doc as SerializedSourceDocument;
             const group: SourceDocumentGroup = {
-                sourceDocument: doc as unknown as SourceDocumentGroup['sourceDocument'],
-                ledgerEntries: (doc.ledgerEntries || []) as unknown as SourceDocumentGroup['ledgerEntries'],
+                sourceDocument,
+                ledgerEntries: (doc.ledgerEntries || []) as SerializedLedgerEntry[],
             };
             if (doc.status === 'failed') {
                 groups.failed.push(group);

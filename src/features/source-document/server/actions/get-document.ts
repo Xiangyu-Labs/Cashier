@@ -4,12 +4,13 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import type { SourceDocument, LedgerEntry } from "@/types/api";
+import {
+    type SerializedSourceDocument,
+    serializeSourceDocument,
+} from "@/lib/serialization";
 
 // Return type for getSourceDocumentByIdAction - uses standardized API types
-export type SourceDocumentWithEntries = SourceDocument & {
-    ledgerEntries: LedgerEntry[];
-};
+export type SourceDocumentWithEntries = SerializedSourceDocument;
 
 /**
  * Fetch a source document by its global ID.
@@ -55,20 +56,7 @@ export async function getSourceDocumentByIdAction(id: string): Promise<SourceDoc
         return null;
     }
 
-    // Serialize dates to strings for JSON compatibility
-    // The return type SourceDocumentWithEntries expects serialized dates
-    return {
-        ...doc,
-        createdAt: doc.createdAt.toISOString(),
-        updatedAt: doc.updatedAt.toISOString(),
-        deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-        ledgerEntries: doc.ledgerEntries.map(entry => ({
-            ...entry,
-            amount: String(entry.amount),
-            createdAt: entry.createdAt.toISOString(),
-            updatedAt: entry.updatedAt.toISOString(),
-            deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-        })) as unknown as LedgerEntry[],
-    } as unknown as SourceDocumentWithEntries;
+    // Serialize to JSON-compatible format with string dates
+    return serializeSourceDocument(doc);
 }
 
