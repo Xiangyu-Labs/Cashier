@@ -6,7 +6,7 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/lib/date-utils";
 import { format } from "date-fns";
-import { desc, lte, gte, inArray, and, eq, isNull, or, lt } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, isNull, or, lt, type SQL } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
@@ -35,28 +35,28 @@ interface GetSourceDocumentsParams {
     includeLedgerEntries?: boolean;
 }
 
+// ============ Query Condition Builders ============
+
 /**
- * Get paginated source documents with cursor-based pagination
+ * Build status filter condition
  */
-export async function getSourceDocumentsAction(
-    ledgerId: string,
-    params: GetSourceDocumentsParams
-) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+function buildStatusCondition(status: string | null | undefined): SQL<unknown> | null {
+    if (!status) return null;
 
-    const { status, limit = 20, startDate, endDate } = params;
-    const q = forLedger(sourceDocuments, ledgerId);
+    const statuses = status.split(",").filter(Boolean);
+    if (statuses.length === 0) return null;
 
-    // Build conditions
-    const conditions = [q.whereActive];
+    return inArray(sourceDocuments.status, statuses as SourceDocumentStatusType[]);
+}
 
-    if (status) {
-        const statuses = status.split(",").filter(Boolean);
-        if (statuses.length > 0) {
-            conditions.push(inArray(sourceDocuments.status, statuses as SourceDocumentStatusType[]));
-        }
-    }
+/**
+ * Build date range conditions
+ */
+function buildDateConditions(
+    startDate: string | null | undefined,
+    endDate: string | null | undefined
+): SQL<unknown>[] {
+    const conditions: SQL<unknown>[] = [];
 
     if (startDate) {
         const parsedStart = parseDateRangeStart(startDate);
@@ -67,38 +67,264 @@ export async function getSourceDocumentsAction(
         if (parsedEnd) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, 'yyyy-MM-dd')));
     }
 
-    // Handle cursor with precise composite condition
-    if (params.cursor) {
-        const parts = params.cursor.split('|');
-        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-            const [cursorDate, cursorCreated, cursorId] = parts;
-            conditions.push(
-                or(
-                    lt(sourceDocuments.entryDate, cursorDate),
-                    and(
-                        eq(sourceDocuments.entryDate, cursorDate),
-                        lt(sourceDocuments.createdAt, new Date(cursorCreated))
-                    ),
-                    and(
-                        eq(sourceDocuments.entryDate, cursorDate),
-                        eq(sourceDocuments.createdAt, new Date(cursorCreated)),
-                        lt(sourceDocuments.id, cursorId)
-                    )
-                )!
-            );
-        } else if (parts.length === 2 && parts[0] && parts[1]) {
-            const [cursorCreated, cursorId] = parts;
-            conditions.push(
-                or(
-                    lt(sourceDocuments.createdAt, new Date(cursorCreated)),
-                    and(
-                        eq(sourceDocuments.createdAt, new Date(cursorCreated)),
-                        lt(sourceDocuments.id, cursorId)
-                    )
-                )!
-            );
-        }
+    return conditions;
+}
+
+/**
+ * Build cursor pagination condition
+ */
+function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> | null {
+    if (!cursor) return null;
+
+    const parts = cursor.split('|');
+
+    // Composite cursor: date|created|id
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        const [cursorDate, cursorCreated, cursorId] = parts;
+        return or(
+            lt(sourceDocuments.entryDate, cursorDate),
+            and(
+                eq(sourceDocuments.entryDate, cursorDate),
+                lt(sourceDocuments.createdAt, new Date(cursorCreated))
+            ),
+            and(
+                eq(sourceDocuments.entryDate, cursorDate),
+                eq(sourceDocuments.createdAt, new Date(cursorCreated)),
+                lt(sourceDocuments.id, cursorId)
+            )
+        )!;
     }
+
+    // Simple cursor: created|id
+    if (parts.length === 2 && parts[0] && parts[1]) {
+        const [cursorCreated, cursorId] = parts;
+        return or(
+            lt(sourceDocuments.createdAt, new Date(cursorCreated)),
+            and(
+                eq(sourceDocuments.createdAt, new Date(cursorCreated)),
+                lt(sourceDocuments.id, cursorId)
+            )
+        )!;
+    }
+
+    return null;
+}
+
+/**
+ * Generate next cursor from last item
+ */
+function generateNextCursor(lastItem: typeof sourceDocuments.$inferSelect): string {
+    const nextDate = lastItem.entryDate || '0000-00-00';
+    return `${nextDate}|${lastItem.createdAt.toISOString()}|${lastItem.id}`;
+}
+
+// ============ Ledger Entries Fetching ============
+
+/**
+ * Fetch ledger entries grouped by source document ID
+ */
+async function fetchEntriesByDocumentId(
+    docIds: string[],
+    ledgerId: string
+): Promise<Map<string, SerializedLedgerEntry[]>> {
+    const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
+
+    if (docIds.length === 0) return entriesByDocId;
+
+    const qEntries = forLedger(ledgerEntries, ledgerId);
+    const entries = await db.query.ledgerEntries.findMany({
+        where: and(
+            qEntries.whereActive,
+            inArray(ledgerEntries.sourceDocumentId, docIds)
+        ),
+        with: { category: true }
+    });
+
+    entries.forEach(entry => {
+        const docId = entry.sourceDocumentId;
+        if (docId) {
+            const existing = entriesByDocId.get(docId) || [];
+            existing.push(serializeLedgerEntry({ ...entry, sourceDocument: null }));
+            entriesByDocId.set(docId, existing);
+        }
+    });
+
+    return entriesByDocId;
+}
+
+// ============ Serialization Helpers ============
+
+/**
+ * Serialize source document for active status (queued/processing/anomaly/failed)
+ */
+function serializeActiveDocument(
+    item: typeof sourceDocuments.$inferSelect,
+    entries: SerializedLedgerEntry[] | undefined
+): SerializedSourceDocument {
+    const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
+
+    return {
+        ...item,
+        metadata: lightMetadata,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
+        status: item.status as SourceDocumentStatusType,
+        ledgerEntries: entries,
+    };
+}
+
+/**
+ * Serialize source document for completed status (strips imageUrls)
+ */
+function serializeCompletedDocument(
+    item: typeof sourceDocuments.$inferSelect,
+    entries: SerializedLedgerEntry[] | undefined
+): SerializedSourceDocument {
+    const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
+
+    return {
+        ...item,
+        metadata: lightMetadata,
+        imageUrls: [], // Strip image URLs for completed docs, indicate via hasImages
+        hasImages: (item.imageUrls?.length || 0) > 0,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
+        status: item.status as SourceDocumentStatusType,
+        ledgerEntries: entries,
+    };
+}
+
+/**
+ * Serialize source document based on its status
+ */
+function serializeSourceDocument(
+    item: typeof sourceDocuments.$inferSelect,
+    includeEntries: boolean,
+    entriesByDocId: Map<string, SerializedLedgerEntry[]>
+): SerializedSourceDocument {
+    const entries = includeEntries ? (entriesByDocId.get(item.id) || []) : undefined;
+    const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly' || item.status === 'failed';
+
+    return isActiveDocument
+        ? serializeActiveDocument(item, entries)
+        : serializeCompletedDocument(item, entries);
+}
+
+// ============ getAllSourceDocumentsAction Helpers ============
+
+type LedgerEntryWithCategory = typeof ledgerEntries.$inferSelect & {
+    category: typeof entryCategories.$inferSelect | null;
+};
+
+/**
+ * Serialize category for ledger entry
+ */
+function serializeEntryCategory(category: typeof entryCategories.$inferSelect | null) {
+    if (!category) return null;
+
+    return {
+        id: category.id,
+        name: category.name,
+        createdAt: category.createdAt.toISOString(),
+        updatedAt: category.updatedAt.toISOString(),
+        deletedAt: category.deletedAt ? category.deletedAt.toISOString() : null,
+        ledgerId: category.ledgerId,
+        description: category.description,
+        icon: category.icon,
+        sortOrder: category.sortOrder,
+        isEditable: category.isEditable,
+    };
+}
+
+/**
+ * Serialize ledger entry with category
+ */
+function serializeLedgerEntryWithCategory(entry: LedgerEntryWithCategory) {
+    return {
+        id: entry.id,
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+        deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
+        ledgerId: entry.ledgerId,
+        description: entry.description,
+        categoryId: entry.categoryId,
+        sourceDocumentId: entry.sourceDocumentId,
+        amount: String(entry.amount),
+        currency: entry.currency,
+        itemName: entry.itemName,
+        convertedAmount: entry.convertedAmount,
+        exchangeRate: entry.exchangeRate,
+        category: serializeEntryCategory(entry.category),
+    };
+}
+
+/**
+ * Fetch entries with categories grouped by document ID
+ */
+async function fetchEntriesWithCategories(
+    docIds: string[],
+    ledgerId: string
+): Promise<Map<string, LedgerEntryWithCategory[]>> {
+    const entriesByDocId = new Map<string, LedgerEntryWithCategory[]>();
+
+    if (docIds.length === 0) return entriesByDocId;
+
+    const qEntries = forLedger(ledgerEntries, ledgerId);
+    const entries = await db.query.ledgerEntries.findMany({
+        where: and(
+            qEntries.whereActive,
+            inArray(ledgerEntries.sourceDocumentId, docIds)
+        ),
+        with: { category: true }
+    });
+
+    entries.forEach(entry => {
+        const list = entriesByDocId.get(entry.sourceDocumentId) || [];
+        list.push(entry as LedgerEntryWithCategory);
+        entriesByDocId.set(entry.sourceDocumentId, list);
+    });
+
+    return entriesByDocId;
+}
+
+/**
+ * Serialize source document with entries for flat array response
+ */
+function serializeSourceDocumentFlat(
+    doc: typeof sourceDocuments.$inferSelect,
+    entries: LedgerEntryWithCategory[]
+): SourceDocumentWithEntries {
+    return {
+        ...doc,
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString(),
+        deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
+        ledgerEntries: entries.map(serializeLedgerEntryWithCategory),
+    } as SourceDocumentWithEntries;
+}
+
+/**
+ * Get paginated source documents with cursor-based pagination
+ */
+export async function getSourceDocumentsAction(
+    ledgerId: string,
+    params: GetSourceDocumentsParams
+) {
+    const { error } = await requireLedgerAccess(ledgerId);
+    if (error) throw new Error("Unauthorized");
+
+    const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
+    const q = forLedger(sourceDocuments, ledgerId);
+
+    // Build conditions
+    const conditions = [
+        q.whereActive,
+        buildStatusCondition(status),
+        ...buildDateConditions(startDate, endDate),
+        buildCursorCondition(cursor),
+    ].filter((c): c is SQL<unknown> => c !== null);
 
     const items = await db.query.sourceDocuments.findMany({
         where: and(...conditions),
@@ -107,68 +333,20 @@ export async function getSourceDocumentsAction(
     });
 
     let nextCursor: string | null = null;
-    let resultItems = items;
+    const hasMore = items.length > limit;
+    const resultItems = hasMore ? items.slice(0, limit) : items;
 
-    if (items.length > limit) {
-        const nextItem = items[limit];
-        const nextDate = nextItem.entryDate || '0000-00-00';
-        nextCursor = `${nextDate}|${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-        resultItems = items.slice(0, limit);
+    if (hasMore) {
+        nextCursor = generateNextCursor(items[limit]);
     }
 
     // Fetch ledger entries if requested
-    const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
-    if (params.includeLedgerEntries && resultItems.length > 0) {
-        const docIds = resultItems.map(d => d.id);
-        const qEntries = forLedger(ledgerEntries, ledgerId);
-
-        const entries = await db.query.ledgerEntries.findMany({
-            where: and(
-                qEntries.whereActive,
-                inArray(ledgerEntries.sourceDocumentId, docIds)
-            ),
-            with: { category: true }
-        });
-
-        entries.forEach(entry => {
-            const docId = entry.sourceDocumentId;
-            if (docId) {
-                const existing = entriesByDocId.get(docId) || [];
-                existing.push(serializeLedgerEntry({ ...entry, sourceDocument: null }));
-                entriesByDocId.set(docId, existing);
-            }
-        });
-    }
+    const entriesByDocId = includeLedgerEntries && resultItems.length > 0
+        ? await fetchEntriesByDocumentId(resultItems.map(d => d.id), ledgerId)
+        : new Map<string, SerializedLedgerEntry[]>();
 
     return {
-        items: resultItems.map(item => {
-            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
-            const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly' || item.status === 'failed';
-
-            if (isActiveDocument) {
-                return {
-                    ...item,
-                    metadata: lightMetadata,
-                    createdAt: item.createdAt.toISOString(),
-                    updatedAt: item.updatedAt.toISOString(),
-                    deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-                    status: item.status as SourceDocumentStatusType | undefined,
-                    ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
-                };
-            } else {
-                const { imageUrls, ...itemWithoutImages } = item;
-                return {
-                    ...itemWithoutImages,
-                    metadata: lightMetadata,
-                    hasImages: (imageUrls?.length || 0) > 0,
-                    createdAt: item.createdAt.toISOString(),
-                    updatedAt: item.updatedAt.toISOString(),
-                    deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-                    status: item.status as SourceDocumentStatusType | undefined,
-                    ledgerEntries: params.includeLedgerEntries ? (entriesByDocId.get(item.id) || []) : undefined,
-                };
-            }
-        }),
+        items: resultItems.map(item => serializeSourceDocument(item, !!includeLedgerEntries, entriesByDocId)),
         nextCursor,
     };
 }
@@ -191,16 +369,10 @@ export async function getAllSourceDocumentsAction(
         const { startDate, endDate } = params;
         const q = forLedger(sourceDocuments, ledgerId);
 
-        const conditions = [q.whereActive];
-
-        if (startDate) {
-            const parsedStart = parseDateRangeStart(startDate);
-            if (parsedStart) conditions.push(gte(sourceDocuments.entryDate, format(parsedStart, 'yyyy-MM-dd')));
-        }
-        if (endDate) {
-            const parsedEnd = parseDateRangeEnd(endDate);
-            if (parsedEnd) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, 'yyyy-MM-dd')));
-        }
+        const conditions = [
+            q.whereActive,
+            ...buildDateConditions(startDate, endDate),
+        ].filter((c): c is SQL<unknown> => c !== null);
 
         const items = await db.query.sourceDocuments.findMany({
             where: and(...conditions),
@@ -208,72 +380,9 @@ export async function getAllSourceDocumentsAction(
         });
 
         const docIds = items.map(d => d.id);
-        type LedgerEntryWithCategory = typeof ledgerEntries.$inferSelect & {
-            category: typeof entryCategories.$inferSelect | null;
-        };
-        const entriesByDocId = new Map<string, LedgerEntryWithCategory[]>();
+        const entriesByDocId = await fetchEntriesWithCategories(docIds, ledgerId);
 
-        if (docIds.length > 0) {
-            const qEntries = forLedger(ledgerEntries, ledgerId);
-            const entries = await db.query.ledgerEntries.findMany({
-                where: and(
-                    qEntries.whereActive,
-                    inArray(ledgerEntries.sourceDocumentId, docIds)
-                ),
-                with: { category: true }
-            });
-
-            entries.forEach(entry => {
-                const list = entriesByDocId.get(entry.sourceDocumentId) || [];
-                list.push(entry as LedgerEntryWithCategory);
-                entriesByDocId.set(entry.sourceDocumentId, list);
-            });
-        }
-
-        return items.map(doc => {
-            const rawEntries = entriesByDocId.get(doc.id) || [];
-            const serializedEntries = rawEntries.map(entry => {
-                const serializedCategory = entry.category
-                    ? {
-                        id: entry.category.id,
-                        name: entry.category.name,
-                        createdAt: entry.category.createdAt.toISOString(),
-                        updatedAt: entry.category.updatedAt.toISOString(),
-                        deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
-                        ledgerId: entry.category.ledgerId,
-                        description: entry.category.description,
-                        icon: entry.category.icon,
-                        sortOrder: entry.category.sortOrder,
-                        isEditable: entry.category.isEditable,
-                    }
-                    : null;
-
-                return {
-                    id: entry.id,
-                    createdAt: entry.createdAt.toISOString(),
-                    updatedAt: entry.updatedAt.toISOString(),
-                    deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-                    ledgerId: entry.ledgerId,
-                    description: entry.description,
-                    categoryId: entry.categoryId,
-                    sourceDocumentId: entry.sourceDocumentId,
-                    amount: String(entry.amount),
-                    currency: entry.currency,
-                    itemName: entry.itemName,
-                    convertedAmount: entry.convertedAmount,
-                    exchangeRate: entry.exchangeRate,
-                    category: serializedCategory,
-                };
-            });
-
-            return {
-                ...doc,
-                createdAt: doc.createdAt.toISOString(),
-                updatedAt: doc.updatedAt.toISOString(),
-                deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-                ledgerEntries: serializedEntries,
-            };
-        }) as SourceDocumentWithEntries[];
+        return items.map(doc => serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || []));
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
         throw new Error(safeError(error));

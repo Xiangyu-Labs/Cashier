@@ -11,6 +11,112 @@ import { SourceDocumentType } from "@/features/source-document/server/schema";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
 
+// ============ Helper Functions ============
+
+/**
+ * Fetch category name for entry title generation
+ */
+async function fetchCategoryName(categoryId: string | null): Promise<string> {
+    if (!categoryId) return "";
+
+    const category = await db.query.entryCategories.findFirst({
+        where: and(
+            eq(entryCategories.id, categoryId),
+            isNull(entryCategories.deletedAt)
+        ),
+    });
+
+    return category?.name || "";
+}
+
+interface ConversionResult {
+    convertedAmount: string | null;
+    exchangeRate: string | null;
+}
+
+/**
+ * Convert amount between currencies
+ */
+async function convertEntryAmount(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string,
+    date: string
+): Promise<ConversionResult> {
+    if (fromCurrency === toCurrency) {
+        return {
+            convertedAmount: amount.toFixed(2),
+            exchangeRate: "1",
+        };
+    }
+
+    try {
+        const converted = await ExchangeRateService.convert(
+            amount, fromCurrency, toCurrency, date
+        );
+        return {
+            convertedAmount: converted.toFixed(2),
+            exchangeRate: (converted / amount).toFixed(6),
+        };
+    } catch (err) {
+        logger.warn({ err }, "Quick entry: failed to convert amount");
+        return { convertedAmount: null, exchangeRate: null };
+    }
+}
+
+interface QuickEntryData {
+    categoryId: string | null;
+    itemName: string | null;
+    description: string | null;
+    amount: number;
+    entryDate: string;
+}
+
+/**
+ * Atomically insert source document and ledger entry
+ */
+function atomicInsertSourceAndEntry(
+    data: QuickEntryData,
+    currency: string,
+    categoryName: string,
+    conversion: ConversionResult,
+    ledgerId: string
+): { sourceDocId: string; entryId: string } {
+    const sourceDocId = crypto.randomUUID();
+    const entryId = crypto.randomUUID();
+    const itemName = data.itemName || categoryName;
+
+    db.transaction((tx) => {
+        tx.insert(sourceDocuments).values({
+            id: sourceDocId,
+            ledgerId,
+            title: categoryName,
+            text: null,
+            imageUrls: [],
+            status: "completed",
+            type: SourceDocumentType.Manual,
+            entryDate: data.entryDate,
+        }).run();
+
+        tx.insert(ledgerEntries).values({
+            id: entryId,
+            ledgerId,
+            sourceDocumentId: sourceDocId,
+            categoryId: data.categoryId,
+            amount: data.amount.toFixed(2),
+            currency,
+            itemName,
+            description: data.description,
+            convertedAmount: conversion.convertedAmount,
+            exchangeRate: conversion.exchangeRate,
+        }).run();
+    });
+
+    return { sourceDocId, entryId };
+}
+
+// ============ Main Action ============
+
 /**
  * Create a quick entry (manual entry without AI parsing).
  * Atomically creates a SourceDocument (type="manual", status="completed") and a LedgerEntry.
@@ -27,65 +133,26 @@ export async function createQuickEntryAction(
     const entryCurrency = validated.currency || mainCurrency;
     const today = validated.entryDate || formatDateTimeForApi(new Date());
 
-    // Look up category for title generation
-    const category = await db.query.entryCategories.findFirst({
-        where: and(
-            eq(entryCategories.id, validated.categoryId),
-            isNull(entryCategories.deletedAt)
-        ),
-    });
-    const categoryName = category?.name || "";
-    const itemName = validated.itemName || categoryName;
-    const title = categoryName;
+    // Gather all data needed for insertion
+    const [categoryName, conversion] = await Promise.all([
+        fetchCategoryName(validated.categoryId),
+        convertEntryAmount(validated.amount, entryCurrency, mainCurrency, today),
+    ]);
 
-    // Exchange rate conversion
-    let convertedAmount: string | null = null;
-    let exchangeRate: string | null = null;
-
-    if (entryCurrency === mainCurrency) {
-        convertedAmount = validated.amount.toFixed(2);
-        exchangeRate = "1";
-    } else {
-        try {
-            const converted = await ExchangeRateService.convert(
-                validated.amount, entryCurrency, mainCurrency, today
-            );
-            convertedAmount = converted.toFixed(2);
-            exchangeRate = (converted / validated.amount).toFixed(6);
-        } catch (err) {
-            logger.warn({ err }, "Quick entry: failed to convert amount");
-        }
-    }
-
-    const sourceDocId = crypto.randomUUID();
-    const entryId = crypto.randomUUID();
-
-    // Atomic insert: sourceDocument + ledgerEntry
-    db.transaction((tx) => {
-        tx.insert(sourceDocuments).values({
-            id: sourceDocId,
-            ledgerId,
-            title,
-            text: null,
-            imageUrls: [],
-            status: "completed",
-            type: SourceDocumentType.Manual,
-            entryDate: today,
-        }).run();
-
-        tx.insert(ledgerEntries).values({
-            id: entryId,
-            ledgerId,
-            sourceDocumentId: sourceDocId,
+    // Atomic insert
+    const { sourceDocId, entryId } = atomicInsertSourceAndEntry(
+        {
             categoryId: validated.categoryId,
-            amount: validated.amount.toFixed(2),
-            currency: entryCurrency,
-            itemName,
+            itemName: validated.itemName || null,
             description: validated.description || null,
-            convertedAmount,
-            exchangeRate,
-        }).run();
-    });
+            amount: validated.amount,
+            entryDate: today,
+        },
+        entryCurrency,
+        categoryName,
+        conversion,
+        ledgerId
+    );
 
     return {
         sourceDocumentId: sourceDocId,

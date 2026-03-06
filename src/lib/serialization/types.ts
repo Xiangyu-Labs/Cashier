@@ -45,6 +45,7 @@ export type SerializedServiceCredential = Serialized<DbServiceCredential>;
 
 export type SerializedSourceDocument = Serialized<DbSourceDocument> & {
     ledgerEntries?: SerializedLedgerEntry[];
+    hasImages?: boolean;
 };
 
 // Light version without nested entries (for list views)
