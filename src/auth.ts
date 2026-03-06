@@ -49,8 +49,10 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         },
         profile(profile) {
             // Authelia may return email in different fields or not at all
-            // Fallback to preferred_username with a default domain if no email
-            const email = profile.email || (profile.preferred_username ? `${profile.preferred_username}@authelia.local` : null);
+            // Fallback chain: email -> preferred_username@authelia.local -> sub@authelia.local
+            const email = profile.email
+                || (profile.preferred_username ? `${profile.preferred_username}@authelia.local` : null)
+                || `${profile.sub}@authelia.local`;
             return {
                 id: profile.sub,
                 name: profile.name ?? profile.preferred_username ?? null,
