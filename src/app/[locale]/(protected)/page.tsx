@@ -3,8 +3,20 @@ import { type ReactNode } from "react";
 import { redirect } from "@/i18n/routing";
 import { getTranslations, getLocale } from "next-intl/server";
 import { auth } from "@/auth";
-import { getLedgers } from "@/features/ledger/server/services/ledgers";
 import { createLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import { db } from "@/lib/db";
+import { ledgers } from "@/lib/db/schema";
+import { eq, desc, and, isNull } from "drizzle-orm";
+import { serializeLedger } from "@/lib/serialization/utils";
+
+// Inline data access - simplified architecture (no services layer)
+async function getLedgers(userId: string) {
+    const rows = await db.query.ledgers.findMany({
+        where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
+        orderBy: [desc(ledgers.createdAt)],
+    });
+    return rows.map(serializeLedger);
+}
 
 export default async function HomePage(): Promise<ReactNode> {
   const session = await auth();

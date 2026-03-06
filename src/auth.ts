@@ -12,6 +12,17 @@ import { eq, and, isNull } from "drizzle-orm";
 import { authConfig } from "./auth.config";
 import { verifyOTPToken, deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 
+// Inline helper: Check if registration is allowed (simplified architecture)
+async function isRegistrationAllowed(email: string): Promise<boolean> {
+    if (process.env.DISABLE_REGISTRATION !== "true") {
+        return true;
+    }
+    const user = await db.query.users.findFirst({
+        where: eq(users.email, email),
+    });
+    return !!user;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
     adapter: DrizzleAdapter(db, {
@@ -47,7 +58,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
 
                 // Check registration whitelist
-                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
                 if (!(await isRegistrationAllowed(email))) {
                     return null;
                 }
@@ -114,7 +124,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ...authConfig.callbacks,
         async signIn({ user }) {
             if (user.email) {
-                const { isRegistrationAllowed } = await import("@/features/auth/server/services/registration");
                 if (!(await isRegistrationAllowed(user.email))) {
                     return false;
                 }
