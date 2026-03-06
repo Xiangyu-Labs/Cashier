@@ -1,0 +1,68 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Mail, Loader2 } from "lucide-react";
+
+interface EmailStepProps {
+    email: string;
+    isLoading: boolean;
+    error: string | null;
+    onEmailChange: (email: string) => void;
+    onSubmit: (e: React.FormEvent) => void;
+}
+
+export function EmailStep({
+    email,
+    isLoading,
+    error,
+    onEmailChange,
+    onSubmit,
+}: EmailStepProps) {
+    const t = useTranslations("Auth");
+
+    return (
+        <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-text">
+                    {t("email")}
+                </label>
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder={t("emailPlaceholder")}
+                    value={email}
+                    onChange={(e) => onEmailChange(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-11"
+                    autoComplete="email"
+                    autoFocus
+                />
+            </div>
+            {error && (
+                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                    {error}
+                </div>
+            )}
+            <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={isLoading || !email}
+            >
+                {isLoading ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("sending")}
+                    </>
+                ) : (
+                    <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        {t("sendVerificationCode")}
+                    </>
+                )}
+            </Button>
+        </form>
+    );
+}

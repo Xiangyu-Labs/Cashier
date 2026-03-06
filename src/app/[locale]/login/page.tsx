@@ -1,124 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Mail, Loader2, ArrowLeft, KeyRound } from "lucide-react";
-import { useRouter } from "@/i18n/routing";
-import { useSearchParams } from "next/navigation";
-import { OTPInput } from "@/components/auth/otp-input";
-import { ResendCountdown } from "@/components/auth/resend-countdown";
-import { ExpiryTimer } from "@/components/auth/expiry-timer";
-import { sendOTPAction, verifyOTPAction } from "@/features/auth/server/actions/auth";
-import { OTP_LENGTH } from "@/features/auth/server/services/otp";
-
-type LoginStep = "email" | "otp";
+import { Mail, KeyRound } from "lucide-react";
+import { useLoginFlow } from "./hooks/use-login-flow";
+import { EmailStep } from "./components/email-step";
+import { OtpStep } from "./components/otp-step";
 
 export default function LoginPage() {
     const t = useTranslations("Auth");
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get("callbackUrl") || "/";
-
-    const [step, setStep] = useState<LoginStep>("email");
-    const [email, setEmail] = useState("");
-    const [otp, setOtp] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [expiresAt, setExpiresAt] = useState<number | null>(null);
-    const [canResendAt, setCanResendAt] = useState<number | null>(null);
-
-    const handleSendOTP = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email) return;
-
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const result = await sendOTPAction(email);
-            if (!result.success) {
-                setError(result.error || t("sendCodeFailed"));
-                setIsLoading(false);
-                return;
-            }
-
-            setExpiresAt(result.expiresAt || null);
-            setCanResendAt(result.canResendAt || null);
-            setStep("otp");
-            setIsLoading(false);
-        } catch {
-            setError(t("unexpectedError"));
-            setIsLoading(false);
-        }
-    };
-
-    const handleVerifyOTP = async () => {
-        if (!otp || otp.length !== OTP_LENGTH) {
-            setError(t("invalidCode"));
-            return;
-        }
-
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const verifyResult = await verifyOTPAction(email, otp);
-            if (!verifyResult.success) {
-                setError(verifyResult.error || t("verifyFailed"));
-                setIsLoading(false);
-                return;
-            }
-
-            const signInResult = await signIn("otp", {
-                email,
-                otp,
-                redirect: false,
-                callbackUrl,
-            });
-
-            if (signInResult?.error) {
-                setError(signInResult.error);
-                setIsLoading(false);
-            } else if (signInResult?.ok) {
-                router.push(callbackUrl);
-                router.refresh();
-            }
-        } catch {
-            setError(t("unexpectedError"));
-            setIsLoading(false);
-        }
-    };
-
-    const handleResendOTP = async () => {
-        setError(null);
-        setOtp("");
-        try {
-            const result = await sendOTPAction(email);
-            if (!result.success) {
-                setError(result.error || t("resendFailed"));
-                return;
-            }
-            setExpiresAt(result.expiresAt || null);
-            setCanResendAt(result.canResendAt || null);
-        } catch {
-            setError(t("resendFailed"));
-        }
-    };
-
-    const handleChangeEmail = () => {
-        setStep("email");
-        setOtp("");
-        setError(null);
-        setExpiresAt(null);
-        setCanResendAt(null);
-    };
-
-    const handleOTPExpired = () => {
-        setError(t("codeExpiredMessage"));
-    };
+    const {
+        step,
+        email,
+        otp,
+        isLoading,
+        error,
+        expiresAt,
+        canResendAt,
+        setEmail,
+        setOtp,
+        handleSendOTP,
+        handleVerifyOTP,
+        handleResendOTP,
+        handleChangeEmail,
+        handleOTPExpired,
+    } = useLoginFlow(t);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-bg px-4">
@@ -143,111 +48,29 @@ export default function LoginPage() {
 
                 <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
                     {step === "email" ? (
-                        <form onSubmit={handleSendOTP} className="space-y-4">
-                            <div className="space-y-2">
-                                <label htmlFor="email" className="text-sm font-medium text-text">
-                                    {t("email")}
-                                </label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder={t("emailPlaceholder")}
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    disabled={isLoading}
-                                    className="h-11"
-                                    autoComplete="email"
-                                    autoFocus
-                                />
-                            </div>
-                            {error && (
-                                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                                    {error}
-                                </div>
-                            )}
-                            <Button
-                                type="submit"
-                                className="w-full h-11"
-                                disabled={isLoading || !email}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t("sending")}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Mail className="mr-2 h-4 w-4" />
-                                        {t("sendVerificationCode")}
-                                    </>
-                                )}
-                            </Button>
-                        </form>
+                        <EmailStep
+                            email={email}
+                            isLoading={isLoading}
+                            error={error}
+                            onEmailChange={setEmail}
+                            onSubmit={handleSendOTP}
+                        />
                     ) : (
-                        <div className="space-y-6">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-text">
-                                        {t("enterCode")}
-                                    </label>
-                                    <OTPInput
-                                        value={otp}
-                                        onChange={setOtp}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <ExpiryTimer
-                                    expiresAt={expiresAt}
-                                    onExpired={handleOTPExpired}
-                                    className="text-center"
-                                />
-                            </div>
-                            {error && (
-                                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                                    {error}
-                                </div>
-                            )}
-                            <Button
-                                type="button"
-                                className="w-full h-11"
-                                disabled={isLoading || otp.length !== OTP_LENGTH}
-                                onClick={handleVerifyOTP}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t("verifying")}
-                                    </>
-                                ) : (
-                                    t("verify")
-                                )}
-                            </Button>
-                            <div className="flex items-center justify-between pt-4 border-t">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={handleChangeEmail}
-                                    disabled={isLoading}
-                                    className="text-sm"
-                                >
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    {t("changeEmail")}
-                                </Button>
-                                <ResendCountdown
-                                    canResendAt={canResendAt}
-                                    onResend={handleResendOTP}
-                                    disabled={isLoading}
-                                />
-                            </div>
-                        </div>
+                        <OtpStep
+                            email={email}
+                            otp={otp}
+                            isLoading={isLoading}
+                            error={error}
+                            expiresAt={expiresAt}
+                            canResendAt={canResendAt}
+                            onOtpChange={setOtp}
+                            onVerify={handleVerifyOTP}
+                            onResend={handleResendOTP}
+                            onChangeEmail={handleChangeEmail}
+                            onExpired={handleOTPExpired}
+                        />
                     )}
                 </div>
-                {step === "otp" && (
-                    <p className="text-center text-xs text-muted-foreground mt-6">
-                        {t("codeExpires", { minutes: 5 })}
-                    </p>
-                )}
             </div>
         </div>
     );
