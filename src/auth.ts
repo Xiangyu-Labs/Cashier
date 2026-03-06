@@ -38,16 +38,8 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
     return {
         id: "oidc",
         name: process.env.OIDC_BUTTON_NAME || "SSO",
-        type: "oauth",
+        type: "oidc",
         wellKnown: `${issuer}/.well-known/openid-configuration`,
-        authorization: {
-            url: `${issuer}/api/oidc/authorization`,
-            params: {
-                scope: "openid email profile",
-            },
-        },
-        token: `${issuer}/api/oidc/token`,
-        userinfo: `${issuer}/api/oidc/userinfo`,
         clientId,
         clientSecret,
         checks: ["pkce", "state"],
