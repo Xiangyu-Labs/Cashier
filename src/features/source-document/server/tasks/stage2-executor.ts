@@ -59,70 +59,16 @@ function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boole
     return true;
 }
 
-// ===== Main Stage 2 Executor =====
+// Arbitration result schema
+const arbitrationSchema = z.object({
+    choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+    reason: z.string().optional(),
+});
 
-export interface Stage2Input {
-    text?: string;
-    imageUrls?: string[];
-    visionDescription?: string;
-    aiLanguage?: string;
-    validationSummary: ValidationSummary;
-    originalCategories: { name: string; description: string | null }[];
-}
+// ===== Helper: Build Arbitration Prompt =====
 
-export interface Stage2Output {
-    entries: ParsedEntry[];
-    title: string;
-    reasoning: string;
-    wasArbitrated: boolean;
-}
-
-export async function executeStage2(
-    input: Stage2Input,
-    ai: AIContext
-): Promise<Stage2Output> {
-    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
-
-    const prompt = buildDetailedParsePrompt(
-        input.validationSummary,
-        input.originalCategories,
-        input.aiLanguage
-    );
-
-    // Use text tier for dual GPT calls
-    const model: AIModelTier = 'text';
-
-    // Dual GPT calls
-    const [response1, response2] = await Promise.all([
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-    ]);
-
-    const result1 = parseJsonResponse(response1.content, parseOutputSchema);
-    const result2 = parseJsonResponse(response2.content, parseOutputSchema);
-
-    // Compare results
-    if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
-        return {
-            entries: result1.ledger_entries,
-            title: input.validationSummary.summary?.title || "Untitled",
-            reasoning: result1.reasoning,
-            wasArbitrated: false,
-        };
-    }
-
-    // Arbitration needed
-    const arbitrationPrompt = `You are an arbitration AI for financial document parsing.
+function buildStage2ArbitrationPrompt<T>(result1: T, result2: T): string {
+    return `You are an arbitration AI for financial document parsing.
 
 ### Task Description
 Determine which parsing result is more accurate for the given financial document.
@@ -146,6 +92,65 @@ Look for:
 
 ### Output (raw JSON only)
 {"choice": 1 | 2 | 0, "reason": "..."}`;
+}
+
+// ===== Stage 2 Input/Output Types =====
+
+export interface Stage2Input {
+    text?: string;
+    imageUrls?: string[];
+    visionDescription?: string;
+    aiLanguage?: string;
+    validationSummary: ValidationSummary;
+    originalCategories: { name: string; description: string | null }[];
+}
+
+export interface Stage2Output {
+    entries: ParsedEntry[];
+    title: string;
+    reasoning: string;
+    wasArbitrated: boolean;
+}
+
+// ===== Helper: Run Dual GPT Calls =====
+
+async function runDualParsingCalls(
+    ai: AIContext,
+    prompt: string,
+    messageContent: ReturnType<typeof buildMessageContent>
+): Promise<[{ ledger_entries: ParsedEntry[]; reasoning: string }, { ledger_entries: ParsedEntry[]; reasoning: string }]> {
+    const model: AIModelTier = 'text';
+
+    const [response1, response2] = await Promise.all([
+        ai.generate({
+            prompt,
+            messages: [{ role: "user", content: messageContent }],
+            requireJson: true,
+            model,
+        }),
+        ai.generate({
+            prompt,
+            messages: [{ role: "user", content: messageContent }],
+            requireJson: true,
+            model,
+        }),
+    ]);
+
+    const result1 = parseJsonResponse(response1.content, parseOutputSchema);
+    const result2 = parseJsonResponse(response2.content, parseOutputSchema);
+
+    return [result1, result2];
+}
+
+// ===== Helper: Run Arbitration =====
+
+async function runStage2Arbitration(
+    ai: AIContext,
+    messageContent: ReturnType<typeof buildMessageContent>,
+    result1: { ledger_entries: ParsedEntry[]; reasoning: string },
+    result2: { ledger_entries: ParsedEntry[]; reasoning: string }
+): Promise<{ ledger_entries: ParsedEntry[]; reasoning: string }> {
+    const arbitrationPrompt = buildStage2ArbitrationPrompt(result1, result2);
 
     const arbitrationResponse = await ai.generate({
         prompt: arbitrationPrompt,
@@ -154,19 +159,44 @@ Look for:
         model: 'text',
     });
 
-    const arbitrationResult = parseJsonResponse(
-        arbitrationResponse.content,
-        z.object({
-            choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-            reason: z.string().optional(),
-        })
-    );
+    const arbitrationResult = parseJsonResponse(arbitrationResponse.content, arbitrationSchema);
 
     if (arbitrationResult.choice === 0) {
         throw new Error(`STAGE2_ARBITRATION_FAILED: ${arbitrationResult.reason || "Both parsing results invalid"}`);
     }
 
-    const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
+    return arbitrationResult.choice === 1 ? result1 : result2;
+}
+
+// ===== Main Stage 2 Executor =====
+
+export async function executeStage2(
+    input: Stage2Input,
+    ai: AIContext
+): Promise<Stage2Output> {
+    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
+
+    const prompt = buildDetailedParsePrompt(
+        input.validationSummary,
+        input.originalCategories,
+        input.aiLanguage
+    );
+
+    // Run dual GPT calls
+    const [result1, result2] = await runDualParsingCalls(ai, prompt, messageContent);
+
+    // Compare results
+    if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
+        return {
+            entries: result1.ledger_entries,
+            title: input.validationSummary.summary?.title || "Untitled",
+            reasoning: result1.reasoning,
+            wasArbitrated: false,
+        };
+    }
+
+    // Arbitration needed
+    const chosenResult = await runStage2Arbitration(ai, messageContent, result1, result2);
 
     return {
         entries: chosenResult.ledger_entries,

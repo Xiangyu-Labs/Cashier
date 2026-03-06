@@ -29,54 +29,17 @@ export interface DualGptConfig<T> {
     compareResults: (r1: T, r2: T) => boolean;
 }
 
+// Arbitration result schema
+const arbitrationSchema = z.object({
+    choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+    reason: z.string().optional(),
+});
+
 /**
- * Run dual GPT calls with arbitration for disagreements
- *
- * This pattern runs two independent GPT calls and compares their results.
- * If results match (according to compareResults function), returns the result.
- * If results differ, a third "arbitrator" GPT decides which is correct.
+ * Build arbitration prompt
  */
-export async function runDualGptWithArbitration<T>({
-    taskName,
-    prompt,
-    messageContent,
-    schema,
-    ai,
-    model = "text",
-    compareResults,
-}: DualGptConfig<T>): Promise<DualGptResult<T>> {
-    // Run dual GPT calls in parallel
-    const [response1, response2] = await Promise.all([
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-        ai.generate({
-            prompt,
-            messages: [{ role: "user", content: messageContent }],
-            requireJson: true,
-            model,
-        }),
-    ]);
-
-    const result1 = parseJsonResponse(response1.content, schema);
-    const result2 = parseJsonResponse(response2.content, schema);
-
-    // If results match, return GPT1's result
-    if (compareResults(result1, result2)) {
-        return {
-            result: result1,
-            reasoning: (result1 as { reasoning?: string }).reasoning || "",
-            wasArbitrated: false,
-        };
-    }
-
-    // Results don't match - run arbitration
-    logger.info({ taskName }, "GPT results differ, running arbitration");
-
-    const arbitrationPrompt = `You are an arbitration AI.
+function buildArbitrationPrompt<T>(taskName: string, result1: T, result2: T): string {
+    return `You are an arbitration AI.
 
 ### Task Description
 ${taskName}
@@ -95,6 +58,50 @@ Determine which result is more accurate based on the original input.
 
 ### Output (raw JSON only)
 {"choice": 1 | 2 | 0, "reason": "..."}`;
+}
+
+/**
+ * Run dual GPT calls in parallel
+ */
+async function runDualGptCalls<T>(
+    ai: AIContext,
+    prompt: string,
+    messageContent: DualGptConfig<T>["messageContent"],
+    model: AIModelTier,
+    schema: z.ZodSchema<T>
+): Promise<[T, T]> {
+    const [response1, response2] = await Promise.all([
+        ai.generate({
+            prompt,
+            messages: [{ role: "user", content: messageContent }],
+            requireJson: true,
+            model,
+        }),
+        ai.generate({
+            prompt,
+            messages: [{ role: "user", content: messageContent }],
+            requireJson: true,
+            model,
+        }),
+    ]);
+
+    const result1 = parseJsonResponse(response1.content, schema);
+    const result2 = parseJsonResponse(response2.content, schema);
+
+    return [result1, result2];
+}
+
+/**
+ * Run arbitration when GPT results differ
+ */
+async function runArbitration<T>(
+    ai: AIContext,
+    taskName: string,
+    messageContent: DualGptConfig<T>["messageContent"],
+    result1: T,
+    result2: T
+): Promise<{ result: T; reasoning: string }> {
+    const arbitrationPrompt = buildArbitrationPrompt(taskName, result1, result2);
 
     const arbitrationResponse = await ai.generate({
         prompt: arbitrationPrompt,
@@ -103,13 +110,7 @@ Determine which result is more accurate based on the original input.
         model: "text",
     });
 
-    const arbitrationResult = parseJsonResponse(
-        arbitrationResponse.content,
-        z.object({
-            choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-            reason: z.string().optional(),
-        })
-    );
+    const arbitrationResult = parseJsonResponse(arbitrationResponse.content, arbitrationSchema);
 
     if (arbitrationResult.choice === 0) {
         throw new Error(
@@ -118,12 +119,50 @@ Determine which result is more accurate based on the original input.
     }
 
     const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
+    const reasoning =
+        (chosenResult as { reasoning?: string }).reasoning ||
+        arbitrationResult.reason ||
+        "";
+
+    return { result: chosenResult, reasoning };
+}
+
+/**
+ * Run dual GPT calls with arbitration for disagreements
+ *
+ * This pattern runs two independent GPT calls and compares their results.
+ * If results match (according to compareResults function), returns the result.
+ * If results differ, a third "arbitrator" GPT decides which is correct.
+ */
+export async function runDualGptWithArbitration<T>({
+    taskName,
+    prompt,
+    messageContent,
+    schema,
+    ai,
+    model = "text",
+    compareResults,
+}: DualGptConfig<T>): Promise<DualGptResult<T>> {
+    // Run dual GPT calls in parallel
+    const [result1, result2] = await runDualGptCalls(ai, prompt, messageContent, model, schema);
+
+    // If results match, return GPT1's result
+    if (compareResults(result1, result2)) {
+        return {
+            result: result1,
+            reasoning: (result1 as { reasoning?: string }).reasoning || "",
+            wasArbitrated: false,
+        };
+    }
+
+    // Results don't match - run arbitration
+    logger.info({ taskName }, "GPT results differ, running arbitration");
+
+    const { result, reasoning } = await runArbitration(ai, taskName, messageContent, result1, result2);
+
     return {
-        result: chosenResult,
-        reasoning:
-            (chosenResult as { reasoning?: string }).reasoning ||
-            arbitrationResult.reason ||
-            "",
+        result,
+        reasoning,
         wasArbitrated: true,
     };
 }

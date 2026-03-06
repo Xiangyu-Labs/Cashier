@@ -28,7 +28,7 @@
 
 ---
 
-## 🟠 P1 - 架构问题（本周修复）- 进度: 69% (31/45)
+## 🟠 P1 - 架构问题（本周修复）- 进度: 80% (36/45)
 
 ### 代码重复
 
@@ -132,14 +132,21 @@
 - [x] **36. `otp-repository.ts:219行`** - `verifyOTPToken` 函数110行 ✅ 已修复
   - 拆分结果：`findOTPRecord()` (13行), `handleFailedVerification()` (47行), `markOTPAsVerified()` (10行), `verifyOTPToken()` (47行)
   - 提交：`3387a48`
-- [ ] **37. `execute` 函数 196行** - `parse-source-document.ts`
-- [ ] **38. `onComplete` 函数 135行** - `parse-source-document.ts`
-- [ ] **39. `runDualGptWithArbitration` 函数 83行** - `stage1-executor.ts`
-- [x] **40. `executeStage1` 函数 116行** - `stage1-executor.ts` ✅ 已修复
-  - 拆分结果：`runValidityTask()`, `runCompletenessTask()`, `runCurrencyTask()`, `runCategoryTask()`, `runTitleTask()`, `runUserRequirementsTask()`, `compileStage1Results()`
-  - 主函数从116行缩减至38行
-- [ ] **41. `executeStage2` 函数 96行** - `stage2-executor.ts`
-- [ ] **42. `recalculateEntriesConvertedAmount` 函数 75行** - `ledgers.ts`
+- [x] **37. `execute` 函数 196行** - `parse-source-document.ts` ✅ 已修复
+  - 拆分结果：`runStage0`, `runStage1`, `runStage1_5`, `runStage2`, `buildStage1Input`, `checkStage1Results`, `convertToParsedEntries`
+  - 主函数从196行缩减至45行（不含辅助函数）
+- [x] **38. `onComplete` 函数 135行** - `parse-source-document.ts` ✅ 已修复
+  - 实际 `onComplete` 只有11行，已委托给 `handleParseResult`，无需进一步拆分
+- [x] **39. `runDualGptWithArbitration` 函数 83行** - `dual-gpt-runner.ts` ✅ 已修复
+  - 拆分结果：`runDualGptCalls`, `runArbitration`, `buildArbitrationPrompt`
+  - 主函数从83行缩减至22行
+- [x] **40. `executeStage1` 函数 116行** - `stage1-executor.ts` ✅ 已修复（见批次13）
+- [x] **41. `executeStage2` 函数 96行** - `stage2-executor.ts` ✅ 已修复
+  - 拆分结果：`runDualParsingCalls`, `runStage2Arbitration`, `buildStage2ArbitrationPrompt`
+  - 主函数从96行缩减至28行
+- [x] **42. `recalculateEntriesConvertedAmount` 函数 75行** - `ledgers.ts` ✅ 已修复
+  - 拆分结果：`fetchEntriesForConversion`, `buildConversionItems`, `convertEntriesBatch`, `updateEntriesWithConversions`
+  - 主函数从75行缩减至28行
 - [x] **43. `submitCategorizeTasksForEntries` 函数 75行** - `categorize.ts` ✅ 已修复
   - 拆分结果：6个辅助函数 (`getPendingCategorizeTaskEntryIds`, `buildIndexedCategories`, `getLedgerAILanguage`, `submitSingleCategorizeTask`, `shouldSkipEntry`)
   - 提交：`d9aae8f`
@@ -363,7 +370,7 @@
 | 优先级 | 总数 | 已修复 | 进度 |
 |--------|------|--------|------|
 | P0 关键Bug | 8 | 8 | ✅ 100% |
-| P1 架构问题 | 45 | 31 | 69% |
+| P1 架构问题 | 45 | 36 | 80% |
 | P2 类型安全 | 33 | 22 | 67% |
 | P3 测试覆盖 | 26 | 0 | 0% |
 | P4 代码规范 | 22 | 5 | 23% |
@@ -507,9 +514,26 @@
 - `queries.ts`: `serializeEntryCategory`, `serializeLedgerEntryWithCategory`, `fetchEntriesWithCategories`, `serializeSourceDocumentFlat`
 - `quick-entry.ts`: `fetchCategoryName`, `convertEntryAmount`, `atomicInsertSourceAndEntry`
 
+### 批次 14 - 函数过长拆分 (P1) 低优先级
+
+| 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
+|---------|---------|---------|--------|------|
+| 37 | `parse-source-document.ts` | 拆分 execute (196行 → 7个Stage函数) | Claude | 2026-03-06 |
+| 38 | `parse-source-document.ts` | onComplete 已足够简洁 (11行，委托给handler) | Claude | 2026-03-06 |
+| 39 | `dual-gpt-runner.ts` | 拆分 runDualGptWithArbitration (83行 → 3个函数) | Claude | 2026-03-06 |
+| 41 | `stage2-executor.ts` | 拆分 executeStage2 (96行 → 3个函数) | Claude | 2026-03-06 |
+| 42 | `ledgers.ts` | 拆分 recalculateEntriesConvertedAmount (75行 → 4个函数) | Claude | 2026-03-06 |
+
+**拆分详情**:
+- `parse-source-document.ts`: `runStage0`, `runStage1`, `runStage1_5`, `runStage2`, `buildStage1Input`, `checkStage1Results`, `convertToParsedEntries`
+- `dual-gpt-runner.ts`: `runDualGptCalls`, `runArbitration`, `buildArbitrationPrompt`
+- `stage2-executor.ts`: `runDualParsingCalls`, `runStage2Arbitration`, `buildStage2ArbitrationPrompt`
+- `ledgers.ts`: `fetchEntriesForConversion`, `buildConversionItems`, `convertEntriesBatch`, `updateEntriesWithConversions`
+
 ---
 
 *最后更新: 2026-03-06*
+*批次14函数拆分完成: 2026-03-06*
 *P0 修复完成: 2026-03-05*
 *方案A 修复完成: 2026-03-06*
 *P1 安全修复完成: 2026-03-06*

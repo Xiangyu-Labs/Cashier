@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
+import type { AIContext } from "@/lib/flow/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";
 import {
@@ -14,6 +15,7 @@ import {
 // Import multi-stage executors
 import { executeStage0 } from "./stage0-vision";
 import { executeStage1, type Stage1Input } from "./stage1-executor";
+import type { Stage1Results } from "./types";
 import { executeStage1_5Validation } from "./stage1-5-validator";
 import { executeStage2 } from "./stage2-executor";
 
@@ -48,6 +50,263 @@ export interface ParseSourceDocumentOutput {
  * - Stage 1.5: Validation (veto power + consolidation)
  * - Stage 2: Detailed parsing (extract ledger entries)
  */
+// ============ Stage Handlers ============
+
+interface StageContext {
+    signal: AbortSignal;
+    ai: AIContext;
+    setProgress: (message: string) => Promise<void>;
+    docId: string;
+    ledgerId: string;
+    q: ReturnType<typeof forLedger>;
+}
+
+/**
+ * Run Stage 0: Vision Description
+ * Extracts text description from images if available
+ */
+async function runStage0(
+    input: ParseSourceDocumentInput,
+    ctx: StageContext
+): Promise<string | undefined> {
+    if (!input.imageUrls?.length) return undefined;
+
+    await ctx.setProgress('正在读取图片...');
+
+    if (ctx.signal.aborted) {
+        throw new Error('Task cancelled');
+    }
+
+    const stage0Result = await executeStage0({
+        imageUrls: input.imageUrls,
+        aiLanguage: input.aiLanguage,
+    }, ctx.ai);
+
+    if (stage0Result.description) {
+        // Store in metadata for debugging/retry reuse
+        const doc = await db.query.sourceDocuments.findFirst({
+            where: and(eq(sourceDocuments.id, ctx.docId), isNull(sourceDocuments.deletedAt)),
+        });
+        if (doc) {
+            await db.update(sourceDocuments)
+                .set({ metadata: { ...doc.metadata, visionDescription: stage0Result.description } })
+                .where(ctx.q.whereId(ctx.docId));
+        }
+        return stage0Result.description;
+    }
+
+    return undefined;
+}
+
+/**
+ * Build Stage 1 input from parse input
+ */
+function buildStage1Input(
+    input: ParseSourceDocumentInput,
+    visionDescription: string | undefined
+): Stage1Input {
+    return {
+        text: input.text,
+        imageUrls: input.imageUrls,
+        visionDescription,
+        aiLanguage: input.aiLanguage,
+        preferredCurrencies: input.preferredCurrencies,
+        categories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
+        aiCustomPrompt: input.settings.aiCustomPrompt,
+    };
+}
+
+/**
+ * Check Stage 1 results for various failure conditions
+ */
+function checkStage1Results(
+    stage1Result: Awaited<ReturnType<typeof executeStage1>>,
+    docId: string
+): ParseSourceDocumentOutput | null {
+    // Check validity from Stage 1
+    if (!stage1Result.isValid) {
+        logger.info({ docId }, "Stage 1: Document invalid");
+        return { ledgerEntries: [], verificationStatus: 'invalid' };
+    }
+
+    // Check completeness from Stage 1 - detect obvious missing content
+    if (stage1Result.isIncomplete) {
+        logger.info({
+            docId,
+            reason: stage1Result.incompleteReason,
+        }, "Stage 1: Document incomplete");
+        return {
+            ledgerEntries: [],
+            anomalyReason: stage1Result.incompleteReason || "内容不完整",
+            verificationStatus: 'anomaly'
+        };
+    }
+
+    // Check for unknown currency from Stage 1 - intercept early
+    const currencies = stage1Result.results.currency.currencies;
+    const hasUnknownCurrency = currencies.some(c =>
+        !c || c.toLowerCase() === 'unknown' || c.toLowerCase() === 'undefined'
+    );
+    if (hasUnknownCurrency) {
+        logger.info({ docId, currencies }, "Stage 1: Unknown currency detected");
+        return {
+            ledgerEntries: [],
+            anomalyReason: "无法识别货币类型",
+            verificationStatus: 'anomaly'
+        };
+    }
+
+    return null;
+}
+
+/**
+ * Run Stage 1: Pre-Analysis
+ */
+async function runStage1(
+    input: ParseSourceDocumentInput,
+    visionDescription: string | undefined,
+    ctx: StageContext
+): Promise<Stage1Results> {
+    await ctx.setProgress('正在分析单据信息...');
+
+    if (ctx.signal.aborted) {
+        throw new Error('Task cancelled');
+    }
+
+    const stage1Input = buildStage1Input(input, visionDescription);
+
+    let stage1Result;
+    try {
+        stage1Result = await executeStage1(stage1Input, ctx.ai, ctx.signal);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('ARBITRATION_FAILED')) {
+            logger.info({ docId: ctx.docId, error: error.message }, "Stage 1: Arbitration failed");
+            throw new Error('STAGE1_ANOMALY:预分析结果存在分歧');
+        }
+        throw error;
+    }
+
+    const failureResult = checkStage1Results(stage1Result, ctx.docId);
+    if (failureResult) {
+        // Use error to short-circuit execution
+        throw new Error(`STAGE1_RESULT:${JSON.stringify(failureResult)}`);
+    }
+
+    // At this point, stage1Result must have results (TypeScript doesn't know this)
+    const resultWithData = stage1Result as { isValid: true; isIncomplete: false; results: Stage1Results };
+
+    logger.info({
+        docId: ctx.docId,
+        currencies: resultWithData.results.currency.currencies,
+        categories: resultWithData.results.category.categories,
+    }, "Stage 1: Pre-analysis completed");
+
+    return resultWithData.results;
+}
+
+/**
+ * Run Stage 1.5: Validation
+ */
+async function runStage1_5(
+    input: ParseSourceDocumentInput,
+    visionDescription: string | undefined,
+    stage1Results: Stage1Results,
+    ctx: StageContext
+): Promise<Awaited<ReturnType<typeof executeStage1_5Validation>>> {
+    await ctx.setProgress('正在核对分析结果...');
+
+    if (ctx.signal.aborted) {
+        throw new Error('Task cancelled');
+    }
+
+    const validationResult = await executeStage1_5Validation({
+        text: input.text,
+        imageUrls: input.imageUrls,
+        visionDescription,
+        aiLanguage: input.aiLanguage,
+        stage1Results,
+    }, ctx.ai);
+
+    // Check if validation passed
+    if (!validationResult.is_reasonable) {
+        logger.info({
+            docId: ctx.docId,
+            reason: validationResult.rejection_reason
+        }, "Stage 1.5: Validation rejected");
+        throw new Error(`STAGE1_5_ANOMALY:${validationResult.rejection_reason || "预分析结果不合理"}`);
+    }
+
+    return validationResult;
+}
+
+/**
+ * Convert Stage 2 entries to ParsedLedgerEntry format
+ */
+function convertToParsedEntries(
+    entries: Array<{ item_name: string; amount: number; currency: string; category_index: number; notes: string | null }>
+): ParsedLedgerEntry[] {
+    return entries.map(entry => ({
+        itemName: entry.item_name,
+        amount: entry.amount,
+        currency: entry.currency,
+        categoryIndex: entry.category_index,
+        entryDate: null,  // Will be set from source document in onComplete
+        notes: entry.notes,
+    }));
+}
+
+/**
+ * Run Stage 2: Detailed Parsing
+ */
+async function runStage2(
+    input: ParseSourceDocumentInput,
+    visionDescription: string | undefined,
+    validationResult: Awaited<ReturnType<typeof executeStage1_5Validation>>,
+    ctx: StageContext
+): Promise<ParseSourceDocumentOutput> {
+    await ctx.setProgress('正在生成账单条目...');
+
+    if (ctx.signal.aborted) {
+        throw new Error('Task cancelled');
+    }
+
+    try {
+        const stage2Result = await executeStage2({
+            text: input.text,
+            imageUrls: input.imageUrls,
+            visionDescription,
+            aiLanguage: input.aiLanguage,
+            validationSummary: validationResult,
+            originalCategories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
+        }, ctx.ai);
+
+        const ledgerEntriesResult = convertToParsedEntries(stage2Result.entries);
+
+        logger.info({
+            docId: ctx.docId,
+            entryCount: ledgerEntriesResult.length,
+            wasArbitrated: stage2Result.wasArbitrated,
+        }, "Stage 2: Parsing completed");
+
+        return {
+            ledgerEntries: ledgerEntriesResult,
+            title: stage2Result.title,
+            verificationStatus: 'passed'
+        };
+    } catch (error) {
+        // Handle Stage 2 arbitration failure
+        if (error instanceof Error && error.message.includes('STAGE2_ARBITRATION_FAILED')) {
+            logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed");
+            return {
+                ledgerEntries: [],
+                anomalyReason: "解析结果存在分歧",
+                verificationStatus: 'anomaly'
+            };
+        }
+        throw error;
+    }
+}
+
 export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInput, ParseSourceDocumentOutput> = {
     async execute(input: ParseSourceDocumentInput, context: FlowContext): Promise<ParseSourceDocumentOutput> {
         const { signal, updateProgress, ai } = context;
@@ -65,183 +324,45 @@ export const parseSourceDocumentHandler: FlowTaskHandler<ParseSourceDocumentInpu
 
         const q = forLedger(sourceDocuments, ledgerId);
 
-        // Helper: Update progress in task_runs only
-        const setProgress = async (message: string) => {
-            await updateProgress(message);  // Flow Engine: task_runs.progress
-        };
-
         // Update status to processing
         await db.update(sourceDocuments)
             .set({ status: 'processing' })
             .where(q.whereId(input.sourceDocumentId));
 
-        // ===== Stage 0: Vision Description =====
-        let visionDescription: string | undefined;
-        if (input.imageUrls?.length) {
-            await setProgress('正在读取图片...');
-
-            if (signal.aborted) {
-                throw new Error('Task cancelled');
-            }
-
-            const stage0Result = await executeStage0({
-                imageUrls: input.imageUrls,
-                aiLanguage: input.aiLanguage,
-            }, ai);
-            if (stage0Result.description) {
-                visionDescription = stage0Result.description;
-                // Store in metadata for debugging/retry reuse
-                await db.update(sourceDocuments)
-                    .set({ metadata: { ...doc.metadata, visionDescription } })
-                    .where(q.whereId(input.sourceDocumentId));
-            }
-        }
-
-        // ===== Stage 1: Pre-Analysis =====
-        await setProgress('正在分析单据信息...');
-
-        if (signal.aborted) {
-            throw new Error('Task cancelled');
-        }
-
-        const stage1Input: Stage1Input = {
-            text: input.text,
-            imageUrls: input.imageUrls,
-            visionDescription,
-            aiLanguage: input.aiLanguage,
-            preferredCurrencies: input.preferredCurrencies,
-            categories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
-            aiCustomPrompt: input.settings.aiCustomPrompt,
+        const ctx: StageContext = {
+            signal,
+            ai,
+            setProgress: updateProgress,
+            docId: input.sourceDocumentId,
+            ledgerId,
+            q,
         };
 
-        let stage1Result;
         try {
-            stage1Result = await executeStage1(stage1Input, ai, signal);
+            // ===== Stage 0: Vision Description =====
+            const visionDescription = await runStage0(input, ctx);
+
+            // ===== Stage 1: Pre-Analysis =====
+            const stage1Results = await runStage1(input, visionDescription, ctx);
+
+            // ===== Stage 1.5: Validation =====
+            const validationResult = await runStage1_5(input, visionDescription, stage1Results, ctx);
+
+            // ===== Stage 2: Detailed Parsing =====
+            return await runStage2(input, visionDescription, validationResult, ctx);
+
         } catch (error) {
-            if (error instanceof Error && error.message.includes('ARBITRATION_FAILED')) {
-                logger.info({ docId: input.sourceDocumentId, error: error.message }, "Stage 1: Arbitration failed");
-                return { ledgerEntries: [], anomalyReason: "预分析结果存在分歧", verificationStatus: 'anomaly' };
-            }
-            throw error;
-        }
-
-        // Check validity from Stage 1
-        if (!stage1Result.isValid) {
-            logger.info({ docId: input.sourceDocumentId }, "Stage 1: Document invalid");
-            return { ledgerEntries: [], verificationStatus: 'invalid' };
-        }
-
-        // Check completeness from Stage 1 - detect obvious missing content
-        if (stage1Result.isIncomplete) {
-            logger.info({
-                docId: input.sourceDocumentId,
-                reason: stage1Result.incompleteReason,
-            }, "Stage 1: Document incomplete");
-            return {
-                ledgerEntries: [],
-                anomalyReason: stage1Result.incompleteReason || "内容不完整",
-                verificationStatus: 'anomaly'
-            };
-        }
-
-        // Check for unknown currency from Stage 1 - intercept early
-        const currencies = stage1Result.results.currency.currencies;
-        const hasUnknownCurrency = currencies.some(c =>
-            !c || c.toLowerCase() === 'unknown' || c.toLowerCase() === 'undefined'
-        );
-        if (hasUnknownCurrency) {
-            logger.info({
-                docId: input.sourceDocumentId,
-                currencies,
-            }, "Stage 1: Unknown currency detected");
-            return {
-                ledgerEntries: [],
-                anomalyReason: "无法识别货币类型",
-                verificationStatus: 'anomaly'
-            };
-        }
-
-        logger.info({
-            docId: input.sourceDocumentId,
-            currencies: stage1Result.results.currency.currencies,
-            categories: stage1Result.results.category.categories,
-        }, "Stage 1: Pre-analysis completed");
-
-        // ===== Stage 1.5: Validation =====
-        await setProgress('正在核对分析结果...');
-
-        if (signal.aborted) {
-            throw new Error('Task cancelled');
-        }
-
-        const validationResult = await executeStage1_5Validation({
-            text: input.text,
-            imageUrls: input.imageUrls,
-            visionDescription,
-            aiLanguage: input.aiLanguage,
-            stage1Results: stage1Result.results,
-        }, ai);
-
-        // Check if validation passed
-        if (!validationResult.is_reasonable) {
-            logger.info({
-                docId: input.sourceDocumentId,
-                reason: validationResult.rejection_reason
-            }, "Stage 1.5: Validation rejected");
-            return {
-                ledgerEntries: [],
-                anomalyReason: validationResult.rejection_reason || "预分析结果不合理",
-                verificationStatus: 'anomaly'
-            };
-        }
-
-        // ===== Stage 2: Detailed Parsing =====
-        await setProgress('正在生成账单条目...');
-
-        if (signal.aborted) {
-            throw new Error('Task cancelled');
-        }
-
-        try {
-            const stage2Result = await executeStage2({
-                text: input.text,
-                imageUrls: input.imageUrls,
-                visionDescription,
-                aiLanguage: input.aiLanguage,
-                validationSummary: validationResult,
-                originalCategories: input.categories.map(c => ({ name: c.name, description: c.description ?? null })),
-            }, ai);
-
-            // Convert Stage 2 entries to ParsedLedgerEntry format
-            const ledgerEntriesResult: ParsedLedgerEntry[] = stage2Result.entries.map(entry => ({
-                itemName: entry.item_name,
-                amount: entry.amount,
-                currency: entry.currency,
-                categoryIndex: entry.category_index,
-                entryDate: null,  // Will be set from source document in onComplete
-                notes: entry.notes,
-            }));
-
-            logger.info({
-                docId: input.sourceDocumentId,
-                entryCount: ledgerEntriesResult.length,
-                wasArbitrated: stage2Result.wasArbitrated,
-            }, "Stage 2: Parsing completed");
-
-            return {
-                ledgerEntries: ledgerEntriesResult,
-                title: stage2Result.title,
-                verificationStatus: 'passed'
-            };
-        } catch (error) {
-            // Handle Stage 2 arbitration failure
-            if (error instanceof Error && error.message.includes('STAGE2_ARBITRATION_FAILED')) {
-                logger.info({ docId: input.sourceDocumentId }, "Stage 2: Arbitration failed");
-                return {
-                    ledgerEntries: [],
-                    anomalyReason: "解析结果存在分歧",
-                    verificationStatus: 'anomaly'
-                };
+            // Handle stage result errors (special error format for early returns)
+            if (error instanceof Error) {
+                if (error.message.startsWith('STAGE1_RESULT:')) {
+                    return JSON.parse(error.message.slice('STAGE1_RESULT:'.length));
+                }
+                if (error.message.startsWith('STAGE1_ANOMALY:')) {
+                    return { ledgerEntries: [], anomalyReason: error.message.slice('STAGE1_ANOMALY:'.length), verificationStatus: 'anomaly' };
+                }
+                if (error.message.startsWith('STAGE1_5_ANOMALY:')) {
+                    return { ledgerEntries: [], anomalyReason: error.message.slice('STAGE1_5_ANOMALY:'.length), verificationStatus: 'anomaly' };
+                }
             }
             throw error;
         }

@@ -125,15 +125,98 @@ export async function updateLedgerAction(id: string, data: z.infer<typeof update
     return updatedLedger;
 }
 
-// Helper function to recalculate all entries' convertedAmount for a ledger
+// Helper types for recalculation
+interface ConversionItem {
+    amount: number;
+    from: string;
+    to: string;
+    date: string | undefined;
+}
+
+interface ConversionResult {
+    convertedAmount: number;
+    exchangeRate: number;
+}
+
+/**
+ * Fetch entries with source documents for conversion
+ */
+async function fetchEntriesForConversion(ledgerId: string) {
+    return db.query.ledgerEntries.findMany({
+        where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+        with: { sourceDocument: true },
+    });
+}
+
+/**
+ * Build conversion items from entries
+ */
+function buildConversionItems(
+    entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
+    mainCurrency: string
+): ConversionItem[] {
+    return entries.map(entry => ({
+        amount: Number(entry.amount),
+        from: entry.currency || "CNY",
+        to: mainCurrency,
+        date: entry.sourceDocument?.entryDate || undefined,
+    }));
+}
+
+/**
+ * Batch convert all entries
+ */
+async function convertEntriesBatch(
+    items: ConversionItem[],
+    mainCurrency: string,
+    ledgerId: string
+): Promise<ConversionResult[] | null> {
+    try {
+        return await ExchangeRateService.convertBatch(items, mainCurrency);
+    } catch (err) {
+        logger.error({ err, ledgerId }, "Failed to batch convert entries");
+        return null;
+    }
+}
+
+/**
+ * Update entries with converted amounts in transaction
+ */
+function updateEntriesWithConversions(
+    entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
+    results: ConversionResult[],
+    ledgerId: string,
+    taskKey: string,
+    version: number
+): void {
+    db.transaction((tx) => {
+        for (let i = 0; i < entries.length; i++) {
+            // Check version periodically (every 100 entries) to allow early abort
+            if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
+                logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
+                throw new Error('SUPERSEDED');
+            }
+
+            tx.update(ledgerEntries)
+                .set({
+                    convertedAmount: results[i].convertedAmount.toFixed(2),
+                    exchangeRate: results[i].exchangeRate.toFixed(6),
+                    updatedAt: new Date(),
+                })
+                .where(eq(ledgerEntries.id, entries[i].id))
+                .run();
+        }
+    });
+}
+
+/**
+ * Helper function to recalculate all entries' convertedAmount for a ledger
+ */
 async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency: string) {
     const taskKey = `recalculate:${ledgerId}`;
     const version = taskVersionManager.acquire(taskKey);
 
-    const entries = await db.query.ledgerEntries.findMany({
-        where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
-        with: { sourceDocument: true },
-    });
+    const entries = await fetchEntriesForConversion(ledgerId);
 
     if (entries.length === 0) {
         taskVersionManager.release(taskKey, version);
@@ -146,20 +229,10 @@ async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency:
         return;
     }
 
-    // Prepare items for batch conversion
-    const conversionItems = entries.map(entry => ({
-        amount: Number(entry.amount),
-        from: entry.currency || "CNY",
-        to: mainCurrency,
-        date: entry.sourceDocument?.entryDate || undefined,
-    }));
+    const conversionItems = buildConversionItems(entries, mainCurrency);
+    const results = await convertEntriesBatch(conversionItems, mainCurrency, ledgerId);
 
-    // Batch convert all entries (optimized: M DB queries for M unique dates)
-    let results: Array<{ convertedAmount: number; exchangeRate: number }>;
-    try {
-        results = await ExchangeRateService.convertBatch(conversionItems, mainCurrency);
-    } catch (err) {
-        logger.error({ err, ledgerId }, "Failed to batch convert entries");
+    if (!results) {
         taskVersionManager.release(taskKey, version);
         return;
     }
@@ -172,24 +245,7 @@ async function recalculateEntriesConvertedAmount(ledgerId: string, mainCurrency:
 
     // Batch update using transaction
     try {
-        db.transaction((tx) => {
-            for (let i = 0; i < entries.length; i++) {
-                // Check version periodically (every 100 entries) to allow early abort
-                if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
-                    logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
-                    throw new Error('SUPERSEDED');
-                }
-
-                tx.update(ledgerEntries)
-                    .set({
-                        convertedAmount: results[i].convertedAmount.toFixed(2),
-                        exchangeRate: results[i].exchangeRate.toFixed(6),
-                        updatedAt: new Date(),
-                    })
-                    .where(eq(ledgerEntries.id, entries[i].id))
-                    .run();
-            }
-        });
+        updateEntriesWithConversions(entries, results, ledgerId, taskKey, version);
 
         taskVersionManager.release(taskKey, version);
         logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
