@@ -47,6 +47,9 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         client: {
             token_endpoint_auth_method: "client_secret_post",
         },
+        // Force Auth.js to call userinfo endpoint instead of relying only on id_token
+        // Authelia returns complete user info (including email) from userinfo, not in id_token
+        idToken: false,
         profile(profile) {
             // Debug: log the full profile to see what Authelia returns
             console.log("[OIDC Profile] Authelia returned:", JSON.stringify(profile, null, 2));
