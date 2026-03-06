@@ -4,7 +4,7 @@
  * Helper functions for heatmap calculations and date handling.
  */
 
-import type { CalendarViewType } from '../../types';
+import type { CalendarViewType } from '../../../types';
 
 /**
  * Calculate date range based on view type and anchor date

@@ -81,11 +81,9 @@ export function useDetailsTabFilters({
 
       if (newStartStr !== currentStartStr || newEndStr !== currentEndStr) {
         onPeriodChange({
-          periodType: "custom",
-          year: newFilters.startDate?.getFullYear() || new Date().getFullYear(),
-          month: newFilters.startDate
-            ? newFilters.startDate.getMonth() + 1
-            : new Date().getMonth() + 1,
+          period: "custom",
+          startDate: newStartStr,
+          endDate: newEndStr,
         });
       }
 

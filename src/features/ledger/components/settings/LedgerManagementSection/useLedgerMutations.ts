@@ -5,7 +5,7 @@
  */
 
 import { useRouter } from "@/i18n/routing";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -25,11 +25,14 @@ interface UseLedgerMutationsOptions {
     onCreateSuccess?: () => void;
 }
 
+// Database Ledger type returned by createLedgerAction (with Date objects)
+type DbLedger = import("@/lib/db/schema").Ledger;
+
 interface UseLedgerMutationsResult {
-    deleteMutation: ReturnType<typeof useLedgerMutation>;
-    setPrimaryMutation: ReturnType<typeof useLedgerMutation>;
-    createMutation: ReturnType<typeof useLedgerMutation>;
-    renameMutation: ReturnType<typeof useLedgerMutation>;
+    deleteMutation: UseMutationResult<void, Error, string, unknown>;
+    setPrimaryMutation: UseMutationResult<void, Error, string, unknown>;
+    createMutation: UseMutationResult<DbLedger, Error, string, unknown>;
+    renameMutation: UseMutationResult<DbLedger, Error, { id: string; name: string }, unknown>;
     handleDeleteWithNavigation: (target: Ledger) => void;
 }
 

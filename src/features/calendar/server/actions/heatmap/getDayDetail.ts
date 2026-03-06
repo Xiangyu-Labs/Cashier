@@ -12,7 +12,7 @@ import { sourceDocuments } from '@/features/source-document/server/schema';
 import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { GetDayDetailSchema } from './schemas';
-import type { CalendarDayDetailResponse, CalendarDayDetailEntry } from '../../types';
+import type { CalendarDayDetailResponse, CalendarDayDetailEntry } from '../../../types';
 import type { z } from 'zod';
 
 export async function getCalendarDayDetail(

@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useCallback } from "react";
-import { SourceDocumentGroup } from "@/features/source-document/client/hooks/useSourceDocuments";
+import type { SourceDocumentGroup } from "@/lib/serialization";
 import type { Ledger } from "@/types/api";
 
 interface DateGroup {

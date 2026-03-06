@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
+export type ProcessingStatusType = "queued" | "processing" | "parsing" | "completed" | "error";
 
 interface ProcessingStatusProps {
     status: ProcessingStatusType;
@@ -27,7 +27,12 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
             colorClass: "text-primary/70",
             bgClass: "bg-primary/70",
         },
-
+        parsing: {
+            label: t("statusRunning"),
+            icon: Loader2,
+            colorClass: "text-primary/70",
+            bgClass: "bg-primary/70",
+        },
         completed: {
             label: t("statusCompleted"),
             icon: CheckCircle2,

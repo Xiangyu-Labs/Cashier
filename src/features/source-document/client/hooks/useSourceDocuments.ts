@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { getAllSourceDocumentsAction, type SourceDocumentWithEntries } from "@/features/source-document/server/actions";
+import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
+import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
 import { queryKeys } from '@/lib/query-keys';
 import { formatDateTimeForApi } from '@/lib/date-utils';
 import {
@@ -14,7 +15,7 @@ import {
 export type { SourceDocumentWithEntries };
 
 // Re-export types from grouping lib for backward compatibility
-export type { GroupedSourceDocuments };
+export type GroupedSourceDocumentsWithEntries = GroupedSourceDocuments<SourceDocumentWithEntries>;
 
 export interface SourceDocumentsStats {
     queuedCount: number;
@@ -53,7 +54,7 @@ function filterAndGroup(
     docs: SourceDocumentWithEntries[],
     minAmount?: number,
     maxAmount?: number
-): { groups: GroupedSourceDocuments; stats: SourceDocumentsStats } {
+): { groups: GroupedSourceDocuments<SourceDocumentWithEntries>; stats: SourceDocumentsStats } {
     // Apply amount filtering
     let filtered = docs;
     if (minAmount !== undefined || maxAmount !== undefined) {

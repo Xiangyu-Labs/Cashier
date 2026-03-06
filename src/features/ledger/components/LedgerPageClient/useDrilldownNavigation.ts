@@ -4,22 +4,22 @@
  * Handles drilldown navigation from stats to details tab with filters.
  */
 
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
+import type { PeriodParams } from "@/lib/period-utils";
+
+interface FiltersState {
+  categoryId: string | null;
+  currency: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+}
 
 interface UseDrilldownNavigationOptions {
   searchParams: URLSearchParams;
   pathname: string;
   setActiveTab: (tab: string) => void;
-  setAdvancedFilters: (filters: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  }) => void;
-  handlePeriodChange: (
-    period: { period: string; startDate: string; endDate: string },
-    options?: { skipUrlUpdate?: boolean }
-  ) => void;
+  setAdvancedFilters: Dispatch<SetStateAction<FiltersState>>;
+  handlePeriodChange: (period: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
 }
 
 interface UseDrilldownNavigationResult {
@@ -39,7 +39,7 @@ export function useDrilldownNavigation({
 }: UseDrilldownNavigationOptions): UseDrilldownNavigationResult {
   const handleCategoryDrilldown = useCallback(
     (categoryId: string, startDate: string, endDate: string) => {
-      setAdvancedFilters((prev) => ({
+      setAdvancedFilters((prev: FiltersState) => ({
         ...prev,
         categoryId: categoryId === "__uncategorized__" ? null : categoryId,
       }));
@@ -62,7 +62,7 @@ export function useDrilldownNavigation({
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
       if (filters) {
-        setAdvancedFilters((prev) => ({
+        setAdvancedFilters((prev: FiltersState) => ({
           ...prev,
           ...(filters.currency !== undefined && { currency: filters.currency }),
           ...(filters.categoryId !== undefined && { categoryId: filters.categoryId }),

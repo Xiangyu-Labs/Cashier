@@ -13,7 +13,7 @@ import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { GetCalendarHeatmapForRangeSchema } from './schemas';
 import { normalizeDate, calculateStats } from './utils';
-import type { CalendarHeatmapData, CalendarDayData } from '../../types';
+import type { CalendarHeatmapData, CalendarDayData } from '../../../types';
 import type { z } from 'zod';
 
 export async function getCalendarHeatmapForRange(

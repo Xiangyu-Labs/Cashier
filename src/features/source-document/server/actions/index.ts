@@ -1,17 +1,3 @@
-"use server";
-
-// Types
-export type {
-  SourceDocumentActionInput,
-  PendingSourceDocumentsResponse,
-  SourceDocumentWithEntries,
-  SerializedSourceDocument,
-  SerializedLedgerEntry,
-  SourceDocumentGroup,
-} from "./types";
-
-export { createQuickEntrySchema } from "./types";
-
 // Actions - CRUD
 export { createSourceDocumentAction } from "./create";
 export { retrySourceDocumentAction } from "./retry";

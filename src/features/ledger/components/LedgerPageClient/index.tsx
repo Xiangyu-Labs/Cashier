@@ -88,8 +88,16 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     handlePeriodChange,
   });
 
-  const handleAdvancedFiltersChange = useCallback((filters: typeof advancedFilters) => {
-    setAdvancedFilters(filters);
+  const handleAdvancedFiltersChange = useCallback((filters: {
+    categoryId?: string | null;
+    currency?: string | null;
+    minAmount?: number | null;
+    maxAmount?: number | null;
+  }) => {
+    setAdvancedFilters((prev) => ({
+      ...prev,
+      ...filters,
+    }));
   }, []);
 
   const [isInputOpen, setIsInputOpen] = useState(false);

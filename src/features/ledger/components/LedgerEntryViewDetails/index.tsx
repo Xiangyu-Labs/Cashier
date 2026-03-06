@@ -57,7 +57,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     () => ({
       itemName: pendingChanges.itemName ?? ledgerEntry.itemName,
       amount: pendingChanges.amount ?? parseFloat(ledgerEntry.amount),
-      currency: pendingChanges.currency ?? ledgerEntry.currency,
+      currency: pendingChanges.currency ?? ledgerEntry.currency ?? mainCurrency,
       categoryId: pendingChanges.categoryId !== undefined ? pendingChanges.categoryId : ledgerEntry.categoryId,
       description: pendingChanges.description !== undefined ? pendingChanges.description : ledgerEntry.description,
     }),
@@ -78,8 +78,9 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     entryDate || ledgerEntry.createdAt
   );
 
-  const isDifferentCurrency =
-    displayData.currency && displayData.currency !== mainCurrency && displayData.currency !== "unknown";
+  const isDifferentCurrency = Boolean(
+    displayData.currency && displayData.currency !== mainCurrency && displayData.currency !== "unknown"
+  );
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([
     displayData.description,

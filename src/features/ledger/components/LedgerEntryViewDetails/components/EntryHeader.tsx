@@ -22,7 +22,7 @@ interface EntryHeaderProps {
   mainCurrency: string;
   convertedAmount: number;
   isDifferentCurrency: boolean;
-  onFieldChange: (field: "itemName" | "amount" | "currency", value: unknown) => void;
+  onFieldChange: (field: "itemName" | "amount" | "currency", value: string | number | undefined) => void;
 }
 
 export function EntryHeader({

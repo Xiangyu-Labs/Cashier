@@ -65,6 +65,7 @@ export function TaskQueueContent({
   onDismiss,
   onDismissAll,
   onViewDetails,
+  onDeleteAllAnomaly,
 }: TaskQueueContentProps) {
   const t = useTranslations("TaskQueue");
 

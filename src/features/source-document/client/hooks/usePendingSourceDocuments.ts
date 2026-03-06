@@ -1,7 +1,7 @@
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getPendingSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { queryKeys } from '@/lib/query-keys';
-import { SourceDocumentGroup } from './useSourceDocuments';
+import type { SourceDocumentGroup } from '@/lib/serialization';
 
 export interface PendingSourceDocumentsResult {
     /** Documents waiting in queue */

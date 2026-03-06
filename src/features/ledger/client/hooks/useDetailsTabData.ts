@@ -24,7 +24,7 @@ export interface UseDetailsTabDataReturn {
     mainTotal: number;
     mainCurrency: string;
     hasMultipleCurrencies: boolean;
-    breakdown: { currency: string; amount: number }[];
+    breakdown: { currency: string; total: number; count: number }[];
   };
 
   // Filter key for query caching

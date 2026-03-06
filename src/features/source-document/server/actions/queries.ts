@@ -117,7 +117,7 @@ export async function getSourceDocumentsAction(
     }
 
     // Fetch ledger entries if requested
-    const entriesByDocId = new Map<string, SourceDocumentGroup['ledgerEntries']>();
+    const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
     if (params.includeLedgerEntries && resultItems.length > 0) {
         const docIds = resultItems.map(d => d.id);
         const qEntries = forLedger(ledgerEntries, ledgerId);
