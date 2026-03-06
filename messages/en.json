@@ -491,7 +491,15 @@
         "codeExpiredMessage": "Verification code has expired. Please request a new one.",
         "orContinueWith": "Or continue with",
         "signInWithSSO": "SSO",
-        "redirecting": "Redirecting..."
+        "redirecting": "Redirecting...",
+        "errorOAuthCallback": "Login Failed",
+        "errorOAuthCallbackDesc": "Unable to complete login. Please try again.",
+        "errorOAuthAccountNotLinked": "Account Not Linked",
+        "errorOAuthAccountNotLinkedDesc": "This account is not linked to your profile. Please sign in using your original method.",
+        "errorAccessDenied": "Access Denied",
+        "errorAccessDeniedDesc": "You don't have permission to sign in. Registration may be disabled.",
+        "errorConfiguration": "Configuration Error",
+        "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support."
     },
     "Devices": {
         "title": "Device Management",

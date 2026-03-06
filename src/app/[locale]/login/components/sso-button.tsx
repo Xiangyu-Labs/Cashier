@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
+import { Loader2 } from "lucide-react";
 
 interface SSOButtonProps {
     callbackUrl?: string;
@@ -10,8 +12,10 @@ interface SSOButtonProps {
 
 export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
     const t = useTranslations("Auth");
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     const handleSignIn = () => {
+        setIsRedirecting(true);
         signIn("oidc", { callbackUrl });
     };
 
@@ -23,8 +27,16 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
             variant="outline"
             className="w-full h-11"
             onClick={handleSignIn}
+            disabled={isRedirecting}
         >
-            {buttonName}
+            {isRedirecting ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("redirecting")}
+                </>
+            ) : (
+                buttonName
+            )}
         </Button>
     );
 }

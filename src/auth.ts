@@ -1,4 +1,4 @@
-import NextAuth, { type Session } from "next-auth";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { OAuthConfig } from "next-auth/providers/index";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
@@ -124,6 +124,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     where: and(eq(users.email, email.toLowerCase()), isNull(users.deletedAt)),
                 });
 
+                // Track if this is an existing user (for login notification)
+                const isExistingUser = !!user;
+
                 if (!user) {
                     const [newUser] = await db.insert(users).values({
                         email: email.toLowerCase(),
@@ -138,6 +141,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 // Delete the used OTP (one-time use)
                 await deleteOTPToken(email);
+
+                // Send login notification for existing users
+                if (isExistingUser && user.email) {
+                    const { sendLoginNotification } = await import(
+                        "@/features/auth/server/services/notifications"
+                    );
+                    await sendLoginNotification(user.email);
+                }
 
                 return {
                     id: user.id,
