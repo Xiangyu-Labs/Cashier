@@ -48,11 +48,17 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
             token_endpoint_auth_method: "client_secret_post",
         },
         profile(profile) {
+            // Debug: log the full profile to see what Authelia returns
+            console.log("[OIDC Profile] Authelia returned:", JSON.stringify(profile, null, 2));
+
             // Authelia may return email in different fields or not at all
             // Fallback chain: email -> preferred_username@authelia.local -> sub@authelia.local
             const email = profile.email
                 || (profile.preferred_username ? `${profile.preferred_username}@authelia.local` : null)
                 || `${profile.sub}@authelia.local`;
+
+            console.log("[OIDC Profile] Resolved email:", email);
+
             return {
                 id: profile.sub,
                 name: profile.name ?? profile.preferred_username ?? null,
