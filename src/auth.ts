@@ -39,6 +39,7 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         id: "oidc",
         name: process.env.OIDC_BUTTON_NAME || "SSO",
         type: "oidc",
+        issuer,
         wellKnown: `${issuer}/.well-known/openid-configuration`,
         clientId,
         clientSecret,
