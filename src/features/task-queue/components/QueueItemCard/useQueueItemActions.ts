@@ -7,7 +7,7 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { TASK_TYPE_I18N } from "./constants";
-import type { QueueItem, QueueItemStatus } from "../../types";
+import type { QueueItem } from "../../types";
 
 interface UseQueueItemActionsOptions {
   item: QueueItem;
@@ -51,7 +51,6 @@ export function useQueueItemActions({
   onViewDetails,
 }: UseQueueItemActionsOptions): UseQueueItemActionsResult {
   const t = useTranslations("TaskQueue");
-  const tCommon = useTranslations("Common");
 
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);

@@ -2,7 +2,6 @@
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
-import type { QueueItem } from "../types";
 
 interface TaskQueueDialogsProps {
   ledgerId: string;

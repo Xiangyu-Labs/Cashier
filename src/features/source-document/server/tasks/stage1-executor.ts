@@ -15,7 +15,7 @@
 
 import { parseJsonResponse } from "@/lib/ai/response-parser";
 import { runDualGptWithArbitration } from "@/lib/ai/dual-gpt-runner";
-import type { AIContext, AIModelTier } from "@/lib/flow/types";
+import type { AIContext } from "@/lib/flow/types";
 import type {
     ValidityCheckOutput,
     CompletenessCheckOutput,

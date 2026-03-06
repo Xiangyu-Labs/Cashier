@@ -23,7 +23,7 @@ interface OtpStepProps {
 }
 
 export function OtpStep({
-    email,
+    email: _email,
     otp,
     isLoading,
     error,

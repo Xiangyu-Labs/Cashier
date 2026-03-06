@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";

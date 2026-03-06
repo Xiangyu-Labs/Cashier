@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
@@ -95,8 +95,6 @@ export function useSourceDocuments(
 
     const startDate = formatDateTimeForApi(dateRange?.start) || null;
     const endDate = formatDateTimeForApi(dateRange?.end) || null;
-
-    const queryClient = useQueryClient();
 
     // Single query with flat cache structure
     // The 'all' key stores the raw flat array

@@ -23,7 +23,7 @@ import {
 } from "@/lib/mutations/use-ledger-mutation";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
-import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
+import type { EntryCategory, LedgerEntry } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 

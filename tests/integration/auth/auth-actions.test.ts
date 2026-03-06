@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { otpTokens, users } from "@/lib/db/schema";
+import { otpTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { memoryStore } from "@/lib/memory-store";
 
@@ -28,7 +28,6 @@ import { sendOTPAction, verifyOTPAction } from "@/features/auth/server/actions/a
 import { hashOTP } from "@/features/auth/server/services/otp";
 
 const TEST_EMAIL = "test@example.com";
-const OTP_LENGTH = 6;
 
 describe("Auth Actions - sendOTPAction", () => {
     beforeEach(async () => {

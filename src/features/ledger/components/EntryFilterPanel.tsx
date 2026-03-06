@@ -72,15 +72,6 @@ export function EntryFilterPanel({
         setTempPeriod(null);
     }, [filters, open]);
 
-    // Format date for input[type="date"]
-    const formatDateInput = (date?: Date) => {
-        if (!date) return "";
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, "0");
-        const d = String(date.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
-    };
-
     // Count advanced filters (category, currency, amount)
     const advancedFilterCount = [
         showCategory && filters.categoryId,

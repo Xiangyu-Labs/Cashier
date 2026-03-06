@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { startOfDay, endOfDay, isAfter, isBefore, format } from "date-fns";
+import { startOfDay, endOfDay, isBefore, format } from "date-fns";
 
 import { useTranslations, useFormatter } from "next-intl";
 

@@ -3,10 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
-import { type ReactNode, useState, useCallback, useMemo, memo } from "react";
+import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 import { AnimatePresence, motion } from "framer-motion";
 import { EditableField } from "@/components/ui/editable-field";
@@ -61,7 +60,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
       categoryId: pendingChanges.categoryId !== undefined ? pendingChanges.categoryId : ledgerEntry.categoryId,
       description: pendingChanges.description !== undefined ? pendingChanges.description : ledgerEntry.description,
     }),
-    [pendingChanges, ledgerEntry]
+    [pendingChanges, ledgerEntry, mainCurrency]
   );
 
   // Get entryDate from source document

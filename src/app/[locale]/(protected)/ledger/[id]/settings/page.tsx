@@ -3,7 +3,7 @@ import { SettingsPageClient } from "@/features/ledger/components/SettingsPageCli
 import { redirect } from "@/i18n/routing";
 import { db } from "@/lib/db";
 import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
-import { eq, desc, and, isNull, or, asc, sql } from "drizzle-orm";
+import { eq, and, isNull, or, asc, sql } from "drizzle-orm";
 import { serializeLedger, serializeEntryCategory } from "@/lib/serialization/utils";
 import type { EntryCategoryWithCount } from "@/types/api";
 

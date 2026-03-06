@@ -6,7 +6,6 @@
 
 import { useMemo, useCallback } from "react";
 import type { SourceDocumentGroup } from "@/lib/serialization";
-import type { Ledger } from "@/types/api";
 
 interface DateGroup {
     title: string;
@@ -25,7 +24,7 @@ interface UseGroupedEntriesOptions {
 export function useGroupedEntries({
     completedGroups,
     locale,
-    mainCurrency = 'CNY',
+    _mainCurrency = 'CNY',
     tDetails,
 }: UseGroupedEntriesOptions) {
     // Helper to get date string from source document

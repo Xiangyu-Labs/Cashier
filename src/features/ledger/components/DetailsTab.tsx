@@ -30,7 +30,7 @@ interface DetailsTabProps {
     ledger?: Ledger;
     periodParams: PeriodParams;
     onPeriodChange: (params: PeriodParams) => void;
-    onFiltersChange: (filters: EntryFilters) => void;
+    _onFiltersChange: (filters: EntryFilters) => void;
     advancedFilters: {
         categoryId?: string | null;
         currency?: string | null;
@@ -52,7 +52,7 @@ export function DetailsTab({
     ledger,
     periodParams,
     onPeriodChange,
-    onFiltersChange,
+    _onFiltersChange,
     advancedFilters,
     onAdvancedFiltersChange,
     monthStartDay = 1,
@@ -60,7 +60,7 @@ export function DetailsTab({
     const t = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
     const tFilter = useTranslations("EntryFilterPanel");
-    const locale = useLocale();
+    const _locale = useLocale();
     const queryClient = useQueryClient();
     const push = useModalStackStore((state) => state.push);
 

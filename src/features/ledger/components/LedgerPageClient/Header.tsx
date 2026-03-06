@@ -25,7 +25,7 @@ interface HeaderProps {
 }
 
 export function Header({ ledger, pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
-  const t = useTranslations("LedgerPage");
+  useTranslations("LedgerPage"); // Keep translation namespace registered
 
   return (
     <header className="bg-surface border-b border-border sticky top-0 z-50 backdrop-blur-md bg-surface/80 supports-[backdrop-filter]:bg-surface/60">

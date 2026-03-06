@@ -7,7 +7,6 @@ import {
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 describe("Calendar Heatmap Actions", () => {
   let testLedgerId: string;

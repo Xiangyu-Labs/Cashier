@@ -127,7 +127,7 @@ export interface HandleErrorParams {
 export async function handleParseError({
     ledgerId,
     sourceDocumentId,
-    error,
+    error: _error,
 }: HandleErrorParams): Promise<void> {
     if (!ledgerId) {
         return;

@@ -42,7 +42,6 @@ vi.mock("@/components/CategoryIcon", () => ({
 
 describe("EntryFilterPanel", () => {
   const mockOnFiltersChange = vi.fn();
-  const mockOnPeriodChange = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();

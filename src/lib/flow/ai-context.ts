@@ -1,6 +1,6 @@
 import { getOpenAIClient } from '@/features/ai/server/services/openai'
 import type { AIContext, AIGenerateOptions, AIResponse, AIModelTier, TokenUsage } from './types'
-import type { ChatCompletionMessageParam, ChatCompletionContentPart } from 'openai/resources/chat/completions'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { isValidJson, extractJson, buildRepairPrompt } from './json-utils'
 import { logger } from '@/lib/logger'
 

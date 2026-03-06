@@ -4,9 +4,9 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { forLedger } from "@/lib/db/scoped-query";
-import { parseDateRangeStart, parseDateRangeEnd, formatDateTimeForApi } from "@/lib/date-utils";
+import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 import { format } from "date-fns";
-import { desc, lte, gte, inArray, and, eq, isNull, or, lt, type SQL } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, or, lt, type SQL } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
@@ -23,7 +23,6 @@ import {
     groupPendingSourceDocuments,
     calculateSourceDocumentStats,
     calculatePendingTotal,
-    type SourceDocumentGroup,
 } from "@/features/source-document/lib/grouping";
 
 interface GetSourceDocumentsParams {

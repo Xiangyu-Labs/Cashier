@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import type { LedgerEntry } from "@/types/api";
-import type { EntryFilters } from "../../components/EntryFilterPanel";
 
 export interface UseDetailsTabStateReturn {
   // Delete confirmation

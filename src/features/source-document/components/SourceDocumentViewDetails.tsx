@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckSquare, X } from "lucide-react";
-import { parseDateString, formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import { Card } from "@/components/ui/card";
 import { ImageViewer } from "@/components/ui/image-viewer";

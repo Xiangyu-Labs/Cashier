@@ -10,7 +10,7 @@ import { Calendar, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 
 interface SourceDocumentActionsProps {
     isProcessing: boolean;
