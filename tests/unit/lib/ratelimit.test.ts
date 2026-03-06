@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  rateLimitShareAccess,
   rateLimitApiV1,
   rateLimit,
   RateLimitConfig,
@@ -13,82 +12,26 @@ describe('MemoryRateLimiter', () => {
     await memoryStore.flushall();
   });
 
-  describe('rateLimitShareAccess', () => {
-    it('should allow first 10 requests within 10 seconds', async () => {
-      const shareId = 'share123';
-      const ip = '192.168.1.1';
-
-      for (let i = 0; i < 10; i++) {
-        const result = await rateLimitShareAccess(shareId, ip);
-        expect(result.success).toBe(true);
-        expect(result.remaining).toBe(10 - i - 1);
-        expect(result.resetTime).toBeGreaterThan(Date.now());
-      }
-    });
-
-    it('should block 11th request', async () => {
-      const shareId = 'share123';
-      const ip = '192.168.1.1';
-
-      // Use up 10 requests
-      for (let i = 0; i < 10; i++) {
-        await rateLimitShareAccess(shareId, ip);
-      }
-
-      // 11th request should be blocked
-      const result = await rateLimitShareAccess(shareId, ip);
-      expect(result.success).toBe(false);
-      expect(result.remaining).toBe(0);
-      expect(result.resetTime).toBeGreaterThan(Date.now());
-    });
-
-    it('should isolate rate limits by shareId and IP', async () => {
-      const shareId1 = 'share123';
-      const shareId2 = 'share456';
-      const ip1 = '192.168.1.1';
-      const ip2 = '192.168.1.2';
-
-      // Use up share1 + ip1
-      for (let i = 0; i < 10; i++) {
-        await rateLimitShareAccess(shareId1, ip1);
-      }
-
-      // share1 + ip1 should be blocked
-      expect((await rateLimitShareAccess(shareId1, ip1)).success).toBe(false);
-
-      // share1 + ip2 should still work
-      expect((await rateLimitShareAccess(shareId1, ip2)).success).toBe(true);
-
-      // share2 + ip1 should still work
-      expect((await rateLimitShareAccess(shareId2, ip1)).success).toBe(true);
-    });
-
-    it('should use correct config (10 requests per 10 seconds)', async () => {
-      expect(RateLimitConfig.SHARE_ACCESS.limit).toBe(10);
-      expect(RateLimitConfig.SHARE_ACCESS.windowMs).toBe(10 * 1000);
-    });
-  });
-
   describe('rateLimitApiV1', () => {
-    it('should allow first 100 requests within 1 minute', async () => {
+    it('should allow first 20 requests within 1 minute', async () => {
       const apiKey = 'test-api-key-123';
 
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 20; i++) {
         const result = await rateLimitApiV1(apiKey);
         expect(result.success).toBe(true);
-        expect(result.remaining).toBe(100 - i - 1);
+        expect(result.remaining).toBe(20 - i - 1);
       }
     });
 
-    it('should block 101st request', async () => {
+    it('should block 21st request', async () => {
       const apiKey = 'test-api-key-123';
 
-      // Use up 100 requests
-      for (let i = 0; i < 100; i++) {
+      // Use up 20 requests
+      for (let i = 0; i < 20; i++) {
         await rateLimitApiV1(apiKey);
       }
 
-      // 101st request should be blocked
+      // 21st request should be blocked
       const result = await rateLimitApiV1(apiKey);
       expect(result.success).toBe(false);
       expect(result.remaining).toBe(0);
@@ -99,7 +42,7 @@ describe('MemoryRateLimiter', () => {
       const apiKey2 = 'key2';
 
       // Use up key1
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 20; i++) {
         await rateLimitApiV1(apiKey1);
       }
 
@@ -110,8 +53,8 @@ describe('MemoryRateLimiter', () => {
       expect((await rateLimitApiV1(apiKey2)).success).toBe(true);
     });
 
-    it('should use correct config (100 requests per minute)', async () => {
-      expect(RateLimitConfig.API_V1.limit).toBe(100);
+    it('should use correct config (20 requests per minute)', async () => {
+      expect(RateLimitConfig.API_V1.limit).toBe(20);
       expect(RateLimitConfig.API_V1.windowMs).toBe(60 * 1000);
     });
   });

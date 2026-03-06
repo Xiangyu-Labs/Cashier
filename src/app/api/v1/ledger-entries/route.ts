@@ -6,6 +6,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { eq, and, isNull } from "drizzle-orm";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
+import { rateLimitApiV1 } from "@/lib/ratelimit";
 
 const ledgerEntryInputSchema = z.object({
     text: z.string().optional(),
@@ -31,7 +32,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid Service Credential" }, { status: 401 });
     }
 
-    // 2. Parse Body
+    // 2. Rate Limiting (20 requests per minute per API key)
+    const rateLimitResult = await rateLimitApiV1(key);
+    if (!rateLimitResult.success) {
+        return NextResponse.json(
+            { error: "Rate limit exceeded", retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000) },
+            { status: 429 }
+        );
+    }
+
+    // 3. Parse Body
     let body;
     try {
         body = await request.json();

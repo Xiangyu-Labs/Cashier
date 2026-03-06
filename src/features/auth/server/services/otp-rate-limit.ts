@@ -8,7 +8,7 @@ const OTP_RESEND_PREFIX = "otp:resend:";
 const OTP_VERIFY_PREFIX = "otp:verify:";
 
 // Rate limits
-const SEND_MAX_ATTEMPTS = 3; // 3 sends per email
+const SEND_MAX_ATTEMPTS = 10; // 10 sends per email
 const SEND_WINDOW_SECONDS = 15 * 60; // 15 minutes
 const IP_MAX_ATTEMPTS = 10; // 10 sends per IP
 const IP_WINDOW_SECONDS = 60 * 60; // 1 hour
@@ -16,7 +16,7 @@ const VERIFY_MAX_ATTEMPTS = 10; // 10 verifies per IP per minute
 const VERIFY_WINDOW_SECONDS = 60; // 1 minute
 
 /**
- * Check if an email can send OTP (3 per 15 minutes)
+ * Check if an email can send OTP (10 per 15 minutes)
  * @param email - User email address
  * @returns Object with allowed status and retry info
  */

@@ -16,31 +16,25 @@ describe('OTP Rate Limiting', () => {
   });
 
   describe('checkSendRateLimit (per email)', () => {
-    it('should allow first 3 sends within 15 minutes', async () => {
+    it('should allow first 10 sends within 15 minutes', async () => {
       const email = 'test@example.com';
 
-      const result1 = await checkSendRateLimit(email);
-      expect(result1.allowed).toBe(true);
-      expect(result1.remainingAttempts).toBe(2);
-
-      const result2 = await checkSendRateLimit(email);
-      expect(result2.allowed).toBe(true);
-      expect(result2.remainingAttempts).toBe(1);
-
-      const result3 = await checkSendRateLimit(email);
-      expect(result3.allowed).toBe(true);
-      expect(result3.remainingAttempts).toBe(0);
+      for (let i = 0; i < 10; i++) {
+        const result = await checkSendRateLimit(email);
+        expect(result.allowed).toBe(true);
+        expect(result.remainingAttempts).toBe(10 - i - 1);
+      }
     });
 
-    it('should block 4th send and return retryAfter', async () => {
+    it('should block 11th send and return retryAfter', async () => {
       const email = 'test@example.com';
 
-      // Use up 3 attempts
-      await checkSendRateLimit(email);
-      await checkSendRateLimit(email);
-      await checkSendRateLimit(email);
+      // Use up 10 attempts
+      for (let i = 0; i < 10; i++) {
+        await checkSendRateLimit(email);
+      }
 
-      // 4th attempt should be blocked
+      // 11th attempt should be blocked
       const result = await checkSendRateLimit(email);
       expect(result.allowed).toBe(false);
       expect(result.remainingAttempts).toBe(0);
@@ -49,14 +43,19 @@ describe('OTP Rate Limiting', () => {
     });
 
     it('should be case-insensitive for email', async () => {
-      await checkSendRateLimit('Test@Example.COM');
-      await checkSendRateLimit('test@example.com');
-      await checkSendRateLimit('TEST@EXAMPLE.COM');
+      // Use up 9 attempts with different cases
+      for (let i = 0; i < 9; i++) {
+        await checkSendRateLimit(i % 2 === 0 ? 'Test@Example.COM' : 'TEST@EXAMPLE.COM');
+      }
 
-      // 4th attempt should be blocked (3 attempts already used)
-      const result = await checkSendRateLimit('test@example.com');
-      expect(result.allowed).toBe(false);
-      expect(result.remainingAttempts).toBe(0);
+      // 10th attempt with lowercase should still work
+      const result1 = await checkSendRateLimit('test@example.com');
+      expect(result1.allowed).toBe(true);
+
+      // 11th attempt should be blocked
+      const result2 = await checkSendRateLimit('test@example.com');
+      expect(result2.allowed).toBe(false);
+      expect(result2.remainingAttempts).toBe(0);
     });
 
     it('should fail open on error', async () => {
@@ -66,7 +65,7 @@ describe('OTP Rate Limiting', () => {
 
       const result = await checkSendRateLimit('test@example.com');
       expect(result.allowed).toBe(true);
-      expect(result.remainingAttempts).toBe(3); // Default max attempts
+      expect(result.remainingAttempts).toBe(10); // Default max attempts
 
       // Restore
       memoryStore.incr = originalIncr;
@@ -242,14 +241,14 @@ describe('OTP Rate Limiting', () => {
       const email2 = 'user2@example.com';
 
       // Use up email1's attempts
-      await checkSendRateLimit(email1);
-      await checkSendRateLimit(email1);
-      await checkSendRateLimit(email1);
+      for (let i = 0; i < 10; i++) {
+        await checkSendRateLimit(email1);
+      }
 
       // email2 should still have full attempts
       const result = await checkSendRateLimit(email2);
       expect(result.allowed).toBe(true);
-      expect(result.remainingAttempts).toBe(2);
+      expect(result.remainingAttempts).toBe(9);
     });
 
     it('should isolate rate limits between different IPs', async () => {

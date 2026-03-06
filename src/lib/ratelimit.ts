@@ -74,31 +74,12 @@ const rateLimiter = new MemoryRateLimiter();
  * Rate limit configurations for different endpoints
  */
 export const RateLimitConfig = {
-    // Share links: 10 requests per 10 seconds per IP
-    SHARE_ACCESS: {
-        limit: 10,
-        windowMs: 10 * 1000,
-    },
-    // API v1: 100 requests per minute per API key
+    // API v1: 20 requests per minute per API key
     API_V1: {
-        limit: 100,
+        limit: 20,
         windowMs: 60 * 1000,
     },
 } as const;
-
-/**
- * Apply rate limiting to a share access request
- * @param shareId - The share ID being accessed
- * @param ip - The IP address of the requester
- */
-export async function rateLimitShareAccess(shareId: string, ip: string) {
-    const key = `share_${shareId}_${ip}`;
-    return rateLimiter.limit(
-        key,
-        RateLimitConfig.SHARE_ACCESS.limit,
-        RateLimitConfig.SHARE_ACCESS.windowMs
-    );
-}
 
 /**
  * Apply rate limiting to an API v1 request
