@@ -50,6 +50,9 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         // Force Auth.js to call userinfo endpoint instead of relying only on id_token
         // Authelia returns complete user info (including email) from userinfo, not in id_token
         idToken: false,
+        // Allow linking OIDC account to existing user with same email
+        // Required when user previously signed up via OTP
+        allowDangerousEmailAccountLinking: true,
         profile(profile) {
             // Debug: log the full profile to see what Authelia returns
             console.log("[OIDC Profile] Authelia returned:", JSON.stringify(profile, null, 2));
@@ -167,6 +170,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     events: {
         async createUser({ user }) {
+            console.log("[Auth Event] createUser called with:", JSON.stringify(user, null, 2));
             // When a new user is created, auto-create their default ledger
             if (user.id) {
                 const { createDefaultLedgerForUser } = await import(
@@ -176,6 +180,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
         },
         async signIn({ user, isNewUser }) {
+            console.log("[Auth Event] signIn called, isNewUser:", isNewUser, "user:", JSON.stringify(user, null, 2));
             // Send login notification for existing users (not on first sign up)
             if (!isNewUser && user.email) {
                 const { sendLoginNotification } = await import(
