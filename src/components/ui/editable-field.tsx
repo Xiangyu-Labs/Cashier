@@ -40,7 +40,7 @@ export function EditableField({
 }: EditableFieldProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [localValue, setLocalValue] = useState(value);
-    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Sync local value when prop changes
@@ -68,15 +68,18 @@ export function EditableField({
 
     // Focus input and auto-resize textarea when entering edit mode
     useEffect(() => {
-        if (isEditing && inputRef.current) {
-            inputRef.current.focus();
-            if (inputRef.current instanceof HTMLInputElement) {
-                inputRef.current.select();
-            }
-        }
         if (isEditing && type === "textarea") {
-            // Small delay to ensure content is rendered
-            requestAnimationFrame(autoResizeTextarea);
+            const textarea = textareaRef.current;
+            if (textarea) {
+                textarea.focus();
+                requestAnimationFrame(autoResizeTextarea);
+            }
+        } else if (isEditing && type !== "textarea") {
+            const input = inputRef.current;
+            if (input) {
+                input.focus();
+                input.select();
+            }
         }
     }, [isEditing, type, autoResizeTextarea]);
 
@@ -139,7 +142,6 @@ export function EditableField({
     }
 
     if (isEditing) {
-        const InputComponent = type === "textarea" ? Textarea : Input;
         const isTextarea = type === "textarea";
 
         return (
@@ -148,39 +150,61 @@ export function EditableField({
                 onPointerDown={(e) => e.stopPropagation()}
             >
                 <div className="flex-1 min-w-0 relative">
-                    <InputComponent
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        // Type assertion needed because React's ref typing doesn't handle
-// conditional refs well. This is a known TypeScript limitation with union ref types.
-// The runtime behavior is correct - both refs point to valid HTML elements.
-ref={isTextarea ? textareaRef : inputRef as any}
-                        type={type === "number" ? "number" : "text"}
-                        value={localValue}
-                        onChange={(e) => setLocalValue(e.target.value)}
-                        onBlur={handleBlur}
-                        onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
-                        rows={isTextarea ? minRows : undefined}
-                        className={cn(
-                            // Remove default styling that causes shifts
-                            "border-0 bg-transparent shadow-none",
-                            "p-0 m-0 w-full",
-                            "focus-visible:ring-0 focus-visible:ring-offset-0",
-                            // Inherit typography from display mode
-                            "text-inherit font-inherit leading-inherit",
-                            // Compact height for non-textarea inputs
-                            !isTextarea && "h-auto px-1",
-                            // Textarea specific
-                            isTextarea && "resize-none overflow-hidden min-h-0",
-                            inputClassName
-                        )}
-                        style={{
-                            // Ensure font size matches display
-                            fontSize: "inherit",
-                            lineHeight: "inherit",
-                            fontWeight: "inherit",
-                        }}
-                    />
+                    {isTextarea ? (
+                        <Textarea
+                            ref={textareaRef}
+                            value={localValue}
+                            onChange={(e) => setLocalValue(e.target.value)}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            placeholder={placeholder}
+                            rows={minRows}
+                            className={cn(
+                                // Remove default styling that causes shifts
+                                "border-0 bg-transparent shadow-none",
+                                "p-0 m-0 w-full",
+                                "focus-visible:ring-0 focus-visible:ring-offset-0",
+                                // Inherit typography from display mode
+                                "text-inherit font-inherit leading-inherit",
+                                // Textarea specific
+                                "resize-none overflow-hidden min-h-0",
+                                inputClassName
+                            )}
+                            style={{
+                                // Ensure font size matches display
+                                fontSize: "inherit",
+                                lineHeight: "inherit",
+                                fontWeight: "inherit",
+                            }}
+                        />
+                    ) : (
+                        <Input
+                            ref={inputRef}
+                            type={type === "number" ? "number" : "text"}
+                            value={localValue}
+                            onChange={(e) => setLocalValue(e.target.value)}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            placeholder={placeholder}
+                            className={cn(
+                                // Remove default styling that causes shifts
+                                "border-0 bg-transparent shadow-none",
+                                "p-0 m-0 w-full",
+                                "focus-visible:ring-0 focus-visible:ring-offset-0",
+                                // Inherit typography from display mode
+                                "text-inherit font-inherit leading-inherit",
+                                // Compact height for non-textarea inputs
+                                "h-auto px-1",
+                                inputClassName
+                            )}
+                            style={{
+                                // Ensure font size matches display
+                                fontSize: "inherit",
+                                lineHeight: "inherit",
+                                fontWeight: "inherit",
+                            }}
+                        />
+                    )}
                 </div>
                 {!saveOnBlur && (
                     <div className="flex items-center gap-0.5 shrink-0 ml-1">

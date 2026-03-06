@@ -221,7 +221,7 @@
 - [x] **90. undefined as TContext** - `src/lib/mutations/use-ledger-mutation.ts:140` ✅ 已修复
   - 修复：添加设计说明注释解释类型断言的必要性
 - [x] **91. as any** - `editable-field.tsx:152` ✅ 已修复
-  - 修复：添加详细注释说明 React ref 类型限制
+  - 修复：重构为条件渲染模式，使用独立 ref (`inputRef`/`textareaRef`) 替代联合类型 ref，消除 `as any` 类型断言
 
 ---
 
