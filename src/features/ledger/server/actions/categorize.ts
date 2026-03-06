@@ -15,6 +15,131 @@ export interface CategorizeResult {
 }
 
 /**
+ * Get pending categorize task entry IDs for duplicate prevention
+ */
+async function getPendingCategorizeTaskEntryIds(): Promise<Set<string>> {
+    const pendingTasks = await db.query.taskRuns.findMany({
+        where: and(
+            eq(taskRuns.type, TASK_TYPE_CATEGORIZE_ENTRY),
+            inArray(taskRuns.status, ['pending', 'running'])
+        ),
+    });
+
+    const pendingEntryIds = new Set<string>();
+    for (const task of pendingTasks) {
+        try {
+            const input = task.input as CategorizeEntryInput;
+            if (input?.entryId) {
+                pendingEntryIds.add(input.entryId);
+            }
+        } catch {
+            // Skip malformed inputs
+        }
+    }
+
+    return pendingEntryIds;
+}
+
+/**
+ * Build indexed categories for AI categorization
+ */
+async function buildIndexedCategories(ledgerId: string): Promise<
+    Array<{ id: string; index: number; name: string; description: string | null }>
+> {
+    const categories = await db.query.entryCategories.findMany({
+        where: and(
+            eq(entryCategories.ledgerId, ledgerId),
+            isNull(entryCategories.deletedAt)
+        ),
+        orderBy: (cats, { asc }) => [asc(cats.sortOrder)],
+    });
+
+    if (categories.length === 0) {
+        throw new Error("No categories available");
+    }
+
+    return categories.map((c, index) => ({
+        id: c.id,
+        index: index + 1,
+        name: c.name,
+        description: c.description,
+    }));
+}
+
+/**
+ * Get AI language setting for a ledger
+ */
+async function getLedgerAILanguage(ledgerId: string): Promise<string> {
+    const ledger = await db.query.ledgers.findFirst({
+        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+    });
+    return ledger?.metadata?.settings?.aiLanguage || "zh-CN";
+}
+
+/**
+ * Submit a single categorize task for an entry
+ */
+async function submitSingleCategorizeTask(
+    entry: {
+        id: string;
+        itemName: string;
+        amount: string;
+        currency: string | null;
+        description: string | null;
+        sourceDocument?: {
+            entryDate: string | null;
+            text: string | null;
+            imageUrls: string[] | null;
+        } | null;
+    },
+    ledgerId: string,
+    categories: Array<{ id: string; index: number; name: string; description: string | null }>,
+    aiLanguage: string
+): Promise<void> {
+    const taskInput: CategorizeEntryInput = {
+        ledgerId,
+        entryId: entry.id,
+        itemName: entry.itemName,
+        amount: entry.amount,
+        currency: entry.currency ?? "CNY",
+        description: entry.description,
+        entryDate: entry.sourceDocument?.entryDate ?? formatDateTimeForApi(new Date()),
+        sourceDocumentText: entry.sourceDocument?.text || undefined,
+        sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
+        categories,
+        aiLanguage,
+    };
+
+    await flowEngine.submit(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
+        title: `Categorize: ${entry.itemName}`,
+        scopeId: ledgerId,
+        entityType: 'entry',
+        entityId: entry.id,
+    });
+}
+
+/**
+ * Check if entry should be skipped for categorization
+ */
+function shouldSkipEntry(
+    entry: {
+        id: string;
+        sourceDocument?: { type?: string | null } | null;
+    },
+    pendingEntryIds: Set<string>
+): boolean {
+    // Skip quick entries (manual type source documents) - user's explicit choice
+    if (entry.sourceDocument?.type === 'manual') {
+        return true;
+    }
+    // Skip entries with pending tasks (duplicate prevention)
+    if (pendingEntryIds.has(entry.id)) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * Shared internal function to submit categorization tasks for a set of entries.
  * Implements duplicate prevention by checking for pending/running tasks.
  */
@@ -39,92 +164,22 @@ async function submitCategorizeTasksForEntries(
         return { submittedCount: 0, skippedCount: 0 };
     }
 
-    // 1. Get pending/running tasks of type categorize_entry
-    const pendingTasks = await db.query.taskRuns.findMany({
-        where: and(
-            eq(taskRuns.type, TASK_TYPE_CATEGORIZE_ENTRY),
-            inArray(taskRuns.status, ['pending', 'running'])
-        ),
-    });
+    const [pendingEntryIds, indexedCategories, aiLanguage] = await Promise.all([
+        getPendingCategorizeTaskEntryIds(),
+        buildIndexedCategories(ledgerId),
+        getLedgerAILanguage(ledgerId),
+    ]);
 
-    // 2. Extract entryIds from pending task inputs
-    const pendingEntryIds = new Set<string>();
-    for (const task of pendingTasks) {
-        try {
-            const input = task.input as CategorizeEntryInput;
-            if (input?.entryId) {
-                pendingEntryIds.add(input.entryId);
-            }
-        } catch {
-            // Skip malformed inputs
-        }
-    }
-
-    // 3. Get categories for this ledger
-    const categories = await db.query.entryCategories.findMany({
-        where: and(
-            eq(entryCategories.ledgerId, ledgerId),
-            isNull(entryCategories.deletedAt)
-        ),
-        orderBy: (cats, { asc }) => [asc(cats.sortOrder)],
-    });
-
-    if (categories.length === 0) {
-        throw new Error("No categories available");
-    }
-
-    // 4. Get ledger settings for AI language (BUG FIX: was hardcoded in auto-categorize)
-    const ledger = await db.query.ledgers.findFirst({
-        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-    });
-    const aiLanguage = ledger?.metadata?.settings?.aiLanguage || "zh-CN";
-
-    // Build indexed categories for AI
-    const indexedCategories = categories.map((c, index) => ({
-        id: c.id,
-        index: index + 1,
-        name: c.name,
-        description: c.description,
-    }));
-
-    // 5. Filter entries without pending tasks and submit new tasks
     let submittedCount = 0;
     let skippedCount = 0;
 
     for (const entry of entries) {
-        // Skip quick entries (manual type source documents) - user's explicit choice
-        if (entry.sourceDocument?.type === 'manual') {
+        if (shouldSkipEntry(entry, pendingEntryIds)) {
             skippedCount++;
             continue;
         }
 
-        // Skip entries with pending tasks (duplicate prevention)
-        if (pendingEntryIds.has(entry.id)) {
-            skippedCount++;
-            continue;
-        }
-
-        const taskInput: CategorizeEntryInput = {
-            ledgerId,
-            entryId: entry.id,
-            itemName: entry.itemName,
-            amount: entry.amount,
-            currency: entry.currency ?? "CNY",
-            description: entry.description,
-            entryDate: entry.sourceDocument?.entryDate ?? formatDateTimeForApi(new Date()),
-            sourceDocumentText: entry.sourceDocument?.text || undefined,
-            sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
-            categories: indexedCategories,
-            aiLanguage,
-        };
-
-        await flowEngine.submit(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
-            title: `Categorize: ${entry.itemName}`,
-            scopeId: ledgerId,
-            entityType: 'entry',
-            entityId: entry.id,
-        });
-
+        await submitSingleCategorizeTask(entry, ledgerId, indexedCategories, aiLanguage);
         submittedCount++;
     }
 
