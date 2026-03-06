@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from "next/headers";
 import { Resend } from "resend";
 import { generateOTP, isValidOTPFormat } from "@/features/auth/server/services/otp";
 import { createOTPToken, verifyOTPToken } from "@/features/auth/server/repositories/otp-repository";
@@ -18,10 +19,19 @@ import { normalizeEmail } from "@/lib/utils/email";
 
 const resend = new Resend(process.env.AUTH_RESEND_KEY);
 
+// RFC 5321: Maximum email length is 254 characters (local part max 64 + @ + domain max 189)
+const MAX_EMAIL_LENGTH = 254;
+
 export async function sendOTPAction(email: string, _locale: string = "en") {
     try {
-        // Validate email format
+        // Validate email format and length
         if (!email || typeof email !== "string") {
+            return { success: false, error: "Invalid email address" };
+        }
+
+        // Check email length to prevent DoS attacks with超长 strings
+        if (email.length > MAX_EMAIL_LENGTH) {
+            logger.warn({ emailLength: email.length }, "Email too long, rejecting");
             return { success: false, error: "Invalid email address" };
         }
 
@@ -83,6 +93,7 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
             logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
         } else {
             try {
+                const headersList = await headers();
                 const host = headersList.get("host") || "localhost";
                 await resend.emails.send({
                     from: process.env.AUTH_EMAIL_FROM || "noreply@example.com",
@@ -153,29 +164,35 @@ export async function verifyOTPAction(email: string, otp: string) {
         const result = await verifyOTPToken(normalizedEmail, otp);
 
         if (!result.success) {
+            // Internal logging with detailed reason for debugging/auditing
+            // Do not expose detailed error reason to client to prevent user enumeration attacks
+            logger.warn({
+                email: normalizedEmail,
+                reason: result.reason,
+                attemptsRemaining: result.attemptsRemaining,
+            }, "OTP verification failed");
+
+            // Return unified error message to prevent information leakage
+            // Only expose: attemptsRemaining (for UI guidance) and lockedUntil (when locked)
             switch (result.reason) {
-                case "not_found":
-                    return { success: false, error: "No verification code found. Please request a new one." };
-                case "expired":
-                    return { success: false, error: "Verification code has expired. Please request a new one." };
                 case "locked":
                 case "max_attempts":
-                    const lockMinutes = result.lockedUntil
-                        ? Math.ceil((result.lockedUntil.getTime() - Date.now()) / 60000)
-                        : 15;
+                    // Account is locked - must inform user but with generic message
                     return {
                         success: false,
-                        error: `Too many failed attempts. Account locked for ${lockMinutes} minutes.`,
-                        lockedUntil: result.lockedUntil ? Math.floor(result.lockedUntil.getTime() / 1000) : undefined,
-                    };
-                case "invalid":
-                    return {
-                        success: false,
-                        error: "Invalid verification code. Please try again.",
-                        attemptsRemaining: result.attemptsRemaining,
+                        error: "Account temporarily locked due to too many failed attempts. Please try again later.",
+                        lockedUntil: result.lockedUntil
+                            ? Math.floor(result.lockedUntil.getTime() / 1000)
+                            : undefined,
                     };
                 default:
-                    return { success: false, error: "Verification failed. Please try again." };
+                    // Unified error for: not_found, expired, invalid
+                    // This prevents attackers from determining if an email is registered
+                    return {
+                        success: false,
+                        error: "Invalid or expired verification code. Please try again or request a new code.",
+                        attemptsRemaining: result.attemptsRemaining,
+                    };
             }
         }
 

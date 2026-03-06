@@ -137,6 +137,10 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         return await onOptimisticUpdate(queryClient, variables);
       }
 
+      // TContext is a generic type parameter. When onOptimisticUpdate is not provided,
+      // we return undefined which is a valid value for any type in this context.
+      // This cast is safe because the calling code expects undefined when no
+      // optimistic update is configured.
       return undefined as TContext;
     },
 

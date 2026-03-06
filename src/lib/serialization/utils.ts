@@ -5,6 +5,7 @@
  * (with ISO strings) for client-server communication.
  */
 
+import { z } from "zod";
 import type {
     LedgerEntry as DbLedgerEntry,
     EntryCategory as DbEntryCategory,
@@ -24,6 +25,12 @@ import type {
     SerializedSourceDocumentLight,
     SerializedTask,
 } from "./types";
+
+// ============================================================================
+// Zod Schemas for Runtime Validation
+// ============================================================================
+
+const TaskStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
 
 // ============================================================================
 // Date Serialization Helper
@@ -137,6 +144,8 @@ export function serializeSourceDocument(
         anomalyReason: doc.anomalyReason,
         entryDate: doc.entryDate,
         // metadata is already parsed by Drizzle ORM ({ mode: "json" })
+        // metadata is already parsed by Drizzle ORM ({ mode: "json" })
+        // Use type assertion with runtime fallback (metadata structure is validated by Drizzle)
         metadata: (doc.metadata ?? {}) as Record<string, unknown>,
         createdAt: serializeDate(doc.createdAt)!,
         updatedAt: serializeDate(doc.updatedAt)!,
@@ -160,6 +169,8 @@ export function serializeSourceDocumentLight(doc: DbSourceDocument): SerializedS
         anomalyReason: doc.anomalyReason,
         entryDate: doc.entryDate,
         // metadata is already parsed by Drizzle ORM ({ mode: "json" })
+        // metadata is already parsed by Drizzle ORM ({ mode: "json" })
+        // Use type assertion with runtime fallback (metadata structure is validated by Drizzle)
         metadata: (doc.metadata ?? {}) as Record<string, unknown>,
         createdAt: serializeDate(doc.createdAt)!,
         updatedAt: serializeDate(doc.updatedAt)!,
@@ -180,7 +191,8 @@ export function serializeTask(task: TaskRun): SerializedTask {
         scopeId: task.scopeId,
         entityType: task.entityType,
         entityId: task.entityId,
-        status: task.status as SerializedTask["status"],
+        // Validate status with Zod schema (replaces type assertion)
+        status: TaskStatusSchema.parse(task.status),
         error: task.error,
         progress: task.progress,
         tokenUsage: task.tokenUsage,

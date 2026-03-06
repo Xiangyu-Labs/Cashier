@@ -8,11 +8,12 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getHeatmapColor } from '../../lib/heatmap-colors';
+import type { HeatmapLevel } from '../../types';
 import { formatAmount } from '../../lib/date-utils';
 
 interface DayCellProps {
   date: string;
-  level: number;
+  level: HeatmapLevel;
   amount: number;
   count: number;
   isInYear: boolean;
@@ -40,7 +41,7 @@ export function DayCell({ date, level, amount, count, isInYear, onClick }: DayCe
         style={{
           backgroundColor: level === 0
             ? 'var(--muted)'
-            : getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5),
+            : getHeatmapColor(level),
         }}
         title={tooltipText}
       />

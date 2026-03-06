@@ -4,7 +4,21 @@ import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import { z } from "zod";
 import type { QueueItem, QueueItemStatus } from "../../types/queue-item";
+
+// Zod schemas for runtime validation
+const QueueItemStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'anomaly']);
+
+const TokenUsageSchema = z.object({
+    total: z.object({
+        input: z.number().optional(),
+        output: z.number().optional(),
+    }).optional(),
+}).catchall(z.object({
+    input: z.number().optional(),
+    output: z.number().optional(),
+}).optional());
 
 /**
  * Stats for the task queue
@@ -33,25 +47,35 @@ export interface TaskQueueResult {
 
 /**
  * Extract sourceDocumentId from task input
+ * Uses type guard pattern for safe property access
  */
 function getSourceDocumentIdFromInput(input: unknown): string | undefined {
-    if (typeof input === 'object' && input !== null && 'sourceDocumentId' in input) {
-        const id = (input as { sourceDocumentId?: string }).sourceDocumentId;
-        return id ?? undefined;
+    if (typeof input !== 'object' || input === null) {
+        return undefined;
+    }
+    // Safe cast to Record for property access with type guard
+    const obj = input as Record<string, unknown>;
+    if ('sourceDocumentId' in obj && typeof obj.sourceDocumentId === 'string') {
+        return obj.sourceDocumentId;
     }
     return undefined;
 }
 
 /**
  * Convert a TaskRun to a QueueItem
+ * Validates status with Zod schema for runtime type safety
  */
 function taskRunToQueueItem(task: TaskRun): QueueItem {
     const sourceDocumentId = getSourceDocumentIdFromInput(task.input);
 
+    // Validate status with Zod (replaces type assertion)
+    const parsedStatus = QueueItemStatusSchema.safeParse(task.status);
+    const status: QueueItemStatus = parsedStatus.success ? parsedStatus.data : 'failed';
+
     return {
         id: task.id,
         kind: 'task',
-        status: task.status as QueueItemStatus,
+        status,
         title: task.title,
         subtitle: task.error ?? undefined,
         progress: task.progress ?? undefined,
@@ -158,13 +182,14 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
 
     for (const task of allCompletedTasks) {
         if (task.tokenUsage) {
-            const u = task.tokenUsage as {
-                total?: { input?: number; output?: number };
-                [model: string]: { input?: number; output?: number } | undefined
-            };
-            const total = u.total || { input: 0, output: 0 };
-            totalInputTokens += total.input || 0;
-            totalOutputTokens += total.output || 0;
+            // Validate tokenUsage with Zod schema (replaces type assertion)
+            const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
+            if (parsed.success) {
+                const u = parsed.data;
+                const total = u.total || { input: 0, output: 0 };
+                totalInputTokens += total.input || 0;
+                totalOutputTokens += total.output || 0;
+            }
         }
     }
 

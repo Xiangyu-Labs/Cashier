@@ -24,7 +24,7 @@ export default function OTPEmail({
     return (
         <Html>
             <Head />
-            <Preview>Your verification code is {otp}</Preview>
+            <Preview>Your verification code is ready</Preview>
             <Body style={main}>
                 <Container style={container}>
                     <Heading style={h1}>Sign in to {host}</Heading>

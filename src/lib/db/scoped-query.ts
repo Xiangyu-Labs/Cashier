@@ -11,6 +11,14 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
          * 生成标准的 WHERE 条件 (租户隔离 + 软删除)
          * - automatically checks ledgerId
          * - automatically checks deletedAt is null (if exists)
+         *
+         * Type assertion explanation:
+         * Drizzle ORM's SQLiteTable type doesn't expose column types for dynamic property access.
+         * The table columns exist as runtime properties, but TypeScript can't infer them generically.
+         * We assert to Record<string, SQL> to access ledgerId, deletedAt, etc. dynamically.
+         *
+         * Safety: All tables using this helper have ledgerId and deletedAt columns by convention.
+         * The forLedger function is only called with tables that follow this schema pattern.
          */
         get whereActive() {
             const t = table as unknown as Record<string, SQL>;

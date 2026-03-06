@@ -7,13 +7,13 @@
 import { useMemo } from 'react';
 import { getHeatmapLevel } from '../../lib/heatmap-colors';
 import { formatDate } from '../../lib/date-utils';
-import type { CalendarHeatmapData, CalendarDayData } from '../../types';
+import type { CalendarHeatmapData, CalendarDayData, HeatmapLevel } from '../../types';
 
 interface DayCellData {
   date: string;
   amount: number;
   count: number;
-  level: number;
+  level: HeatmapLevel;
   isInYear: boolean;
 }
 

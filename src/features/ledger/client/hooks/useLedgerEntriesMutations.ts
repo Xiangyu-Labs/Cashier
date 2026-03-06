@@ -17,6 +17,9 @@ import {
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
+// Type alias for query data to avoid inline type assertions
+type SourceDocumentsQueryData = SourceDocumentWithEntries[] | undefined;
+
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
     const tCommon = useTranslations("Common");
     const t = useTranslations("LedgerEntriesTab");
@@ -35,7 +38,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData(
                 { queryKey: listKey },
-                (old: SourceDocumentWithEntries[] | undefined) => {
+                (old: SourceDocumentsQueryData) => {
                     if (!old) return [];
                     return old.map((doc) => {
                         const updatedEntries = doc.ledgerEntries?.map((e) => {
@@ -67,7 +70,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData(
                 { queryKey: listKey },
-                (old: SourceDocumentWithEntries[] | undefined) => {
+                (old: SourceDocumentsQueryData) => {
                     if (!old) return [];
                     return old.map((doc) => {
                         const filteredEntries = doc.ledgerEntries?.filter(
@@ -91,7 +94,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData(
                 { queryKey: listKey },
-                (old: SourceDocumentWithEntries[] | undefined) => old?.filter(d => d.id !== id) ?? []
+                (old: SourceDocumentsQueryData) => old?.filter(d => d.id !== id) ?? []
             );
 
             return { snapshots };
@@ -107,7 +110,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData(
                 { queryKey: listKey },
-                (old: SourceDocumentWithEntries[] | undefined) => old?.filter(d => !ids.includes(d.id)) ?? []
+                (old: SourceDocumentsQueryData) => old?.filter(d => !ids.includes(d.id)) ?? []
             );
 
             return { snapshots };

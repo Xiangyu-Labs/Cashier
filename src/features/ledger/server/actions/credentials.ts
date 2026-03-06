@@ -13,6 +13,17 @@ const createCredentialSchema = z.object({
 
 import { forLedger } from "@/lib/db/scoped-query";
 
+// Serialized service credential type for API response
+interface SerializedServiceCredential {
+    id: string;
+    ledgerId: string;
+    name: string;
+    key: string;
+    createdAt: string;
+    deletedAt: string | null;
+    lastUsedAt: string | null;
+}
+
 export async function getServiceCredentialsAction(ledgerId: string) {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
@@ -23,7 +34,7 @@ export async function getServiceCredentialsAction(ledgerId: string) {
         orderBy: [desc(serviceCredentials.createdAt)],
     });
 
-    return credentials.map(c => ({
+    return credentials.map((c): SerializedServiceCredential => ({
         ...c,
         createdAt: c.createdAt.toISOString(),
         deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,

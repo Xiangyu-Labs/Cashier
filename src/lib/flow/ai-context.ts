@@ -19,6 +19,8 @@ export function createAIContext(
             const client = getOpenAIClient()
 
             // Convert messages to OpenAI format
+            // Type assertion needed because OpenAI's ChatCompletionMessageParam is more permissive
+            // than our AIMessage type, but we guarantee compatibility through runtime structure
             const messages = options.messages.map(msg => ({
                 role: msg.role,
                 content: typeof msg.content === 'string'
@@ -27,8 +29,12 @@ export function createAIContext(
                         if (part.type === 'text') {
                             return { type: 'text' as const, text: part.text }
                         }
-                        return { type: 'image_url' as const, image_url: part.image_url }
-                    }) as ChatCompletionContentPart[],
+                        // Safely construct image_url part with proper type assertion
+                        return {
+                            type: 'image_url' as const,
+                            image_url: { url: part.image_url.url }
+                        }
+                    }),
             })) as ChatCompletionMessageParam[]
 
             // Guard: text tier must not receive image content

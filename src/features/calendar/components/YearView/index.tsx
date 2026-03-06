@@ -15,7 +15,7 @@ import {
 import { formatAmount } from '../../lib/date-utils';
 import { useYearData } from './useYearData';
 import { DayCell } from './DayCell';
-import type { CalendarHeatmapData } from '../../types';
+import type { CalendarHeatmapData, HeatmapLevel } from '../../types';
 
 interface YearViewProps {
   anchorDate: string;
@@ -95,16 +95,16 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Less</span>
           <div className="flex gap-[2px]">
-            {[0, 1, 2, 3, 4, 5].map((level) => (
+            {([0, 1, 2, 3, 4, 5] as HeatmapLevel[]).map((level) => (
               <div
                 key={level}
                 className="w-3 h-3 rounded-sm flex-shrink-0"
                 style={{
                   backgroundColor: level === 0
                     ? 'var(--muted)'
-                    : getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5)
+                    : getHeatmapColor(level)
                 }}
-                title={getHeatmapLabel(level as 0 | 1 | 2 | 3 | 4 | 5)}
+                title={getHeatmapLabel(level)}
               />
             ))}
           </div>

@@ -8,12 +8,13 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getHeatmapColor, formatCellAmount } from '../../lib/heatmap-colors';
+import type { HeatmapLevel } from '../../types';
 
 interface DayCellSmallProps {
   date: string;
   amount: number;
   count: number;
-  level: number;
+  level: HeatmapLevel;
   onClick?: () => void;
 }
 
@@ -31,7 +32,7 @@ export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSma
           'hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary'
         )}
         style={{
-          backgroundColor: getHeatmapColor(level as 0 | 1 | 2 | 3 | 4 | 5),
+          backgroundColor: getHeatmapColor(level),
         }}
       />
 

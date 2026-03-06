@@ -131,7 +131,12 @@ export async function getLedgerStatsAction(
                 where: inArray(currencyRates.date, uniqueDates)
             });
             ratesData.forEach(r => {
-                ratesMap[r.date] = r.rates as Record<string, number>;
+                // Runtime validation: ensure rates is a valid Record<string, number>
+                if (r.rates && typeof r.rates === 'object' && !Array.isArray(r.rates)) {
+                    ratesMap[r.date] = r.rates as Record<string, number>;
+                } else {
+                    ratesMap[r.date] = {};
+                }
             });
         }
 

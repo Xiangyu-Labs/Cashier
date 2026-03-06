@@ -4,6 +4,18 @@ import { db } from "@/lib/db";
 import { taskRuns, type TaskRun } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import { z } from "zod";
+
+// Zod schema for tokenUsage validation (replaces type assertion)
+const TokenUsageSchema = z.object({
+    total: z.object({
+        input: z.number().optional(),
+        output: z.number().optional(),
+    }).optional(),
+}).catchall(z.object({
+    input: z.number().optional(),
+    output: z.number().optional(),
+}).optional());
 
 export async function getProcessingTasksAction(ledgerId: string, params: {
     activeOnly?: boolean;
@@ -58,12 +70,15 @@ export async function getProcessingStatsAction(ledgerId: string) {
 
     for (const task of tasks) {
         if (task.tokenUsage) {
-            // tokenUsage is jsonb with per-model breakdown and 'total' key
-            const u = task.tokenUsage as { total?: { input?: number; output?: number };[model: string]: { input?: number; output?: number } | undefined };
-            const total = u.total || { input: 0, output: 0 };
-            totalInputTokens += total.input || 0;
-            totalOutputTokens += total.output || 0;
-            totalTokens += (total.input || 0) + (total.output || 0);
+            // Validate tokenUsage with Zod schema (replaces type assertion)
+            const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
+            if (parsed.success) {
+                const u = parsed.data;
+                const total = u.total || { input: 0, output: 0 };
+                totalInputTokens += total.input || 0;
+                totalOutputTokens += total.output || 0;
+                totalTokens += (total.input || 0) + (total.output || 0);
+            }
         }
     }
 

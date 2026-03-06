@@ -150,7 +150,10 @@ export function EditableField({
                 <div className="flex-1 min-w-0 relative">
                     <InputComponent
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        ref={isTextarea ? textareaRef : inputRef as any}
+                        // Type assertion needed because React's ref typing doesn't handle
+// conditional refs well. This is a known TypeScript limitation with union ref types.
+// The runtime behavior is correct - both refs point to valid HTML elements.
+ref={isTextarea ? textareaRef : inputRef as any}
                         type={type === "number" ? "number" : "text"}
                         value={localValue}
                         onChange={(e) => setLocalValue(e.target.value)}

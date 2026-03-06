@@ -32,8 +32,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null;
                 }
 
-                const email = credentials.email as string;
-                const otp = credentials.otp as string;
+                // Type guard: ensure credentials are strings before using
+                if (typeof credentials.email !== 'string' || typeof credentials.otp !== 'string') {
+                    return null;
+                }
+
+                const email = credentials.email;
+                const otp = credentials.otp;
 
                 // Verify OTP (defense in depth - already verified in API)
                 const result = await verifyOTPToken(email, otp);

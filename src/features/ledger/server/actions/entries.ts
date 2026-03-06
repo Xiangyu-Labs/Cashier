@@ -93,7 +93,18 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     const validated = updateLedgerEntrySchema.parse(data);
     const q = forLedger(ledgerEntries, ledgerId);
 
-    const updateData: Record<string, unknown> = {};
+    // Use precise type for update data instead of Record<string, unknown>
+    // This ensures type safety for database update operations
+    const updateData: Partial<{
+        categoryId: string | null;
+        amount: string;
+        currency: string | null;
+        itemName: string;
+        description: string | null;
+        updatedAt: Date;
+        convertedAmount: string;
+        exchangeRate: string;
+    }> = {};
     if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
     if (validated.amount !== undefined) updateData.amount = validated.amount.toFixed(2);
     if (validated.currency !== undefined) updateData.currency = validated.currency;
@@ -184,6 +195,9 @@ export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEnt
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
+    // Build update data dynamically from external input
+    // Record<string, unknown> is appropriate here because data comes from external API
+    // and Drizzle's set() accepts Record<string, unknown> for partial updates
     const updateData: Record<string, unknown> = {};
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.currency !== undefined) updateData.currency = data.currency;
