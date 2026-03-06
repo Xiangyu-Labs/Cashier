@@ -39,6 +39,90 @@ export async function createOTPToken(
 }
 
 /**
+ * Find OTP record by email
+ */
+async function findOTPRecord(email: string) {
+  const normalizedEmail = email.toLowerCase();
+  const [record] = await db
+    .select()
+    .from(otpTokens)
+    .where(eq(otpTokens.email, normalizedEmail))
+    .limit(1);
+  return record;
+}
+
+/**
+ * Handle failed OTP verification - increment attempts and lock if necessary
+ */
+async function handleFailedVerification(
+  email: string,
+  currentAttempts: number
+): Promise<{
+  success: false;
+  reason: "invalid" | "max_attempts";
+  attemptsRemaining: number;
+  lockedUntil?: Date;
+}> {
+  const normalizedEmail = email.toLowerCase();
+  const newAttempts = currentAttempts + 1;
+  const maxAttempts = getMaxAttempts();
+
+  if (newAttempts >= maxAttempts) {
+    const lockedUntil = getLockoutExpiration();
+    await db
+      .update(otpTokens)
+      .set({
+        attempts: newAttempts,
+        lastAttemptAt: new Date(),
+        lockedUntil,
+      })
+      .where(eq(otpTokens.email, normalizedEmail));
+
+    logger.warn(
+      { email: normalizedEmail, attempts: newAttempts, lockedUntil },
+      "Account locked due to too many failed attempts"
+    );
+
+    return {
+      success: false,
+      reason: "max_attempts",
+      attemptsRemaining: 0,
+      lockedUntil,
+    };
+  }
+
+  await db
+    .update(otpTokens)
+    .set({
+      attempts: newAttempts,
+      lastAttemptAt: new Date(),
+    })
+    .where(eq(otpTokens.email, normalizedEmail));
+
+  logger.warn(
+    { email: normalizedEmail, attempts: newAttempts },
+    "Invalid OTP provided"
+  );
+
+  return {
+    success: false,
+    reason: "invalid",
+    attemptsRemaining: maxAttempts - newAttempts,
+  };
+}
+
+/**
+ * Mark OTP as verified
+ */
+async function markOTPAsVerified(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+  await db
+    .update(otpTokens)
+    .set({ verifiedAt: new Date() })
+    .where(eq(otpTokens.email, normalizedEmail));
+}
+
+/**
  * Verify an OTP token
  * Returns verification result and updates attempt counter
  */
@@ -54,19 +138,12 @@ export async function verifyOTPToken(
   try {
     const normalizedEmail = email.toLowerCase();
 
-    // Find the OTP record
-    const [record] = await db
-      .select()
-      .from(otpTokens)
-      .where(eq(otpTokens.email, normalizedEmail))
-      .limit(1);
-
+    const record = await findOTPRecord(normalizedEmail);
     if (!record) {
       logger.warn({ email: normalizedEmail }, "OTP token not found");
       return { success: false, reason: "not_found" };
     }
 
-    // Check if account is locked
     if (record.lockedUntil && record.lockedUntil > new Date()) {
       logger.warn({ email: normalizedEmail, lockedUntil: record.lockedUntil }, "Account is locked");
       return {
@@ -76,74 +153,18 @@ export async function verifyOTPToken(
       };
     }
 
-    // Check if OTP has expired
     if (record.expires < new Date()) {
       logger.warn({ email: normalizedEmail }, "OTP has expired");
       return { success: false, reason: "expired" };
     }
 
-    // Verify the OTP
     const isValid = verifyOTP(otp, record.tokenHash);
 
     if (!isValid) {
-      // Increment attempts
-      const newAttempts = record.attempts + 1;
-      const maxAttempts = getMaxAttempts();
-
-      if (newAttempts >= maxAttempts) {
-        // Lock the account
-        const lockedUntil = getLockoutExpiration();
-        await db
-          .update(otpTokens)
-          .set({
-            attempts: newAttempts,
-            lastAttemptAt: new Date(),
-            lockedUntil,
-          })
-          .where(eq(otpTokens.email, normalizedEmail));
-
-        logger.warn(
-          { email: normalizedEmail, attempts: newAttempts, lockedUntil },
-          "Account locked due to too many failed attempts"
-        );
-
-        return {
-          success: false,
-          reason: "max_attempts",
-          attemptsRemaining: 0,
-          lockedUntil,
-        };
-      }
-
-      // Update attempts without locking
-      await db
-        .update(otpTokens)
-        .set({
-          attempts: newAttempts,
-          lastAttemptAt: new Date(),
-        })
-        .where(eq(otpTokens.email, normalizedEmail));
-
-      logger.warn(
-        { email: normalizedEmail, attempts: newAttempts },
-        "Invalid OTP provided"
-      );
-
-      return {
-        success: false,
-        reason: "invalid",
-        attemptsRemaining: maxAttempts - newAttempts,
-      };
+      return await handleFailedVerification(normalizedEmail, record.attempts);
     }
 
-    // Valid OTP - mark as verified
-    await db
-      .update(otpTokens)
-      .set({
-        verifiedAt: new Date(),
-      })
-      .where(eq(otpTokens.email, normalizedEmail));
-
+    await markOTPAsVerified(normalizedEmail);
     logger.info({ email: normalizedEmail }, "OTP verified successfully");
 
     return { success: true };
