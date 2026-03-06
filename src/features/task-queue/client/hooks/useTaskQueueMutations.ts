@@ -14,7 +14,7 @@ import {
 import {
     dismissTaskAction,
     batchDismissTasksAction,
-} from "@/features/tasks/server/actions/dismiss-task";
+} from "@/features/task-queue/server/actions/dismiss-task";
 import {
     cancelTaskAction,
     batchCancelTasksAction,

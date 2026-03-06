@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import {
     dismissTaskAction,
     batchDismissTasksAction,
-} from "@/features/tasks/server/actions/dismiss-task";
+} from "@/features/task-queue/server/actions/dismiss-task";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";

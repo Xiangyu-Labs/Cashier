@@ -92,7 +92,7 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
 
     // Cancel any pending/running background tasks for this category
     const { flowEngine } = await import("@/lib/flow");
-    const { taskRuns } = await import("@/features/tasks/server/schema");
+    const { taskRuns } = await import("@/features/task-queue/server/schema");
 
     const pendingTasks = await db
         .select({ id: taskRuns.id })

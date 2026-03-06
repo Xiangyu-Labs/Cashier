@@ -10,7 +10,8 @@ import {
 import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
-import { verifyOTPToken, deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { findOTPRecord, verifyOTPWithPolicy } from "@/features/auth/server/services/otp-verification";
 
 // Inline helper: Check if registration is allowed (simplified architecture)
 async function isRegistrationAllowed(email: string): Promise<boolean> {
@@ -52,7 +53,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 const otp = credentials.otp;
 
                 // Verify OTP (defense in depth - already verified in API)
-                const result = await verifyOTPToken(email, otp);
+                const record = await findOTPRecord(email);
+                if (!record) {
+                    return null;
+                }
+                const result = await verifyOTPWithPolicy(email, otp, record);
                 if (!result.success) {
                     return null;
                 }

@@ -15,7 +15,7 @@ import type {
 import type {
     SourceDocument as DbSourceDocument,
 } from "@/features/source-document/server/schema";
-import type { TaskRun } from "@/features/tasks/server/schema";
+import type { TaskRun } from "@/features/task-queue/server/schema";
 import type {
     SerializedLedgerEntry,
     SerializedEntryCategory,

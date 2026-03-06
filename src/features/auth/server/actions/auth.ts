@@ -3,7 +3,8 @@
 import { headers } from "next/headers";
 import { Resend } from "resend";
 import { generateOTP, isValidOTPFormat } from "@/features/auth/server/services/otp";
-import { createOTPToken, verifyOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { createOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { findOTPRecord, verifyOTPWithPolicy } from "@/features/auth/server/services/otp-verification";
 import {
     checkSendRateLimit,
     checkSendRateLimitByIP,
@@ -160,8 +161,18 @@ export async function verifyOTPAction(email: string, otp: string) {
             return { success: false, error: "Too many verification attempts. Please try again later." };
         }
 
-        // Verify the OTP
-        const result = await verifyOTPToken(normalizedEmail, otp);
+        // Find OTP record first (data access layer)
+        const record = await findOTPRecord(normalizedEmail);
+        if (!record) {
+            logger.warn({ email: normalizedEmail }, "OTP token not found");
+            return {
+                success: false,
+                error: "Invalid or expired verification code. Please try again or request a new code.",
+            };
+        }
+
+        // Verify the OTP with business logic (service layer)
+        const result = await verifyOTPWithPolicy(normalizedEmail, otp, record);
 
         if (!result.success) {
             // Internal logging with detailed reason for debugging/auditing

@@ -5,7 +5,7 @@ import {
   type ServiceCredential as DbServiceCredential
 } from "@/features/ledger/server/schema";
 import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
-import { type TaskRun as DbTaskRun } from "@/features/tasks/server/schema";
+import { type TaskRun as DbTaskRun } from "@/features/task-queue/server/schema";
 import { type User as DbUser } from "@/features/auth/server/schema";
 import { type CurrencyRate as DbCurrencyRate } from "@/features/currency/server/schema";
 import { Serialized } from "./utils";

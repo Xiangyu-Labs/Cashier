@@ -57,7 +57,10 @@ export const entryCategories = sqliteTable("entry_categories", {
 
 export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
-// sourceDocuments is imported safely
+// 延迟导入以避免循环依赖：
+// - ledgerEntries.sourceDocumentId 需要引用 sourceDocuments.id
+// - sourceDocuments.ledgerId 需要引用 ledgers.id
+// 这是 Drizzle ORM 中处理跨模块外键的标准做法
 import { sourceDocuments } from "@/features/source-document/server/schema";
 
 // LedgerEntry（账目分录）

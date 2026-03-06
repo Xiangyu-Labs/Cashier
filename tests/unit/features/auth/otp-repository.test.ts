@@ -2,14 +2,26 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../../setup";
 import {
   createOTPToken,
-  verifyOTPToken,
-  isAccountLocked,
   deleteOTPToken,
   cleanupExpiredOTPTokens,
 } from "@/features/auth/server/repositories/otp-repository";
+import {
+  findOTPRecord,
+  verifyOTPWithPolicy,
+  isAccountLocked,
+} from "@/features/auth/server/services/otp-verification";
 import { generateOTP, hashOTP } from "@/features/auth/server/services/otp";
 import { otpTokens } from "@/features/auth/server/schema";
 import { eq } from "drizzle-orm";
+
+// Helper function for tests - combines data access and business logic
+async function verifyOTPToken(email: string, otp: string) {
+  const record = await findOTPRecord(email);
+  if (!record) {
+    return { success: false, reason: "not_found" as const };
+  }
+  return verifyOTPWithPolicy(email, otp, record);
+}
 
 describe("OTP Repository", () => {
   const testEmail = "otp-test@example.com";
