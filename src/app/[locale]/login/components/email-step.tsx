@@ -75,7 +75,7 @@ export function EmailStep({
 function SSOSection() {
     const t = useTranslations("Auth");
 
-    // Check if OIDC/SSO is enabled (set in window.__ENV__ or build-time)
+    // Check if OIDC/SSO is enabled (build-time env var)
     const isSSOEnabled = process.env.NEXT_PUBLIC_OIDC_ENABLED === "true";
 
     if (!isSSOEnabled) {

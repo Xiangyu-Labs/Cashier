@@ -3,7 +3,12 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        - NEXT_PUBLIC_OIDC_ENABLED=${NEXT_PUBLIC_OIDC_ENABLED:-false}
+        - NEXT_PUBLIC_OIDC_BUTTON_NAME=${NEXT_PUBLIC_OIDC_BUTTON_NAME:-SSO}
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
     restart: always
     ports:
       - "3000:3000"
