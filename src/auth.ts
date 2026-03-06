@@ -1,5 +1,6 @@
 import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import type { OAuthConfig } from "next-auth/providers/index";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import {
@@ -12,6 +13,54 @@ import { eq, and, isNull } from "drizzle-orm";
 import { authConfig } from "./auth.config";
 import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import { findOTPRecord, verifyOTPWithPolicy } from "@/features/auth/server/services/otp-verification";
+
+// ==========================================
+// Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
+// ==========================================
+interface OIDCProfile {
+    sub: string;
+    name?: string;
+    preferred_username?: string;
+    email?: string;
+    picture?: string;
+}
+
+const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
+    const issuer = process.env.OIDC_ISSUER;
+    const clientId = process.env.OIDC_CLIENT_ID;
+    const clientSecret = process.env.OIDC_CLIENT_SECRET;
+
+    // Only configure if all env vars are present
+    if (!issuer || !clientId || !clientSecret) {
+        return null;
+    }
+
+    return {
+        id: "oidc",
+        name: process.env.OIDC_BUTTON_NAME || "SSO",
+        type: "oauth",
+        wellKnown: `${issuer}/.well-known/openid-configuration`,
+        authorization: {
+            url: `${issuer}/api/oidc/authorization`,
+            params: {
+                scope: "openid email profile",
+            },
+        },
+        token: `${issuer}/api/oidc/token`,
+        userinfo: `${issuer}/api/oidc/userinfo`,
+        clientId,
+        clientSecret,
+        checks: ["pkce", "state"],
+        profile(profile) {
+            return {
+                id: profile.sub,
+                name: profile.name ?? profile.preferred_username ?? null,
+                email: profile.email ?? null,
+                image: profile.picture ?? null,
+            };
+        },
+    };
+})();
 
 // Inline helper: Check if registration is allowed (simplified architecture)
 async function isRegistrationAllowed(email: string): Promise<boolean> {
@@ -32,6 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         verificationTokensTable: verificationTokens,
     }),
     providers: [
+        ...(OIDCProvider ? [OIDCProvider] : []),
         Credentials({
             id: "otp",
             name: "OTP",

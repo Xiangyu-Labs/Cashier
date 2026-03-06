@@ -488,7 +488,10 @@
         "invalidCode": "Please enter a valid 6-digit code",
         "verifyFailed": "Invalid verification code",
         "resendFailed": "Failed to resend verification code",
-        "codeExpiredMessage": "Verification code has expired. Please request a new one."
+        "codeExpiredMessage": "Verification code has expired. Please request a new one.",
+        "orContinueWith": "Or continue with",
+        "signInWithSSO": "SSO",
+        "redirecting": "Redirecting..."
     },
     "Devices": {
         "title": "Device Management",
