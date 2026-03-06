@@ -5,7 +5,7 @@
  */
 
 import { Clock, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
-import type { QueueItemStatus } from "../../types/queue-item";
+import type { QueueItemStatus } from "../../types";
 
 interface StatusIconProps {
   status: QueueItemStatus;

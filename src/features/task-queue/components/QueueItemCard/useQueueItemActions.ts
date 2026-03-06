@@ -7,7 +7,7 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { TASK_TYPE_I18N } from "./constants";
-import type { QueueItem, QueueItemStatus } from "../../types/queue-item";
+import type { QueueItem, QueueItemStatus } from "../../types";
 
 interface UseQueueItemActionsOptions {
   item: QueueItem;

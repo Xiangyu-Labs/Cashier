@@ -7,7 +7,7 @@ import { invalidateLedgerCache } from "@/lib/query-keys";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useTaskQueue } from "./useTaskQueue";
 import { useTaskQueueMutations } from "./useTaskQueueMutations";
-import type { QueueItem } from "../../types/queue-item";
+import type { QueueItem } from "../../types";
 
 export interface UseTaskQueueModalReturn {
   // State

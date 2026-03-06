@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { TaskGroupSection } from "./TaskGroupSection";
 import { QueueItemCard } from "./QueueItemCard";
 import { Button } from "@/components/ui/button";
-import type { QueueItem } from "../types/queue-item";
+import type { QueueItem } from "../types";
 
 interface TaskQueueContentProps {
   ledgerId: string;

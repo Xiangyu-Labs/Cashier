@@ -5,7 +5,7 @@ import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-import type { QueueItem, QueueItemStatus } from "../../types/queue-item";
+import type { QueueItem, QueueItemStatus } from "../../types";
 
 // Zod schemas for runtime validation
 const QueueItemStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'anomaly']);

@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import type { QueueItem } from "../../types/queue-item";
+import type { QueueItem } from "../../types";
 import { SourceDocumentPreview } from "../SourceDocumentPreview";
 import { StatusIcon } from "./StatusIcon";
 import { statusStyles } from "./constants";

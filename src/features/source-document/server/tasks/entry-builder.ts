@@ -1,7 +1,7 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { logger } from "@/lib/logger";
-import type { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
+import type { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/types";
 
 export interface EntryToInsert {
     ledgerId: string;

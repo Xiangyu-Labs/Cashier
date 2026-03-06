@@ -2,7 +2,7 @@ import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/server/types";
+import { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/types";
 import type { AIContext } from "@/lib/flow/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";

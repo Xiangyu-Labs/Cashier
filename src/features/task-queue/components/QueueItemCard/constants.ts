@@ -4,7 +4,7 @@
  * Shared constants for queue item card styling and behavior.
  */
 
-import type { QueueItemStatus } from "../../types/queue-item";
+import type { QueueItemStatus } from "../../types";
 
 // Task type to i18n key mapping for unified display names
 export const TASK_TYPE_I18N: Record<string, string> = {
