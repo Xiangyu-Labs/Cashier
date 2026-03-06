@@ -8,7 +8,7 @@ interface SSOButtonProps {
     callbackUrl?: string;
 }
 
-export function SSOButton({ callbackUrl = "/ledger" }: SSOButtonProps) {
+export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
     const t = useTranslations("Auth");
 
     const handleSignIn = () => {
