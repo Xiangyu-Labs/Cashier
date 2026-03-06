@@ -144,8 +144,10 @@
 
 ### 架构设计问题
 
-- [ ] **48. 服务层未被使用** - `src/features/ledger/server/services/` 定义的函数未被 Actions 调用
-  - 建议：让 Actions 调用 Services，或移除 Services 层
+- [x] **48. 服务层未被使用** - `src/features/ledger/server/services/` 定义的函数未被 Actions 调用 ✅ 已修复
+  - 修复：删除 Services 层，数据访问逻辑内联到 Server Components
+  - 删除文件：`ledgers.ts`, `categories.ts`, `rate-limit.ts`, `registration.ts`
+  - 提交：`7ddd0f4`
 
 - [ ] **49. Repository 模式使用不一致** - `registration.ts` 和 `user-setup.ts` 直接操作数据库
 - [ ] **50. otp-repository.ts 包含业务逻辑** - `verifyOTPToken` 包含尝试次数限制、锁定策略（应在 Service 层）
@@ -347,7 +349,7 @@
 | 优先级 | 总数 | 已修复 | 进度 |
 |--------|------|--------|------|
 | P0 关键Bug | 8 | 2 | 25% |
-| P1 架构问题 | 45 | 23 | 51% |
+| P1 架构问题 | 45 | 24 | 53% |
 | P2 类型安全 | 33 | 22 | 67% |
 | P3 测试覆盖 | 26 | 0 | 0% |
 | P4 代码规范 | 22 | 5 | 23% |
@@ -449,6 +451,17 @@
 | 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
 |---------|---------|---------|--------|------|
 | | | | | |
+
+### 批次 11 - 架构简化 (P1)
+
+| 问题编号 | 文件路径 | 修复内容 | 修复人 | 日期 |
+|---------|---------|---------|--------|------|
+| 48 | `src/features/ledger/server/services/*` | 删除 Services 层，数据访问内联到 page.tsx | Claude | 2026-03-06 |
+| | `src/features/auth/server/services/*` | 删除未使用的 rate-limit.ts 和 registration.ts | Claude | 2026-03-06 |
+| | `src/auth.ts` | 内联 isRegistrationAllowed 函数 | Claude | 2026-03-06 |
+| | 删除测试文件 | `rate-limit.test.ts`, `registration.test.ts` | Claude | 2026-03-06 |
+
+**提交**: `7ddd0f4` refactor: 简化架构 - 删除无用的 Services 层
 
 ---
 
