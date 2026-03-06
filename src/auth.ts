@@ -48,10 +48,13 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
             token_endpoint_auth_method: "client_secret_post",
         },
         profile(profile) {
+            // Authelia may return email in different fields or not at all
+            // Fallback to preferred_username with a default domain if no email
+            const email = profile.email || (profile.preferred_username ? `${profile.preferred_username}@authelia.local` : null);
             return {
                 id: profile.sub,
                 name: profile.name ?? profile.preferred_username ?? null,
-                email: profile.email ?? null,
+                email,
                 image: profile.picture ?? null,
             };
         },
