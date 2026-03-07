@@ -41,21 +41,25 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
 
     const queryClient = useQueryClient();
 
-    // Local state for input fields (for controlled inputs during editing)
-    const [localAiPrompt, setLocalAiPrompt] = useState(ledger.metadata?.settings?.aiCustomPrompt || "");
-
     const handleRefresh = async () => {
         await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     };
 
-    // Use extracted hooks
+    // Use extracted hooks - ledger is reactive and will update with optimistic updates
     const {
+        ledger: reactiveLedger,
         categories,
         uncategorizedCount,
         credentials,
         updateLedgerMutation,
         isPending,
     } = useLedgerSettings({ ledgerId, ledger, initialCategories });
+
+    // Use reactive ledger for settings that need optimistic updates
+    const settingsLedger = reactiveLedger || ledger;
+
+    // Local state for input fields (for controlled inputs during editing)
+    const [localAiPrompt, setLocalAiPrompt] = useState(settingsLedger.metadata?.settings?.aiCustomPrompt || "");
 
     const {
         createCategory,
@@ -142,7 +146,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
                             </div>
                             <Switch
-                                checked={ledger.metadata?.settings?.collapseBillsDefault || false}
+                                checked={settingsLedger.metadata?.settings?.collapseBillsDefault || false}
                                 onCheckedChange={(checked: boolean) => {
                                     updateLedgerMutation.mutate({ collapseBillsDefault: checked });
                                 }}
@@ -159,7 +163,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 <p className="text-sm text-[var(--muted)]">{t('showMonthlyExpenseDesc')}</p>
                             </div>
                             <Switch
-                                checked={ledger.metadata?.settings?.showMonthlyExpense !== false}
+                                checked={settingsLedger.metadata?.settings?.showMonthlyExpense !== false}
                                 onCheckedChange={(checked: boolean) => {
                                     updateLedgerMutation.mutate({ showMonthlyExpense: checked });
                                 }}
@@ -185,7 +189,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
 
                         {/* Currency Settings */}
                         <CurrencySection
-                            settings={{ ...ledger.metadata?.settings, currencies: ledger.metadata?.settings?.currencies || [] }}
+                            settings={{ ...settingsLedger.metadata?.settings, currencies: settingsLedger.metadata?.settings?.currencies || [] }}
                             onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
                         />
 
@@ -219,7 +223,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 <p className="text-sm text-[var(--muted)]">{t('monthStartDayDesc')}</p>
                             </div>
                             <select
-                                value={ledger.metadata?.settings?.monthStartDay || 1}
+                                value={settingsLedger.metadata?.settings?.monthStartDay || 1}
                                 onChange={(e) => updateLedgerMutation.mutate({ monthStartDay: parseInt(e.target.value) })}
                                 disabled={isPending}
                                 className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[100px] disabled:opacity-50"
@@ -239,7 +243,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 <p className="text-sm text-[var(--muted)]">{t('aiLanguageDesc')}</p>
                             </div>
                             <select
-                                value={ledger.metadata?.settings?.aiLanguage || 'zh-CN'}
+                                value={settingsLedger.metadata?.settings?.aiLanguage || 'zh-CN'}
                                 onChange={(e) => updateLedgerMutation.mutate({ aiLanguage: e.target.value })}
                                 disabled={isPending}
                                 className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
@@ -262,7 +266,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 value={localAiPrompt}
                                 onChange={(e) => setLocalAiPrompt(e.target.value)}
                                 onBlur={() => {
-                                    if (localAiPrompt !== (ledger.metadata?.settings?.aiCustomPrompt || "")) {
+                                    if (localAiPrompt !== (settingsLedger.metadata?.settings?.aiCustomPrompt || "")) {
                                         updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
                                     }
                                 }}

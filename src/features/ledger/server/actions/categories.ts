@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { z } from "zod";
-import { eq, asc, and, isNull, sql, inArray } from "drizzle-orm";
+import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
@@ -27,9 +27,24 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
 
     const validated = createCategorySchema.parse(data);
 
+    // Get current max sortOrder to append new category at the end
+    const existingCategories = await db.query.entryCategories.findMany({
+        where: and(
+            eq(entryCategories.ledgerId, ledgerId),
+            isNull(entryCategories.deletedAt)
+        ),
+        columns: { sortOrder: true },
+        orderBy: desc(entryCategories.sortOrder),
+        limit: 1,
+    });
+
+    const maxSortOrder = existingCategories.length > 0 ? existingCategories[0].sortOrder : -1;
+    const newSortOrder = validated.sortOrder ?? (maxSortOrder + 1);
+
     const [category] = await db.insert(entryCategories).values({
         ...validated,
         ledgerId: ledgerId,
+        sortOrder: newSortOrder,
     }).returning();
 
     // Trigger AI to generate metadata (async)

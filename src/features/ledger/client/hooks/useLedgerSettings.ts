@@ -5,7 +5,7 @@ import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { updateLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server/actions/ledgers";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
@@ -27,15 +27,27 @@ interface UpdateLedgerData {
     monthStartDay?: number;
 }
 
-export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories }: UseLedgerSettingsParams) {
+export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCategories }: UseLedgerSettingsParams) {
     const t = useTranslations("Settings");
+
+    // Subscribe to ledger data for reactive updates (optimistic updates will update this)
+    const { data: ledger = initialLedger } = useQuery<Ledger>({
+        queryKey: queryKeys.ledger(ledgerId),
+        queryFn: () => getLedgerAction(ledgerId),
+        initialData: initialLedger,
+    });
 
     // Separate query for categories (same key as useCategoryMutations)
     // This ensures optimistic updates from useCategoryMutations are reflected immediately
-    const { data: categories = initialCategories } = useQuery<EntryCategoryWithCount[]>({
+    // Use smart polling to automatically refresh when AI generates metadata
+    const { data: categories = initialCategories } = useSmartPolling<EntryCategoryWithCount[]>({
         queryKey: queryKeys.entryCategories(ledgerId),
         queryFn: () => getEntryCategoriesAction(ledgerId),
         initialData: initialCategories,
+        // Polling is active when any category needs metadata generation (icon/description)
+        isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
+        interval: 3000,
+        cooldownInterval: 5000, // Shorter cooldown for faster updates when AI completes
     });
 
     // Use smart polling for settings data that may need background updates
@@ -147,6 +159,7 @@ export function useLedgerSettings({ ledgerId, ledger: _ledger, initialCategories
     });
 
     return {
+        ledger,
         categories,
         uncategorizedCount,
         credentials,
