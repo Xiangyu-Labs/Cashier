@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
@@ -29,6 +29,7 @@ import { PeriodParams } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
+import { usePrefetchRelatedData } from "@/features/ledger/client/hooks/usePrefetchRelatedData";
 import { Header } from "./Header";
 
 interface LedgerPageClientProps {
@@ -37,11 +38,13 @@ interface LedgerPageClientProps {
 }
 
 const STALE_TIME = 10 * 60 * 1000;
+const INPUT_PREFETCH_DELAY = 2000; // 2秒后预加载记一笔弹窗数据
 
 export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
@@ -105,6 +108,32 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
   const [isPendingOpen, setIsPendingOpen] = useState(false);
 
   const { stats: pendingStats } = useTaskQueue(ledgerId);
+
+  // 预加载其他 Tab 数据（一次点击可达）
+  usePrefetchRelatedData({
+    ledgerId,
+    activeTab: activeTab as "history" | "details" | "stats" | "settings",
+    ledger: ledger || undefined,
+    categories: categories || [],
+    periodParams,
+  });
+
+  // 预加载记一笔弹窗数据（当弹窗关闭时）
+  useEffect(() => {
+    if (!isInputOpen && ledgerId) {
+      const timer = setTimeout(() => {
+        // 预加载 ledger 数据（SourceDocumentInput 需要）
+        if (!queryClient.getQueryData(queryKeys.ledger(ledgerId))) {
+          queryClient.prefetchQuery({
+            queryKey: queryKeys.ledger(ledgerId),
+            queryFn: () => getLedgerAction(ledgerId),
+            staleTime: STALE_TIME,
+          });
+        }
+      }, INPUT_PREFETCH_DELAY);
+      return () => clearTimeout(timer);
+    }
+  }, [isInputOpen, ledgerId, queryClient]);
 
   if (!ledger) {
     return (

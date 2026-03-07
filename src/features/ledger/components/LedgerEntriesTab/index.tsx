@@ -16,7 +16,6 @@ import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
-import { usePrefetchAdjacentPeriods } from "@/features/ledger/client/hooks/usePrefetchAdjacentPeriods";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
@@ -82,9 +81,6 @@ export function LedgerEntriesTab({
         deleteSourceDocument,
         batchDeleteSourceDocuments,
     } = useLedgerEntriesMutations(ledgerId, categories);
-
-    // Prefetch adjacent periods in background for faster switching
-    usePrefetchAdjacentPeriods(ledgerId, periodParams);
 
     // Modals State
     const [deleteConfirm, setDeleteConfirm] = useState<{
