@@ -69,40 +69,54 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     pathname,
   });
 
-  const [advancedFilters, setAdvancedFilters] = useState({
-    categoryId: null as string | null,
-    currency: null as string | null,
-    minAmount: null as number | null,
-    maxAmount: null as number | null,
-  });
-
   const monthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
   const {
     periodParams,
+    filterParams,
     handlePeriodChange,
     handleFiltersChange,
   } = usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay });
 
+  // Advanced filters now come from URL (single source of truth)
+  const advancedFilters = filterParams;
+
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
-    setActiveTab: (tab) => handleTabChange(tab),
-    setAdvancedFilters,
-    handlePeriodChange,
   });
 
+  // Update URL when user changes advanced filters
   const handleAdvancedFiltersChange = useCallback((filters: {
     categoryId?: string | null;
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
   }) => {
-    setAdvancedFilters((prev) => ({
-      ...prev,
-      ...filters,
-    }));
-  }, []);
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (filters.categoryId !== undefined) {
+      if (filters.categoryId) params.set("categoryId", filters.categoryId);
+      else params.delete("categoryId");
+    }
+
+    if (filters.currency !== undefined) {
+      if (filters.currency) params.set("currency", filters.currency);
+      else params.delete("currency");
+    }
+
+    if (filters.minAmount !== undefined) {
+      if (filters.minAmount !== null) params.set("minAmount", String(filters.minAmount));
+      else params.delete("minAmount");
+    }
+
+    if (filters.maxAmount !== undefined) {
+      if (filters.maxAmount !== null) params.set("maxAmount", String(filters.maxAmount));
+      else params.delete("maxAmount");
+    }
+
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  }, [pathname, searchParams]);
 
   const [isInputOpen, setIsInputOpen] = useState(false);
   const [inputMode, setInputMode] = useState<"ai" | "quick">("ai");

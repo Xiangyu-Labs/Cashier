@@ -31,7 +31,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
     const t = useTranslations("Settings");
 
     // Subscribe to ledger data for reactive updates (optimistic updates will update this)
-    const { data: ledger = initialLedger } = useQuery<Ledger>({
+    const { data: ledger = initialLedger } = useQuery<Ledger | null>({
         queryKey: queryKeys.ledger(ledgerId),
         queryFn: () => getLedgerAction(ledgerId),
         initialData: initialLedger,

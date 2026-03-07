@@ -2,24 +2,15 @@
  * Drilldown Navigation Hook
  *
  * Handles drilldown navigation from stats to details tab with filters.
+ * All filter state is now stored in URL parameters for consistency.
  */
 
-import { useCallback, type Dispatch, type SetStateAction } from "react";
-import type { PeriodParams } from "@/lib/period-utils";
-
-interface FiltersState {
-  categoryId: string | null;
-  currency: string | null;
-  minAmount: number | null;
-  maxAmount: number | null;
-}
+import { useCallback } from "react";
+import { useRouter } from "@/i18n/routing";
 
 interface UseDrilldownNavigationOptions {
   searchParams: URLSearchParams;
   pathname: string;
-  setActiveTab: (tab: string) => void;
-  setAdvancedFilters: Dispatch<SetStateAction<FiltersState>>;
-  handlePeriodChange: (period: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
 }
 
 interface UseDrilldownNavigationResult {
@@ -33,56 +24,53 @@ interface UseDrilldownNavigationResult {
 export function useDrilldownNavigation({
   searchParams,
   pathname,
-  setActiveTab,
-  setAdvancedFilters,
-  handlePeriodChange,
 }: UseDrilldownNavigationOptions): UseDrilldownNavigationResult {
+  const router = useRouter();
+
   const handleCategoryDrilldown = useCallback(
     (categoryId: string, startDate: string, endDate: string) => {
-      setAdvancedFilters((prev: FiltersState) => ({
-        ...prev,
-        categoryId: categoryId === "__uncategorized__" ? null : categoryId,
-      }));
-      setActiveTab("details");
-      handlePeriodChange(
-        { period: "custom", startDate, endDate },
-        { skipUrlUpdate: true }
-      );
-
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", "details");
       params.set("period", "custom");
       params.set("startDate", startDate);
       params.set("endDate", endDate);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+
+      // Add categoryId to URL if present and not uncategorized
+      if (categoryId && categoryId !== "__uncategorized__") {
+        params.set("categoryId", categoryId);
+      } else {
+        params.delete("categoryId");
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [searchParams, pathname, setActiveTab, setAdvancedFilters, handlePeriodChange]
+    [searchParams, pathname, router]
   );
 
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
-      if (filters) {
-        setAdvancedFilters((prev: FiltersState) => ({
-          ...prev,
-          ...(filters.currency !== undefined && { currency: filters.currency }),
-          ...(filters.categoryId !== undefined && { categoryId: filters.categoryId }),
-        }));
-      }
-
-      setActiveTab("details");
-      handlePeriodChange(
-        { period: "custom", startDate: date, endDate: date },
-        { skipUrlUpdate: true }
-      );
-
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", "details");
       params.set("period", "custom");
       params.set("startDate", date);
       params.set("endDate", date);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+
+      // Add filter params to URL
+      if (filters?.categoryId && filters.categoryId !== "__uncategorized__") {
+        params.set("categoryId", filters.categoryId);
+      } else {
+        params.delete("categoryId");
+      }
+
+      if (filters?.currency) {
+        params.set("currency", filters.currency);
+      } else {
+        params.delete("currency");
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [searchParams, pathname, setActiveTab, setAdvancedFilters, handlePeriodChange]
+    [searchParams, pathname, router]
   );
 
   return {

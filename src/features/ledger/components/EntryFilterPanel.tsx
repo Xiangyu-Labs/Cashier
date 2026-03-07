@@ -66,11 +66,11 @@ export function EntryFilterPanel({
     const [tempFilters, setTempFilters] = React.useState<EntryFilters>(filters);
     const [tempPeriod, setTempPeriod] = React.useState<PeriodPreset | null>(null);
 
-    // Sync temp filters when external filters change or popover opens
+    // Sync temp filters when external filters change
     React.useEffect(() => {
         setTempFilters(filters);
         setTempPeriod(null);
-    }, [filters, open]);
+    }, [filters]);
 
     // Count advanced filters (category, currency, amount)
     const advancedFilterCount = [
