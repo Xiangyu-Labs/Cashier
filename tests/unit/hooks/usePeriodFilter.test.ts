@@ -266,6 +266,117 @@ describe("usePeriodFilter", () => {
     expect(result.current.filters.endDate).toBeInstanceOf(Date);
   });
 
+  describe("filterParams from URL", () => {
+    it("should read categoryId from URL search params", () => {
+      const searchParams = new URLSearchParams("categoryId=cat_123");
+      const { result } = renderHook(() =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams,
+          initialPeriod: { period: "thisMonth" },
+        })
+      );
+
+      expect(result.current.filterParams.categoryId).toBe("cat_123");
+      expect(result.current.filters.categoryId).toBe("cat_123");
+    });
+
+    it("should read currency from URL search params", () => {
+      const searchParams = new URLSearchParams("currency=USD");
+      const { result } = renderHook(() =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams,
+          initialPeriod: { period: "thisMonth" },
+        })
+      );
+
+      expect(result.current.filterParams.currency).toBe("USD");
+      expect(result.current.filters.currency).toBe("USD");
+    });
+
+    it("should read minAmount and maxAmount from URL search params", () => {
+      const searchParams = new URLSearchParams("minAmount=100&maxAmount=500");
+      const { result } = renderHook(() =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams,
+          initialPeriod: { period: "thisMonth" },
+        })
+      );
+
+      expect(result.current.filterParams.minAmount).toBe(100);
+      expect(result.current.filterParams.maxAmount).toBe(500);
+      expect(result.current.filters.minAmount).toBe(100);
+      expect(result.current.filters.maxAmount).toBe(500);
+    });
+
+    it("should return null for filter params not in URL", () => {
+      const { result } = renderHook(() =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams: mockSearchParams,
+          initialPeriod: { period: "thisMonth" },
+        })
+      );
+
+      expect(result.current.filterParams.categoryId).toBeNull();
+      expect(result.current.filterParams.currency).toBeNull();
+      expect(result.current.filterParams.minAmount).toBeNull();
+      expect(result.current.filterParams.maxAmount).toBeNull();
+    });
+
+    it("should preserve filter params when changing period", () => {
+      const searchParams = new URLSearchParams("categoryId=cat_123&currency=CNY");
+      const { result } = renderHook(() =>
+        usePeriodFilter({
+          pathname: mockPathname,
+          searchParams,
+          initialPeriod: { period: "thisMonth" },
+        })
+      );
+
+      act(() => {
+        result.current.handlePeriodChange({ period: "week" });
+      });
+
+      // Should preserve filter params in URL
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        expect.stringContaining("categoryId=cat_123")
+      );
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        expect.stringContaining("currency=CNY")
+      );
+    });
+
+    it("should update filter params when searchParams change", () => {
+      const { result, rerender } = renderHook(
+        ({ searchParams }) =>
+          usePeriodFilter({
+            pathname: mockPathname,
+            searchParams,
+            initialPeriod: { period: "thisMonth" },
+          }),
+        {
+          initialProps: {
+            searchParams: new URLSearchParams(),
+          },
+        }
+      );
+
+      expect(result.current.filterParams.categoryId).toBeNull();
+
+      // Update search params
+      rerender({ searchParams: new URLSearchParams("categoryId=new_cat") });
+
+      expect(result.current.filterParams.categoryId).toBe("new_cat");
+    });
+  });
+
   it("should handle leap year in custom date range", () => {
     const { result } = renderHook(() =>
       usePeriodFilter({
