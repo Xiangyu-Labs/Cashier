@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { DateRangeType, formatDateTimeForApi } from "@/lib/date-utils";
+import { useMemo, useState } from "react";
+import { DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useLocale } from "next-intl";
 
 
@@ -21,6 +21,7 @@ export function StatsChart({
     isLoading
 }: StatsChartProps) {
     const locale = useLocale();
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     // Find the latest date with actual data
     const latestDataDate = useMemo(() => {
@@ -208,28 +209,52 @@ export function StatsChart({
                     const displayValue = Math.min(p.value, yAxisMax);
                     const topPercent = paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
 
-                    // Tooltip text
-                    const tooltipText = isCapped
-                        ? `${p.label}: ${p.value.toLocaleString()} (超出显示上限)`
-                        : `${p.label}: ${p.value.toLocaleString()}`;
+                    // Format display date based on range type
+                    const displayDate = rangeType === "year"
+                        ? p.fullDate // YYYY-MM format
+                        : parseDateString(p.fullDate).toLocaleDateString(locale, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+
+                    const isHovered = hoveredIndex === i;
 
                     return (
                         <div
                             key={i}
-                            title={tooltipText}
-                            className={`
-                                absolute w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
-                                transition-all duration-300 cursor-pointer group
-                                ${isCapped
-                                    ? 'border-2 border-red-500 after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-red-500'
-                                    : 'border-2 border-primary hover:scale-125'
-                                }
-                            `}
+                            className="absolute"
                             style={{
                                 left: `${leftPercent}%`,
                                 top: `${topPercent}%`,
                             }}
-                        />
+                        >
+                            {/* Data Point */}
+                            <div
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
+                                onClick={() => setHoveredIndex(isHovered ? null : i)}
+                                className={`
+                                    w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
+                                    transition-all duration-300 cursor-pointer
+                                    ${isCapped
+                                        ? 'border-2 border-red-500 after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-red-500'
+                                        : 'border-2 border-primary hover:scale-125'
+                                    }
+                                `}
+                            />
+
+                            {/* Tooltip */}
+                            {isHovered && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-50 pointer-events-none">
+                                    <div className="font-medium">{displayDate}</div>
+                                    <div className={isCapped ? 'text-red-500' : ''}>
+                                        支出: ¥{p.value.toLocaleString()}
+                                        {isCapped && ' (超出显示上限)'}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     );
                 })}
             </div>
