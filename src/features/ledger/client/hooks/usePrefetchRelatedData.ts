@@ -5,15 +5,28 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
+import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 import { getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
 import { formatDateTimeForApi, type DateRangeType, getDateRange, addPeriod } from "@/lib/date-utils";
 import { periodToDateRange, type PeriodParams } from "@/lib/period-utils";
 import type { Ledger, EntryCategory } from "@/types/api";
+
+interface EntryLevelPrefetchOptions {
+  /** 明细 Tab：全量预加载所有已加载条目（无图片，数据量小） */
+  details?: {
+    entryIds: string[];
+  };
+  /** 流水 Tab：轻量预加载所有已加载单据（不含 imageUrls） */
+  history?: {
+    sourceDocIds: string[];
+  };
+}
 
 interface PrefetchOptions {
   ledgerId: string;
@@ -21,6 +34,8 @@ interface PrefetchOptions {
   ledger?: Ledger;
   categories: EntryCategory[];
   periodParams: PeriodParams;
+  /** 条目级渐进预加载配置 */
+  entryLevelPrefetch?: EntryLevelPrefetchOptions;
 }
 
 const PREFETCH_DELAY = 1500; // 1.5秒后启动预加载
@@ -32,11 +47,13 @@ export function usePrefetchRelatedData({
   ledger,
   categories,
   periodParams,
+  entryLevelPrefetch,
 }: PrefetchOptions) {
   const queryClient = useQueryClient();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Tab 级预加载（现有逻辑）
   useEffect(() => {
     // 取消之前的定时器和请求
     if (timerRef.current) {
@@ -82,6 +99,61 @@ export function usePrefetchRelatedData({
       }
     };
   }, [ledgerId, activeTab, ledger, ledger?.id, categories, periodParams, queryClient]);
+
+  // 条目级渐进预加载（新增）
+  const entryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const entryAbortRef = useRef<AbortController | null>(null);
+
+  // 提取依赖字符串，避免复杂表达式在依赖数组中
+  const entryIdsKey = entryLevelPrefetch?.details?.entryIds.join(",") ?? "";
+  const sourceDocIdsKey = entryLevelPrefetch?.history?.sourceDocIds.join(",") ?? "";
+
+  useEffect(() => {
+    if (!entryLevelPrefetch) return;
+
+    // 取消之前的定时器
+    if (entryTimerRef.current) {
+      clearTimeout(entryTimerRef.current);
+    }
+    if (entryAbortRef.current) {
+      entryAbortRef.current.abort();
+    }
+
+    entryAbortRef.current = new AbortController();
+    const { signal } = entryAbortRef.current;
+
+    // 条目级预加载延迟更久（避免与 Tab 级预加载竞争）
+    entryTimerRef.current = setTimeout(() => {
+      if (signal.aborted) return;
+
+      const schedulePrefetch = typeof window !== "undefined" && "requestIdleCallback" in window
+        ? window.requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 1);
+
+      schedulePrefetch(() => {
+        if (signal.aborted) return;
+
+        // 明细 Tab：全量预加载条目详情
+        if (entryLevelPrefetch.details?.entryIds.length) {
+          prefetchLedgerEntryDetails(queryClient, entryLevelPrefetch.details.entryIds, signal);
+        }
+
+        // 流水 Tab：轻量预加载单据详情（不含图片）
+        if (entryLevelPrefetch.history?.sourceDocIds.length) {
+          prefetchSourceDocumentLight(queryClient, entryLevelPrefetch.history.sourceDocIds, signal);
+        }
+      });
+    }, PREFETCH_DELAY + 1000); // 比 Tab 级晚 1 秒
+
+    return () => {
+      if (entryTimerRef.current) {
+        clearTimeout(entryTimerRef.current);
+      }
+      if (entryAbortRef.current) {
+        entryAbortRef.current.abort();
+      }
+    };
+  }, [queryClient, entryLevelPrefetch, entryIdsKey, sourceDocIdsKey]);
 }
 
 interface PrefetchContext {
@@ -301,5 +373,55 @@ async function prefetchSettingsTab({
       queryFn: () => getEntryCategoriesAction(ledgerId),
       staleTime: STALE_TIME,
     });
+  }
+}
+
+// ========== 条目级渐进预加载 ==========
+
+/** 预加载明细条目详情（全量，无图片） */
+async function prefetchLedgerEntryDetails(
+  queryClient: ReturnType<typeof useQueryClient>,
+  entryIds: string[],
+  signal: AbortSignal
+) {
+  for (const id of entryIds) {
+    if (signal.aborted) return;
+
+    const key = queryKeys.ledgerEntry(id);
+    if (!queryClient.getQueryData(key)) {
+      try {
+        await queryClient.prefetchQuery({
+          queryKey: key,
+          queryFn: () => getLedgerEntryAction(id),
+          staleTime: STALE_TIME,
+        });
+      } catch {
+        // 单个条目预加载失败不影响其他
+      }
+    }
+  }
+}
+
+/** 预加载流水单据详情（轻量，不含 imageUrls） */
+async function prefetchSourceDocumentLight(
+  queryClient: ReturnType<typeof useQueryClient>,
+  sourceDocIds: string[],
+  signal: AbortSignal
+) {
+  for (const id of sourceDocIds) {
+    if (signal.aborted) return;
+
+    const key = queryKeys.sourceDocumentLight(id);
+    if (!queryClient.getQueryData(key)) {
+      try {
+        await queryClient.prefetchQuery({
+          queryKey: key,
+          queryFn: () => getSourceDocumentLightAction(id),
+          staleTime: STALE_TIME,
+        });
+      } catch {
+        // 单个单据预加载失败不影响其他
+      }
+    }
   }
 }
