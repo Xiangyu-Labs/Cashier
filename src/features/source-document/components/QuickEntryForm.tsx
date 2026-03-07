@@ -6,27 +6,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import { createQuickEntryAction } from "@/features/source-document/server/actions";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";
 import { type EntryCategory } from "@/types/api";
 import { DateFilter } from "@/components/ui/date-filter";
+import { queryKeys } from "@/lib/query-keys";
+import type { InfiniteData } from "@tanstack/react-query";
+import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
+import type { LedgerEntry } from "@/types/api";
 
 interface QuickEntryFormProps {
     ledgerId: string;
     categories: EntryCategory[];
+    mainCurrency?: string;
     onSuccess?: () => void;
 }
 
-export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFormProps) {
+export function QuickEntryForm({ ledgerId, categories, mainCurrency = "CNY", onSuccess }: QuickEntryFormProps) {
     const t = useTranslations("QuickEntryForm");
     const tCommon = useTranslations("Common");
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [amount, setAmount] = useState(0);
     const [itemName, setItemName] = useState("");
     const [entryDate, setEntryDate] = useState<Date>(new Date());
+
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
     const mutation = useLedgerMutation(ledgerId, {
         mutationFn: (data: { categoryId: string; amount: number; itemName?: string; entryDate: string }) =>
@@ -40,6 +47,111 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
             setEntryDate(new Date());
             onSuccess?.();
         },
+        onOptimisticUpdate: (queryClient, variables) => {
+            const tempDocId = `temp-doc-${Date.now()}`;
+            const tempEntryId = `temp-entry-${Date.now()}`;
+            const now = new Date().toISOString();
+            const entryDateStr = variables.entryDate;
+
+            // Build temporary ledger entry
+            const tempEntry: LedgerEntry = {
+                id: tempEntryId,
+                ledgerId,
+                sourceDocumentId: tempDocId,
+                categoryId: variables.categoryId,
+                amount: variables.amount.toFixed(2),
+                currency: mainCurrency,
+                itemName: variables.itemName || selectedCategory?.name || "",
+                description: null,
+                convertedAmount: variables.amount.toFixed(2),
+                exchangeRate: "1",
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: null,
+                category: selectedCategory || null,
+                sourceDocument: null,
+            };
+
+            // Build temporary source document
+            const tempDoc: SourceDocumentWithEntries = {
+                id: tempDocId,
+                ledgerId,
+                type: "manual",
+                status: "completed",
+                title: selectedCategory?.name || null,
+                text: null,
+                entryDate: entryDateStr,
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: null,
+                metadata: null,
+                imageUrls: null,
+                anomalyReason: null,
+                ledgerEntries: [{
+                    id: tempEntryId,
+                    createdAt: now,
+                    updatedAt: now,
+                    deletedAt: null,
+                    ledgerId,
+                    description: null,
+                    categoryId: variables.categoryId,
+                    sourceDocumentId: tempDocId,
+                    amount: variables.amount.toFixed(2),
+                    currency: mainCurrency,
+                    itemName: variables.itemName || selectedCategory?.name || "",
+                    convertedAmount: variables.amount.toFixed(2),
+                    exchangeRate: "1",
+                    category: selectedCategory ? {
+                        id: selectedCategory.id,
+                        name: selectedCategory.name,
+                        createdAt: selectedCategory.createdAt,
+                        updatedAt: selectedCategory.updatedAt,
+                        deletedAt: selectedCategory.deletedAt,
+                        ledgerId: selectedCategory.ledgerId,
+                        description: selectedCategory.description,
+                        icon: selectedCategory.icon,
+                        sortOrder: selectedCategory.sortOrder,
+                        isEditable: selectedCategory.isEditable,
+                    } : null,
+                }],
+            };
+
+            // 1. Snapshot and update source documents list (flat array)
+            const docSnapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+                queryClient,
+                queryKeys.sourceDocuments(ledgerId, 'all')
+            );
+            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
+                (old) => [tempDoc, ...(old || [])]
+            );
+
+            // 2. Snapshot and update ledger entries list (infinite query)
+            interface EntryPage {
+                items: LedgerEntry[];
+            }
+            const entrySnapshots = createListSnapshots<InfiniteData<EntryPage>>(
+                queryClient,
+                queryKeys.ledgerEntries(ledgerId)
+            );
+            queryClient.setQueriesData<InfiniteData<EntryPage>>(
+                { queryKey: queryKeys.ledgerEntries(ledgerId) },
+                (old) => {
+                    if (!old?.pages) return old;
+                    return {
+                        ...old,
+                        pages: old.pages.map((page, idx) =>
+                            idx === 0
+                                ? { ...page, items: [tempEntry, ...page.items] }
+                                : page
+                        ),
+                    };
+                }
+            );
+
+            // Merge snapshots for rollback
+            return { snapshots: [...docSnapshots, ...entrySnapshots] };
+        },
     });
 
     const handleSubmit = () => {
@@ -51,8 +163,6 @@ export function QuickEntryForm({ ledgerId, categories, onSuccess }: QuickEntryFo
             entryDate: formatDateTimeForApi(entryDate),
         });
     };
-
-    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
     return (
         <div className="space-y-4">

@@ -77,6 +77,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
   });
 
   const monthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
   const {
     periodParams,
     handlePeriodChange,
@@ -244,7 +245,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
           {inputMode === "ai" ? (
             <SourceDocumentInput ledgerId={ledgerId} onSuccess={() => setIsInputOpen(false)} />
           ) : (
-            <QuickEntryForm ledgerId={ledgerId} categories={categories} onSuccess={() => setIsInputOpen(false)} />
+            <QuickEntryForm ledgerId={ledgerId} categories={categories} mainCurrency={mainCurrency} onSuccess={() => setIsInputOpen(false)} />
           )}
         </DialogContent>
       </Dialog>
