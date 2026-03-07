@@ -39,8 +39,8 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
         {/* Day number */}
         <span
           className={cn(
-            'text-xs font-medium',
-            level >= 4 ? 'text-white' : 'text-foreground'
+            'text-xs font-normal',
+            level >= 4 ? 'text-white/70' : 'text-muted-foreground'
           )}
         >
           {dayNumber}
@@ -50,7 +50,7 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
         {amount > 0 && (
           <span
             className={cn(
-              'text-[10px] font-medium',
+              'text-[10px] font-semibold',
               level >= 4 ? 'text-white' : 'text-foreground'
             )}
           >

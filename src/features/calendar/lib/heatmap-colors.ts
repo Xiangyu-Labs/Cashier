@@ -120,10 +120,10 @@ export function shouldShowAmount(
  */
 export function formatCellAmount(amount: number): string {
     if (amount >= 10000) {
-        return `${Math.round(amount / 1000)}k`;
+        return `¥${Math.round(amount / 1000)}k`;
     }
     if (amount >= 1000) {
-        return `${(amount / 1000).toFixed(1)}k`;
+        return `¥${(amount / 1000).toFixed(1)}k`;
     }
-    return Math.round(amount).toString();
+    return `¥${Math.round(amount)}`;
 }

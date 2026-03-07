@@ -73,8 +73,8 @@ export function HeatmapCell({
       {/* Day number */}
       <span
         className={cn(
-          'absolute top-1 left-2 font-medium',
-          level >= 4 ? 'text-white' : 'text-foreground'
+          'absolute top-1 left-2 font-normal text-[10px]',
+          level >= 4 ? 'text-white/80' : 'text-muted-foreground'
         )}
       >
         {dayNumber}
@@ -84,7 +84,7 @@ export function HeatmapCell({
       {showAmount && amount > 0 && (
         <span
           className={cn(
-            'mt-2 font-semibold',
+            'mt-2 font-semibold text-[10px]',
             level >= 4 ? 'text-white' : 'text-foreground'
           )}
         >
