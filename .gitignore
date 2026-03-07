@@ -56,3 +56,6 @@ public/swe-worker-*.js
 
 # documentation plans (temporary planning files)
 docs/plans/
+
+# SQLite empty file in root
+/sqlite.db
