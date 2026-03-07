@@ -266,7 +266,7 @@ export function CalculatorInput({
                     onChange={handleInputChange}
                     onKeyDown={handleInputKeyDown}
                     className={cn(
-                        "w-32 text-right font-mono border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto",
+                        "w-32 text-right font-mono border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto !text-base",
                         displayClassName
                     )}
                 />
