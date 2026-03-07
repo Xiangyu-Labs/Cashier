@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
+import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
 import {
     updateSourceDocumentAction,
     deleteSourceDocumentAction,
@@ -23,7 +24,7 @@ import {
 } from "@/lib/mutations/use-ledger-mutation";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
-import type { EntryCategory, LedgerEntry } from "@/types/api";
+import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 
@@ -47,14 +48,26 @@ export function SourceDocumentDetailWrapper({
 }: SourceDocumentDetailWrapperProps) {
     const tCommon = useTranslations("Common");
 
-    const { data: sourceDocument, isLoading, error } = useQuery({
+    // 1. Query light data (prefetched, likely to hit cache immediately)
+    const { data: lightData, isLoading: isLoadingLight } = useQuery({
+        queryKey: queryKeys.sourceDocumentLight(id),
+        queryFn: () => getSourceDocumentLightAction(id),
+        enabled: open && !!id,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // 2. Query full data (background loading for images)
+    const { data: fullData, isLoading: isLoadingFull, error } = useQuery({
         queryKey: queryKeys.sourceDocument(id),
-        queryFn: async () => {
-            return await getSourceDocumentByIdAction(id);
-        },
+        queryFn: () => getSourceDocumentByIdAction(id),
         enabled: open && !!id,
         retry: false,
     });
+
+    // 3. Merge data (prefer full data, fallback to light data)
+    const sourceDocument = fullData ?? lightData ?? null;
+    const isLoading = isLoadingLight && !lightData; // Only show loading if light data is not available
+    const isLoadingImages = !fullData?.imageUrls; // Images only available in full data
 
     const ledgerId = sourceDocument?.ledgerId;
 
@@ -71,7 +84,7 @@ export function SourceDocumentDetailWrapper({
         onOptimisticUpdate: (queryClient, data) => {
             const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
 
-            // 1. Update detail query
+            // 1. Update full detail query
             queryClient.setQueriesData(
                 { queryKey: queryKeys.sourceDocument(id) },
                 (old: SourceDocumentQueryData | undefined) => {
@@ -80,7 +93,16 @@ export function SourceDocumentDetailWrapper({
                 }
             );
 
-            // 2. Update flat list cache (new architecture)
+            // 2. Update light detail query (keep in sync)
+            queryClient.setQueriesData(
+                { queryKey: queryKeys.sourceDocumentLight(id) },
+                (old: SourceDocumentQueryData | undefined) => {
+                    if (!old) return old;
+                    return { ...old, ...data };
+                }
+            );
+
+            // 3. Update flat list cache (new architecture)
             if (ledgerId) {
                 const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
                 const listSnapshots = createListSnapshots<SourceDocumentWithEntries[]>(
@@ -102,6 +124,7 @@ export function SourceDocumentDetailWrapper({
         },
         onSettledExtra: (queryClient) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) });
         },
     });
 
@@ -394,9 +417,14 @@ export function SourceDocumentDetailWrapper({
     // Source document from query includes ledgerEntries directly
     const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
 
-    // Ensure status has a default value
-    const safeSourceDocument = sourceDocument
-        ? { ...sourceDocument, status: sourceDocument.status || "queued" }
+    // Merge and normalize data for display (works with both light and full data)
+    const safeSourceDocument: (SourceDocument | SourceDocumentLight) | null = sourceDocument
+        ? {
+            ...sourceDocument,
+            status: sourceDocument.status || "queued",
+            // Ensure type is never null (normalize to empty string)
+            type: sourceDocument.type || "",
+        }
         : null;
 
     return (
@@ -404,6 +432,7 @@ export function SourceDocumentDetailWrapper({
             ledgerId={ledgerId || ""}
             sourceDocument={safeSourceDocument}
             isLoading={isLoading}
+            isLoadingImages={isLoadingImages}
             ledgerEntries={currentLedgerEntries}
             categories={categories}
             open={open}

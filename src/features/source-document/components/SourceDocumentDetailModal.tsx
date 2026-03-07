@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, memo, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
-import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api"
+import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api"
 import {
     Trash2,
     FileText,
@@ -23,8 +23,9 @@ import { BatchActionToolbar } from "@/features/ledger/components/BatchActionTool
 
 interface SourceDocumentDetailModalProps {
     ledgerId: string
-    sourceDocument: SourceDocument | null
+    sourceDocument: SourceDocument | SourceDocumentLight | null
     isLoading?: boolean
+    isLoadingImages?: boolean
     ledgerEntries: LedgerEntry[]
     categories: EntryCategory[]
     preferredCurrencies?: string[]
@@ -48,6 +49,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     ledgerId,
     sourceDocument,
     isLoading = false,
+    isLoadingImages = false,
     ledgerEntries,
     categories,
     preferredCurrencies = [],
@@ -357,6 +359,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             pendingChanges={pendingChanges}
                             selectedEntryIds={selectedIds}
                             isSelectionMode={isSelectionMode}
+                            isLoadingImages={isLoadingImages}
                             onSourceDocChange={handleSourceDocChange}
                             onEntryChange={handleEntryChange}
                             onSelectEntry={handleSelectEntry}

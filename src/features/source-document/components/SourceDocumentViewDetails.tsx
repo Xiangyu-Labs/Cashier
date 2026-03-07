@@ -1,6 +1,6 @@
 "use client";
 
-import { SourceDocument, LedgerEntry, EntryCategory } from "@/types/api";
+import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
 import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -68,7 +68,7 @@ export interface PendingChanges {
 }
 
 interface SourceDocumentViewDetailsProps {
-    sourceDocument: SourceDocument;
+    sourceDocument: SourceDocument | SourceDocumentLight;
     ledgerEntries: LedgerEntry[];
     categories: EntryCategory[];
     preferredCurrencies?: string[];
@@ -76,6 +76,7 @@ interface SourceDocumentViewDetailsProps {
     pendingChanges: PendingChanges;
     selectedEntryIds: string[];
     isSelectionMode: boolean;
+    isLoadingImages?: boolean;
     onSourceDocChange: (changes: SourceDocPendingChanges) => void;
     onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
     onSelectEntry: (entryId: string, selected: boolean) => void;
@@ -92,6 +93,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     pendingChanges,
     selectedEntryIds,
     isSelectionMode,
+    isLoadingImages = false,
     onSourceDocChange,
     onEntryChange,
     onSelectEntry,
@@ -145,7 +147,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
     }, [ledgerEntries]);
 
     const isAnomaly = sourceDocument.status === "anomaly";
-    const hasImages = (sourceDocument.imageUrls?.length ?? 0) > 0;
+    // imageUrls only exists on full SourceDocument, not on SourceDocumentLight
+    const imageUrls = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls : undefined;
+    const hasImages = (imageUrls?.length ?? 0) > 0;
     const hasRawText = sourceDocument.text && sourceDocument.text.trim().length > 0;
 
     return (
@@ -285,7 +289,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                             {(hasImages || hasRawText) && (
                                 <span className="text-muted-foreground/40 font-normal lowercase">
                                     ({[
-                                        hasImages && `${sourceDocument.imageUrls?.length} ${tCard("image")}`,
+                                        hasImages && `${imageUrls?.length} ${tCard("image")}`,
                                         hasRawText && t("rawContent")
                                     ].filter(Boolean).join(", ")})
                                 </span>
@@ -301,32 +305,47 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     {isRawExpanded && (
                         <div className="px-3 pb-3 space-y-4 border-t border-border/40 pt-3">
                             {/* Images */}
-                            {hasImages && (
+                            {(hasImages || isLoadingImages) && (
                                 <div>
                                     <h5 className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
                                         <ImagePlay className="h-2.5 w-2.5 text-primary/60" />
                                         {tCard("image")}
                                     </h5>
                                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                                        {(sourceDocument.imageUrls || []).map((url, idx) => (
-                                            <div
-                                                key={idx}
-                                                className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
-                                                onClick={() => setViewerIndex(idx)}
-                                            >
-                                                <Image
-                                                    src={url}
-                                                    alt={tCard("imageAlt", { index: idx + 1 })}
-                                                    fill
-                                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                                                />
-                                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <div className="bg-black/40 text-white h-6 w-6 rounded-full flex items-center justify-center backdrop-blur-md">
-                                                        <Maximize2 className="h-3 w-3" />
+                                        {isLoadingImages ? (
+                                            // Skeleton loading for images
+                                            <>
+                                                {[1, 2, 3, 4].map((i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 animate-pulse"
+                                                    >
+                                                        <div className="absolute inset-0 bg-border/60" />
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            // Actual images
+                                            (imageUrls || []).map((url, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
+                                                    onClick={() => setViewerIndex(idx)}
+                                                >
+                                                    <Image
+                                                        src={url}
+                                                        alt={tCard("imageAlt", { index: idx + 1 })}
+                                                        fill
+                                                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <div className="bg-black/40 text-white h-6 w-6 rounded-full flex items-center justify-center backdrop-blur-md">
+                                                            <Maximize2 className="h-3 w-3" />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -349,7 +368,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
             {/* Image Viewer */}
             <ImageViewer
-                images={sourceDocument.imageUrls || []}
+                images={imageUrls || []}
                 initialIndex={viewerIndex ?? 0}
                 open={viewerIndex !== null}
                 onOpenChange={(open: boolean) => !open && setViewerIndex(null)}
