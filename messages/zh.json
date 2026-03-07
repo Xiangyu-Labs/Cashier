@@ -33,7 +33,8 @@
         "select": "选择",
         "cancelSelect": "取消",
         "deleteConfirmTitle": "确认删除",
-        "deleteConfirmDesc": "确定要删除这条记录吗？此操作无法撤销。"
+        "deleteConfirmDesc": "确定要删除这条记录吗？此操作无法撤销。",
+        "noMore": "没有更多了"
     },
     "BatchActions": {
         "selected": "已选择 {count} 项",
@@ -306,6 +307,7 @@
         "theme": "主题",
         "themeDescription": "设置当前界面的色彩模式",
         "themeAuto": "跟随系统",
+        "themeSystem": "跟随系统",
         "themeLight": "浅色模式",
         "themeDark": "深色模式",
         "uiLanguage": "界面语言",
@@ -348,6 +350,7 @@
         "newCategoryPlaceholder": "新分类名称",
         "addCategory": "添加",
         "settingsUpdated": "设置已更新",
+        "updateSuccess": "设置更新成功",
         "updateFailed": "更新失败",
         "categoryCreated": "分类已创建",
         "categoryUpdated": "分类已更新",
