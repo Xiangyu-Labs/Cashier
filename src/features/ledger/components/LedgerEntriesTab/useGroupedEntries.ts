@@ -17,7 +17,7 @@ interface DateGroup {
 interface UseGroupedEntriesOptions {
     completedGroups: SourceDocumentGroup[];
     locale: string;
-    mainCurrency?: string;
+    _mainCurrency?: string;
     tDetails: (key: string) => string;
 }
 

@@ -158,7 +158,7 @@ export function LedgerEntriesTab({
     const { groupedCompletedByDate, allSourceDocumentIds } = useGroupedEntries({
         completedGroups: groups.completed,
         locale,
-        mainCurrency,
+        _mainCurrency: mainCurrency,
         tDetails,
     });
 

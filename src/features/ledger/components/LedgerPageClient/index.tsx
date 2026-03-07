@@ -151,7 +151,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
               ledger={ledger}
               periodParams={periodParams}
               onPeriodChange={handlePeriodChange}
-              onFiltersChange={handleFiltersChange}
+              _onFiltersChange={handleFiltersChange}
               advancedFilters={advancedFilters}
               onAdvancedFiltersChange={handleAdvancedFiltersChange}
               monthStartDay={monthStartDay}
