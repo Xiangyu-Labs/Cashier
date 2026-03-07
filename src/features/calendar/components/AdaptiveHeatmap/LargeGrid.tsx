@@ -73,9 +73,9 @@ export function LargeGridHeatmap({
   }, [days, dayMap, queryRange]);
 
   return (
-    <div className={cn('w-full', className)}>
+    <div className={cn('w-full flex justify-center', className)}>
       {/* 7-column grid for days of week layout */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-2 w-full lg:max-w-[800px] xl:max-w-[900px] lg:gap-3 xl:gap-4">
         {gridDays.map(({ date, dayData }) => {
           const amount = dayData?.totalAmount || 0;
           const level = getHeatmapLevel(amount, stats);
