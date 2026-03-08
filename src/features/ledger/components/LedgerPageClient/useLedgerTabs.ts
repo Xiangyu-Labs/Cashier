@@ -4,7 +4,7 @@
  * Manages active tab state with URL synchronization.
  */
 
-import { useState, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 interface UseLedgerTabsOptions {
   initialTab?: string;
@@ -22,15 +22,21 @@ export function useLedgerTabs({
   searchParams,
   pathname,
 }: UseLedgerTabsOptions): UseLedgerTabsResult {
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || initialTab);
+  // Single source of truth: URL search params
+  // No useState needed - eliminates sync issues with external URL changes
+  const activeTab = useMemo(
+    () => searchParams.get("tab") || initialTab,
+    [searchParams, initialTab]
+  );
 
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", value);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
-  }, [searchParams, pathname]);
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", value);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    },
+    [searchParams, pathname]
+  );
 
   return {
     activeTab,
