@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from 'next-intl/plugin';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const withNextIntl = createNextIntlPlugin();
+const withBundleAnalyzerConfig = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -21,4 +25,4 @@ const withPWA = withPWAInit({
   },
 });
 
-export default withPWA(withNextIntl(nextConfig));
+export default withBundleAnalyzerConfig(withPWA(withNextIntl(nextConfig)));
