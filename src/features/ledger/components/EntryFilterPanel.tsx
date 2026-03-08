@@ -62,15 +62,19 @@ export function EntryFilterPanel({
     const tSettings = useTranslations("Settings");
     const [open, setOpen] = React.useState(false);
 
-    // Internal state for editing before applying
+    // Internal state for editing before applying - initialized from filters when popover opens
     const [tempFilters, setTempFilters] = React.useState<EntryFilters>(filters);
     const [tempPeriod, setTempPeriod] = React.useState<PeriodPreset | null>(null);
 
-    // Sync temp filters when external filters change
-    React.useEffect(() => {
-        setTempFilters(filters);
-        setTempPeriod(null);
-    }, [filters]);
+    // Reset temp filters when popover opens (not using useEffect to sync with external filters)
+    const handleOpenChange = (isOpen: boolean) => {
+        setOpen(isOpen);
+        if (isOpen) {
+            // Initialize draft state from current filters when opening
+            setTempFilters(filters);
+            setTempPeriod(null);
+        }
+    };
 
     // Count advanced filters (category, currency, amount)
     const advancedFilterCount = [
@@ -190,7 +194,7 @@ export function EntryFilterPanel({
     return (
         <div className={cn("flex flex-wrap items-center gap-2", className)}>
             {/* Filters Button with Popover */}
-            <Popover open={open} onOpenChange={setOpen}>
+            <Popover open={open} onOpenChange={handleOpenChange}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="outline"

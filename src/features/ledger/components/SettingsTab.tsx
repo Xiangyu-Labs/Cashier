@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,8 +57,8 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
     // Use reactive ledger for settings that need optimistic updates
     const settingsLedger = reactiveLedger || ledger;
 
-    // Local state for input fields (for controlled inputs during editing)
-    const [localAiPrompt, setLocalAiPrompt] = useState(settingsLedger.metadata?.settings?.aiCustomPrompt || "");
+// AI Prompt input is managed directly without local state to avoid dual-source-of-truth issues
+    // The input uses the reactive ledger value directly and submits on blur
 
     const {
         createCategory,
@@ -263,11 +262,12 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 <p className="text-sm text-[var(--muted)]">{t('aiPromptDesc')}</p>
                             </div>
                             <textarea
-                                value={localAiPrompt}
-                                onChange={(e) => setLocalAiPrompt(e.target.value)}
-                                onBlur={() => {
-                                    if (localAiPrompt !== (settingsLedger.metadata?.settings?.aiCustomPrompt || "")) {
-                                        updateLedgerMutation.mutate({ aiCustomPrompt: localAiPrompt });
+                                defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt || ""}
+                                onBlur={(e) => {
+                                    const newValue = e.target.value;
+                                    const currentValue = settingsLedger.metadata?.settings?.aiCustomPrompt || "";
+                                    if (newValue !== currentValue) {
+                                        updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
                                     }
                                 }}
                                 disabled={isPending}

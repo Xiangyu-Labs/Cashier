@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import {
     Dialog,
     DialogContent,
@@ -10,7 +10,9 @@ import {
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 import { SourceDocument, SourceDocumentLight } from "@/types/api";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/features/source-document/server/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 interface SourceDocumentEditRetryDialogProps {
     ledgerId: string;
@@ -39,57 +41,27 @@ export function SourceDocumentEditRetryDialog({
     // 2. No imageUrls AND no text (minimal object, likely from TaskQueueModal)
     const needsFetch = (!hasImageUrls && hasImages) || (!hasImageUrls && !hasText);
 
-    const [state, setState] = useState<{
-        isLoading: boolean;
-        fullData: { text?: string | null; imageUrls?: string[] | null } | null;
-    }>(() => ({ isLoading: needsFetch, fullData: null }));
-
-    // Fetch full data when dialog opens and we need imageUrls
-    useEffect(() => {
-        if (!open || !needsFetch) {
-            return;
-        }
-
-        let cancelled = false;
-
-        // Use setTimeout to defer state update
-        setTimeout(() => {
-            if (!cancelled) {
-                setState({ isLoading: true, fullData: null });
-            }
-        }, 0);
-
-        getSourceDocumentFullAction(ledgerId, sourceDocument.id)
-            .then((result) => {
-                if (!cancelled && result) {
-                    setState({
-                        isLoading: false,
-                        fullData: {
-                            text: result.text,
-                            imageUrls: result.imageUrls,
-                        }
-                    });
-                } else if (!cancelled) {
-                    setState({ isLoading: false, fullData: null });
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setState({ isLoading: false, fullData: null });
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [open, needsFetch, ledgerId, sourceDocument.id]);
+    // Use TanStack Query to fetch full data - simpler than manual useEffect
+    const { data: fullData, isLoading } = useQuery({
+        queryKey: queryKeys.sourceDocument(ledgerId, sourceDocument.id, 'full'),
+        queryFn: async () => {
+            const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
+            if (!result) return null;
+            return {
+                text: result.text,
+                imageUrls: result.imageUrls,
+            };
+        },
+        enabled: open && needsFetch,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
     const initialData = useMemo(() => {
         // If we fetched full data, use it
-        if (state.fullData) {
+        if (fullData) {
             return {
-                text: state.fullData.text || undefined,
-                images: state.fullData.imageUrls?.map(url => ({
+                text: fullData.text || undefined,
+                images: fullData.imageUrls?.map(url => ({
                     data: url,
                     mimeType: "image/jpeg",
                 })) || [],
@@ -106,7 +78,7 @@ export function SourceDocumentEditRetryDialog({
                 mimeType: "image/jpeg",
             })) || [],
         };
-    }, [sourceDocument, state.fullData]);
+    }, [sourceDocument, fullData]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,7 +86,7 @@ export function SourceDocumentEditRetryDialog({
                 <DialogHeader>
                     <DialogTitle>{t("title")}</DialogTitle>
                 </DialogHeader>
-                {state.isLoading ? (
+                {isLoading ? (
                     <EditRetryDialogSkeleton />
                 ) : (
                     <SourceDocumentInput

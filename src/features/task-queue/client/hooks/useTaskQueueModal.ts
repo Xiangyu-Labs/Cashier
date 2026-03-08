@@ -88,11 +88,14 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     batchDismiss,
   } = useTaskQueueMutations(ledgerId);
 
-  const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
-  const [isRunningCollapsed, setIsRunningCollapsed] = useState(false);
-  const [isFailedCollapsed, setIsFailedCollapsed] = useState(false);
-  const [isAnomalyCollapsed, setIsAnomalyCollapsed] = useState(false);
-  const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(true);
+  // Collapsible section states - merged into single object to reduce state count
+  const [collapsedSections, setCollapsedSections] = useState({
+    pending: false,
+    running: false,
+    failed: false,
+    anomaly: false,
+    completed: true, // Default collapsed
+  });
 
   const [retrySourceDocId, setRetrySourceDocId] = useState<string | null>(null);
 
@@ -103,6 +106,21 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     title: string;
     description: string;
   }>({ open: false, type: null, id: null, title: "", description: "" });
+
+  // Destructure for backward compatibility
+  const { pending: isPendingCollapsed, running: isRunningCollapsed, failed: isFailedCollapsed, anomaly: isAnomalyCollapsed, completed: isCompletedCollapsed } = collapsedSections;
+
+  // Helper to update individual section
+  const setSectionCollapsed = (section: keyof typeof collapsedSections, value: boolean) => {
+    setCollapsedSections(prev => ({ ...prev, [section]: value }));
+  };
+
+  // Create setters for backward compatibility
+  const setIsPendingCollapsed = (value: boolean) => setSectionCollapsed('pending', value);
+  const setIsRunningCollapsed = (value: boolean) => setSectionCollapsed('running', value);
+  const setIsFailedCollapsed = (value: boolean) => setSectionCollapsed('failed', value);
+  const setIsAnomalyCollapsed = (value: boolean) => setSectionCollapsed('anomaly', value);
+  const setIsCompletedCollapsed = (value: boolean) => setSectionCollapsed('completed', value);
 
   const groupedItems = useMemo(() => {
     const pending: QueueItem[] = [];
