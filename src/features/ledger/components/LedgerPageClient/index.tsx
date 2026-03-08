@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,10 +9,6 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LedgerEntriesTab } from "../LedgerEntriesTab";
-import { DetailsTab } from "../DetailsTab";
-import { StatsTab } from "../StatsTab";
-import { SettingsTab } from "../SettingsTab";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +28,40 @@ import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { usePrefetchRelatedData } from "@/features/ledger/client/hooks/usePrefetchRelatedData";
 import { Header } from "./Header";
+import { EntriesTabSkeleton, DetailsTabSkeleton, StatsTabSkeleton, SettingsTabSkeleton } from "@/components/skeletons/TabSkeletons";
+
+// Lazy load tab components to reduce initial bundle size
+const LedgerEntriesTab = dynamic(
+  () => import("../LedgerEntriesTab").then((m) => ({ default: m.LedgerEntriesTab })),
+  {
+    loading: () => <EntriesTabSkeleton />,
+    ssr: false,
+  }
+);
+
+const DetailsTab = dynamic(
+  () => import("../DetailsTab").then((m) => ({ default: m.DetailsTab })),
+  {
+    loading: () => <DetailsTabSkeleton />,
+    ssr: false,
+  }
+);
+
+const StatsTab = dynamic(
+  () => import("../StatsTab").then((m) => ({ default: m.StatsTab })),
+  {
+    loading: () => <StatsTabSkeleton />,
+    ssr: false,
+  }
+);
+
+const SettingsTab = dynamic(
+  () => import("../SettingsTab").then((m) => ({ default: m.SettingsTab })),
+  {
+    loading: () => <SettingsTabSkeleton />,
+    ssr: false,
+  }
+);
 
 interface LedgerPageClientProps {
   ledgerId: string;
