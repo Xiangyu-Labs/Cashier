@@ -42,7 +42,11 @@ export function useDrilldownNavigation({
         params.delete("categoryId");
       }
 
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      const newUrl = `${pathname}?${params.toString()}`;
+      // 使用原生 History API 立即更新 URL，避免 router.replace 的异步延迟
+      window.history.replaceState(null, "", newUrl);
+      // 同时触发 Next.js 路由更新（不阻塞 UI）
+      router.replace(newUrl, { scroll: false });
     },
     [searchParams, pathname, router]
   );
@@ -68,7 +72,11 @@ export function useDrilldownNavigation({
         params.delete("currency");
       }
 
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      const newUrl = `${pathname}?${params.toString()}`;
+      // 使用原生 History API 立即更新 URL，避免 router.replace 的异步延迟
+      window.history.replaceState(null, "", newUrl);
+      // 同时触发 Next.js 路由更新（不阻塞 UI）
+      router.replace(newUrl, { scroll: false });
     },
     [searchParams, pathname, router]
   );
