@@ -270,7 +270,7 @@ async function prefetchDetailsTab({
   }
 }
 
-// 预加载 Stats Tab 数据（包含 ±3 周期）
+// 预加载 Stats Tab 数据（仅默认 rangeType 的 ±1 周期）
 async function prefetchStatsTab({
   queryClient,
   ledgerId,
@@ -282,40 +282,38 @@ async function prefetchStatsTab({
   const mainCurrency = ledger.metadata?.settings?.mainCurrency || "CNY";
   const monthStartDay = ledger.metadata?.settings?.monthStartDay || 1;
 
-  // 默认以当前月份为中心，预加载 ±3 个月
+  // 只预加载默认 rangeType（month）的 ±1 个周期，而不是所有 rangeType 的 ±3 个
+  // 从 28 次请求（4 rangeTypes × 7 周期）减少到 3 次请求
+  const rangeType: DateRangeType = "month"; // StatsTab 默认使用 month
   const centerDate = new Date();
-  const rangeTypes: DateRangeType[] = ["week", "month", "year", "currentPeriod"];
 
-  for (const rangeType of rangeTypes) {
+  for (let offset = -1; offset <= 1; offset++) {
     if (signal.aborted) return;
 
-    // 获取当前周期及前后各 3 个周期
-    for (let offset = -3; offset <= 3; offset++) {
-      const targetDate = addPeriod(centerDate, rangeType, offset);
-      const range = getDateRange(targetDate, rangeType, monthStartDay);
+    const targetDate = addPeriod(centerDate, rangeType, offset);
+    const range = getDateRange(targetDate, rangeType, monthStartDay);
 
-      const startStr = formatDateTimeForApi(range.startDate);
-      const endStr = formatDateTimeForApi(range.endDate);
+    const startStr = formatDateTimeForApi(range.startDate);
+    const endStr = formatDateTimeForApi(range.endDate);
 
-      // 计算对比周期（前一个周期）
-      const prevDate = addPeriod(targetDate, rangeType, -1);
-      const prevRange = getDateRange(prevDate, rangeType, monthStartDay);
-      const prevStartStr = formatDateTimeForApi(prevRange.startDate);
-      const prevEndStr = formatDateTimeForApi(prevRange.endDate);
+    // 计算对比周期（前一个周期）
+    const prevDate = addPeriod(targetDate, rangeType, -1);
+    const prevRange = getDateRange(prevDate, rangeType, monthStartDay);
+    const prevStartStr = formatDateTimeForApi(prevRange.startDate);
+    const prevEndStr = formatDateTimeForApi(prevRange.endDate);
 
-      const statsKey = [...queryKeys.enhancedStats(ledgerId), startStr, rangeType, mainCurrency];
+    const statsKey = [...queryKeys.enhancedStats(ledgerId), startStr, rangeType, mainCurrency];
 
-      if (!queryClient.getQueryData(statsKey)) {
-        await queryClient.prefetchQuery({
-          queryKey: statsKey,
-          queryFn: () => getEnhancedStats({
-            ledgerId,
-            queryRange: { from: startStr, to: endStr },
-            compareRange: { from: prevStartStr, to: prevEndStr },
-          }),
-          staleTime: STALE_TIME,
-        });
-      }
+    if (!queryClient.getQueryData(statsKey)) {
+      await queryClient.prefetchQuery({
+        queryKey: statsKey,
+        queryFn: () => getEnhancedStats({
+          ledgerId,
+          queryRange: { from: startStr, to: endStr },
+          compareRange: { from: prevStartStr, to: prevEndStr },
+        }),
+        staleTime: STALE_TIME,
+      });
     }
   }
 }
