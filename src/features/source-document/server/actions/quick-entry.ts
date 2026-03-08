@@ -5,8 +5,7 @@ import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { and, eq, isNull } from "drizzle-orm";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
-import { logger } from "@/lib/logger";
+import { CurrencyService } from "@/features/currency/server/service";
 import { SourceDocumentType } from "@/features/source-document/server/schema";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
@@ -35,7 +34,7 @@ interface ConversionResult {
 }
 
 /**
- * Convert amount between currencies
+ * Convert amount between currencies using CurrencyService
  */
 async function convertEntryAmount(
     amount: number,
@@ -43,25 +42,14 @@ async function convertEntryAmount(
     toCurrency: string,
     date: string
 ): Promise<ConversionResult> {
-    if (fromCurrency === toCurrency) {
-        return {
-            convertedAmount: amount.toFixed(2),
-            exchangeRate: "1",
-        };
-    }
+    const result = await CurrencyService.convertEntryAmount({
+        amount,
+        fromCurrency,
+        toCurrency,
+        date,
+    });
 
-    try {
-        const converted = await ExchangeRateService.convert(
-            amount, fromCurrency, toCurrency, date
-        );
-        return {
-            convertedAmount: converted.toFixed(2),
-            exchangeRate: (converted / amount).toFixed(6),
-        };
-    } catch (err) {
-        logger.warn({ err }, "Quick entry: failed to convert amount");
-        return { convertedAmount: null, exchangeRate: null };
-    }
+    return result ?? { convertedAmount: null, exchangeRate: null };
 }
 
 interface QuickEntryData {

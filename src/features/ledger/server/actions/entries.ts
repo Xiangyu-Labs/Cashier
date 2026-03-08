@@ -4,9 +4,8 @@ import { db } from "@/lib/db";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
 import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
-import { logger } from "@/lib/logger";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { CurrencyService } from "@/features/currency/server/service";
 import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
 
 const createLedgerEntrySchema = z.object({
@@ -48,28 +47,16 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     });
     const entryDate = sourceDoc?.entryDate || undefined;
 
-    // Calculate converted amount
-    let convertedAmount: string | null = null;
-    let exchangeRate: string | null = null;
+    // Calculate converted amount using CurrencyService
+    const conversionResult = await CurrencyService.convertEntryAmount({
+        amount: validated.amount,
+        fromCurrency: entryCurrency,
+        toCurrency: mainCurrency,
+        date: entryDate,
+    });
 
-    if (entryCurrency === mainCurrency) {
-        convertedAmount = validated.amount.toFixed(2);
-        exchangeRate = "1";
-    } else {
-        try {
-            const converted = await ExchangeRateService.convert(
-                validated.amount,
-                entryCurrency,
-                mainCurrency,
-                entryDate
-            );
-            convertedAmount = converted.toFixed(2);
-            // Calculate rate: converted / original
-            exchangeRate = (converted / validated.amount).toFixed(6);
-        } catch (err) {
-            logger.warn({ err, entryCurrency, mainCurrency }, "Failed to convert amount, storing without conversion");
-        }
-    }
+    const convertedAmount = conversionResult?.convertedAmount ?? null;
+    const exchangeRate = conversionResult?.exchangeRate ?? null;
 
     const [entry] = await db.insert(ledgerEntries).values({
         amount: validated.amount.toFixed(2),
@@ -137,22 +124,17 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
             // Get entryDate from source document
             const entryDate = currentEntry.sourceDocument?.entryDate || undefined;
 
-            if (newCurrency === mainCurrency) {
-                updateData.convertedAmount = newAmount.toFixed(2);
-                updateData.exchangeRate = "1";
-            } else {
-                try {
-                    const converted = await ExchangeRateService.convert(
-                        newAmount,
-                        newCurrency,
-                        mainCurrency,
-                        entryDate
-                    );
-                    updateData.convertedAmount = converted.toFixed(2);
-                    updateData.exchangeRate = (converted / newAmount).toFixed(6);
-                } catch (err) {
-                    logger.warn({ err, newCurrency, mainCurrency }, "Failed to convert amount during update");
-                }
+            // Calculate converted amount using CurrencyService
+            const conversionResult = await CurrencyService.convertEntryAmount({
+                amount: newAmount,
+                fromCurrency: newCurrency,
+                toCurrency: mainCurrency,
+                date: entryDate,
+            });
+
+            if (conversionResult) {
+                updateData.convertedAmount = conversionResult.convertedAmount;
+                updateData.exchangeRate = conversionResult.exchangeRate;
             }
         }
     }
