@@ -43,7 +43,7 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
     return null;
   }
 
-  // Fetch document without imageUrls
+  // Fetch document (include imageUrls for serialization, will be stripped later)
   const doc = await db.query.sourceDocuments.findFirst({
     where: and(
       eq(sourceDocuments.id, id),
@@ -62,6 +62,7 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
       createdAt: true,
       updatedAt: true,
       deletedAt: true,
+      imageUrls: true,
     },
     with: {
       ledgerEntries: {

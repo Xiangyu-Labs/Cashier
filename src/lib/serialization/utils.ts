@@ -246,7 +246,7 @@ export function serializeLedgerEntries(
 export function serializeSourceDocuments(
     docs: Array<DbSourceDocument & { ledgerEntries?: DbLedgerEntry[] }>
 ): SerializedSourceDocument[] {
-    return docs.map(serializeSourceDocument);
+    return docs.map(doc => serializeSourceDocument(doc));
 }
 
 export function serializeEntryCategories(categories: DbEntryCategory[]): SerializedEntryCategory[] {

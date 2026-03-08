@@ -49,7 +49,9 @@ export type SerializedSourceDocument = Serialized<DbSourceDocument> & {
 };
 
 // Light version without nested entries (for list views)
-export type SerializedSourceDocumentLight = Serialized<DbSourceDocument>;
+export type SerializedSourceDocumentLight = Serialized<DbSourceDocument> & {
+    hasImages?: boolean;
+};
 
 // Source document with grouped entries (pending queue view)
 export interface SourceDocumentGroup {

@@ -43,7 +43,7 @@ export function SourceDocumentEditRetryDialog({
 
     // Use TanStack Query to fetch full data - simpler than manual useEffect
     const { data: fullData, isLoading } = useQuery({
-        queryKey: queryKeys.sourceDocument(ledgerId, sourceDocument.id, 'full'),
+        queryKey: ['sourceDocument', 'full', ledgerId, sourceDocument.id],
         queryFn: async () => {
             const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
             if (!result) return null;

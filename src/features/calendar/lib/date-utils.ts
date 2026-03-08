@@ -4,8 +4,13 @@
  * Helper functions for calendar date calculations.
  */
 
+import { formatDateTimeForApi } from "@/lib/date-utils";
+
 // Re-export formatDate from centralized location to avoid duplication
-export { formatDateTimeForApi as formatDate } from "@/lib/date-utils";
+export { formatDateTimeForApi as formatDate };
+
+// Local alias for internal use (can't use the re-export before it's defined)
+const formatDate = formatDateTimeForApi;
 
 /**
  * Parse yyyy-MM-dd string to Date object
