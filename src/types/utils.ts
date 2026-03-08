@@ -1,11 +1,8 @@
 /**
- * Deeply converts Date properties to string.
- * This is useful for API response types where Dates are serialized to ISO strings.
+ * Type Utilities
+ *
+ * Re-exports from centralized locations to maintain single source of truth.
  */
-export type Serialized<T> = T extends Date
-    ? string
-    : T extends Array<infer U>
-    ? Array<Serialized<U>>
-    : T extends object
-    ? { [K in keyof T]: Serialized<T[K]> }
-    : T;
+
+// Re-export Serialized type from serialization layer
+export type { Serialized } from "@/lib/serialization/types";
