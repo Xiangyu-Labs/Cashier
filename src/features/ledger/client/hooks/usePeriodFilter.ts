@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
-import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { useCallback, useMemo } from "react";
+import { PeriodParams, periodToDateRange, parsePeriodFromSearchParams } from "@/lib/period-utils";
 import type { EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
 
 export interface FilterParams {
@@ -27,9 +27,16 @@ interface UsePeriodFilterReturn {
     handleFiltersChange: (newFilters: EntryFilters) => void;
 }
 
-export function usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay = 1 }: UsePeriodFilterParams): UsePeriodFilterReturn {
-    // Period state - initialized from URL (via props), no useEffect needed
-    const [periodParams, setPeriodParams] = useState<PeriodParams>(initialPeriod);
+export function usePeriodFilter({ pathname, searchParams, initialPeriod: _initialPeriod, monthStartDay = 1 }: UsePeriodFilterParams): UsePeriodFilterReturn {
+    // 从 URL 实时派生 periodParams，确保 URL 变化时自动同步
+    const periodParams = useMemo<PeriodParams>(() => {
+        const parsed = parsePeriodFromSearchParams(searchParams);
+        // 如果是 currentPeriod，注入 monthStartDay
+        if (parsed.period === 'currentPeriod') {
+            return { ...parsed, monthStartDay };
+        }
+        return parsed;
+    }, [searchParams, monthStartDay]);
 
     // Compute date range from period (memoized)
     const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
@@ -52,10 +59,8 @@ export function usePeriodFilter({ pathname, searchParams, initialPeriod, monthSt
         maxAmount: filterParams.maxAmount,
     }), [dateRange, filterParams]);
 
-    // Handle period change - update both state and URL
+    // Handle period change - only update URL, state is derived from URL
     const handlePeriodChange = useCallback((newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
-        setPeriodParams(newPeriod);
-
         if (options?.skipUrlUpdate) return;
 
         // Update URL without navigation
