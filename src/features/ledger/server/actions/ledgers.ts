@@ -9,6 +9,8 @@ import { eq, and, isNull, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { taskVersionManager } from "@/lib/task-version";
+import { unstable_cache } from "next/cache";
+import { CACHE_VERSION } from "@/lib/cache-version";
 
 const createLedgerSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -356,30 +358,68 @@ export async function deleteLedgerAction(id: string): Promise<void> {
     });
 }
 
+// Cached version of getLedgerAction with cache tagging for revalidation
+const cachedGetLedger = unstable_cache(
+    async (ledgerId: string, userId: string): Promise<import("@/types/api").Ledger | null> => {
+        const existing = await db.query.ledgers.findFirst({
+            where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+        });
+
+        if (!existing || existing.userId !== userId) {
+            return null;
+        }
+
+        return {
+            id: existing.id,
+            userId: existing.userId,
+            name: existing.name,
+            metadata: existing.metadata,
+            createdAt: existing.createdAt.toISOString(),
+            updatedAt: existing.updatedAt.toISOString(),
+            deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
+        };
+    },
+    ['ledger'],
+    {
+        revalidate: 60, // Cache for 60 seconds
+        tags: ['ledger'],
+    }
+);
+
 export async function getLedgerAction(id: string): Promise<import("@/types/api").Ledger | null> {
     const session = await auth();
     if (!session?.user?.id) {
         throw new Error("Unauthorized");
     }
 
-    const existing = await db.query.ledgers.findFirst({
-        where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
-    });
-
-    if (!existing || existing.userId !== session.user.id) {
-        return null;
-    }
-
-    return {
-        id: existing.id,
-        userId: existing.userId,
-        name: existing.name,
-        metadata: existing.metadata,
-        createdAt: existing.createdAt.toISOString(),
-        updatedAt: existing.updatedAt.toISOString(),
-        deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
-    };
+    // Use versioned cache key to invalidate on app updates
+    return cachedGetLedger(id, session.user.id);
 }
+
+// Cached version of getLedgersAction
+const cachedGetLedgers = unstable_cache(
+    async (userId: string): Promise<import("@/types/api").Ledger[]> => {
+        const rows = await db.query.ledgers.findMany({
+            where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
+            orderBy: [desc(ledgers.createdAt)],
+        });
+
+        return rows.map(row => ({
+            id: row.id,
+            userId: row.userId,
+            name: row.name,
+            metadata: row.metadata,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
+            deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+        }));
+    },
+    ['ledgers'],
+    {
+        revalidate: 60,
+        tags: ['ledgers'],
+    }
+);
 
 export async function getLedgersAction(): Promise<import("@/types/api").Ledger[]> {
     const session = await auth();
@@ -387,20 +427,7 @@ export async function getLedgersAction(): Promise<import("@/types/api").Ledger[]
         throw new Error("Unauthorized");
     }
 
-    const rows = await db.query.ledgers.findMany({
-        where: and(eq(ledgers.userId, session.user.id), isNull(ledgers.deletedAt)),
-        orderBy: [desc(ledgers.createdAt)],
-    });
-
-    return rows.map(row => ({
-        id: row.id,
-        userId: row.userId,
-        name: row.name,
-        metadata: row.metadata,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-        deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
-    }));
+    return cachedGetLedgers(session.user.id);
 }
 
 export async function setDefaultLedgerAction(ledgerId: string): Promise<void> {

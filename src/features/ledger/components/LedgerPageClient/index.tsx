@@ -15,13 +15,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { QuickEntryForm } from "@/features/source-document/components/QuickEntryForm";
 import { cn } from "@/lib/utils";
-import { TaskQueueModal } from "@/features/task-queue/components/TaskQueueModal";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/useTaskQueue";
 import { useTranslations } from "next-intl";
-import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
+
+// Lazy load modal components to reduce initial bundle
+const SourceDocumentInput = dynamic(
+  () => import("@/features/source-document/components/SourceDocumentInput").then((m) => ({ default: m.SourceDocumentInput })),
+  { ssr: false }
+);
+
+const QuickEntryForm = dynamic(
+  () => import("@/features/source-document/components/QuickEntryForm").then((m) => ({ default: m.QuickEntryForm })),
+  { ssr: false }
+);
+
+const TaskQueueModal = dynamic(
+  () => import("@/features/task-queue/components/TaskQueueModal").then((m) => ({ default: m.TaskQueueModal })),
+  { ssr: false }
+);
+
+const ModalStackRenderer = dynamic(
+  () => import("@/components/providers/ModalStackRenderer").then((m) => ({ default: m.ModalStackRenderer })),
+  { ssr: false }
+);
 import { PeriodParams } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 import { useLedgerTabs } from "./useLedgerTabs";
@@ -230,47 +247,55 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
           </TabsList>
 
           <TabsContent value="history" className="mt-0">
-            <LedgerEntriesTab
-              ledgerId={ledgerId}
-              categories={categories || []}
-              ledger={ledger}
-              periodParams={periodParams}
-              onPeriodChange={handlePeriodChange}
-              onFiltersChange={handleFiltersChange}
-              monthStartDay={monthStartDay}
-            />
+            <Suspense fallback={<EntriesTabSkeleton />}>
+              <LedgerEntriesTab
+                ledgerId={ledgerId}
+                categories={categories || []}
+                ledger={ledger}
+                periodParams={periodParams}
+                onPeriodChange={handlePeriodChange}
+                onFiltersChange={handleFiltersChange}
+                monthStartDay={monthStartDay}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="details" className="mt-0">
-            <DetailsTab
-              ledgerId={ledgerId}
-              categories={categories || []}
-              ledger={ledger}
-              periodParams={periodParams}
-              onPeriodChange={handlePeriodChange}
-              _onFiltersChange={handleFiltersChange}
-              advancedFilters={advancedFilters}
-              onAdvancedFiltersChange={handleAdvancedFiltersChange}
-              monthStartDay={monthStartDay}
-            />
+            <Suspense fallback={<DetailsTabSkeleton />}>
+              <DetailsTab
+                ledgerId={ledgerId}
+                categories={categories || []}
+                ledger={ledger}
+                periodParams={periodParams}
+                onPeriodChange={handlePeriodChange}
+                _onFiltersChange={handleFiltersChange}
+                advancedFilters={advancedFilters}
+                onAdvancedFiltersChange={handleAdvancedFiltersChange}
+                monthStartDay={monthStartDay}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="stats" className="mt-0">
-            <StatsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              onCategoryDrilldown={handleCategoryDrilldown}
-              onDateDrilldown={handleDateDrilldown}
-            />
+            <Suspense fallback={<StatsTabSkeleton />}>
+              <StatsTab
+                ledgerId={ledgerId}
+                ledger={ledger}
+                onCategoryDrilldown={handleCategoryDrilldown}
+                onDateDrilldown={handleDateDrilldown}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="settings" className="mt-0">
-            <SettingsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              initialCategories={categories}
-              allLedgers={allLedgers}
-            />
+            <Suspense fallback={<SettingsTabSkeleton />}>
+              <SettingsTab
+                ledgerId={ledgerId}
+                ledger={ledger}
+                initialCategories={categories}
+                allLedgers={allLedgers}
+              />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </main>
