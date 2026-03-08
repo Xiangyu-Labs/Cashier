@@ -15,12 +15,12 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
-  reloadOnOnline: true,
+  cacheOnFrontEndNav: true, // Enable caching on frontend navigation
+  aggressiveFrontEndNavCaching: true, // Aggressively cache frontend navigation
+  reloadOnOnline: false, // Don't force reload when coming back online
   disable: process.env.NODE_ENV === 'development',
   workboxOptions: {
-    disableDevLogs: false,
+    disableDevLogs: true, // Disable dev logs in production
     importScripts: ["/push-worker.js"],
   },
 });

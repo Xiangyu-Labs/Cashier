@@ -9,11 +9,15 @@ import { Providers } from "@/components/providers";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: 'swap', // Use swap to prevent FOIT (Flash of Invisible Text)
+  preload: true,
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: 'swap',
+  preload: false, // Monospace font is not critical for first paint
 });
 
 export const metadata: Metadata = {
