@@ -5,7 +5,7 @@
  * All filter state is now stored in URL parameters for consistency.
  */
 
-import { useCallback } from "react";
+import { useCallback, startTransition } from "react";
 import { useRouter } from "@/i18n/routing";
 
 interface UseDrilldownNavigationOptions {
@@ -43,10 +43,12 @@ export function useDrilldownNavigation({
       }
 
       const newUrl = `${pathname}?${params.toString()}`;
-      // 使用原生 History API 立即更新 URL，避免 router.replace 的异步延迟
+      // 立即更新 URL（同步）
       window.history.replaceState(null, "", newUrl);
-      // 同时触发 Next.js 路由更新（不阻塞 UI）
-      router.replace(newUrl, { scroll: false });
+      // 使用 startTransition 让 React 知道这是低优先级更新
+      startTransition(() => {
+        router.replace(newUrl, { scroll: false });
+      });
     },
     [searchParams, pathname, router]
   );
@@ -73,10 +75,12 @@ export function useDrilldownNavigation({
       }
 
       const newUrl = `${pathname}?${params.toString()}`;
-      // 使用原生 History API 立即更新 URL，避免 router.replace 的异步延迟
+      // 立即更新 URL（同步）
       window.history.replaceState(null, "", newUrl);
-      // 同时触发 Next.js 路由更新（不阻塞 UI）
-      router.replace(newUrl, { scroll: false });
+      // 使用 startTransition 让 React 知道这是低优先级更新
+      startTransition(() => {
+        router.replace(newUrl, { scroll: false });
+      });
     },
     [searchParams, pathname, router]
   );
