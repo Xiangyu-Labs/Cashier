@@ -24,4 +24,5 @@ export {
     serializeLedgerEntries,
     serializeSourceDocuments,
     serializeEntryCategories,
+    type SerializeSourceDocumentOptions,
 } from "./utils";

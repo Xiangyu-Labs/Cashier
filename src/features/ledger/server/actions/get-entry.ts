@@ -3,8 +3,9 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { serializeLedgerEntry, serializeSourceDocument, type SerializedLedgerEntry } from "@/lib/serialization";
 
-export async function getLedgerEntryAction(id: string): Promise<import("@/types/api").LedgerEntry | null> {
+export async function getLedgerEntryAction(id: string): Promise<SerializedLedgerEntry | null> {
     const entry = await db.query.ledgerEntries.findFirst({
         where: eq(ledgerEntries.id, id),
         with: {
@@ -22,36 +23,29 @@ export async function getLedgerEntryAction(id: string): Promise<import("@/types/
     const { error } = await requireLedgerAccess(entry.ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger entry denied");
 
+    // Use unified serialization
+    const serializedEntry = serializeLedgerEntry({
+        ...entry,
+        category: entry.category,
+        sourceDocument: entry.sourceDocument
+            ? {
+                id: entry.sourceDocument.id,
+                title: entry.sourceDocument.title,
+            }
+            : undefined,
+    });
+
     // Strip large metadata fields from sourceDocument to reduce payload size
-    let cleanedSourceDocument = null;
-    if (entry.sourceDocument) {
-        const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = entry.sourceDocument.metadata || {};
-        // Strip imageUrls (Base64 encoded images)
-         
-        const { imageUrls, ...docWithoutImages } = entry.sourceDocument;
-        cleanedSourceDocument = {
-            ...docWithoutImages,
+    if (serializedEntry.sourceDocument) {
+        const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = serializedEntry.sourceDocument.metadata || {};
+        serializedEntry.sourceDocument = {
+            ...serializedEntry.sourceDocument,
             metadata: lightMetadata,
-            hasImages: (imageUrls?.length || 0) > 0,
-            createdAt: entry.sourceDocument.createdAt.toISOString(),
-            updatedAt: entry.sourceDocument.updatedAt.toISOString(),
-            deletedAt: entry.sourceDocument.deletedAt ? entry.sourceDocument.deletedAt.toISOString() : null,
+            imageUrls: [], // Strip image URLs
+            hasImages: (entry.sourceDocument.imageUrls?.length || 0) > 0,
         };
     }
 
-    return {
-        ...entry,
-        amount: String(entry.amount),
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-        deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-        category: entry.category ? {
-            ...entry.category,
-            createdAt: entry.category.createdAt.toISOString(),
-            updatedAt: entry.category.updatedAt.toISOString(),
-            deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
-        } : null,
-        sourceDocument: cleanedSourceDocument,
-    };
+    return serializedEntry;
 }
 

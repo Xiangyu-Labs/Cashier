@@ -4,27 +4,19 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import type { LedgerEntry, EntryCategory } from "@/types/api";
+import {
+  serializeSourceDocument,
+  serializeLedgerEntry,
+  type SerializedSourceDocument,
+  type SerializedLedgerEntry,
+} from "@/lib/serialization";
 
 /**
  * Light version of SourceDocument for prefetching.
  * Contains all data except imageUrls and sensitive metadata (aiRawResponse, rawOcrText).
  */
-export interface SourceDocumentLight {
-  id: string;
-  ledgerId: string;
-  title: string | null;
-  text: string | null;
-  status: string;
-  type: string | null;
-  anomalyReason: string | null;
-  entryDate: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  hasImages: boolean;
-  ledgerEntries: (LedgerEntry & { category: EntryCategory | null })[];
+export interface SourceDocumentLight extends SerializedSourceDocument {
+  ledgerEntries: SerializedLedgerEntry[];
 }
 
 /**
@@ -83,42 +75,25 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
     return null;
   }
 
-  // Strip sensitive metadata
-  const rawMetadata = doc.metadata as Record<string, unknown> | null;
-  const cleanedMetadata = rawMetadata
-    ? Object.fromEntries(
-        Object.entries(rawMetadata).filter(
-          ([key]) => !['aiRawResponse', 'rawOcrText', 'visionDescription'].includes(key)
-        )
-      )
-    : null;
+  // Use unified serialization
+  const serializedDoc = serializeSourceDocument(doc, {
+    stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+    imageUrlsOverride: [],
+    includeHasImages: true,
+    ledgerEntries: doc.ledgerEntries.map(entry =>
+      serializeLedgerEntry({
+        ...entry,
+        category: entry.category,
+      })
+    ),
+  });
 
-  return {
-    id: doc.id,
-    ledgerId: doc.ledgerId,
-    title: doc.title,
-    text: doc.text,
-    status: doc.status,
-    type: doc.type,
-    anomalyReason: doc.anomalyReason,
-    entryDate: doc.entryDate,
-    metadata: cleanedMetadata,
-    createdAt: doc.createdAt.toISOString(),
-    updatedAt: doc.updatedAt.toISOString(),
-    deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-    hasImages: (docMeta.imageUrls?.length || 0) > 0,
-    ledgerEntries: doc.ledgerEntries.map(entry => ({
-      ...entry,
-      amount: String(entry.amount),
-      createdAt: entry.createdAt.toISOString(),
-      updatedAt: entry.updatedAt.toISOString(),
-      deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-      category: entry.category ? {
-        ...entry.category,
-        createdAt: entry.category.createdAt.toISOString(),
-        updatedAt: entry.category.updatedAt.toISOString(),
-        deletedAt: entry.category.deletedAt ? entry.category.deletedAt.toISOString() : null,
-      } : null,
-    })),
-  };
+  // Override hasImages using docMeta which has the actual imageUrls
+  const result = serializedDoc as SourceDocumentLight;
+  result.hasImages = (docMeta.imageUrls?.length || 0) > 0;
+
+  // Delete imageUrls to match expected light response format
+  delete (result as { imageUrls?: string[] }).imageUrls;
+
+  return result;
 }

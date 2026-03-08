@@ -14,6 +14,8 @@ import {
     type SerializedSourceDocument,
     type SerializedLedgerEntry,
     serializeLedgerEntry,
+    serializeSourceDocument,
+    serializeEntryCategory,
 } from "@/lib/serialization";
 import type {
     SourceDocumentWithEntries,
@@ -154,51 +156,10 @@ async function fetchEntriesByDocumentId(
 // ============ Serialization Helpers ============
 
 /**
- * Serialize source document for active status (queued/processing/anomaly/failed)
+ * Helper to serialize a source document based on its status
+ * Uses unified serialization with appropriate options
  */
-function serializeActiveDocument(
-    item: typeof sourceDocuments.$inferSelect,
-    entries: SerializedLedgerEntry[] | undefined
-): SerializedSourceDocument {
-    const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
-
-    return {
-        ...item,
-        metadata: lightMetadata,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-        status: item.status as SourceDocumentStatusType,
-        ledgerEntries: entries,
-    };
-}
-
-/**
- * Serialize source document for completed status (strips imageUrls)
- */
-function serializeCompletedDocument(
-    item: typeof sourceDocuments.$inferSelect,
-    entries: SerializedLedgerEntry[] | undefined
-): SerializedSourceDocument {
-    const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = item.metadata || {};
-
-    return {
-        ...item,
-        metadata: lightMetadata,
-        imageUrls: [], // Strip image URLs for completed docs, indicate via hasImages
-        hasImages: (item.imageUrls?.length || 0) > 0,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-        status: item.status as SourceDocumentStatusType,
-        ledgerEntries: entries,
-    };
-}
-
-/**
- * Serialize source document based on its status
- */
-function serializeSourceDocument(
+function serializeSourceDocumentByStatus(
     item: typeof sourceDocuments.$inferSelect,
     includeEntries: boolean,
     entriesByDocId: Map<string, SerializedLedgerEntry[]>
@@ -206,9 +167,13 @@ function serializeSourceDocument(
     const entries = includeEntries ? (entriesByDocId.get(item.id) || []) : undefined;
     const isActiveDocument = item.status === 'queued' || item.status === 'processing' || item.status === 'anomaly' || item.status === 'failed';
 
-    return isActiveDocument
-        ? serializeActiveDocument(item, entries)
-        : serializeCompletedDocument(item, entries);
+    // Use unified serialization with appropriate options
+    return serializeSourceDocument(item, {
+        stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+        imageUrlsOverride: isActiveDocument ? undefined : [], // Strip for completed docs
+        includeHasImages: !isActiveDocument,
+        ledgerEntries: entries,
+    });
 }
 
 // ============ getAllSourceDocumentsAction Helpers ============
@@ -218,55 +183,13 @@ type LedgerEntryWithCategory = typeof ledgerEntries.$inferSelect & {
 };
 
 /**
- * Serialize category for ledger entry
- */
-function serializeEntryCategory(category: typeof entryCategories.$inferSelect | null) {
-    if (!category) return null;
-
-    return {
-        id: category.id,
-        name: category.name,
-        createdAt: category.createdAt.toISOString(),
-        updatedAt: category.updatedAt.toISOString(),
-        deletedAt: category.deletedAt ? category.deletedAt.toISOString() : null,
-        ledgerId: category.ledgerId,
-        description: category.description,
-        icon: category.icon,
-        sortOrder: category.sortOrder,
-        isEditable: category.isEditable,
-    };
-}
-
-/**
- * Serialize ledger entry with category
- */
-function serializeLedgerEntryWithCategory(entry: LedgerEntryWithCategory) {
-    return {
-        id: entry.id,
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-        deletedAt: entry.deletedAt ? entry.deletedAt.toISOString() : null,
-        ledgerId: entry.ledgerId,
-        description: entry.description,
-        categoryId: entry.categoryId,
-        sourceDocumentId: entry.sourceDocumentId,
-        amount: String(entry.amount),
-        currency: entry.currency,
-        itemName: entry.itemName,
-        convertedAmount: entry.convertedAmount,
-        exchangeRate: entry.exchangeRate,
-        category: serializeEntryCategory(entry.category),
-    };
-}
-
-/**
  * Fetch entries with categories grouped by document ID
  */
 async function fetchEntriesWithCategories(
     docIds: string[],
     ledgerId: string
-): Promise<Map<string, LedgerEntryWithCategory[]>> {
-    const entriesByDocId = new Map<string, LedgerEntryWithCategory[]>();
+): Promise<Map<string, SerializedLedgerEntry[]>> {
+    const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
 
     if (docIds.length === 0) return entriesByDocId;
 
@@ -281,7 +204,10 @@ async function fetchEntriesWithCategories(
 
     entries.forEach(entry => {
         const list = entriesByDocId.get(entry.sourceDocumentId) || [];
-        list.push(entry as LedgerEntryWithCategory);
+        list.push(serializeLedgerEntry({
+            ...entry,
+            category: entry.category,
+        }));
         entriesByDocId.set(entry.sourceDocumentId, list);
     });
 
@@ -293,15 +219,12 @@ async function fetchEntriesWithCategories(
  */
 function serializeSourceDocumentFlat(
     doc: typeof sourceDocuments.$inferSelect,
-    entries: LedgerEntryWithCategory[]
+    entries: SerializedLedgerEntry[]
 ): SourceDocumentWithEntries {
-    return {
-        ...doc,
-        createdAt: doc.createdAt.toISOString(),
-        updatedAt: doc.updatedAt.toISOString(),
-        deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-        ledgerEntries: entries.map(serializeLedgerEntryWithCategory),
-    } as SourceDocumentWithEntries;
+    return serializeSourceDocument(doc, {
+        stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+        ledgerEntries: entries,
+    }) as SourceDocumentWithEntries;
 }
 
 /**
@@ -345,7 +268,7 @@ export async function getSourceDocumentsAction(
         : new Map<string, SerializedLedgerEntry[]>();
 
     return {
-        items: resultItems.map(item => serializeSourceDocument(item, !!includeLedgerEntries, entriesByDocId)),
+        items: resultItems.map(item => serializeSourceDocumentByStatus(item, !!includeLedgerEntries, entriesByDocId)),
         nextCursor,
     };
 }

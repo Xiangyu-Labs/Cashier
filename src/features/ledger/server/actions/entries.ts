@@ -306,36 +306,35 @@ export async function getLedgerEntriesAction(
         resultItems = items.slice(0, limit);
     }
 
-    // Map dates to strings
-    const mappedItems = resultItems.map(item => ({
-        ...item,
-        amount: String(item.amount),
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-        deletedAt: item.deletedAt ? item.deletedAt.toISOString() : null,
-        category: item.category ? {
-            ...item.category,
-            createdAt: item.category.createdAt.toISOString(),
-            updatedAt: item.category.updatedAt.toISOString(),
-            deletedAt: item.category.deletedAt ? item.category.deletedAt.toISOString() : null,
-        } : null,
-        sourceDocument: item.sourceDocument ? (() => {
-            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, ...lightMetadata } = item.sourceDocument.metadata || {};
-             
-            const { imageUrls, ...docWithoutImages } = item.sourceDocument;
-            return {
-                ...docWithoutImages,
+    // Use unified serialization
+    const serializedItems = resultItems.map(item => {
+        const serialized = serializeLedgerEntry({
+            ...item,
+            category: item.category,
+            sourceDocument: item.sourceDocument
+                ? {
+                    id: item.sourceDocument.id,
+                    title: item.sourceDocument.title,
+                }
+                : undefined,
+        });
+
+        // Strip large metadata fields from sourceDocument to reduce payload size
+        if (serialized.sourceDocument) {
+            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = serialized.sourceDocument.metadata || {};
+            serialized.sourceDocument = {
+                ...serialized.sourceDocument,
                 metadata: lightMetadata,
-                hasImages: (imageUrls?.length || 0) > 0,
-                createdAt: item.sourceDocument.createdAt.toISOString(),
-                updatedAt: item.sourceDocument.updatedAt.toISOString(),
-                deletedAt: item.sourceDocument.deletedAt ? item.sourceDocument.deletedAt.toISOString() : null,
+                imageUrls: [],
+                hasImages: (item.sourceDocument?.imageUrls?.length || 0) > 0,
             };
-        })() : null,
-    }));
+        }
+
+        return serialized;
+    });
 
     return {
-        items: mappedItems,
+        items: serializedItems,
         nextCursor
     };
 }

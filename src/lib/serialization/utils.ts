@@ -129,30 +129,60 @@ export function serializeServiceCredential(credential: DbServiceCredential): Ser
 // Source Document Module Serialization
 // ============================================================================
 
+export interface SerializeSourceDocumentOptions {
+    /** Strip these metadata fields (for security/privacy) */
+    stripMetadataFields?: string[];
+    /** Override imageUrls (e.g., set to empty array for light version) */
+    imageUrlsOverride?: string[];
+    /** Add hasImages flag */
+    includeHasImages?: boolean;
+    /** Include serialized ledger entries */
+    ledgerEntries?: SerializedLedgerEntry[];
+}
+
 export function serializeSourceDocument(
-    doc: DbSourceDocument & { ledgerEntries?: DbLedgerEntry[] }
+    doc: DbSourceDocument & { ledgerEntries?: DbLedgerEntry[] },
+    options: SerializeSourceDocumentOptions = {}
 ): SerializedSourceDocument {
+    const {
+        stripMetadataFields = [],
+        imageUrlsOverride,
+        includeHasImages = false,
+        ledgerEntries: entriesOverride,
+    } = options;
+
+    // Filter metadata if needed
+    const rawMetadata = doc.metadata || {};
+    const metadata = stripMetadataFields.length > 0
+        ? Object.fromEntries(Object.entries(rawMetadata).filter(([key]) => !stripMetadataFields.includes(key)))
+        : rawMetadata;
+
+    // Determine imageUrls
+    const imageUrls = imageUrlsOverride !== undefined ? imageUrlsOverride : (doc.imageUrls ?? []);
+
+    // Determine ledger entries
+    const ledgerEntries = entriesOverride !== undefined
+        ? entriesOverride
+        : doc.ledgerEntries?.map((e) =>
+            serializeLedgerEntry({ ...e, sourceDocument: { id: doc.id, title: doc.title } })
+        );
+
     return {
         id: doc.id,
         ledgerId: doc.ledgerId,
         title: doc.title,
         text: doc.text,
-        // imageUrls is already parsed by Drizzle ORM ({ mode: "json" })
-        imageUrls: doc.imageUrls ?? [],
+        imageUrls,
         status: doc.status,
         type: doc.type,
         anomalyReason: doc.anomalyReason,
         entryDate: doc.entryDate,
-        // metadata is already parsed by Drizzle ORM ({ mode: "json" })
-        // metadata is already parsed by Drizzle ORM ({ mode: "json" })
-        // Use type assertion with runtime fallback (metadata structure is validated by Drizzle)
-        metadata: (doc.metadata ?? {}) as Record<string, unknown>,
+        metadata: metadata as Record<string, unknown>,
         createdAt: serializeDate(doc.createdAt)!,
         updatedAt: serializeDate(doc.updatedAt)!,
         deletedAt: serializeDate(doc.deletedAt),
-        ledgerEntries: doc.ledgerEntries?.map((e) =>
-            serializeLedgerEntry({ ...e, sourceDocument: { id: doc.id, title: doc.title } })
-        ),
+        ledgerEntries,
+        ...(includeHasImages ? { hasImages: (doc.imageUrls?.length || 0) > 0 } : {}),
     };
 }
 
