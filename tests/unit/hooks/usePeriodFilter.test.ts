@@ -4,10 +4,8 @@ import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter"
 
 describe("usePeriodFilter", () => {
   const mockPathname = "/ledger/test-id";
-  let mockSearchParams: URLSearchParams;
 
   beforeEach(() => {
-    mockSearchParams = new URLSearchParams();
     // Mock window.history.replaceState
     vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
   });
@@ -16,12 +14,13 @@ describe("usePeriodFilter", () => {
     vi.restoreAllMocks();
   });
 
-  it("should initialize with provided initialPeriod", () => {
+  it("should derive period from URL search params", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
-        initialPeriod: { period: "thisMonth" },
+        searchParams,
+        initialPeriod: { period: "week" }, // Should be ignored
       })
     );
 
@@ -31,10 +30,11 @@ describe("usePeriodFilter", () => {
   });
 
   it("should calculate correct date range for 'thisMonth' period", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -50,10 +50,11 @@ describe("usePeriodFilter", () => {
   });
 
   it("should calculate correct date range for 'week' period", () => {
+    const searchParams = new URLSearchParams("period=week");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "week" },
       })
     );
@@ -71,10 +72,11 @@ describe("usePeriodFilter", () => {
   });
 
   it("should return null dates for 'all' period", () => {
+    const searchParams = new URLSearchParams("period=all");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "all" },
       })
     );
@@ -83,18 +85,19 @@ describe("usePeriodFilter", () => {
     expect(result.current.dateRange.endDate).toBeNull();
   });
 
-  it("should handle custom date range", () => {
+  it("should handle custom date range from URL", () => {
+    const searchParams = new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
-        initialPeriod: {
-          period: "custom",
-          startDate: "2024-01-01",
-          endDate: "2024-01-31",
-        },
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
       })
     );
+
+    expect(result.current.periodParams.period).toBe("custom");
+    expect(result.current.periodParams.startDate).toBe("2024-01-01");
+    expect(result.current.periodParams.endDate).toBe("2024-01-31");
 
     const startDate = new Date(result.current.dateRange.startDate!);
     const endDate = new Date(result.current.dateRange.endDate!);
@@ -108,11 +111,25 @@ describe("usePeriodFilter", () => {
     expect(endDate.getDate()).toBe(31);
   });
 
-  it("should update URL when period changes", () => {
+  it("should default to currentPeriod when no period in URL", () => {
+    const searchParams = new URLSearchParams();
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    expect(result.current.periodParams.period).toBe("currentPeriod");
+  });
+
+  it("should update URL when period changes", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -129,10 +146,11 @@ describe("usePeriodFilter", () => {
   });
 
   it("should update URL with custom dates when custom period is selected", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -163,10 +181,11 @@ describe("usePeriodFilter", () => {
   });
 
   it("should not update URL when skipUrlUpdate is true", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -178,11 +197,12 @@ describe("usePeriodFilter", () => {
     expect(window.history.replaceState).not.toHaveBeenCalled();
   });
 
-  it("should update period from filter changes with dates", () => {
+  it("should update URL from filter changes with dates", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -194,16 +214,30 @@ describe("usePeriodFilter", () => {
       });
     });
 
-    expect(result.current.periodParams.period).toBe("custom");
-    expect(result.current.periodParams.startDate).toBe("2024-06-01");
-    expect(result.current.periodParams.endDate).toBe("2024-06-30");
+    // Should update URL with custom dates
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("period=custom")
+    );
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("startDate=2024-06-01")
+    );
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("endDate=2024-06-30")
+    );
   });
 
-  it("should reset to currentPeriod when filter changes have no dates", () => {
+  it("should reset to currentPeriod URL when filter changes have no dates", () => {
+    const searchParams = new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "custom", startDate: "2024-01-01", endDate: "2024-01-31" },
         monthStartDay: 15,
       })
@@ -213,14 +247,20 @@ describe("usePeriodFilter", () => {
       result.current.handleFiltersChange({});
     });
 
-    expect(result.current.periodParams.period).toBe("currentPeriod");
+    // Should update URL to currentPeriod
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringContaining("period=currentPeriod")
+    );
   });
 
   it("should use monthStartDay for currentPeriod calculation", () => {
+    const searchParams = new URLSearchParams("period=currentPeriod");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "currentPeriod" },
         monthStartDay: 15,
       })
@@ -228,35 +268,38 @@ describe("usePeriodFilter", () => {
 
     // The hook should use monthStartDay in the period params
     expect(result.current.periodParams.period).toBe("currentPeriod");
+    expect(result.current.periodParams.monthStartDay).toBe(15);
     expect(result.current.dateRange.startDate).toBeDefined();
     expect(result.current.dateRange.endDate).toBeDefined();
   });
 
   it("should memoize dateRange to prevent unnecessary recalculations", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result, rerender } = renderHook(
-      ({ period }) =>
+      ({ sp }) =>
         usePeriodFilter({
           pathname: mockPathname,
-          searchParams: mockSearchParams,
-          initialPeriod: { period },
+          searchParams: sp,
+          initialPeriod: { period: "thisMonth" },
         }),
-      { initialProps: { period: "thisMonth" as const } }
+      { initialProps: { sp: searchParams } }
     );
 
     const firstDateRange = result.current.dateRange;
 
-    // Re-render with same period
-    rerender({ period: "thisMonth" });
+    // Re-render with same search params
+    rerender({ sp: searchParams });
 
     // Date range should be the same reference (memoized)
     expect(result.current.dateRange).toBe(firstDateRange);
   });
 
   it("should convert filters to Date objects", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
+        searchParams,
         initialPeriod: { period: "thisMonth" },
       })
     );
@@ -268,7 +311,7 @@ describe("usePeriodFilter", () => {
 
   describe("filterParams from URL", () => {
     it("should read categoryId from URL search params", () => {
-      const searchParams = new URLSearchParams("categoryId=cat_123");
+      const searchParams = new URLSearchParams("period=thisMonth&categoryId=cat_123");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: mockPathname,
@@ -282,7 +325,7 @@ describe("usePeriodFilter", () => {
     });
 
     it("should read currency from URL search params", () => {
-      const searchParams = new URLSearchParams("currency=USD");
+      const searchParams = new URLSearchParams("period=thisMonth&currency=USD");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: mockPathname,
@@ -296,7 +339,7 @@ describe("usePeriodFilter", () => {
     });
 
     it("should read minAmount and maxAmount from URL search params", () => {
-      const searchParams = new URLSearchParams("minAmount=100&maxAmount=500");
+      const searchParams = new URLSearchParams("period=thisMonth&minAmount=100&maxAmount=500");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: mockPathname,
@@ -312,10 +355,11 @@ describe("usePeriodFilter", () => {
     });
 
     it("should return null for filter params not in URL", () => {
+      const searchParams = new URLSearchParams("period=thisMonth");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: mockPathname,
-          searchParams: mockSearchParams,
+          searchParams,
           initialPeriod: { period: "thisMonth" },
         })
       );
@@ -327,7 +371,7 @@ describe("usePeriodFilter", () => {
     });
 
     it("should preserve filter params when changing period", () => {
-      const searchParams = new URLSearchParams("categoryId=cat_123&currency=CNY");
+      const searchParams = new URLSearchParams("period=thisMonth&categoryId=cat_123&currency=CNY");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: mockPathname,
@@ -363,7 +407,7 @@ describe("usePeriodFilter", () => {
           }),
         {
           initialProps: {
-            searchParams: new URLSearchParams(),
+            searchParams: new URLSearchParams("period=thisMonth"),
           },
         }
       );
@@ -371,27 +415,85 @@ describe("usePeriodFilter", () => {
       expect(result.current.filterParams.categoryId).toBeNull();
 
       // Update search params
-      rerender({ searchParams: new URLSearchParams("categoryId=new_cat") });
+      rerender({ searchParams: new URLSearchParams("period=thisMonth&categoryId=new_cat") });
 
       expect(result.current.filterParams.categoryId).toBe("new_cat");
     });
   });
 
   it("should handle leap year in custom date range", () => {
+    const searchParams = new URLSearchParams("period=custom&startDate=2024-02-01&endDate=2024-02-29");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
-        searchParams: mockSearchParams,
-        initialPeriod: {
-          period: "custom",
-          startDate: "2024-02-01",
-          endDate: "2024-02-29", // 2024 is a leap year
-        },
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
       })
     );
+
+    expect(result.current.periodParams.startDate).toBe("2024-02-01");
+    expect(result.current.periodParams.endDate).toBe("2024-02-29");
 
     const endDate = new Date(result.current.dateRange.endDate!);
     expect(endDate.getMonth()).toBe(1); // February
     expect(endDate.getDate()).toBe(29);
+  });
+
+  describe("URL-driven state updates", () => {
+    it("should update periodParams when URL period changes", () => {
+      const { result, rerender } = renderHook(
+        ({ searchParams }) =>
+          usePeriodFilter({
+            pathname: mockPathname,
+            searchParams,
+            initialPeriod: { period: "thisMonth" },
+          }),
+        {
+          initialProps: {
+            searchParams: new URLSearchParams("period=thisMonth"),
+          },
+        }
+      );
+
+      expect(result.current.periodParams.period).toBe("thisMonth");
+
+      // Simulate URL change
+      rerender({ searchParams: new URLSearchParams("period=custom&startDate=2024-03-01&endDate=2024-03-31") });
+
+      expect(result.current.periodParams.period).toBe("custom");
+      expect(result.current.periodParams.startDate).toBe("2024-03-01");
+      expect(result.current.periodParams.endDate).toBe("2024-03-31");
+    });
+
+    it("should respond to tab switch with custom dates (drilldown scenario)", () => {
+      // Initial state: thisMonth
+      const { result, rerender } = renderHook(
+        ({ searchParams }) =>
+          usePeriodFilter({
+            pathname: mockPathname,
+            searchParams,
+            initialPeriod: { period: "thisMonth" },
+          }),
+        {
+          initialProps: {
+            searchParams: new URLSearchParams("period=thisMonth"),
+          },
+        }
+      );
+
+      const initialStartDate = result.current.dateRange.startDate;
+
+      // Simulate drilldown navigation: URL changes to custom period
+      rerender({
+        searchParams: new URLSearchParams("tab=details&period=custom&startDate=2024-01-01&endDate=2024-01-31&categoryId=food"),
+      });
+
+      // Should immediately reflect new URL state
+      expect(result.current.periodParams.period).toBe("custom");
+      expect(result.current.periodParams.startDate).toBe("2024-01-01");
+      expect(result.current.periodParams.endDate).toBe("2024-01-31");
+      expect(result.current.filterParams.categoryId).toBe("food");
+      expect(result.current.dateRange.startDate).not.toBe(initialStartDate);
+    });
   });
 });
