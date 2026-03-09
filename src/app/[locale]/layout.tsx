@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Analytics } from '@vercel/analytics/react';
 import "../globals.css";
 import { Providers } from "@/components/providers";
 
@@ -70,8 +68,6 @@ export default async function LocaleLayout({
             </main>
           </Providers>
         </NextIntlClientProvider>
-        <SpeedInsights />
-        <Analytics />
       </body>
     </html>
   );

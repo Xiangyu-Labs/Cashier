@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
@@ -93,28 +93,6 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-
-  // Performance tracking - hydration complete
-  useEffect(() => {
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      // Report hydration complete time
-      const navigationStart = performance.timeOrigin || (performance.timing?.navigationStart as number) || Date.now();
-      const hydrationTime = performance.now();
-      console.log(`[Performance] Hydration complete: ${hydrationTime.toFixed(2)}ms since navigation start`);
-
-      // Report Core Web Vitals metrics
-      // @ts-expect-error web-vitals loading dynamically
-      import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-        onCLS(console.log);
-        onFID(console.log);
-        onFCP(console.log);
-        onLCP(console.log);
-        onTTFB(console.log);
-      }).catch(() => {
-        // web-vitals library not installed, skip
-      });
-    }
-  }, []);
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),

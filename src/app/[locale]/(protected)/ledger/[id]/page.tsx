@@ -20,9 +20,6 @@ export default async function LedgerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Performance tracking - server data fetch start
-  const perfStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
 
@@ -76,12 +73,6 @@ export default async function LedgerPage({
       staleTime: 30 * 1000,
     }),
   ]);
-
-  // Performance tracking - server data fetch complete
-  const perfEndTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Performance] Server prefetch: ${(perfEndTime - perfStartTime).toFixed(2)}ms`);
-  }
 
   // Check if ledger exists
   const ledger = queryClient.getQueryData(queryKeys.ledger(ledgerId)) as Awaited<ReturnType<typeof getLedgerAction>> | undefined;
