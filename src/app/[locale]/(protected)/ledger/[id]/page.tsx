@@ -15,10 +15,6 @@ import { getEnhancedStats } from "@/features/stats/server/actions";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { formatDateTimeForApi, getDateRange } from "@/lib/date-utils";
 
-// Default values to eliminate serial dependency on ledger fetch
-const DEFAULT_MAIN_CURRENCY = 'CNY';
-const DEFAULT_MONTH_START_DAY = 1;
-
 export default async function LedgerPage({
   params,
   searchParams,
@@ -40,25 +36,35 @@ export default async function LedgerPage({
 
   // Create a new QueryClient for this request
   const queryClient = new QueryClient();
+  const STALE_TIME = 5 * 60 * 1000;
 
-  // Use default values to allow parallel fetching without waiting for ledger
-  const monthStartDay = DEFAULT_MONTH_START_DAY;
+  // Step 1: First fetch ledger data (other queries depend on it for mainCurrency and monthStartDay)
+  const ledger = await queryClient.fetchQuery({
+    queryKey: queryKeys.ledger(ledgerId),
+    queryFn: () => getLedgerAction(ledgerId),
+    staleTime: STALE_TIME,
+  });
+
+  if (!ledger) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <p className="text-muted">{t("notFound")}</p>
+      </div>
+    );
+  }
+
+  // Get actual settings from ledger (ensures server/client query key consistency)
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? 'CNY';
+  const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
+
   const enrichedPeriodParams = periodParams.period === 'currentPeriod'
     ? { ...periodParams, monthStartDay }
     : periodParams;
   const dateRange = periodToDateRange(enrichedPeriodParams);
-  const mainCurrency = DEFAULT_MAIN_CURRENCY;
 
-  const STALE_TIME = 5 * 60 * 1000;
-
-  // Prefetch ALL tabs data in parallel
+  // Step 2: Prefetch other data using actual mainCurrency and monthStartDay
   await Promise.all([
     // ===== Core data (all tabs) =====
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.ledger(ledgerId),
-      queryFn: () => getLedgerAction(ledgerId),
-      staleTime: STALE_TIME,
-    }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.entryCategories(ledgerId),
       queryFn: () => getEntryCategoriesAction(ledgerId),
@@ -139,16 +145,6 @@ export default async function LedgerPage({
       staleTime: STALE_TIME,
     }),
   ]);
-
-  // Check if ledger exists
-  const ledger = queryClient.getQueryData(queryKeys.ledger(ledgerId)) as Awaited<ReturnType<typeof getLedgerAction>> | undefined;
-  if (!ledger) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <p className="text-muted">{t("notFound")}</p>
-      </div>
-    );
-  }
 
   // Create a stable initial date for StatsTab to avoid hydration mismatch
   const initialStatsDate = new Date();
