@@ -43,7 +43,6 @@ import { PeriodParams } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
-import { usePrefetchRelatedData } from "@/features/ledger/client/hooks/usePrefetchRelatedData";
 import { Header } from "./Header";
 import { EntriesTabSkeleton, DetailsTabSkeleton, StatsTabSkeleton, SettingsTabSkeleton } from "@/components/skeletons/TabSkeletons";
 
@@ -173,15 +172,6 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
   const [isPendingOpen, setIsPendingOpen] = useState(false);
 
   const { stats: pendingStats } = useTaskQueue(ledgerId);
-
-  // 预加载其他 Tab 数据（一次点击可达）
-  usePrefetchRelatedData({
-    ledgerId,
-    activeTab: activeTab as "history" | "details" | "stats" | "settings",
-    ledger: ledger || undefined,
-    categories: categories || [],
-    periodParams,
-  });
 
   // 预加载记一笔弹窗数据（当弹窗关闭时）
   useEffect(() => {
