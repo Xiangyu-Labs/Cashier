@@ -190,6 +190,29 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
     }
   }, [isInputOpen, ledgerId, queryClient]);
 
+  // 预加载其他 Tab 组件代码（在活动 Tab 加载完成后）
+  useEffect(() => {
+    const preloadTabs = () => {
+      // 根据当前活动 Tab 预加载其他 Tab
+      if (activeTab !== 'details') {
+        import("../DetailsTab");
+      }
+      if (activeTab !== 'stats') {
+        import("../StatsTab");
+      }
+      if (activeTab !== 'settings') {
+        import("../SettingsTab");
+      }
+      if (activeTab !== 'history') {
+        import("../LedgerEntriesTab");
+      }
+    };
+
+    // 延迟预加载，优先保证当前 Tab 的响应速度
+    const timer = setTimeout(preloadTabs, 500);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
   if (!ledger) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
