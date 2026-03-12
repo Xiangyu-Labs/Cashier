@@ -1,32 +1,36 @@
 import { and, eq, isNull, SQL } from "drizzle-orm";
-import { SQLiteTable } from "drizzle-orm/sqlite-core";
+import type { SQLiteTable, SQLiteColumn } from "drizzle-orm/sqlite-core";
+
+/**
+ * Interface for tables that have ledgerId and optional deletedAt columns
+ * This allows type-safe access to these columns without 'as unknown as' casts
+ */
+interface LedgerScopedTable {
+    ledgerId: SQLiteColumn;
+    deletedAt?: SQLiteColumn;
+    id: SQLiteColumn;
+}
 
 /**
  * 为指定 ledgerId 创建作用域查询条件
  * 自动添加租户隔离 + 软删除过滤
  */
-export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
+export function forLedger<T extends SQLiteTable>(
+    table: T & LedgerScopedTable,
+    ledgerId: string
+) {
     return {
         /**
          * 生成标准的 WHERE 条件 (租户隔离 + 软删除)
          * - automatically checks ledgerId
          * - automatically checks deletedAt is null (if exists)
-         *
-         * Type assertion explanation:
-         * Drizzle ORM's SQLiteTable type doesn't expose column types for dynamic property access.
-         * The table columns exist as runtime properties, but TypeScript can't infer them generically.
-         * We assert to Record<string, SQL> to access ledgerId, deletedAt, etc. dynamically.
-         *
-         * Safety: All tables using this helper have ledgerId and deletedAt columns by convention.
-         * The forLedger function is only called with tables that follow this schema pattern.
          */
         get whereActive() {
-            const t = table as unknown as Record<string, SQL>;
-            const conditions: SQL[] = [eq(t.ledgerId, ledgerId as unknown as SQL)];
+            const conditions: SQL[] = [eq(table.ledgerId, ledgerId)];
 
-            // Drizzle table columns are available as properties on the table object
-            if (t.deletedAt) {
-                conditions.push(isNull(t.deletedAt));
+            // Check if table has soft delete column
+            if (table.deletedAt) {
+                conditions.push(isNull(table.deletedAt));
             }
 
             return and(...conditions);
@@ -37,8 +41,7 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
          * - automatically ensures the entity belongs to the ledger and is active
          */
         whereId(id: string) {
-            const t = table as unknown as Record<string, SQL>;
-            return and(eq(t.id, id as unknown as SQL), this.whereActive);
+            return and(eq(table.id, id), this.whereActive);
         },
 
         /**
@@ -55,4 +58,3 @@ export function forLedger<T extends SQLiteTable>(table: T, ledgerId: string) {
         ledgerId,
     };
 }
-
