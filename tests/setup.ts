@@ -47,7 +47,7 @@ beforeEach(async () => {
   await memoryStore.flushall();
 
   // Clean all tables before each test
-  // SQLite doesn't support TRUNCATE, use DELETE FROM
+  // Note: users table is excluded - it's only created once in beforeAll via createTestSchema
   if (getTestDb()) {
     const tables = [
       "ledger_entries",
@@ -60,14 +60,14 @@ beforeEach(async () => {
       "accounts",
       "verification_tokens",
       "otp_tokens",
-      "users"
     ];
 
     for (const table of tables) {
       testClient.prepare(`DELETE FROM "${table}"`).run();
     }
 
-    // Insert default test user for Auth Mock (TEST_USER_ID)
+    // Ensure default test user exists (created once in schema-setup, but verify here)
+    // This handles edge cases where a test might have deleted the user
     try {
       await testDb.insert(schema.users).values({
         id: '00000000-0000-0000-0000-000000000000',
@@ -76,7 +76,7 @@ beforeEach(async () => {
         emailVerified: new Date(),
       });
     } catch (_e) {
-      // Ignore unique constraint violation if exists
+      // User already exists, which is the expected case
     }
   }
 });
