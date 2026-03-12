@@ -79,12 +79,16 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
 /**
  * Check if context contains standard snapshots for automatic rollback
  */
-function hasSnapshots(context: unknown): context is { snapshots: MutationSnapshot } {
+interface SnapshotContext {
+  snapshots: MutationSnapshot;
+}
+
+function hasSnapshots(context: unknown): context is SnapshotContext {
   return (
     typeof context === "object" &&
     context !== null &&
     "snapshots" in context &&
-    Array.isArray((context as { snapshots: unknown }).snapshots)
+    Array.isArray((context as SnapshotContext).snapshots)
   );
 }
 
@@ -137,11 +141,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         return await onOptimisticUpdate(queryClient, variables);
       }
 
-      // TContext is a generic type parameter. When onOptimisticUpdate is not provided,
-      // we return undefined which is a valid value for any type in this context.
-      // This cast is safe because the calling code expects undefined when no
-      // optimistic update is configured.
-      return undefined as TContext;
+      // When onOptimisticUpdate is not provided, return undefined.
+      // The generic TContext will be unknown in this case, so the cast is safe.
+      return undefined as unknown as TContext;
     },
 
     onSuccess: (data, variables) => {
