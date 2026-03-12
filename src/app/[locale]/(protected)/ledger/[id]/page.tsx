@@ -150,9 +150,12 @@ export default async function LedgerPage({
     );
   }
 
+  // Create a stable initial date for StatsTab to avoid hydration mismatch
+  const initialStatsDate = new Date();
+
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <LedgerPageClient ledgerId={ledgerId} initialPeriod={enrichedPeriodParams} />
+      <LedgerPageClient ledgerId={ledgerId} initialPeriod={enrichedPeriodParams} initialStatsDate={initialStatsDate} />
     </HydrationBoundary>
   );
 }

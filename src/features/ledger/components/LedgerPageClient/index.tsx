@@ -51,7 +51,6 @@ const LedgerEntriesTab = dynamic(
   () => import("../LedgerEntriesTab").then((m) => ({ default: m.LedgerEntriesTab })),
   {
     loading: () => <EntriesTabSkeleton />,
-    ssr: false,
   }
 );
 
@@ -59,7 +58,6 @@ const DetailsTab = dynamic(
   () => import("../DetailsTab").then((m) => ({ default: m.DetailsTab })),
   {
     loading: () => <DetailsTabSkeleton />,
-    ssr: false,
   }
 );
 
@@ -67,7 +65,6 @@ const StatsTab = dynamic(
   () => import("../StatsTab").then((m) => ({ default: m.StatsTab })),
   {
     loading: () => <StatsTabSkeleton />,
-    ssr: false,
   }
 );
 
@@ -75,19 +72,19 @@ const SettingsTab = dynamic(
   () => import("../SettingsTab").then((m) => ({ default: m.SettingsTab })),
   {
     loading: () => <SettingsTabSkeleton />,
-    ssr: false,
   }
 );
 
 interface LedgerPageClientProps {
   ledgerId: string;
   initialPeriod: PeriodParams;
+  initialStatsDate?: Date;
 }
 
 const STALE_TIME = 10 * 60 * 1000;
 const INPUT_PREFETCH_DELAY = 2000; // 2秒后预加载记一笔弹窗数据
 
-export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientProps) {
+export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -256,6 +253,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
                 ledger={ledger}
                 onCategoryDrilldown={handleCategoryDrilldown}
                 onDateDrilldown={handleDateDrilldown}
+                initialDate={initialStatsDate}
               />
             </Suspense>
           </TabsContent>

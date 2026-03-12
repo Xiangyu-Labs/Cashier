@@ -23,14 +23,16 @@ interface StatsTabProps {
     ledger?: import("@/types/api").Ledger;
     onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
     onDateDrilldown?: (date: string) => void;
+    initialDate?: Date;
 }
 
-export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldown }: StatsTabProps) {
+export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldown, initialDate }: StatsTabProps) {
     const t = useTranslations("StatsTab");
     const format = useFormatter();
     const queryClient = useQueryClient();
     const [rangeType, setRangeType] = useState<DateRangeType>("month");
-    const [currentDate, setCurrentDate] = useState(new Date());
+    // Use initialDate from props to avoid hydration mismatch between server and client
+    const [currentDate, setCurrentDate] = useState(initialDate || new Date());
     const [chartView, setChartView] = useState<'trend' | 'heatmap'>('heatmap');
 
     // Get monthStartDay from ledger settings (default to 1)
