@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { TokenUsage } from "@/lib/flow/types";
+import type { OpenAIClient } from "@/lib/ai/openai-client";
 import { createAIContext } from "@/lib/flow/ai-context";
 
 // Mock the openai service
@@ -6,6 +8,7 @@ vi.mock("@/lib/ai/openai-client", () => ({
     getOpenAIClient: vi.fn().mockReturnValue({
         generateContent: vi.fn(),
     }),
+    resetOpenAIClient: vi.fn(),
 }));
 
 import { getOpenAIClient } from "@/lib/ai/openai-client";
@@ -29,18 +32,18 @@ describe("createAIContext", () => {
         // Setup mock return value
         vi.mocked(getOpenAIClient).mockReturnValue({
             generateContent: mockGenerateContent,
-        });
+        } as unknown as OpenAIClient);
     });
 
     it("should return an object with generate method", () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         expect(context).toHaveProperty("generate");
         expect(typeof context.generate).toBe("function");
     });
 
     it("should generate content with basic options", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         const result = await context.generate({
             prompt: "Test prompt",
@@ -54,7 +57,7 @@ describe("createAIContext", () => {
     });
 
     it("should throw error when text model receives image content", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await expect(
             context.generate({
@@ -77,7 +80,7 @@ describe("createAIContext", () => {
         const originalTextModel = process.env.AI_MODEL_TEXT;
         delete process.env.AI_MODEL_TEXT;
 
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await expect(
             context.generate({
@@ -98,7 +101,7 @@ describe("createAIContext", () => {
         const originalVisionModel = process.env.AI_MODEL_VISION;
         delete process.env.AI_MODEL_VISION;
 
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await expect(
             context.generate({
@@ -115,7 +118,7 @@ describe("createAIContext", () => {
     });
 
     it("should use default maxTokens and temperature", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await context.generate({
             prompt: "Test prompt",
@@ -129,7 +132,7 @@ describe("createAIContext", () => {
     });
 
     it("should accept custom maxTokens and temperature", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await context.generate({
             prompt: "Test prompt",
@@ -145,7 +148,7 @@ describe("createAIContext", () => {
     });
 
     it("should auto-report tokens by default", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await context.generate({
             prompt: "Test prompt",
@@ -161,7 +164,7 @@ describe("createAIContext", () => {
     });
 
     it("should not report tokens when autoReportTokens is false", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await context.generate({
             prompt: "Test prompt",
@@ -174,7 +177,7 @@ describe("createAIContext", () => {
     });
 
     it("should convert string messages to OpenAI format", async () => {
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         await context.generate({
             prompt: "Test prompt",
@@ -200,7 +203,7 @@ describe("createAIContext", () => {
             usage: { promptTokens: 100, completionTokens: 50 },
         });
 
-        const context = createAIContext(mockSignal, mockReportTokens);
+        const context = createAIContext(mockSignal, mockReportTokens as (usage: TokenUsage) => void);
 
         const result = await context.generate({
             prompt: "Test prompt",

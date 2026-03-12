@@ -5,12 +5,13 @@ import { sourceDocuments, ledgerEntries, entryCategories as categories } from "@
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
-import { getOpenAIClient } from "@/features/ai/server/services/openai";
+import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 // Mock OpenAI
-vi.mock("@/features/ai/server/services/openai", () => ({
+vi.mock("@/lib/ai/openai-client", () => ({
     getOpenAIClient: vi.fn(),
+    resetOpenAIClient: vi.fn(),
 }));
 
 describe("SourceDocument Retry Action", () => {

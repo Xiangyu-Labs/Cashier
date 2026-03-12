@@ -13,11 +13,12 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
-vi.mock("@/features/ai/server/services/openai", () => ({
+vi.mock("@/lib/ai/openai-client", () => ({
   getOpenAIClient: vi.fn(),
+  resetOpenAIClient: vi.fn(),
 }));
 
-import { getOpenAIClient } from "@/features/ai/server/services/openai";
+import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("SourceDocument Actions", () => {

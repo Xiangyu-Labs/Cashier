@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
@@ -21,12 +21,31 @@ import { useEffect } from "react";
 import {
     useLedgerMutation,
     createListSnapshots,
+    type MutationSnapshot,
 } from "@/lib/mutations/use-ledger-mutation";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
 import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
 import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
+
+// Helper function to create snapshots for source document mutations
+// Reduces duplication across 6 mutations in this component
+function createSourceDocSnapshots(
+    queryClient: ReturnType<typeof useQueryClient>,
+    documentId: string,
+    ledgerId: string | undefined
+): MutationSnapshot {
+    const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(documentId));
+
+    if (ledgerId) {
+        const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
+        const listSnapshots = createListSnapshots(queryClient, listKey);
+        snapshots.push(...listSnapshots);
+    }
+
+    return snapshots;
+}
 
 // Use the server type for query data (they are compatible)
 type SourceDocumentQueryData = ServerSourceDocumentWithEntries;
@@ -82,7 +101,7 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, data) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Update full detail query
             queryClient.setQueriesData(
@@ -104,15 +123,8 @@ export function SourceDocumentDetailWrapper({
 
             // 3. Update flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots<SourceDocumentWithEntries[]>(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old) =>
                         old?.map((doc) =>
                             doc.id === id ? { ...doc, ...data } : doc
@@ -143,7 +155,7 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { entryId, data }) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Update detail query
             queryClient.setQueriesData(
@@ -161,15 +173,8 @@ export function SourceDocumentDetailWrapper({
 
             // 2. Update flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old: SourceDocumentWithEntries[] | undefined) => {
                         if (!old) return [];
                         return old.map((doc) => {
@@ -203,7 +208,7 @@ export function SourceDocumentDetailWrapper({
         },
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { ids, data }) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Update detail query
             queryClient.setQueriesData(
@@ -221,15 +226,8 @@ export function SourceDocumentDetailWrapper({
 
             // 2. Update flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old: SourceDocumentWithEntries[] | undefined) => {
                         if (!old) return [];
                         return old.map((doc) => {
@@ -261,7 +259,7 @@ export function SourceDocumentDetailWrapper({
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, entryId) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Update detail query
             queryClient.setQueriesData(
@@ -277,15 +275,8 @@ export function SourceDocumentDetailWrapper({
 
             // 2. Update flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old: SourceDocumentWithEntries[] | undefined) => {
                         if (!old) return [];
                         return old.map((doc) => {
@@ -315,7 +306,7 @@ export function SourceDocumentDetailWrapper({
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Update detail query
             queryClient.setQueriesData(
@@ -331,15 +322,8 @@ export function SourceDocumentDetailWrapper({
 
             // 2. Update flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old: SourceDocumentWithEntries[] | undefined) => {
                         if (!old) return [];
                         return old.map((doc) => {
@@ -372,22 +356,15 @@ export function SourceDocumentDetailWrapper({
             onClose();
         },
         onOptimisticUpdate: (queryClient) => {
-            const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(id));
+            const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
             // 1. Remove from detail query
             queryClient.setQueriesData({ queryKey: queryKeys.sourceDocument(id) }, () => undefined);
 
             // 2. Remove from flat list cache (new architecture)
             if (ledgerId) {
-                const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-                const listSnapshots = createListSnapshots(
-                    queryClient,
-                    listKey
-                );
-                snapshots.push(...listSnapshots);
-
                 queryClient.setQueriesData(
-                    { queryKey: listKey },
+                    { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
                     (old: SourceDocumentWithEntries[] | undefined) => old?.filter((doc) => doc.id !== id) ?? []
                 );
             }

@@ -4,13 +4,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const originalEnv = { ...process.env }
 
 // Mock the OpenAI client
-vi.mock('@/features/ai/server/services/openai', () => ({
+vi.mock('@/lib/ai/openai-client', () => ({
     getOpenAIClient: () => ({
         generateContent: vi.fn().mockResolvedValue({
             content: '{"result": "success"}',
             usage: { promptTokens: 100, completionTokens: 50 },
         }),
     }),
+    resetOpenAIClient: vi.fn(),
 }))
 
 import { createAIContext } from '@/lib/flow/ai-context'

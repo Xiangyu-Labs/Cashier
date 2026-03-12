@@ -1,4 +1,4 @@
-import { OpenAIClient } from "@/features/ai/server/services/openai";
+import { OpenAIClient } from "@/lib/ai/openai-client";
 import { vi, describe, beforeEach, afterEach, it, expect } from "vitest";
 
 const { mockCreate, mockOpenAI } = vi.hoisted(() => {
