@@ -4,25 +4,14 @@
  * Type definitions for calendar heatmap feature.
  */
 
+// Re-export shared types from central location
+export type { CalendarDayData, CalendarHeatmapStats } from '@/types/calendar';
+
 export type CalendarViewType = 'month' | 'year';
 
 export interface CalendarFilters {
     currency?: string;
     categoryId?: string;
-}
-
-export interface CalendarDayData {
-    date: string; // yyyy-MM-dd
-    totalAmount: number;
-    entryCount: number;
-    currencies: string[];
-}
-
-export interface CalendarHeatmapStats {
-    minAmount: number;
-    maxAmount: number;
-    avgAmount: number;
-    p80Amount: number; // 80th percentile for color mapping
 }
 
 export interface CalendarHeatmapData {

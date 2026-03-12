@@ -6,7 +6,7 @@ import { currencyRates } from "@/features/currency/server/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "../utils";
 import { forLedger } from "@/lib/db/scoped-query";
-import type { CalendarDayData, CalendarHeatmapStats } from "@/features/calendar/types";
+import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
 export interface EnhancedCategoryStat {
     id: string | null;
