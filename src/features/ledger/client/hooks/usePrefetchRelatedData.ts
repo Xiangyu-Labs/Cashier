@@ -51,9 +51,16 @@ export function usePrefetchRelatedData({
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
 
+    console.log(`[Prefetch] useEffect triggered for tab: ${activeTab}, ledger: ${ledgerId.slice(0, 8)}`);
+
     // 延迟启动预加载
     timerRef.current = setTimeout(() => {
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        console.log('[Prefetch] Aborted before prefetch start');
+        return;
+      }
+
+      console.log(`[Prefetch] Starting prefetch after ${PREFETCH_DELAY}ms delay`);
 
       // 使用 requestIdleCallback 在浏览器空闲时执行
       const schedulePrefetch = typeof window !== "undefined" && "requestIdleCallback" in window
@@ -61,7 +68,11 @@ export function usePrefetchRelatedData({
         : (cb: () => void) => setTimeout(cb, 1);
 
       schedulePrefetch(() => {
-        if (signal.aborted) return;
+        if (signal.aborted) {
+          console.log('[Prefetch] Aborted in requestIdleCallback');
+          return;
+        }
+        console.log(`[Prefetch] Executing prefetch for ${activeTab} tab`);
         prefetchRelatedData({
           queryClient,
           ledgerId,
@@ -97,29 +108,35 @@ interface PrefetchContext {
 
 async function prefetchRelatedData(ctx: PrefetchContext) {
   const { activeTab } = ctx;
+  console.log(`[Prefetch] prefetchRelatedData called for activeTab: ${activeTab}`);
 
   switch (activeTab) {
     case "history":
+      console.log('[Prefetch] Will prefetch: Details, Stats, Settings tabs');
       await prefetchDetailsTab(ctx);
       await prefetchStatsTab(ctx);
       await prefetchSettingsTab(ctx);
       break;
     case "details":
+      console.log('[Prefetch] Will prefetch: History, Stats, Settings tabs');
       await prefetchHistoryTab(ctx);
       await prefetchStatsTab(ctx);
       await prefetchSettingsTab(ctx);
       break;
     case "stats":
+      console.log('[Prefetch] Will prefetch: History, Details, Settings tabs');
       await prefetchHistoryTab(ctx);
       await prefetchDetailsTab(ctx);
       await prefetchSettingsTab(ctx);
       break;
     case "settings":
+      console.log('[Prefetch] Will prefetch: History, Details, Stats tabs');
       await prefetchHistoryTab(ctx);
       await prefetchDetailsTab(ctx);
       await prefetchStatsTab(ctx);
       break;
   }
+  console.log(`[Prefetch] prefetchRelatedData completed for ${activeTab}`);
 }
 
 // 预加载 History Tab 数据
@@ -129,15 +146,23 @@ async function prefetchHistoryTab({
   periodParams,
   signal,
 }: PrefetchContext) {
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchHistoryTab aborted');
+    return;
+  }
 
-  const dateRange = periodToDateRange(periodParams);
-  const startDate = dateRange.startDate ? formatDateTimeForApi(new Date(dateRange.startDate)) : null;
-  const endDate = dateRange.endDate ? formatDateTimeForApi(new Date(dateRange.endDate)) : null;
+  console.log('[Prefetch] Starting prefetchHistoryTab');
+  const startTime = Date.now();
+
+  const { startDate, endDate } = periodToDateRange(periodParams);
 
   // 预加载源单据列表
   const sourceDocsKey = queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate);
-  if (!queryClient.getQueryData(sourceDocsKey)) {
+  const cached = queryClient.getQueryData(sourceDocsKey);
+  console.log(`[Prefetch] HistoryTab - sourceDocuments cache check: ${cached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!cached) {
+    console.log('[Prefetch] HistoryTab - fetching sourceDocuments...');
     await queryClient.prefetchQuery({
       queryKey: sourceDocsKey,
       queryFn: () => getAllSourceDocumentsAction(ledgerId, {
@@ -146,6 +171,7 @@ async function prefetchHistoryTab({
       }),
       staleTime: STALE_TIME,
     });
+    console.log(`[Prefetch] HistoryTab - sourceDocuments fetched in ${Date.now() - startTime}ms`);
   }
 }
 
@@ -157,16 +183,24 @@ async function prefetchDetailsTab({
   ledger,
   signal,
 }: PrefetchContext) {
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchDetailsTab aborted');
+    return;
+  }
 
-  const dateRange = periodToDateRange(periodParams);
-  const startDate = dateRange.startDate ? formatDateTimeForApi(new Date(dateRange.startDate)) : null;
-  const endDate = dateRange.endDate ? formatDateTimeForApi(new Date(dateRange.endDate)) : null;
+  console.log('[Prefetch] Starting prefetchDetailsTab');
+  const startTime = Date.now();
+
+  const { startDate, endDate } = periodToDateRange(periodParams);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
   // 预加载账本条目汇总数据
   const summaryKey = queryKeys.ledgerEntries(ledgerId, "summary", startDate, endDate, mainCurrency, null);
-  if (!queryClient.getQueryData(summaryKey)) {
+  const summaryCached = queryClient.getQueryData(summaryKey);
+  console.log(`[Prefetch] DetailsTab - summary cache check: ${summaryCached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!summaryCached) {
+    console.log('[Prefetch] DetailsTab - fetching summary...');
     await queryClient.prefetchQuery({
       queryKey: summaryKey,
       queryFn: () => getLedgerStatsAction(
@@ -178,13 +212,21 @@ async function prefetchDetailsTab({
       ),
       staleTime: STALE_TIME,
     });
+    console.log(`[Prefetch] DetailsTab - summary fetched`);
   }
 
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchDetailsTab aborted after summary');
+    return;
+  }
 
   // 预加载账本条目第一页
   const entriesKey = queryKeys.ledgerEntries(ledgerId, "infinite", startDate, endDate, null);
-  if (!queryClient.getQueryData(entriesKey)) {
+  const entriesCached = queryClient.getQueryData(entriesKey);
+  console.log(`[Prefetch] DetailsTab - entries cache check: ${entriesCached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!entriesCached) {
+    console.log('[Prefetch] DetailsTab - fetching entries...');
     await queryClient.prefetchInfiniteQuery({
       queryKey: entriesKey,
       queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
@@ -196,7 +238,10 @@ async function prefetchDetailsTab({
       initialPageParam: undefined as string | undefined,
       staleTime: STALE_TIME,
     });
+    console.log(`[Prefetch] DetailsTab - entries fetched`);
   }
+
+  console.log(`[Prefetch] DetailsTab completed in ${Date.now() - startTime}ms`);
 }
 
 // 预加载 Stats Tab 数据（仅当前月份）
@@ -206,7 +251,12 @@ async function prefetchStatsTab({
   ledger,
   signal,
 }: PrefetchContext) {
-  if (signal.aborted || !ledger) return;
+  if (signal.aborted || !ledger) {
+    console.log(`[Prefetch] prefetchStatsTab ${signal.aborted ? 'aborted' : 'skipped (no ledger)'}`);
+    return;
+  }
+
+  console.log('[Prefetch] Starting prefetchStatsTab');
 
   const mainCurrency = ledger.metadata?.settings?.mainCurrency || "CNY";
   const monthStartDay = ledger.metadata?.settings?.monthStartDay || 1;
@@ -227,8 +277,11 @@ async function prefetchStatsTab({
   const prevEndStr = formatDateTimeForApi(prevRange.endDate);
 
   const statsKey = [...queryKeys.enhancedStats(ledgerId), startStr, rangeType, mainCurrency];
+  const cached = queryClient.getQueryData(statsKey);
+  console.log(`[Prefetch] StatsTab - enhancedStats cache check: ${cached ? 'HIT (skip)' : 'MISS (fetch)'}`);
 
-  if (!queryClient.getQueryData(statsKey)) {
+  if (!cached) {
+    console.log('[Prefetch] StatsTab - fetching enhancedStats...');
     await queryClient.prefetchQuery({
       queryKey: statsKey,
       queryFn: () => getEnhancedStats({
@@ -238,6 +291,7 @@ async function prefetchStatsTab({
       }),
       staleTime: STALE_TIME,
     });
+    console.log('[Prefetch] StatsTab - enhancedStats fetched');
   }
 }
 
@@ -248,52 +302,88 @@ async function prefetchSettingsTab({
   categories,
   signal,
 }: PrefetchContext) {
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchSettingsTab aborted');
+    return;
+  }
+
+  console.log('[Prefetch] Starting prefetchSettingsTab');
 
   // 预加载账本设置
   const settingsKey = queryKeys.ledgerSettings(ledgerId);
-  if (!queryClient.getQueryData(settingsKey)) {
+  const settingsCached = queryClient.getQueryData(settingsKey);
+  console.log(`[Prefetch] SettingsTab - settings cache check: ${settingsCached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!settingsCached) {
+    console.log('[Prefetch] SettingsTab - fetching settings...');
     await queryClient.prefetchQuery({
       queryKey: settingsKey,
       queryFn: () => getLedgerSettingsAction(ledgerId),
       staleTime: STALE_TIME,
     });
+    console.log('[Prefetch] SettingsTab - settings fetched');
   }
 
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchSettingsTab aborted after settings');
+    return;
+  }
 
   // 预加载服务凭证
   const credentialsKey = queryKeys.serviceCredentials(ledgerId);
-  if (!queryClient.getQueryData(credentialsKey)) {
+  const credentialsCached = queryClient.getQueryData(credentialsKey);
+  console.log(`[Prefetch] SettingsTab - credentials cache check: ${credentialsCached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!credentialsCached) {
+    console.log('[Prefetch] SettingsTab - fetching credentials...');
     await queryClient.prefetchQuery({
       queryKey: credentialsKey,
       queryFn: () => getServiceCredentialsAction(ledgerId),
       staleTime: STALE_TIME,
     });
+    console.log('[Prefetch] SettingsTab - credentials fetched');
   }
 
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchSettingsTab aborted after credentials');
+    return;
+  }
 
   // 预加载所有账本（用于切换）
   const ledgersKey = queryKeys.ledgers();
-  if (!queryClient.getQueryData(ledgersKey)) {
+  const ledgersCached = queryClient.getQueryData(ledgersKey);
+  console.log(`[Prefetch] SettingsTab - ledgers cache check: ${ledgersCached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+
+  if (!ledgersCached) {
+    console.log('[Prefetch] SettingsTab - fetching ledgers...');
     await queryClient.prefetchQuery({
       queryKey: ledgersKey,
       queryFn: () => getLedgersAction(),
       staleTime: STALE_TIME,
     });
+    console.log('[Prefetch] SettingsTab - ledgers fetched');
   }
 
-  if (signal.aborted) return;
+  if (signal.aborted) {
+    console.log('[Prefetch] prefetchSettingsTab aborted after ledgers');
+    return;
+  }
 
   // 预加载分类（如果还没有）
   const categoriesKey = queryKeys.entryCategories(ledgerId);
-  if (!queryClient.getQueryData(categoriesKey) && categories.length === 0) {
+  const categoriesCached = queryClient.getQueryData(categoriesKey);
+  console.log(`[Prefetch] SettingsTab - categories cache check: cached=${!!categoriesCached}, length=${categories.length}`);
+
+  if (!categoriesCached && categories.length === 0) {
+    console.log('[Prefetch] SettingsTab - fetching categories...');
     await queryClient.prefetchQuery({
       queryKey: categoriesKey,
       queryFn: () => getEntryCategoriesAction(ledgerId),
       staleTime: STALE_TIME,
     });
+    console.log('[Prefetch] SettingsTab - categories fetched');
   }
+
+  console.log('[Prefetch] SettingsTab completed');
 }
 
