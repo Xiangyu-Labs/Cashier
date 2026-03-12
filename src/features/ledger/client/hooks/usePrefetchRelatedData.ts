@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
@@ -37,7 +37,21 @@ export function usePrefetchRelatedData({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Tab 级预加载（现有逻辑）
+  // 稳定化依赖，避免不必要的 effect 重置
+  // 使用原始值而非对象引用，确保只在实际数据变化时重新触发
+  const stableDeps = useMemo(() => ({
+    ledgerId,
+    activeTab,
+    ledgerIdFromLedger: ledger?.id,
+    mainCurrency: ledger?.metadata?.settings?.mainCurrency,
+    period: periodParams.period,
+    startDate: periodParams.startDate,
+    endDate: periodParams.endDate,
+    monthStartDay: periodParams.monthStartDay,
+    categoryCount: categories.length,
+  }), [ledgerId, activeTab, ledger?.id, ledger?.metadata?.settings?.mainCurrency, periodParams.period, periodParams.startDate, periodParams.endDate, periodParams.monthStartDay, categories.length]);
+
+  // Tab 级预加载
   useEffect(() => {
     // 取消之前的定时器和请求
     if (timerRef.current) {
@@ -86,7 +100,8 @@ export function usePrefetchRelatedData({
         abortControllerRef.current.abort();
       }
     };
-  }, [ledgerId, activeTab, ledger, ledger?.id, categories, periodParams, queryClient]);
+    // 使用稳定化的依赖，避免不必要的重新触发
+  }, [stableDeps, queryClient]);
 }
 
 interface PrefetchContext {
