@@ -84,6 +84,7 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                 }
             }),
         enabled: !!ledgerId,
+        placeholderData: (previousData) => previousData,
     });
 
     const totalExpense = stats?.summary.total || 0;
