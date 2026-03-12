@@ -76,7 +76,7 @@ export function SourceDocumentDetailWrapper({
     });
 
     // 2. Query full data (background loading for images)
-    const { data: fullData, isLoading: isLoadingFull, error } = useQuery({
+    const { data: fullData, error } = useQuery({
         queryKey: queryKeys.sourceDocument(id),
         queryFn: () => getSourceDocumentByIdAction(id),
         enabled: open && !!id,

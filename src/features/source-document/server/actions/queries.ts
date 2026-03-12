@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -15,7 +15,6 @@ import {
     type SerializedLedgerEntry,
     serializeLedgerEntry,
     serializeSourceDocument,
-    serializeEntryCategory,
 } from "@/lib/serialization";
 import type {
     SourceDocumentWithEntries,
@@ -177,10 +176,6 @@ function serializeSourceDocumentByStatus(
 }
 
 // ============ getAllSourceDocumentsAction Helpers ============
-
-type LedgerEntryWithCategory = typeof ledgerEntries.$inferSelect & {
-    category: typeof entryCategories.$inferSelect | null;
-};
 
 /**
  * Fetch entries with categories grouped by document ID

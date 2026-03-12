@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { serializeLedgerEntry, serializeSourceDocument, type SerializedLedgerEntry } from "@/lib/serialization";
+import { serializeLedgerEntry, type SerializedLedgerEntry } from "@/lib/serialization";
 
 export async function getLedgerEntryAction(id: string): Promise<SerializedLedgerEntry | null> {
     const entry = await db.query.ledgerEntries.findFirst({

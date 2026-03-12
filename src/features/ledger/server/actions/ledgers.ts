@@ -10,7 +10,6 @@ import { logger } from "@/lib/logger";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { taskVersionManager } from "@/lib/task-version";
 import { unstable_cache } from "next/cache";
-import { CACHE_VERSION } from "@/lib/cache-version";
 
 const createLedgerSchema = z.object({
     name: z.string().min(1, "Name is required"),

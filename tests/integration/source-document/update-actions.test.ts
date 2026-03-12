@@ -4,7 +4,7 @@ import {
   batchUpdateSourceDocumentsAction,
 } from "@/features/source-document/server/actions/update";
 import { getTestDb } from "../../setup";
-import { sourceDocuments, ledgers, users } from "@/lib/db/schema";
+import { sourceDocuments, ledgers } from "@/lib/db/schema";
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
 import { eq } from "drizzle-orm";
 

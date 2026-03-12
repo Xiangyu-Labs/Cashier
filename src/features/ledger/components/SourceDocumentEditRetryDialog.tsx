@@ -12,7 +12,6 @@ import { SourceDocument, SourceDocumentLight } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/features/source-document/server/actions";
-import { queryKeys } from "@/lib/query-keys";
 
 interface SourceDocumentEditRetryDialogProps {
     ledgerId: string;
