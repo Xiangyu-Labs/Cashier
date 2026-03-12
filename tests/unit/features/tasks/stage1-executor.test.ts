@@ -31,22 +31,28 @@ describe("Stage 1 Executor", () => {
     describe("Validity Check", () => {
         it("should return isValid false when document is invalid", async () => {
             const mockAI = createMockAI([
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": false, "reasoning": "无法识别金额"}',
                 '{"is_valid": false, "reasoning": "无法识别金额"}',
+                // Title extraction (single GPT) - runs in parallel with validity
+                '{"title": "无效文档"}',
             ]);
 
             const result = await executeStage1(baseInput, mockAI);
 
             expect(result.isValid).toBe(false);
-            // Only 2 calls for validity check (dual GPT)
-            expect(mockAI.generate).toHaveBeenCalledTimes(2);
+            expect(result.title).toBe("无效文档");
+            // 2 calls for validity check (dual GPT) + 1 call for title
+            expect(mockAI.generate).toHaveBeenCalledTimes(3);
         });
 
         it("should continue to other tasks when valid", async () => {
             const mockAI = createMockAI([
-                // Validity check (dual GPT)
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": true, "reasoning": "识别到金额45元"}',
                 '{"is_valid": true, "reasoning": "识别到金额45元"}',
+                // Title extraction (single GPT) - runs in parallel with validity
+                '{"title": "午餐消费"}',
                 // Completeness check (single GPT)
                 '{"is_complete": true}',
                 // Currency (dual GPT)
@@ -55,8 +61,6 @@ describe("Stage 1 Executor", () => {
                 // Category (dual GPT)
                 '{"categories": ["餐饮"], "reasoning": "午餐是餐饮消费"}',
                 '{"categories": ["餐饮"], "reasoning": "午餐是餐饮消费"}',
-                // Title (single GPT)
-                '{"title": "午餐消费"}',
             ]);
 
             const result = await executeStage1(baseInput, mockAI);
@@ -75,14 +79,19 @@ describe("Stage 1 Executor", () => {
     describe("Dual GPT Agreement", () => {
         it("should use first result when both GPTs agree", async () => {
             const mockAI = createMockAI([
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": true, "reasoning": "GPT1 reasoning"}',
                 '{"is_valid": true, "reasoning": "GPT2 reasoning"}',
+                // Title extraction (single GPT) - runs in parallel with validity
+                '{"title": "午餐"}',
+                // Completeness check (single GPT)
                 '{"is_complete": true}',
+                // Currency (dual GPT)
                 '{"currencies": ["CNY"], "reasoning": "GPT1 currency reason"}',
                 '{"currencies": ["CNY"], "reasoning": "GPT2 currency reason"}',
+                // Category (dual GPT)
                 '{"categories": ["餐饮"], "reasoning": "agreed"}',
                 '{"categories": ["餐饮"], "reasoning": "agreed"}',
-                '{"title": "午餐"}',
             ]);
 
             const result = await executeStage1(baseInput, mockAI);
@@ -178,14 +187,19 @@ describe("Stage 1 Executor", () => {
     describe("User Requirements", () => {
         it("should skip user requirements when aiCustomPrompt is empty", async () => {
             const mockAI = createMockAI([
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": true, "reasoning": "valid"}',
                 '{"is_valid": true, "reasoning": "valid"}',
-                '{"is_complete": true}',
-                '{"currencies": ["CNY"], "reasoning": "r"}',
-                '{"currencies": ["CNY"], "reasoning": "r"}',
-                '{"categories": ["餐饮"], "reasoning": "r"}',
-                '{"categories": ["餐饮"], "reasoning": "r"}',
+                // Title extraction (single GPT) - runs in parallel with validity
                 '{"title": "午餐"}',
+                // Completeness check (single GPT)
+                '{"is_complete": true}',
+                // Currency (dual GPT)
+                '{"currencies": ["CNY"], "reasoning": "r"}',
+                '{"currencies": ["CNY"], "reasoning": "r"}',
+                // Category (dual GPT)
+                '{"categories": ["餐饮"], "reasoning": "r"}',
+                '{"categories": ["餐饮"], "reasoning": "r"}',
             ]);
 
             const result = await executeStage1({ ...baseInput, aiCustomPrompt: "" }, mockAI);
@@ -198,14 +212,20 @@ describe("Stage 1 Executor", () => {
 
         it("should process user requirements when aiCustomPrompt is provided", async () => {
             const mockAI = createMockAI([
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": true, "reasoning": "valid"}',
                 '{"is_valid": true, "reasoning": "valid"}',
-                '{"is_complete": true}',
-                '{"currencies": ["CNY"], "reasoning": "r"}',
-                '{"currencies": ["CNY"], "reasoning": "r"}',
-                '{"categories": ["餐饮"], "reasoning": "r"}',
-                '{"categories": ["餐饮"], "reasoning": "r"}',
+                // Title extraction (single GPT) - runs in parallel with validity
                 '{"title": "午餐"}',
+                // Completeness check (single GPT)
+                '{"is_complete": true}',
+                // Currency (dual GPT)
+                '{"currencies": ["CNY"], "reasoning": "r"}',
+                '{"currencies": ["CNY"], "reasoning": "r"}',
+                // Category (dual GPT)
+                '{"categories": ["餐饮"], "reasoning": "r"}',
+                '{"categories": ["餐饮"], "reasoning": "r"}',
+                // User requirements (single GPT) - only when aiCustomPrompt is provided
                 '{"rules": ["合并餐饮项目"]}',
             ]);
 
@@ -226,16 +246,19 @@ describe("Stage 1 Executor", () => {
         it("should throw when signal is aborted after validity check", async () => {
             const controller = new AbortController();
             const mockAI = createMockAI([
+                // Validity check (dual GPT) - runs in parallel with title
                 '{"is_valid": true, "reasoning": "valid"}',
                 '{"is_valid": true, "reasoning": "valid"}',
+                // Title extraction (single GPT) - runs in parallel with validity
+                '{"title": "测试文档"}',
             ]);
 
-            // Abort after validity check
+            // Abort after validity/title check (first batch of parallel calls)
             const originalGenerate = mockAI.generate;
             let callCount = 0;
             mockAI.generate = vi.fn(async (options: AIGenerateOptions) => {
                 callCount++;
-                if (callCount === 2) {
+                if (callCount === 3) {
                     controller.abort();
                 }
                 return originalGenerate(options);

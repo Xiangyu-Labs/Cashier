@@ -126,7 +126,7 @@ function checkStage1Results(
     // Check validity from Stage 1
     if (!stage1Result.isValid) {
         logger.info({ docId }, "Stage 1: Document invalid");
-        return { ledgerEntries: [], verificationStatus: 'invalid' };
+        return { ledgerEntries: [], verificationStatus: 'invalid', title: stage1Result.title };
     }
 
     // Check completeness from Stage 1 - detect obvious missing content
@@ -138,7 +138,8 @@ function checkStage1Results(
         return {
             ledgerEntries: [],
             anomalyReason: stage1Result.incompleteReason || "内容不完整",
-            verificationStatus: 'anomaly'
+            verificationStatus: 'anomaly',
+            title: stage1Result.title
         };
     }
 
