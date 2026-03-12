@@ -5,10 +5,8 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { queryKeys } from "@/lib/query-keys";
-import { formatDateTimeForApi } from "@/lib/date-utils";
 import { periodToDateRange, type PeriodParams } from "@/lib/period-utils";
 import type { Ledger, LedgerEntry } from "@/types/api";
-import type { EntryFilters } from "../../components/EntryFilterPanel";
 
 export interface UseDetailsTabDataReturn {
   // Data
@@ -59,30 +57,21 @@ export function useDetailsTabData({
     [periodParams]
   );
 
-  // Combine period-based dates with advanced filters
-  const filters: EntryFilters = useMemo(
-    () => ({
-      startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
-      ...advancedFilters,
-    }),
-    [dateRange, advancedFilters]
-  );
-
-  const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
-  const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
+  // Use string dates directly from periodToDateRange (avoids Date object conversion issues)
+  const startDateStr = dateRange.startDate ?? null;
+  const endDateStr = dateRange.endDate ?? null;
 
   // Build filter key for queryKey
   const filterKey = useMemo(() => {
     const parts: string[] = [];
-    if (filters.categoryId) parts.push(`cat:${filters.categoryId}`);
-    if (filters.currency) parts.push(`cur:${filters.currency}`);
-    if (filters.minAmount !== undefined && filters.minAmount !== null)
-      parts.push(`min:${filters.minAmount}`);
-    if (filters.maxAmount !== undefined && filters.maxAmount !== null)
-      parts.push(`max:${filters.maxAmount}`);
+    if (advancedFilters.categoryId) parts.push(`cat:${advancedFilters.categoryId}`);
+    if (advancedFilters.currency) parts.push(`cur:${advancedFilters.currency}`);
+    if (advancedFilters.minAmount !== undefined && advancedFilters.minAmount !== null)
+      parts.push(`min:${advancedFilters.minAmount}`);
+    if (advancedFilters.maxAmount !== undefined && advancedFilters.maxAmount !== null)
+      parts.push(`max:${advancedFilters.maxAmount}`);
     return parts.length > 0 ? parts.join("|") : null;
-  }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
+  }, [advancedFilters.categoryId, advancedFilters.currency, advancedFilters.minAmount, advancedFilters.maxAmount]);
 
   // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
@@ -95,10 +84,10 @@ export function useDetailsTabData({
     ),
     queryFn: () =>
       getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
-        categoryId: filters.categoryId,
-        currency: filters.currency,
-        minAmount: filters.minAmount,
-        maxAmount: filters.maxAmount,
+        categoryId: advancedFilters.categoryId,
+        currency: advancedFilters.currency,
+        minAmount: advancedFilters.minAmount,
+        maxAmount: advancedFilters.maxAmount,
       }),
     enabled: true,
   });
@@ -116,10 +105,10 @@ export function useDetailsTabData({
       getLedgerEntriesAction(ledgerId, {
         startDate: startDateStr || undefined,
         endDate: endDateStr || undefined,
-        categoryId: filters.categoryId,
-        currency: filters.currency,
-        minAmount: filters.minAmount,
-        maxAmount: filters.maxAmount,
+        categoryId: advancedFilters.categoryId,
+        currency: advancedFilters.currency,
+        minAmount: advancedFilters.minAmount,
+        maxAmount: advancedFilters.maxAmount,
         cursor: pageParam,
         limit: 50,
       }),
