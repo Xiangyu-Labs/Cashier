@@ -39,7 +39,7 @@ const ModalStackRenderer = dynamic(
   () => import("@/components/providers/ModalStackRenderer").then((m) => ({ default: m.ModalStackRenderer })),
   { ssr: false }
 );
-import { PeriodParams } from "@/lib/period-utils";
+import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
@@ -112,7 +112,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     staleTime: STALE_TIME,
   });
 
-  const { activeTab, handleTabChange } = useLedgerTabs({
+  const { activeTab, handleTabChange: originalHandleTabChange } = useLedgerTabs({
     searchParams,
     pathname,
   });
@@ -125,6 +125,48 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
     handlePeriodChange,
     handleFiltersChange,
   } = usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay });
+
+  // 包装 handleTabChange 以添加缓存检查日志
+  const handleTabChange = useCallback((value: string) => {
+    const startTime = Date.now();
+    console.log(`[TabSwitch] Switching from ${activeTab} to ${value}`);
+
+    // 检查目标 Tab 的数据是否在缓存中
+    const dateRange = periodToDateRange(periodParams);
+    const startDate = dateRange.startDate;
+    const endDate = dateRange.endDate;
+    const effectiveMainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+
+    const cacheChecks: string[] = [];
+
+    if (value === "history") {
+      const sourceDocsKey = queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate);
+      const cached = queryClient.getQueryData(sourceDocsKey);
+      cacheChecks.push(`sourceDocuments: ${cached ? 'HIT' : 'MISS'}`);
+    } else if (value === "details") {
+      const summaryKey = queryKeys.ledgerEntries(ledgerId, "summary", startDate, endDate, effectiveMainCurrency, null);
+      const entriesKey = queryKeys.ledgerEntries(ledgerId, "infinite", startDate, endDate, null);
+      cacheChecks.push(`summary: ${queryClient.getQueryData(summaryKey) ? 'HIT' : 'MISS'}`);
+      cacheChecks.push(`entries: ${queryClient.getQueryData(entriesKey) ? 'HIT' : 'MISS'}`);
+    } else if (value === "stats") {
+      const effectiveMonthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
+      const rangeType = "month";
+      const centerDate = new Date();
+      const startStr = `${centerDate.getFullYear()}-${String(centerDate.getMonth() + 1).padStart(2, '0')}-${String(effectiveMonthStartDay).padStart(2, '0')}`;
+      const statsKey = [...queryKeys.enhancedStats(ledgerId), startStr, rangeType, effectiveMainCurrency];
+      cacheChecks.push(`enhancedStats: ${queryClient.getQueryData(statsKey) ? 'HIT' : 'MISS'}`);
+    } else if (value === "settings") {
+      const settingsKey = queryKeys.ledgerSettings(ledgerId);
+      const credentialsKey = queryKeys.serviceCredentials(ledgerId);
+      cacheChecks.push(`settings: ${queryClient.getQueryData(settingsKey) ? 'HIT' : 'MISS'}`);
+      cacheChecks.push(`credentials: ${queryClient.getQueryData(credentialsKey) ? 'HIT' : 'MISS'}`);
+    }
+
+    console.log(`[TabSwitch] Cache status for ${value}: ${cacheChecks.join(', ')}`);
+
+    originalHandleTabChange(value);
+    console.log(`[TabSwitch] Tab change completed in ${Date.now() - startTime}ms`);
+  }, [activeTab, originalHandleTabChange, ledgerId, periodParams, ledger, queryClient]);
 
   // Advanced filters now come from URL (single source of truth)
   const advancedFilters = filterParams;
@@ -184,9 +226,13 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
   // 预加载记一笔弹窗数据（当弹窗关闭时）
   useEffect(() => {
     if (!isInputOpen && ledgerId) {
+      console.log(`[InputPrefetch] Modal closed, will prefetch in ${INPUT_PREFETCH_DELAY}ms`);
       const timer = setTimeout(() => {
         // 预加载 ledger 数据（SourceDocumentInput 需要）
-        if (!queryClient.getQueryData(queryKeys.ledger(ledgerId))) {
+        const cached = queryClient.getQueryData(queryKeys.ledger(ledgerId));
+        console.log(`[InputPrefetch] Ledger cache check: ${cached ? 'HIT (skip)' : 'MISS (fetch)'}`);
+        if (!cached) {
+          console.log('[InputPrefetch] Fetching ledger...');
           queryClient.prefetchQuery({
             queryKey: queryKeys.ledger(ledgerId),
             queryFn: () => getLedgerAction(ledgerId),
@@ -194,7 +240,10 @@ export function LedgerPageClient({ ledgerId, initialPeriod }: LedgerPageClientPr
           });
         }
       }, INPUT_PREFETCH_DELAY);
-      return () => clearTimeout(timer);
+      return () => {
+        console.log('[InputPrefetch] Cleanup timer');
+        clearTimeout(timer);
+      };
     }
   }, [isInputOpen, ledgerId, queryClient]);
 
