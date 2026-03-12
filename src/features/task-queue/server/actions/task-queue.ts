@@ -65,18 +65,24 @@ function getSourceDocumentIdFromInput(input: unknown): string | undefined {
  * Convert a TaskRun to a QueueItem
  * Validates status with Zod schema for runtime type safety
  */
-function taskRunToQueueItem(task: TaskRun): QueueItem {
+function taskRunToQueueItem(task: TaskRun, sourceDocTitle?: string | null): QueueItem {
     const sourceDocumentId = getSourceDocumentIdFromInput(task.input);
 
     // Validate status with Zod (replaces type assertion)
     const parsedStatus = QueueItemStatusSchema.safeParse(task.status);
     const status: QueueItemStatus = parsedStatus.success ? parsedStatus.data : 'failed';
 
+    // For completed parse_source_document tasks, append source document title
+    let title = task.title;
+    if (status === 'completed' && task.type === 'parse_source_document' && sourceDocTitle) {
+        title = `解析原始凭证：${sourceDocTitle}`;
+    }
+
     return {
         id: task.id,
         kind: 'task',
         status,
-        title: task.title,
+        title,
         subtitle: task.error ?? undefined,
         progress: task.progress ?? undefined,
         createdAt: task.createdAt.toISOString(),
@@ -154,6 +160,24 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     // Build flat items list
     const items: QueueItem[] = [];
 
+    // Collect source document IDs from completed parse_source_document tasks
+    const completedSourceDocIds = completedTasks
+        .filter(task => task.type === 'parse_source_document')
+        .map(task => getSourceDocumentIdFromInput(task.input))
+        .filter((id): id is string => id !== undefined);
+
+    // Fetch source document titles for completed tasks
+    const sourceDocTitles = new Map<string, string | null>();
+    if (completedSourceDocIds.length > 0) {
+        const docs = await db.query.sourceDocuments.findMany({
+            where: inArray(sourceDocuments.id, completedSourceDocIds),
+            columns: { id: true, title: true },
+        });
+        for (const doc of docs) {
+            sourceDocTitles.set(doc.id, doc.title);
+        }
+    }
+
     // Add active tasks
     for (const task of activeTasks) {
         items.push(taskRunToQueueItem(task));
@@ -161,7 +185,9 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
 
     // Add completed tasks
     for (const task of completedTasks) {
-        items.push(taskRunToQueueItem(task));
+        const sourceDocId = getSourceDocumentIdFromInput(task.input);
+        const sourceDocTitle = sourceDocId ? sourceDocTitles.get(sourceDocId) : undefined;
+        items.push(taskRunToQueueItem(task, sourceDocTitle));
     }
 
     // Add anomaly documents

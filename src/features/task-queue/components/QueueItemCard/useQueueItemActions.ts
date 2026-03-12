@@ -57,9 +57,13 @@ export function useQueueItemActions({
 
   // Resolve display title
   const displayTitle = useMemo(() => {
+    // For completed parse_source_document tasks, use the enriched title from backend
+    if (item.status === 'completed' && item.taskType === 'parse_source_document') {
+      return item.title;
+    }
     const key = item.taskType ? TASK_TYPE_I18N[item.taskType] : undefined;
     return key ? t(key) : item.title;
-  }, [item.taskType, item.title, t]);
+  }, [item.status, item.taskType, item.title, t]);
 
   // Determine available actions
   const canCancel =

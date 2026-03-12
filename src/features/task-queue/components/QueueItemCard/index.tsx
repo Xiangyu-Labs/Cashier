@@ -31,6 +31,8 @@ interface QueueItemCardProps {
   onDismiss?: () => void | Promise<void>;
   /** View details handler - for completed parse_source_document tasks */
   onViewDetails?: () => void;
+  /** Default expanded state for the card content */
+  defaultExpanded?: boolean;
   className?: string;
 }
 
@@ -42,12 +44,13 @@ export const QueueItemCard = memo(function QueueItemCard({
   onDelete,
   onDismiss,
   onViewDetails,
+  defaultExpanded = false,
   className,
 }: QueueItemCardProps) {
   const tCommon = useTranslations("Common");
   const t = useTranslations("TaskQueue");
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const {
     displayTitle,

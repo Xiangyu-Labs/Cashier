@@ -236,6 +236,7 @@ export function TaskQueueContent({
               ledgerId={ledgerId}
               onRetry={() => onRetry(item)}
               onDelete={() => onDeleteSingle(item)}
+              defaultExpanded
             />
           ))}
         </TaskGroupSection>
