@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
     "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
     "docker:build": "docker compose build",
