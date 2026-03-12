@@ -20,7 +20,6 @@ export default defineConfig({
     pool: "threads",
     // 限制并发数为 CPU 核数的 50%，避免 SQLite 锁竞争
     maxWorkers: "50%",
-    minWorkers: 1,
     // 保持测试隔离
     isolate: true,
     testTimeout: 30000,
