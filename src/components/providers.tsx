@@ -36,7 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             staleTime: 5 * 60 * 1000, // 5 minutes - data is considered fresh for 5 minutes
             gcTime: 24 * 60 * 60 * 1000, // 24 hours - cache retention
             refetchOnWindowFocus: false,
-            refetchOnMount: true, // Only refetch if data is stale (respects staleTime)
+            refetchOnMount: false, // Use SSR hydrated data, don't refetch on mount
             refetchOnReconnect: true,
             retry: (failureCount, _error) => {
               return failureCount < 3;
@@ -69,11 +69,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
             },
           }}
           onSuccess={() => {
-            // After restore, mark all queries as stale to trigger background refetch
-            // This implements stale-while-revalidate: show cached data immediately,
-            // then refresh in background
-            queryClient.invalidateQueries({
-              predicate: (query) => shouldPersistQuery(query),
+            // After restore from localStorage, mark old queries as stale to trigger background refetch
+            // But don't invalidate queries that were just hydrated from SSR (they are fresh)
+            const now = Date.now();
+            queryClient.getQueryCache().getAll().forEach((query) => {
+              if (!shouldPersistQuery(query)) return;
+              const dataUpdatedAt = query.state.dataUpdatedAt;
+              // Only invalidate if data is older than 1 minute (indicates localStorage restore, not SSR)
+              if (dataUpdatedAt && now - dataUpdatedAt > 60 * 1000) {
+                query.invalidate();
+              }
             });
           }}
         >
