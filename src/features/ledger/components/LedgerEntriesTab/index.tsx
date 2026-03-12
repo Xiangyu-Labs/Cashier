@@ -71,6 +71,7 @@ export function LedgerEntriesTab({
             minAmount: filters.minAmount,
             maxAmount: filters.maxAmount,
         }),
+        placeholderData: (previousData) => previousData,
     });
 
     const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
