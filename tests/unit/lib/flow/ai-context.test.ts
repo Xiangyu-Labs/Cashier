@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createAIContext } from "@/lib/flow/ai-context";
 
 // Mock the openai service
-vi.mock("@/features/ai/server/services/openai", () => ({
+vi.mock("@/lib/ai/openai-client", () => ({
     getOpenAIClient: vi.fn().mockReturnValue({
         generateContent: vi.fn(),
     }),
 }));
 
-import { getOpenAIClient } from "@/features/ai/server/services/openai";
+import { getOpenAIClient } from "@/lib/ai/openai-client";
 
 describe("createAIContext", () => {
     let mockSignal: AbortSignal;
