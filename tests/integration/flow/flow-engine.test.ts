@@ -87,6 +87,11 @@ describe("FlowEngine", () => {
 
     beforeEach(() => {
         storage = createMemoryStorage();
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     describe("register and submit", () => {
