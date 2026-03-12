@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   rateLimitApiV1,
   rateLimit,
@@ -10,6 +10,11 @@ describe('MemoryRateLimiter', () => {
   beforeEach(async () => {
     // Clear all rate limit keys before each test
     await memoryStore.flushall();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('rateLimitApiV1', () => {
@@ -111,7 +116,7 @@ describe('MemoryRateLimiter', () => {
     it('should reset counter after window expires', async () => {
       const identifier = 'test-key';
       const limit = 2;
-      const windowMs = 100; // Very short window for testing
+      const windowMs = 1000; // 1 second window for testing
 
       // Use up limit
       await rateLimit(identifier, limit, windowMs);
@@ -120,8 +125,8 @@ describe('MemoryRateLimiter', () => {
       // Should be blocked
       expect((await rateLimit(identifier, limit, windowMs)).success).toBe(false);
 
-      // Wait for window to expire (add extra buffer for TTL expiration)
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Fast-forward time instead of real waiting
+      vi.advanceTimersByTime(windowMs + 100);
 
       // Should work again
       const result = await rateLimit(identifier, limit, windowMs);
