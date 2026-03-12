@@ -84,15 +84,14 @@ export function useDetailsTabData({
     return parts.length > 0 ? parts.join("|") : null;
   }, [filters.categoryId, filters.currency, filters.minAmount, filters.maxAmount]);
 
-  // Summary query
+  // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
     queryKey: queryKeys.ledgerEntries(
       ledgerId,
       "summary",
       startDateStr,
       endDateStr,
-      mainCurrency,
-      filterKey
+      mainCurrency
     ),
     queryFn: () =>
       getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
@@ -104,7 +103,7 @@ export function useDetailsTabData({
     enabled: true,
   });
 
-  // Infinite query for entries
+  // Infinite query for entries (query key 不包含 filterKey，与预加载保持一致)
   const {
     data,
     fetchNextPage,
@@ -112,7 +111,7 @@ export function useDetailsTabData({
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
+    queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr),
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {
         startDate: startDateStr || undefined,

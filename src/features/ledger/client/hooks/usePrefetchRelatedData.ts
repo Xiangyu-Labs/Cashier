@@ -170,8 +170,8 @@ async function prefetchDetailsTab({
   const { startDate, endDate } = periodToDateRange(periodParams);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
-  // 预加载账本条目汇总数据
-  const summaryKey = queryKeys.ledgerEntries(ledgerId, "summary", startDate, endDate, mainCurrency, null);
+  // 预加载账本条目汇总数据（不使用 filterKey，确保与实际组件 query key 一致）
+  const summaryKey = queryKeys.ledgerEntries(ledgerId, "summary", startDate, endDate, mainCurrency);
   const summaryCached = queryClient.getQueryData(summaryKey);
 
   if (!summaryCached) {
@@ -192,8 +192,8 @@ async function prefetchDetailsTab({
     return;
   }
 
-  // 预加载账本条目第一页
-  const entriesKey = queryKeys.ledgerEntries(ledgerId, "infinite", startDate, endDate, null);
+  // 预加载账本条目第一页（不使用 filterKey，确保与实际组件 query key 一致）
+  const entriesKey = queryKeys.ledgerEntries(ledgerId, "infinite", startDate, endDate);
   const entriesCached = queryClient.getQueryData(entriesKey);
 
   if (!entriesCached) {
