@@ -67,25 +67,6 @@ describe("usePrefetchRelatedData", () => {
         expect(true).toBe(true);
     });
 
-    it("should trigger entry-level prefetch after 2.5s delay", async () => {
-        renderHook(
-            () =>
-                usePrefetchRelatedData({
-                    ...defaultProps,
-                    entryLevelPrefetch: {
-                        details: { entryIds: ["entry-1", "entry-2"] },
-                    },
-                }),
-            { wrapper: createWrapper() }
-        );
-
-        // Entry-level prefetch starts after 2.5s (1.5s base + 1s extra)
-        vi.advanceTimersByTime(2500);
-
-        // Should not throw
-        expect(true).toBe(true);
-    });
-
     it("should cancel timers when activeTab changes", async () => {
         const { rerender } = renderHook(
             ({ activeTab }) =>
@@ -102,89 +83,6 @@ describe("usePrefetchRelatedData", () => {
         // Change tab before delay completes
         vi.advanceTimersByTime(1000);
         rerender({ activeTab: "details" });
-
-        // Should not throw
-        expect(true).toBe(true);
-    });
-
-    it("should re-trigger entry-level prefetch when entryIds change", async () => {
-        const { rerender } = renderHook(
-            ({ entryIds }) =>
-                usePrefetchRelatedData({
-                    ...defaultProps,
-                    activeTab: "details",
-                    entryLevelPrefetch: {
-                        details: { entryIds },
-                    },
-                }),
-            {
-                wrapper: createWrapper(),
-                initialProps: { entryIds: ["entry-1"] },
-            }
-        );
-
-        // Advance timers for first prefetch
-        vi.advanceTimersByTime(2600);
-
-        // Change entryIds
-        rerender({ entryIds: ["entry-1", "entry-2"] });
-
-        // Should not throw
-        expect(true).toBe(true);
-    });
-
-    it("should re-trigger entry-level prefetch when sourceDocIds change", async () => {
-        const { rerender } = renderHook(
-            ({ sourceDocIds }) =>
-                usePrefetchRelatedData({
-                    ...defaultProps,
-                    activeTab: "history",
-                    entryLevelPrefetch: {
-                        history: { sourceDocIds },
-                    },
-                }),
-            {
-                wrapper: createWrapper(),
-                initialProps: { sourceDocIds: ["doc-1"] },
-            }
-        );
-
-        // Advance timers for first prefetch
-        vi.advanceTimersByTime(2600);
-
-        // Change sourceDocIds
-        rerender({ sourceDocIds: ["doc-1", "doc-2"] });
-
-        // Should not throw
-        expect(true).toBe(true);
-    });
-
-    it("should not prefetch entry-level when entryIds is empty", async () => {
-        renderHook(
-            () =>
-                usePrefetchRelatedData({
-                    ...defaultProps,
-                    activeTab: "details",
-                    entryLevelPrefetch: {
-                        details: { entryIds: [] },
-                    },
-                }),
-            { wrapper: createWrapper() }
-        );
-
-        vi.advanceTimersByTime(3000);
-
-        // Should not throw
-        expect(true).toBe(true);
-    });
-
-    it("should not prefetch entry-level when entryLevelPrefetch is not provided", async () => {
-        renderHook(
-            () => usePrefetchRelatedData(defaultProps),
-            { wrapper: createWrapper() }
-        );
-
-        vi.advanceTimersByTime(3000);
 
         // Should not throw
         expect(true).toBe(true);

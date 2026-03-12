@@ -16,7 +16,6 @@ import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
-import { usePrefetchRelatedData } from "@/features/ledger/client/hooks/usePrefetchRelatedData";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
@@ -105,22 +104,6 @@ export function LedgerEntriesTab({
         dateRange: { start: filters.startDate, end: filters.endDate },
         minAmount: filters.minAmount ?? undefined,
         maxAmount: filters.maxAmount ?? undefined,
-    });
-
-    // 条目级预加载：预加载所有已完成单据的轻量详情（不含图片）
-    const sourceDocIds = useMemo(() =>
-        groups.completed.map((g: SourceDocumentGroup) => g.sourceDocument.id),
-        [groups.completed]
-    );
-    usePrefetchRelatedData({
-        ledgerId,
-        activeTab: "history",
-        ledger: ledger || undefined,
-        categories,
-        periodParams,
-        entryLevelPrefetch: {
-            history: { sourceDocIds },
-        },
     });
 
     // Handlers

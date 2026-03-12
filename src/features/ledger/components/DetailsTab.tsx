@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +21,6 @@ import { useDetailsTabState } from "../client/hooks/useDetailsTabState";
 import { useDetailsTabData } from "../client/hooks/useDetailsTabData";
 import { useDetailsTabGrouping } from "../client/hooks/useDetailsTabGrouping";
 import { useDetailsTabFilters } from "../client/hooks/useDetailsTabFilters";
-import { usePrefetchRelatedData } from "../client/hooks/usePrefetchRelatedData";
 import type { EntryCategory, Ledger } from "@/types/api";
 import type { PeriodParams } from "@/lib/period-utils";
 
@@ -92,19 +90,6 @@ export function DetailsTab({
         ledger,
         periodParams,
         advancedFilters,
-    });
-
-    // 条目级预加载：预加载所有已加载条目的详情（全量，无图片）
-    const entryIds = useMemo(() => entries.map((e) => e.id), [entries]);
-    usePrefetchRelatedData({
-        ledgerId,
-        activeTab: "details",
-        ledger: ledger || undefined,
-        categories,
-        periodParams,
-        entryLevelPrefetch: {
-            details: { entryIds },
-        },
     });
 
     // Grouping
