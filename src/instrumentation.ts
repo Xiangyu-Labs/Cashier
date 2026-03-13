@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { autoRegisterTasks } from "@/lib/flow/task-registry";
 
 export async function register() {
     logger.info("Starting Cashier service...");
@@ -6,10 +7,8 @@ export async function register() {
     // Only run on server-side runtime (not edge or browser)
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         try {
-            // Register task handlers (needed for in-process runner)
-            await import("@/features/source-document/server/tasks/parse-source-document");
-            await import("@/features/ledger/server/tasks/generate-category-metadata");
-            await import("@/features/ledger/server/tasks/categorize-entry");
+            // Auto-discover and register all task handlers
+            await autoRegisterTasks();
         } catch (error) {
             logger.error({ error }, "Failed during startup initialization");
         }
