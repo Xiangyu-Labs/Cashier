@@ -210,16 +210,32 @@ async function fetchEntriesWithCategories(
 }
 
 /**
- * Serialize source document with entries for flat array response
+ * Serialize source document with entries for flat array response (LIST VIEW)
+ * Excludes large fields like 'text' to keep payload small
  */
 function serializeSourceDocumentFlat(
     doc: typeof sourceDocuments.$inferSelect,
     entries: SerializedLedgerEntry[]
 ): SourceDocumentWithEntries {
-    return serializeSourceDocument(doc, {
-        stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+    // Use light serialization - exclude 'text' field for list views
+    // 'text' can be very large (OCR results) and is not needed for list display
+    return {
+        id: doc.id,
+        ledgerId: doc.ledgerId,
+        title: doc.title,
+        text: null, // Exclude large text content for list views
+        imageUrls: [], // Exclude image URLs for list views
+        status: doc.status,
+        type: doc.type,
+        anomalyReason: doc.anomalyReason,
+        entryDate: doc.entryDate,
+        metadata: {}, // Exclude metadata for list views
+        createdAt: doc.createdAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString(),
+        deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
         ledgerEntries: entries,
-    }) as SourceDocumentWithEntries;
+        hasImages: (doc.imageUrls?.length || 0) > 0,
+    } as SourceDocumentWithEntries;
 }
 
 /**
@@ -299,7 +315,9 @@ export async function getAllSourceDocumentsAction(
         const docIds = items.map(d => d.id);
         const entriesByDocId = await fetchEntriesWithCategories(docIds, ledgerId);
 
-        return items.map(doc => serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || []));
+        const result = items.map(doc => serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || []));
+
+        return result;
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
         throw new Error(safeError(error));

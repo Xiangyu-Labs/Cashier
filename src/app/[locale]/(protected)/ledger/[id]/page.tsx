@@ -8,12 +8,15 @@ import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/acti
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
-// NEW IMPORTS for other tabs
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getEnhancedStats } from "@/features/stats/server/actions";
-import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
-import { formatDateTimeForApi, getDateRange } from "@/lib/date-utils";
+
+// Development-only performance logger
+const isDev = process.env.NODE_ENV === 'development';
+function perfLog(label: string, startTime: number) {
+  if (!isDev) return Date.now();
+  const duration = Date.now() - startTime;
+  console.log(`[PERF] ${label}: ${duration}ms`);
+  return Date.now();
+}
 
 export default async function LedgerPage({
   params,
@@ -22,12 +25,15 @@ export default async function LedgerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const startTime = Date.now();
+
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
 
   // Parse period from URL (default: currentPeriod)
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
   const session = await auth();
+
   const t = await getTranslations("LedgerPage");
 
   if (!session?.user?.id) {
@@ -54,7 +60,6 @@ export default async function LedgerPage({
   }
 
   // Get actual settings from ledger (ensures server/client query key consistency)
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? 'CNY';
   const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
 
   const enrichedPeriodParams = periodParams.period === 'currentPeriod'
@@ -62,7 +67,7 @@ export default async function LedgerPage({
     : periodParams;
   const dateRange = periodToDateRange(enrichedPeriodParams);
 
-  // Step 2: Prefetch other data using actual mainCurrency and monthStartDay
+  // Step 2: Prefetch core data (used by all tabs) and History Tab data
   await Promise.all([
     // ===== Core data (all tabs) =====
     queryClient.prefetchQuery({
@@ -70,8 +75,13 @@ export default async function LedgerPage({
       queryFn: () => getEntryCategoriesAction(ledgerId),
       staleTime: STALE_TIME,
     }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.ledgers(),
+      queryFn: () => getLedgersAction(),
+      staleTime: STALE_TIME,
+    }),
 
-    // ===== History Tab data =====
+    // ===== History Tab data (default active tab) =====
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'pending'),
       queryFn: () => getPendingSourceDocumentsAction(ledgerId),
@@ -85,72 +95,25 @@ export default async function LedgerPage({
       }),
       staleTime: 30 * 1000,
     }),
-
-    // ===== Details Tab data =====
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.ledgerEntries(ledgerId, "summary", dateRange.startDate, dateRange.endDate, mainCurrency),
-      queryFn: () => getLedgerStatsAction(
-        ledgerId,
-        dateRange.startDate ?? undefined,
-        dateRange.endDate ?? undefined,
-        mainCurrency,
-        undefined
-      ),
-      staleTime: STALE_TIME,
-    }),
-    queryClient.prefetchInfiniteQuery({
-      queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", dateRange.startDate, dateRange.endDate),
-      queryFn: ({ pageParam }) => getLedgerEntriesAction(ledgerId, {
-        startDate: dateRange.startDate ?? undefined,
-        endDate: dateRange.endDate ?? undefined,
-        cursor: pageParam,
-        limit: 50,
-      }),
-      initialPageParam: undefined as string | undefined,
-      staleTime: STALE_TIME,
-    }),
-
-    // ===== Stats Tab data =====
-    (() => {
-      const range = getDateRange(new Date(), "month", monthStartDay);
-      const startStr = formatDateTimeForApi(range.startDate);
-      const endStr = formatDateTimeForApi(range.endDate);
-      const prevDate = new Date();
-      prevDate.setMonth(prevDate.getMonth() - 1);
-      const prevRange = getDateRange(prevDate, "month", monthStartDay);
-      const prevStartStr = formatDateTimeForApi(prevRange.startDate);
-      const prevEndStr = formatDateTimeForApi(prevRange.endDate);
-
-      return queryClient.prefetchQuery({
-        queryKey: [...queryKeys.enhancedStats(ledgerId), startStr, "month", mainCurrency],
-        queryFn: () => getEnhancedStats({
-          ledgerId,
-          queryRange: { from: startStr, to: endStr },
-          compareRange: { from: prevStartStr, to: prevEndStr },
-        }),
-        staleTime: STALE_TIME,
-      });
-    })(),
-
-    // ===== Settings Tab data =====
-    // Note: getLedgerSettingsAction returns both settings AND credentials
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.ledgerSettings(ledgerId),
-      queryFn: () => getLedgerSettingsAction(ledgerId),
-      staleTime: STALE_TIME,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.ledgers(),
-      queryFn: () => getLedgersAction(),
-      staleTime: STALE_TIME,
-    }),
   ]);
 
   // Create a stable initial date for StatsTab to avoid hydration mismatch
   const initialStatsDate = new Date();
 
+  const dehydratedState = dehydrate(queryClient);
+
+  // Warn if dehydrated state is too large (development only)
+  if (isDev) {
+    const dehydratedJson = JSON.stringify(dehydratedState);
+    const sizeKB = new TextEncoder().encode(dehydratedJson).length / 1024;
+    if (sizeKB > 500) {
+      console.warn(`[PERF WARNING] Dehydrated state is large: ${sizeKB.toFixed(2)} KB`);
+    }
+    perfLog("=== TOTAL Server Render", startTime);
+  }
+
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
+    <HydrationBoundary state={dehydratedState}>
       <LedgerPageClient ledgerId={ledgerId} initialPeriod={enrichedPeriodParams} initialStatsDate={initialStatsDate} />
     </HydrationBoundary>
   );
