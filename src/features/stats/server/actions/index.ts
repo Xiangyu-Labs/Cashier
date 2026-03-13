@@ -219,13 +219,26 @@ export async function getEnhancedStats({
     const daysDiff = Math.round(Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
     const dailyAvg = daysDiff > 0 ? currentStats.total / daysDiff : 0;
 
-    // Calculate heatmap stats
-    const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries()).map(([date, total]) => ({
-        date,
-        totalAmount: total,
-        entryCount: currentEntries.filter(e => e.sourceDocument?.entryDate === date).length,
-        currencies: [...new Set(currentEntries.filter(e => e.sourceDocument?.entryDate === date).map(e => e.currency || mainCurrency))],
-    })).sort((a, b) => a.date.localeCompare(b.date));
+    // Calculate heatmap stats - Pre-group entries by date for O(n+m) performance
+    const entriesByDate = new Map<string, typeof currentEntries>();
+    for (const entry of currentEntries) {
+        const date = entry.sourceDocument?.entryDate;
+        if (!date) continue;
+        if (!entriesByDate.has(date)) {
+            entriesByDate.set(date, []);
+        }
+        entriesByDate.get(date)!.push(entry);
+    }
+
+    const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries()).map(([date, total]) => {
+        const dayEntries = entriesByDate.get(date) || [];
+        return {
+            date,
+            totalAmount: total,
+            entryCount: dayEntries.length,
+            currencies: [...new Set(dayEntries.map(e => e.currency || mainCurrency))],
+        };
+    }).sort((a, b) => a.date.localeCompare(b.date));
 
     const heatmapStats = calculateStats(heatmapDays.map(d => d.totalAmount));
 
