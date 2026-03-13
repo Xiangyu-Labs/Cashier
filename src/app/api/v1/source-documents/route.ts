@@ -3,10 +3,11 @@ import { validateServiceCredential } from "@/features/ledger/server/actions/cred
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { z } from "zod";
-import { logger } from "@/lib/logger";
 import { eq, and, isNull } from "drizzle-orm";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
+import { AppError, UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
+import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 
 const sourceDocumentInputSchema = z.object({
     text: z.string().optional(),
@@ -19,49 +20,46 @@ const sourceDocumentInputSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-    // 1. Authorize
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-        return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
-    }
-
-    const key = authHeader.split(" ")[1];
-    const credential = await validateServiceCredential(key);
-
-    if (!credential) {
-        return NextResponse.json({ error: "Invalid Service Credential" }, { status: 401 });
-    }
-
-    // 2. Rate Limiting (20 requests per minute per API key)
-    const rateLimitResult = await rateLimitApiV1(key);
-    if (!rateLimitResult.success) {
-        return NextResponse.json(
-            { error: "Rate limit exceeded", retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000) },
-            { status: 429 }
-        );
-    }
-
-    // 3. Parse Body
-    let body;
     try {
-        body = await request.json();
-    } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
+        // 1. Authorize
+        const authHeader = request.headers.get("Authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            throw new UnauthorizedError("Missing or invalid Authorization header");
+        }
 
-    const result = sourceDocumentInputSchema.safeParse(body);
-    if (!result.success) {
-        return NextResponse.json({ error: "Validation failed", details: result.error.issues }, { status: 400 });
-    }
+        const key = authHeader.split(" ")[1];
+        const credential = await validateServiceCredential(key);
 
-    const { text, images, entryDate, timezone } = result.data;
+        if (!credential) {
+            throw new UnauthorizedError("Invalid Service Credential");
+        }
 
-    if (!text && (!images || images.length === 0)) {
-        return NextResponse.json({ error: "Content (text or images) is required" }, { status: 400 });
-    }
+        // 2. Rate Limiting (20 requests per minute per API key)
+        const rateLimitResult = await rateLimitApiV1(key);
+        if (!rateLimitResult.success) {
+            throw new RateLimitError("Rate limit exceeded");
+        }
 
-    // 3. Construct Message Content
-    try {
+        // 3. Parse Body
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            throw new ValidationError("Invalid JSON body");
+        }
+
+        const result = sourceDocumentInputSchema.safeParse(body);
+        if (!result.success) {
+            throw new ValidationError("Validation failed", { issues: result.error.issues });
+        }
+
+        const { text, images, entryDate, timezone } = result.data;
+
+        if (!text && (!images || images.length === 0)) {
+            throw new ValidationError("Content (text or images) is required");
+        }
+
+        // 3. Construct Message Content
         const imageUrls: string[] = [];
         if (images && images.length > 0) {
             images.forEach(img => {
@@ -88,7 +86,7 @@ export async function POST(request: NextRequest) {
         try {
             await db.update(serviceCredentials).set({ lastUsedAt: new Date() }).where(eq(serviceCredentials.id, credential.id));
         } catch (error) {
-            logger.error({ error, credentialId: credential.id }, "Failed to update service credential usage");
+            logError("api/v1/source-documents:update-credential", error);
         }
 
         // Trigger processing using the processing task system
@@ -139,7 +137,11 @@ export async function POST(request: NextRequest) {
             message: "Source document queued for processing",
         }, { status: 201 });
     } catch (error) {
-        logger.error({ error }, "Failed to process ledger entry via API");
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        logError("api/v1/source-documents", error);
+
+        return NextResponse.json(
+            toErrorResponse(error),
+            { status: getErrorStatusCode(error) }
+        );
     }
 }
