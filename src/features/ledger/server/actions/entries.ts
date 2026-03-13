@@ -27,10 +27,10 @@ const updateLedgerEntrySchema = z.object({
 
 // Schema for batch update validation
 const batchUpdateLedgerEntriesSchema = z.object({
-    categoryId: z.string().uuid().optional(),
-    currency: z.string().length(3).optional(), // ISO 4217 currency code
+    categoryId: z.string().uuid().nullable().optional(),
+    currency: z.string().length(3).nullable().optional(), // ISO 4217 currency code
     amount: z.number().positive().optional(),
-    description: z.string().max(500).optional(),
+    description: z.string().max(500).nullable().optional(),
     itemName: z.string().min(1).max(200).optional(),
 }).strict(); // Reject unknown keys
 

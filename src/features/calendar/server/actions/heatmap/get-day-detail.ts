@@ -63,7 +63,7 @@ export async function getCalendarDayDetail(
         categoryId: row.categoryId || undefined,
         categoryName: row.categoryName || undefined,
         categoryIcon: row.categoryIcon || undefined,
-        sourceDocumentId: row.sourceDocumentId,
+        sourceDocumentId: row.sourceDocumentId!,
         sourceDocumentTitle: row.sourceDocumentTitle || undefined,
     }));
 

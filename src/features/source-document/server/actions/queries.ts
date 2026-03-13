@@ -198,6 +198,7 @@ async function fetchEntriesWithCategories(
     });
 
     entries.forEach(entry => {
+        if (!entry.sourceDocumentId) return;
         const list = entriesByDocId.get(entry.sourceDocumentId) || [];
         list.push(serializeLedgerEntry({
             ...entry,
