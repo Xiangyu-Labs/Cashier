@@ -4,15 +4,15 @@ import { usePendingChanges } from "@/features/source-document/client/hooks/usePe
 import { SourceDocument, LedgerEntry } from "@/types/api";
 
 describe("usePendingChanges", () => {
-    const mockSourceDoc: SourceDocument = {
+    const mockSourceDoc = {
         id: "doc-1",
         title: "Original Title",
         entryDate: "2024-01-15",
     } as SourceDocument;
 
-    const mockEntries: LedgerEntry[] = [
-        { id: "entry-1", itemName: "Item 1", amount: 100, currency: "CNY" } as LedgerEntry,
-    ];
+    const mockEntries = [
+        { id: "entry-1", itemName: "Item 1", amount: "100", currency: "CNY" },
+    ] as LedgerEntry[];
 
     it("should track source doc changes", () => {
         const { result } = renderHook(() =>
@@ -80,7 +80,7 @@ describe("usePendingChanges", () => {
         });
 
         act(() => {
-            result.current.handleEntryChange("entry-1", { itemName: "Updated Item", amount: 200 });
+            result.current.handleEntryChange("entry-1", { itemName: "Updated Item", amount: "200" });
         });
 
         expect(result.current.pendingChangesCount).toBe(3); // 1 source doc + 2 entry fields
