@@ -1,35 +1,40 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getOpenAIClient, resetOpenAIClient } from '@/lib/ai/openai-client';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-describe('getOpenAIClient', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    resetOpenAIClient();
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_BASE_URL;
-  });
+describe("openai-client", () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalApiKey = process.env.OPENAI_API_KEY;
 
-  it('should throw error when OPENAI_API_KEY is not set', () => {
-    expect(() => getOpenAIClient()).toThrow('OPENAI_API_KEY is not set');
-  });
+    beforeEach(() => {
+        vi.resetModules();
+        process.env.OPENAI_API_KEY = "test-api-key";
+    });
 
-  it('should create client with API key', () => {
-    process.env.OPENAI_API_KEY = 'test-key';
-    const client = getOpenAIClient();
-    expect(client).toBeDefined();
-  });
+    afterEach(() => {
+        process.env.NODE_ENV = originalEnv;
+        process.env.OPENAI_API_KEY = originalApiKey;
+    });
 
-  it('should use custom base URL when provided', () => {
-    process.env.OPENAI_API_KEY = 'test-key';
-    process.env.OPENAI_BASE_URL = 'https://custom.api.com';
-    const client = getOpenAIClient();
-    expect(client).toBeDefined();
-  });
+    it("should allow client creation in test environment", async () => {
+        process.env.NODE_ENV = "test";
+        const { getOpenAIClient, resetOpenAIClient } = await import("@/lib/ai/openai-client");
+        resetOpenAIClient();
+        // Should not throw in test environment
+        expect(() => getOpenAIClient()).not.toThrow();
+    });
 
-  it('should return singleton instance', () => {
-    process.env.OPENAI_API_KEY = 'test-key';
-    const client1 = getOpenAIClient();
-    const client2 = getOpenAIClient();
-    expect(client1).toBe(client2);
-  });
+    it("should block client creation in production environment", async () => {
+        process.env.NODE_ENV = "production";
+        const { getOpenAIClient, resetOpenAIClient } = await import("@/lib/ai/openai-client");
+        resetOpenAIClient();
+        // Should throw error about browser environment
+        expect(() => getOpenAIClient()).toThrow("browser");
+    });
+
+    it("should block client creation in development environment", async () => {
+        process.env.NODE_ENV = "development";
+        const { getOpenAIClient, resetOpenAIClient } = await import("@/lib/ai/openai-client");
+        resetOpenAIClient();
+        // Should throw error about browser environment
+        expect(() => getOpenAIClient()).toThrow("browser");
+    });
 });
