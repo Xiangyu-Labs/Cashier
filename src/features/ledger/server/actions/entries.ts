@@ -25,6 +25,15 @@ const updateLedgerEntrySchema = z.object({
     description: z.string().nullable().optional(),
 });
 
+// Schema for batch update validation
+const batchUpdateLedgerEntriesSchema = z.object({
+    categoryId: z.string().uuid().optional(),
+    currency: z.string().length(3).optional(), // ISO 4217 currency code
+    amount: z.number().positive().optional(),
+    description: z.string().max(500).optional(),
+    itemName: z.string().min(1).max(200).optional(),
+}).strict(); // Reject unknown keys
+
 import { forLedger } from "@/lib/db/scoped-query";
 // Date string comparison - no need for date parsing utilities
 
@@ -173,18 +182,24 @@ export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEnt
         ));
 }
 
-export async function batchUpdateLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[], data: Record<string, unknown>): Promise<void> {
+export async function batchUpdateLedgerEntriesAction(
+    ledgerId: string,
+    ledgerEntryIds: string[],
+    data: z.infer<typeof batchUpdateLedgerEntriesSchema>
+): Promise<void> {
     const { error } = await requireLedgerAccess(ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger denied");
 
-    // Build update data dynamically from external input
-    // Record<string, unknown> is appropriate here because data comes from external API
-    // and Drizzle's set() accepts Record<string, unknown> for partial updates
-    const updateData: Record<string, unknown> = {};
-    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-    if (data.currency !== undefined) updateData.currency = data.currency;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.itemName !== undefined) updateData.itemName = data.itemName;
+    // Validate input with Zod
+    const validated = batchUpdateLedgerEntriesSchema.parse(data);
+
+    // Build update data from validated input
+    const updateData: Partial<typeof ledgerEntries.$inferSelect> = {};
+    if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
+    if (validated.currency !== undefined) updateData.currency = validated.currency;
+    if (validated.amount !== undefined) updateData.amount = String(validated.amount);
+    if (validated.description !== undefined) updateData.description = validated.description;
+    if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
     updateData.updatedAt = new Date();
 
     const q = forLedger(ledgerEntries, ledgerId);
