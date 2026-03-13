@@ -11,7 +11,7 @@ interface ProcessingStatusProps {
 }
 
 export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
-    const t = useTranslations("TaskCenter");
+    const t = useTranslations("TaskQueue");
     const tCommon = useTranslations("Common");
 
     const config = {

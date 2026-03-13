@@ -18,7 +18,7 @@ interface UseLedgerTabsResult {
 }
 
 export function useLedgerTabs({
-  initialTab = "history",
+  initialTab = "stream",
   searchParams,
   pathname,
 }: UseLedgerTabsOptions): UseLedgerTabsResult {

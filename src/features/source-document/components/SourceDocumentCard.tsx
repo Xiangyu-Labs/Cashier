@@ -1,10 +1,10 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
-import { BillEntryItem } from "@/features/ledger/components/BillEntryItem";
+import { LedgerEntryItem } from "@/features/ledger/components/LedgerEntryItem";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
+import { ProcessingStatus } from "@/components/ui/processing-status";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { parseDateString } from "@/lib/date-utils";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
@@ -410,7 +410,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
             {status === "completed" && sortedEntries.length > 0 && (
               <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
                 {sortedEntries.map((entry) => (
-                  <BillEntryItem
+                  <LedgerEntryItem
                     key={entry.id}
                     ledgerEntry={entry}
                     onView={() => onViewLedgerEntry?.(entry)}

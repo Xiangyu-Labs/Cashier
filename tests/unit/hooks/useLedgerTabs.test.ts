@@ -38,11 +38,11 @@ describe("useLedgerTabs", () => {
       useLedgerTabs({
         pathname: mockPathname,
         searchParams,
-        initialTab: "history",
+        initialTab: "stream",
       })
     );
 
-    expect(result.current.activeTab).toBe("history");
+    expect(result.current.activeTab).toBe("stream");
   });
 
   it("should update URL when tab changes", () => {
@@ -123,7 +123,7 @@ describe("useLedgerTabs", () => {
       useLedgerTabs({
         pathname: mockPathname,
         searchParams,
-        initialTab: "history",
+        initialTab: "stream",
       })
     );
 
@@ -135,6 +135,6 @@ describe("useLedgerTabs", () => {
     rerender({ pathname: mockPathname, searchParams });
 
     // Should fall back to initialTab when tab param is removed
-    expect(result.current.activeTab).toBe("history");
+    expect(result.current.activeTab).toBe("stream");
   });
 });

@@ -138,16 +138,16 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Collapse Bills Setting */}
+                        {/* Collapse Entries Setting */}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h3 className="text-base font-medium">{t('collapseBills')}</h3>
-                                <p className="text-sm text-[var(--muted)]">{t('collapseBillsDesc')}</p>
+                                <h3 className="text-base font-medium">{t('collapseEntries')}</h3>
+                                <p className="text-sm text-[var(--muted)]">{t('collapseEntriesDesc')}</p>
                             </div>
                             <Switch
-                                checked={settingsLedger.metadata?.settings?.collapseBillsDefault || false}
+                                checked={settingsLedger.metadata?.settings?.collapseEntriesDefault || false}
                                 onCheckedChange={(checked: boolean) => {
-                                    updateLedgerMutation.mutate({ collapseBillsDefault: checked });
+                                    updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
                                 }}
                                 disabled={isPending}
                             />

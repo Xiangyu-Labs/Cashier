@@ -18,7 +18,7 @@ export interface PendingSourceDocumentsResult {
  * Hook for fetching pending source documents (queued + processing + anomaly).
  * 
  * This hook fetches ALL pending documents regardless of date range,
- * used for the pending bills modal that should always show all items.
+ * used for the pending source documents modal that should always show all items.
  */
 export function usePendingSourceDocuments(ledgerId: string) {
     const { data, isLoading, refetch } = useSmartPolling({

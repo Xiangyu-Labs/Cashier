@@ -15,7 +15,7 @@
     "LedgerPage": {
         "notFound": "Ledger not found",
         "settings": "Settings",
-        "history": "Stream",
+        "stream": "Stream",
         "details": "Details",
         "stats": "Stats",
         "newRecord": "New Record",
@@ -80,10 +80,6 @@
         "currentPeriod": "Current Period",
         "filteredTotal": "Total"
     },
-    "HistoryTab": {
-        "noHistory": "No confirmed records",
-        "otherHistory": "Other History"
-    },
     "LedgerSwitcher": {
         "selectLedger": "Select Ledger",
         "newLedger": "New Ledger",
@@ -96,8 +92,8 @@
         "createFailed": "Creation failed",
         "createFailedDesc": "Failed to create ledger, please try again later"
     },
-    "TaskCenter": {
-        "taskCenter": "Task Center",
+    "TaskQueue": {
+        "taskQueue": "Task Queue",
         "taskQueue": "Task Queue",
         "runningTasks": "{count} {count, plural, one {task} other {tasks}} processing",
         "noActiveTasks": "No active tasks",
@@ -134,7 +130,7 @@
     },
     "LedgerEntriesTab": {
         "processing": "Processing",
-        "abnormal": "Abnormal Bills",
+        "abnormal": "Abnormal Records",
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
         "batchDeleteSuccessCount": "Successfully deleted {count} items",
         "deleteAll": "Delete All",
@@ -151,8 +147,8 @@
         "confirmFailed": "Confirm failed",
         "retrySubmitted": "Retry submitted",
         "retryAllDesc": "Retrying all failed records",
-        "deleteAllConfirmTitle": "Delete All Abnormal Bills",
-        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal bills? This action cannot be undone."
+        "deleteAllConfirmTitle": "Delete All Abnormal Records",
+        "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal records? This action cannot be undone."
     },
     "SourceDocumentCard": {
         "expand": "Expand",
@@ -310,8 +306,8 @@
         "assistant": "Smart Assistant",
         "aiLanguage": "AI Recognition Language",
         "aiLanguageDesc": "Set the language preference for AI recognition and summaries in this ledger",
-        "collapseBills": "Collapse Bills by Default",
-        "collapseBillsDesc": "If enabled, confirmed bills will have their detail items collapsed by default.",
+        "collapseEntries": "Collapse Entries by Default",
+        "collapseEntriesDesc": "If enabled, confirmed entries will have their detail items collapsed by default.",
         "showMonthlyExpense": "Show Monthly Expense",
         "showMonthlyExpenseDesc": "Display current month's expense at the top of the home page",
         "aiSettings": "AI Settings",
@@ -328,7 +324,7 @@
         "categoriesDesc": "Manage ledger expense categories and their priority",
         "cancel": "Cancel",
         "confirmEnable": "Confirm Enable",
-        "taskCenter": "Task Center",
+        "taskQueue": "Task Queue",
         "aiPrompt": "Ledger Prompt",
         "aiPromptDesc": "Customize AI recognition with specific preferences (e.g., add more emojis to titles)",
         "aiPromptPlaceholder": "e.g.:\n• Merge similar items into one\n• Add emojis to titles\n• Classify taxi as Transport",
@@ -564,22 +560,6 @@
         "tipTitle": "Tip: ",
         "tipDesc": "Category descriptions help AI more accurately identify and classify spending. For example, the description for \"Dining\" could be \"Delivery, Dine-in, Groceries\"."
     },
-    "PendingBills": {
-        "title": "Pending Bills",
-        "queued": "Queued",
-        "processing": "Processing",
-        "anomaly": "Anomaly",
-        "empty": "No pending bills",
-        "emptyDesc": "All bills have been processed",
-        "retryAll": "Retry All",
-        "deleteAll": "Delete All",
-        "reason": "Reason",
-        "viewButton": "Pending",
-        "deleteConfirmTitle": "Confirm Delete",
-        "deleteConfirmDesc": "Are you sure you want to delete this pending bill?",
-        "deleteAllConfirmTitle": "Delete All Anomalous Bills",
-        "deleteAllConfirmDesc": "Are you sure you want to delete all anomalous bills? This action cannot be undone."
-    },
     "TaskQueue": {
         "title": "Task Queue",
         "pending": "Pending",
@@ -605,9 +585,9 @@
         "error": "Error",
         "originalInput": "Original Input",
         "tokenStats": "In: {input} | Out: {output} | Avg: {avg}/task",
-        "anomaly": "Anomaly Bills",
+        "anomaly": "Anomaly Records",
         "reason": "Reason",
-        "untitledBill": "Untitled Bill",
+        "untitledRecord": "Untitled Record",
         "expand": "Expand",
         "collapse": "Collapse",
         "taskType_parse_source_document": "Parse Source Document",

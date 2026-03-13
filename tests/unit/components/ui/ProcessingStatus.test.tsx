@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
+import { ProcessingStatus } from "@/components/ui/processing-status";
 import { describe, it, expect } from "vitest";
 
 describe("ProcessingStatus", () => {

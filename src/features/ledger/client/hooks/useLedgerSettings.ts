@@ -21,7 +21,7 @@ interface UpdateLedgerData {
     preferredCurrencies?: string[];
     mainCurrency?: string;
     aiLanguage?: string;
-    collapseBillsDefault?: boolean;
+    collapseEntriesDefault?: boolean;
     aiCustomPrompt?: string;
     showMonthlyExpense?: boolean;
     monthStartDay?: number;
@@ -82,7 +82,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                 preferredCurrencies,
                 mainCurrency,
                 aiLanguage,
-                collapseBillsDefault,
+                collapseEntriesDefault,
                 aiCustomPrompt,
                 showMonthlyExpense,
                 monthStartDay,
@@ -97,7 +97,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
             if (preferredCurrencies !== undefined) settings.currencies = preferredCurrencies;
             if (mainCurrency !== undefined) settings.mainCurrency = mainCurrency;
             if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
-            if (collapseBillsDefault !== undefined) settings.collapseBillsDefault = collapseBillsDefault;
+            if (collapseEntriesDefault !== undefined) settings.collapseEntriesDefault = collapseEntriesDefault;
             if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
             if (showMonthlyExpense !== undefined) settings.showMonthlyExpense = showMonthlyExpense;
             if (monthStartDay !== undefined) settings.monthStartDay = monthStartDay;
@@ -128,7 +128,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                     newData.preferredCurrencies !== undefined ||
                     newData.mainCurrency !== undefined ||
                     newData.aiLanguage !== undefined ||
-                    newData.collapseBillsDefault !== undefined ||
+                    newData.collapseEntriesDefault !== undefined ||
                     newData.aiCustomPrompt !== undefined ||
                     newData.showMonthlyExpense !== undefined ||
                     newData.monthStartDay !== undefined
@@ -140,7 +140,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                             ...(newData.preferredCurrencies !== undefined && { currencies: newData.preferredCurrencies }),
                             ...(newData.mainCurrency !== undefined && { mainCurrency: newData.mainCurrency }),
                             ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
-                            ...(newData.collapseBillsDefault !== undefined && { collapseBillsDefault: newData.collapseBillsDefault }),
+                            ...(newData.collapseEntriesDefault !== undefined && { collapseEntriesDefault: newData.collapseEntriesDefault }),
                             ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
                             ...(newData.showMonthlyExpense !== undefined && { showMonthlyExpense: newData.showMonthlyExpense }),
                             ...(newData.monthStartDay !== undefined && { monthStartDay: newData.monthStartDay }),

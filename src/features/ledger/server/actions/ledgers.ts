@@ -22,7 +22,7 @@ const updateLedgerSchema = z.object({
         aiLanguage: z.string().optional(),
         currencies: z.array(z.string()).optional(),
         mainCurrency: z.string().optional(),
-        collapseBillsDefault: z.boolean().optional(),
+        collapseEntriesDefault: z.boolean().optional(),
         aiCustomPrompt: z.string().optional(),
         showMonthlyExpense: z.boolean().optional(),
         monthStartDay: z.number().min(1).max(31).optional(),
@@ -52,7 +52,7 @@ export async function createLedgerAction(data: z.infer<typeof createLedgerSchema
                         aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
                         currencies: defaultLedger.settings.currencies,
                         mainCurrency: defaultLedger.settings.mainCurrency,
-                        collapseBillsDefault: defaultLedger.settings.collapseBillsDefault,
+                        collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,
                         aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
                     }
                 }

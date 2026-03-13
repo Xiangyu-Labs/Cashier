@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
 
 /**
- * Variant styles for different bill states.
- * The bill container determines the variant, and entries inherit the theme.
+ * Variant styles for different source document states.
+ * The source document container determines the variant, and entries inherit the theme.
  */
 const itemVariants = cva(
     "flex items-center justify-between py-2 px-3 rounded-lg transition-all cursor-pointer hover:opacity-80",
@@ -26,7 +26,7 @@ const itemVariants = cva(
     }
 );
 
-export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
+export interface LedgerEntryItemProps extends VariantProps<typeof itemVariants> {
     ledgerEntry: LedgerEntry;
     mainCurrency?: string;
     sourceDocumentEntryDate?: string | null;
@@ -35,19 +35,19 @@ export interface BillEntryItemProps extends VariantProps<typeof itemVariants> {
 }
 
 /**
- * A simplified entry display component designed for embedding within bill cards.
+ * A simplified entry display component designed for embedding within source document cards.
  * Unlike LedgerEntryCard, this component:
  * - Inherits theme from parent via `variant` prop
  * - Has a more compact layout
  */
-export const BillEntryItem = memo(function BillEntryItem({
+export const LedgerEntryItem = memo(function LedgerEntryItem({
     ledgerEntry,
     mainCurrency = "CNY",
     sourceDocumentEntryDate,
     onView,
     variant = "default",
     className,
-}: BillEntryItemProps) {
+}: LedgerEntryItemProps) {
     const { converted } = useConvertedAmount(
         parseFloat(ledgerEntry.amount),
         ledgerEntry.currency,

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckSquare, X } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { EditableBillEntryItem, EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
+import { EditableLedgerEntryItem, EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem";
 import { Card } from "@/components/ui/card";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";
@@ -258,7 +258,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                     selectedEntryIds.includes(entry.id) && isSelectionMode && "border-primary bg-primary/5"
                                 )}
                             >
-                                <EditableBillEntryItem
+                                <EditableLedgerEntryItem
                                     ledgerEntry={entry}
                                     categories={categories}
                                     categoryPlaceholder={t("selectCategory")}

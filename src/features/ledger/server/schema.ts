@@ -28,7 +28,7 @@ export interface LedgerMetadata {
         aiLanguage?: string;
         currencies?: string[];
         mainCurrency?: string;
-        collapseBillsDefault?: boolean;
+        collapseEntriesDefault?: boolean;
         aiCustomPrompt?: string;
         monthStartDay?: number;      // 每月起始日 (1-31)，默认 1
         showMonthlyExpense?: boolean; // 是否显示月支出，默认 true

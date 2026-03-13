@@ -15,7 +15,7 @@
     "LedgerPage": {
         "notFound": "账本不存在",
         "settings": "设置",
-        "history": "流水",
+        "stream": "流水",
         "details": "明细",
         "stats": "统计",
         "newRecord": "记一笔",
@@ -81,10 +81,6 @@
         "currentPeriod": "本期",
         "filteredTotal": "合计"
     },
-    "HistoryTab": {
-        "noHistory": "暂无已确认记录",
-        "otherHistory": "其他历史记录"
-    },
     "LedgerSwitcher": {
         "selectLedger": "选择账本",
         "newLedger": "新建账本",
@@ -97,8 +93,8 @@
         "createFailed": "创建失败",
         "createFailedDesc": "无法创建账本，请稍后重试"
     },
-    "TaskCenter": {
-        "taskCenter": "任务中心",
+    "TaskQueue": {
+        "taskQueue": "任务队列",
         "taskQueue": "任务队列",
         "runningTasks": "{count} 个任务处理中",
         "noActiveTasks": "暂无活跃任务",
@@ -135,7 +131,7 @@
     },
     "LedgerEntriesTab": {
         "processing": "处理中",
-        "abnormal": "异常账单",
+        "abnormal": "异常记录",
         "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
         "batchDeleteSuccessCount": "已成功删除 {count} 项明细",
         "deleteAll": "全部删除",
@@ -152,8 +148,8 @@
         "confirmFailed": "确认失败",
         "retrySubmitted": "重试已提交",
         "retryAllDesc": "正在重试所有失败的记录",
-        "deleteAllConfirmTitle": "删除所有异常账单",
-        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。",
+        "deleteAllConfirmTitle": "删除所有异常记录",
+        "deleteAllConfirmDesc": "确定要删除所有异常记录吗？此操作无法撤销。",
         "retry": "编辑重试"
     },
     "SourceDocumentCard": {
@@ -316,8 +312,8 @@
         "assistant": "智能助理",
         "aiLanguage": "AI 识别语言",
         "aiLanguageDesc": "设置此账本内 AI 识别和摘要所使用的语言偏好",
-        "collapseBills": "默认折叠账单",
-        "collapseBillsDesc": "如果开启，已入账的账单默认收起明细项目。",
+        "collapseEntries": "默认折叠记录",
+        "collapseEntriesDesc": "如果开启，已入账的记录默认收起明细项目。",
         "showMonthlyExpense": "显示月支出",
         "showMonthlyExpenseDesc": "在主页顶部显示当月支出金额",
         "aiSettings": "AI 设置",
@@ -334,7 +330,7 @@
         "categoriesDesc": "管理账本支出分类及其优先级",
         "cancel": "取消",
         "confirmEnable": "确认开启",
-        "taskCenter": "任务中心",
+        "taskQueue": "任务队列",
         "aiPrompt": "账本提示词",
         "aiPromptDesc": "自定义 AI 识别时的特殊偏好（例如：给账单起的标题包含更多颜文字）",
         "aiPromptPlaceholder": "例如：\n• 同类消费合并为一条\n• 标题加颜文字\n• 打车费用归为交通类",
@@ -571,22 +567,6 @@
         "tipTitle": "提示：",
         "tipDesc": "分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。"
     },
-    "PendingBills": {
-        "title": "待处理账单",
-        "queued": "排队中",
-        "processing": "处理中",
-        "anomaly": "异常",
-        "empty": "没有待处理的账单",
-        "emptyDesc": "所有账单都已处理完成",
-        "retryAll": "全部重试",
-        "deleteAll": "全部删除",
-        "reason": "原因",
-        "viewButton": "待处理",
-        "deleteConfirmTitle": "确认删除",
-        "deleteConfirmDesc": "确定要删除这条待处理账单吗？",
-        "deleteAllConfirmTitle": "删除所有异常账单",
-        "deleteAllConfirmDesc": "确定要删除所有异常账单吗？此操作无法撤销。"
-    },
     "TaskQueue": {
         "title": "任务队列",
         "pending": "排队中",
@@ -612,9 +592,9 @@
         "error": "错误",
         "originalInput": "原始输入",
         "tokenStats": "输入: {input} | 输出: {output} | 平均: {avg}/任务",
-        "anomaly": "异常账单",
+        "anomaly": "异常记录",
         "reason": "原因",
-        "untitledBill": "未命名账单",
+        "untitledRecord": "未命名记录",
         "expand": "展开",
         "collapse": "收起",
         "taskType_parse_source_document": "解析原始凭证",

@@ -38,7 +38,7 @@ export interface EntryEditData {
     description: string | null;
 }
 
-export interface EditableBillEntryItemProps extends VariantProps<typeof itemVariants> {
+export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVariants> {
     ledgerEntry: LedgerEntry;
     categories: EntryCategory[];
     categoryPlaceholder: string;
@@ -53,7 +53,7 @@ export interface EditableBillEntryItemProps extends VariantProps<typeof itemVari
     sourceDocumentEntryDate?: string;
 }
 
-export const EditableBillEntryItem = memo(function EditableBillEntryItem({
+export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
     ledgerEntry,
     categories,
     categoryPlaceholder,
@@ -66,7 +66,7 @@ export const EditableBillEntryItem = memo(function EditableBillEntryItem({
     onChange,
     pendingChanges,
     sourceDocumentEntryDate,
-}: EditableBillEntryItemProps) {
+}: EditableLedgerEntryItemProps) {
     // Merge pending changes with original data
     const displayData = {
         itemName: pendingChanges?.itemName ?? ledgerEntry.itemName,

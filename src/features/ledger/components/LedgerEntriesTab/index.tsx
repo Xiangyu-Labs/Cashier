@@ -11,7 +11,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useSourceDocuments } from "@/features/source-document/client/hooks/useSourceDocuments";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
-import { useLayoutTransition } from "@/hooks/useLayoutTransition";
+import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
@@ -264,7 +264,7 @@ export function LedgerEntriesTab({
                         </div>
                     ) : (
                         <>
-                            {/* Completed Section - Only show processed bills */}
+                            {/* Completed Section - Only show processed entries */}
                             <div className="space-y-6 px-2 pt-2">
                                 {groupedCompletedByDate.length === 0 ? (
                                     <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">

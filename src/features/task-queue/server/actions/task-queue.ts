@@ -100,7 +100,7 @@ function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
         id: doc.id,
         kind: 'anomaly',
         status: 'anomaly',
-        title: doc.title ?? 'Untitled Bill',
+        title: doc.title ?? 'Untitled Source Document',
         subtitle: doc.anomalyReason ?? undefined,
         createdAt: doc.createdAt.toISOString(),
         sourceDocumentId: doc.id,

@@ -4,9 +4,9 @@
  * Server-side data fetching for calendar heatmap visualization.
  */
 
-export { getCalendarHeatmapData } from './getHeatmapData';
-export { getCalendarDayDetail } from './getDayDetail';
-export { getCalendarHeatmapForRange } from './getHeatmapForRange';
+export { getCalendarHeatmapData } from './get-heatmap-data';
+export { getCalendarDayDetail } from './get-day-detail';
+export { getCalendarHeatmapForRange } from './get-heatmap-for-range';
 
 // Re-export schemas for use in other modules
 export {

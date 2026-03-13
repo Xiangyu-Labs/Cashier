@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 describe("useReducedMotion", () => {
     let matchMediaMock: ReturnType<typeof vi.fn>;

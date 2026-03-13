@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as ledgerEntryPOST } from "@/app/api/v1/ledger-entries/route";
+import { POST as ledgerEntryPOST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
 import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -65,7 +65,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         }).returning();
 
         const req = new NextRequest(
-            "http://localhost/api/v1/ledger-entries",
+            "http://localhost/api/v1/source-documents",
             {
                 method: "POST",
                 headers: {
@@ -91,7 +91,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     it("should reject ledger entry with invalid service credential", async () => {
         const req = new NextRequest(
-            "http://localhost/api/v1/ledger-entries",
+            "http://localhost/api/v1/source-documents",
             {
                 method: "POST",
                 headers: {

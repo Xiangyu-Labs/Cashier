@@ -203,7 +203,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
       if (activeTab !== 'settings') {
         import("../SettingsTab");
       }
-      if (activeTab !== 'history') {
+      if (activeTab !== 'stream') {
         import("../LedgerEntriesTab");
       }
     };
@@ -233,13 +233,13 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
       <main className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 transition-all duration-300">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="history">{t("history")}</TabsTrigger>
+            <TabsTrigger value="stream">{t("stream")}</TabsTrigger>
             <TabsTrigger value="details">{t("details")}</TabsTrigger>
             <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
             <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="history" className="mt-0">
+          <TabsContent value="stream" className="mt-0">
             <Suspense fallback={<EntriesTabSkeleton />}>
               <LedgerEntriesTab
                 ledgerId={ledgerId}

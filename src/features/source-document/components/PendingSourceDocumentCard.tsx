@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import { SourceDocument, SourceDocumentLight } from "@/types/api";
-import { ProcessingStatus } from "@/components/ui/ProcessingStatus";
+import { ProcessingStatus } from "@/components/ui/processing-status";
 import { Button } from "@/components/ui/button";
 import { Trash2, RefreshCw, MoreVertical, ChevronDown } from "lucide-react";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
@@ -23,7 +23,7 @@ function getSafeImageSrc(data: string): string {
     return `data:image/jpeg;base64,${data}`;
 }
 
-interface PendingBillCardProps {
+interface PendingSourceDocumentCardProps {
     sourceDocument: SourceDocument | SourceDocumentLight;
     status: Exclude<SourceDocumentStatusType, "completed">;
     onRetry?: () => void | Promise<void>;
@@ -31,13 +31,13 @@ interface PendingBillCardProps {
     className?: string;
 }
 
-export const PendingBillCard = memo(function PendingBillCard({
+export const PendingSourceDocumentCard = memo(function PendingSourceDocumentCard({
     sourceDocument,
     status,
     onRetry,
     onDelete,
     className,
-}: PendingBillCardProps) {
+}: PendingSourceDocumentCardProps) {
     const _t = useTranslations("PendingBills");
     const tCommon = useTranslations("Common");
     const tCard = useTranslations("SourceDocumentCard");

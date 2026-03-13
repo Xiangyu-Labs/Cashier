@@ -26,7 +26,7 @@ import {
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
 
 import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
-import type { EntryEditData } from "@/features/ledger/components/EditableBillEntryItem";
+import type { EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 
 // Helper function to create snapshots for source document mutations

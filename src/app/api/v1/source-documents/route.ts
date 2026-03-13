@@ -8,7 +8,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
 
-const ledgerEntryInputSchema = z.object({
+const sourceDocumentInputSchema = z.object({
     text: z.string().optional(),
     images: z.array(z.object({
         data: z.string(), // base64
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const result = ledgerEntryInputSchema.safeParse(body);
+    const result = sourceDocumentInputSchema.safeParse(body);
     if (!result.success) {
         return NextResponse.json({ error: "Validation failed", details: result.error.issues }, { status: 400 });
     }

@@ -326,7 +326,7 @@ export async function getAllSourceDocumentsAction(
 
 /**
  * Get all pending source documents (processing + anomaly + failed + queued)
- * Used for the pending bills modal that should always show ALL pending items.
+ * Used for the pending source documents modal that should always show ALL pending items.
  */
 export async function getPendingSourceDocumentsAction(
     ledgerId: string
