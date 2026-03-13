@@ -15,8 +15,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { SourceDocumentViewDetails, PendingChanges, SourceDocPendingChanges } from "./SourceDocumentViewDetails"
-import { EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem"
+import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails"
+import { usePendingChanges } from "../client/hooks/usePendingChanges"
+import { useSelection } from "../client/hooks/useSelection"
 import { EditableField } from "@/components/ui/editable-field"
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
 import { BatchActionToolbar } from "@/features/ledger/components/BatchActionToolbar"
@@ -66,14 +67,26 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     const t = useTranslations("SourceDocumentDetail")
     const tCommon = useTranslations("Common")
 
-    // Pending changes state - changes are accumulated here until saved
-    const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
-        sourceDoc: {},
-        entries: {}
-    })
-    const [selectedIds, setSelectedIds] = useState<string[]>([])
-    const [isSelectionMode, setIsSelectionMode] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+
+    const {
+        pendingChanges,
+        hasPendingChanges,
+        pendingChangesCount,
+        handleSourceDocChange,
+        handleEntryChange,
+        discardAllChanges,
+        resetChanges,
+    } = usePendingChanges({ sourceDocument, ledgerEntries });
+
+    const {
+        selectedIds,
+        isSelectionMode,
+        isAllSelected,
+        handleSelect: handleSelectEntry,
+        handleSelectAll: handleSelectAllEntries,
+        toggleSelectionMode: handleToggleSelectionMode,
+    } = useSelection({ allIds: ledgerEntries.map(e => e.id) });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
     const [showRetryDialog, setShowRetryDialog] = useState(false)
@@ -81,27 +94,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     // Reset state when modal opens
     useEffect(() => {
         if (open && sourceDocument) {
-            setPendingChanges({ sourceDoc: {}, entries: {} })
-            setSelectedIds([])
-            setIsSelectionMode(false)
+            resetChanges()
         }
-    }, [open, sourceDocument])
-
-    // Check if there are any pending changes
-    const hasPendingChanges = useMemo(() => {
-        const hasSourceDocChanges = Object.keys(pendingChanges.sourceDoc).length > 0
-        const hasEntryChanges = Object.keys(pendingChanges.entries).length > 0
-        return hasSourceDocChanges || hasEntryChanges
-    }, [pendingChanges])
-
-    // Count pending changes
-    const pendingChangesCount = useMemo(() => {
-        let count = Object.keys(pendingChanges.sourceDoc).length
-        Object.values(pendingChanges.entries).forEach(changes => {
-            count += Object.keys(changes).length
-        })
-        return count
-    }, [pendingChanges])
+    }, [open, sourceDocument, resetChanges])
 
     // Handle close with unsaved changes check
     const handleClose = useCallback(() => {
@@ -129,7 +124,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             }
 
             // Clear pending changes after successful save
-            setPendingChanges({ sourceDoc: {}, entries: {} })
+            discardAllChanges()
             toast.success(t("saveAllSuccess", { count: pendingChangesCount }))
         } catch (error) {
             console.error("Failed to save changes:", error)
@@ -148,103 +143,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
     // Discard all changes and close (for unsaved changes dialog) - only discards changes, does NOT delete the document
     const handleDiscardAndClose = useCallback(() => {
-        setPendingChanges({ sourceDoc: {}, entries: {} })
+        discardAllChanges()
         setShowUnsavedConfirm(false)
         onClose()
-    }, [onClose])
-
-    // Handle source doc field changes - only add if value actually changed
-    const handleSourceDocChange = useCallback((changes: SourceDocPendingChanges) => {
-        if (!sourceDocument) return
-        setPendingChanges(prev => {
-            const next = { ...prev.sourceDoc }
-            for (const [key, value] of Object.entries(changes)) {
-                const field = key as keyof SourceDocPendingChanges
-                let originalValue: string | undefined
-                if (field === "title") {
-                    originalValue = sourceDocument.title ?? ""
-                } else if (field === "entryDate") {
-                    originalValue = sourceDocument.entryDate?.split("T")[0] || ""
-                }
-
-                if (value === originalValue) {
-                    delete next[field]
-                } else {
-                    (next as Record<string, string | undefined>)[field] = value
-                }
-            }
-            return { ...prev, sourceDoc: next }
-        })
-    }, [sourceDocument])
-
-    // Handle entry field changes - only add if value actually changed
-    const handleEntryChange = useCallback((entryId: string, changes: Partial<EntryEditData>) => {
-        const entry = ledgerEntries?.find(e => e.id === entryId)
-        if (!entry) return
-
-        setPendingChanges(prev => {
-            const entryChanges = { ...prev.entries[entryId] }
-
-            for (const [key, value] of Object.entries(changes)) {
-                const field = key as keyof EntryEditData
-                let originalValue: string | number | null | undefined
-
-                switch (field) {
-                    case "itemName": originalValue = entry.itemName; break
-                    case "amount": originalValue = entry.amount; break
-                    case "currency": originalValue = entry.currency; break
-                    case "categoryId": originalValue = entry.categoryId; break
-                    case "description": originalValue = entry.description; break
-                    default: originalValue = undefined
-                }
-
-                if (value === originalValue) {
-                    delete entryChanges[field]
-                } else {
-                    (entryChanges as Record<string, unknown>)[field] = value
-                }
-            }
-
-            // If no changes left, remove the entry from pending
-            if (Object.keys(entryChanges).length === 0) {
-                const { [entryId]: _, ...rest } = prev.entries
-                return { ...prev, entries: rest }
-            }
-
-            return {
-                ...prev,
-                entries: { ...prev.entries, [entryId]: entryChanges }
-            }
-        })
-    }, [ledgerEntries])
-
-    // Handle entry selection
-    const handleSelectEntry = useCallback((entryId: string, selected: boolean) => {
-        setSelectedIds(prev =>
-            selected ? [...prev, entryId] : prev.filter(id => id !== entryId)
-        )
-    }, [])
-
-    // Handle select all
-    const handleSelectAllEntries = useCallback((selected: boolean) => {
-        setSelectedIds(selected ? ledgerEntries.map(e => e.id) : [])
-    }, [ledgerEntries])
-
-    // Toggle selection mode
-    const handleToggleSelectionMode = useCallback(() => {
-        setIsSelectionMode(prev => {
-            if (prev) {
-                // Exiting selection mode, clear selections
-                setSelectedIds([])
-            }
-            return !prev
-        })
-    }, [])
-
-    // Discard all changes
-    const handleDiscardAll = useCallback(() => {
-        setPendingChanges({ sourceDoc: {}, entries: {} })
-    }, [])
+    }, [onClose, discardAllChanges])
 
     // Batch operations
     const handleBatchCategory = async (categoryId: string) => {
@@ -373,7 +275,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 <BatchActionToolbar
                     selectedCount={selectedIds.length}
                     totalCount={ledgerEntries.length}
-                    isAllSelected={selectedIds.length === ledgerEntries.length}
+                    isAllSelected={isAllSelected}
                     onSelectAll={() => handleSelectAllEntries(true)}
                     onClearSelection={() => handleSelectAllEntries(false)}
                     onChangeCategory={(categoryId) => handleBatchCategory(categoryId ?? "")}
@@ -425,7 +327,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                                         variant="ghost"
                                         size="sm"
                                         className="h-9"
-                                        onClick={handleDiscardAll}
+                                        onClick={discardAllChanges}
                                     >
                                         <X className="h-3.5 w-3.5 mr-1.5" />
                                         {t("discardChanges")}
