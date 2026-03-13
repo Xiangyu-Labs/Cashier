@@ -50,9 +50,9 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         // Force Auth.js to call userinfo endpoint instead of relying only on id_token
         // Authelia returns complete user info (including email) from userinfo, not in id_token
         idToken: false,
-        // Allow linking OIDC account to existing user with same email
-        // Required when user previously signed up via OTP
-        allowDangerousEmailAccountLinking: true,
+        // SECURITY: Disabled to prevent account takeover attacks
+        // Users must manually link accounts after authentication
+        allowDangerousEmailAccountLinking: false,
         profile(profile) {
             return {
                 id: profile.sub,
