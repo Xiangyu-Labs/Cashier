@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
 import { flowEngine } from "./engine";
-import { readdir, stat } from "fs/promises";
-import { join, dirname } from "path";
+import { readdir } from "fs/promises";
+import { join } from "path";
 
 export interface TaskModule {
     default?: (engine: typeof flowEngine) => void;
@@ -56,10 +56,10 @@ export async function autoRegisterTasks(): Promise<void> {
 
         for (const file of taskFiles) {
             try {
-                const module: TaskModule = await import(file);
+                const taskModule: TaskModule = await import(file);
 
                 // Support both default export and named register export
-                const registerFn = module.default || module.register;
+                const registerFn = taskModule.default || taskModule.register;
 
                 if (typeof registerFn === "function") {
                     registerFn(flowEngine);

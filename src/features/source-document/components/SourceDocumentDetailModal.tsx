@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, memo, useCallback } from "react"
+import { useState, useEffect, memo, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -132,7 +132,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         } finally {
             setIsSaving(false)
         }
-    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry, pendingChangesCount, t])
+    }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry, pendingChangesCount, t, discardAllChanges])
 
     // Save all changes and close (for unsaved changes dialog)
     const handleSaveAllAndClose = useCallback(async () => {

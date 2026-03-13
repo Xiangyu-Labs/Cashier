@@ -6,7 +6,7 @@ import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
-import { AppError, UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
+import { UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 
 const sourceDocumentInputSchema = z.object({
