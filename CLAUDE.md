@@ -47,6 +47,8 @@ npm run docker:down      # Stop containers
 - `src/lib/` - Core infrastructure: `db/` (Drizzle), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
 - `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
+- `src/lib/errors.ts` - Standardized error classes (AppError, ValidationError, etc.)
+- `src/lib/error-handlers.ts` - Error handling utilities (toErrorResponse, logError, etc.)
 - `messages/` - Translation files (en.json, zh.json) for next-intl
 - `tests/` - Unit tests in `unit/`, integration tests in `integration/`, shared fixtures in `fixtures/`
 
@@ -69,7 +71,19 @@ src/features/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are registered in `src/instrumentation.ts`.
+**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are auto-discovered from `**/server/tasks/*.task.ts` files via `autoRegisterTasks()` in `src/instrumentation.ts`.
+
+**Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
+- `AppError` - Base error class with `code`, `statusCode`, and `details`
+- `ValidationError` (400), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `RateLimitError` (429)
+- Use `toErrorResponse(error)` and `getErrorStatusCode(error)` from `src/lib/error-handlers.ts` for consistent API error responses
+- Server Actions should throw errors directly (not return `{ success, error }` objects)
+
+**Custom Hooks**: Extract complex component logic into focused hooks:
+- `usePendingChanges()` - Track pending form changes with dirty checking
+- `useSelection()` - Manage batch selection state (selection mode, selected IDs, select all)
+- Place feature-specific hooks in `src/features/{domain}/client/hooks/`
+- Keep hooks under 200 lines; compose smaller hooks for complex logic
 
 **AI pipeline**: Source document parsing uses a "Dual GPT + Arbitration" strategy — two parallel LLM calls compared for consistency, with a third arbitrator call if they disagree. Multi-stage: Stage 1 (pre-analysis) → Stage 1.5 (validation) → Stage 2 (detailed parsing).
 
@@ -102,6 +116,87 @@ src/features/{domain}/
 - Use `metadata` JSONB column for extensible settings instead of adding individual columns
 - Prefer minimal infrastructure: in-process over external services, memory store over Redis, polling over SSE
 - Domain naming must be precise — invest in renaming if concepts don't match (see `docs/dev-preferences.md` for full evolution history)
+
+## Error Handling
+
+Use standardized error classes from `src/lib/errors.ts`:
+
+```typescript
+import { ValidationError, UnauthorizedError, NotFoundError } from "@/lib/errors";
+import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
+
+// Server Actions - throw errors directly
+export async function myAction(data: unknown) {
+  if (!isValid(data)) {
+    throw new ValidationError("Invalid input", { field: "email" });
+  }
+  // ...
+}
+
+// API Routes - use standardized response
+export async function POST(request: Request) {
+  try {
+    // ... logic
+  } catch (error) {
+    logError("api/my-endpoint", error);
+    return NextResponse.json(
+      toErrorResponse(error),
+      { status: getErrorStatusCode(error) }
+    );
+  }
+}
+```
+
+## Task Handlers
+
+Task handlers are auto-discovered from `**/server/tasks/*.task.ts` files. No manual registration needed.
+
+```typescript
+// src/features/my-feature/server/tasks/my-task.task.ts
+import { flowEngine } from "@/lib/flow";
+
+export default function register(engine: typeof flowEngine) {
+  engine.register("my-task", {
+    async execute(input, context) {
+      // Task logic
+      return result;
+    }
+  });
+}
+```
+
+## Custom Hooks
+
+Extract complex component logic into focused hooks:
+
+```typescript
+// src/features/my-feature/client/hooks/useMyFeature.ts
+import { usePendingChanges } from "@/features/source-document/client/hooks/usePendingChanges";
+import { useSelection } from "@/features/source-document/client/hooks/useSelection";
+
+// usePendingChanges - Track pending form changes
+const {
+  pendingChanges,
+  hasPendingChanges,
+  pendingChangesCount,
+  handleSourceDocChange,
+  handleEntryChange,
+  discardAllChanges,
+  resetChanges,
+} = usePendingChanges({ sourceDocument, ledgerEntries });
+
+// useSelection - Manage batch selection
+const {
+  selectedIds,
+  isSelectionMode,
+  isAllSelected,
+  handleSelect,
+  handleSelectAll,
+  toggleSelectionMode,
+} = useSelection({ allIds: entries.map(e => e.id) });
+```
+
+Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
 
 ### Environment Variables
 Required in `.env.local`:
