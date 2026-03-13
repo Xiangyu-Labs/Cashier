@@ -73,7 +73,6 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
         onDelete: "set null",
     }),
     sourceDocumentId: text("source_document_id")
-        .notNull()
         .references(() => sourceDocuments.id, { onDelete: "cascade" }),
     amount: text("amount").notNull(), // SQLite has no decimal, use text
     currency: text("currency"),
