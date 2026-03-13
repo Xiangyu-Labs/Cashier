@@ -9,15 +9,6 @@ import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categ
 import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
 
-// Development-only performance logger
-const isDev = process.env.NODE_ENV === 'development';
-function perfLog(label: string, startTime: number) {
-  if (!isDev) return Date.now();
-  const duration = Date.now() - startTime;
-  console.log(`[PERF] ${label}: ${duration}ms`);
-  return Date.now();
-}
-
 export default async function LedgerPage({
   params,
   searchParams,
@@ -25,7 +16,6 @@ export default async function LedgerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const startTime = Date.now();
 
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
@@ -101,16 +91,6 @@ export default async function LedgerPage({
   const initialStatsDate = new Date();
 
   const dehydratedState = dehydrate(queryClient);
-
-  // Warn if dehydrated state is too large (development only)
-  if (isDev) {
-    const dehydratedJson = JSON.stringify(dehydratedState);
-    const sizeKB = new TextEncoder().encode(dehydratedJson).length / 1024;
-    if (sizeKB > 500) {
-      console.warn(`[PERF WARNING] Dehydrated state is large: ${sizeKB.toFixed(2)} KB`);
-    }
-    perfLog("=== TOTAL Server Render", startTime);
-  }
 
   return (
     <HydrationBoundary state={dehydratedState}>
