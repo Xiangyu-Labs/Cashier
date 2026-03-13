@@ -37,50 +37,52 @@ export class ExchangeRateService {
             };
         }
 
-        // 2. Check for pending request (Request Collapsing)
-        if (this.pendingRequests.has(targetDateStr)) {
-            return this.pendingRequests.get(targetDateStr)!;
+        // 2. Request Collapsing - atomic check-and-set to prevent race condition
+        // Check for pending request first (fast path)
+        let fetchPromise = this.pendingRequests.get(targetDateStr);
+
+        if (!fetchPromise) {
+            // Create the fetch promise immediately, before any await
+            // This ensures the pending request is registered atomically
+            fetchPromise = this.fetchAndStore(targetDateStr);
+            this.pendingRequests.set(targetDateStr, fetchPromise);
         }
 
-        // 3. Fetch from API
-        const fetchPromise = (async () => {
-            try {
-                const response = await this.fetchWithRetry(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        // Create a fallback for future dates or way past dates if needed,
-                        // but 404 usually means really invalid.
-                        // However, for weekends, Frankfurter usually returns the previous Friday.
-                        // If it explicitly 404s, it's an error.
-                        throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
-                    }
-                    throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
-                }
-
-                const data: ExchangeRates = await response.json();
-
-                // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
-                // IMPORTANT: We save using 'targetDateStr' (the requested date) instead of 'data.date'
-                // because on weekends 'data.date' will be the previous Friday.
-                // If we saved 'data.date', the next request for 'targetDateStr' would still be a cache miss.
-                await db.insert(currencyRates)
-                    .values({
-                        date: targetDateStr,
-                        base: data.base,
-                        rates: data.rates,
-                    })
-                    .onConflictDoNothing();
-
-                return data;
-            } finally {
-                // Remove from pending map once finished (success or failure)
-                this.pendingRequests.delete(targetDateStr);
-            }
-        })();
-
-        this.pendingRequests.set(targetDateStr, fetchPromise);
+        // All concurrent requests will wait on the same promise
         return fetchPromise;
+    }
+
+    /**
+     * Fetch rates from API and store in database.
+     * Extracted to a separate method to prevent race conditions.
+     */
+    private static async fetchAndStore(targetDateStr: string): Promise<ExchangeRates> {
+        try {
+            const response = await this.fetchWithRetry(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
+                }
+                throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
+            }
+
+            const data: ExchangeRates = await response.json();
+
+            // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
+            await db.insert(currencyRates)
+                .values({
+                    date: targetDateStr,
+                    base: data.base,
+                    rates: data.rates,
+                })
+                .onConflictDoNothing();
+
+            return data;
+        } finally {
+            // Remove from pending map once finished (success or failure)
+            this.pendingRequests.delete(targetDateStr);
+        }
     }
 
     private static async fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
