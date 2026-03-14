@@ -3,22 +3,12 @@
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import { desc, eq, and, inArray, isNull } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { QueueItem, QueueItemStatus } from "../../types";
 
 // Zod schemas for runtime validation
 const QueueItemStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'anomaly']);
-
-const TokenUsageSchema = z.object({
-    total: z.object({
-        input: z.number().optional(),
-        output: z.number().optional(),
-    }).optional(),
-}).catchall(z.object({
-    input: z.number().optional(),
-    output: z.number().optional(),
-}).optional());
 
 /**
  * Stats for the task queue
@@ -133,19 +123,16 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
         orderBy: [desc(taskRuns.createdAt)],
     });
 
-    // Fetch completed tasks for this ledger (filter at SQL level)
-    const allCompletedTasks = await db.query.taskRuns.findMany({
+    // Fetch latest 5 completed tasks for display (token stats are calculated via SQL aggregation)
+    const completedTasks = await db.query.taskRuns.findMany({
         where: and(
             isNull(taskRuns.deletedAt),
             eq(taskRuns.status, "completed"),
             eq(taskRuns.scopeId, ledgerId)
         ),
         orderBy: [desc(taskRuns.completedAt)],
-        limit: 100, // Limit to avoid fetching thousands of completed tasks
+        limit: 5,
     });
-
-    // Get latest 5 completed
-    const completedTasks = allCompletedTasks.slice(0, 5);
 
     // Fetch anomaly source documents (directly from source_documents table)
     const anomalyDocs = await db.query.sourceDocuments.findMany({
@@ -199,29 +186,29 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     const pendingCount = items.filter(i => i.status === 'pending').length;
     const runningCount = items.filter(i => i.status === 'running').length;
     const failedCount = items.filter(i => i.status === 'failed').length;
-    const completedCount = allCompletedTasks.length; // Total count, not just the 5 shown
     const anomalyCount = items.filter(i => i.status === 'anomaly').length;
 
-    // Calculate token stats from all completed tasks
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
+    // Calculate token stats using SQL aggregation (more efficient than fetching all tasks)
+    const tokenStatsResult = await db
+        .select({
+            totalInput: sql<number>`COALESCE(SUM(CAST(json_extract(token_usage, '$.total.input') AS INTEGER)), 0)`,
+            totalOutput: sql<number>`COALESCE(SUM(CAST(json_extract(token_usage, '$.total.output') AS INTEGER)), 0)`,
+            taskCount: sql<number>`COUNT(*)`,
+        })
+        .from(taskRuns)
+        .where(and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.status, "completed"),
+            eq(taskRuns.scopeId, ledgerId)
+        ));
 
-    for (const task of allCompletedTasks) {
-        if (task.tokenUsage) {
-            // Validate tokenUsage with Zod schema (replaces type assertion)
-            const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
-            if (parsed.success) {
-                const u = parsed.data;
-                const total = u.total || { input: 0, output: 0 };
-                totalInputTokens += total.input || 0;
-                totalOutputTokens += total.output || 0;
-            }
-        }
-    }
+    const tokenStats = tokenStatsResult[0];
+    const totalInputTokens = tokenStats?.totalInput ?? 0;
+    const totalOutputTokens = tokenStats?.totalOutput ?? 0;
+    const completedCount = tokenStats?.taskCount ?? 0;
 
-    const taskCount = allCompletedTasks.length;
     const totalTokens = totalInputTokens + totalOutputTokens;
-    const avgTokensPerTask = taskCount > 0 ? Math.round(totalTokens / taskCount) : 0;
+    const avgTokensPerTask = completedCount > 0 ? Math.round(totalTokens / completedCount) : 0;
 
     const stats: TaskQueueStats = {
         pendingCount,

@@ -93,6 +93,10 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     index("idx_ledger_entries_converted_amount").on(table.convertedAmount),
     // Optimization for tenant isolation queries
     index("idx_ledger_entries_ledger_active").on(table.ledgerId, table.deletedAt),
+    // Optimization for stats queries joining with source_documents
+    index("idx_ledger_entries_ledger_source_doc").on(table.ledgerId, table.sourceDocumentId),
+    // Optimization for pagination with category (covering index)
+    index("idx_ledger_entries_ledger_created_with_category").on(table.ledgerId, table.createdAt, table.categoryId),
 ]);
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;

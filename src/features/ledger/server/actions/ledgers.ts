@@ -5,7 +5,7 @@ import { ledgers, entryCategories, ledgerEntries, serviceCredentials, users } fr
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 import { z } from "zod";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { taskVersionManager } from "@/lib/task-version";
@@ -181,7 +181,25 @@ async function convertEntriesBatch(
 }
 
 /**
- * Update entries with converted amounts in transaction
+ * Build SQL CASE expression for batch update
+ */
+function buildCaseExpression(
+    entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
+    results: ConversionResult[],
+    field: 'convertedAmount' | 'exchangeRate'
+): SQL {
+    const cases = entries.map((entry, i) => {
+        const value = field === 'convertedAmount'
+            ? results[i].convertedAmount.toFixed(2)
+            : results[i].exchangeRate.toFixed(6);
+        return sql`WHEN ${entry.id} THEN ${value}`;
+    });
+
+    return sql`CASE id ${sql.join(cases)} END`;
+}
+
+/**
+ * Update entries with converted amounts in a single batch query
  */
 function updateEntriesWithConversions(
     entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
@@ -190,24 +208,30 @@ function updateEntriesWithConversions(
     taskKey: string,
     version: number
 ): void {
-    db.transaction((tx) => {
-        for (let i = 0; i < entries.length; i++) {
-            // Check version periodically (every 100 entries) to allow early abort
-            if (i % 100 === 0 && !taskVersionManager.isValid(taskKey, version)) {
-                logger.info({ ledgerId, version, processedCount: i }, "Recalculation superseded during update");
-                throw new Error('SUPERSEDED');
-            }
+    // Check if superseded before starting the transaction
+    if (!taskVersionManager.isValid(taskKey, version)) {
+        logger.info({ ledgerId, version }, "Recalculation superseded before batch update");
+        throw new Error('SUPERSEDED');
+    }
 
-            tx.update(ledgerEntries)
-                .set({
-                    convertedAmount: results[i].convertedAmount.toFixed(2),
-                    exchangeRate: results[i].exchangeRate.toFixed(6),
-                    updatedAt: new Date(),
-                })
-                .where(eq(ledgerEntries.id, entries[i].id))
-                .run();
-        }
+    const entryIds = entries.map(e => e.id);
+
+    db.transaction((tx) => {
+        // Single batch update using CASE expression
+        tx.update(ledgerEntries)
+            .set({
+                convertedAmount: buildCaseExpression(entries, results, 'convertedAmount'),
+                exchangeRate: buildCaseExpression(entries, results, 'exchangeRate'),
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(ledgerEntries.ledgerId, ledgerId),
+                inArray(ledgerEntries.id, entryIds)
+            ))
+            .run();
     });
+
+    logger.info({ ledgerId, totalEntries: entries.length }, "Batch updated entries with new currency conversion");
 }
 
 /**
