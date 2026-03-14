@@ -248,4 +248,79 @@ describe("getTaskQueueAction", () => {
 
         await expect(getTaskQueueAction(otherLedgerId)).rejects.toThrow("Unauthorized");
     });
+
+    it("excludes completed tasks whose source document is in anomaly state from items", async () => {
+        const db = getTestDb();
+        const sourceDocId = uuidv4();
+
+        // Create a source document in anomaly state
+        await db.insert(sourceDocuments).values({
+            id: sourceDocId,
+            ledgerId,
+            text: "anomaly doc",
+            status: "anomaly",
+            type: "ai_parsed",
+            anomalyReason: "Could not parse",
+            imageUrls: [],
+        });
+
+        // Create a completed task referencing this anomaly source document
+        await db.insert(taskRuns).values({
+            id: uuidv4(),
+            type: "parse_source_document",
+            title: "Parse Task",
+            status: "completed",
+            scopeId: ledgerId,
+            input: { sourceDocumentId: sourceDocId, imageUrl: "test.jpg" },
+        });
+
+        const result = await getTaskQueueAction(ledgerId);
+
+        // The anomaly document should appear in anomaly section
+        expect(result.stats.anomalyCount).toBe(1);
+        const anomalyItems = result.items.filter(i => i.kind === "anomaly");
+        expect(anomalyItems).toHaveLength(1);
+        expect(anomalyItems[0].sourceDocumentId).toBe(sourceDocId);
+
+        // The completed task should NOT appear (because source doc is anomaly)
+        const completedItems = result.items.filter(i => i.status === "completed");
+        expect(completedItems).toHaveLength(0);
+
+        // Total should only count the anomaly
+        expect(result.stats.total).toBe(1);
+    });
+
+    it("includes completed tasks whose source document is in completed state", async () => {
+        const db = getTestDb();
+        const sourceDocId = uuidv4();
+
+        // Create a source document in completed state
+        await db.insert(sourceDocuments).values({
+            id: sourceDocId,
+            ledgerId,
+            text: "completed doc",
+            status: "completed",
+            type: "ai_parsed",
+            imageUrls: [],
+        });
+
+        // Create a completed task referencing this completed source document
+        await db.insert(taskRuns).values({
+            id: uuidv4(),
+            type: "parse_source_document",
+            title: "Parse Task",
+            status: "completed",
+            scopeId: ledgerId,
+            input: { sourceDocumentId: sourceDocId, imageUrl: "test.jpg" },
+        });
+
+        const result = await getTaskQueueAction(ledgerId);
+
+        // The completed task should appear
+        const completedItems = result.items.filter(i => i.status === "completed");
+        expect(completedItems).toHaveLength(1);
+
+        // No anomaly items
+        expect(result.stats.anomalyCount).toBe(0);
+    });
 });

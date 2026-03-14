@@ -150,15 +150,20 @@ export const getTaskQueueAction = withLedgerAccess(async (ledgerId: string): Pro
         .map(task => getSourceDocumentIdFromInput(task.input))
         .filter((id): id is string => id !== undefined);
 
-    // Fetch source document titles for completed tasks
+    // Fetch source document titles and statuses for completed tasks
     const sourceDocTitles = new Map<string, string | null>();
+    const anomalySourceDocIds = new Set<string>();
     if (completedSourceDocIds.length > 0) {
         const docs = await db.query.sourceDocuments.findMany({
             where: inArray(sourceDocuments.id, completedSourceDocIds),
-            columns: { id: true, title: true },
+            columns: { id: true, title: true, status: true },
         });
         for (const doc of docs) {
             sourceDocTitles.set(doc.id, doc.title);
+            // Track anomaly documents to exclude their completed tasks from the list
+            if (doc.status === 'anomaly') {
+                anomalySourceDocIds.add(doc.id);
+            }
         }
     }
 
@@ -167,9 +172,14 @@ export const getTaskQueueAction = withLedgerAccess(async (ledgerId: string): Pro
         items.push(taskRunToQueueItem(task));
     }
 
-    // Add completed tasks
+    // Add completed tasks (exclude those whose source document is in anomaly state)
     for (const task of completedTasks) {
         const sourceDocId = getSourceDocumentIdFromInput(task.input);
+        // Skip completed tasks whose source document is in anomaly state
+        // (anomaly documents are shown separately in the anomaly section)
+        if (sourceDocId && anomalySourceDocIds.has(sourceDocId)) {
+            continue;
+        }
         const sourceDocTitle = sourceDocId ? sourceDocTitles.get(sourceDocId) : undefined;
         items.push(taskRunToQueueItem(task, sourceDocTitle));
     }
