@@ -12,6 +12,11 @@ const globalForDb = global as unknown as {
 
 const client = globalForDb.conn ?? new Database(sqlitePath);
 
+// Configure SQLite PRAGMA for performance and data integrity
+client.pragma("journal_mode = WAL");
+client.pragma("foreign_keys = ON");
+client.pragma("synchronous = NORMAL");
+
 if (process.env.NODE_ENV !== "production") {
     globalForDb.conn = client;
 }

@@ -30,6 +30,12 @@ beforeAll(async () => {
 
   // Use in-memory SQLite for tests
   testClient = new Database(":memory:");
+
+  // Configure SQLite PRAGMA for consistency with production
+  testClient.pragma("journal_mode = WAL");
+  testClient.pragma("foreign_keys = ON");
+  testClient.pragma("synchronous = NORMAL");
+
   testDb = drizzle(testClient, { schema });
 
   // Run migrations
