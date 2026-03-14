@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { ListTodo } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useTaskQueueModal } from "../client/hooks/useTaskQueueModal";
+import { useTaskQueueModal } from "../client/hooks/use-task-queue-modal";
 import { TaskQueueContent } from "./TaskQueueContent";
 import { TaskQueueDialogs } from "./TaskQueueDialogs";
 

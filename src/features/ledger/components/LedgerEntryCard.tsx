@@ -5,7 +5,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/use-converted-amount";
 
 // Card styling variants
 const cardVariants = cva("transition-all", {

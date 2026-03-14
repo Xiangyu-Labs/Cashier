@@ -12,7 +12,7 @@ import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { MonthView } from './MonthView';
 import { YearView } from './YearView';
-import { useCalendarHeatmap } from '../client/hooks/useCalendarData';
+import { useCalendarHeatmap } from '../client/hooks/use-calendar-data';
 import type { EntryCategory, Ledger } from '@/types/api';
 import type { CalendarViewType, CalendarFilters as CalendarFiltersType } from '../types';
 import {

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, ChevronDown, ChevronRight, CheckSquare, X } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { EditableLedgerEntryItem, EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem";
+import { EditableLedgerEntryItem, type EntryEditData } from "@/components/entries";
 import { Card } from "@/components/ui/card";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";

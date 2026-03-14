@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useTaskQueue } from "@/features/task-queue/client/hooks/useTaskQueue";
+import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue";
 import { useTranslations } from "next-intl";
 
 // Lazy load modal components to reduce initial bundle
@@ -40,7 +40,7 @@ const ModalStackRenderer = dynamic(
   { ssr: false }
 );
 import { PeriodParams } from "@/lib/period-utils";
-import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
+import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { Header } from "./Header";

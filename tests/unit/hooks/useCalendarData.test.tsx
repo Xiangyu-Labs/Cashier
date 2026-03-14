@@ -5,7 +5,7 @@ import {
   useCalendarHeatmap,
   useCalendarDayDetail,
   useCalendarHeatmapForRange,
-} from "@/features/calendar/client/hooks/useCalendarData";
+} from "@/features/calendar/client/hooks/use-calendar-data";
 import * as heatmapActions from "@/features/calendar/server/actions/heatmap";
 
 // Mock server actions

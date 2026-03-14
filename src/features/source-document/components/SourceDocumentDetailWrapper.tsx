@@ -23,10 +23,10 @@ import {
     createListSnapshots,
     type MutationSnapshot,
 } from "@/lib/mutations/use-ledger-mutation";
-import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
+import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/use-source-documents";
 
 import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
-import type { EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem";
+import type { EntryEditData } from "@/components/entries";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 
 // Helper function to create snapshots for source document mutations

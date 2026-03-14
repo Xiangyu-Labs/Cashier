@@ -1,5 +1,5 @@
 import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryItem } from "@/features/ledger/components/LedgerEntryItem";
+import { LedgerEntryItem } from "@/components/entries";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";

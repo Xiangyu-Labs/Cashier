@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
-import { UnauthorizedError } from '@/lib/errors';
+import { UnauthorizedError, NotFoundError } from '@/lib/errors';
+import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 
 /**
  * Wraps a server action to automatically handle authentication.
@@ -37,4 +38,32 @@ export async function requireAuth(): Promise<string> {
   }
 
   return session.user.id;
+}
+
+/**
+ * Wraps a server action to automatically handle ledger access verification.
+ * The wrapped action must have ledgerId as its first argument.
+ *
+ * Usage:
+ *   const myAction = withLedgerAccess(async (ledgerId: string, data: MyInputType) => {
+ *     // ledger access is guaranteed, ledgerId is validated
+ *     return doSomething(ledgerId, data);
+ *   });
+ */
+export function withLedgerAccess<TArgs extends unknown[], TReturn>(
+  action: (ledgerId: string, ...args: TArgs) => Promise<TReturn>
+): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
+  return async (ledgerId: string, ...args: TArgs) => {
+    const { error } = await requireLedgerAccess(ledgerId);
+
+    if (error) {
+      const status = error.status;
+      if (status === 404) {
+        throw new NotFoundError('Ledger not found');
+      }
+      throw new UnauthorizedError('Access to ledger denied');
+    }
+
+    return action(ledgerId, ...args);
+  };
 }

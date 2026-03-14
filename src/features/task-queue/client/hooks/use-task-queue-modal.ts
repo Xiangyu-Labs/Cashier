@@ -5,8 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerCache } from "@/lib/query-keys";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { useTaskQueue } from "./useTaskQueue";
-import { useTaskQueueMutations } from "./useTaskQueueMutations";
+import { useTaskQueue } from "./use-task-queue";
+import { useTaskQueueMutations } from "./use-task-queue-mutations";
 import type { QueueItem } from "../../types";
 
 export interface UseTaskQueueModalReturn {

@@ -1,6 +1,6 @@
 // Hooks
-export { useSourceDocuments } from './hooks/useSourceDocuments';
-export { usePendingSourceDocuments } from './hooks/usePendingSourceDocuments';
-export { usePendingChanges } from './hooks/usePendingChanges';
-export { useSelection } from './hooks/useSelection';
-export { useBatchSourceDocumentActions } from './hooks/useBatchSourceDocumentActions';
+export { useSourceDocuments } from './hooks/use-source-documents';
+export { usePendingSourceDocuments } from './hooks/use-pending-source-documents';
+export { usePendingChanges } from './hooks/use-pending-changes';
+export { useSelection } from '@/hooks/use-selection';
+export { useBatchSourceDocumentActions } from './hooks/use-batch-source-document-actions';

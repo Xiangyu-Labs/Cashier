@@ -15,7 +15,7 @@ import {
     batchDeleteSourceDocumentsAction,
 } from "@/features/source-document/server/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
-import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/useSourceDocuments";
+import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/use-source-documents";
 
 // Type alias for query data to avoid inline type assertions
 type SourceDocumentsQueryData = SourceDocumentWithEntries[] | undefined;

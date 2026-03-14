@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { useConvertedAmount } from "@/features/currency/client/hooks/useConvertedAmount";
+import { useConvertedAmount } from "@/features/currency/client/hooks/use-converted-amount";
 import { AnimatePresence, motion } from "framer-motion";
 import { EditableField } from "@/components/ui/editable-field";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";

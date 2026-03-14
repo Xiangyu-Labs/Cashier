@@ -14,13 +14,13 @@ import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
 import { BatchActionToolbar } from "./BatchActionToolbar";
-import { useSelectionMode } from "../client/hooks/useSelectionMode";
-import { useEntryMutations } from "../client/hooks/useEntryMutations";
-import { useBatchEntryActions } from "../client/hooks/useBatchEntryActions";
-import { useDetailsTabState } from "../client/hooks/useDetailsTabState";
-import { useDetailsTabData } from "../client/hooks/useDetailsTabData";
-import { useDetailsTabGrouping } from "../client/hooks/useDetailsTabGrouping";
-import { useDetailsTabFilters } from "../client/hooks/useDetailsTabFilters";
+import { useSelection } from "@/hooks/use-selection";
+import { useEntryMutations } from "../client/hooks/use-entry-mutations";
+import { useBatchEntryActions } from "../client/hooks/use-batch-entry-actions";
+import { useDetailsTabState } from "../client/hooks/use-details-tab-state";
+import { useDetailsTabData } from "../client/hooks/use-details-tab-data";
+import { useDetailsTabGrouping } from "../client/hooks/use-details-tab-grouping";
+import { useDetailsTabFilters } from "../client/hooks/use-details-tab-filters";
 import type { EntryCategory, Ledger } from "@/types/api";
 import type { PeriodParams } from "@/lib/period-utils";
 
@@ -103,14 +103,14 @@ export function DetailsTab({
 
     // Selection mode
     const {
-        selectionMode,
+        isSelectionMode,
         setSelectionMode,
         selectedIds,
         toggleSelection,
         selectAll,
         clearSelection,
         isAllSelected,
-    } = useSelectionMode(entries.map((e) => e.id));
+    } = useSelection({ allIds: entries.map((e) => e.id) });
 
     // Mutations
     const { updateEntry, deleteEntry } = useEntryMutations({
@@ -155,19 +155,19 @@ export function DetailsTab({
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         {entries.length > 0 && (
                             <Button
-                                variant={selectionMode ? "secondary" : "ghost"}
+                                variant={isSelectionMode ? "secondary" : "ghost"}
                                 size="icon"
                                 onClick={() => {
-                                    if (selectionMode) {
+                                    if (isSelectionMode) {
                                         clearSelection();
                                     } else {
                                         setSelectionMode(true);
                                     }
                                 }}
                                 className="shrink-0 h-8 w-8"
-                                title={selectionMode ? t("cancelSelect") : t("select")}
+                                title={isSelectionMode ? t("cancelSelect") : t("select")}
                             >
-                                {selectionMode ? (
+                                {isSelectionMode ? (
                                     <X className="w-4 h-4" />
                                 ) : (
                                     <CheckSquare className="w-4 h-4" />
@@ -229,12 +229,12 @@ export function DetailsTab({
                                                     ledger?.metadata?.settings?.mainCurrency
                                                 }
                                                 onView={() => {
-                                                    if (!selectionMode) {
+                                                    if (!isSelectionMode) {
                                                         handleViewEntry(entry);
                                                     }
                                                 }}
-                                                selectionMode={selectionMode}
-                                                isSelected={selectedIds.has(entry.id)}
+                                                selectionMode={isSelectionMode}
+                                                isSelected={selectedIds.includes(entry.id)}
                                                 onToggleSelect={() => toggleSelection(entry.id)}
                                             />
                                         </motion.div>
@@ -282,27 +282,27 @@ export function DetailsTab({
                 </div>
 
                 {/* Batch Action Toolbar */}
-                {selectionMode && selectedIds.size > 0 && (
+                {isSelectionMode && selectedIds.length > 0 && (
                     <BatchActionToolbar
-                        selectedCount={selectedIds.size}
+                        selectedCount={selectedIds.length}
                         totalCount={entries.length}
                         isAllSelected={isAllSelected}
                         onSelectAll={selectAll}
                         onClearSelection={clearSelection}
-                        onAiCategorize={() => batchCategorize.mutate(Array.from(selectedIds))}
+                        onAiCategorize={() => batchCategorize.mutate(selectedIds)}
                         onChangeCategory={(categoryId) =>
                             batchChangeCategory.mutate({
-                                ids: Array.from(selectedIds),
+                                ids: selectedIds,
                                 categoryId,
                             })
                         }
                         onChangeCurrency={(currency) =>
                             batchChangeCurrency.mutate({
-                                ids: Array.from(selectedIds),
+                                ids: selectedIds,
                                 currency,
                             })
                         }
-                        onDelete={() => batchDelete.mutate(Array.from(selectedIds))}
+                        onDelete={() => batchDelete.mutate(selectedIds)}
                         categories={categories}
                         preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
                         isAiCategorizing={batchCategorize.isPending}

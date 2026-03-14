@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { usePeriodFilter } from "@/features/ledger/client/hooks/usePeriodFilter";
+import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
 
 describe("usePeriodFilter", () => {
   const mockPathname = "/ledger/test-id";

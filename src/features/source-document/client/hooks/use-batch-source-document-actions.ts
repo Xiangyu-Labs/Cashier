@@ -12,7 +12,7 @@ import {
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
-import type { SourceDocumentWithEntries } from "./useSourceDocuments";
+import type { SourceDocumentWithEntries } from "./use-source-documents";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
     const tCommon = useTranslations("Common");

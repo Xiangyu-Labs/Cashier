@@ -8,18 +8,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
-import { useSourceDocuments } from "@/features/source-document/client/hooks/useSourceDocuments";
+import { useSourceDocuments } from "@/features/source-document/client/hooks/use-source-documents";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
-import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/useLedgerEntriesMutations";
+import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-ledger-entries-mutations";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { useSelectionMode } from "@/features/ledger/client/hooks/useSelectionMode";
-import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/useBatchSourceDocumentActions";
+import { useSelection } from "@/hooks/use-selection";
+import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/use-batch-source-document-actions";
 import { BatchActionToolbar } from "../BatchActionToolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
@@ -165,29 +165,29 @@ export function LedgerEntriesTab({
 
     // Selection mode
     const {
-        selectionMode,
+        isSelectionMode,
         setSelectionMode,
         selectedIds,
         toggleSelection,
         selectAll,
         clearSelection,
         isAllSelected,
-    } = useSelectionMode(allSourceDocumentIds);
+    } = useSelection({ allIds: allSourceDocumentIds });
 
     // Batch actions
     const { batchUpdateDates, batchDelete, batchRetry } = useBatchSourceDocumentActions(ledgerId, clearSelection);
 
     // Handlers for batch actions
     const handleBatchUpdateDates = useCallback((date: string) => {
-        batchUpdateDates.mutate({ ids: Array.from(selectedIds), entryDate: date });
+        batchUpdateDates.mutate({ ids: selectedIds, entryDate: date });
     }, [batchUpdateDates, selectedIds]);
 
     const handleBatchDelete = useCallback(() => {
-        batchDelete.mutate(Array.from(selectedIds));
+        batchDelete.mutate(selectedIds);
     }, [batchDelete, selectedIds]);
 
     const handleBatchRetry = useCallback(() => {
-        batchRetry.mutate(Array.from(selectedIds));
+        batchRetry.mutate(selectedIds);
     }, [batchRetry, selectedIds]);
 
     return (
@@ -197,10 +197,10 @@ export function LedgerEntriesTab({
                     {/* Filter Panel */}
                     <div className="px-2 mb-2 sm:mb-4 flex items-center gap-2">
                         <Button
-                            variant={selectionMode ? "secondary" : "ghost"}
+                            variant={isSelectionMode ? "secondary" : "ghost"}
                             size="icon"
                             onClick={() => {
-                                if (selectionMode) {
+                                if (isSelectionMode) {
                                     clearSelection();
                                 } else {
                                     setSelectionMode(true);
@@ -208,7 +208,7 @@ export function LedgerEntriesTab({
                             }}
                             className="shrink-0 h-8 w-8"
                         >
-                            {selectionMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+                            {isSelectionMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
                         </Button>
                         <EntryFilterPanel
                             filters={filters}
@@ -311,8 +311,8 @@ export function LedgerEntriesTab({
                                                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
                                                                 status={(group.sourceDocument.status || "completed") as SourceDocumentStatusType}
                                                                 anomalyReason={group.sourceDocument.anomalyReason}
-                                                                selectionMode={selectionMode}
-                                                                isSelected={selectedIds.has(group.sourceDocument.id)}
+                                                                selectionMode={isSelectionMode}
+                                                                isSelected={selectedIds.includes(group.sourceDocument.id)}
                                                                 onToggleSelect={() => toggleSelection(group.sourceDocument.id)}
                                                             />
                                                         </motion.div>
@@ -347,7 +347,7 @@ export function LedgerEntriesTab({
 
                 {/* Batch Action Toolbar */}
                 <BatchActionToolbar
-                    selectedCount={selectedIds.size}
+                    selectedCount={selectedIds.length}
                     totalCount={allSourceDocumentIds.length}
                     isAllSelected={isAllSelected}
                     onSelectAll={selectAll}

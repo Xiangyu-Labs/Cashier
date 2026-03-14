@@ -1,1 +1,1 @@
-export { useCalendarHeatmap } from './hooks/useCalendarData';
+export { useCalendarHeatmap } from './hooks/use-calendar-data';

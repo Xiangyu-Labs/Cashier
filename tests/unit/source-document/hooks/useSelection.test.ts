@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useSelection } from "@/features/source-document/client/hooks/useSelection";
+import { useSelection } from "@/hooks/use-selection";
 
 describe("useSelection", () => {
     const allIds = ["id-1", "id-2", "id-3"];

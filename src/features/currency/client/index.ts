@@ -1,2 +1,2 @@
-export { useConvertedAmount } from './hooks/useConvertedAmount';
-export { useBatchConvertedAmounts } from './hooks/useBatchConvertedAmounts';
+export { useConvertedAmount } from './hooks/use-converted-amount';
+export { useBatchConvertedAmounts } from './hooks/use-batch-converted-amounts';
