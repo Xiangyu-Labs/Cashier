@@ -10,6 +10,7 @@
 import { config } from "dotenv";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
+import { existsSync } from "fs";
 import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
 import { isBase64Url, base64ToBuffer } from "@/lib/storage";
 import { logger } from "@/lib/logger";
@@ -23,8 +24,10 @@ type DbSchema = typeof dbSchema;
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..");
 
-// Load env first
-config({ path: resolve(projectRoot, ".env.local") });
+// Load env first - prefer .env.local, fallback to .env
+const envLocalPath = resolve(projectRoot, ".env.local");
+const envPath = resolve(projectRoot, ".env");
+config({ path: existsSync(envLocalPath) ? envLocalPath : envPath });
 
 // Convert relative database path to absolute path
 const dbUrl = process.env.DATABASE_URL || "file:./data/sqlite.db";
