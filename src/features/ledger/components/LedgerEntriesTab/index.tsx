@@ -3,7 +3,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "../SourceDocumentEditRetryDialog";
+import { SourceDocumentEditRetryDialog } from "@/features/source-document/components/SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";

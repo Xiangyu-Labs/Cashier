@@ -20,8 +20,8 @@ import { usePendingChanges } from "../client/hooks/use-pending-changes"
 import { EntryEditData } from "@/components/entries"
 import { useSelection } from "@/hooks/use-selection"
 import { EditableField } from "@/components/ui/editable-field"
-import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
-import { BatchActionToolbar } from "@/features/ledger/components/BatchActionToolbar"
+import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog"
+import { BatchActionToolbar } from "@/components/batch-action-toolbar"
 
 interface SourceDocumentDetailModalProps {
     ledgerId: string

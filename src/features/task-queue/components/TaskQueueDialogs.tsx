@@ -1,7 +1,7 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog";
+import { SourceDocumentEditRetryDialog } from "@/features/source-document/components/SourceDocumentEditRetryDialog";
 
 interface TaskQueueDialogsProps {
   ledgerId: string;
