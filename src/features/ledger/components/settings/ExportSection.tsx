@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/export";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
@@ -13,12 +13,13 @@ interface ExportSectionProps {
 
 export function ExportSection({ ledgerId }: ExportSectionProps) {
   const t = useTranslations("Settings");
+  const locale = useLocale();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const result = await exportLedgerEntriesAction(ledgerId);
+      const result = await exportLedgerEntriesAction(ledgerId, locale);
 
       if (result.isEmpty) {
         toast.info(t("exportEmpty"));
@@ -40,7 +41,30 @@ export function ExportSection({ ledgerId }: ExportSectionProps) {
 
       toast.success(t("exportSuccess"));
     } catch (error) {
-      toast.error(t("exportFailed"));
+      // Determine error type for better user feedback
+      let errorKey = "exportFailed";
+
+      if (error instanceof Error) {
+        // Network errors
+        if (
+          error.message.includes("fetch") ||
+          error.message.includes("network") ||
+          error.message.includes("ECONNREFUSED") ||
+          error.name === "TypeError"
+        ) {
+          errorKey = "exportNetworkError";
+        }
+        // Permission/Auth errors
+        else if (
+          error.message.includes("Unauthorized") ||
+          error.message.includes("403") ||
+          error.message.includes("permission")
+        ) {
+          errorKey = "exportPermissionError";
+        }
+      }
+
+      toast.error(t(errorKey));
       console.error("Export failed:", error);
     } finally {
       setIsExporting(false);

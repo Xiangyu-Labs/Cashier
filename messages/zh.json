@@ -403,7 +403,21 @@
         "exporting": "导出中...",
         "exportSuccess": "导出成功",
         "exportEmpty": "暂无记录可导出",
-        "exportFailed": "导出失败，请重试"
+        "exportFailed": "导出失败，请重试",
+        "exportNetworkError": "网络错误，请检查网络连接后重试",
+        "exportPermissionError": "您没有权限导出此账本",
+        "csvHeaders": {
+            "date": "日期",
+            "itemName": "项目名称",
+            "amount": "金额",
+            "currency": "币种",
+            "category": "分类",
+            "description": "描述",
+            "convertedAmount": "转换金额",
+            "exchangeRate": "汇率",
+            "sourceDocument": "来源文档",
+            "createdAt": "创建时间"
+        }
     },
     "ServiceCredentials": {
         "title": "服务密钥",

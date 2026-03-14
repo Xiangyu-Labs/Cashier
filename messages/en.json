@@ -396,7 +396,21 @@
         "exporting": "Exporting...",
         "exportSuccess": "Export successful",
         "exportEmpty": "No records to export",
-        "exportFailed": "Export failed, please try again"
+        "exportFailed": "Export failed, please try again",
+        "exportNetworkError": "Network error, please check your connection and try again",
+        "exportPermissionError": "You don't have permission to export this ledger",
+        "csvHeaders": {
+            "date": "Date",
+            "itemName": "Item Name",
+            "amount": "Amount",
+            "currency": "Currency",
+            "category": "Category",
+            "description": "Description",
+            "convertedAmount": "Converted Amount",
+            "exchangeRate": "Exchange Rate",
+            "sourceDocument": "Source Document",
+            "createdAt": "Created At"
+        }
     },
     "ServiceCredentials": {
         "title": "Service Credentials",
