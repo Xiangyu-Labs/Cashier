@@ -15,6 +15,11 @@ import { GetDayDetailSchema } from './schemas';
 import type { CalendarDayDetailResponse, CalendarDayDetailEntry } from '../../../types';
 import type { z } from 'zod';
 
+/**
+ * Get detailed entries for a specific date.
+ * Note: Uses requireLedgerAccess directly because the function signature takes an input object
+ * rather than ledgerId as the first parameter.
+ */
 export async function getCalendarDayDetail(
     input: z.infer<typeof GetDayDetailSchema>
 ): Promise<CalendarDayDetailResponse> {

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { taskRuns, type TaskRun } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 
@@ -17,12 +17,10 @@ const TokenUsageSchema = z.object({
     output: z.number().optional(),
 }).optional());
 
-export async function getProcessingTasksAction(ledgerId: string, params: {
+export const getProcessingTasksAction = withLedgerAccess(async (ledgerId: string, params: {
     activeOnly?: boolean;
     limit?: number;
-}) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+}) => {
 
     const { activeOnly, limit = 10 } = params;
 
@@ -48,11 +46,9 @@ export async function getProcessingTasksAction(ledgerId: string, params: {
         startedAt: t.startedAt ? t.startedAt.toISOString() : null,
         completedAt: t.completedAt ? t.completedAt.toISOString() : null
     }));
-}
+});
 
-export async function getProcessingStatsAction(ledgerId: string) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+export const getProcessingStatsAction = withLedgerAccess(async (ledgerId: string) => {
 
     // Fetch completed tasks for this ledger using scopeId column
     const tasks = await db.query.taskRuns.findMany({
@@ -91,4 +87,4 @@ export async function getProcessingStatsAction(ledgerId: string) {
         taskCount,
         averageTokensPerTask
     };
-}
+});

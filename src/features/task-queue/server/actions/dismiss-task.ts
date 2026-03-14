@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { eq, and, inArray, isNull } from "drizzle-orm";
 
 /**
@@ -16,10 +16,7 @@ function getLedgerIdFromTask(task: typeof taskRuns.$inferSelect): string | null 
  * Dismiss (soft delete) a single task run.
  * Used for non-source-document tasks that don't have edit/retry functionality.
  */
-export async function dismissTaskAction(ledgerId: string, taskId: string): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+export const dismissTaskAction = withLedgerAccess(async (ledgerId: string, taskId: string): Promise<void> => {
     // Verify the task belongs to this ledger
     const task = await db.query.taskRuns.findFirst({
         where: and(
@@ -42,16 +39,13 @@ export async function dismissTaskAction(ledgerId: string, taskId: string): Promi
     await db.update(taskRuns)
         .set({ deletedAt: new Date() })
         .where(eq(taskRuns.id, taskId));
-}
+});
 
 /**
  * Batch dismiss (soft delete) multiple task runs.
  * Used for non-source-document tasks that don't have edit/retry functionality.
  */
-export async function batchDismissTasksAction(ledgerId: string, taskIds: string[]): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+export const batchDismissTasksAction = withLedgerAccess(async (ledgerId: string, taskIds: string[]): Promise<void> => {
     if (taskIds.length === 0) return;
 
     // Fetch tasks to verify they belong to this ledger
@@ -73,4 +67,4 @@ export async function batchDismissTasksAction(ledgerId: string, taskIds: string[
     await db.update(taskRuns)
         .set({ deletedAt: new Date() })
         .where(inArray(taskRuns.id, validTaskIds));
-}
+});

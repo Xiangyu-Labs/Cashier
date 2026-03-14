@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 import { format } from "date-fns";
@@ -242,13 +242,10 @@ function serializeSourceDocumentFlat(
 /**
  * Get paginated source documents with cursor-based pagination
  */
-export async function getSourceDocumentsAction(
+export const getSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     params: GetSourceDocumentsParams
-) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+) => {
     const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
     const q = forLedger(sourceDocuments, ledgerId);
 
@@ -283,22 +280,19 @@ export async function getSourceDocumentsAction(
         items: resultItems.map(item => serializeSourceDocumentByStatus(item, !!includeLedgerEntries, entriesByDocId)),
         nextCursor,
     };
-}
+});
 
 /**
  * Get all source documents as a flat array (not grouped).
  * Used for the new optimistic update architecture.
  */
-export async function getAllSourceDocumentsAction(
+export const getAllSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     params: {
         startDate?: string | null;
         endDate?: string | null;
     } = {}
-): Promise<SourceDocumentWithEntries[]> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+): Promise<SourceDocumentWithEntries[]> => {
     try {
         const { startDate, endDate } = params;
         const q = forLedger(sourceDocuments, ledgerId);
@@ -323,18 +317,15 @@ export async function getAllSourceDocumentsAction(
         logger.error({ error, ledgerId }, "Failed to get all source documents");
         throw new Error(safeError(error));
     }
-}
+});
 
 /**
  * Get all pending source documents (processing + anomaly + failed + queued)
  * Used for the pending source documents modal that should always show ALL pending items.
  */
-export async function getPendingSourceDocumentsAction(
+export const getPendingSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string
-): Promise<PendingSourceDocumentsResponse> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+): Promise<PendingSourceDocumentsResponse> => {
     try {
         const activeDocsResult = await getSourceDocumentsAction(ledgerId, {
             status: 'queued,processing,anomaly,failed',
@@ -361,19 +352,16 @@ export async function getPendingSourceDocumentsAction(
         logger.error({ error, ledgerId }, "Failed to get pending source documents");
         throw new Error(safeError(error));
     }
-}
+});
 
 /**
  * Get a single source document with full data (including imageUrls).
  * Used for edit-retry when the list view has stripped imageUrls.
  */
-export async function getSourceDocumentFullAction(
+export const getSourceDocumentFullAction = withLedgerAccess(async (
     ledgerId: string,
     sourceDocumentId: string
-) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+) => {
     const q = forLedger(sourceDocuments, ledgerId);
 
     const doc = await db.query.sourceDocuments.findFirst({
@@ -391,4 +379,4 @@ export async function getSourceDocumentFullAction(
         status: doc.status,
         createdAt: doc.createdAt.toISOString(),
     };
-}
+});

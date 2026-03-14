@@ -3,14 +3,14 @@
 import { db } from "@/lib/db";
 import { ledgers, ledgerEntries, currencyRates, sourceDocuments } from "@/lib/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { convertAmount } from "@/features/stats/server/utils";
 
 import { LedgerEntrySummary } from "@/types/api";
 
 import { forLedger } from "@/lib/db/scoped-query";
 
-export async function getLedgerStatsAction(
+export const getLedgerStatsAction = withLedgerAccess(async (
     ledgerId: string,
     startDate?: string,
     endDate?: string,
@@ -21,11 +21,7 @@ export async function getLedgerStatsAction(
         minAmount?: number | null;
         maxAmount?: number | null;
     }
-): Promise<LedgerEntrySummary> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) {
-        throw new Error("Unauthorized");
-    }
+): Promise<LedgerEntrySummary> => {
 
     const q = forLedger(ledgerEntries, ledgerId);
     const conditions = [q.whereActive];
@@ -164,4 +160,4 @@ export async function getLedgerStatsAction(
         trend,
         byCategory
     };
-}
+});

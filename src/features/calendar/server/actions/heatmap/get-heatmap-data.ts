@@ -16,6 +16,11 @@ import { getDateRange, normalizeDate, calculateStats } from './utils';
 import type { CalendarHeatmapData, CalendarDayData } from '../../../types';
 import type { z } from 'zod';
 
+/**
+ * Get calendar heatmap data.
+ * Note: Uses requireLedgerAccess directly because the function signature takes an input object
+ * rather than ledgerId as the first parameter.
+ */
 export async function getCalendarHeatmapData(
     input: z.infer<typeof GetCalendarHeatmapSchema>
 ): Promise<CalendarHeatmapData> {

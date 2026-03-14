@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import crypto from "crypto";
 
 const createCredentialSchema = z.object({
@@ -24,9 +24,7 @@ interface SerializedServiceCredential {
     lastUsedAt: string | null;
 }
 
-export async function getServiceCredentialsAction(ledgerId: string) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+export const getServiceCredentialsAction = withLedgerAccess(async (ledgerId: string) => {
 
     const q = forLedger(serviceCredentials, ledgerId);
     const credentials = await db.query.serviceCredentials.findMany({
@@ -40,11 +38,9 @@ export async function getServiceCredentialsAction(ledgerId: string) {
         deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
         lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
     }));
-}
+});
 
-export async function createServiceCredentialAction(ledgerId: string, data: z.infer<typeof createCredentialSchema>) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+export const createServiceCredentialAction = withLedgerAccess(async (ledgerId: string, data: z.infer<typeof createCredentialSchema>) => {
 
     const validated = createCredentialSchema.parse(data);
 
@@ -63,12 +59,9 @@ export async function createServiceCredentialAction(ledgerId: string, data: z.in
         lastUsedAt: credential.lastUsedAt ? credential.lastUsedAt.toISOString() : null,
         deletedAt: credential.deletedAt ? credential.deletedAt.toISOString() : null,
     };
-}
+});
 
-export async function deleteServiceCredentialAction(ledgerId: string, credentialId: string): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const deleteServiceCredentialAction = withLedgerAccess(async (ledgerId: string, credentialId: string): Promise<void> => {
     const q = forLedger(serviceCredentials, ledgerId);
 
     // Verify ownership and delete
@@ -78,7 +71,7 @@ export async function deleteServiceCredentialAction(ledgerId: string, credential
         .returning();
 
     if (result.length === 0) throw new Error("Credential not found");
-}
+});
 
 export async function validateServiceCredential(key: string) {
     const existingKey = await db.query.serviceCredentials.findFirst({

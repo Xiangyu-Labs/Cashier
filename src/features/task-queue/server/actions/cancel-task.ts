@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { eq, and, isNull, inArray } from "drizzle-orm";
@@ -14,9 +14,7 @@ import { eq, and, isNull, inArray } from "drizzle-orm";
  * @param ledgerId - The ledger ID for access control
  * @param taskId - The task ID to cancel
  */
-export async function cancelTaskAction(ledgerId: string, taskId: string): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
+export const cancelTaskAction = withLedgerAccess(async (ledgerId: string, taskId: string): Promise<void> => {
 
     // Verify the task belongs to this ledger
     const task = await db.query.taskRuns.findFirst({
@@ -57,7 +55,7 @@ export async function cancelTaskAction(ledgerId: string, taskId: string): Promis
                 .where(q.whereId(task.entityId));
         }
     }
-}
+});
 
 /**
  * Batch cancel multiple tasks.
@@ -66,10 +64,7 @@ export async function cancelTaskAction(ledgerId: string, taskId: string): Promis
  * @param ledgerId - The ledger ID for access control
  * @param taskIds - The task IDs to cancel
  */
-export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+export const batchCancelTasksAction = withLedgerAccess(async (ledgerId: string, taskIds: string[]): Promise<void> => {
     if (taskIds.length === 0) return;
 
     // Fetch tasks to verify they belong to this ledger
@@ -122,4 +117,4 @@ export async function batchCancelTasksAction(ledgerId: string, taskIds: string[]
                 ));
         }
     }
-}
+});

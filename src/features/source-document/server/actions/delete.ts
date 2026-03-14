@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries, taskRuns } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -10,12 +10,10 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 /**
  * Delete a single source document (soft delete with cascade)
  */
-export async function deleteSourceDocumentAction(
+export const deleteSourceDocumentAction = withLedgerAccess(async (
     ledgerId: string,
     sourceId: string
-): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+): Promise<void> => {
 
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
@@ -65,18 +63,15 @@ export async function deleteSourceDocumentAction(
             .where(q.whereId(sourceId))
             .run();
     });
-}
+});
 
 /**
  * Batch delete multiple source documents (soft delete with cascade)
  */
-export async function batchDeleteSourceDocumentsAction(
+export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     sourceDocumentIds: string[]
-): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+): Promise<void> => {
     if (sourceDocumentIds.length === 0) return;
 
     const q = forLedger(sourceDocuments, ledgerId);
@@ -130,4 +125,4 @@ export async function batchDeleteSourceDocumentsAction(
             ))
             .run();
     });
-}
+});

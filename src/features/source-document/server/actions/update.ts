@@ -2,39 +2,34 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, inArray } from "drizzle-orm";
 
 /**
  * Update source document metadata (e.g. title, entryDate)
  */
-export async function updateSourceDocumentAction(
+export const updateSourceDocumentAction = withLedgerAccess(async (
     ledgerId: string,
     sourceId: string,
     data: { title?: string; entryDate?: string }
-): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+): Promise<void> => {
 
     const q = forLedger(sourceDocuments, ledgerId);
 
     await db.update(sourceDocuments)
         .set({ ...data, updatedAt: new Date() })
         .where(q.whereId(sourceId));
-}
+});
 
 /**
  * Batch update multiple source documents
  */
-export async function batchUpdateSourceDocumentsAction(
+export const batchUpdateSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     sourceDocumentIds: string[],
     data: { status?: string; title?: string; entryDate?: string }
-): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+): Promise<void> => {
     if (sourceDocumentIds.length === 0) return;
 
     const q = forLedger(sourceDocuments, ledgerId);
@@ -45,4 +40,4 @@ export async function batchUpdateSourceDocumentsAction(
             q.whereActive,
             inArray(sourceDocuments.id, sourceDocumentIds)
         ));
-}
+});

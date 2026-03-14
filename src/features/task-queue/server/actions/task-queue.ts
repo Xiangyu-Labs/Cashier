@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { QueueItem, QueueItemStatus } from "../../types";
@@ -109,10 +109,7 @@ function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
  *
  * Tasks are filtered by ledgerId using the scopeId column.
  */
-export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueResult> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized");
-
+export const getTaskQueueAction = withLedgerAccess(async (ledgerId: string): Promise<TaskQueueResult> => {
     // Fetch active tasks for this ledger (filter at SQL level using scopeId column)
     const activeTasks = await db.query.taskRuns.findMany({
         where: and(
@@ -223,4 +220,4 @@ export async function getTaskQueueAction(ledgerId: string): Promise<TaskQueueRes
     };
 
     return { items, stats };
-}
+});

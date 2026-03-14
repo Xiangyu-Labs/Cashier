@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/lib/db/schema";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**
@@ -12,9 +12,7 @@ import { forLedger } from "@/lib/db/scoped-query";
  * Categories are fetched separately via getEntryCategoriesAction to ensure
  * optimistic updates work correctly (shared query key with useCategoryMutations).
  */
-export async function getLedgerSettingsAction(ledgerId: string) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string) => {
 
     const credQ = forLedger(serviceCredentials, ledgerId);
 
@@ -54,4 +52,4 @@ export async function getLedgerSettingsAction(ledgerId: string) {
         uncategorizedCount: uncategorizedResult[0]?.count || 0,
         credentials: serializedCredentials,
     };
-}
+});

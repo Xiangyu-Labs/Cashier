@@ -6,7 +6,7 @@ import { eq, and, isNull, inArray } from "drizzle-orm";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_CATEGORIZE_ENTRY, type CategorizeEntryInput } from "../tasks/categorize-entry";
 import { logger } from "@/lib/logger";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 export interface CategorizeResult {
@@ -189,13 +189,7 @@ async function submitCategorizeTasksForEntries(
 /**
  * Submit auto-categorization tasks for all uncategorized entries in a ledger.
  */
-export async function submitAutoCategorizeAction(ledgerId: string): Promise<CategorizeResult> {
-    // Verify session and ledger access
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) {
-        throw new Error("Unauthorized");
-    }
-
+export const submitAutoCategorizeAction = withLedgerAccess(async (ledgerId: string): Promise<CategorizeResult> => {
     // Get all uncategorized entries with their source documents
     const uncategorizedEntries = await db.query.ledgerEntries.findMany({
         where: and(
@@ -218,21 +212,15 @@ export async function submitAutoCategorizeAction(ledgerId: string): Promise<Cate
     }, "Auto-categorize tasks submitted");
 
     return result;
-}
+});
 
 /**
  * Submit categorization tasks for specified entries.
  */
-export async function submitBatchCategorizeAction(
+export const submitBatchCategorizeAction = withLedgerAccess(async (
     ledgerId: string,
     entryIds: string[]
-): Promise<CategorizeResult> {
-    // Verify session and ledger access
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) {
-        throw new Error("Unauthorized");
-    }
-
+): Promise<CategorizeResult> => {
     if (entryIds.length === 0) {
         return { submittedCount: 0, skippedCount: 0 };
     }
@@ -259,4 +247,4 @@ export async function submitBatchCategorizeAction(
     }, "Batch categorize tasks submitted");
 
     return result;
-}
+});

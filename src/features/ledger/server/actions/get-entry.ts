@@ -20,6 +20,8 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
 
     // Verify access to the ledger this entry belongs to
     // We do this AFTER fetching because we need the ledgerId
+    // Note: This action doesn't use withLedgerAccess because the ledgerId
+    // is not known until after we fetch the entry
     const { error } = await requireLedgerAccess(entry.ledgerId);
     if (error) throw new Error("Unauthorized: Access to ledger entry denied");
 

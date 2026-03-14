@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { UnauthorizedError, NotFoundError } from '@/lib/errors';
+import { UnauthorizedError } from '@/lib/errors';
 import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 
 /**

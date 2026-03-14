@@ -5,8 +5,8 @@ import { entryCategories } from "@/lib/db/schema";
 import { z } from "zod";
 import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
+import { withLedgerAccess } from "@/lib/auth-actions";
 
 const createCategorySchema = z.object({
     name: z.string().min(1),
@@ -21,9 +21,7 @@ const updateCategorySchema = createCategorySchema.partial().extend({
 
 import { forLedger } from "@/lib/db/scoped-query";
 
-export async function createEntryCategoryAction(ledgerId: string, data: z.infer<typeof createCategorySchema>): Promise<SerializedEntryCategory> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+export const createEntryCategoryAction = withLedgerAccess(async (ledgerId: string, data: z.infer<typeof createCategorySchema>): Promise<SerializedEntryCategory> => {
 
     const validated = createCategorySchema.parse(data);
 
@@ -87,23 +85,18 @@ export async function createEntryCategoryAction(ledgerId: string, data: z.infer<
     }
 
     return serializeEntryCategory(category);
-}
+});
 
-export async function updateEntryCategoryAction(ledgerId: string, categoryId: string, data: z.infer<typeof updateCategorySchema>): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const updateEntryCategoryAction = withLedgerAccess(async (ledgerId: string, categoryId: string, data: z.infer<typeof updateCategorySchema>): Promise<void> => {
     const validated = updateCategorySchema.parse(data);
     const q = forLedger(entryCategories, ledgerId);
 
     await db.update(entryCategories)
         .set(validated)
         .where(q.whereId(categoryId));
-}
+});
 
-export async function deleteEntryCategoryAction(ledgerId: string, categoryId: string): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+export const deleteEntryCategoryAction = withLedgerAccess(async (ledgerId: string, categoryId: string): Promise<void> => {
 
     // Cancel any pending/running background tasks for this category
     const { flowEngine } = await import("@/lib/flow");
@@ -146,12 +139,9 @@ export async function deleteEntryCategoryAction(ledgerId: string, categoryId: st
             .where(q.whereId(categoryId))
             .run();
     });
-}
+});
 
-export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds: string[]): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const reorderEntryCategoriesAction = withLedgerAccess(async (ledgerId: string, categoryIds: string[]): Promise<void> => {
     // better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
         for (let i = 0; i < categoryIds.length; i++) {
@@ -162,12 +152,9 @@ export async function reorderEntryCategoriesAction(ledgerId: string, categoryIds
                 .run();
         }
     });
-}
+});
 
-export async function getEntryCategoriesAction(ledgerId: string) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string) => {
     const q = forLedger(entryCategories, ledgerId);
 
     // Note: Use db.query for findMany to match return type structure if needed, or normal select
@@ -203,16 +190,13 @@ export async function getEntryCategoriesAction(ledgerId: string) {
     }));
 
     return categoriesWithCount;
-}
+});
 
 /**
  * Get count of uncategorized entries (entries without a category)
  * Separated from getEntryCategoriesAction for cleaner cache management
  */
-export async function getUncategorizedCountAction(ledgerId: string): Promise<number> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const getUncategorizedCountAction = withLedgerAccess(async (ledgerId: string): Promise<number> => {
     const { ledgerEntries } = await import("@/lib/db/schema");
 
     const result = await db
@@ -227,4 +211,4 @@ export async function getUncategorizedCountAction(ledgerId: string): Promise<num
         ));
 
     return result[0]?.count || 0;
-}
+});

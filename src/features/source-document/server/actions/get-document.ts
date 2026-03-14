@@ -16,6 +16,10 @@ export type SourceDocumentWithEntries = SerializedSourceDocument;
  * Fetch a source document by its global ID.
  * Verifies access to the associated ledger.
  * Returns null for both "not found" and "not authorized" to avoid information leakage.
+ *
+ * Note: This action doesn't use withLedgerAccess because the ledgerId is not known
+ * until after we fetch the document metadata. It also returns null instead of throwing
+ * to avoid leaking document existence information.
  */
 export async function getSourceDocumentByIdAction(id: string): Promise<SourceDocumentWithEntries | null> {
     // First, get just the ledgerId to check access (minimal data exposure)
