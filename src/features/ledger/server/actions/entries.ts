@@ -299,7 +299,7 @@ export const getLedgerEntriesAction = withLedgerAccess(async (
 
         // Strip large metadata fields from sourceDocument to reduce payload size
         if (serialized.sourceDocument) {
-            const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = serialized.sourceDocument.metadata || {};
+            const { visionDescription: _visionDescription, ...lightMetadata } = serialized.sourceDocument.metadata || {};
             serialized.sourceDocument = {
                 ...serialized.sourceDocument,
                 metadata: lightMetadata,

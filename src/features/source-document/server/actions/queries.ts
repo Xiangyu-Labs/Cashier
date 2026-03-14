@@ -168,7 +168,7 @@ function serializeSourceDocumentByStatus(
 
     // Use unified serialization with appropriate options
     return serializeSourceDocument(item, {
-        stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+        stripMetadataFields: ['visionDescription'],
         imageUrlsOverride: isActiveDocument ? undefined : [], // Strip for completed docs
         includeHasImages: !isActiveDocument,
         ledgerEntries: entries,

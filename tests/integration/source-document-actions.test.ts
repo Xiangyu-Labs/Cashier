@@ -144,8 +144,6 @@ describe("getSourceDocumentLightAction", () => {
 
         const docData = createSourceDocumentData(ledgerData.id, {
             metadata: {
-                aiRawResponse: "sensitive-ai-data",
-                rawOcrText: "sensitive-ocr-data",
                 visionDescription: "sensitive-vision-data",
                 normalField: "should-be-included",
             },
@@ -155,8 +153,6 @@ describe("getSourceDocumentLightAction", () => {
         const result = await getSourceDocumentLightAction(docData.id);
 
         expect(result).not.toBeNull();
-        expect(result!.metadata).not.toHaveProperty("aiRawResponse");
-        expect(result!.metadata).not.toHaveProperty("rawOcrText");
         expect(result!.metadata).not.toHaveProperty("visionDescription");
         expect(result!.metadata).toHaveProperty("normalField", "should-be-included");
     });

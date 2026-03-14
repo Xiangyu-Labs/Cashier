@@ -21,11 +21,10 @@ export type TaskRun = Serialized<DbTaskRun>;
 export type User = Serialized<DbUser>;
 export type CurrencyRate = Serialized<DbCurrencyRate>;
 
-// Light version of SourceDocument without large payload fields (imageUrls, aiRawResponse, rawOcrText)
+// Light version of SourceDocument without large payload fields
 // Used in list views to reduce payload size
-export type SourceDocumentLight = Omit<SourceDocument, 'imageUrls' | 'metadata'> & {
+export type SourceDocumentLight = Omit<SourceDocument, 'imageUrls'> & {
   hasImages?: boolean;
-  metadata?: Omit<NonNullable<SourceDocument['metadata']>, 'aiRawResponse' | 'rawOcrText'> | null;
 };
 
 // Extended types

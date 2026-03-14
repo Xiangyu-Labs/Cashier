@@ -61,19 +61,7 @@ export const sourceDocuments = sqliteTable("source_documents", {
 ]);
 
 export interface SourceDocMetadata {
-    rawOcrText?: string;
-    aiRawResponse?: unknown;
     visionDescription?: string;
-    emailHeaders?: {
-        from?: string;
-        subject?: string;
-        messageId?: string;
-    };
-    fileMeta?: {
-        sizeBytes?: number;
-        mimeType?: string;
-        originalName?: string;
-    };
 }
 
 export type SourceDocument = InferSelectModel<typeof sourceDocuments>;

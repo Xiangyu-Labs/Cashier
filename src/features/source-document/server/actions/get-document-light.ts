@@ -13,14 +13,14 @@ import {
 
 /**
  * Light version of SourceDocument for prefetching.
- * Contains all data except imageUrls and sensitive metadata (aiRawResponse, rawOcrText).
+ * Contains all data except imageUrls.
  */
 export interface SourceDocumentLight extends SerializedSourceDocument {
   ledgerEntries: SerializedLedgerEntry[];
 }
 
 /**
- * Fetch a source document with light payload (excluding imageUrls and sensitive metadata).
+ * Fetch a source document with light payload (excluding imageUrls).
  * Used for prefetching in list views where images are loaded on demand.
  */
 export async function getSourceDocumentLightAction(id: string): Promise<SourceDocumentLight | null> {
@@ -78,7 +78,7 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
 
   // Use unified serialization
   const serializedDoc = serializeSourceDocument(doc, {
-    stripMetadataFields: ['aiRawResponse', 'rawOcrText', 'visionDescription'],
+    stripMetadataFields: ['visionDescription'],
     imageUrlsOverride: [],
     includeHasImages: true,
     ledgerEntries: doc.ledgerEntries.map(entry =>

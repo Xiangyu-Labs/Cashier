@@ -85,6 +85,7 @@ export function createSourceDocumentData(
     title: string | null;
     text: string | null;
     imageUrls: string[];
+    metadata: Record<string, unknown>;
     createdAt: Date;
   }> = {}
 ) {

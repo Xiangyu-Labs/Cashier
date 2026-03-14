@@ -39,7 +39,7 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
 
     // Strip large metadata fields from sourceDocument to reduce payload size
     if (serializedEntry.sourceDocument) {
-        const { aiRawResponse: _aiRawResponse, rawOcrText: _rawOcrText, visionDescription: _visionDescription, ...lightMetadata } = serializedEntry.sourceDocument.metadata || {};
+        const { visionDescription: _visionDescription, ...lightMetadata } = serializedEntry.sourceDocument.metadata || {};
         serializedEntry.sourceDocument = {
             ...serializedEntry.sourceDocument,
             metadata: lightMetadata,
