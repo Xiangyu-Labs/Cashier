@@ -7,29 +7,6 @@ export * from './actions/delete';
 export * from './actions/get';
 export * from './actions/default';
 
-// Legacy re-exports (backward compatibility)
-export {
-  createLedgerAction,
-  updateLedgerAction,
-  deleteLedgerAction,
-  getLedgerAction,
-  getLedgersAction,
-  setDefaultLedgerAction,
-  getDefaultLedgerIdAction,
-  createLedgerSchema,
-  updateLedgerSchema,
-  type CreateLedgerInput,
-  type UpdateLedgerInput,
-  type ConversionItem,
-  type ConversionResult,
-  fetchEntriesForConversion,
-  buildConversionItems,
-  convertEntriesBatch,
-  buildCaseExpression,
-  updateEntriesWithConversions,
-  recalculateEntriesConvertedAmount,
-} from './actions/ledgers';
-
 // Server Actions - Entries
 export {
   createLedgerEntryAction,

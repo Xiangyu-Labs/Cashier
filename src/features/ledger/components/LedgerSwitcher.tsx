@@ -18,7 +18,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createLedgerAction } from "@/features/ledger/server/actions/ledgers"; // Use Server Action
+import { createLedgerAction } from "@/features/ledger/server/actions/create"; // Use Server Action
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Ledger } from "@/types/api";

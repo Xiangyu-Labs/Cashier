@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/get";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";

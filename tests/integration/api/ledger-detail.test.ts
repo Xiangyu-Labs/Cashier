@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import { getLedgerAction } from "@/features/ledger/server/actions/get";
+import { updateLedgerAction } from "@/features/ledger/server/actions/update";
+import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getTestDb } from "../../setup";
 import { ledgers } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";

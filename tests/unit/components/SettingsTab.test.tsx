@@ -65,7 +65,7 @@ vi.mock("sonner", () => ({
     },
 }));
 
-vi.mock("@/features/ledger/server/actions/ledgers", () => ({
+vi.mock("@/features/ledger/server/actions/update", () => ({
     updateLedgerAction: (id: string, data: Partial<Ledger>) => mockUpdateLedgerAction(id, data),
 }));
 

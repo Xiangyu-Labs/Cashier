@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { db } from "@/lib/db";
 import { currencyRates } from "@/features/currency/server/schema";
-import { eq } from "drizzle-orm";
 
 describe("ExchangeRateService", () => {
     beforeEach(async () => {

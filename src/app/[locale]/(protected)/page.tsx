@@ -3,7 +3,7 @@ import { type ReactNode } from "react";
 import { redirect } from "@/i18n/routing";
 import { getTranslations, getLocale } from "next-intl/server";
 import { auth } from "@/auth";
-import { createLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import { createLedgerAction } from "@/features/ledger/server/actions/create";
 import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";

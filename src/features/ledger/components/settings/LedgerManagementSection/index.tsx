@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getDefaultLedgerIdAction } from "@/features/ledger/server/actions/ledgers";
+import { getDefaultLedgerIdAction } from "@/features/ledger/server/actions/default";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

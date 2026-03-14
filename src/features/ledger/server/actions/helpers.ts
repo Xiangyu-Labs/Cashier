@@ -1,5 +1,3 @@
-"use server";
-
 import { eq, and, isNull, sql, inArray, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";

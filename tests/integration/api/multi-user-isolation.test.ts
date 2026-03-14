@@ -10,7 +10,9 @@ import {
     TEST_USER_ID,
     createTestUserWithLedger,
 } from "../../helpers/schema-setup";
-import { getLedgerAction, updateLedgerAction, deleteLedgerAction } from "@/features/ledger/server/actions/ledgers";
+import { getLedgerAction } from "@/features/ledger/server/actions/get";
+import { updateLedgerAction } from "@/features/ledger/server/actions/update";
+import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";

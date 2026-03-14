@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/ledgers";
+import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/get";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
