@@ -1,4 +1,13 @@
-// Server Actions - Ledgers
+// Specific action files (tree-shakeable imports)
+export * from './actions/schemas';
+export * from './actions/helpers';
+export * from './actions/create';
+export * from './actions/update';
+export * from './actions/delete';
+export * from './actions/get';
+export * from './actions/default';
+
+// Legacy re-exports (backward compatibility)
 export {
   createLedgerAction,
   updateLedgerAction,
@@ -7,6 +16,18 @@ export {
   getLedgersAction,
   setDefaultLedgerAction,
   getDefaultLedgerIdAction,
+  createLedgerSchema,
+  updateLedgerSchema,
+  type CreateLedgerInput,
+  type UpdateLedgerInput,
+  type ConversionItem,
+  type ConversionResult,
+  fetchEntriesForConversion,
+  buildConversionItems,
+  convertEntriesBatch,
+  buildCaseExpression,
+  updateEntriesWithConversions,
+  recalculateEntriesConvertedAmount,
 } from './actions/ledgers';
 
 // Server Actions - Entries

@@ -1,18 +1,14 @@
 'use server';
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { withAuth } from "@/lib/auth-actions";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
-export async function deleteAccount() {
+export const deleteAccount = withAuth(async (userId: string) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            throw new Error("Unauthorized");
-        }
-
         // Delete user
         // Due to "onDelete: cascade" in schema, this will delete:
         // - Sessions (drizzle-adapter managed? Need to check if cascade is set in DB properly)
@@ -24,7 +20,7 @@ export async function deleteAccount() {
 
         await db.update(users)
             .set({ deletedAt: new Date() })
-            .where(eq(users.id, session.user.id));
+            .where(eq(users.id, userId));
 
         // Sign out
         await signOut({ redirectTo: "/" });
@@ -33,4 +29,4 @@ export async function deleteAccount() {
         logger.error({ error }, "Failed to delete account");
         throw error;
     }
-}
+});
