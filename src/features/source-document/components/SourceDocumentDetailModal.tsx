@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails"
 import { usePendingChanges } from "../client/hooks/usePendingChanges"
+import { EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem"
 import { useSelection } from "../client/hooks/useSelection"
 import { EditableField } from "@/components/ui/editable-field"
 import { SourceDocumentEditRetryDialog } from "@/features/ledger/components/SourceDocumentEditRetryDialog"
@@ -86,6 +87,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         handleSelect: handleSelectEntry,
         handleSelectAll: handleSelectAllEntries,
         toggleSelectionMode: handleToggleSelectionMode,
+        clearSelection,
     } = useSelection({ allIds: ledgerEntries.map(e => e.id) });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
@@ -155,7 +157,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchUpdate(selectedIds, { categoryId })
             toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
-            setSelectedIds([])
+            clearSelection()
         } catch {
             toast.error(t("batchUpdateError"))
         } finally {
@@ -169,7 +171,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchUpdate(selectedIds, { currency })
             toast.success(t("batchUpdateSuccess", { count: selectedIds.length }))
-            setSelectedIds([])
+            clearSelection()
         } catch {
             toast.error(t("batchUpdateError"))
         } finally {
@@ -184,7 +186,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         try {
             await onBatchDelete(selectedIds)
             toast.success(t("batchDeleteSuccess", { count: selectedIds.length }))
-            setSelectedIds([])
+            clearSelection()
         } catch {
             toast.error(t("batchDeleteError"))
         } finally {

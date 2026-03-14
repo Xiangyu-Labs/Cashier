@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { EntryEditData } from "@/features/ledger/components/EditableLedgerEntryItem";
-import { SourceDocument, LedgerEntry } from "@/types/api";
+import { SourceDocument, SourceDocumentLight, LedgerEntry } from "@/types/api";
 
 export interface PendingChanges {
     sourceDoc: {
@@ -11,7 +11,7 @@ export interface PendingChanges {
 }
 
 interface UsePendingChangesOptions {
-    sourceDocument: SourceDocument | null;
+    sourceDocument: SourceDocument | SourceDocumentLight | null;
     ledgerEntries: LedgerEntry[];
 }
 
