@@ -5,7 +5,8 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/features/currency/client/hooks/use-converted-amount";
+import { AmountDisplay } from "@/components/ui/amount-display";
+import { parseAmount } from "@/lib/formatters";
 
 // Card styling variants
 const cardVariants = cva("transition-all", {
@@ -43,14 +44,6 @@ export function LedgerEntryCard({
 }: LedgerEntryCardProps) {
   const t = useTranslations("Common");
   const tSourceDocumentCard = useTranslations("SourceDocumentCard");
-  const { converted } = useConvertedAmount(
-    parseFloat(ledgerEntry.amount),
-    ledgerEntry.currency,
-    mainCurrency,
-    ledgerEntry.sourceDocument?.entryDate || ledgerEntry.createdAt
-  );
-
-  const isDifferentCurrency = ledgerEntry.currency && ledgerEntry.currency !== mainCurrency && ledgerEntry.currency !== "unknown";
 
   return (
     <Card
@@ -142,21 +135,13 @@ export function LedgerEntryCard({
               </div>
             </div>
 
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="flex flex-col items-end">
-                <p className="font-mono font-semibold text-text">
-                  <span className="text-xs text-muted-foreground mr-1">
-                    {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency || "?")}
-                  </span>
-                  {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
-                </p>
-                {isDifferentCurrency && (
-                  <p className="text-[10px] text-muted-foreground-foreground font-mono opacity-60">
-                    ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
-                  </p>
-                )}
-              </div>
-            </div>
+            <AmountDisplay
+              amount={parseAmount(ledgerEntry.amount)}
+              currency={ledgerEntry.currency}
+              mainCurrency={mainCurrency}
+              date={ledgerEntry.sourceDocument?.entryDate || ledgerEntry.createdAt}
+              size="md"
+            />
           </div>
         </div>
       </CardContent>

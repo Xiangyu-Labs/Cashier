@@ -41,6 +41,24 @@ function serializeDate(date: Date | null | undefined): string | null {
     return date.toISOString();
 }
 
+/**
+ * Serialize database date fields to ISO strings for API responses.
+ * Handles the common pattern of createdAt, updatedAt, and deletedAt fields.
+ *
+ * @param row - Database row with date fields
+ * @returns Object with dates serialized to ISO strings
+ */
+export function serializeDates<
+    T extends { createdAt: Date; updatedAt: Date; deletedAt: Date | null }
+>(row: T) {
+    return {
+        ...row,
+        createdAt: serializeDate(row.createdAt)!,
+        updatedAt: serializeDate(row.updatedAt)!,
+        deletedAt: serializeDate(row.deletedAt),
+    };
+}
+
 // ============================================================================
 // Ledger Module Serialization
 // ============================================================================

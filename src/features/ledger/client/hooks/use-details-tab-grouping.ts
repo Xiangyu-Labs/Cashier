@@ -3,6 +3,7 @@
 import { useMemo, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/types/api";
+import { parseAmount } from "@/lib/formatters";
 
 export interface GroupedEntry {
   title: string;
@@ -71,8 +72,8 @@ export function useDetailsTabGrouping(
 
       groups[dateKey].items.push(entry);
       groups[dateKey].total += entry.convertedAmount
-        ? parseFloat(entry.convertedAmount)
-        : parseFloat(entry.amount);
+        ? parseAmount(entry.convertedAmount)
+        : parseAmount(entry.amount);
     });
 
     return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);

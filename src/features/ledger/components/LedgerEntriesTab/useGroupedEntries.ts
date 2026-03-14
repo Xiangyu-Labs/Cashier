@@ -6,6 +6,7 @@
 
 import { useMemo, useCallback } from "react";
 import type { SourceDocumentGroup } from "@/lib/serialization";
+import { parseAmount } from "@/lib/formatters";
 
 interface DateGroup {
     title: string;
@@ -80,8 +81,8 @@ export function useGroupedEntries({
             // Calculate total for this date using converted amount for foreign currency
             group.ledgerEntries.forEach(entry => {
                 const amount = entry.convertedAmount
-                    ? parseFloat(entry.convertedAmount)
-                    : parseFloat(entry.amount);
+                    ? parseAmount(entry.convertedAmount)
+                    : parseAmount(entry.amount);
                 dateGroups[dateKey].total += amount;
             });
         });

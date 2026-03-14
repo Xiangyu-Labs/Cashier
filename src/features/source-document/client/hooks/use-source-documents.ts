@@ -10,6 +10,7 @@ import {
     calculateSourceDocumentStats,
     type GroupedSourceDocuments,
 } from "@/features/source-document/lib/grouping";
+import { parseAmount } from "@/lib/formatters";
 
 // Re-export type for convenience
 export type { SourceDocumentWithEntries };
@@ -41,8 +42,8 @@ function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
     return doc.ledgerEntries.reduce((sum, entry) => {
         const convertedAmount = entry.convertedAmount;
         const amount = convertedAmount
-            ? parseFloat(convertedAmount)
-            : parseFloat(entry.amount) || 0;
+            ? parseAmount(convertedAmount)
+            : parseAmount(entry.amount);
         return sum + Math.abs(amount);
     }, 0);
 }

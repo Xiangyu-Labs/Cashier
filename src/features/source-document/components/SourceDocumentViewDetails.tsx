@@ -13,6 +13,7 @@ import { EditableLedgerEntryItem, type EntryEditData } from "@/components/entrie
 import { Card } from "@/components/ui/card";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";
+import { parseAmount } from "@/lib/formatters";
 
 interface CurrencyBreakdownItemProps {
     currency: string;
@@ -29,9 +30,9 @@ function CurrencyBreakdownItem({ currency, amount, mainCurrency, entries }: Curr
         let totalConverted = 0;
         currencyEntries.forEach(entry => {
             if (entry.convertedAmount) {
-                totalConverted += parseFloat(entry.convertedAmount);
+                totalConverted += parseAmount(entry.convertedAmount);
             } else if ((entry.currency || mainCurrency) === mainCurrency) {
-                totalConverted += parseFloat(entry.amount);
+                totalConverted += parseAmount(entry.amount);
             }
         });
 
@@ -119,13 +120,13 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             const pendingAmount = pendingChanges.entries[entry.id]?.amount;
             const curr = pendingCurrency ?? entry.currency ?? mainCurrency;
             const amt = pendingAmount ?? entry.amount;
-            groups[curr] = (groups[curr] || 0) + parseFloat(amt);
+            groups[curr] = (groups[curr] || 0) + parseAmount(amt);
 
             // Use convertedAmount if available, otherwise use amount (for main currency)
             if (entry.convertedAmount) {
-                mainCurrencyTotal += parseFloat(entry.convertedAmount);
+                mainCurrencyTotal += parseAmount(entry.convertedAmount);
             } else if (curr === mainCurrency) {
-                mainCurrencyTotal += parseFloat(amt);
+                mainCurrencyTotal += parseAmount(amt);
             }
         });
 
@@ -142,7 +143,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             const aOrder = a.category?.sortOrder ?? 999999;
             const bOrder = b.category?.sortOrder ?? 999999;
             if (aOrder !== bOrder) return aOrder - bOrder;
-            return parseFloat(b.amount) - parseFloat(a.amount);
+            return parseAmount(b.amount) - parseAmount(a.amount);
         });
     }, [ledgerEntries]);
 

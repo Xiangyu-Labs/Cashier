@@ -3,7 +3,8 @@ import { LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/features/currency/client/hooks/use-converted-amount";
+import { AmountDisplay } from "@/components/ui/amount-display";
+import { parseAmount } from "@/lib/formatters";
 
 /**
  * Variant styles for different source document states.
@@ -48,18 +49,6 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
     variant = "default",
     className,
 }: LedgerEntryItemProps) {
-    const { converted } = useConvertedAmount(
-        parseFloat(ledgerEntry.amount),
-        ledgerEntry.currency,
-        mainCurrency,
-        sourceDocumentEntryDate || ledgerEntry.createdAt
-    );
-
-    const isDifferentCurrency =
-        ledgerEntry.currency &&
-        ledgerEntry.currency !== mainCurrency &&
-        ledgerEntry.currency !== "unknown";
-
     return (
         <div
             className={cn(itemVariants({ variant }), className)}
@@ -100,19 +89,14 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
             </div>
 
             {/* Right: Amount */}
-            <div className="flex flex-col items-end shrink-0 ml-3">
-                <p className="font-mono font-semibold text-sm text-text">
-                    <span className="text-xs text-muted-foreground mr-1">
-                        {isDifferentCurrency ? mainCurrency : (ledgerEntry.currency || "?")}
-                    </span>
-                    {(isDifferentCurrency ? converted : parseFloat(ledgerEntry.amount)).toFixed(2)}
-                </p>
-                {isDifferentCurrency && (
-                    <p className="text-[9px] text-muted-foreground font-mono opacity-60">
-                        ≈ {ledgerEntry.currency} {parseFloat(ledgerEntry.amount).toFixed(2)}
-                    </p>
-                )}
-            </div>
+            <AmountDisplay
+                amount={parseAmount(ledgerEntry.amount)}
+                currency={ledgerEntry.currency}
+                mainCurrency={mainCurrency}
+                date={sourceDocumentEntryDate || ledgerEntry.createdAt}
+                size="sm"
+                className="shrink-0 ml-3"
+            />
         </div>
     );
 });

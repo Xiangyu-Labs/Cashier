@@ -113,21 +113,8 @@ export function addPeriod(date: Date, type: DateRangeType, amount: number): Date
     }
 }
 
-/**
- * Serialize database date fields to ISO strings for API responses.
- * Handles the common pattern of createdAt, updatedAt, and deletedAt fields.
- *
- * @param row - Database row with date fields
- * @returns Object with dates serialized to ISO strings
- */
-export function serializeDates<T extends { createdAt: Date; updatedAt: Date; deletedAt: Date | null }>(row: T) {
-    return {
-        ...row,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-        deletedAt: row.deletedAt?.toISOString() ?? null,
-    };
-}
+// Re-export serializeDates from serialization utils for backward compatibility
+export { serializeDates } from "@/lib/serialization/utils";
 
 /**
  * Format date to yyyy-MM-dd string using LOCAL time (not UTC).

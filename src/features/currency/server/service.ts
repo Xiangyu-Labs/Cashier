@@ -7,6 +7,7 @@
 
 import { ExchangeRateService } from "./exchange-rate-service";
 import { logger } from "@/lib/logger";
+import { formatAmountStandard } from "@/lib/formatters";
 
 export interface ConversionResult {
     convertedAmount: string;
@@ -58,9 +59,10 @@ export class CurrencyService {
 
     /**
      * Format amount to standard decimal string (2 decimal places)
+     * @deprecated Use formatAmountStandard from @/lib/formatters instead
      */
     static formatAmount(amount: number): string {
-        return amount.toFixed(2);
+        return formatAmountStandard(amount);
     }
 
     /**

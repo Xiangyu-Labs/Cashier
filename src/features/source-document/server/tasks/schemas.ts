@@ -6,25 +6,32 @@ import { z } from "zod";
  * Zod schemas for validating AI responses in Stage 1 pre-analysis
  */
 
-export const validitySchema = z.object({
-    is_valid: z.boolean(),
-    reasoning: z.string(),
-});
+// Base schema with reasoning field - avoids duplication across schemas
+const withReasoning = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
+    schema.extend({ reasoning: z.string() });
+
+export const validitySchema = withReasoning(
+    z.object({
+        is_valid: z.boolean(),
+    })
+);
 
 export const completenessSchema = z.object({
     is_complete: z.boolean(),
     issue: z.string().optional(),
 });
 
-export const currencySchema = z.object({
-    currencies: z.array(z.string()),
-    reasoning: z.string(),
-});
+export const currencySchema = withReasoning(
+    z.object({
+        currencies: z.array(z.string()),
+    })
+);
 
-export const categorySchema = z.object({
-    categories: z.array(z.string()),
-    reasoning: z.string(),
-});
+export const categorySchema = withReasoning(
+    z.object({
+        categories: z.array(z.string()),
+    })
+);
 
 export const titleSchema = z.object({
     title: z.string(),

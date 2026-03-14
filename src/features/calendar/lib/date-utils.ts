@@ -9,17 +9,13 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 // Re-export formatDate from centralized location to avoid duplication
 export { formatDateTimeForApi as formatDate };
 
-// Local alias for internal use (can't use the re-export before it's defined)
+// Local aliases for internal use (can't use re-exports before they're defined)
 const formatDate = formatDateTimeForApi;
+import { parseDateString } from "@/lib/date-utils";
+const parseDate = parseDateString;
 
-/**
- * Parse yyyy-MM-dd string to Date object
- * Note: This creates a date in local timezone
- */
-export function parseDate(dateStr: string): Date {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-}
+// Re-export parseDateString as parseDate for backward compatibility
+export { parseDateString as parseDate } from "@/lib/date-utils";
 
 /**
  * Get days in a month
@@ -149,21 +145,8 @@ export function getYearMonthRange(year: number): { month: number; year: number }
     }));
 }
 
-/**
- * Format amount for display
- * - >= 10000: shows as X万
- * - >= 1000: shows as Xk
- * - < 1000: shows as X.XX
- */
-export function formatAmount(amount: number): string {
-  if (amount >= 10000) {
-    return `${(amount / 10000).toFixed(1)}万`;
-  }
-  if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}k`;
-  }
-  return amount.toFixed(2);
-}
+// Re-export formatAmountCompact from centralized location
+export { formatAmountCompact as formatAmount } from "@/lib/formatters";
 
 /**
  * Get month grid (6 rows x 7 cols) for month view

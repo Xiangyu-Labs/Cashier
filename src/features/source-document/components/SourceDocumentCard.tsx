@@ -23,6 +23,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
+import { parseAmount } from "@/lib/formatters";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:")) {
@@ -47,12 +48,12 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
 
     entries.forEach(entry => {
       const curr = entry.currency || mainCurrency;
-      const amount = parseFloat(entry.amount);
+      const amount = parseAmount(entry.amount);
       groups[curr] = (groups[curr] || 0) + amount;
 
       // Use convertedAmount if available, otherwise use amount (for main currency)
       if (entry.convertedAmount) {
-        mainCurrencyTotal += parseFloat(entry.convertedAmount);
+        mainCurrencyTotal += parseAmount(entry.convertedAmount);
       } else if (curr === mainCurrency) {
         mainCurrencyTotal += amount;
       }
@@ -67,9 +68,9 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
         .filter(e => (e.currency || mainCurrency) === currency)
         .reduce((sum, e) => {
           if (e.convertedAmount) {
-            return sum + parseFloat(e.convertedAmount);
+            return sum + parseAmount(e.convertedAmount);
           } else if ((e.currency || mainCurrency) === mainCurrency) {
-            return sum + parseFloat(e.amount);
+            return sum + parseAmount(e.amount);
           }
           return sum;
         }, 0);
@@ -207,14 +208,14 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
       if (aOrder !== bOrder) return aOrder - bOrder;
-      return parseFloat(b.amount) - parseFloat(a.amount);
+      return parseAmount(b.amount) - parseAmount(a.amount);
     });
 
     const totals: Record<string, number> = {};
 
     ledgerEntries.forEach((entry) => {
       if (entry.currency) {
-        const amount = parseFloat(entry.amount);
+        const amount = parseAmount(entry.amount);
         totals[entry.currency] = (totals[entry.currency] || 0) + amount;
       }
     });

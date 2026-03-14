@@ -4,7 +4,8 @@ import { memo } from "react";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useConvertedAmount } from "@/features/currency/client/hooks/use-converted-amount";
+import { useAmountDisplay } from "@/features/currency/client/hooks/use-amount-display";
+import { parseAmount } from "@/lib/formatters";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { EditableCategorySelect } from "@/components/ui/editable-category-select";
@@ -71,17 +72,12 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         description: pendingChanges?.description ?? ledgerEntry.description,
     };
 
-    const { converted } = useConvertedAmount(
-        parseFloat(displayData.amount),
-        displayData.currency,
+    const { converted, isDifferentCurrency } = useAmountDisplay({
+        amount: parseAmount(displayData.amount),
+        currency: displayData.currency,
         mainCurrency,
-        sourceDocumentEntryDate || ledgerEntry.createdAt
-    );
-
-    const isDifferentCurrency =
-        displayData.currency &&
-        displayData.currency !== mainCurrency &&
-        displayData.currency !== "unknown";
+        date: sourceDocumentEntryDate || ledgerEntry.createdAt,
+    });
 
     const category = categories.find(c => c.id === displayData.categoryId);
 
@@ -173,7 +169,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
                 </Popover>
 
                 <CalculatorInput
-                    value={parseFloat(displayData.amount)}
+                    value={parseAmount(displayData.amount)}
                     onChange={(v) => handleChange("amount", v.toFixed(2))}
                     displayClassName="font-mono font-semibold text-sm text-text"
                 />
