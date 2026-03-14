@@ -9,12 +9,28 @@ import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 
+// Maximum file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const sourceDocumentInputSchema = z.object({
     text: z.string().optional(),
     images: z.array(z.object({
         data: z.string(), // base64
         mimeType: z.string()
-    })).optional(),
+    })).refine(
+        (images) => {
+            if (!images || images.length === 0) return true;
+            // Validate base64 data size
+            return images.every((img) => {
+                const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
+                const buffer = Buffer.from(base64Data, "base64");
+                return buffer.length <= MAX_FILE_SIZE;
+            });
+        },
+        {
+            message: `Image size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        }
+    ).optional(),
     entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     timezone: z.string().optional(),
 });

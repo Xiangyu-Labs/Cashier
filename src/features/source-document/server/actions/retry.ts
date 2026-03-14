@@ -62,6 +62,7 @@ export async function retrySourceDocumentAction(
     }
 
     // Atomically delete old task_runs and reset document status in a transaction
+    // Note: better-sqlite3 transactions are synchronous
     db.transaction((tx) => {
         // 1. Soft delete old failed/completed task_runs for this source document
         tx.update(taskRuns)

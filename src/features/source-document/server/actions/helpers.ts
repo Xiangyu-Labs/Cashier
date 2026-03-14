@@ -6,7 +6,11 @@ import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document"
 import type { Ledger } from "@/lib/db/schema";
 import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
 import { logger } from "@/lib/logger";
+import { ValidationError } from "@/lib/errors";
 import crypto from "crypto";
+
+// Maximum file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 /**
  * Process images: upload to R2 if enabled, otherwise normalize to base64
@@ -32,8 +36,24 @@ export async function processImages(
                 const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
                 const buffer = Buffer.from(base64Data, "base64");
 
-                // Generate unique key
-                const ext = img.mimeType.split("/")[1] || "jpg";
+                // Validate file size
+                if (buffer.length > MAX_FILE_SIZE) {
+                    throw new ValidationError(
+                        `File too large: ${(buffer.length / 1024 / 1024).toFixed(2)}MB. Maximum allowed: ${MAX_FILE_SIZE / 1024 / 1024}MB`
+                    );
+                }
+
+                // Generate unique key with proper extension based on mimeType
+                const mimeToExt: Record<string, string> = {
+                    "image/jpeg": "jpg",
+                    "image/jpg": "jpg",
+                    "image/png": "png",
+                    "image/webp": "webp",
+                    "image/gif": "gif",
+                    "image/heic": "heic",
+                    "image/heif": "heif",
+                };
+                const ext = mimeToExt[img.mimeType] || "jpg";
                 const key = `${ledgerId}/${sourceDocumentId}/${crypto.randomUUID()}.${ext}`;
 
                 // Upload to R2

@@ -21,8 +21,9 @@ export class MemoryStorageProvider implements StorageProvider {
     return Buffer.from(file.data);
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string): Promise<{ success: boolean; key: string; error?: Error }> {
     this.storage.delete(key);
+    return { success: true, key };
   }
 
   getPublicUrl(key: string): string {

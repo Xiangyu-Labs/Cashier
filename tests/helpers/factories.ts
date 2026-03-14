@@ -86,16 +86,30 @@ export function createSourceDocumentData(
     text: string | null;
     imageUrls: string[];
     metadata: Record<string, unknown>;
+    status: "queued" | "processing" | "completed" | "anomaly" | "failed";
+    type: "receipt" | "invoice" | "note" | null;
+    anomalyReason: string | null;
+    entryDate: string | null;
     createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
   }> = {}
 ) {
+  const now = new Date();
   return {
     id: uuidv4(),
     ledgerId,
     title: null,
     text: "午餐花了25.5元",
     imageUrls: [],
-    createdAt: new Date(),
+    metadata: {},
+    status: "completed" as const,
+    type: "note" as const,
+    anomalyReason: null,
+    entryDate: null,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
     ...overrides,
   };
 }

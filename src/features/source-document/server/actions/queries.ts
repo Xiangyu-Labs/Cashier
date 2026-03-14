@@ -282,19 +282,26 @@ export const getSourceDocumentsAction = withLedgerAccess(async (
     };
 });
 
+// Maximum number of documents to return without explicit pagination
+const DEFAULT_PAGE_LIMIT = 1000;
+
 /**
  * Get all source documents as a flat array (not grouped).
  * Used for the new optimistic update architecture.
+ *
+ * Note: This function has a default limit of 1000 documents. For larger datasets,
+ * use cursor-based pagination via getSourceDocumentsAction.
  */
 export const getAllSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     params: {
         startDate?: string | null;
         endDate?: string | null;
+        limit?: number;
     } = {}
 ): Promise<SourceDocumentWithEntries[]> => {
     try {
-        const { startDate, endDate } = params;
+        const { startDate, endDate, limit = DEFAULT_PAGE_LIMIT } = params;
         const q = forLedger(sourceDocuments, ledgerId);
 
         const conditions = [
@@ -305,7 +312,15 @@ export const getAllSourceDocumentsAction = withLedgerAccess(async (
         const items = await db.query.sourceDocuments.findMany({
             where: and(...conditions),
             orderBy: [desc(sourceDocuments.entryDate), desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
+            limit,
         });
+
+        if (items.length === limit) {
+            logger.warn(
+                { ledgerId, limit, startDate, endDate },
+                "getAllSourceDocumentsAction hit result limit - consider using cursor pagination"
+            );
+        }
 
         const docIds = items.map(d => d.id);
         const entriesByDocId = await fetchEntriesWithCategories(docIds, ledgerId);

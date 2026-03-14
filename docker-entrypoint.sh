@@ -33,5 +33,15 @@ else
     echo "[INIT] Skipping database migrations (SKIP_MIGRATIONS=true)"
 fi
 
+# Run R2 migration if enabled
+if [ "$RUN_R2_MIGRATION" = "true" ]; then
+    echo "[INIT] Running R2 migration..."
+    if npm run migrate:r2; then
+        echo "[INIT] R2 migration completed successfully"
+    else
+        echo "[WARN] R2 migration encountered issues (some images may remain in database)"
+    fi
+fi
+
 echo "[INIT] Starting application..."
 exec node server.js

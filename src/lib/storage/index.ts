@@ -27,8 +27,9 @@ export interface StorageProvider {
   /**
    * Delete a file from storage
    * @param key - Key/path of the file
+   * @returns Delete result with success status
    */
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<{ success: boolean; key: string; error?: Error }>;
 
   /**
    * Get the public URL for a file

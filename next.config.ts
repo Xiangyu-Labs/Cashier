@@ -30,6 +30,7 @@ if (process.env.R2_PUBLIC_URL) {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["@aws-sdk/client-s3"],
   images: {
     unoptimized: process.env.NODE_ENV === "development",
     remotePatterns,

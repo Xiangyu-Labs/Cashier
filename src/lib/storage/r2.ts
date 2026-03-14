@@ -3,6 +3,15 @@ import type { StorageProvider } from "./index";
 import { logger } from "@/lib/logger";
 
 /**
+ * Result of a delete operation
+ */
+export interface DeleteResult {
+  success: boolean;
+  key: string;
+  error?: Error;
+}
+
+/**
  * Cloudflare R2 Storage Provider
  *
  * R2 is S3-compatible, so we use AWS SDK with custom endpoint
@@ -90,7 +99,7 @@ export class R2StorageProvider implements StorageProvider {
     }
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string): Promise<DeleteResult> {
     try {
       await this.client.send(
         new DeleteObjectCommand({
@@ -100,9 +109,12 @@ export class R2StorageProvider implements StorageProvider {
       );
 
       logger.debug({ key }, "File deleted from R2");
+      return { success: true, key };
     } catch (error) {
-      logger.error({ error, key }, "Failed to delete file from R2");
-      // Don't throw - deletion failures shouldn't break the app
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error({ error: err, key }, "Failed to delete file from R2");
+      // Return failure instead of throwing to allow caller to handle
+      return { success: false, key, error: err };
     }
   }
 
@@ -134,13 +146,18 @@ export function getR2Storage(): R2StorageProvider {
 
 /**
  * Check if R2 storage is configured and enabled
+ *
+ * Note: Using const env reference ensures runtime evaluation,
+ * preventing Next.js build-time tree-shaking of R2 code.
  */
 export function isR2Enabled(): boolean {
+  // Runtime environment check to prevent build-time tree-shaking
+  const env = process.env;
   return (
-    process.env.ENABLE_R2_STORAGE === "true" &&
-    !!process.env.R2_ENDPOINT &&
-    !!process.env.R2_ACCESS_KEY_ID &&
-    !!process.env.R2_SECRET_ACCESS_KEY &&
-    !!process.env.R2_BUCKET_NAME
+    env.ENABLE_R2_STORAGE === "true" &&
+    !!env.R2_ENDPOINT &&
+    !!env.R2_ACCESS_KEY_ID &&
+    !!env.R2_SECRET_ACCESS_KEY &&
+    !!env.R2_BUCKET_NAME
   );
 }

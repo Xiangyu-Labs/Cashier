@@ -101,10 +101,17 @@ export async function executeStage0(
     }
 
     // Load images (handles both base64 and R2 URLs)
-    const loadedImageUrls = await loadImagesForAI(input.imageUrls);
+    const loadedResults = await loadImagesForAI(input.imageUrls);
+    const failures = loadedResults.filter(r => !r.success);
+    if (failures.length > 0) {
+        const failureMessages = failures.map(f => `${f.url}: ${f.error?.message}`).join("; ");
+        throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
+    }
 
-    for (const url of loadedImageUrls) {
-        content.push({ type: "image_url", image_url: { url } });
+    for (const result of loadedResults) {
+        if (result.dataUrl) {
+            content.push({ type: "image_url", image_url: { url: result.dataUrl } });
+        }
     }
 
     const response = await ai.generate({

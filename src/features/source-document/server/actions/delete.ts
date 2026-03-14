@@ -9,13 +9,24 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
 import { isHttpUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
+import { NotFoundError } from "@/lib/errors";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import * as schemaModule from "@/lib/db/schema";
+
+type DbSchema = typeof schemaModule;
 
 /**
  * Delete images from R2 storage
+ * @returns Results of delete operations (success and failures)
  */
-async function deleteR2Images(imageUrls: string[]): Promise<void> {
+async function deleteR2Images(imageUrls: string[]): Promise<{ success: string[]; failed: { url: string; key: string; error: Error }[] }> {
+    const result = {
+        success: [] as string[],
+        failed: [] as { url: string; key: string; error: Error }[],
+    };
+
     if (!isR2Enabled() || imageUrls.length === 0) {
-        return;
+        return result;
     }
 
     const storage = getR2Storage();
@@ -25,16 +36,106 @@ async function deleteR2Images(imageUrls: string[]): Promise<void> {
         if (isHttpUrl(url)) {
             const key = storage.extractKeyFromUrl(url);
             if (key) {
-                try {
-                    await storage.delete(key);
+                const deleteResult = await storage.delete(key);
+                if (deleteResult.success) {
+                    result.success.push(url);
                     logger.debug({ key }, "Deleted image from R2");
-                } catch (error) {
-                    // Log but don't fail - the database record is already soft deleted
-                    logger.error({ error, key, url }, "Failed to delete image from R2");
+                } else {
+                    result.failed.push({ url, key, error: deleteResult.error! });
+                    logger.error({ error: deleteResult.error, key, url }, "Failed to delete image from R2");
                 }
             }
         }
     }
+
+    return result;
+}
+
+/**
+ * Cancel running/pending tasks
+ */
+async function cancelRunningTasks(taskIds: string[]): Promise<void> {
+    const tasks = await db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            inArray(taskRuns.id, taskIds),
+            inArray(taskRuns.status, ['pending', 'running'])
+        ),
+    });
+
+    for (const task of tasks) {
+        await flowEngine.cancel(task.id);
+    }
+}
+
+/**
+ * Get task runs related to source documents
+ */
+async function getRelatedTaskRuns(
+    ledgerId: string,
+    sourceDocumentIds: string[]
+): Promise<Array<{ id: string; status: string; input: unknown }>> {
+    return db.query.taskRuns.findMany({
+        where: and(
+            isNull(taskRuns.deletedAt),
+            eq(taskRuns.scopeId, ledgerId),
+            eq(taskRuns.entityType, 'source_document'),
+            inArray(taskRuns.entityId, sourceDocumentIds)
+        ),
+    }) as Promise<Array<{ id: string; status: string; input: unknown }>>;
+}
+
+/**
+ * Soft delete ledger entries (cascade)
+ */
+function softDeleteLedgerEntries(
+    tx: BetterSQLite3Database<DbSchema>,
+    ledgerId: string,
+    sourceDocumentIds: string[]
+): void {
+    const qEntries = forLedger(ledgerEntries, ledgerId);
+
+    tx.update(ledgerEntries)
+        .set(qEntries.softDelete)
+        .where(and(
+            qEntries.whereActive,
+            inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
+        ))
+        .run();
+}
+
+/**
+ * Soft delete task runs
+ */
+function softDeleteTaskRuns(
+    tx: BetterSQLite3Database<DbSchema>,
+    taskIds: string[]
+): void {
+    if (taskIds.length === 0) return;
+
+    tx.update(taskRuns)
+        .set({ deletedAt: new Date() })
+        .where(inArray(taskRuns.id, taskIds))
+        .run();
+}
+
+/**
+ * Soft delete source documents
+ */
+function softDeleteSourceDocuments(
+    tx: BetterSQLite3Database<DbSchema>,
+    ledgerId: string,
+    sourceDocumentIds: string[]
+): void {
+    const q = forLedger(sourceDocuments, ledgerId);
+
+    tx.update(sourceDocuments)
+        .set(q.softDelete)
+        .where(and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        ))
+        .run();
 }
 
 /**
@@ -44,9 +145,7 @@ export const deleteSourceDocumentAction = withLedgerAccess(async (
     ledgerId: string,
     sourceId: string
 ): Promise<void> => {
-
     const q = forLedger(sourceDocuments, ledgerId);
-    const qEntries = forLedger(ledgerEntries, ledgerId);
 
     // Get source document to retrieve image URLs before deletion
     const sourceDoc = await db.query.sourceDocuments.findFirst({
@@ -54,53 +153,19 @@ export const deleteSourceDocumentAction = withLedgerAccess(async (
     });
 
     if (!sourceDoc) {
-        throw new Error("Source document not found");
+        throw new NotFoundError("Source document not found");
     }
 
-    // Find task_runs that reference this source document before transaction
-    const relatedTaskRuns = await db.query.taskRuns.findMany({
-        where: and(
-            isNull(taskRuns.deletedAt),
-            eq(taskRuns.entityType, 'source_document'),
-            eq(taskRuns.entityId, sourceId),
-            eq(taskRuns.scopeId, ledgerId)
-        ),
-    });
-
-    // Cancel any running/pending tasks before deleting
-    const runningTasks = relatedTaskRuns.filter(
-        task => task.status === 'pending' || task.status === 'running'
-    );
-    for (const task of runningTasks) {
-        await flowEngine.cancel(task.id);
-    }
-
+    // Find and cancel related tasks
+    const relatedTaskRuns = await getRelatedTaskRuns(ledgerId, [sourceId]);
+    await cancelRunningTasks(relatedTaskRuns.map(t => t.id));
     const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
 
-    // better-sqlite3 transactions are synchronous
+    // Execute soft delete transaction
     db.transaction((tx) => {
-        // 1. Cascade soft delete to ledger entries
-        tx.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(and(
-                qEntries.whereActive,
-                eq(ledgerEntries.sourceDocumentId, sourceId)
-            ))
-            .run();
-
-        // 2. Cascade soft delete to task_runs
-        if (taskIdsToDelete.length > 0) {
-            tx.update(taskRuns)
-                .set({ deletedAt: new Date() })
-                .where(inArray(taskRuns.id, taskIdsToDelete))
-                .run();
-        }
-
-        // 3. Soft delete the source document
-        tx.update(sourceDocuments)
-            .set(q.softDelete)
-            .where(q.whereId(sourceId))
-            .run();
+        softDeleteLedgerEntries(tx, ledgerId, [sourceId]);
+        softDeleteTaskRuns(tx, taskIdsToDelete);
+        softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
 
     // Delete images from R2 after successful soft delete
@@ -119,7 +184,6 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
     if (sourceDocumentIds.length === 0) return;
 
     const q = forLedger(sourceDocuments, ledgerId);
-    const qEntries = forLedger(ledgerEntries, ledgerId);
 
     // Get source documents to retrieve image URLs before deletion
     const sourceDocs = await db.query.sourceDocuments.findMany({
@@ -131,53 +195,16 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
 
     const allImageUrls = sourceDocs.flatMap(doc => doc.imageUrls || []);
 
-    // Find task_runs that reference these source documents before transaction
-    const relatedTaskRuns = await db.query.taskRuns.findMany({
-        where: and(
-            isNull(taskRuns.deletedAt),
-            eq(taskRuns.scopeId, ledgerId),
-            eq(taskRuns.entityType, 'source_document'),
-            inArray(taskRuns.entityId, sourceDocumentIds)
-        ),
-    });
-
-    // Cancel any running/pending tasks before deleting
-    const runningTasks = relatedTaskRuns.filter(
-        task => task.status === 'pending' || task.status === 'running'
-    );
-    for (const task of runningTasks) {
-        await flowEngine.cancel(task.id);
-    }
-
+    // Find and cancel related tasks
+    const relatedTaskRuns = await getRelatedTaskRuns(ledgerId, sourceDocumentIds);
+    await cancelRunningTasks(relatedTaskRuns.map(t => t.id));
     const taskIdsToDelete = relatedTaskRuns.map(task => task.id);
 
-    // better-sqlite3 transactions are synchronous
+    // Execute soft delete transaction
     db.transaction((tx) => {
-        // 1. Cascade soft delete to associated ledger entries
-        tx.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(and(
-                qEntries.whereActive,
-                inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)
-            ))
-            .run();
-
-        // 2. Cascade soft delete to task_runs
-        if (taskIdsToDelete.length > 0) {
-            tx.update(taskRuns)
-                .set({ deletedAt: new Date() })
-                .where(inArray(taskRuns.id, taskIdsToDelete))
-                .run();
-        }
-
-        // 3. Soft delete the source documents
-        tx.update(sourceDocuments)
-            .set(q.softDelete)
-            .where(and(
-                q.whereActive,
-                inArray(sourceDocuments.id, sourceDocumentIds)
-            ))
-            .run();
+        softDeleteLedgerEntries(tx, ledgerId, sourceDocumentIds);
+        softDeleteTaskRuns(tx, taskIdsToDelete);
+        softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
     });
 
     // Delete images from R2 after successful soft delete
