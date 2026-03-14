@@ -11,7 +11,7 @@ import { UnauthorizedError } from '@/lib/errors';
  *     return doSomething(userId, data);
  *   });
  */
-export function withAuth<TArgs extends any[], TReturn>(
+export function withAuth<TArgs extends unknown[], TReturn>(
   action: (userId: string, ...args: TArgs) => Promise<TReturn>
 ): (...args: TArgs) => Promise<TReturn> {
   return async (...args: TArgs) => {

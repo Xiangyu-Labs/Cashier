@@ -19,7 +19,7 @@ describe('withAuth', () => {
   });
 
   it('should throw UnauthorizedError when no user id', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: {} } as any);
+    vi.mocked(auth).mockResolvedValue({ user: {} } as { user: Record<string, never> });
 
     const action = withAuth(async (userId) => userId);
 
@@ -29,7 +29,7 @@ describe('withAuth', () => {
   it('should pass userId to action when authenticated', async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: 'user-123' }
-    } as any);
+    } as { user: { id: string } });
 
     const action = withAuth(async (userId, arg1: string) => {
       return { userId, arg1 };
@@ -43,7 +43,7 @@ describe('withAuth', () => {
   it('should handle multiple arguments', async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: 'user-456' }
-    } as any);
+    } as { user: { id: string } });
 
     const action = withAuth(async (userId, arg1: string, arg2: number, arg3: boolean) => {
       return { userId, arg1, arg2, arg3 };
@@ -59,7 +59,7 @@ describe('requireAuth', () => {
   it('should return userId when authenticated', async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: 'user-789' }
-    } as any);
+    } as { user: { id: string } });
 
     const result = await requireAuth();
 
@@ -73,7 +73,7 @@ describe('requireAuth', () => {
   });
 
   it('should throw UnauthorizedError when no user id', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: {} } as any);
+    vi.mocked(auth).mockResolvedValue({ user: {} } as { user: Record<string, never> });
 
     await expect(requireAuth()).rejects.toThrow(UnauthorizedError);
   });
