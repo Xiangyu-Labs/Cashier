@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
 import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { withLedgerAccess } from "@/lib/auth-actions";
 import { CurrencyService } from "@/features/currency/server/service";
 import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
 
@@ -37,10 +37,7 @@ const batchUpdateLedgerEntriesSchema = z.object({
 import { forLedger } from "@/lib/db/scoped-query";
 // Date string comparison - no need for date parsing utilities
 
-export async function createLedgerEntryAction(ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<import("@/lib/db/schema").LedgerEntry> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const createLedgerEntryAction = withLedgerAccess(async (ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<import("@/lib/db/schema").LedgerEntry> => {
     const validated = createLedgerEntrySchema.parse(data);
 
     // Get ledger's main currency and source document's entryDate
@@ -80,12 +77,9 @@ export async function createLedgerEntryAction(ledgerId: string, data: z.infer<ty
     }).returning();
 
     return entry;
-}
+});
 
-export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>): Promise<SerializedLedgerEntry> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const updateLedgerEntryAction = withLedgerAccess(async (ledgerId: string, ledgerEntryId: string, data: z.infer<typeof updateLedgerEntrySchema>): Promise<SerializedLedgerEntry> => {
     const validated = updateLedgerEntrySchema.parse(data);
     const q = forLedger(ledgerEntries, ledgerId);
 
@@ -156,22 +150,16 @@ export async function updateLedgerEntryAction(ledgerId: string, ledgerEntryId: s
     if (!updatedEntry) throw new Error("Entry not found or access denied");
 
     return serializeLedgerEntry(updatedEntry);
-}
+});
 
-export async function deleteLedgerEntryAction(ledgerId: string, ledgerEntryId: string): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const deleteLedgerEntryAction = withLedgerAccess(async (ledgerId: string, ledgerEntryId: string): Promise<void> => {
     const q = forLedger(ledgerEntries, ledgerId);
     await db.update(ledgerEntries)
         .set(q.softDelete)
         .where(q.whereId(ledgerEntryId));
-}
+});
 
-export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEntryIds: string[]): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+export const batchDeleteLedgerEntriesAction = withLedgerAccess(async (ledgerId: string, ledgerEntryIds: string[]): Promise<void> => {
     const q = forLedger(ledgerEntries, ledgerId);
 
     await db.update(ledgerEntries)
@@ -180,16 +168,13 @@ export async function batchDeleteLedgerEntriesAction(ledgerId: string, ledgerEnt
             q.whereActive,
             inArray(ledgerEntries.id, ledgerEntryIds)
         ));
-}
+});
 
-export async function batchUpdateLedgerEntriesAction(
+export const batchUpdateLedgerEntriesAction = withLedgerAccess(async (
     ledgerId: string,
     ledgerEntryIds: string[],
     data: z.infer<typeof batchUpdateLedgerEntriesSchema>
-): Promise<void> {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
-
+): Promise<void> => {
     // Validate input with Zod
     const validated = batchUpdateLedgerEntriesSchema.parse(data);
 
@@ -210,9 +195,9 @@ export async function batchUpdateLedgerEntriesAction(
             q.whereActive,
             inArray(ledgerEntries.id, ledgerEntryIds)
         ));
-}
+});
 
-export async function getLedgerEntriesAction(
+export const getLedgerEntriesAction = withLedgerAccess(async (
     ledgerId: string,
     params: {
         limit?: number;
@@ -224,11 +209,7 @@ export async function getLedgerEntriesAction(
         minAmount?: number | null;
         maxAmount?: number | null;
     }
-) {
-    const { error } = await requireLedgerAccess(ledgerId);
-    if (error) {
-        throw new Error("Unauthorized");
-    }
+) => {
 
     const q = forLedger(ledgerEntries, ledgerId);
     const limit = params.limit ?? 20;
@@ -334,4 +315,4 @@ export async function getLedgerEntriesAction(
         items: serializedItems,
         nextCursor
     };
-}
+});

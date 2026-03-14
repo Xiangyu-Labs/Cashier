@@ -57,11 +57,9 @@ export function withLedgerAccess<TArgs extends unknown[], TReturn>(
     const { error } = await requireLedgerAccess(ledgerId);
 
     if (error) {
-      const status = error.status;
-      if (status === 404) {
-        throw new NotFoundError('Ledger not found');
-      }
-      throw new UnauthorizedError('Access to ledger denied');
+      // Treat both 401 and 404 as Unauthorized to avoid information leakage
+      // 404 could mean ledger doesn't exist or belongs to another user
+      throw new UnauthorizedError('Unauthorized');
     }
 
     return action(ledgerId, ...args);
