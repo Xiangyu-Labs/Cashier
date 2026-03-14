@@ -58,4 +58,7 @@ public/swe-worker-*.js
 docs/plans/
 
 # SQLite empty file in root
-/sqlite.db.worktrees/
+/sqlite.db
+
+# worktrees
+.worktrees/
