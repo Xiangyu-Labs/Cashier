@@ -389,7 +389,14 @@
         "showMonthlyExpenseDesc": "Display current month's expense at the top of the home page",
         "ledgerSettings": "Ledger Settings",
         "monthStartDay": "Billing Cycle Start",
-        "monthStartDayDesc": "The day of the month when the billing cycle starts"
+        "monthStartDayDesc": "The day of the month when the billing cycle starts",
+        "exportData": "Export Data",
+        "exportDataDesc": "Export ledger data as CSV file",
+        "exportButton": "Export",
+        "exporting": "Exporting...",
+        "exportSuccess": "Export successful",
+        "exportEmpty": "No records to export",
+        "exportFailed": "Export failed, please try again"
     },
     "ServiceCredentials": {
         "title": "Service Credentials",

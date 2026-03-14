@@ -9,6 +9,7 @@ import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
 import { LedgerManagementSection } from "./settings/LedgerManagementSection";
 import { CollapsibleSection } from "./settings/CollapsibleSection";
+import { ExportSection } from "./settings/ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { useCategoryMutations } from "@/features/ledger/client/hooks/use-category-mutations";
@@ -275,6 +276,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
                             />
                         </div>
+
+                        <div className="h-px bg-[var(--border)]" />
+
+                        {/* Export Data Section */}
+                        <ExportSection ledgerId={ledgerId} />
                     </div>
                 </CollapsibleSection>
 

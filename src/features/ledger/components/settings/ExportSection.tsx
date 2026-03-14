@@ -1,0 +1,76 @@
+"use client";
+
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/export";
+import { Button } from "@/components/ui/button";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+interface ExportSectionProps {
+  ledgerId: string;
+}
+
+export function ExportSection({ ledgerId }: ExportSectionProps) {
+  const t = useTranslations("Settings");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportLedgerEntriesAction(ledgerId);
+
+      if (result.isEmpty) {
+        toast.info(t("exportEmpty"));
+        return;
+      }
+
+      // Create blob and trigger download
+      const blob = new Blob([result.csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(t("exportSuccess"));
+    } catch (error) {
+      toast.error(t("exportFailed"));
+      console.error("Export failed:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h3 className="text-base font-medium">{t("exportData")}</h3>
+        <p className="text-sm text-[var(--muted)]">{t("exportDataDesc")}</p>
+      </div>
+      <Button
+        onClick={handleExport}
+        disabled={isExporting}
+        variant="outline"
+        className="flex items-center gap-2"
+      >
+        {isExporting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>{t("exporting")}</span>
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            <span>{t("exportButton")}</span>
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}

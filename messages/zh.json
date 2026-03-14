@@ -396,7 +396,14 @@
         "showMonthlyExpenseDesc": "在主页顶部显示当月支出金额",
         "ledgerSettings": "账本设置",
         "monthStartDay": "每月起始日",
-        "monthStartDayDesc": "账单周期从每月第几天开始计算"
+        "monthStartDayDesc": "账单周期从每月第几天开始计算",
+        "exportData": "导出数据",
+        "exportDataDesc": "将账本数据导出为 CSV 文件",
+        "exportButton": "导出",
+        "exporting": "导出中...",
+        "exportSuccess": "导出成功",
+        "exportEmpty": "暂无记录可导出",
+        "exportFailed": "导出失败，请重试"
     },
     "ServiceCredentials": {
         "title": "服务密钥",
