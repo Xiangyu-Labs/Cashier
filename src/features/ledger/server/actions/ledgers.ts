@@ -5,7 +5,7 @@ import { ledgers, entryCategories, ledgerEntries, serviceCredentials, users } fr
 import { defaultLedger } from "@/config/default-ledger";
 import { auth } from "@/auth";
 import { z } from "zod";
-import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, inArray, type SQL } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { taskVersionManager } from "@/lib/task-version";
