@@ -8,6 +8,7 @@
 
 import type { AIContext } from "@/lib/flow/types";
 import { logger } from "@/lib/logger";
+import { loadImagesForAI } from "@/lib/storage/utils";
 
 export interface Stage0Input {
     imageUrls: string[];
@@ -99,7 +100,10 @@ export async function executeStage0(
         });
     }
 
-    for (const url of input.imageUrls) {
+    // Load images (handles both base64 and R2 URLs)
+    const loadedImageUrls = await loadImagesForAI(input.imageUrls);
+
+    for (const url of loadedImageUrls) {
         content.push({ type: "image_url", image_url: { url } });
     }
 

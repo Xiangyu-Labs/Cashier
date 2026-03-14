@@ -6,6 +6,36 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
+import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
+import { isHttpUrl } from "@/lib/storage";
+import { logger } from "@/lib/logger";
+
+/**
+ * Delete images from R2 storage
+ */
+async function deleteR2Images(imageUrls: string[]): Promise<void> {
+    if (!isR2Enabled() || imageUrls.length === 0) {
+        return;
+    }
+
+    const storage = getR2Storage();
+
+    for (const url of imageUrls) {
+        // Only delete HTTP URLs (R2 URLs)
+        if (isHttpUrl(url)) {
+            const key = storage.extractKeyFromUrl(url);
+            if (key) {
+                try {
+                    await storage.delete(key);
+                    logger.debug({ key }, "Deleted image from R2");
+                } catch (error) {
+                    // Log but don't fail - the database record is already soft deleted
+                    logger.error({ error, key, url }, "Failed to delete image from R2");
+                }
+            }
+        }
+    }
+}
 
 /**
  * Delete a single source document (soft delete with cascade)
@@ -17,6 +47,15 @@ export const deleteSourceDocumentAction = withLedgerAccess(async (
 
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
+
+    // Get source document to retrieve image URLs before deletion
+    const sourceDoc = await db.query.sourceDocuments.findFirst({
+        where: and(q.whereActive, q.whereId(sourceId)),
+    });
+
+    if (!sourceDoc) {
+        throw new Error("Source document not found");
+    }
 
     // Find task_runs that reference this source document before transaction
     const relatedTaskRuns = await db.query.taskRuns.findMany({
@@ -63,6 +102,11 @@ export const deleteSourceDocumentAction = withLedgerAccess(async (
             .where(q.whereId(sourceId))
             .run();
     });
+
+    // Delete images from R2 after successful soft delete
+    if (sourceDoc.imageUrls && sourceDoc.imageUrls.length > 0) {
+        await deleteR2Images(sourceDoc.imageUrls);
+    }
 });
 
 /**
@@ -76,6 +120,16 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
 
     const q = forLedger(sourceDocuments, ledgerId);
     const qEntries = forLedger(ledgerEntries, ledgerId);
+
+    // Get source documents to retrieve image URLs before deletion
+    const sourceDocs = await db.query.sourceDocuments.findMany({
+        where: and(
+            q.whereActive,
+            inArray(sourceDocuments.id, sourceDocumentIds)
+        ),
+    });
+
+    const allImageUrls = sourceDocs.flatMap(doc => doc.imageUrls || []);
 
     // Find task_runs that reference these source documents before transaction
     const relatedTaskRuns = await db.query.taskRuns.findMany({
@@ -125,4 +179,9 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
             ))
             .run();
     });
+
+    // Delete images from R2 after successful soft delete
+    if (allImageUrls.length > 0) {
+        await deleteR2Images(allImageUrls);
+    }
 });

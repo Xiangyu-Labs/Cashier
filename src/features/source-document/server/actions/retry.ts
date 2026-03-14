@@ -6,7 +6,7 @@ import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { prepareSourceDocumentTask } from "./helpers";
+import { prepareSourceDocumentTask, processImages } from "./helpers";
 import type { SourceDocument } from "@/lib/db/schema";
 import type { SourceDocumentActionInput } from "./types";
 
@@ -49,20 +49,16 @@ export async function retrySourceDocumentAction(
     // Update status to queued and clear anomaly fields
     const updatePayload: Partial<SourceDocument> = { status: "queued", anomalyReason: null };
 
-    // If new text/images provided, update the document record
+    // Process new images: upload to R2 if enabled
+    let processedImageUrls: string[] | undefined;
+    if (images) {
+        processedImageUrls = await processImages(images, ledgerId, sourceDocumentId);
+        updatePayload.imageUrls = processedImageUrls;
+    }
+
+    // If new text provided, update the document record
     if (input) {
         if (input.text !== undefined) updatePayload.text = input.text;
-
-        if (images) {
-            const newImageUrls = images.map(img => {
-                const data = img.data;
-                if (!data.startsWith("data:") && !data.startsWith("http")) {
-                    return `data:${img.mimeType};base64,${data}`;
-                }
-                return data;
-            });
-            updatePayload.imageUrls = newImageUrls;
-        }
     }
 
     // Atomically delete old task_runs and reset document status in a transaction
@@ -85,8 +81,10 @@ export async function retrySourceDocumentAction(
             .run();
     });
 
-    // Use the updated doc we just potentially patched, or logic:
-    const finalImages = images || existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
+    // Use processed images if provided, otherwise use existing imageUrls
+    const finalImages = processedImageUrls
+        ? processedImageUrls.map(url => ({ data: url, mimeType: "image/jpeg" }))
+        : existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
 
     await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 
