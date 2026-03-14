@@ -84,19 +84,14 @@ export const ledgerEntries = sqliteTable("ledger_entries", {
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
+    // For looking up entries by source document (cascade delete)
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
-    // Optimization for default sort (createdAt) within a ledger
-    index("idx_ledger_entries_ledger_created").on(table.ledgerId, table.createdAt),
-    // Optimization for category filtering and grouping
-    index("idx_ledger_entries_ledger_category").on(table.ledgerId, table.categoryId),
-    // Optimization for amount range queries
+    // Optimized for listing entries with soft-delete filtering and sorting
+    index("idx_ledger_entries_ledger_active_created").on(table.ledgerId, table.deletedAt, table.createdAt),
+    // Optimized for category filtering with soft-delete
+    index("idx_ledger_entries_ledger_category_active").on(table.ledgerId, table.categoryId, table.deletedAt),
+    // For amount range queries in stats
     index("idx_ledger_entries_converted_amount").on(table.convertedAmount),
-    // Optimization for tenant isolation queries
-    index("idx_ledger_entries_ledger_active").on(table.ledgerId, table.deletedAt),
-    // Optimization for stats queries joining with source_documents
-    index("idx_ledger_entries_ledger_source_doc").on(table.ledgerId, table.sourceDocumentId),
-    // Optimization for pagination with category (covering index)
-    index("idx_ledger_entries_ledger_created_with_category").on(table.ledgerId, table.createdAt, table.categoryId),
 ]);
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;

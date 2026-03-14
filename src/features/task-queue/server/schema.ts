@@ -46,6 +46,8 @@ export const taskRuns = sqliteTable("task_runs", {
     index("idx_task_runs_scope_entity").on(table.scopeId, table.entityType, table.entityId),
     // Optimization for token stats aggregation queries with time range
     index("idx_task_runs_scope_status_created").on(table.scopeId, table.status, table.createdAt),
+    // For cleaning up old tasks
+    index("idx_task_runs_created").on(table.createdAt),
 ]);
 
 export type TaskRun = InferSelectModel<typeof taskRuns>;

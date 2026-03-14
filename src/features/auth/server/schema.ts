@@ -23,7 +23,9 @@ export const users = sqliteTable("users", {
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
-});
+}, (table) => [
+    index("idx_users_email").on(table.email),
+]);
 
 export type User = InferSelectModel<typeof users>;
 
@@ -79,4 +81,6 @@ export const otpTokens = sqliteTable("otp_tokens", {
 }, (table) => [
     index("idx_otp_tokens_email").on(table.email),
     index("idx_otp_tokens_expires").on(table.expires),
+    // For cleaning up verified tokens efficiently
+    index("idx_otp_tokens_verified").on(table.email, table.verifiedAt),
 ]);

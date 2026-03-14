@@ -56,6 +56,8 @@ export const sourceDocuments = sqliteTable("source_documents", {
     index("idx_source_docs_ledger_entry_date").on(table.ledgerId, table.entryDate),
     // Optimization for filtering by status and date range (stats queries)
     index("idx_source_docs_ledger_status_date").on(table.ledgerId, table.status, table.entryDate),
+    // Optimization for type-based filtering (manual vs ai_parsed)
+    index("idx_source_docs_ledger_status_type").on(table.ledgerId, table.status, table.type),
 ]);
 
 export interface SourceDocMetadata {
