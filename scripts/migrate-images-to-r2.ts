@@ -11,13 +11,13 @@ import { config } from "dotenv";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { existsSync } from "fs";
-import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
-import { isBase64Url, base64ToBuffer } from "@/lib/storage";
-import { logger } from "@/lib/logger";
+import { getR2Storage, isR2Enabled } from "../src/lib/storage/r2";
+import { isBase64Url, base64ToBuffer } from "../src/lib/storage";
+import { logger } from "../src/lib/logger";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import * as dbSchema from "@/lib/db/schema";
+import * as dbSchema from "../src/lib/db/schema";
 
 type DbSchema = typeof dbSchema;
 
@@ -38,7 +38,7 @@ if (dbUrl.startsWith("file:./") || dbUrl.startsWith("file:")) {
 
 // Lazily loaded modules to ensure env is set up first
 let db: BetterSQLite3Database<DbSchema>;
-let schema: typeof import("@/lib/db/schema");
+let schema: typeof import("../src/lib/db/schema");
 
 interface MigrationStats {
     totalDocuments: number;
@@ -104,9 +104,9 @@ function initializeR2Storage(): ReturnType<typeof getR2Storage> {
  * Load database modules dynamically (after env setup)
  */
 async function initializeDatabase(): Promise<void> {
-    const dbModule = await import("../src/lib/db/index.js");
+    const dbModule = await import("../src/lib/db/index");
     db = dbModule.db as BetterSQLite3Database<DbSchema>;
-    schema = await import("../src/lib/db/schema.js");
+    schema = await import("../src/lib/db/schema");
 }
 
 /**
