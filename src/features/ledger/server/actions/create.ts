@@ -25,9 +25,9 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
 
     // Atomically create ledger and seed categories in a transaction
     try {
-        db.transaction((tx) => {
+        newLedger = db.transaction((tx) => {
             // 1. Create ledger
-            [newLedger] = tx
+            const result = tx
                 .insert(ledgers)
                 .values({
                     userId: userId,
@@ -45,15 +45,23 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
                 .returning()
                 .all();
 
+            if (!result || result.length === 0) {
+                throw new Error("Failed to create ledger: no result returned");
+            }
+
+            const createdLedger = result[0];
+
             // 2. Seed categories for the new ledger
             if (defaultLedger.categories.length > 0) {
                 tx.insert(entryCategories).values(
                     defaultLedger.categories.map((cat) => ({
                         ...cat,
-                        ledgerId: newLedger.id,
+                        ledgerId: createdLedger.id,
                     }))
                 ).run();
             }
+
+            return createdLedger;
         });
     } catch (error) {
         // Handle database-level unique constraint violation
@@ -63,5 +71,9 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
         throw error;
     }
 
-    return newLedger!;
+    if (!newLedger) {
+        throw new Error("Failed to create ledger: transaction returned no result");
+    }
+
+    return newLedger;
 });

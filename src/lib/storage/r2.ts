@@ -124,10 +124,33 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   extractKeyFromUrl(url: string): string | null {
-    if (!url.startsWith(this.publicUrl)) {
+    // Remove query parameters and hash fragments for security
+    const urlWithoutQuery = url.split('?')[0].split('#')[0];
+
+    if (!urlWithoutQuery.startsWith(this.publicUrl)) {
       return null;
     }
-    return url.slice(this.publicUrl.length + 1); // +1 for the trailing slash
+
+    let key = urlWithoutQuery.slice(this.publicUrl.length);
+
+    // Remove leading slash if present
+    if (key.startsWith('/')) {
+      key = key.slice(1);
+    }
+
+    // Prevent path traversal attacks
+    if (key.includes('..') || key.includes('\\')) {
+      logger.warn({ key, url }, "Potential path traversal attempt detected in R2 key");
+      return null;
+    }
+
+    // Reject absolute paths
+    if (key.startsWith('/')) {
+      logger.warn({ key, url }, "Absolute path detected in R2 key");
+      return null;
+    }
+
+    return key;
   }
 }
 

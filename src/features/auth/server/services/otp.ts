@@ -38,7 +38,8 @@ export function hashOTP(otp: string): string {
 }
 
 /**
- * Verify an OTP against its hash
+ * Verify an OTP against its hash using constant-time comparison
+ * to prevent timing attacks.
  * @param otp - The plain text OTP to verify
  * @param storedHash - The stored hash to compare against (format: "hash:salt")
  * @returns True if the OTP matches the hash
@@ -52,7 +53,17 @@ export function verifyOTP(otp: string, storedHash: string): boolean {
   }
 
   const computed = crypto.createHash("sha256").update(otp + salt).digest("hex");
-  return computed === hash;
+
+  // Use timingSafeEqual to prevent timing attacks
+  // Buffer lengths must match for timingSafeEqual
+  const hashBuf = Buffer.from(hash, "hex");
+  const computedBuf = Buffer.from(computed, "hex");
+
+  if (hashBuf.length !== computedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(hashBuf, computedBuf);
 }
 
 /**

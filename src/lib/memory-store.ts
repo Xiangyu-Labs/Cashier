@@ -37,6 +37,37 @@ class MemoryStore {
     }
 
     /**
+     * Atomically increment a key and set its expiration.
+     * This prevents race conditions between incr and expire operations.
+     * @param key - The key to increment
+     * @param seconds - TTL in seconds
+     * @returns The new value
+     */
+    async incrAndExpire(key: string, seconds: number): Promise<number> {
+        this.cleanup(key);
+        const item = this.store.get(key);
+        let val = 1;
+
+        if (item && item.expiresAt !== null && Date.now() < item.expiresAt) {
+            // Key exists and is not expired - increment and preserve existing expiry
+            val = parseInt(item.value) + 1;
+            this.store.set(key, {
+                value: val.toString(),
+                expiresAt: item.expiresAt
+            });
+        } else {
+            // Key doesn't exist or is expired - set to 1 with new expiry
+            const expiresAt = Date.now() + (seconds * 1000);
+            this.store.set(key, {
+                value: val.toString(),
+                expiresAt
+            });
+        }
+
+        return val;
+    }
+
+    /**
      * Set a key's value with an expiration in seconds.
      */
     async setex(key: string, seconds: number, value: string): Promise<void> {

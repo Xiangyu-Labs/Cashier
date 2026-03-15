@@ -70,8 +70,10 @@ async function isRegistrationAllowed(email: string): Promise<boolean> {
     if (process.env.DISABLE_REGISTRATION !== "true") {
         return true;
     }
+    // Normalize email to lowercase for consistent lookup
+    const normalizedEmail = email.toLowerCase();
     const user = await db.query.users.findFirst({
-        where: eq(users.email, email),
+        where: eq(users.email, normalizedEmail),
     });
     return !!user;
 }

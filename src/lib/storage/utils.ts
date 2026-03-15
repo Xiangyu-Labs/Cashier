@@ -1,6 +1,7 @@
 import { getR2Storage, isR2Enabled } from "./r2";
 import { isBase64Url, isHttpUrl, base64ToBuffer } from "./index";
 import { logger } from "@/lib/logger";
+import { lookup } from "dns/promises";
 
 // Maximum response size: 10MB
 const MAX_RESPONSE_SIZE = 10 * 1024 * 1024;
@@ -38,6 +39,21 @@ function isAllowedHostname(hostname: string): boolean {
 }
 
 /**
+ * Check if an IPv4 address is in a private range
+ */
+function isPrivateIPv4(ip: string): boolean {
+  const privateRanges = [
+    /^10\./,                              // 10.0.0.0/8
+    /^172\.(1[6-9]|2[0-9]|3[01])\./,      // 172.16.0.0/12
+    /^192\.168\./,                        // 192.168.0.0/16
+    /^169\.254\./,                        // Link-local 169.254.0.0/16
+    /^127\./,                             // Loopback 127.0.0.0/8
+    /^0\./,                               // Current network 0.0.0.0/8
+  ];
+  return privateRanges.some(range => range.test(ip));
+}
+
+/**
  * Check if a hostname is an internal/private IP address
  */
 function isInternalIP(hostname: string): boolean {
@@ -52,17 +68,14 @@ function isInternalIP(hostname: string): boolean {
   }
 
   // Check IPv4 private ranges
-  const privateRanges = [
-    /^10\./,                              // 10.0.0.0/8
-    /^172\.(1[6-9]|2[0-9]|3[01])\./,      // 172.16.0.0/12
-    /^192\.168\./,                        // 192.168.0.0/16
-    /^169\.254\./,                        // Link-local 169.254.0.0/16
-    /^127\./,                             // Loopback 127.0.0.0/8
-    /^0\./,                               // Current network 0.0.0.0/8
-  ];
-
-  if (privateRanges.some(range => range.test(hostname))) {
+  if (isPrivateIPv4(hostname)) {
     return true;
+  }
+
+  // Check IPv4-mapped IPv6 addresses (e.g., ::ffff:192.168.1.1)
+  if (hostname.startsWith("::ffff:")) {
+    const ipv4 = hostname.slice(7);
+    return isPrivateIPv4(ipv4);
   }
 
   // Check IPv6 loopback/link-local
@@ -80,6 +93,7 @@ function isInternalIP(hostname: string): boolean {
 
 /**
  * Safely fetch a URL with SSRF protection
+ * Prevents DNS rebinding attacks by resolving DNS before making requests
  */
 async function safeFetch(url: string): Promise<Response> {
   let parsed: URL;
@@ -94,7 +108,26 @@ async function safeFetch(url: string): Promise<Response> {
     throw new Error(`Unsupported protocol: ${parsed.protocol}`);
   }
 
-  // Block internal IP addresses (SSRF protection)
+  // DNS rebinding protection: Resolve hostname and verify all resolved IPs
+  // This prevents attackers from bypassing SSRF checks via DNS TTL manipulation
+  try {
+    const addresses = await lookup(parsed.hostname, { all: true });
+    for (const addr of addresses) {
+      if (isInternalIP(addr.address)) {
+        logger.warn({ hostname: parsed.hostname, ip: addr.address }, "Blocked DNS rebinding attempt");
+        throw new Error("Access to internal addresses is not allowed");
+      }
+    }
+  } catch (error) {
+    // If DNS lookup fails with a specific error, re-throw it
+    if (error instanceof Error && error.message === "Access to internal addresses is not allowed") {
+      throw error;
+    }
+    // For other DNS errors, continue with hostname-based checks
+    logger.debug({ hostname: parsed.hostname, error }, "DNS lookup failed, falling back to hostname check");
+  }
+
+  // Secondary check: Block internal IP addresses (SSRF protection)
   if (isInternalIP(parsed.hostname)) {
     throw new Error("Access to internal addresses is not allowed");
   }

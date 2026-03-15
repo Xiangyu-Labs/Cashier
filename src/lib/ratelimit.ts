@@ -44,12 +44,8 @@ class MemoryRateLimiter {
         const rKey = `ratelimit:${key}`;
         const windowSeconds = Math.ceil(windowMs / 1000);
 
-        const attempts = await store.incr(rKey);
-
-        // If it's the first attempt, set the expiry
-        if (attempts === 1) {
-            await store.expire(rKey, windowSeconds);
-        }
+        // Use atomic incrAndExpire to prevent race conditions
+        const attempts = await store.incrAndExpire(rKey, windowSeconds);
 
         const ttl = await store.ttl(rKey);
 

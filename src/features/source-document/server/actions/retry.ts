@@ -8,6 +8,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { prepareSourceDocumentTask, processImages } from "./helpers";
 import { logger } from "@/lib/logger";
+import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import type { SourceDocument } from "@/lib/db/schema";
 import type { SourceDocumentActionInput } from "./types";
 
@@ -20,7 +21,7 @@ export async function retrySourceDocumentAction(
     input?: SourceDocumentActionInput
 ) {
     const { ledger, error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized or Ledger not found");
+    if (error) throw new UnauthorizedError();
 
     const q = forLedger(sourceDocuments, ledgerId);
 
@@ -28,7 +29,7 @@ export async function retrySourceDocumentAction(
     const existingDoc = await db.query.sourceDocuments.findFirst({
         where: q.whereId(sourceDocumentId)
     });
-    if (!existingDoc) throw new Error("Source document not found");
+    if (!existingDoc) throw new NotFoundError("Source document");
 
     // Cancel any running/pending tasks for this source document before retrying
     const runningTasks = await db.query.taskRuns.findMany({

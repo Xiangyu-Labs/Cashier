@@ -7,6 +7,8 @@ import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { prepareSourceDocumentTask } from "./helpers";
+import { UnauthorizedError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 /**
  * Batch retry multiple source documents
@@ -16,9 +18,12 @@ export async function batchRetrySourceDocumentsAction(
     sourceDocumentIds: string[]
 ): Promise<void> {
     const { ledger, error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized: Access to ledger denied");
+    if (error) throw new UnauthorizedError();
 
-    if (sourceDocumentIds.length === 0) return;
+    if (sourceDocumentIds.length === 0) {
+        logger.debug({ ledgerId }, "Batch retry called with empty document list");
+        return;
+    }
 
     const q = forLedger(sourceDocuments, ledgerId);
 
@@ -71,9 +76,18 @@ export async function batchRetrySourceDocumentsAction(
             .run();
     });
 
-    // 4. Retrigger tasks for each
-    await Promise.all(docs.map(async (doc) => {
+    // 4. Retrigger tasks for each using Promise.allSettled to handle partial failures
+    const results = await Promise.allSettled(docs.map(async (doc) => {
         const images = doc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" })) || [];
         await prepareSourceDocumentTask(ledgerId, ledger, doc.text || undefined, images, doc.id);
     }));
+
+    // Log any failures but don't fail the entire batch
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+        logger.warn(
+            { ledgerId, failedCount: failures.length, totalCount: docs.length },
+            "Some documents failed to retry in batch operation"
+        );
+    }
 }

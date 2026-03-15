@@ -38,8 +38,8 @@ export async function processImages(
             }
 
             try {
-                // Parse base64 data
-                const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
+                // Parse base64 data - use [^;]+ to match MIME types with special chars like image/svg+xml
+                const base64Data = img.data.replace(/^data:image\/[^;]+;base64,/, "");
                 const buffer = Buffer.from(base64Data, "base64");
 
                 // Validate file size
