@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { ledgers, users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 // Override the global auth mock for specific tests
@@ -70,6 +71,10 @@ describe("requireLedgerAccess", () => {
         mockSession();
         const db = getTestDb();
         ledgerId = uuidv4();
+
+        // Clean up any existing ledgers for this user first (due to unique constraint)
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,

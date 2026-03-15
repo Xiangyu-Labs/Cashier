@@ -27,7 +27,8 @@ const testUserId = "00000000-0000-0000-0000-000000000000";
  * Helper function to create a complete test ledger with categories and entries
  */
 async function createTestLedger(db: ReturnType<typeof getTestDb>) {
-    const ledger = createLedgerData({ userId: testUserId });
+    // Use default behavior which generates unique userId per ledger
+    const ledger = createLedgerData();
     await db.insert(ledgers).values(ledger);
     return ledger;
 }

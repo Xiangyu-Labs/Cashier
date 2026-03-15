@@ -47,9 +47,10 @@ export async function createTestUserWithLedger(
   db: BetterSQLite3Database<typeof schema>,
   email = "test@example.com",
   ledgerName = "Test Ledger",
-  userId = TEST_USER_ID
+  userId?: string
 ): Promise<{ userId: string; ledgerId: string }> {
-  const finalUserId = await createTestUser(db, email, userId);
+  // Generate unique userId if not provided to avoid unique constraint violations
+  const finalUserId = await createTestUser(db, email, userId || crypto.randomUUID());
 
   const ledgerId = crypto.randomUUID();
   await db.insert(schema.ledgers).values({

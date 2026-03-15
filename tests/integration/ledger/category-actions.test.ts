@@ -4,6 +4,7 @@ import {
     ledgers,
     ledgerEntries,
     entryCategories,
+    users,
 } from "@/lib/db/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";
 import { v4 as uuidv4 } from "uuid";
@@ -92,9 +93,19 @@ describe("createEntryCategoryAction", () => {
     it("different ledgers can have same category name (tenant isolation)", async () => {
         const db = getTestDb();
         const ledgerId2 = uuidv4();
+        const otherUserId = "11111111-1111-1111-1111-111111111111";
+
+        // Create another user first
+        await db.insert(users).values({
+            id: otherUserId,
+            email: "other@example.com",
+            name: "Other User",
+            emailVerified: new Date(),
+        }).onConflictDoNothing();
+
         await db.insert(ledgers).values({
             id: ledgerId2,
-            userId: TEST_USER_ID,
+            userId: otherUserId,
             name: "Second Ledger",
             metadata: {},
         });
