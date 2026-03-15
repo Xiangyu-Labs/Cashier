@@ -1,15 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { getProcessingStatsAction } from "@/features/source-document/server/actions/processing";
 import { getTestDb } from "../../setup";
-import { taskRuns } from "@/lib/db/schema";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { taskRuns, ledgers } from "@/lib/db/schema";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import { eq } from "drizzle-orm";
 
 describe("Processing Stats Actions", () => {
     let testLedgerId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Stats Test Ledger");
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Stats Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
     });
 
@@ -28,7 +30,9 @@ describe("Processing Stats Actions", () => {
     it("should aggregate token usage from completed tasks", async () => {
         const db = getTestDb();
 
-        const { ledgerId: otherLedgerId } = await createTestUserWithLedger(db, "other@example.com", "Other Ledger");
+        // Create another user and ledger with a DIFFERENT ID to test ledger isolation
+        const otherUserId = "11111111-1111-1111-1111-111111111111";
+        const { ledgerId: otherLedgerId } = await createTestUserWithLedger(db, "other@example.com", "Other Ledger", otherUserId);
 
         await db.insert(taskRuns).values([
             {

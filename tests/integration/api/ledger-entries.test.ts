@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getTestDb } from "../../setup";
-import { entryCategories, ledgerEntries } from "@/lib/db/schema";
-import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
+import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
+import { createTestUserWithLedger, createTestSourceDocument, TEST_USER_ID } from "../../helpers/schema-setup";
+import { eq } from "drizzle-orm";
 
 describe("getLedgerEntriesAction", () => {
   let testLedgerId: string;
@@ -12,7 +13,9 @@ describe("getLedgerEntriesAction", () => {
   beforeEach(async () => {
     const db = getTestDb();
 
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
     testLedgerId = ledgerId;
 
     const [category] = await db

@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
 import { getTestDb } from "../../setup";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import { ledgers } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 
 // Mock auth module
@@ -12,19 +14,19 @@ vi.mock("@/auth", () => ({
 
 describe("Processing Tasks Action Security", () => {
     let testLedgerId: string;
-    let testUserId: string;
 
     beforeEach(async () => {
         const db = getTestDb();
-        const { ledgerId, userId } = await createTestUserWithLedger(db, "test-tasks@example.com", "Tasks Test Ledger");
+        // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Tasks Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
-        testUserId = userId;
     });
 
     it("should allow access when user owns the ledger", async () => {
         // Mock authenticated user
         (auth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-            user: { id: testUserId }
+            user: { id: TEST_USER_ID }
         });
 
         const tasks = await getProcessingTasksAction(testLedgerId, {});
@@ -52,9 +54,9 @@ describe("Processing Tasks Action Security", () => {
             victimId
         );
 
-        // Use original user (testUserId) trying to access otherLedgerId
+        // Use original user (TEST_USER_ID) trying to access otherLedgerId
         (auth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-            user: { id: testUserId }
+            user: { id: TEST_USER_ID }
         });
 
         await expect(getProcessingTasksAction(otherLedgerId, {}))

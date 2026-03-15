@@ -124,13 +124,27 @@ describe("requireLedgerAccess", () => {
     it("returns 404 error for soft-deleted ledger", async () => {
         const db = getTestDb();
         const deletedLedgerId = uuidv4();
+        const anotherUserId = uuidv4();
+
+        // Use a different user to avoid unique constraint violation
+        // (TEST_USER_ID already has a ledger from beforeEach)
+        await db.insert(users).values({
+            id: anotherUserId,
+            email: `deleted-ledger-${uuidv4()}@example.com`,
+            name: "Another User",
+            emailVerified: new Date(),
+        }).onConflictDoNothing();
+
         await db.insert(ledgers).values({
             id: deletedLedgerId,
-            userId: TEST_USER_ID,
+            userId: anotherUserId,
             name: "Deleted Ledger",
             metadata: {},
             deletedAt: new Date(),
         });
+
+        // Mock session as the another user to test access to their deleted ledger
+        mockSession(anotherUserId, `deleted-ledger-${uuidv4()}@example.com`);
 
         const result = await requireLedgerAccess(deletedLedgerId);
         expect(result.error).toBeDefined();

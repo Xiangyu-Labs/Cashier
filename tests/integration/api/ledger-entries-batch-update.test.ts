@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { batchUpdateLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getTestDb } from "../../setup";
-import { ledgerEntries, entryCategories } from "@/lib/db/schema";
-import { inArray } from "drizzle-orm";
-import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
+import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
+import { inArray, eq } from "drizzle-orm";
+import { createTestUserWithLedger, createTestSourceDocument, TEST_USER_ID } from "../../helpers/schema-setup";
 
 describe("Batch Update Ledger Entries Action", () => {
     let testLedgerId: string;
@@ -14,7 +14,8 @@ describe("Batch Update Ledger Entries Action", () => {
     beforeEach(async () => {
         const db = getTestDb();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
 
         const [category] = await db

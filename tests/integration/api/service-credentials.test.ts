@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as ledgerEntryPOST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
-import { serviceCredentials, sourceDocuments } from "@/lib/db/schema";
+import { serviceCredentials, sourceDocuments, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
 
 // Mock Processing
@@ -36,7 +36,8 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     beforeEach(async () => {
         const db = getTestDb();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "API Test Ledger");
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "API Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
     });
 

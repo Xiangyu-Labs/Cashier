@@ -43,7 +43,7 @@ describe("Flow System Integration", () => {
         vi.stubGlobal('fetch', vi.fn());
 
         // Setup Ledger here because global setup truncates before each test
-        const { ledgerId: id } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        const { ledgerId: id } = await createTestUserWithLedger(db, undefined, "Test Ledger");
         ledgerId = id;
     });
 

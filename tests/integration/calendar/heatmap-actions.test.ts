@@ -14,7 +14,7 @@ describe("Calendar Heatmap Actions", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger");
     testLedgerId = ledgerId;
 
     // Create a test category

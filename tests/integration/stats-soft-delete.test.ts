@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { createTestUserWithLedger } from "../helpers/schema-setup";
-import { ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
+import { ledgerEntries, sourceDocuments, ledgers } from "@/lib/db/schema";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { eq } from "drizzle-orm";
@@ -11,7 +11,9 @@ describe("Stats Soft Delete Filtering Regression", () => {
 
     beforeEach(async () => {
         const db = getTestDb();
-        const setup = await createTestUserWithLedger(db, "stats-test@example.com", "Stats Ledger");
+        // Cleanup existing ledger for TEST_USER_ID and create new one
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const setup = await createTestUserWithLedger(db, undefined, "Stats Ledger", TEST_USER_ID);
         ledgerId = setup.ledgerId;
 
         // Cleanup entries for this ledger

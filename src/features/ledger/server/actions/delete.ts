@@ -15,15 +15,6 @@ export const deleteLedgerAction = withAuth(async (userId: string, id: string): P
         throw new Error("Ledger not found or access denied");
     }
 
-    // Check if this is the only ledger
-    const allUserLedgers = await db.query.ledgers.findMany({
-        where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
-    });
-
-    if (allUserLedgers.length <= 1) {
-        throw new Error("Cannot delete the only ledger. You must have at least one ledger.");
-    }
-
     // Check if this is the user's default ledger
     const user = await db.query.users.findFirst({
         where: eq(users.id, userId),

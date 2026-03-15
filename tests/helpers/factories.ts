@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { TEST_USER_ID } from "./schema-setup";
 
 export function createLedgerData(
   overrides: Partial<{
@@ -12,7 +13,7 @@ export function createLedgerData(
 ) {
   return {
     id: uuidv4(),
-    userId: uuidv4(),
+    userId: TEST_USER_ID,  // 默认使用测试用户，避免外键约束失败
     name: `Test Ledger ${Date.now()}`,
     aiLanguage: "zh-CN",
     createdAt: new Date(),

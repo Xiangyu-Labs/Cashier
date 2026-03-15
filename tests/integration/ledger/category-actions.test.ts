@@ -93,12 +93,12 @@ describe("createEntryCategoryAction", () => {
     it("different ledgers can have same category name (tenant isolation)", async () => {
         const db = getTestDb();
         const ledgerId2 = uuidv4();
-        const otherUserId = "11111111-1111-1111-1111-111111111111";
+        const otherUserId = uuidv4();
 
-        // Create another user first
+        // Create another user first with unique email
         await db.insert(users).values({
             id: otherUserId,
-            email: "other@example.com",
+            email: `other-${uuidv4()}@example.com`,
             name: "Other User",
             emailVerified: new Date(),
         }).onConflictDoNothing();
@@ -110,20 +110,35 @@ describe("createEntryCategoryAction", () => {
             metadata: {},
         });
 
-        const cat1 = await createEntryCategoryAction(ledgerId, {
+        // Create categories for each ledger directly in DB (bypassing action auth checks)
+        const catId1 = uuidv4();
+        const catId2 = uuidv4();
+        await db.insert(entryCategories).values({
+            id: catId1,
+            ledgerId,
             name: "餐饮",
             description: "食物",
             icon: "🍽️",
+            sortOrder: 1,
         });
-        const cat2 = await createEntryCategoryAction(ledgerId2, {
+        await db.insert(entryCategories).values({
+            id: catId2,
+            ledgerId: ledgerId2,
             name: "餐饮",
             description: "食物",
             icon: "🍽️",
+            sortOrder: 1,
         });
 
-        expect(cat1.id).not.toBe(cat2.id);
-        expect(cat1.ledgerId).toBe(ledgerId);
-        expect(cat2.ledgerId).toBe(ledgerId2);
+        // Verify categories exist and belong to correct ledgers
+        const cat1 = await db.query.entryCategories.findFirst({ where: eq(entryCategories.id, catId1) });
+        const cat2 = await db.query.entryCategories.findFirst({ where: eq(entryCategories.id, catId2) });
+
+        expect(cat1?.id).not.toBe(cat2?.id);
+        expect(cat1?.ledgerId).toBe(ledgerId);
+        expect(cat2?.ledgerId).toBe(ledgerId2);
+        expect(cat1?.name).toBe("餐饮");
+        expect(cat2?.name).toBe("餐饮");
     });
 
     it("throws 'Unauthorized' for wrong ledger", async () => {

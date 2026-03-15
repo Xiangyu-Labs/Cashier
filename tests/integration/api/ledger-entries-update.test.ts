@@ -3,7 +3,7 @@ import { updateLedgerEntryAction } from "@/features/ledger/server/actions/entrie
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, createTestSourceDocument, TEST_USER_ID } from "../../helpers/schema-setup";
 
 // Mock the exchange rate service
 vi.mock('@/features/currency/server/exchange-rate-service', () => ({
@@ -24,7 +24,9 @@ describe("Ledger Entry Update Action", () => {
     beforeEach(async () => {
         const db = getTestDb();
 
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        // Clean up existing ledger for TEST_USER_ID and create new one
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
 
         const [category] = await db

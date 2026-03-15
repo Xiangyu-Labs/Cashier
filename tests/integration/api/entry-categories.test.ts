@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getEntryCategoriesAction, createEntryCategoryAction, reorderEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getTestDb } from "../../setup";
-import { entryCategories as categories } from "@/lib/db/schema";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { entryCategories as categories, ledgers } from "@/lib/db/schema";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import { eq } from "drizzle-orm";
 
 describe("getEntryCategoriesAction", () => {
   let testLedgerId: string;
 
   beforeEach(async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
     testLedgerId = ledgerId;
   });
 
@@ -39,7 +42,9 @@ describe("createEntryCategoryAction", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
     testLedgerId = ledgerId;
   });
 
@@ -101,7 +106,9 @@ describe("reorderEntryCategoriesAction", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Reorder Test Ledger");
+    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Reorder Test Ledger", TEST_USER_ID);
     testLedgerId = ledgerId;
 
     const [c1] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 1", sortOrder: 0 }).returning();

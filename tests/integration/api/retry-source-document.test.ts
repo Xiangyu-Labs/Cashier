@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
-import { sourceDocuments, ledgerEntries, entryCategories as categories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories as categories, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { processAllPendingTasks } from "../../helpers/processing";
@@ -25,7 +25,9 @@ describe("SourceDocument Retry Action", () => {
         );
 
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
         testLedgerId = ledgerId;
 
         // Setup "餐饮" category

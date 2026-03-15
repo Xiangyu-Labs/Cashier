@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { createTestUserWithLedger } from "../helpers/schema-setup";
+import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
 import { ledgerEntries, ledgers, currencyRates, sourceDocuments } from "@/lib/db/schema";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { eq } from "drizzle-orm";
@@ -10,7 +10,8 @@ describe("Stats Currency Conversion", () => {
 
     beforeEach(async () => {
         const db = getTestDb();
-        const setup = await createTestUserWithLedger(db, "converter-test@example.com", "Converter Ledger");
+        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+        const setup = await createTestUserWithLedger(db, undefined, "Converter Ledger", TEST_USER_ID);
         ledgerId = setup.ledgerId;
 
         // Set Main Currency to CNY

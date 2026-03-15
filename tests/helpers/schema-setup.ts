@@ -22,20 +22,23 @@ export async function createTestSchema(db: BetterSQLite3Database<typeof schema>,
 // Helper to create a test user and return the user ID
 export async function createTestUser(
   db: BetterSQLite3Database<typeof schema>,
-  email = "test@example.com",
+  email?: string,  // 改为可选，默认使用随机email避免冲突
   id = TEST_USER_ID
 ): Promise<string> {
+  // 使用随机email避免唯一约束冲突
+  const finalEmail = email || `test-${crypto.randomUUID()}@example.com`;
+
   const existing = await db.select().from(schema.users).where(sql`${schema.users.id} = ${id}`).limit(1);
   if (existing.length > 0) {
     // SQLite doesn't support ON CONFLICT DO UPDATE nicely with returning in all cases for simple execute
     // Just update if exists
-    await db.update(schema.users).set({ email }).where(sql`${schema.users.id} = ${id}`);
+    await db.update(schema.users).set({ email: finalEmail }).where(sql`${schema.users.id} = ${id}`);
     return id;
   }
 
   await db.insert(schema.users).values({
     id,
-    email,
+    email: finalEmail,
     name: "Test User",
     emailVerified: new Date(),
   });
@@ -45,11 +48,12 @@ export async function createTestUser(
 // Helper to create a test user and ledger together
 export async function createTestUserWithLedger(
   db: BetterSQLite3Database<typeof schema>,
-  email = "test@example.com",
+  email?: string,  // 改为可选，默认使用随机email
   ledgerName = "Test Ledger",
   userId?: string
 ): Promise<{ userId: string; ledgerId: string }> {
   // Generate unique userId if not provided to avoid unique constraint violations
+  // 使用随机email避免唯一约束冲突
   const finalUserId = await createTestUser(db, email, userId || crypto.randomUUID());
 
   const ledgerId = crypto.randomUUID();

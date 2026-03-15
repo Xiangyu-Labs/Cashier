@@ -148,7 +148,8 @@ describe("parseSourceDocumentHandler.execute", () => {
 
         // Setup real DB data
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db, "test@example.com", "Test Ledger");
+        // Use random email to avoid unique constraint conflicts
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger");
         currentLedgerId = ledgerId;
         const [sourceDoc] = await db.insert(sourceDocuments).values({
             ledgerId,
@@ -304,7 +305,8 @@ describe("parseSourceDocumentHandler.onComplete", () => {
         vi.clearAllMocks();
 
         const db = getTestDb();
-        const { ledgerId } = await createTestUserWithLedger(db, "complete-test@example.com", "Complete Test Ledger");
+        // Use random email to avoid unique constraint conflicts
+        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Complete Test Ledger");
         currentLedgerId = ledgerId;
         const [sourceDoc] = await db.insert(sourceDocuments).values({
             ledgerId,
