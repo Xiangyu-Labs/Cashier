@@ -22,8 +22,7 @@
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
     "migrate:r2": "npx tsx scripts/migrate-images-to-r2.ts",
-    "migrate:r2:dry-run": "npx tsx scripts/migrate-images-to-r2.ts --dry-run",
-    "cleanup:ledgers": "npx tsx scripts/cleanup-multi-ledgers.ts"
+    "migrate:r2:dry-run": "npx tsx scripts/migrate-images-to-r2.ts --dry-run"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
