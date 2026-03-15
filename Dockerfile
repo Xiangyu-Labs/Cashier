@@ -32,9 +32,9 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 # Copy source files needed for runtime scripts (migrations, R2 migration, etc.)
-COPY --from=builder /app/src/lib ./src/lib
-COPY --from=builder /app/src/features ./src/features
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 

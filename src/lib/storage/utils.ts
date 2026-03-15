@@ -1,6 +1,6 @@
 import { getR2Storage, isR2Enabled } from "./r2";
 import { isBase64Url, isHttpUrl, base64ToBuffer } from "./index";
-import { logger } from "../logger";
+import { logger } from "@/lib/logger";
 
 // Maximum response size: 10MB
 const MAX_RESPONSE_SIZE = 10 * 1024 * 1024;
