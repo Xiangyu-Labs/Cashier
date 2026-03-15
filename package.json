@@ -21,8 +21,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
-    "migrate:r2": "node -r ts-node/register -r tsconfig-paths/register scripts/migrate-images-to-r2.ts",
-    "migrate:r2:dry-run": "node -r ts-node/register -r tsconfig-paths/register scripts/migrate-images-to-r2.ts --dry-run"
+    "migrate:r2": "tsx -r tsconfig-paths/register scripts/migrate-images-to-r2.ts",
+    "migrate:r2:dry-run": "tsx -r tsconfig-paths/register scripts/migrate-images-to-r2.ts --dry-run"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
