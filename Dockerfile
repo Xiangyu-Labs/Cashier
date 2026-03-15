@@ -31,10 +31,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy migration files and drizzle config for runtime migrations
-COPY --from=builder /app/src/lib/db ./src/lib/db
-COPY --from=builder /app/src/lib/storage ./src/lib/storage
-COPY --from=builder /app/src/lib/logger.ts ./src/lib/logger.ts
+# Copy source files needed for runtime scripts (migrations, R2 migration, etc.)
+COPY --from=builder /app/src/lib ./src/lib
 COPY --from=builder /app/src/features ./src/features
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/package.json ./package.json
