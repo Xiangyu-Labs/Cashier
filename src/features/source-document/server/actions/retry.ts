@@ -82,10 +82,17 @@ export async function retrySourceDocumentAction(
             .run();
     });
 
-    // Use processed images if provided, otherwise use existing imageUrls
-    const finalImages = processedImageUrls
+    // Use processed images if provided (non-empty array), otherwise use existing imageUrls
+    const finalImages = processedImageUrls && processedImageUrls.length > 0
         ? processedImageUrls.map(url => ({ data: url, mimeType: "image/jpeg" }))
         : existingDoc.imageUrls?.map(url => ({ data: url, mimeType: "image/jpeg" }));
+
+    logger.info({
+        hasProcessedImages: !!processedImageUrls && processedImageUrls.length > 0,
+        processedCount: processedImageUrls?.length || 0,
+        existingCount: existingDoc.imageUrls?.length || 0,
+        finalCount: finalImages?.length || 0
+    }, "Prepared final images for retry");
 
     await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, sourceDocumentId);
 
