@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `uniq_ledgers_user_id` ON `ledgers` (`user_id`);

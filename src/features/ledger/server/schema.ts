@@ -21,6 +21,7 @@ export const ledgers = sqliteTable("ledgers", {
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 }, (table) => [
     index("idx_ledgers_user_id").on(table.userId),
+    uniqueIndex("uniq_ledgers_user_id").on(table.userId),
 ]);
 
 export interface LedgerMetadata {
