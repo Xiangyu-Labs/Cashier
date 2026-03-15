@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import type { StorageProvider } from "./index";
-import { logger } from "@/lib/logger";
+import { logger } from "../logger";
 
 /**
  * Result of a delete operation
