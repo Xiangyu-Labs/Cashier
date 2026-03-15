@@ -39,4 +39,5 @@ DROP TABLE `_keep_ledgers`;
 --> statement-breakpoint
 
 -- Step 5: Create unique index on user_id (for active ledgers only)
-CREATE UNIQUE INDEX `uniq_ledgers_user_id` ON `ledgers` (`user_id`);
+-- Partial index: only applies to non-deleted ledgers (deleted_at IS NULL)
+CREATE UNIQUE INDEX `uniq_ledgers_user_id` ON `ledgers` (`user_id`) WHERE `deleted_at` IS NULL;

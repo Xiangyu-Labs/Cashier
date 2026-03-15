@@ -24,36 +24,44 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
     let newLedger: import("@/lib/db/schema").Ledger;
 
     // Atomically create ledger and seed categories in a transaction
-    db.transaction((tx) => {
-        // 1. Create ledger
-        [newLedger] = tx
-            .insert(ledgers)
-            .values({
-                userId: userId,
-                name: validated.name,
-                metadata: {
-                    settings: {
-                        aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
-                        currencies: defaultLedger.settings.currencies,
-                        mainCurrency: defaultLedger.settings.mainCurrency,
-                        collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,
-                        aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
+    try {
+        db.transaction((tx) => {
+            // 1. Create ledger
+            [newLedger] = tx
+                .insert(ledgers)
+                .values({
+                    userId: userId,
+                    name: validated.name,
+                    metadata: {
+                        settings: {
+                            aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
+                            currencies: defaultLedger.settings.currencies,
+                            mainCurrency: defaultLedger.settings.mainCurrency,
+                            collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,
+                            aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
+                        }
                     }
-                }
-            })
-            .returning()
-            .all();
+                })
+                .returning()
+                .all();
 
-        // 2. Seed categories for the new ledger
-        if (defaultLedger.categories.length > 0) {
-            tx.insert(entryCategories).values(
-                defaultLedger.categories.map((cat) => ({
-                    ...cat,
-                    ledgerId: newLedger.id,
-                }))
-            ).run();
+            // 2. Seed categories for the new ledger
+            if (defaultLedger.categories.length > 0) {
+                tx.insert(entryCategories).values(
+                    defaultLedger.categories.map((cat) => ({
+                        ...cat,
+                        ledgerId: newLedger.id,
+                    }))
+                ).run();
+            }
+        });
+    } catch (error) {
+        // Handle database-level unique constraint violation
+        if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
+            throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");
         }
-    });
+        throw error;
+    }
 
     return newLedger!;
 });

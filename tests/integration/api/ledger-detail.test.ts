@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
-import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getTestDb } from "../../setup";
 import { ledgers } from "@/lib/db/schema";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -34,25 +33,4 @@ describe("Ledger Actions", () => {
     await expect(updateLedgerAction("00000000-0000-0000-0000-000000000000", { name: "Updated" }))
       .rejects.toThrow();
   });
-
-  it("should delete ledger", async () => {
-    const db = getTestDb();
-    const ledgerId = await setupTestLedger(db, "To Delete");
-
-    // deleteLedgerAction returns void in new format
-    await deleteLedgerAction(ledgerId);
-
-    // Verify deletion (soft delete)
-    const found = await db.query.ledgers.findFirst({
-      where: eq(ledgers.id, ledgerId),
-    });
-    expect(found).toBeDefined();
-    expect(found?.deletedAt).not.toBeNull();
-  });
-
-  it("should throw error for non-existent ledger (Delete)", async () => {
-    await expect(deleteLedgerAction("00000000-0000-0000-0000-000000000000"))
-      .rejects.toThrow();
-  });
 });
-

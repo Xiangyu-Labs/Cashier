@@ -18,7 +18,6 @@ import { eq, isNull, and } from "drizzle-orm";
 import { deleteEntryCategoryAction, getEntryCategoriesAction, getUncategorizedCountAction } from "@/features/ledger/server/actions/categories";
 import { deleteLedgerEntryAction, createLedgerEntryAction, updateLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { createLedgerAction } from "@/features/ledger/server/actions/create";
-import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getLedgersAction } from "@/features/ledger/server/actions/get";
 import { deleteSourceDocumentAction } from "@/features/source-document/server/actions";
 
@@ -355,39 +354,6 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
             where: and(eq(ledgerEntries.id, entryB.id), isNull(ledgerEntries.deletedAt))
         });
         expect(remainingEntryB).not.toBeNull();
-    });
-});
-
-// ============================================================================
-// L1: Delete Ledger → All Data Inaccessible
-// ============================================================================
-
-describe("L1: Delete Ledger → All Data Inaccessible", () => {
-    it("should make ledger and its data inaccessible after deletion", async () => {
-        const db = getTestDb();
-
-        // Use current user (TEST_USER_ID) because this test uses auth-dependent actions
-        const ledger = await createTestLedger(db, true);
-        const category = await createTestCategory(db, ledger.id);
-        await createTestEntry(db, ledger.id, { categoryId: category.id });
-
-        // Verify ledger exists initially
-        const allLedgers = await getLedgersAction();
-        expect(allLedgers.find(l => l.id === ledger.id)).toBeDefined();
-
-        // Delete ledger
-        await deleteLedgerAction(ledger.id);
-
-        // Verify: Ledger no longer in list
-        const afterDelete = await getLedgersAction();
-        expect(afterDelete.find(l => l.id === ledger.id)).toBeUndefined();
-
-        // Verify: Ledger is soft-deleted in DB
-        // Note: findFirst returns undefined when not found, not null
-        const deletedLedger = await db.query.ledgers.findFirst({
-            where: and(eq(ledgers.id, ledger.id), isNull(ledgers.deletedAt))
-        });
-        expect(deletedLedger).toBeUndefined();
     });
 });
 

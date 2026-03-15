@@ -3,7 +3,6 @@ export * from './actions/schemas';
 export * from './actions/helpers';
 export * from './actions/create';
 export * from './actions/update';
-export * from './actions/delete';
 export * from './actions/get';
 export * from './actions/default';
 

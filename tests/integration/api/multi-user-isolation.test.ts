@@ -12,7 +12,6 @@ import {
 } from "../../helpers/schema-setup";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
-import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
@@ -87,15 +86,6 @@ describe("Multi-User Isolation", () => {
                 .rejects.toThrow();
         });
 
-        it("should refuse delete when user1 tries to delete user2 ledger", async () => {
-            (auth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-                user: { id: TEST_USER_ID }
-            });
-
-            // should throw error in new format
-            await expect(deleteLedgerAction(user2Ledger))
-                .rejects.toThrow();
-        });
     });
 
     describe("Sub-resource Isolation", () => {
