@@ -31,6 +31,12 @@ export async function processImages(
         const storage = getR2Storage();
 
         for (const img of images) {
+            // Skip if already an HTTP URL (R2 URL from retry)
+            if (img.data.startsWith("http://") || img.data.startsWith("https://")) {
+                imageUrls.push(img.data);
+                continue;
+            }
+
             try {
                 // Parse base64 data
                 const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
