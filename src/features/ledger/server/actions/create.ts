@@ -6,9 +6,20 @@ import { defaultLedger } from "@/config/default-ledger";
 import { withAuth } from "@/lib/auth-actions";
 import { createLedgerSchema } from "./schemas";
 import type { CreateLedgerInput } from "./schemas";
+import { eq, isNull, and } from "drizzle-orm";
+import { ConflictError } from "@/lib/errors";
 
 export const createLedgerAction = withAuth(async (userId: string, data: CreateLedgerInput): Promise<import("@/lib/db/schema").Ledger> => {
     const validated = createLedgerSchema.parse(data);
+
+    // Check if user already has a ledger
+    const existingLedger = await db.query.ledgers.findFirst({
+        where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
+    });
+
+    if (existingLedger) {
+        throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");
+    }
 
     let newLedger: import("@/lib/db/schema").Ledger;
 
