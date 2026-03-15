@@ -168,7 +168,9 @@ export async function loadImageForAI(url: string): Promise<string> {
 
           logger.info({ url, key, inferredMimeType: mimeType }, "R2 image loaded");
           const base64 = buffer.toString("base64");
-          return `data:${mimeType};base64,${base64}`;
+          const dataUrl = `data:${mimeType};base64,${base64}`;
+          logger.info({ dataUrlPreview: dataUrl.substring(0, 100), base64Preview: base64.substring(0, 50), base64Length: base64.length }, "R2 data URL generated");
+          return dataUrl;
         }
       }
 
