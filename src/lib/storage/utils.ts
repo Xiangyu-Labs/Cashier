@@ -158,7 +158,15 @@ export async function loadImageForAI(url: string): Promise<string> {
           // Download from R2
           const buffer = await storage.download(key);
           // Determine mime type from key using the shared helper
-          const mimeType = inferImageMimeType(key);
+          let mimeType = inferImageMimeType(key);
+
+          // Safety check for R2 path too
+          if (mimeType === "application/octet-stream" || mimeType === "binary/octet-stream") {
+            logger.warn({ url, key, mimeType }, "R2 path safety check triggered, defaulting to image/jpeg");
+            mimeType = "image/jpeg";
+          }
+
+          logger.debug({ url, key, inferredMimeType: mimeType }, "R2 image loaded");
           const base64 = buffer.toString("base64");
           return `data:${mimeType};base64,${base64}`;
         }
@@ -174,13 +182,24 @@ export async function loadImageForAI(url: string): Promise<string> {
       }
 
       let contentType = response.headers.get("content-type") || "image/jpeg";
+      logger.debug({ url, originalContentType: contentType }, "Image fetched from HTTP");
 
       // If the server returns a generic binary type, infer from URL extension
       if (contentType === "application/octet-stream" || contentType === "binary/octet-stream") {
-        contentType = inferImageMimeType(url);
+        const inferredType = inferImageMimeType(url);
+        logger.info({ url, originalContentType: contentType, inferredType }, "Inferring mime type from URL");
+        contentType = inferredType;
       }
 
       const base64 = buffer.toString("base64");
+
+      // Final safety check: ensure we never return application/octet-stream
+      if (contentType === "application/octet-stream" || contentType === "binary/octet-stream") {
+        logger.warn({ url, contentType }, "Final safety check triggered, defaulting to image/jpeg");
+        contentType = "image/jpeg";
+      }
+
+      logger.debug({ url, finalContentType: contentType, dataUrlPreview: `data:${contentType};base64,${base64.slice(0, 50)}...` }, "Returning data URL");
       return `data:${contentType};base64,${base64}`;
     } catch (error) {
       logger.error({ error, url }, "Failed to load image for AI");
