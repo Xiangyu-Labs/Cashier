@@ -4,6 +4,7 @@ import {
     loadImagesForAI,
     loadImagesForAIOrThrow,
     needsLoading,
+    inferImageMimeType,
 } from "@/lib/storage/utils";
 import * as r2Module from "@/lib/storage/r2";
 
@@ -105,6 +106,40 @@ describe("storage/utils", () => {
             const result = await loadImageForAI("https://bucket.r2.cloudflarestorage.com/key");
             expect(result).toMatch(/^data:image/);
         });
+
+        it("should infer mime type from URL when server returns application/octet-stream", async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers({ "content-type": "application/octet-stream" }),
+                arrayBuffer: async () => new ArrayBuffer(10),
+            });
+
+            const result = await loadImageForAI("https://bucket.r2.dev/image.png");
+            expect(result).toMatch(/^data:image\/png;/);
+        });
+
+        it("should infer mime type from URL when server returns binary/octet-stream", async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers({ "content-type": "binary/octet-stream" }),
+                arrayBuffer: async () => new ArrayBuffer(10),
+            });
+
+            const result = await loadImageForAI("https://bucket.r2.dev/photo.webp");
+            expect(result).toMatch(/^data:image\/webp;/);
+        });
+
+        it("should use server content-type when not a generic binary type", async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers({ "content-type": "image/png" }),
+                arrayBuffer: async () => new ArrayBuffer(10),
+            });
+
+            const result = await loadImageForAI("https://bucket.r2.dev/image.jpg");
+            // Should use server's content-type (image/png) not the one from extension
+            expect(result).toMatch(/^data:image\/png;/);
+        });
     });
 
     describe("loadImagesForAI", () => {
@@ -152,6 +187,58 @@ describe("storage/utils", () => {
             ];
 
             await expect(loadImagesForAIOrThrow(urls)).rejects.toThrow("Failed to load 1 image(s)");
+        });
+    });
+
+    describe("inferImageMimeType", () => {
+        it("should infer jpeg from jpg extension", () => {
+            expect(inferImageMimeType("https://example.com/image.jpg")).toBe("image/jpeg");
+            expect(inferImageMimeType("https://example.com/image.jpeg")).toBe("image/jpeg");
+        });
+
+        it("should infer png from png extension", () => {
+            expect(inferImageMimeType("https://example.com/image.png")).toBe("image/png");
+        });
+
+        it("should infer webp from webp extension", () => {
+            expect(inferImageMimeType("https://example.com/image.webp")).toBe("image/webp");
+        });
+
+        it("should infer gif from gif extension", () => {
+            expect(inferImageMimeType("https://example.com/image.gif")).toBe("image/gif");
+        });
+
+        it("should infer heic from heic extension", () => {
+            expect(inferImageMimeType("https://example.com/image.heic")).toBe("image/heic");
+        });
+
+        it("should infer heif from heif extension", () => {
+            expect(inferImageMimeType("https://example.com/image.heif")).toBe("image/heif");
+        });
+
+        it("should infer avif from avif extension", () => {
+            expect(inferImageMimeType("https://example.com/image.avif")).toBe("image/avif");
+        });
+
+        it("should default to jpeg for unknown extensions", () => {
+            expect(inferImageMimeType("https://example.com/image.bmp")).toBe("image/jpeg");
+            expect(inferImageMimeType("https://example.com/image.unknown")).toBe("image/jpeg");
+            expect(inferImageMimeType("https://example.com/image")).toBe("image/jpeg");
+        });
+
+        it("should handle URLs with query parameters", () => {
+            expect(inferImageMimeType("https://example.com/image.jpg?w=800&h=600")).toBe("image/jpeg");
+            expect(inferImageMimeType("https://example.com/image.png?token=abc123")).toBe("image/png");
+        });
+
+        it("should handle R2 URLs", () => {
+            expect(inferImageMimeType("https://bucket.r2.dev/ledger-123/doc-456/image.jpg")).toBe("image/jpeg");
+            expect(inferImageMimeType("https://bucket.r2.cloudflarestorage.com/key.png")).toBe("image/png");
+        });
+
+        it("should handle local file paths", () => {
+            expect(inferImageMimeType("/path/to/image.jpg")).toBe("image/jpeg");
+            expect(inferImageMimeType("./relative/path/image.png")).toBe("image/png");
         });
     });
 });

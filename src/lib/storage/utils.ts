@@ -157,15 +157,8 @@ export async function loadImageForAI(url: string): Promise<string> {
         if (key) {
           // Download from R2
           const buffer = await storage.download(key);
-          // Determine mime type from key
-          const ext = key.split(".").pop()?.toLowerCase();
-          const mimeType = ext === "png"
-            ? "image/png"
-            : ext === "webp"
-            ? "image/webp"
-            : ext === "gif"
-            ? "image/gif"
-            : "image/jpeg";
+          // Determine mime type from key using the shared helper
+          const mimeType = inferImageMimeType(key);
           const base64 = buffer.toString("base64");
           return `data:${mimeType};base64,${base64}`;
         }
@@ -180,7 +173,13 @@ export async function loadImageForAI(url: string): Promise<string> {
         throw new Error(`Response too large: ${buffer.length} bytes`);
       }
 
-      const contentType = response.headers.get("content-type") || "image/jpeg";
+      let contentType = response.headers.get("content-type") || "image/jpeg";
+
+      // If the server returns a generic binary type, infer from URL extension
+      if (contentType === "application/octet-stream" || contentType === "binary/octet-stream") {
+        contentType = inferImageMimeType(url);
+      }
+
       const base64 = buffer.toString("base64");
       return `data:${contentType};base64,${base64}`;
     } catch (error) {
@@ -267,4 +266,27 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
  */
 export function needsLoading(url: string): boolean {
   return isHttpUrl(url) && !isBase64Url(url);
+}
+
+/**
+ * Infer image MIME type from URL or file extension
+ * Used as a fallback when the server returns generic content types like application/octet-stream
+ */
+export function inferImageMimeType(url: string): string {
+  // Remove query parameters
+  const urlWithoutQuery = url.split('?')[0];
+  const ext = urlWithoutQuery.split('.').pop()?.toLowerCase();
+
+  const mimeTypes: Record<string, string> = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+    'gif': 'image/gif',
+    'heic': 'image/heic',
+    'heif': 'image/heif',
+    'avif': 'image/avif',
+  };
+
+  return mimeTypes[ext || ''] || 'image/jpeg';
 }

@@ -254,7 +254,10 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 const reader = new FileReader();
                 reader.onload = () => {
                     const base64 = reader.result as string;
-                    setImages((prev) => [...prev, { data: base64, mimeType: file.type }]);
+                    // Extract correct mime type from the data URL (browser determines this from file content)
+                    const mimeMatch = base64.match(/^data:([^;]+);base64,/);
+                    const mimeType = mimeMatch ? mimeMatch[1] : file.type;
+                    setImages((prev) => [...prev, { data: base64, mimeType }]);
                 };
                 reader.readAsDataURL(file);
             }
