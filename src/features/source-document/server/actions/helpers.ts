@@ -32,7 +32,9 @@ export async function processImages(
 
         for (const img of images) {
             // Skip if already an HTTP URL (R2 URL from retry)
+            logger.info({ dataType: typeof img.data, dataPreview: String(img.data).substring(0, 50), isHttp: img.data.startsWith("http://") || img.data.startsWith("https://") }, "Processing image in processImages");
             if (img.data.startsWith("http://") || img.data.startsWith("https://")) {
+                logger.info({ url: img.data.substring(0, 100) }, "SKIPPING HTTP URL - already uploaded");
                 imageUrls.push(img.data);
                 continue;
             }
