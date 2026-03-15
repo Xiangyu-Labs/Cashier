@@ -7,6 +7,16 @@
  */
 
 import { memoryStore } from "@/lib/memory-store";
+import { logger } from "@/lib/logger";
+
+// Warn about multi-instance deployment limitations
+if (process.env.NODE_ENV === "production") {
+    logger.warn(
+        "Using in-memory rate limit store. This implementation does not share state between server instances. " +
+        "If you are running multiple instances behind a load balancer, rate limits may not work correctly. " +
+        "Consider using Redis or a database-backed rate limiter for multi-instance deployments."
+    );
+}
 
 /**
  * Rate Limiting Utilities

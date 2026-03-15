@@ -38,21 +38,25 @@ describe("OTP Utility Functions", () => {
   });
 
   describe("hashOTP", () => {
-    it("should produce SHA-256 hash", () => {
+    it("should produce SHA-256 hash with embedded salt", () => {
       const otp = "123456";
       const hash = hashOTP(otp);
 
-      // SHA-256 produces 64 character hex string
-      expect(hash).toHaveLength(64);
-      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      // New format: hash:salt (64 hex chars + 1 colon + 32 hex salt = 97 chars)
+      expect(hash).toHaveLength(97);
+      expect(hash).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
     });
 
-    it("should produce consistent hash for same input", () => {
+    it("should produce different hashes for same input (due to random salt)", () => {
       const otp = "123456";
       const hash1 = hashOTP(otp);
       const hash2 = hashOTP(otp);
 
-      expect(hash1).toBe(hash2);
+      // Different salts means different hashes
+      expect(hash1).not.toBe(hash2);
+      // But both should be valid formats
+      expect(hash1).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
+      expect(hash2).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
     });
 
     it("should produce different hashes for different inputs", () => {

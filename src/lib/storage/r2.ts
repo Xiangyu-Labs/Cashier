@@ -91,10 +91,6 @@ export class R2StorageProvider implements StorageProvider {
       }
       const buffer = Buffer.concat(chunks);
 
-      // Debug: log content preview to diagnose issues
-      const preview = buffer.toString('utf-8', 0, Math.min(100, buffer.length));
-      logger.info({ key, size: buffer.length, contentPreview: preview, isProbablyText: preview.startsWith('http') || preview.startsWith('<') }, "File downloaded from R2");
-
       return buffer;
     } catch (error) {
       logger.error({ error, key }, "Failed to download file from R2");

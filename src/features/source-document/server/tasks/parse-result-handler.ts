@@ -42,7 +42,7 @@ export async function handleParseResult({
 
     // Handle anomaly - do NOT save entries, just update document status
     if (verificationStatus === 'anomaly' || verificationStatus === 'invalid') {
-        const reason = anomalyReason || (verificationStatus === 'invalid' ? '无效内容' : '解析结果存在分歧');
+        const reason = anomalyReason || (verificationStatus === 'invalid' ? 'Invalid content' : 'Parsing results diverged');
 
         await db.update(sourceDocuments)
             .set({

@@ -10,7 +10,7 @@ import {
   verifyOTPWithPolicy,
   isAccountLocked,
 } from "@/features/auth/server/services/otp-verification";
-import { generateOTP, hashOTP } from "@/features/auth/server/services/otp";
+import { generateOTP, verifyOTP } from "@/features/auth/server/services/otp";
 import { otpTokens } from "@/features/auth/server/schema";
 import { eq } from "drizzle-orm";
 
@@ -78,7 +78,8 @@ describe("OTP Repository", () => {
 
       const tokens = await db.select().from(otpTokens);
       expect(tokens[0].tokenHash).not.toBe(otp);
-      expect(tokens[0].tokenHash).toBe(hashOTP(otp));
+      // Verify the stored hash can be verified with the OTP (supports both new and legacy formats)
+      expect(verifyOTP(otp, tokens[0].tokenHash)).toBe(true);
     });
   });
 

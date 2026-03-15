@@ -137,7 +137,7 @@ function checkStage1Results(
         }, "Stage 1: Document incomplete");
         return {
             ledgerEntries: [],
-            anomalyReason: stage1Result.incompleteReason || "内容不完整",
+            anomalyReason: stage1Result.incompleteReason || "Content incomplete",
             verificationStatus: 'anomaly',
             title: stage1Result.title
         };
@@ -152,7 +152,7 @@ function checkStage1Results(
         logger.info({ docId, currencies }, "Stage 1: Unknown currency detected");
         return {
             ledgerEntries: [],
-            anomalyReason: "无法识别货币类型",
+            anomalyReason: "Unable to recognize currency type",
             verificationStatus: 'anomaly'
         };
     }
@@ -182,7 +182,7 @@ async function runStage1(
     } catch (error) {
         if (error instanceof Error && error.message.includes('ARBITRATION_FAILED')) {
             logger.info({ docId: ctx.docId, error: error.message }, "Stage 1: Arbitration failed");
-            throw new Error('STAGE1_ANOMALY:预分析结果存在分歧');
+            throw new Error('STAGE1_ANOMALY:Pre-analysis results diverged');
         }
         throw error;
     }
@@ -234,7 +234,7 @@ async function runStage1_5(
             docId: ctx.docId,
             reason: validationResult.rejection_reason
         }, "Stage 1.5: Validation rejected");
-        throw new Error(`STAGE1_5_ANOMALY:${validationResult.rejection_reason || "预分析结果不合理"}`);
+        throw new Error(`STAGE1_5_ANOMALY:${validationResult.rejection_reason || "Pre-analysis results invalid"}`);
     }
 
     return validationResult;
@@ -300,7 +300,7 @@ async function runStage2(
             logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed");
             return {
                 ledgerEntries: [],
-                anomalyReason: "解析结果存在分歧",
+                anomalyReason: "Parsing results diverged",
                 verificationStatus: 'anomaly'
             };
         }

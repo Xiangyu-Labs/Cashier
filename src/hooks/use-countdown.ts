@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore, useRef, useEffect } from "react";
+import { TIME } from "@/lib/constants";
 
 interface UseCountdownOptions {
   targetTime: number | null; // Unix timestamp in seconds
@@ -26,7 +27,7 @@ const createTimerStore = () => {
   const subscribe = (listener: () => void) => {
     listeners.add(listener);
     if (!intervalId) {
-      intervalId = setInterval(tick, 1000);
+      intervalId = setInterval(tick, TIME.SECOND);
     }
     return () => {
       listeners.delete(listener);

@@ -77,7 +77,7 @@ export async function buildEntriesForInsert({
                 sourceDocumentId,
                 amount: entry.amount.toFixed(2),
                 currency: entryCurrency,
-                itemName: entry.itemName || "未分类",
+                itemName: entry.itemName || "Uncategorized",
                 description: entry.notes || null,
                 entryDate: fallbackDate,
                 convertedAmount,
@@ -99,7 +99,7 @@ export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult 
     const validEntries = entries.filter((entry) => entry.amount > 0);
 
     if (validEntries.length === 0) {
-        return { isValid: false, reason: "无有效金额的条目" };
+        return { isValid: false, reason: "No entries with valid amount" };
     }
 
     const unknownCurrencyEntries = validEntries.filter(
@@ -107,7 +107,7 @@ export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult 
     );
 
     if (unknownCurrencyEntries.length > 0) {
-        return { isValid: false, reason: "无法识别货币类型" };
+        return { isValid: false, reason: "Unable to recognize currency type" };
     }
 
     return { isValid: true };

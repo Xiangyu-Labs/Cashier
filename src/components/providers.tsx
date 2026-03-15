@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { CACHE_VERSION } from "@/lib/cache-version";
+import { TIME } from "@/lib/constants";
 
 // Only persist specific query types (not real-time data)
 function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
@@ -62,7 +63,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           client={queryClient}
           persistOptions={{
             persister,
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            maxAge: TIME.DAY, // 24 hours
             buster: String(CACHE_VERSION),
             dehydrateOptions: {
               shouldDehydrateQuery: shouldPersistQuery,

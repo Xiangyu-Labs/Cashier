@@ -13,6 +13,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { authConfig } from "./auth.config";
 import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import { findOTPRecord, verifyOTPWithPolicy } from "@/features/auth/server/services/otp-verification";
+import { TIME_SECONDS } from "@/lib/constants";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -161,8 +162,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     session: {
         strategy: "jwt",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-        updateAge: 24 * 60 * 60, // Refresh daily
+        maxAge: TIME_SECONDS.MONTH, // 30 days
+        updateAge: TIME_SECONDS.DAY, // Refresh daily
     },
     pages: {
         signIn: "/login",

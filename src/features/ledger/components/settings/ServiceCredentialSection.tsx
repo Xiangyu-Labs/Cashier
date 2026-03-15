@@ -17,6 +17,7 @@ import {
 
 import { useTranslations } from "next-intl";
 import { copyToClipboard } from "@/lib/utils";
+import { UI } from "@/lib/constants";
 
 interface ServiceCredentialSectionProps {
     credentials: ServiceCredential[];
@@ -35,7 +36,7 @@ export function ServiceCredentialSection({ credentials, onCreateCredential, onDe
 
     useEffect(() => {
         if (hasCopied) {
-            const timer = setTimeout(() => setHasCopied(false), 2000);
+            const timer = setTimeout(() => setHasCopied(false), UI.COPY_FEEDBACK_DURATION_MS);
             return () => clearTimeout(timer);
         }
     }, [hasCopied]);

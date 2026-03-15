@@ -8,6 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
+import { CALENDAR } from '@/lib/constants';
 import { getCalendarHeatmapData, getCalendarDayDetail, getCalendarHeatmapForRange } from '../../server/actions/heatmap';
 import type {
     CalendarViewType,
@@ -16,7 +17,7 @@ import type {
     CalendarDayDetailResponse,
 } from '../../types';
 
-const CALENDAR_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const CALENDAR_STALE_TIME = CALENDAR.STALE_TIME_MS;
 
 export function useCalendarHeatmap(
     ledgerId: string,

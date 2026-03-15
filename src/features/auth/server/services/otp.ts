@@ -26,22 +26,33 @@ export function generateOTP(): string {
 }
 
 /**
- * Hash an OTP using SHA-256
+ * Hash an OTP using SHA-256 with salt
+ * Format: "hash:salt" to store both hash and salt together
  * @param otp - The plain text OTP to hash
- * @returns The hexadecimal hash string
+ * @returns The hexadecimal hash string with embedded salt (format: "hash:salt")
  */
 export function hashOTP(otp: string): string {
-  return crypto.createHash("sha256").update(otp).digest("hex");
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.createHash("sha256").update(otp + salt).digest("hex");
+  return `${hash}:${salt}`;
 }
 
 /**
  * Verify an OTP against its hash
  * @param otp - The plain text OTP to verify
- * @param hash - The stored hash to compare against
+ * @param storedHash - The stored hash to compare against (format: "hash:salt")
  * @returns True if the OTP matches the hash
  */
-export function verifyOTP(otp: string, hash: string): boolean {
-  return hashOTP(otp) === hash;
+export function verifyOTP(otp: string, storedHash: string): boolean {
+  // Parse the stored hash: "hash:salt"
+  const [hash, salt] = storedHash.split(":");
+
+  if (!hash || !salt) {
+    return false;
+  }
+
+  const computed = crypto.createHash("sha256").update(otp + salt).digest("hex");
+  return computed === hash;
 }
 
 /**

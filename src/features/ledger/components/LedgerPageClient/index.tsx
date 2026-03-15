@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue";
 import { useTranslations } from "next-intl";
+import { LEDGER } from "@/lib/constants";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
@@ -81,7 +82,7 @@ interface LedgerPageClientProps {
   initialStatsDate?: Date;
 }
 
-const STALE_TIME = 10 * 60 * 1000;
+const STALE_TIME = LEDGER.STALE_TIME_MS;
 const INPUT_PREFETCH_DELAY = 2000; // 2秒后预加载记一笔弹窗数据
 
 export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: LedgerPageClientProps) {
