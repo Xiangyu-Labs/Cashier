@@ -166,7 +166,7 @@ export async function loadImageForAI(url: string): Promise<string> {
             mimeType = "image/jpeg";
           }
 
-          logger.debug({ url, key, inferredMimeType: mimeType }, "R2 image loaded");
+          logger.info({ url, key, inferredMimeType: mimeType }, "R2 image loaded");
           const base64 = buffer.toString("base64");
           return `data:${mimeType};base64,${base64}`;
         }
@@ -182,7 +182,7 @@ export async function loadImageForAI(url: string): Promise<string> {
       }
 
       let contentType = response.headers.get("content-type") || "image/jpeg";
-      logger.debug({ url, originalContentType: contentType }, "Image fetched from HTTP");
+      logger.info({ url, originalContentType: contentType }, "Image fetched from HTTP");
 
       // If the server returns a generic binary type, infer from URL extension
       if (contentType === "application/octet-stream" || contentType === "binary/octet-stream") {
@@ -199,7 +199,7 @@ export async function loadImageForAI(url: string): Promise<string> {
         contentType = "image/jpeg";
       }
 
-      logger.debug({ url, finalContentType: contentType, dataUrlPreview: `data:${contentType};base64,${base64.slice(0, 50)}...` }, "Returning data URL");
+      logger.info({ url, finalContentType: contentType, dataUrlPreview: `data:${contentType};base64,${base64.slice(0, 50)}...` }, "Returning data URL");
       return `data:${contentType};base64,${base64}`;
     } catch (error) {
       logger.error({ error, url }, "Failed to load image for AI");
