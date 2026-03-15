@@ -167,10 +167,16 @@ export async function loadImageForAI(url: string): Promise<string> {
           }
 
           logger.info({ url, key, inferredMimeType: mimeType }, "R2 image loaded");
+
+          // Check if the downloaded content looks like a URL (corrupted data)
+          const contentPreview = buffer.toString('utf-8', 0, Math.min(100, buffer.length));
+          if (contentPreview.startsWith('http://') || contentPreview.startsWith('https://')) {
+            logger.error({ url, key, contentPreview: contentPreview.substring(0, 50) }, "R2 file contains URL instead of image data - file is corrupted");
+            throw new Error("Image file is corrupted (contains URL instead of image data). Please delete and re-upload the image.");
+          }
+
           const base64 = buffer.toString("base64");
-          const dataUrl = `data:${mimeType};base64,${base64}`;
-          logger.info({ dataUrlPreview: dataUrl.substring(0, 100), base64Preview: base64.substring(0, 50), base64Length: base64.length }, "R2 data URL generated");
-          return dataUrl;
+          return `data:${mimeType};base64,${base64}`;
         }
       }
 

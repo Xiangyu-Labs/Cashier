@@ -110,17 +110,9 @@ export async function executeStage0(
 
     for (const result of loadedResults) {
         if (result.dataUrl) {
-            // Log the data URL to debug mime type issues
-            logger.info({
-                dataUrlPreview: result.dataUrl.substring(0, 100),
-                dataUrlLength: result.dataUrl.length,
-                mimeMatch: result.dataUrl.match(/^data:([^;]+);/)?.[1] || 'no match'
-            }, "Adding image to AI content");
             content.push({ type: "image_url", image_url: { url: result.dataUrl } });
         }
     }
-
-    logger.info({ contentTypes: content.map(c => c.type === 'image_url' ? `image: ${c.image_url.url.substring(0, 50)}...` : 'text') }, "AI content prepared");
 
     const response = await ai.generate({
         prompt,
