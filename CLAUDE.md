@@ -199,33 +199,55 @@ const {
 Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
 
 ### Environment Variables
-Required in `.env.local`:
+
+Configuration is organized into three tiers:
+
+#### 1. System Configuration (`.env.local`)
+Sensitive and startup-required settings. **Never expose to frontend.**
 
 **Database:**
 - `DATABASE_URL` - SQLite path (e.g., `file:./data/sqlite.db`)
 
-**OpenAI Configuration:**
+**OpenAI:**
 - `OPENAI_API_KEY` - Your OpenAI API Key
-- `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies or compatible APIs
-- `AI_MODEL_TEXT` - Text-only model for all business logic (e.g., `deepseek-chat`, no vision needed when `AI_MODEL_VISION` is set)
-- `AI_MODEL_VISION` - (Optional) Vision model for image description, called once per document (e.g., `gpt-4o`, needs vision). If not set, `AI_MODEL_TEXT` must support vision.
-- `AI_MAX_RETRIES` - (Optional) Max retry attempts, default 3
-- `AI_RETRY_DELAY_MS` - (Optional) Retry delay in ms, default 1000
+- `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies
+- `AI_MODEL_TEXT` - Text model for business logic (default: `gpt-4o-mini`)
+- `AI_MODEL_VISION` - Vision model for image description (default: `gpt-4o`)
+- `AI_MAX_RETRIES` - Max retry attempts (default: 3)
+- `AI_RETRY_DELAY_MS` - Retry delay in ms (default: 1000)
 
 **Authentication:**
 - `AUTH_SECRET` - Secret key for signing cookies and tokens
-- `AUTH_URL` - Base URL for auth callbacks (e.g., `http://localhost:3000`)
 - `AUTH_RESEND_KEY` - Resend API key for OTP emails
 - `AUTH_EMAIL_FROM` - Email address for sending OTPs
-- `AUTH_RATE_LIMIT_MAX` - (Optional) Max login attempts, default 5
-- `AUTH_RATE_LIMIT_WINDOW` - (Optional) Rate limit window in seconds, default 60
-- `DISABLE_REGISTRATION` - (Optional) Set to 'true' to disable new registrations
+- `DISABLE_REGISTRATION` - Set to 'true' to disable new registrations
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` - (Optional) SSO configuration
 
-**App Configuration:**
-- `NEXT_PUBLIC_APP_URL` - Public app URL for frontend
-- `APP_DOMAIN` - (Optional) Application domain
-- `LOG_LEVEL` - (Optional) Logging level (debug, info, warn, error), default info
-- `MAX_TASK_WORKER` - (Optional) Maximum concurrent background tasks, default 10
+**Storage & Network:**
+- `LOCAL_STORAGE_PATH` - Local file storage path (default: `./data/uploads`)
+- `TRUSTED_PROXY` - (Optional) Trusted proxy for IP extraction
+
+#### 2. Runtime Configuration (`.env.local` → Future: Admin Panel)
+Business logic settings. Currently in `.env`, future migration to admin panel.
+
+**OTP Settings:**
+- `OTP_EXPIRES_SECONDS` - OTP expiration time (default: 300)
+- `OTP_LOCKOUT_MINUTES` - Account lockout duration (default: 15)
+- `OTP_MAX_ATTEMPTS` - Max verification attempts (default: 5)
+- `OTP_RESEND_COOLDOWN_SECONDS` - Resend cooldown (default: 60)
+- `AUTH_RATE_LIMIT_MAX` - Max OTP sends per window (default: 10)
+- `AUTH_RATE_LIMIT_WINDOW` - Rate limit window in seconds (default: 900)
+
+**System Settings:**
+- `LOG_LEVEL` - Logging level (default: `info`)
+- `MAX_TASK_WORKER` - Max concurrent background tasks (default: 10)
+
+#### 3. Frontend Configuration (Build-time)
+Exposed to browser via `NEXT_PUBLIC_` prefix. **Requires rebuild to change.**
+
+- `NEXT_PUBLIC_APP_URL` - Public app URL
+- `NEXT_PUBLIC_OIDC_ENABLED` - Show SSO button (default: `false`)
+- `NEXT_PUBLIC_OIDC_BUTTON_NAME` - SSO button text (default: `SSO`)
 
 ## Workflow
 

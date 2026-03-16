@@ -2,110 +2,96 @@
 
 Complete reference for all environment variables used in Cashier.
 
-> **Source of Truth**: This document is auto-generated from `.env.example`.
-> **Last Updated**: 2026-03-05
+## Configuration Tiers
 
-## Quick Reference
+Cashier organizes configuration into three tiers:
 
-| Category | Variables | Required |
-|----------|-----------|----------|
-| [Database](#database) | 1 | 1 |
-| [OpenAI Configuration](#openai-configuration) | 6 | 1 |
-| [Authentication](#authentication) | 7 | 4 |
-| [App Configuration](#app-configuration) | 4 | 1 |
+| Tier | Storage | Purpose | Change Method |
+|------|---------|---------|---------------|
+| **System** | `.env.local` | Sensitive keys, API credentials, database connections | Edit file → Restart |
+| **Runtime** | `.env.local` (now) → Database (future) | Business logic settings, thresholds, feature flags | Edit file → Restart (now) / Admin panel (future) |
+| **Frontend** | `.env.local` | Build-time constants exposed to browser | Edit file → Rebuild |
 
 ---
 
-## Database
+## System Configuration
 
-### `DATABASE_URL`
+### Database
+
+#### `DATABASE_URL`
 
 | | Value |
 |---|---|
 | **Required** | Yes |
 | **Default** | `file:./data/sqlite.db` |
-| **Description** | SQLite database file path (relative to project root) |
+| **Description** | SQLite database file path |
 | **Example** | `file:./data/sqlite.db`, `file:/absolute/path/to/db.sqlite` |
 
-The database file will be created automatically if it doesn't exist. Ensure the parent directory is writable.
+The database file will be created automatically if it doesn't exist.
 
 ---
 
-## OpenAI Configuration
+### OpenAI Configuration
 
-### `OPENAI_API_KEY`
+#### `OPENAI_API_KEY`
 
 | | Value |
 |---|---|
 | **Required** | Yes |
 | **Default** | None |
 | **Description** | Your OpenAI API key for AI-powered receipt parsing |
-| **Example** | `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
 
 Get your API key from [OpenAI Dashboard](https://platform.openai.com/api-keys).
 
-### `OPENAI_BASE_URL`
+#### `OPENAI_BASE_URL`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `https://api.openai.com/v1` |
 | **Description** | Custom base URL for OpenAI-compatible APIs |
-| **Example** | `https://api.groq.com/openai/v1`, `https://api.deepseek.com` |
 
-Use this for proxy servers or compatible APIs like Groq, DeepSeek, or Azure OpenAI.
+Use this for proxy servers or compatible APIs like Groq, DeepSeek.
 
-### `AI_MODEL_TEXT`
+#### `AI_MODEL_TEXT`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `gpt-4o-mini` |
-| **Description** | Text-only model for business logic (parsing, arbitration, categorization) |
-| **Example** | `gpt-4o-mini`, `deepseek-chat`, `gpt-4` |
+| **Description** | Text-only model for business logic |
 
-This model handles all text-based AI operations. When `AI_MODEL_VISION` is set, this model doesn't need vision support, allowing use of cheaper text-only models.
-
-### `AI_MODEL_VISION`
+#### `AI_MODEL_VISION`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `gpt-4o` |
-| **Description** | Vision-capable model for image description/transcription |
-| **Example** | `gpt-4o`, `gpt-4-vision-preview` |
+| **Description** | Vision-capable model for image description |
 
-Called once per document to extract text from images. When set, downstream stages use `AI_MODEL_TEXT` instead of sending images directly, reducing costs.
+Called once per document. When set, downstream stages use `AI_MODEL_TEXT` instead.
 
-> **Note**: If not set, `AI_MODEL_TEXT` must support vision (fallback to single-model behavior).
-
-### `AI_MAX_RETRIES`
+#### `AI_MAX_RETRIES`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `3` |
 | **Description** | Maximum retry attempts for AI API calls |
-| **Example** | `3`, `5` |
 
-Number of retries before giving up on an AI request.
-
-### `AI_RETRY_DELAY_MS`
+#### `AI_RETRY_DELAY_MS`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `1000` |
 | **Description** | Delay between retry attempts in milliseconds |
-| **Example** | `1000` (1 second), `2000` (2 seconds) |
 
 ---
 
-## Authentication
+### Authentication - Core
 
-Cashier uses Auth.js (NextAuth) v5 with OTP-based email authentication.
-
-### `AUTH_SECRET`
+#### `AUTH_SECRET`
 
 | | Value |
 |---|---|
@@ -114,73 +100,98 @@ Cashier uses Auth.js (NextAuth) v5 with OTP-based email authentication.
 | **Description** | Secret key for signing cookies and tokens |
 | **Generate** | `openssl rand -base64 32` |
 
-**Critical**: Must be set in production. Generate a secure random string.
+**Critical**: Must be set in production.
 
-### `AUTH_URL`
-
-| | Value |
-|---|---|
-| **Required** | Yes |
-| **Default** | `http://localhost:3000` |
-| **Description** | Base URL for auth callbacks |
-| **Example** | `http://localhost:3000`, `https://cashier.example.com` |
-
-Must match your application's public URL.
-
-### `AUTH_RESEND_KEY`
+#### `AUTH_RESEND_KEY`
 
 | | Value |
 |---|---|
 | **Required** | Yes (for email OTP) |
 | **Default** | None |
 | **Description** | Resend API key for sending OTP emails |
-| **Example** | `re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
 
 Get your API key from [Resend Dashboard](https://resend.com/api-keys).
 
-### `AUTH_EMAIL_FROM`
+#### `AUTH_EMAIL_FROM`
 
 | | Value |
 |---|---|
-| **Required** | Yes (for email OTP) |
+| **Required** | No |
 | **Default** | `noreply@example.com` |
 | **Description** | Email address for sending OTPs |
-| **Example** | `auth@yourdomain.com`, `noreply@cashier.app` |
 
 Must be a verified domain in your Resend account.
 
-### `AUTH_RATE_LIMIT_MAX`
-
-| | Value |
-|---|---|
-| **Required** | No |
-| **Default** | `5` |
-| **Description** | Maximum login attempts per window |
-| **Example** | `5`, `10` |
-
-### `AUTH_RATE_LIMIT_WINDOW`
-
-| | Value |
-|---|---|
-| **Required** | No |
-| **Default** | `60` |
-| **Description** | Rate limit window in seconds |
-| **Example** | `60` (1 minute), `300` (5 minutes) |
-
-### `DISABLE_REGISTRATION`
+#### `DISABLE_REGISTRATION`
 
 | | Value |
 |---|---|
 | **Required** | No |
 | **Default** | `false` |
 | **Description** | Set to `true` to disable new user registrations |
-| **Example** | `true`, `false` |
-
-Useful for private instances or maintenance mode.
 
 ---
 
-## App Configuration
+### Authentication - OIDC/SSO (Optional)
+
+Leave all three empty to disable SSO.
+
+| Variable | Description |
+|----------|-------------|
+| `OIDC_ISSUER` | OIDC provider URL (e.g., `https://auth.yourdomain.com`) |
+| `OIDC_CLIENT_ID` | Client ID from your OIDC provider |
+| `OIDC_CLIENT_SECRET` | Client secret from your OIDC provider |
+
+---
+
+### Storage & Network
+
+#### `LOCAL_STORAGE_PATH`
+
+| | Value |
+|---|---|
+| **Required** | No |
+| **Default** | `./data/uploads` |
+| **Description** | Local file system path for storing uploaded images |
+
+#### `TRUSTED_PROXY`
+
+| | Value |
+|---|---|
+| **Required** | No |
+| **Default** | None |
+| **Description** | Trusted proxy IP/range for extracting real client IP |
+| **Example** | `10.0.0.0/8`, `172.16.0.0/12` |
+
+---
+
+## Runtime Configuration
+
+These settings control business logic and will migrate to an admin panel in future phases.
+
+### OTP Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OTP_EXPIRES_SECONDS` | `300` | OTP expiration time (5 minutes) |
+| `OTP_LOCKOUT_MINUTES` | `15` | Account lockout after max failed attempts |
+| `OTP_MAX_ATTEMPTS` | `5` | Maximum OTP verification attempts |
+| `OTP_RESEND_COOLDOWN_SECONDS` | `60` | Cooldown between resend requests |
+| `AUTH_RATE_LIMIT_MAX` | `10` | Max OTP sends per email per window |
+| `AUTH_RATE_LIMIT_WINDOW` | `900` | Rate limit window in seconds (15 minutes) |
+
+### System Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Logging verbosity: `debug`, `info`, `warn`, `error` |
+| `MAX_TASK_WORKER` | `10` | Maximum concurrent background task workers |
+
+---
+
+## Frontend Configuration
+
+These variables are embedded in the JavaScript bundle at **build time**. Changing them requires a rebuild.
 
 ### `NEXT_PUBLIC_APP_URL`
 
@@ -188,123 +199,90 @@ Useful for private instances or maintenance mode.
 |---|---|
 | **Required** | Yes |
 | **Default** | `http://localhost:3000` |
-| **Description** | Public application URL (accessible from browser) |
-| **Example** | `http://localhost:3000`, `https://cashier.example.com` |
+| **Description** | Public application URL accessible from browser |
 
-Used for generating absolute URLs in emails and meta tags. Must include protocol (`http://` or `https://`).
-
-### `LOG_LEVEL`
+### `NEXT_PUBLIC_OIDC_ENABLED`
 
 | | Value |
 |---|---|
 | **Required** | No |
-| **Default** | `info` |
-| **Description** | Logging verbosity level |
-| **Options** | `debug`, `info`, `warn`, `error` |
+| **Default** | `false` |
+| **Description** | Set to `true` to show SSO button in login UI |
 
-| Level | Description |
-|-------|-------------|
-| `debug` | All messages including detailed debugging info |
-| `info` | General operational messages (default) |
-| `warn` | Warning messages and above |
-| `error` | Error messages only |
-
-### `APP_DOMAIN`
+### `NEXT_PUBLIC_OIDC_BUTTON_NAME`
 
 | | Value |
 |---|---|
 | **Required** | No |
-| **Default** | `localhost` |
-| **Description** | Application domain (without protocol) |
-| **Example** | `localhost`, `cashier.example.com` |
-
-Used for cookie domain settings and CORS configuration.
-
-### `MAX_TASK_WORKER`
-
-| | Value |
-|---|---|
-| **Required** | No |
-| **Default** | `10` |
-| **Description** | Maximum concurrent background task workers |
-| **Example** | `10`, `5`, `0` (unlimited) |
-
-Controls parallelism for AI parsing and other background tasks. Lower values reduce memory usage but may slow down batch processing.
+| **Default** | `SSO` |
+| **Description** | Text displayed on the SSO login button |
 
 ---
 
-## Environment-Specific Examples
+## Quick Examples
 
 ### Development
 
 ```bash
-# .env.local
+# System
 DATABASE_URL=file:./data/sqlite.db
 OPENAI_API_KEY=sk-...
 AUTH_SECRET=$(openssl rand -base64 32)
-AUTH_URL=http://localhost:3000
 AUTH_RESEND_KEY=re_...
-AUTH_EMAIL_FROM=noreply@example.com
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Runtime
 LOG_LEVEL=debug
+
+# Frontend
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ### Production
 
 ```bash
-# .env.production
+# System
 DATABASE_URL=file:./data/sqlite.db
 OPENAI_API_KEY=sk-...
-OPENAI_BASE_URL=https://api.openai.com/v1
-AI_MODEL_TEXT=gpt-4o-mini
-AI_MODEL_VISION=gpt-4o
-AI_MAX_RETRIES=3
-AI_RETRY_DELAY_MS=1000
 AUTH_SECRET=$(openssl rand -base64 32)
-AUTH_URL=https://cashier.example.com
 AUTH_RESEND_KEY=re_...
 AUTH_EMAIL_FROM=auth@example.com
-AUTH_RATE_LIMIT_MAX=5
-AUTH_RATE_LIMIT_WINDOW=60
-DISABLE_REGISTRATION=false
-NEXT_PUBLIC_APP_URL=https://cashier.example.com
-LOG_LEVEL=warn
-APP_DOMAIN=cashier.example.com
-MAX_TASK_WORKER=10
-```
 
-### Private Instance (No Registration)
-
-```bash
-DISABLE_REGISTRATION=true
+# Runtime
+OTP_EXPIRES_SECONDS=300
 AUTH_RATE_LIMIT_MAX=10
+DISABLE_REGISTRATION=false
+LOG_LEVEL=warn
+MAX_TASK_WORKER=10
+
+# Frontend
+NEXT_PUBLIC_APP_URL=https://cashier.example.com
 ```
 
 ---
 
 ## Security Best Practices
 
-1. **Never commit `.env.local` or `.env.production`** - They are in `.gitignore` by default
+1. **Never commit `.env.local`** - It's in `.gitignore` by default
 2. **Rotate `AUTH_SECRET`** - Change quarterly or after security incidents
 3. **Use separate API keys** - Different keys for development and production
 4. **Restrict Resend domains** - Only verify domains you control
-5. **Monitor API usage** - Set up alerts for unexpected OpenAI usage
+5. **System configs are server-only** - Never prefix sensitive variables with `NEXT_PUBLIC_`
 
 ## Troubleshooting
 
 ### "Missing required environment variable"
 
-Check that all [required variables](#quick-reference) are set in your `.env.local` or `.env.production` file.
+Check that all required System Configuration variables are set.
 
 ### "Invalid OpenAI API key"
 
-- Verify the key is valid at [OpenAI Dashboard](https://platform.openai.com/api-keys)
-- Check the key has available credits
+- Verify the key at [OpenAI Dashboard](https://platform.openai.com/api-keys)
+- Check available credits
 - Ensure `OPENAI_BASE_URL` is correct if using a proxy
 
 ### "Auth.js error: Missing secret"
 
-Generate and set `AUTH_SECRET`:
+Generate `AUTH_SECRET`:
 ```bash
 openssl rand -base64 32
 ```
@@ -313,4 +291,3 @@ openssl rand -base64 32
 
 - Verify `AUTH_RESEND_KEY` is valid
 - Check `AUTH_EMAIL_FROM` domain is verified in Resend
-- Ensure `AUTH_URL` matches your actual domain

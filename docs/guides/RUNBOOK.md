@@ -30,28 +30,45 @@ docker compose up -d --build
 
 ### Environment Variables
 
-<!-- AUTO-GENERATED: Synced from .env.example -->
+Configuration is organized into three tiers:
+
+#### System Configuration (Required)
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `DATABASE_URL` | No | SQLite file path | `file:./data/sqlite.db` |
 | `OPENAI_API_KEY` | Yes | OpenAI API key | `sk-...` |
 | `OPENAI_BASE_URL` | No | Custom API base URL | `https://api.openai.com/v1` |
-| `AI_MODEL_TEXT` | No | Text model for business logic | `gpt-4o-mini` |
-| `AI_MODEL_VISION` | No | Vision model for image parsing | `gpt-4o` |
-| `AI_MAX_RETRIES` | No | AI retry attempts | `3` |
-| `AI_RETRY_DELAY_MS` | No | Retry delay in ms | `1000` |
 | `AUTH_SECRET` | Yes | Secret for signing tokens | `openssl rand -base64 32` |
-| `AUTH_URL` | Yes | Base URL for auth callbacks | `https://cashier.example.com` |
 | `AUTH_RESEND_KEY` | Yes | Resend API key for email OTP | `re_...` |
-| `AUTH_EMAIL_FROM` | Yes | Email sender address | `noreply@example.com` |
-| `AUTH_RATE_LIMIT_MAX` | No | Max login attempts | `5` |
-| `AUTH_RATE_LIMIT_WINDOW` | No | Rate limit window (seconds) | `60` |
-| `DISABLE_REGISTRATION` | No | Disable new registrations | `false` |
+| `AUTH_EMAIL_FROM` | No | Email sender address | `noreply@example.com` |
+| `LOCAL_STORAGE_PATH` | No | File storage path | `./data/uploads` |
+| `TRUSTED_PROXY` | No | Trusted proxy for IP extraction | `10.0.0.0/8` |
+
+#### Runtime Configuration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AI_MODEL_TEXT` | `gpt-4o-mini` | Text model for business logic |
+| `AI_MODEL_VISION` | `gpt-4o` | Vision model for images |
+| `AI_MAX_RETRIES` | `3` | AI retry attempts |
+| `AI_RETRY_DELAY_MS` | `1000` | Retry delay in ms |
+| `OTP_EXPIRES_SECONDS` | `300` | OTP expiration time |
+| `OTP_LOCKOUT_MINUTES` | `15` | Account lockout duration |
+| `OTP_MAX_ATTEMPTS` | `5` | Max verification attempts |
+| `OTP_RESEND_COOLDOWN_SECONDS` | `60` | Resend cooldown |
+| `AUTH_RATE_LIMIT_MAX` | `10` | Max OTP sends per window |
+| `AUTH_RATE_LIMIT_WINDOW` | `900` | Rate limit window (seconds) |
+| `DISABLE_REGISTRATION` | `false` | Disable new registrations |
+| `LOG_LEVEL` | `info` | Logging verbosity |
+| `MAX_TASK_WORKER` | `10` | Max concurrent tasks |
+
+#### Frontend Configuration (Build-time)
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
 | `NEXT_PUBLIC_APP_URL` | Yes | Public app URL | `https://cashier.example.com` |
-| `LOG_LEVEL` | No | Logging verbosity | `info` |
-| `APP_DOMAIN` | No | Application domain | `cashier.example.com` |
-| `MAX_TASK_WORKER` | No | Max concurrent background tasks | `10` |
-<!-- END AUTO-GENERATED -->
+| `NEXT_PUBLIC_OIDC_ENABLED` | No | Show SSO button | `false` |
+| `NEXT_PUBLIC_OIDC_BUTTON_NAME` | No | SSO button text | `SSO` |
+
+See [ENV.md](./ENV.md) for complete documentation.
 
 ### Data Persistence
 
