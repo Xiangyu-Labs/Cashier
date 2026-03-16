@@ -91,10 +91,28 @@ export function useTaskQueueMutations(ledgerId: string) {
         mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
         successMessage: tEntries("retrySubmitted"),
         errorMessage: tCommon("error"),
-        // Note: No optimistic update for batchRetry to avoid race conditions.
-        // The server operation involves: deleting old task_runs, updating source_documents,
-        // and creating new tasks. Optimistic updates can cause duplicate items
-        // when invalidateQueries fetches new data before the optimistic data is cleared.
+        // Optimistic update: mark items as queued immediately
+        onOptimisticUpdate: (queryClient, ids) => {
+            type QueueItem = TaskQueueResult['items'][number];
+            const snapshots = queryClient.getQueriesData<TaskQueueResult>({
+                queryKey: taskQueueKey,
+            });
+
+            queryClient.setQueriesData<TaskQueueResult>(
+                { queryKey: taskQueueKey },
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.map((item) =>
+                            ids.includes(item.id) ? { ...item, status: "queued" as const } : item
+                        ),
+                    };
+                }
+            );
+
+            return { snapshots };
+        },
     });
 
     const cancelTask = useLedgerMutation<void, string>(ledgerId, {
