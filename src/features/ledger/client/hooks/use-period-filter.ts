@@ -15,7 +15,6 @@ interface UsePeriodFilterParams {
     pathname: string;
     searchParams: URLSearchParams;
     initialPeriod: PeriodParams;
-    monthStartDay?: number;
 }
 
 interface UsePeriodFilterReturn {
@@ -27,16 +26,12 @@ interface UsePeriodFilterReturn {
     handleFiltersChange: (newFilters: EntryFilters) => void;
 }
 
-export function usePeriodFilter({ pathname, searchParams, initialPeriod: _initialPeriod, monthStartDay = 1 }: UsePeriodFilterParams): UsePeriodFilterReturn {
+export function usePeriodFilter({ pathname, searchParams, initialPeriod: _initialPeriod }: UsePeriodFilterParams): UsePeriodFilterReturn {
     // 从 URL 实时派生 periodParams，确保 URL 变化时自动同步
     const periodParams = useMemo<PeriodParams>(() => {
         const parsed = parsePeriodFromSearchParams(searchParams);
-        // 如果是 currentPeriod，注入 monthStartDay
-        if (parsed.period === 'currentPeriod') {
-            return { ...parsed, monthStartDay };
-        }
         return parsed;
-    }, [searchParams, monthStartDay]);
+    }, [searchParams]);
 
     // Compute date range from period (memoized)
     const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
@@ -96,10 +91,10 @@ export function usePeriodFilter({ pathname, searchParams, initialPeriod: _initia
                 endDate: formatDate(newFilters.endDate),
             });
         } else {
-            // No dates means "currentPeriod"
-            handlePeriodChange({ period: 'currentPeriod', monthStartDay });
+            // No dates means "thisMonth"
+            handlePeriodChange({ period: 'thisMonth' });
         }
-    }, [handlePeriodChange, monthStartDay]);
+    }, [handlePeriodChange]);
 
     return {
         periodParams,

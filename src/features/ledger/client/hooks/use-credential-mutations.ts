@@ -33,6 +33,10 @@ export function useCredentialMutations(ledgerId: string) {
             };
             return optimisticallyAddToList<ServiceCredential>(queryClient, queryKey, tempCredential);
         },
+        onSettledExtra: (queryClient) => {
+            // Invalidate ledgerSettings to refresh credentials list in settings page
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+        },
     });
 
     const deleteCredential = useLedgerMutation<void, string>(ledgerId, {
@@ -41,6 +45,10 @@ export function useCredentialMutations(ledgerId: string) {
         errorMessage: t("deleteFailed"),
         onOptimisticUpdate: (queryClient, id) => {
             return optimisticallyDeleteFromList<ServiceCredential>(queryClient, queryKey, id);
+        },
+        onSettledExtra: (queryClient) => {
+            // Invalidate ledgerSettings to refresh credentials list in settings page
+            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
         },
     });
 

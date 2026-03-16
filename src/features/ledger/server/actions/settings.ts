@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { serviceCredentials } from "@/lib/db/schema";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { forLedger } from "@/lib/db/scoped-query";
 
 /**
  * Batch fetch settings data in a single server action.
@@ -13,8 +12,6 @@ import { forLedger } from "@/lib/db/scoped-query";
  * optimistic updates work correctly (shared query key with useCategoryMutations).
  */
 export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string) => {
-
-    const credQ = forLedger(serviceCredentials, ledgerId);
 
     // Fetch data in parallel
     const [uncategorizedResult, credentials] = await Promise.all([
@@ -35,7 +32,10 @@ export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string)
 
         // 2. Get service credentials
         db.query.serviceCredentials.findMany({
-            where: credQ.whereActive,
+            where: and(
+                eq(serviceCredentials.ledgerId, ledgerId),
+                isNull(serviceCredentials.deletedAt)
+            ),
             orderBy: [desc(serviceCredentials.createdAt)],
         }),
     ]);

@@ -23,7 +23,6 @@ interface UpdateLedgerData {
     aiLanguage?: string;
     collapseEntriesDefault?: boolean;
     aiCustomPrompt?: string;
-    monthStartDay?: number;
 }
 
 export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCategories }: UseLedgerSettingsParams) {
@@ -80,7 +79,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                 aiLanguage,
                 collapseEntriesDefault,
                 aiCustomPrompt,
-                monthStartDay,
             } = data;
             const payload: { settings?: Record<string, unknown> } = {};
 
@@ -90,7 +88,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
             if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
             if (collapseEntriesDefault !== undefined) settings.collapseEntriesDefault = collapseEntriesDefault;
             if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
-            if (monthStartDay !== undefined) settings.monthStartDay = monthStartDay;
 
             if (Object.keys(settings).length > 0) {
                 payload.settings = settings;
@@ -118,8 +115,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                     newData.mainCurrency !== undefined ||
                     newData.aiLanguage !== undefined ||
                     newData.collapseEntriesDefault !== undefined ||
-                    newData.aiCustomPrompt !== undefined ||
-                    newData.monthStartDay !== undefined
+                    newData.aiCustomPrompt !== undefined
                 ) {
                     updated.metadata = {
                         ...old.metadata,
@@ -130,7 +126,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                             ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
                             ...(newData.collapseEntriesDefault !== undefined && { collapseEntriesDefault: newData.collapseEntriesDefault }),
                             ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
-                            ...(newData.monthStartDay !== undefined && { monthStartDay: newData.monthStartDay }),
                         },
                     };
                 }
