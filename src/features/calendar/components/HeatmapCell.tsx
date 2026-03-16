@@ -7,6 +7,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 import type { CalendarHeatmapStats } from '../types';
 import {
   getHeatmapLevel,
@@ -40,6 +41,7 @@ export function HeatmapCell({
   onClick,
   className,
 }: HeatmapCellProps) {
+  const t = useTranslations('Calendar');
   const level = getHeatmapLevel(amount, stats);
   const showAmount = shouldShowAmount(amount, size);
 
@@ -100,7 +102,7 @@ export function HeatmapCell({
             level >= 4 ? 'text-white/80' : 'text-muted-foreground'
           )}
         >
-          {count}笔
+          {t('count', { count })}
         </span>
       )}
     </button>
