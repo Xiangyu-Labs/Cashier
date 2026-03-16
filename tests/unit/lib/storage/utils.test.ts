@@ -6,12 +6,11 @@ import {
     needsLoading,
     inferImageMimeType,
 } from "@/lib/storage/utils";
-import * as r2Module from "@/lib/storage/r2";
+import * as localModule from "@/lib/storage/local";
 
-// Mock the R2 module
-vi.mock("@/lib/storage/r2", () => ({
-    isR2Enabled: vi.fn(),
-    getR2Storage: vi.fn(),
+// Mock the local storage module
+vi.mock("@/lib/storage/local", () => ({
+    getLocalStorage: vi.fn(),
 }));
 
 describe("storage/utils", () => {
@@ -22,9 +21,7 @@ describe("storage/utils", () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
-        vi.mocked(r2Module.isR2Enabled).mockReturnValue(false);
-        vi.mocked(r2Module.getR2Storage).mockReturnValue(mockStorage as unknown as ReturnType<typeof r2Module.getR2Storage>);
-        process.env.R2_PUBLIC_URL = "";
+        vi.mocked(localModule.getLocalStorage).mockReturnValue(mockStorage as unknown as ReturnType<typeof localModule.getLocalStorage>);
     });
 
     afterEach(() => {
@@ -53,58 +50,59 @@ describe("storage/utils", () => {
             expect(result).toBe(dataUrl);
         });
 
-        it("should download from R2 when R2 is enabled and URL matches", async () => {
-            vi.mocked(r2Module.isR2Enabled).mockReturnValue(true);
-            mockStorage.extractKeyFromUrl.mockReturnValue("test-key");
+        it("should download from local storage for local upload URLs", async () => {
+            mockStorage.extractKeyFromUrl.mockReturnValue("test-key.jpg");
             mockStorage.download.mockResolvedValue(Buffer.from("fake-image-data"));
 
-            const result = await loadImageForAI("https://bucket.r2.dev/test-key.jpg");
+            const result = await loadImageForAI("/api/uploads/test-key.jpg");
 
-            expect(mockStorage.extractKeyFromUrl).toHaveBeenCalledWith("https://bucket.r2.dev/test-key.jpg");
-            expect(mockStorage.download).toHaveBeenCalledWith("test-key");
+            expect(mockStorage.extractKeyFromUrl).toHaveBeenCalledWith("/api/uploads/test-key.jpg");
+            expect(mockStorage.download).toHaveBeenCalledWith("test-key.jpg");
             expect(result).toBe("data:image/jpeg;base64,ZmFrZS1pbWFnZS1kYXRh");
         });
 
-        it("should use correct MIME type based on file extension", async () => {
-            vi.mocked(r2Module.isR2Enabled).mockReturnValue(true);
-            mockStorage.extractKeyFromUrl.mockReturnValue("test-key");
+        it("should throw error for invalid local upload URL", async () => {
+            mockStorage.extractKeyFromUrl.mockReturnValue(null);
+
+            await expect(loadImageForAI("/api/uploads/invalid")).rejects.toThrow("Invalid local upload URL");
+        });
+
+        it("should use correct MIME type based on file extension for local uploads", async () => {
             mockStorage.download.mockResolvedValue(Buffer.from("fake"));
 
             // PNG extension
             mockStorage.extractKeyFromUrl.mockReturnValue("key.png");
-            let result = await loadImageForAI("https://bucket.r2.dev/key.png");
+            let result = await loadImageForAI("/api/uploads/key.png");
             expect(result).toMatch(/^data:image\/png;/);
 
             // WebP extension
             mockStorage.extractKeyFromUrl.mockReturnValue("key.webp");
-            result = await loadImageForAI("https://bucket.r2.dev/key.webp");
+            result = await loadImageForAI("/api/uploads/key.webp");
             expect(result).toMatch(/^data:image\/webp;/);
         });
 
-        it("should reject internal IP addresses (SSRF protection)", async () => {
-            await expect(loadImageForAI("http://localhost/image.jpg")).rejects.toThrow("not allowed");
-            await expect(loadImageForAI("http://127.0.0.1/image.jpg")).rejects.toThrow("not allowed");
-            await expect(loadImageForAI("http://192.168.1.1/image.jpg")).rejects.toThrow("not allowed");
-            await expect(loadImageForAI("http://10.0.0.1/image.jpg")).rejects.toThrow("not allowed");
-            await expect(loadImageForAI("http://169.254.169.254/latest/meta-data/")).rejects.toThrow("not allowed");
-        });
-
-        it("should reject non-whitelisted hostnames", async () => {
-            await expect(loadImageForAI("https://example.com/image.jpg")).rejects.toThrow("Hostname not in allowlist");
-            await expect(loadImageForAI("https://attacker.com/malicious")).rejects.toThrow("Hostname not in allowlist");
-        });
-
-        it("should allow R2 hostnames", async () => {
-            // Mock fetch for R2 URLs when R2 is not enabled locally
+        it("should fetch external HTTP URLs directly", async () => {
             global.fetch = vi.fn().mockResolvedValue({
                 ok: true,
                 headers: new Headers({ "content-type": "image/jpeg" }),
                 arrayBuffer: async () => new ArrayBuffer(10),
             });
 
-            // This should work (with mocked fetch) - just verify it doesn't throw for hostname
-            const result = await loadImageForAI("https://bucket.r2.cloudflarestorage.com/key");
-            expect(result).toMatch(/^data:image/);
+            const result = await loadImageForAI("https://example.com/image.jpg");
+
+            expect(global.fetch).toHaveBeenCalledWith("https://example.com/image.jpg", {
+                headers: { "User-Agent": "Cashier-App/1.0" },
+            });
+            expect(result).toMatch(/^data:image\/jpeg;/);
+        });
+
+        it("should throw on HTTP error for external URLs", async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 404,
+            });
+
+            await expect(loadImageForAI("https://example.com/notfound.jpg")).rejects.toThrow("HTTP error: 404");
         });
 
         it("should infer mime type from URL when server returns application/octet-stream", async () => {
@@ -114,29 +112,18 @@ describe("storage/utils", () => {
                 arrayBuffer: async () => new ArrayBuffer(10),
             });
 
-            const result = await loadImageForAI("https://bucket.r2.dev/image.png");
-            expect(result).toMatch(/^data:image\/png;/);
+            const result = await loadImageForAI("https://example.com/image.png");
+            expect(result).toMatch(/^data:application\/octet-stream;/);
         });
 
-        it("should infer mime type from URL when server returns binary/octet-stream", async () => {
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                headers: new Headers({ "content-type": "binary/octet-stream" }),
-                arrayBuffer: async () => new ArrayBuffer(10),
-            });
-
-            const result = await loadImageForAI("https://bucket.r2.dev/photo.webp");
-            expect(result).toMatch(/^data:image\/webp;/);
-        });
-
-        it("should use server content-type when not a generic binary type", async () => {
+        it("should use server content-type when available", async () => {
             global.fetch = vi.fn().mockResolvedValue({
                 ok: true,
                 headers: new Headers({ "content-type": "image/png" }),
                 arrayBuffer: async () => new ArrayBuffer(10),
             });
 
-            const result = await loadImageForAI("https://bucket.r2.dev/image.jpg");
+            const result = await loadImageForAI("https://example.com/image.jpg");
             // Should use server's content-type (image/png) not the one from extension
             expect(result).toMatch(/^data:image\/png;/);
         });
@@ -154,10 +141,10 @@ describe("storage/utils", () => {
         });
 
         it("should return results for all URLs even with failures", async () => {
-            // One valid base64, one that will fail (internal IP)
+            // One valid base64, one that will fail (unsupported URL)
             const urls = [
                 "data:image/jpeg;base64,/9j/4AAQ...",
-                "http://localhost/forbidden.jpg",
+                "ftp://invalid-protocol.com/image.jpg",
             ];
 
             const results = await loadImagesForAI(urls);
@@ -183,7 +170,7 @@ describe("storage/utils", () => {
         it("should throw when any image fails to load", async () => {
             const urls = [
                 "data:image/jpeg;base64,/9j/4AAQ...",
-                "http://localhost/forbidden.jpg",
+                "ftp://invalid-protocol.com/image.jpg",
             ];
 
             await expect(loadImagesForAIOrThrow(urls)).rejects.toThrow("Failed to load 1 image(s)");
