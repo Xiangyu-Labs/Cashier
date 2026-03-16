@@ -58,11 +58,13 @@ describe("Stats Currency Conversion", () => {
         }).returning();
 
         // 2. Insert an entry in MYR associated with source document
+        // Using pre-calculated convertedAmount (156 CNY)
         await db.insert(ledgerEntries).values({
             ledgerId,
             sourceDocumentId: sourceDoc.id,
             amount: "100.00",
             currency: "MYR",
+            convertedAmount: "156.00",
             itemName: "MYR Item",
         });
 
@@ -70,7 +72,7 @@ describe("Stats Currency Conversion", () => {
         const stats = await getLedgerStatsAction(ledgerId);
 
         // 4. Assert
-        // Expected CNY = (100 / 5.0) * 7.8 = 20 * 7.8 = 156.0
+        // convertedAmount is stored as 156.00 CNY
         expect(stats.convertedTotal?.currency).toBe("CNY");
         expect(stats.convertedTotal?.total).toBeCloseTo(156.0);
     });
@@ -86,22 +88,24 @@ describe("Stats Currency Conversion", () => {
             status: "completed",
         }).returning();
 
-        // 2. Insert entries
+        // 2. Insert entries with pre-calculated convertedAmount
         // 100 MYR = 156 CNY
         await db.insert(ledgerEntries).values({
             ledgerId,
             sourceDocumentId: sourceDoc.id,
             amount: "100.00",
             currency: "MYR",
+            convertedAmount: "156.00",
             itemName: "MYR Item",
         });
 
-        // 50 USD = (50 / 1.08) * 7.8 = 46.296 * 7.8 = 361.111
+        // 50 USD = 361.11 CNY
         await db.insert(ledgerEntries).values({
             ledgerId,
             sourceDocumentId: sourceDoc.id,
             amount: "50.00",
             currency: "USD",
+            convertedAmount: "361.11",
             itemName: "USD Item",
         });
 
@@ -111,6 +115,7 @@ describe("Stats Currency Conversion", () => {
             sourceDocumentId: sourceDoc.id,
             amount: "100.00",
             currency: "CNY",
+            convertedAmount: "100.00",
             itemName: "CNY Item",
         });
 
@@ -118,7 +123,7 @@ describe("Stats Currency Conversion", () => {
         const stats = await getLedgerStatsAction(ledgerId);
 
         // 4. Assert
-        // Total = 156 + 361.111 + 100 = 617.111
+        // Total = 156 + 361.11 + 100 = 617.11
         expect(stats.convertedTotal?.currency).toBe("CNY");
         expect(stats.convertedTotal?.total).toBeCloseTo(617.11, 1);
     });

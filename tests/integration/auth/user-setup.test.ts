@@ -27,7 +27,6 @@ describe("createDefaultLedgerForUser", () => {
         });
 
         expect(ledger).toBeDefined();
-        expect(ledger?.name).toBe("newuser's Ledger");
 
         const settings = ledger?.metadata?.settings;
         expect(settings).toBeDefined();

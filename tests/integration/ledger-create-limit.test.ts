@@ -41,10 +41,10 @@ describe("createLedgerAction single limit", () => {
             expires: new Date(Date.now() + 3600 * 1000).toISOString(),
         });
 
-        const result = await createLedgerAction({ name: "My Ledger" });
+        const result = await createLedgerAction({});
 
         expect(result).toBeDefined();
-        expect(result.name).toBe("My Ledger");
+        expect(result.userId).toBe(user.id);
     });
 
     it("should reject creating second ledger", async () => {
@@ -57,7 +57,7 @@ describe("createLedgerAction single limit", () => {
         });
 
         // Create first ledger
-        await createLedgerAction({ name: "First Ledger" });
+        await createLedgerAction({});
 
         // Mock auth for second attempt (same user)
         vi.mocked(auth as unknown as () => Promise<{ user: { id: string; email: string }; expires: string } | null>).mockResolvedValue({
@@ -67,7 +67,7 @@ describe("createLedgerAction single limit", () => {
 
         // Attempt to create second ledger should fail
         await expect(
-            createLedgerAction({ name: "Second Ledger" })
+            createLedgerAction({})
         ).rejects.toThrow(ConflictError);
     });
 
@@ -81,7 +81,7 @@ describe("createLedgerAction single limit", () => {
         });
 
         // Create first ledger
-        await createLedgerAction({ name: "First Ledger" });
+        await createLedgerAction({});
 
         // Mock auth for second attempt
         vi.mocked(auth as unknown as () => Promise<{ user: { id: string; email: string }; expires: string } | null>).mockResolvedValue({
@@ -91,7 +91,7 @@ describe("createLedgerAction single limit", () => {
 
         // Verify error message
         await expect(
-            createLedgerAction({ name: "Second Ledger" })
+            createLedgerAction({})
         ).rejects.toThrow("User already has a ledger. Only one ledger per user is allowed.");
     });
 });

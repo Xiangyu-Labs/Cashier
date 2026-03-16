@@ -97,29 +97,23 @@ describe("Multi-User Isolation", () => {
         });
 
         it("should refuse access to user2 ledger entries", async () => {
-            // getLedgerEntriesAction calls requireLedgerAccess internally
-            // This usually throws Error("Unauthorized") or returns error object depending on implementation.
-            // In new Actions pattern, some return { success: false } or throw. 
-            // `getLedgerEntriesAction` throws if unauthorized? Let's check.
-            // Actually `getLedgerEntriesAction` in my implementation (checked previously) throws Error("Unauthorized") if check fails.
-
             await expect(getLedgerEntriesAction(user2Ledger, {}))
-                .rejects.toThrow("Unauthorized");
+                .rejects.toThrow("Ledger not found");
         });
 
         it("should refuse access to user2 source documents", async () => {
             await expect(getSourceDocumentsAction(user2Ledger, {}))
-                .rejects.toThrow("Unauthorized");
+                .rejects.toThrow("Ledger not found");
         });
 
         it("should refuse access to user2 entry categories", async () => {
             await expect(getEntryCategoriesAction(user2Ledger))
-                .rejects.toThrow("Unauthorized");
+                .rejects.toThrow("Ledger not found");
         });
 
         it("should refuse access to user2 service credentials", async () => {
             await expect(getServiceCredentialsAction(user2Ledger))
-                .rejects.toThrow("Unauthorized");
+                .rejects.toThrow("Ledger not found");
         });
     });
 
