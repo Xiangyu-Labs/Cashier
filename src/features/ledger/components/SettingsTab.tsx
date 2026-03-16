@@ -89,6 +89,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                                 <p className="text-sm text-[var(--muted)]">{t('themeDescription')}</p>
                             </div>
                             <div className="flex w-full sm:w-auto bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
+                                const themeKeyMap = { system: 'themeAuto', light: 'themeLight', dark: 'themeDark' } as const;
                                 {(['system', 'light', 'dark'] as const).map((tName) => (
                                     <button
                                         key={tName}
