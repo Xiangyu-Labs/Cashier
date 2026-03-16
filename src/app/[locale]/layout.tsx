@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/components/providers";
-
+import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,16 +18,21 @@ const jetbrainsMono = JetBrains_Mono({
   preload: false, // Monospace font is not critical for first paint
 });
 
-export const metadata: Metadata = {
-  title: "Cashier - AI 记账助手",
-  description: "AI 驱动的智能记账工具",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Cashier",
-  },
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'Metadata' });
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "Cashier",
+    },
+  };
+}
 
 export const viewport = {
   themeColor: "#10a37f",
