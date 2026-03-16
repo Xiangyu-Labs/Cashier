@@ -22,7 +22,7 @@ export class LocalStorageProvider implements StorageProvider {
   private basePath: string;
 
   constructor() {
-    this.basePath = process.env.LOCAL_STORAGE_PATH || './uploads';
+    this.basePath = process.env.LOCAL_STORAGE_PATH || './data/uploads';
   }
 
   /**
