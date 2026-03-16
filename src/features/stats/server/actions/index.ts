@@ -3,9 +3,9 @@
 import { db } from "@/lib/db";
 import { ledgerEntries, ledgers } from "@/features/ledger/server/schema";
 import { currencyRates } from "@/features/currency/server/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "../utils";
-import { forLedger } from "@/lib/db/scoped-query";
+
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
 export interface EnhancedCategoryStat {
@@ -66,12 +66,11 @@ export async function getEnhancedStats({
     const currentEnd = new Date(queryRange.to);
 
     // 3. Fetch Entries
-    const q = forLedger(ledgerEntries, ledgerId);
-
     const fetchEntries = async (startStr: string, endStr: string) => {
         return await db.query.ledgerEntries.findMany({
             where: and(
-                q.whereActive, // This includes ledgerId and deletedAt is null
+                eq(ledgerEntries.ledgerId, ledgerId),
+                isNull(ledgerEntries.deletedAt),
                 sql`${ledgerEntries.sourceDocumentId} IN (
                     SELECT id FROM source_documents
                     WHERE ledger_id = ${ledgerId} AND entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
