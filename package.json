@@ -20,9 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:drop": "drizzle-kit drop",
-    "migrate:local": "tsx -r tsconfig-paths/register scripts/migrate-images-to-local.ts",
-    "migrate:local:dry-run": "tsx -r tsconfig-paths/register scripts/migrate-images-to-local.ts --dry-run"
+    "db:drop": "drizzle-kit drop"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
