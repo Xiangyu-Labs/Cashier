@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
@@ -32,6 +33,7 @@ interface CalendarTabProps {
 }
 
 export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, className }: CalendarTabProps) {
+  const t = useTranslations('Calendar');
   const [viewType, setViewType] = useState<CalendarViewType>('month');
   const [anchorDate, setAnchorDate] = useState<string>(formatDate(new Date()));
   const [showFilters, setShowFilters] = useState(false);
@@ -133,11 +135,11 @@ export function CalendarTab({ ledgerId, categories, ledger, onDateDrilldown, cla
       <div className="flex-1">
         {isLoading ? (
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-            加载中…
+            {t('loading')}
           </div>
         ) : !calendarData ? (
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-            暂无数据
+            {t('noData')}
           </div>
         ) : (
           <>
