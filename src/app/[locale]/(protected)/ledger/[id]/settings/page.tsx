@@ -1,60 +1,56 @@
-import { auth } from "@/auth";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "@/i18n/routing";
 import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
-import { redirect } from "@/i18n/routing";
-import { db } from "@/lib/db";
-import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
-import { eq, and, isNull, or, asc, sql } from "drizzle-orm";
-import { serializeLedger, serializeEntryCategory } from "@/lib/serialization/utils";
-import type { EntryCategoryWithCount } from "@/types/api";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { getLedgerAction } from "@/features/ledger/server/actions/get";
+import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 
-// Inline data access - simplified architecture (no services layer)
-async function getLedger(ledgerId: string) {
-    const row = await db.query.ledgers.findFirst({
-        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-    });
-    if (!row) return undefined;
-    return serializeLedger(row);
+interface SettingsPageProps {
+    params: Promise<{ id: string }>;
 }
 
-async function getEntryCategories(ledgerId: string): Promise<EntryCategoryWithCount[]> {
-    const rows = await db.query.entryCategories.findMany({
-        where: and(or(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.ledgerId)), isNull(entryCategories.deletedAt)),
-        orderBy: [asc(entryCategories.sortOrder)],
+export default function SettingsPage({ params }: SettingsPageProps) {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
+    // Unwrap params using React.use() pattern for Next.js 15+
+    const [ledgerId, setLedgerId] = React.useState<string>("");
+
+    React.useEffect(() => {
+        params.then(p => setLedgerId(p.id));
+    }, [params]);
+
+    const { data: ledger, isLoading: isLoadingLedger } = useQuery({
+        queryKey: queryKeys.ledger(ledgerId),
+        queryFn: () => getLedgerAction(ledgerId),
+        enabled: !!ledgerId,
     });
 
-    const entryCounts = await db
-        .select({
-            categoryId: ledgerEntries.categoryId,
-            count: sql<number>`count(*)`.as('count'),
-        })
-        .from(ledgerEntries)
-        .where(and(
-            eq(ledgerEntries.ledgerId, ledgerId),
-            isNull(ledgerEntries.deletedAt)
-        ))
-        .groupBy(ledgerEntries.categoryId);
+    const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+        queryKey: queryKeys.entryCategories(ledgerId),
+        queryFn: () => getEntryCategoriesAction(ledgerId),
+        enabled: !!ledgerId,
+    });
 
-    const countMap = new Map(entryCounts.map(e => [e.categoryId, e.count]));
-
-    return rows.map(row => ({
-        ...serializeEntryCategory(row),
-        entryCount: countMap.get(row.id) || 0,
-    }));
-}
-
-export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: ledgerId } = await params;
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        redirect({ href: "/login", locale: "en" });
+    if (status === "loading" || isLoadingLedger || isLoadingCategories) {
+        return (
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-8 bg-muted rounded w-1/3"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                    <div className="h-64 bg-muted rounded"></div>
+                </div>
+            </div>
+        );
     }
 
-    // Optimized: Only fetch core data, credentials now fetched client-side
-    const [ledger, categories] = await Promise.all([
-        getLedger(ledgerId),
-        getEntryCategories(ledgerId),
-    ]);
+    if (!session?.user?.id) {
+        router.push("/login");
+        return null;
+    }
 
     if (!ledger) {
         return <div>Ledger not found</div>;
@@ -69,3 +65,4 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     );
 }
 
+import React from "react";

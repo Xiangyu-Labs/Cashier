@@ -1,18 +1,37 @@
-import { auth, signOut } from "@/auth";
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import { getTranslations } from "next-intl/server";
-import { redirect } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-export default async function SettingsPage() {
-    const session = await auth();
-    if (!session?.user?.id) {
-        redirect("/login");
+export default function SettingsPage() {
+    const { data: session, status } = useSession();
+    const t = useTranslations("Settings");
+    const router = useRouter();
+
+    if (status === "loading") {
+        return (
+            <div className="container max-w-2xl py-8">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-8 bg-muted rounded w-1/3"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+            </div>
+        );
     }
 
-    const t = await getTranslations("Settings");
+    if (!session?.user?.id) {
+        router.push("/login");
+        return null;
+    }
+
+    const handleSignOut = async () => {
+        await signOut({ redirectTo: "/login" });
+    };
 
     return (
         <div className="container max-w-2xl py-8 space-y-8">
@@ -35,22 +54,13 @@ export default async function SettingsPage() {
 
             <div className="space-y-4">
                 <h2 className="text-lg font-semibold">{t("account") || "Account"}</h2>
-
-
             </div>
 
             <div className="pt-8 border-t">
-                <form
-                    action={async () => {
-                        "use server";
-                        await signOut({ redirectTo: "/login" });
-                    }}
-                >
-                    <Button variant="destructive" className="w-full sm:w-auto">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        {t("signOut") || "Sign Out"}
-                    </Button>
-                </form>
+                <Button variant="destructive" className="w-full sm:w-auto" onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t("signOut") || "Sign Out"}
+                </Button>
             </div>
         </div>
     );

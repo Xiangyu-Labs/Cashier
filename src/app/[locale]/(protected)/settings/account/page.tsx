@@ -1,16 +1,30 @@
+"use client";
 
-import { auth } from "@/auth";
-import { getTranslations } from "next-intl/server";
-import { redirect } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { DeleteAccountForm } from "./DeleteAccountForm";
 
-export default async function AccountPage() {
-    const session = await auth();
-    if (!session?.user?.id) {
-        redirect("/login");
+export default function AccountPage() {
+    const { data: session, status } = useSession();
+    const t = useTranslations("Settings.Account");
+    const router = useRouter();
+
+    if (status === "loading") {
+        return (
+            <div className="space-y-6">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-6 bg-muted rounded w-1/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+            </div>
+        );
     }
 
-    const t = await getTranslations("Settings.Account");
+    if (!session?.user?.id) {
+        router.push("/login");
+        return null;
+    }
 
     return (
         <div className="space-y-6">
