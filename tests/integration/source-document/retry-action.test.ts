@@ -141,9 +141,9 @@ describe("retrySourceDocumentAction", () => {
         const newDoc = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, result.sourceDocumentId),
         });
-        expect(newDoc?.imageUrls).toEqual([
-            "data:image/jpeg;base64,/9j/4AAQ",
-        ]);
+        // Verify new document has new images stored as local URLs
+        expect(newDoc?.imageUrls).toHaveLength(1);
+        expect(newDoc?.imageUrls[0]).toMatch(/^\/api\/uploads\//);
     });
 
     it("should cancel old tasks and create new task", async () => {
