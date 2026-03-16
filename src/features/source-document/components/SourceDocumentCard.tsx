@@ -26,7 +26,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { parseAmount } from "@/lib/formatters";
 
 function getSafeImageSrc(data: string): string {
-  if (data.startsWith("http") || data.startsWith("data:")) {
+  if (data.startsWith("http") || data.startsWith("data:") || data.startsWith("/api/uploads/")) {
     return data;
   }
   return `data:image/jpeg;base64,${data}`;
