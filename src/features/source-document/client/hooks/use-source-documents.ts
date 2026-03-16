@@ -114,6 +114,7 @@ export function useSourceDocuments(
             );
         },
         interval: 3000,
+        ledgerId,
     });
 
     // Use useMemo to apply client-side grouping and filtering

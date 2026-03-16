@@ -29,6 +29,7 @@ export function useTaskQueue(ledgerId: string) {
         interval: 3000,
         idleInterval: 60000, // Check every 60s when idle to detect new tasks from API/other sources
         enabled: !!ledgerId,
+        ledgerId,
     });
 
     return {

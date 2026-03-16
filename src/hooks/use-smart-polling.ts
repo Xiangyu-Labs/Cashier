@@ -10,18 +10,21 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
     cooldownInterval?: number;
     /** Interval when idle (no active tasks). Default: false (stop polling). Set to a number like 60000 to enable background checks. */
     idleInterval?: number;
+    /** Ledger ID for tenant-scoped mutation pausing */
+    ledgerId: string;
 }
 
 /**
  * A wrapper around useQuery that implements smart polling with adaptive intervals.
- * 
+ *
  * - Active period: Polls at base `interval` (5s) when isActive returns true
  * - Cooldown period: If data hasn't changed in 2+ polls, slows to `cooldownInterval` (10s)
+ * - Pauses polling when there are active mutations for the specified ledger
  */
 export function useSmartPolling<TData = unknown, TError = unknown>(
     options: SmartPollingOptions<TData, TError>
 ) {
-    const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ...queryOptions } = options;
+    const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ledgerId, ...queryOptions } = options;
 
     const hasActiveLedgerMutation = useMutationStore((state) => state.hasActiveLedgerMutation);
 
@@ -46,9 +49,9 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
     return useQuery<TData, TError>({
         ...queryOptions,
         refetchInterval: (query) => {
-            // PAUSE polling when any ledger mutation is active
+            // PAUSE polling when this ledger has active mutations
             // This prevents polling from overwriting optimistic updates
-            if (hasActiveLedgerMutation()) {
+            if (hasActiveLedgerMutation(ledgerId)) {
                 return false;
             }
 

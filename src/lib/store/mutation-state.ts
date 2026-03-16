@@ -1,34 +1,47 @@
 import { create } from "zustand";
 
 interface MutationState {
-    /** 当前活跃的ledger-scoped mutation计数 */
-    activeLedgerMutationCount: number;
-    /** 增加mutation计数 */
-    incrementLedgerMutation: () => void;
-    /** 减少mutation计数 */
-    decrementLedgerMutation: () => void;
-    /** 是否有活跃的ledger mutation */
-    hasActiveLedgerMutation: () => boolean;
+    /** Ledger-scoped active mutation counters */
+    activeMutationsByLedger: Record<string, number>;
+    /** Increment mutation counter for a specific ledger */
+    incrementLedgerMutation: (ledgerId: string) => void;
+    /** Decrement mutation counter for a specific ledger */
+    decrementLedgerMutation: (ledgerId: string) => void;
+    /** Check if a specific ledger has active mutations */
+    hasActiveLedgerMutation: (ledgerId: string) => boolean;
 }
 
 /**
- * 全局mutation状态管理
+ * Ledger-scoped mutation state management
  *
- * 用于协调多个mutation和智能轮询之间的竞争条件。
- * 当mutation正在进行时，智能轮询应该暂停以避免覆盖乐观更新。
+ * Used to coordinate mutations and smart polling per ledger (tenant isolation).
+ * When a mutation is active for a ledger, smart polling for that ledger pauses
+ * to avoid overwriting optimistic updates.
  */
 export const useMutationStore = create<MutationState>((set, get) => ({
-    activeLedgerMutationCount: 0,
+    activeMutationsByLedger: {},
 
-    incrementLedgerMutation: () =>
+    incrementLedgerMutation: (ledgerId: string) =>
         set((state) => ({
-            activeLedgerMutationCount: state.activeLedgerMutationCount + 1
+            activeMutationsByLedger: {
+                ...state.activeMutationsByLedger,
+                [ledgerId]: (state.activeMutationsByLedger[ledgerId] || 0) + 1
+            }
         })),
 
-    decrementLedgerMutation: () =>
-        set((state) => ({
-            activeLedgerMutationCount: Math.max(0, state.activeLedgerMutationCount - 1)
-        })),
+    decrementLedgerMutation: (ledgerId: string) =>
+        set((state) => {
+            const current = state.activeMutationsByLedger[ledgerId] || 0;
+            if (current <= 0) return state;
+            return {
+                activeMutationsByLedger: {
+                    ...state.activeMutationsByLedger,
+                    [ledgerId]: current - 1
+                }
+            };
+        }),
 
-    hasActiveLedgerMutation: () => get().activeLedgerMutationCount > 0,
+    hasActiveLedgerMutation: (ledgerId: string) => {
+        return (get().activeMutationsByLedger[ledgerId] || 0) > 0;
+    }
 }));

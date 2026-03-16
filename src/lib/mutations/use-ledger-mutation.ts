@@ -133,8 +133,8 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     mutationFn,
 
     onMutate: async (variables) => {
-      // Increment mutation counter to pause polling
-      incrementLedgerMutation();
+      // Increment mutation counter to pause polling for this ledger
+      if (ledgerId) incrementLedgerMutation(ledgerId);
 
       // Cancel outgoing queries to prevent race conditions
       if (ledgerId) {
@@ -208,7 +208,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         }
       } finally {
         // Always decrement, even if there was an error
-        decrementLedgerMutation();
+        if (ledgerId) decrementLedgerMutation(ledgerId);
       }
     },
   });

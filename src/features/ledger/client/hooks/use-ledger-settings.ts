@@ -47,6 +47,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
         isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
         interval: 3000,
         cooldownInterval: 5000, // Shorter cooldown for faster updates when AI completes
+        ledgerId,
     });
 
     // Use standard query for settings data - it only needs to refresh
