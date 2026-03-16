@@ -250,6 +250,7 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
                 onPeriodChange={handlePeriodChange}
                 onFiltersChange={handleFiltersChange}
                 monthStartDay={monthStartDay}
+                collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
               />
             </Suspense>
           </TabsContent>

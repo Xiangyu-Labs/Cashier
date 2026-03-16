@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 import { updateLedgerSchema, type UpdateLedgerInput } from "./schemas";
 import { recalculateEntriesConvertedAmount } from "./helpers";
 
-export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<import("@/lib/db/schema").Ledger> => {
+export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<import("@/types/api").Ledger> => {
     // Verify ownership
     const existing = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
@@ -52,5 +52,14 @@ export const updateLedgerAction = withAuth(async (userId: string, id: string, da
         });
     }
 
-    return updatedLedger;
+    // Serialize dates to strings to match the API type
+    return {
+        id: updatedLedger.id,
+        userId: updatedLedger.userId,
+        name: updatedLedger.name,
+        metadata: updatedLedger.metadata,
+        createdAt: updatedLedger.createdAt.toISOString(),
+        updatedAt: updatedLedger.updatedAt.toISOString(),
+        deletedAt: updatedLedger.deletedAt ? updatedLedger.deletedAt.toISOString() : null,
+    };
 });

@@ -24,7 +24,6 @@ interface UpdateLedgerData {
     aiLanguage?: string;
     collapseEntriesDefault?: boolean;
     aiCustomPrompt?: string;
-    showMonthlyExpense?: boolean;
     monthStartDay?: number;
 }
 
@@ -75,7 +74,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
     const queryClient = useQueryClient();
 
     // Mutation for updating ledger settings with proper optimistic updates
-    const updateLedgerMutation = useLedgerMutation<void, UpdateLedgerData>(ledgerId, {
+    const updateLedgerMutation = useLedgerMutation<Ledger, UpdateLedgerData>(ledgerId, {
         mutationFn: async (data) => {
             // Transform flat structure to nested structure expected by updateLedgerAction
             const {
@@ -85,7 +84,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                 aiLanguage,
                 collapseEntriesDefault,
                 aiCustomPrompt,
-                showMonthlyExpense,
                 monthStartDay,
             } = data;
             const payload: { name?: string; settings?: Record<string, unknown> } = {};
@@ -100,17 +98,20 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
             if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
             if (collapseEntriesDefault !== undefined) settings.collapseEntriesDefault = collapseEntriesDefault;
             if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
-            if (showMonthlyExpense !== undefined) settings.showMonthlyExpense = showMonthlyExpense;
             if (monthStartDay !== undefined) settings.monthStartDay = monthStartDay;
 
             if (Object.keys(settings).length > 0) {
                 payload.settings = settings;
             }
 
-            await updateLedgerAction(ledgerId, payload);
+            return await updateLedgerAction(ledgerId, payload);
         },
         successMessage: t("updateSuccess"),
         errorMessage: t("updateFailed"),
+        onSuccessExtra: (data) => {
+            // Use server-returned data to update cache, ensuring consistency
+            queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
+        },
         onOptimisticUpdate: (_, newData) => {
             const snapshots = queryClient.getQueriesData<Ledger>({ queryKey: ledgerQueryKey });
 
@@ -131,7 +132,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                     newData.aiLanguage !== undefined ||
                     newData.collapseEntriesDefault !== undefined ||
                     newData.aiCustomPrompt !== undefined ||
-                    newData.showMonthlyExpense !== undefined ||
                     newData.monthStartDay !== undefined
                 ) {
                     updated.metadata = {
@@ -143,7 +143,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                             ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
                             ...(newData.collapseEntriesDefault !== undefined && { collapseEntriesDefault: newData.collapseEntriesDefault }),
                             ...(newData.aiCustomPrompt !== undefined && { aiCustomPrompt: newData.aiCustomPrompt }),
-                            ...(newData.showMonthlyExpense !== undefined && { showMonthlyExpense: newData.showMonthlyExpense }),
                             ...(newData.monthStartDay !== undefined && { monthStartDay: newData.monthStartDay }),
                         },
                     };

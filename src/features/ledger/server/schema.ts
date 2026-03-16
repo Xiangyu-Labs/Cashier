@@ -32,7 +32,6 @@ export interface LedgerMetadata {
         collapseEntriesDefault?: boolean;
         aiCustomPrompt?: string;
         monthStartDay?: number;      // 每月起始日 (1-31)，默认 1
-        showMonthlyExpense?: boolean; // 是否显示月支出，默认 true
     };
 }
 

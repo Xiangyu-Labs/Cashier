@@ -17,11 +17,8 @@ interface UseLedgerMutationsOptions {
     defaultLedgerId: string | null;
 }
 
-// Database Ledger type returned by updateLedgerAction (with Date objects)
-type DbLedger = import("@/lib/db/schema").Ledger;
-
 interface UseLedgerMutationsResult {
-    renameMutation: UseMutationResult<DbLedger, Error, { id: string; name: string }, unknown>;
+    renameMutation: UseMutationResult<Ledger, Error, { id: string; name: string }, unknown>;
 }
 
 export function useLedgerMutations({

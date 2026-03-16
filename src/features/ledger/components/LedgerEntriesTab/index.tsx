@@ -33,6 +33,7 @@ interface LedgerEntriesTabProps {
     onPeriodChange: (params: PeriodParams) => void;
     onFiltersChange: (filters: EntryFilters) => void;
     monthStartDay?: number;
+    collapseEntriesDefault?: boolean;
 }
 
 export function LedgerEntriesTab({
@@ -43,6 +44,7 @@ export function LedgerEntriesTab({
     onPeriodChange,
     onFiltersChange,
     monthStartDay = 1,
+    collapseEntriesDefault = false,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
     const tDetails = useTranslations("DetailsTab");
@@ -314,6 +316,7 @@ export function LedgerEntriesTab({
                                                                 selectionMode={isSelectionMode}
                                                                 isSelected={selectedIds.includes(group.sourceDocument.id)}
                                                                 onToggleSelect={() => toggleSelection(group.sourceDocument.id)}
+                                                                defaultExpanded={!collapseEntriesDefault}
                                                             />
                                                         </motion.div>
                                                     ))}

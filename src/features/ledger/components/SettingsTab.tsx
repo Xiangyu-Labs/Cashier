@@ -154,22 +154,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                             />
                         </div>
 
-                        <div className="h-px bg-[var(--border)]" />
-
-                        {/* Show Monthly Expense Setting */}
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h3 className="text-base font-medium">{t('showMonthlyExpense')}</h3>
-                                <p className="text-sm text-[var(--muted)]">{t('showMonthlyExpenseDesc')}</p>
-                            </div>
-                            <Switch
-                                checked={settingsLedger.metadata?.settings?.showMonthlyExpense !== false}
-                                onCheckedChange={(checked: boolean) => {
-                                    updateLedgerMutation.mutate({ showMonthlyExpense: checked });
-                                }}
-                                disabled={isPending}
-                            />
-                        </div>
                     </div>
                 </CollapsibleSection>
 
