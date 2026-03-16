@@ -1,7 +1,7 @@
-export const defaultLedger = {
+export const zhLedger = {
     settings: {
         aiLanguage: "zh-CN",
-        currencies: ["USD", "CNY"] as string[],
+        currencies: ["CNY", "USD"] as string[],
         mainCurrency: "CNY",
         collapseEntriesDefault: false,
         aiCustomPrompt: "",
@@ -65,5 +65,84 @@ export const defaultLedger = {
         },
     ],
 };
+
+export const enLedger = {
+    settings: {
+        aiLanguage: "en",
+        currencies: ["USD", "EUR", "GBP"] as string[],
+        mainCurrency: "USD",
+        collapseEntriesDefault: false,
+        aiCustomPrompt: "",
+    },
+    categories: [
+        {
+            name: "Dining",
+            description: "Daily dining expenses including breakfast, lunch, dinner, beverages, and takeout",
+            icon: "Utensils",
+            sortOrder: 1,
+            isEditable: true,
+        },
+        {
+            name: "Groceries",
+            description: "Daily necessities such as toiletries, cleaning supplies, and kitchen items",
+            icon: "ShoppingBag",
+            sortOrder: 2,
+            isEditable: true,
+        },
+        {
+            name: "Entertainment",
+            description: "Leisure activities including games, movies, shows, and subscriptions",
+            icon: "Gamepad2",
+            sortOrder: 3,
+            isEditable: true,
+        },
+        {
+            name: "Transport",
+            description: "Daily transportation including public transit, rideshare, fuel, and parking",
+            icon: "Bus",
+            sortOrder: 4,
+            isEditable: true,
+        },
+        {
+            name: "Healthcare",
+            description: "Medical expenses including medication, appointments, checkups, and supplements",
+            icon: "Stethoscope",
+            sortOrder: 5,
+            isEditable: true,
+        },
+        {
+            name: "Subscriptions",
+            description: "Service subscriptions and memberships including apps, gym memberships, etc.",
+            icon: "Crown",
+            sortOrder: 6,
+            isEditable: true,
+        },
+        {
+            name: "Shopping",
+            description: "Clothing, electronics, beauty products, and other personal items",
+            icon: "Shirt",
+            sortOrder: 7,
+            isEditable: true,
+        },
+        {
+            name: "Other",
+            description: "Expenses that don't fit into other categories",
+            icon: "Package",
+            sortOrder: 8,
+            isEditable: false,
+        },
+    ],
+};
+
+export function getDefaultLedger(locale: string = "zh") {
+    if (locale.startsWith("zh")) return zhLedger;
+    return enLedger;
+}
+
+/**
+ * @deprecated Use getDefaultLedger(locale) for locale-specific configurations.
+ * Kept for backward compatibility.
+ */
+export const defaultLedger = zhLedger;
 
 export default defaultLedger;
