@@ -158,8 +158,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             toast.error(t("uploadError"));
         },
         onSuccess: () => {
+            // Dialog already closed optimistically, just show success toast
             toast.success(t("uploadSuccess"));
-            onSuccess?.();
         },
         onSettled: () => {
             // Always refetch to ensure server state is in sync
@@ -200,8 +200,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             return { previousDocument };
         },
         onSuccess: () => {
+            // Dialog already closed optimistically, just show success toast
             toast.success(t("retrySuccess"));
-            onSuccess?.();
         },
         onError: (_err, _vars, context) => {
             // Rollback on error
@@ -224,13 +224,17 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             images: images.length > 0 ? images : undefined,
             entryDate: formatDateTimeForApi(new Date()),
         };
-        startTransition(() => {
-            if (mode === "retry") {
+        // Optimistic update: close dialog immediately, then start mutation
+        onSuccess?.();
+        if (mode === "retry") {
+            startTransition(() => {
                 retryMutation.mutate(payload);
-            } else {
+            });
+        } else {
+            startTransition(() => {
                 sendMutation.mutate(payload);
-            }
-        });
+            });
+        }
     };
 
     const isPending = (mode === "retry" ? retryMutation.isPending : sendMutation.isPending) || isTransitionPending;
