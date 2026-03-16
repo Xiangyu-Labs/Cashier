@@ -25,7 +25,7 @@ import { useTranslations } from "next-intl";
 interface CalendarProps {
     value?: Date | null;
     onChange: (date: Date | null) => void;
-    /** 是否显示快捷选项 */
+    /** Whether to show shortcut options */
     showShortcuts?: boolean;
     /** 最小可选日期 */
     minDate?: Date;
@@ -145,7 +145,10 @@ export function Calendar({
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="font-semibold text-sm">
-                    {format(viewDate, "yyyy年M月")}
+                    {t("dateFormat", {
+                        year: format(viewDate, "yyyy"),
+                        month: format(viewDate, "M"),
+                    })}
                 </div>
                 <Button
                     variant="ghost"
