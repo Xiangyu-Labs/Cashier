@@ -7,7 +7,7 @@
 
 import { formatDateTimeForApi } from './date-utils';
 
-export type PeriodPreset = 'all' | 'thisMonth' | 'week' | 'custom';
+export type PeriodPreset = 'all' | 'thisMonth' | 'week' | 'month' | '3months' | '6months' | 'year' | 'custom';
 
 export interface PeriodParams {
     period: PeriodPreset;
@@ -66,6 +66,54 @@ export function periodToDateRange(params: PeriodParams): DateRange {
         };
     }
 
+    if (period === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        monthAgo.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+        return {
+            startDate: formatDateTimeForApi(monthAgo) ?? null,
+            endDate: formatDateTimeForApi(endOfToday) ?? null,
+        };
+    }
+
+    if (period === '3months') {
+        const threeMonthsAgo = new Date(now);
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        threeMonthsAgo.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+        return {
+            startDate: formatDateTimeForApi(threeMonthsAgo) ?? null,
+            endDate: formatDateTimeForApi(endOfToday) ?? null,
+        };
+    }
+
+    if (period === '6months') {
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        sixMonthsAgo.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+        return {
+            startDate: formatDateTimeForApi(sixMonthsAgo) ?? null,
+            endDate: formatDateTimeForApi(endOfToday) ?? null,
+        };
+    }
+
+    if (period === 'year') {
+        const yearAgo = new Date(now);
+        yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+        yearAgo.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+        return {
+            startDate: formatDateTimeForApi(yearAgo) ?? null,
+            endDate: formatDateTimeForApi(endOfToday) ?? null,
+        };
+    }
+
     // Default to thisMonth if unknown period
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -104,7 +152,7 @@ export function parsePeriodFromSearchParams(
     }
 
     // Validate period value
-    const validPeriods: PeriodPreset[] = ['all', 'thisMonth', 'week', 'custom'];
+    const validPeriods: PeriodPreset[] = ['all', 'thisMonth', 'week', 'month', '3months', '6months', 'year', 'custom'];
     const validatedPeriod: PeriodPreset = validPeriods.includes(period as PeriodPreset)
         ? (period as PeriodPreset)
         : 'thisMonth';  // Default to thisMonth

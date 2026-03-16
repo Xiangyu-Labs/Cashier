@@ -111,7 +111,9 @@ export function EntryFilterPanel({
 
     // Map preset string to PeriodPreset type
     const toNamedPreset = (preset: string): PeriodPreset | null => {
-        if (preset === "week" || preset === "thisMonth") return preset;
+        if (["thisMonth", "week", "month", "3months", "6months", "year"].includes(preset)) {
+            return preset as PeriodPreset;
+        }
         // Map legacy "currentPeriod" to "thisMonth"
         if (preset === "currentPeriod") return "thisMonth";
         return null;
