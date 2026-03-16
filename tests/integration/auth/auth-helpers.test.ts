@@ -78,7 +78,6 @@ describe("requireLedgerAccess", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -105,7 +104,6 @@ describe("requireLedgerAccess", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: otherUserId,
-            name: "Other Ledger",
             metadata: {},
         });
 

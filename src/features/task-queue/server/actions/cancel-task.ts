@@ -6,6 +6,7 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { eq, and, isNull, inArray } from "drizzle-orm";
+import { NotFoundError, ForbiddenError, ValidationError } from "@/lib/errors";
 
 /**
  * Cancel a single task.
@@ -25,17 +26,17 @@ export const cancelTaskAction = withLedgerAccess(async (ledgerId: string, taskId
     });
 
     if (!task) {
-        throw new Error("Task not found");
+        throw new NotFoundError("Task");
     }
 
     // Verify ledgerId from scopeId matches
     if (task.scopeId !== ledgerId) {
-        throw new Error("Task does not belong to this ledger");
+        throw new ForbiddenError("Task does not belong to this ledger");
     }
 
     // Only pending or running tasks can be cancelled
     if (task.status !== 'pending' && task.status !== 'running') {
-        throw new Error(`Cannot cancel task with status '${task.status}'`);
+        throw new ValidationError(`Cannot cancel task with status '${task.status}'`);
     }
 
     // Call the flow engine to cancel the task

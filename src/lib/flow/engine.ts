@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { createAIContext } from './ai-context'
+import { recordTaskExecution, detectDeadTasks, calculateQueueDepth } from './monitoring'
 import type {
   FlowContext,
   FlowEngine,
@@ -8,6 +9,7 @@ import type {
   TaskFilter,
   TokenUsage,
   TokenUsageRecord,
+  TaskMetrics,
 } from './types'
 
 /**
@@ -154,6 +156,8 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       ai: createAIContext(signal, reportTokens),
     }
 
+    const startTime = Date.now()
+
     try {
       // Execute the task
       const result = await handler.execute(input, context)
@@ -180,6 +184,9 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         tokenUsage: finalTokenUsage,
         progress: null,
       })
+
+      // Record task execution metrics
+      recordTaskExecution(taskId, Date.now() - startTime)
 
       logger.info({ taskName: name, taskId }, 'Task completed successfully')
     } catch (error) {
@@ -316,6 +323,15 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
     async getRunningTasks() {
       return config.storage.list({ status: 'running' })
+    },
+
+    async getMetrics(): Promise<TaskMetrics> {
+      const tasks = await config.storage.list()
+      return {
+        executionTime: 0, // aggregated separately
+        queueDepth: calculateQueueDepth(tasks),
+        deadTasks: detectDeadTasks(tasks),
+      }
     },
   }
 }

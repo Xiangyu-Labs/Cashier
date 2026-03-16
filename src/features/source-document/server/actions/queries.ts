@@ -6,9 +6,10 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
 import { format } from "date-fns";
-import { desc, lte, gte, inArray, and, eq, or, lt, type SQL } from "drizzle-orm";
+import { desc, lte, gte, inArray, and, eq, or, lt, sql, type SQL } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
+import { AppError } from "@/lib/errors";
 import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import {
     type SerializedSourceDocument,
@@ -19,6 +20,7 @@ import {
 import type {
     SourceDocumentWithEntries,
     PendingSourceDocumentsResponse,
+    PaginatedSourceDocumentsResponse,
 } from "./types";
 import {
     groupPendingSourceDocuments,
@@ -282,26 +284,38 @@ export const getSourceDocumentsAction = withLedgerAccess(async (
     };
 });
 
-// Maximum number of documents to return without explicit pagination
+// Pagination constants
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_PAGE_LIMIT = 1000;
 
 /**
- * Get all source documents as a flat array (not grouped).
+ * Get all source documents as a flat array (not grouped) with proper pagination.
  * Used for the new optimistic update architecture.
  *
- * Note: This function has a default limit of 1000 documents. For larger datasets,
- * use cursor-based pagination via getSourceDocumentsAction.
+ * Note: For backward compatibility, when called without pagination params, it uses
+ * a default limit of 1000 documents. For larger datasets, use explicit pagination
+ * or cursor-based pagination via getSourceDocumentsAction.
  */
 export const getAllSourceDocumentsAction = withLedgerAccess(async (
     ledgerId: string,
     params: {
         startDate?: string | null;
         endDate?: string | null;
-        limit?: number;
+        page?: number;
+        pageSize?: number;
     } = {}
-): Promise<SourceDocumentWithEntries[]> => {
+): Promise<PaginatedSourceDocumentsResponse> => {
     try {
-        const { startDate, endDate, limit = DEFAULT_PAGE_LIMIT } = params;
+        const { startDate, endDate } = params;
+
+        // Calculate pagination parameters
+        const page = Math.max(1, params.page || 1);
+        const pageSize = params.page
+            ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize || DEFAULT_PAGE_SIZE))
+            : DEFAULT_PAGE_LIMIT;
+        const offset = (page - 1) * pageSize;
+
         const q = forLedger(sourceDocuments, ledgerId);
 
         const conditions = [
@@ -309,28 +323,43 @@ export const getAllSourceDocumentsAction = withLedgerAccess(async (
             ...buildDateConditions(startDate, endDate),
         ].filter((c): c is SQL<unknown> => c !== null);
 
+        // Get total count for pagination info
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(sourceDocuments)
+            .where(and(...conditions));
+        const total = Number(countResult[0]?.count) || 0;
+
+        // Query with limit + 1 to detect hasMore when using explicit pagination
+        const queryLimit = params.page ? pageSize + 1 : pageSize;
+
         const items = await db.query.sourceDocuments.findMany({
             where: and(...conditions),
             orderBy: [desc(sourceDocuments.entryDate), desc(sourceDocuments.createdAt), desc(sourceDocuments.id)],
-            limit,
+            limit: queryLimit,
+            offset: params.page ? offset : 0,
         });
 
-        if (items.length === limit) {
+        // Warn when hitting the default limit without explicit pagination
+        if (!params.page && items.length === DEFAULT_PAGE_LIMIT) {
             logger.warn(
-                { ledgerId, limit, startDate, endDate },
+                { ledgerId, limit: DEFAULT_PAGE_LIMIT, startDate, endDate },
                 "getAllSourceDocumentsAction hit result limit - consider using cursor pagination"
             );
         }
 
-        const docIds = items.map(d => d.id);
+        const hasMore = params.page ? items.length > pageSize : false;
+        const resultItems = hasMore ? items.slice(0, pageSize) : items;
+
+        const docIds = resultItems.map(d => d.id);
         const entriesByDocId = await fetchEntriesWithCategories(docIds, ledgerId);
 
-        const result = items.map(doc => serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || []));
+        const result = resultItems.map(doc => serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || []));
 
-        return result;
+        return { items: result, hasMore, total };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
-        throw new Error(safeError(error));
+        throw new AppError(safeError(error), "QUERY_ERROR", 500);
     }
 });
 
@@ -365,7 +394,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(async (
         };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get pending source documents");
-        throw new Error(safeError(error));
+        throw new AppError(safeError(error), "QUERY_ERROR", 500);
     }
 });
 

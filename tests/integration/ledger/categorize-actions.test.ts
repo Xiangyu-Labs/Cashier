@@ -272,12 +272,11 @@ describe("submitAutoCategorizeAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
         await expect(submitAutoCategorizeAction(otherLedgerId)).rejects.toThrow(
-            "Unauthorized"
+            "Ledger not found"
         );
     });
 });
@@ -369,13 +368,12 @@ describe("submitBatchCategorizeAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
         await expect(
             submitBatchCategorizeAction(otherLedgerId, [uuidv4()])
-        ).rejects.toThrow("Unauthorized");
+        ).rejects.toThrow("Ledger not found");
     });
 
     it("skips running tasks for dedup in batch mode", async () => {

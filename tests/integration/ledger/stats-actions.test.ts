@@ -58,7 +58,6 @@ describe("getLedgerStatsAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: { settings: { mainCurrency: "CNY" } },
         });
     });
@@ -185,20 +184,15 @@ describe("getLedgerStatsAction", () => {
         expect(cny!.total).toBeCloseTo(50);
     });
 
-    it("uses date-specific exchange rates for convertedTotal", async () => {
+    it("uses stored convertedAmount for convertedTotal", async () => {
         const db = getTestDb();
 
-        // Insert exchange rate: 1 EUR = 7.2 CNY, 1 EUR = 1.1 USD
-        await db.insert(currencyRates).values({
-            date: "2024-01-15",
-            base: "EUR",
-            rates: { CNY: 7.2, USD: 1.1 },
-        });
-
-        // 110 USD on 2024-01-15 → (110 / 1.1) * 7.2 = 720 CNY
+        // Entry with pre-calculated convertedAmount (e.g., from AI processing)
+        // 110 USD converted to 720 CNY
         await seedEntry(db, ledgerId, {
             amount: "110.00",
             currency: "USD",
+            convertedAmount: "720.00", // Pre-converted amount
             entryDate: "2024-01-15",
         });
 
@@ -231,10 +225,9 @@ describe("getLedgerStatsAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
-        await expect(getLedgerStatsAction(otherLedgerId)).rejects.toThrow("Unauthorized");
+        await expect(getLedgerStatsAction(otherLedgerId)).rejects.toThrow("Ledger not found");
     });
 });

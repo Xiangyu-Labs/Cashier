@@ -1,10 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers, ledgerEntries, currencyRates, sourceDocuments } from "@/lib/db/schema";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { ledgers, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { convertAmount } from "@/features/stats/server/utils";
 
 import { LedgerEntrySummary } from "@/types/api";
 
@@ -93,63 +92,20 @@ export const getLedgerStatsAction = withLedgerAccess(async (
     // byCategory is handled by getEnhancedStats, this action only provides totals
     const byCategory: LedgerEntrySummary['byCategory'] = [];
 
-    // 4. Converted Total Logic - Accurate conversion by date
-    let convertedTotalValue = 0;
+    // 4. Converted Total Logic - Use SQL aggregation for performance
     const effectiveMainCurrency = mainCurrency || (await db.query.ledgers.findFirst({
         where: eq(ledgers.id, ledgerId),
         columns: { metadata: true }
     }))?.metadata?.settings?.mainCurrency || "CNY";
 
-    // Fetch entries with their source documents to get matching dates
-    const entries = await db.query.ledgerEntries.findMany({
-        where: and(...conditions),
-        columns: {
-            amount: true,
-            currency: true,
-        },
-        with: {
-            sourceDocument: {
-                columns: {
-                    entryDate: true,
-                }
-            }
-        }
-    });
+    const convertedTotalResult = await db
+        .select({
+            total: sql<number>`sum(COALESCE(CAST(${ledgerEntries.convertedAmount} AS REAL), CAST(${ledgerEntries.amount} AS REAL)))`
+        })
+        .from(ledgerEntries)
+        .where(and(...conditions));
 
-    if (entries.length > 0) {
-        // Get entryDate from sourceDocument
-        const uniqueDates = Array.from(new Set(entries.map(e => e.sourceDocument?.entryDate).filter((d): d is string => !!d)));
-
-        // Fetch rates
-        const ratesMap: Record<string, Record<string, number>> = {};
-        if (uniqueDates.length > 0) {
-            const ratesData = await db.query.currencyRates.findMany({
-                where: inArray(currencyRates.date, uniqueDates)
-            });
-            ratesData.forEach(r => {
-                // Runtime validation: ensure rates is a valid Record<string, number>
-                if (r.rates && typeof r.rates === 'object' && !Array.isArray(r.rates)) {
-                    ratesMap[r.date] = r.rates as Record<string, number>;
-                } else {
-                    ratesMap[r.date] = {};
-                }
-            });
-        }
-
-        // Calculate converted total
-        for (const entry of entries) {
-            const dateStr = entry.sourceDocument?.entryDate || "";
-            const dayRates = ratesMap[dateStr] || null;
-
-            const converted = convertAmount({
-                amount: Number(entry.amount),
-                fromCurrency: entry.currency || effectiveMainCurrency,
-                toCurrency: effectiveMainCurrency,
-                rates: dayRates
-            });
-            convertedTotalValue += converted;
-        }
-    }
+    const convertedTotalValue = Number(convertedTotalResult[0]?.total) || 0;
 
     return {
         convertedTotal: {

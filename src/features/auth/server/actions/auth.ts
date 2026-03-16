@@ -17,6 +17,7 @@ import { logger } from "@/lib/logger";
 import OTPEmail from "@/emails/otp-email";
 import { getClientIP } from "@/lib/utils/ip";
 import { normalizeEmail } from "@/lib/utils/email";
+import { ValidationError, RateLimitError, UnauthorizedError } from "@/lib/errors";
 
 const resend = new Resend(process.env.AUTH_RESEND_KEY);
 
@@ -27,19 +28,19 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
     try {
         // Validate email format and length
         if (!email || typeof email !== "string") {
-            return { success: false, error: "Invalid email address" };
+            throw new ValidationError("Invalid email address");
         }
 
         // Check email length to prevent DoS attacks with超长 strings
         if (email.length > MAX_EMAIL_LENGTH) {
             logger.warn({ emailLength: email.length }, "Email too long, rejecting");
-            return { success: false, error: "Invalid email address" };
+            throw new ValidationError("Invalid email address");
         }
 
         const normalizedEmail = normalizeEmail(email);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(normalizedEmail)) {
-            return { success: false, error: "Invalid email format" };
+            throw new ValidationError("Invalid email format");
         }
 
         // Get IP address from headers
@@ -52,33 +53,27 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
                 { email: normalizedEmail, retryAfter: cooldownCheck.retryAfter },
                 "OTP resend cooldown active"
             );
-            return {
-                success: false,
-                error: "Please wait before requesting another code",
-                retryAfter: cooldownCheck.retryAfter,
-            };
+            const error = new RateLimitError("Please wait before requesting another code");
+            (error as Error & { retryAfter: number }).retryAfter = cooldownCheck.retryAfter;
+            throw error;
         }
 
         // Check email rate limit
         const emailRateLimit = await checkSendRateLimit(normalizedEmail);
         if (!emailRateLimit.allowed) {
             logger.warn({ email: normalizedEmail }, "OTP send rate limit exceeded");
-            return {
-                success: false,
-                error: "Too many requests. Please try again later.",
-                retryAfter: emailRateLimit.retryAfter,
-            };
+            const error = new RateLimitError("Too many requests. Please try again later.");
+            (error as Error & { retryAfter: number }).retryAfter = emailRateLimit.retryAfter;
+            throw error;
         }
 
         // Check IP rate limit
         const ipRateLimit = await checkSendRateLimitByIP(ip);
         if (!ipRateLimit.allowed) {
             logger.warn({ ip }, "OTP send IP rate limit exceeded");
-            return {
-                success: false,
-                error: "Too many requests from this IP. Please try again later.",
-                retryAfter: ipRateLimit.retryAfter,
-            };
+            const error = new RateLimitError("Too many requests from this IP. Please try again later.");
+            (error as Error & { retryAfter: number }).retryAfter = ipRateLimit.retryAfter;
+            throw error;
         }
 
         // Generate OTP
@@ -110,7 +105,7 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
                 logger.info({ email: normalizedEmail }, "OTP email sent successfully");
             } catch (err) {
                 logger.error({ error: err, email: normalizedEmail }, "Failed to send OTP email");
-                return { success: false, error: "Failed to send verification code. Please try again." };
+                throw new Error("Failed to send verification code. Please try again.");
             }
         }
 
@@ -122,14 +117,13 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
         const expiresIn = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
 
         return {
-            success: true,
             expiresIn, // seconds
             expiresAt: Math.floor(expiresAt.getTime() / 1000), // Unix timestamp
             canResendAt, // Unix timestamp or null
         };
     } catch (err) {
         logger.error({ error: err }, "Send OTP Action error");
-        return { success: false, error: "Internal server error" };
+        throw err;
     }
 }
 
@@ -137,16 +131,16 @@ export async function verifyOTPAction(email: string, otp: string) {
     try {
         // Validate inputs
         if (!email || typeof email !== "string") {
-            return { success: false, error: "Invalid email address" };
+            throw new ValidationError("Invalid email address");
         }
 
         if (!otp || typeof otp !== "string") {
-            return { success: false, error: "Invalid verification code" };
+            throw new ValidationError("Invalid verification code");
         }
 
         // Validate OTP format
         if (!isValidOTPFormat(otp)) {
-            return { success: false, error: "Verification code must be 6 digits" };
+            throw new ValidationError("Verification code must be 6 digits");
         }
 
         const normalizedEmail = normalizeEmail(email);
@@ -158,17 +152,14 @@ export async function verifyOTPAction(email: string, otp: string) {
         const isAllowed = await checkVerifyRateLimit(ip);
         if (!isAllowed) {
             logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded");
-            return { success: false, error: "Too many verification attempts. Please try again later." };
+            throw new RateLimitError("Too many verification attempts. Please try again later.");
         }
 
         // Find OTP record first (data access layer)
         const record = await findOTPRecord(normalizedEmail);
         if (!record) {
             logger.warn({ email: normalizedEmail }, "OTP token not found");
-            return {
-                success: false,
-                error: "Invalid or expired verification code. Please try again or request a new code.",
-            };
+            throw new UnauthorizedError("Invalid or expired verification code. Please try again or request a new code.");
         }
 
         // Verify the OTP with business logic (service layer)
@@ -189,28 +180,28 @@ export async function verifyOTPAction(email: string, otp: string) {
                 case "locked":
                 case "max_attempts":
                     // Account is locked - must inform user but with generic message
-                    return {
-                        success: false,
-                        error: "Account temporarily locked due to too many failed attempts. Please try again later.",
-                        lockedUntil: result.lockedUntil
+                    {
+                        const error = new RateLimitError("Account temporarily locked due to too many failed attempts. Please try again later.");
+                        (error as Error & { lockedUntil?: number }).lockedUntil = result.lockedUntil
                             ? Math.floor(result.lockedUntil.getTime() / 1000)
-                            : undefined,
-                    };
+                            : undefined;
+                        throw error;
+                    }
                 default:
                     // Unified error for: not_found, expired, invalid
                     // This prevents attackers from determining if an email is registered
-                    return {
-                        success: false,
-                        error: "Invalid or expired verification code. Please try again or request a new code.",
-                        attemptsRemaining: result.attemptsRemaining,
-                    };
+                    {
+                        const error = new UnauthorizedError("Invalid or expired verification code. Please try again or request a new code.");
+                        (error as Error & { attemptsRemaining?: number }).attemptsRemaining = result.attemptsRemaining;
+                        throw error;
+                    }
             }
         }
 
         logger.info({ email: normalizedEmail }, "OTP verified successfully");
-        return { success: true, email: normalizedEmail };
+        return { email: normalizedEmail };
     } catch (err) {
         logger.error({ error: err }, "Verify OTP Action error");
-        return { success: false, error: "Internal server error" };
+        throw err;
     }
 }

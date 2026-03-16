@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { UnauthorizedError } from '@/lib/errors';
+import { UnauthorizedError, NotFoundError } from '@/lib/errors';
 import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
 
 /**
@@ -54,11 +54,14 @@ export function withLedgerAccess<TArgs extends unknown[], TReturn>(
   action: (ledgerId: string, ...args: TArgs) => Promise<TReturn>
 ): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
   return async (ledgerId: string, ...args: TArgs) => {
-    const { error } = await requireLedgerAccess(ledgerId);
+    const result = await requireLedgerAccess(ledgerId);
 
-    if (error) {
-      // Treat both 401 and 404 as Unauthorized to avoid information leakage
-      // 404 could mean ledger doesn't exist or belongs to another user
+    if (result.error) {
+      // Throw appropriate error type (still abstracted for security)
+      const status = result.error.status;
+      if (status === 404) {
+        throw new NotFoundError("Ledger");
+      }
       throw new UnauthorizedError('Unauthorized');
     }
 

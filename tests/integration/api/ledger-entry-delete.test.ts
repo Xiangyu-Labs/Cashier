@@ -50,7 +50,7 @@ describe("Ledger Entry Delete Action", () => {
 
         // This should throw error because requireLedgerAccess will fail for TEST_USER_ID
         await expect(deleteLedgerEntryAction(otherLedgerId, testEntryId))
-            .rejects.toThrow("Unauthorized");
+            .rejects.toThrow("Ledger not found");
     });
 });
 

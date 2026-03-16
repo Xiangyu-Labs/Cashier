@@ -242,11 +242,10 @@ describe("getTaskQueueAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
-        await expect(getTaskQueueAction(otherLedgerId)).rejects.toThrow("Unauthorized");
+        await expect(getTaskQueueAction(otherLedgerId)).rejects.toThrow("Ledger not found");
     });
 
     it("excludes completed tasks whose source document is in anomaly state from items", async () => {

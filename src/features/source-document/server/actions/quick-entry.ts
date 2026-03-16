@@ -9,6 +9,7 @@ import { CurrencyService } from "@/features/currency/server/service";
 import { SourceDocumentType } from "@/features/source-document/server/schema";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
+import { UnauthorizedError } from "@/lib/errors";
 
 // ============ Helper Functions ============
 
@@ -114,7 +115,7 @@ export async function createQuickEntryAction(
     data: z.infer<typeof createQuickEntrySchema>
 ) {
     const { ledger, error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new Error("Unauthorized or Ledger not found");
+    if (error) throw new UnauthorizedError("Unauthorized or Ledger not found");
 
     const validated = createQuickEntrySchema.parse(data);
     const mainCurrency = ledger.metadata?.settings?.mainCurrency || "CNY";

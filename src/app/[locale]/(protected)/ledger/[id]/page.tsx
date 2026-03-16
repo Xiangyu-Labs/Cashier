@@ -80,10 +80,13 @@ export default async function LedgerPage({
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'all', dateRange.startDate, dateRange.endDate),
-      queryFn: () => getAllSourceDocumentsAction(ledgerId, {
-        startDate: dateRange.startDate ?? undefined,
-        endDate: dateRange.endDate ?? undefined,
-      }),
+      queryFn: async () => {
+        const response = await getAllSourceDocumentsAction(ledgerId, {
+          startDate: dateRange.startDate ?? undefined,
+          endDate: dateRange.endDate ?? undefined,
+        });
+        return response;
+      },
       staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS, // 30 seconds
     }),
   ]);

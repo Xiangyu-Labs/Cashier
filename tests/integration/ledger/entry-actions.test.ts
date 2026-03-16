@@ -89,7 +89,7 @@ describe("createLedgerEntryAction", () => {
         expect(ExchangeRateService.convert).toHaveBeenCalledWith(100, "USD", "CNY", undefined);
     });
 
-    it("throws 'Unauthorized' for wrong ledger", async () => {
+    it("throws 'Ledger not found' for wrong ledger", async () => {
         await expect(
             createLedgerEntryAction(uuidv4(), {
                 amount: 50,
@@ -97,7 +97,7 @@ describe("createLedgerEntryAction", () => {
                 itemName: "Test",
                 sourceDocumentId: docId,
             })
-        ).rejects.toThrow("Unauthorized");
+        ).rejects.toThrow("Ledger not found");
     });
 });
 

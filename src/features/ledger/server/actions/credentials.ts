@@ -6,6 +6,7 @@ import { eq, desc, and, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import crypto from "crypto";
+import { NotFoundError } from "@/lib/errors";
 
 const createCredentialSchema = z.object({
     name: z.string().min(1),
@@ -70,7 +71,7 @@ export const deleteServiceCredentialAction = withLedgerAccess(async (ledgerId: s
         .where(q.whereId(credentialId))
         .returning();
 
-    if (result.length === 0) throw new Error("Credential not found");
+    if (result.length === 0) throw new NotFoundError("Credential");
 });
 
 export async function validateServiceCredential(key: string) {

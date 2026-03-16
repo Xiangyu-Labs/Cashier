@@ -20,7 +20,6 @@ describe("dismissTaskAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -64,7 +63,6 @@ describe("dismissTaskAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
@@ -82,7 +80,7 @@ describe("dismissTaskAction", () => {
         );
     });
 
-    it("throws 'Unauthorized' when ledger belongs to another user", async () => {
+    it("throws 'Ledger not found' when ledger belongs to another user", async () => {
         const db = getTestDb();
 
         await db.insert(users).values({
@@ -96,12 +94,11 @@ describe("dismissTaskAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 
         await expect(dismissTaskAction(otherLedgerId, uuidv4())).rejects.toThrow(
-            "Unauthorized"
+            "Ledger not found"
         );
     });
 });
@@ -115,7 +112,6 @@ describe("batchDismissTasksAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -167,7 +163,6 @@ describe("batchDismissTasksAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 

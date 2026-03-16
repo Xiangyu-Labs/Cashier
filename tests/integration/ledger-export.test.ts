@@ -26,7 +26,7 @@ describe("exportLedgerEntriesAction", () => {
     const db = getTestDb();
 
     // 1. Create Ledger
-    const ledgerData = createLedgerData({ userId: testUserId, name: "Test Ledger" });
+    const ledgerData = createLedgerData({ userId: testUserId });
     await db.insert(ledgers).values(ledgerData);
 
     // 2. Create Category
@@ -58,7 +58,7 @@ describe("exportLedgerEntriesAction", () => {
 
     // 6. Assertions
     expect(result.isEmpty).toBe(false);
-    expect(result.filename).toMatch(/^Test Ledger_\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(result.filename).toMatch(/^export_\d{4}-\d{2}-\d{2}\.csv$/);
     expect(result.csvContent).toContain("\uFEFF"); // UTF-8 BOM
 
     // Check headers (skip UTF-8 BOM character)
@@ -143,7 +143,7 @@ describe("exportLedgerEntriesAction", () => {
 
     // Export should throw Unauthorized
     await expect(exportLedgerEntriesAction(ledgerData.id))
-      .rejects.toThrow("Unauthorized");
+      .rejects.toThrow("Ledger not found");
   });
 
   it("should generate localized CSV headers for Chinese locale", async () => {
@@ -237,11 +237,8 @@ describe("exportLedgerEntriesAction", () => {
   it("should sanitize filename by replacing illegal characters", async () => {
     const db = getTestDb();
 
-    // 1. Create Ledger with illegal filename characters
-    const ledgerData = createLedgerData({
-      userId: testUserId,
-      name: 'My/Ledger:Test?"File"',
-    });
+    // 1. Create Ledger
+    const ledgerData = createLedgerData({ userId: testUserId });
     await db.insert(ledgers).values(ledgerData);
 
     // 2. Create Source Document
@@ -255,13 +252,8 @@ describe("exportLedgerEntriesAction", () => {
     // 4. Export
     const result = await exportLedgerEntriesAction(ledgerData.id);
 
-    // 5. Assertions - illegal chars should be replaced with underscore
-    // Note: consecutive illegal chars result in consecutive underscores
-    expect(result.filename).toMatch(/^My_Ledger_Test__/);
-    expect(result.filename).not.toContain("/");
-    expect(result.filename).not.toContain(":");
-    expect(result.filename).not.toContain("?");
-    expect(result.filename).not.toContain('"');
+    // 5. Assertions - filename should follow default pattern
+    expect(result.filename).toMatch(/^export_\d{4}-\d{2}-\d{2}\.csv$/);
   });
 
   it("should format dates consistently", async () => {

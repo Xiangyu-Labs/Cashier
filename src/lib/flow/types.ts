@@ -179,6 +179,20 @@ export interface FlowEngine {
    * Get all currently running tasks
    */
   getRunningTasks(): Promise<TaskRecord[]>
+
+  /**
+   * Get task engine metrics including queue depth and dead tasks
+   */
+  getMetrics(): Promise<TaskMetrics>
+}
+
+/**
+ * Task metrics for monitoring the flow engine
+ */
+export interface TaskMetrics {
+  executionTime: number
+  queueDepth: number
+  deadTasks: string[]
 }
 
 // ===== AI Integration Types =====

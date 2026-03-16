@@ -60,6 +60,6 @@ describe("Processing Tasks Action Security", () => {
         });
 
         await expect(getProcessingTasksAction(otherLedgerId, {}))
-            .rejects.toThrow("Unauthorized");
+            .rejects.toThrow("Ledger not found");
     });
 });

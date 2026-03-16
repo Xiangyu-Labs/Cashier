@@ -14,6 +14,7 @@ import { authConfig } from "./auth.config";
 import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import { findOTPRecord, verifyOTPWithPolicy } from "@/features/auth/server/services/otp-verification";
 import { TIME_SECONDS } from "@/lib/constants";
+import { UnauthorizedError } from "@/lib/errors";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -219,7 +220,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
 
                 if (!dbUser) {
-                    throw new Error("User not found in database");
+                    throw new UnauthorizedError("User not found in database");
                 }
 
                 return {

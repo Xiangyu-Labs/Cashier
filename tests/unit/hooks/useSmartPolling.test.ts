@@ -38,6 +38,7 @@ describe("useSmartPolling", () => {
                     queryKey: ["test"],
                     queryFn: fetchFn,
                     isActive,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -58,6 +59,7 @@ describe("useSmartPolling", () => {
                     queryFn: fetchFn,
                     isActive,
                     interval: 1000,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -81,6 +83,7 @@ describe("useSmartPolling", () => {
                     queryFn: fetchFn,
                     isActive,
                     interval: 1000,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -105,6 +108,7 @@ describe("useSmartPolling", () => {
                     isActive,
                     interval: 1000,
                     idleInterval: 5000,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -127,6 +131,7 @@ describe("useSmartPolling", () => {
                     queryKey: ["default-test"],
                     queryFn: fetchFn,
                     isActive,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -134,8 +139,8 @@ describe("useSmartPolling", () => {
         // Initial fetch
         await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(1));
 
-        // Default interval is 3000ms
-        vi.advanceTimersByTime(3000);
+        // Default interval is 5000ms
+        vi.advanceTimersByTime(5000);
         await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
     });
 
@@ -151,6 +156,7 @@ describe("useSmartPolling", () => {
                     isActive,
                     enabled: true,
                     staleTime: 5000,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -170,6 +176,7 @@ describe("useSmartPolling", () => {
                     queryFn: fetchFn,
                     isActive,
                     retry: false,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );
@@ -193,6 +200,7 @@ describe("useSmartPolling", () => {
                     queryFn: fetchFn,
                     isActive,
                     interval: 1000,
+                    ledgerId: "test-ledger",
                 }),
             { wrapper: createWrapper() }
         );

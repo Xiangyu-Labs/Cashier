@@ -258,6 +258,8 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
 
 
 
+    const MAX_FALLBACK_SIZE = 5 * 1024 * 1024; // 5MB
+
     const processFiles = async (files: File[]) => {
         for (const file of files) {
             try {
@@ -265,16 +267,21 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
                 setImages((prev) => [...prev, compressed]);
             } catch (error) {
                 console.error("Failed to compress image:", error);
-                // Fallback to original image if compression fails
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64 = reader.result as string;
-                    // Extract correct mime type from the data URL (browser determines this from file content)
-                    const mimeMatch = base64.match(/^data:([^;]+);base64,/);
-                    const mimeType = mimeMatch ? mimeMatch[1] : file.type;
-                    setImages((prev) => [...prev, { data: base64, mimeType }]);
-                };
-                reader.readAsDataURL(file);
+
+                // Only use original if under size limit
+                if (file.size <= MAX_FALLBACK_SIZE) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result as string;
+                        // Extract correct mime type from the data URL (browser determines this from file content)
+                        const mimeMatch = base64.match(/^data:([^;]+);base64,/);
+                        const mimeType = mimeMatch ? mimeMatch[1] : file.type;
+                        setImages((prev) => [...prev, { data: base64, mimeType }]);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    toast.error(`Image too large: ${file.name}. Please use a smaller image.`);
+                }
             }
         }
     };

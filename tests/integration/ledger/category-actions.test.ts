@@ -141,10 +141,10 @@ describe("createEntryCategoryAction", () => {
         expect(cat2?.name).toBe("餐饮");
     });
 
-    it("throws 'Unauthorized' for wrong ledger", async () => {
+    it("throws 'Ledger not found' for wrong ledger", async () => {
         await expect(
             createEntryCategoryAction(uuidv4(), { name: "Test", description: "d", icon: "x" })
-        ).rejects.toThrow("Unauthorized");
+        ).rejects.toThrow("Ledger not found");
     });
 });
 

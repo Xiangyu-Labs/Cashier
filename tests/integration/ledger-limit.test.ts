@@ -33,14 +33,13 @@ describe("Ledger single limit constraint", () => {
             .values({
                 id: "ledger-test-1",
                 userId: user.id,
-                name: "First Ledger",
                 createdAt: new Date(),
                 updatedAt: new Date(),
             })
             .returning();
 
         expect(ledger).toBeDefined();
-        expect(ledger.name).toBe("First Ledger");
+        expect(ledger.userId).toBe(user.id);
     });
 
     it("should prevent creating second ledger for same user", async () => {
@@ -60,7 +59,6 @@ describe("Ledger single limit constraint", () => {
             db.insert(ledgers).values({
                 id: "ledger-test-2",
                 userId: user.id,
-                name: "Second Ledger",
                 createdAt: new Date(),
                 updatedAt: new Date(),
             })
@@ -77,7 +75,6 @@ describe("Ledger single limit constraint", () => {
             .values({
                 id: "ledger-test-1",
                 userId: user1.id,
-                name: "User1 Ledger",
                 createdAt: new Date(),
                 updatedAt: new Date(),
             })
@@ -89,7 +86,6 @@ describe("Ledger single limit constraint", () => {
             .values({
                 id: "ledger-test-2",
                 userId: user2.id,
-                name: "User2 Ledger",
                 createdAt: new Date(),
                 updatedAt: new Date(),
             })
