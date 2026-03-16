@@ -73,6 +73,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
         deleteCredential,
     } = useCredentialMutations(ledgerId);
 
+    // Theme key mapping for translations
+    const themeKeyMap = { system: 'themeAuto', light: 'themeLight', dark: 'themeDark' } as const;
+
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-6 sm:space-y-8">
@@ -91,13 +94,13 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                                         key={tName}
                                         onClick={() => setTheme(tName)}
                                         className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 p-1.5 rounded-md transition-all ${theme === tName ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
-                                        title={t(`theme${tName.charAt(0).toUpperCase() + tName.slice(1)}` as const)}
+                                        title={t(themeKeyMap[tName])}
                                         disabled={isPending}
                                     >
                                         {tName === 'system' && <Monitor className="h-4 w-4" />}
                                         {tName === 'light' && <Sun className="h-4 w-4" />}
                                         {tName === 'dark' && <Moon className="h-4 w-4" />}
-                                        <span className="sm:hidden text-xs">{t(`theme${tName.charAt(0).toUpperCase() + tName.slice(1)}` as const)}</span>
+                                        <span className="sm:hidden text-xs">{t(themeKeyMap[tName])}</span>
                                     </button>
                                 ))}
                             </div>
