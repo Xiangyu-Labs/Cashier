@@ -44,9 +44,8 @@ RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 
 USER node
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
+# Copy entrypoint script with executable permission
+COPY --chmod=755 docker-entrypoint.sh ./
 
 EXPOSE 3000
 CMD ["./docker-entrypoint.sh"]
