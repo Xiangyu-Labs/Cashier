@@ -7,54 +7,15 @@
 
 import { formatDateTimeForApi } from './date-utils';
 
-export type PeriodPreset = 'currentPeriod' | 'all' | 'thisMonth' | 'week' | 'custom';
+export type PeriodPreset = 'all' | 'thisMonth' | 'week' | 'custom';
 
 export interface PeriodParams {
     period: PeriodPreset;
     startDate?: string;  // YYYY-MM-DD format (only for 'custom')
     endDate?: string;    // YYYY-MM-DD format (only for 'custom')
-    monthStartDay?: number; // for 'currentPeriod' preset
 }
 
-/**
- * Calculate billing period based on month start day.
- * Returns startDate and endDate in yyyy-MM-dd format.
- */
-export function getBillingPeriod(monthStartDay: number): { startDate: string; endDate: string } {
-    const today = new Date();
-    const currentDay = today.getDate();
-    const year = today.getFullYear();
-    const month = today.getMonth();
 
-    function getActualDate(y: number, m: number, targetDay: number): Date {
-        const lastDayOfMonth = new Date(y, m + 1, 0).getDate();
-        const actualDay = Math.min(targetDay, lastDayOfMonth);
-        return new Date(y, m, actualDay);
-    }
-
-    let startDate: Date;
-    let endDate: Date;
-
-    if (currentDay >= monthStartDay) {
-        startDate = getActualDate(year, month, monthStartDay);
-        endDate = getActualDate(year, month + 1, monthStartDay - 1);
-    } else {
-        startDate = getActualDate(year, month - 1, monthStartDay);
-        endDate = getActualDate(year, month, monthStartDay - 1);
-    }
-
-    const formatDate = (d: Date) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
-    return {
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
-    };
-}
 
 export interface DateRange {
     startDate: string | null;  // ISO datetime string for API
@@ -67,17 +28,6 @@ export interface DateRange {
  */
 export function periodToDateRange(params: PeriodParams): DateRange {
     const { period, startDate, endDate } = params;
-
-    if (period === 'currentPeriod') {
-        const monthStartDay = params.monthStartDay || 1;
-        const billing = getBillingPeriod(monthStartDay);
-        const start = new Date(`${billing.startDate}T00:00:00`);
-        const end = new Date(`${billing.endDate}T23:59:59.999`);
-        return {
-            startDate: formatDateTimeForApi(start) ?? null,
-            endDate: formatDateTimeForApi(end) ?? null,
-        };
-    }
 
     if (period === 'all') {
         return { startDate: null, endDate: null };
@@ -116,13 +66,12 @@ export function periodToDateRange(params: PeriodParams): DateRange {
         };
     }
 
-    // Default to currentPeriod if unknown period
-    const billing = getBillingPeriod(params.monthStartDay || 1);
-    const start = new Date(`${billing.startDate}T00:00:00`);
-    const end = new Date(`${billing.endDate}T23:59:59.999`);
+    // Default to thisMonth if unknown period
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     return {
-        startDate: formatDateTimeForApi(start) ?? null,
-        endDate: formatDateTimeForApi(end) ?? null,
+        startDate: formatDateTimeForApi(monthStart) ?? null,
+        endDate: formatDateTimeForApi(monthEnd) ?? null,
     };
 }
 
@@ -155,10 +104,10 @@ export function parsePeriodFromSearchParams(
     }
 
     // Validate period value
-    const validPeriods: PeriodPreset[] = ['currentPeriod', 'all', 'thisMonth', 'week', 'custom'];
+    const validPeriods: PeriodPreset[] = ['all', 'thisMonth', 'week', 'custom'];
     const validatedPeriod: PeriodPreset = validPeriods.includes(period as PeriodPreset)
         ? (period as PeriodPreset)
-        : 'currentPeriod';  // Default to currentPeriod
+        : 'thisMonth';  // Default to thisMonth
 
     return {
         period: validatedPeriod,
@@ -172,7 +121,7 @@ export function parsePeriodFromSearchParams(
  */
 export function datesToPeriodParams(startDate?: Date, endDate?: Date): PeriodParams {
     if (!startDate || !endDate) {
-        return { period: 'currentPeriod' };
+        return { period: 'thisMonth' };
     }
 
     const formatDate = (d: Date): string => {
