@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import { sendOTPAction, verifyOTPAction } from "@/features/auth/server/actions/auth";
 import { OTP_LENGTH } from "@/features/auth/server/services/otp";
 
@@ -31,6 +32,7 @@ export function useLoginFlow(
 ): UseLoginFlowReturn {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const locale = useLocale();
     const callbackUrl = searchParams.get("callbackUrl") || "/";
 
     const [step, setStep] = useState<LoginStep>("email");
@@ -79,6 +81,7 @@ export function useLoginFlow(
             const signInResult = await signIn("otp", {
                 email,
                 otp,
+                locale,
                 redirect: false,
                 callbackUrl,
             });

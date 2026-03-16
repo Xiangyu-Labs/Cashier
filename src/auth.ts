@@ -94,6 +94,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             credentials: {
                 email: { type: "email" },
                 otp: { type: "text" },
+                locale: { type: "text" },
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.otp) {
@@ -107,6 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 const email = credentials.email;
                 const otp = credentials.otp;
+                const locale = typeof credentials.locale === 'string' ? credentials.locale : 'zh';
 
                 // Verify OTP (defense in depth - already verified in API)
                 const record = await findOTPRecord(email);
@@ -140,7 +142,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                     // Create default ledger for new user
                     const { createDefaultLedgerForUser } = await import("@/features/auth/server/services/user-setup");
-                    await createDefaultLedgerForUser(user.id, user.email || "New User");
+                    await createDefaultLedgerForUser(user.id, user.email || "New User", locale);
                 }
 
                 // Delete the used OTP (one-time use)
