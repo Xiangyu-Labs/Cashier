@@ -83,7 +83,7 @@ interface LedgerPageClientProps {
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
-const INPUT_PREFETCH_DELAY = 2000; // 2秒后预加载记一笔弹窗数据
+const INPUT_PREFETCH_DELAY = 2000; // Prefetch input modal data after 2 seconds
 
 export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
