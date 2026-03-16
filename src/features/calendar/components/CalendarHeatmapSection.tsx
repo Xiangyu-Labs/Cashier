@@ -12,6 +12,7 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { AdaptiveHeatmap } from './AdaptiveHeatmap';
 import { getHeatmapLegend } from '../lib/heatmap-colors';
@@ -39,6 +40,8 @@ export function CalendarHeatmapSection({
   className,
   queryRange,
 }: CalendarHeatmapSectionProps) {
+  const t = useTranslations('Calendar');
+
   // Handle day click
   const handleDayClick = useCallback(
     (date: string) => {
@@ -61,7 +64,7 @@ export function CalendarHeatmapSection({
           className
         )}
       >
-        暂无数据
+        {t('noData')}
       </div>
     );
   }
@@ -73,7 +76,7 @@ export function CalendarHeatmapSection({
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 pt-2">
-        <span className="text-xs text-muted-foreground">少</span>
+        <span className="text-xs text-muted-foreground">{t('less')}</span>
         <div className="flex gap-1">
           {legend.map((item) => (
             <div
@@ -84,7 +87,7 @@ export function CalendarHeatmapSection({
             />
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">多</span>
+        <span className="text-xs text-muted-foreground">{t('more')}</span>
       </div>
     </div>
   );
