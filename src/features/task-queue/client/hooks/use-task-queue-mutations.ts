@@ -91,21 +91,20 @@ export function useTaskQueueMutations(ledgerId: string) {
         mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
         successMessage: tEntries("retrySubmitted"),
         errorMessage: tCommon("error"),
-        // Optimistic update: mark items as queued immediately
+        // Optimistic update: mark items as pending immediately
         onOptimisticUpdate: (queryClient, ids) => {
-            type QueueItem = TaskQueueResult['items'][number];
             const snapshots = queryClient.getQueriesData<TaskQueueResult>({
                 queryKey: taskQueueKey,
             });
 
             queryClient.setQueriesData<TaskQueueResult>(
                 { queryKey: taskQueueKey },
-                (old) => {
+                (old): TaskQueueResult | undefined => {
                     if (!old) return old;
                     return {
                         ...old,
                         items: old.items.map((item) =>
-                            ids.includes(item.id) ? { ...item, status: "queued" as const } : item
+                            ids.includes(item.id) ? { ...item, status: "pending" as const } : item
                         ),
                     };
                 }

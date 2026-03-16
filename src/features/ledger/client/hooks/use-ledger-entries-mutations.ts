@@ -51,7 +51,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
                             };
                         }) ?? [];
                         return { ...doc, ledgerEntries: updatedEntries };
-                    });
+                    }) as SourceDocumentsQueryData;
                 }
             );
 
@@ -70,7 +70,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
                 { predicate: matchSourceDocuments(ledgerId) },
-                (old) => {
+                (old): SourceDocumentsQueryData => {
                     if (!old) return old;
                     return old.map((doc) => {
                         const filteredEntries = doc.ledgerEntries?.filter(
@@ -96,7 +96,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
                 { predicate: matchSourceDocuments(ledgerId) },
-                (old) => old?.filter(d => d.id !== id)
+                (old): SourceDocumentsQueryData => old?.filter(d => d.id !== id)
             );
 
             return { snapshots };

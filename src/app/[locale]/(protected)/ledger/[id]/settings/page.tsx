@@ -22,6 +22,10 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         staleTime: STALE_TIME,
     });
 
+    if (!ledger) {
+        return <div>Ledger not found</div>;
+    }
+
     // Prefetch categories
     const categories = await queryClient.fetchQuery({
         queryKey: queryKeys.entryCategories(ledgerId),
