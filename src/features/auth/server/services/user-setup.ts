@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
  */
 export async function createDefaultLedgerForUser(
     userId: string,
-    userEmail: string
+    _userEmail: string
 ): Promise<string> {
     const { defaultLedger } = await import("@/config/default-ledger");
     const { entryCategories } = await import("@/lib/db/schema");

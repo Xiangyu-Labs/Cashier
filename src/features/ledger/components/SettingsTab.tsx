@@ -30,7 +30,7 @@ interface SettingsTabProps {
     allLedgers?: Ledger[];
 }
 
-export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = [] }: SettingsTabProps) {
+export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _allLedgers = [] }: SettingsTabProps) {
     const router = useRouter();
     const pathname = usePathname();
     const locale = useLocale();

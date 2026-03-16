@@ -24,7 +24,7 @@ interface HeaderProps {
   onOpenInput: () => void;
 }
 
-export function Header({ ledger, pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
+export function Header({ ledger: _ledger, pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
   useTranslations("LedgerPage"); // Keep translation namespace registered
 
   return (
