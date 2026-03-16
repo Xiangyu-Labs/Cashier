@@ -4,7 +4,6 @@ import {
     ledgers,
     ledgerEntries,
     entryCategories,
-    currencyRates,
     users,
 } from "@/lib/db/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";

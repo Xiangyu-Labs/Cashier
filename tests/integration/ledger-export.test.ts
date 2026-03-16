@@ -3,7 +3,6 @@ import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/expo
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, users, sourceDocuments, entryCategories } from "@/lib/db/schema";
 import { createLedgerData, createLedgerEntryData, createSourceDocumentData, createCategoryData } from "../helpers/factories";
-import { v4 as uuidv4 } from "uuid";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -227,8 +226,6 @@ describe("exportLedgerEntriesAction", () => {
     const lines = result.csvContent.split("\r\n");
     const dataRow = lines[1];
 
-    // Split by comma and check each field
-    const fields = dataRow.split(",");
     // Category should be empty (not "null")
     expect(dataRow).not.toContain("null");
     expect(dataRow).not.toContain("undefined");

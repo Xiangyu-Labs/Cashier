@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, entryCategories, sourceDocuments, users } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
 import { createLedgerData, createCategoryData, createLedgerEntryData, createSourceDocumentData } from "../helpers/factories";
 import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
 import { eq, isNull, and } from "drizzle-orm";
@@ -18,10 +18,7 @@ import { eq, isNull, and } from "drizzle-orm";
 import { deleteEntryCategoryAction, getEntryCategoriesAction, getUncategorizedCountAction } from "@/features/ledger/server/actions/categories";
 import { deleteLedgerEntryAction, createLedgerEntryAction, updateLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { createLedgerAction } from "@/features/ledger/server/actions/create";
-import { getLedgersAction } from "@/features/ledger/server/actions/get";
 import { deleteSourceDocumentAction } from "@/features/source-document/server/actions";
-
-const testUserId = TEST_USER_ID;
 
 /**
  * Helper function to create a complete test ledger with categories and entries

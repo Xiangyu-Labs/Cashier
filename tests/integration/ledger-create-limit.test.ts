@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, users } from "@/lib/db/schema";
 import { createLedgerAction } from "@/features/ledger/server/actions/create";
-import { eq } from "drizzle-orm";
 import { ConflictError } from "@/lib/errors";
 
 // Mock auth module
