@@ -6,15 +6,16 @@ This document describes how to create and register background task handlers in C
 
 Cashier uses an in-process task engine (`src/lib/flow/`) for background processing. Tasks run as Promises within the Next.js process — no external queue (Redis, RabbitMQ, etc.) required.
 
-## Auto-Discovery
+## Task Registration
 
-Task handlers are **automatically discovered** at startup from files matching:
+Tasks are registered via **explicit imports** in `src/instrumentation.ts`. When a task module is imported, it automatically registers itself with `flowEngine.register()` as a side effect.
 
-```
-**/server/tasks/*.task.ts
-```
+### Current Registered Tasks
 
-No manual registration is required!
+The following tasks are registered in `src/instrumentation.ts`:
+- `parse_source_document` - Parses uploaded receipts and documents
+- `generate_category_metadata` - Generates icon and description for categories
+- `categorize_entry` - Auto-categorizes ledger entries
 
 ## Creating a Task Handler
 
@@ -23,42 +24,60 @@ No manual registration is required!
 Create a file in your feature's `server/tasks/` directory:
 
 ```typescript
-// src/features/my-feature/server/tasks/process-document.task.ts
+// src/features/my-feature/server/tasks/process-document.ts
 import { flowEngine } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 
-// Export a default function that registers the task
-export default function register(engine: typeof flowEngine) {
-  engine.register("process-document", {
-    async execute(input, context) {
-      // Task logic here
-      const { documentId } = input as { documentId: string };
+// Define task handler
+const processDocumentHandler = {
+  async execute(input, context) {
+    // Task logic here
+    const { documentId } = input as { documentId: string };
 
-      // Report progress (visible in UI)
-      await context.updateProgress("Analyzing document...");
+    // Report progress (visible in UI)
+    await context.updateProgress("Analyzing document...");
 
-      // Check for cancellation
-      if (context.signal.aborted) {
-        throw new Error("Task cancelled");
-      }
+    // Check for cancellation
+    if (context.signal.aborted) {
+      throw new Error("Task cancelled");
+    }
 
-      // Perform work
-      const result = await analyzeDocument(documentId);
+    // Perform work
+    const result = await analyzeDocument(documentId);
 
-      // Report token usage (for AI calls)
-      context.reportTokens({
-        model: "gpt-4o",
-        input: 1000,
-        output: 500,
-      });
+    // Report token usage (for AI calls)
+    context.reportTokens({
+      model: "gpt-4o",
+      input: 1000,
+      output: 500,
+    });
 
-      return result;
-    },
-  });
+    return result;
+  },
+};
+
+// Register the task handler (side effect on module import)
+flowEngine.register("process-document", processDocumentHandler);
+```
+
+### 2. Register in instrumentation.ts
+
+Add an explicit import for your task in `src/instrumentation.ts`:
+
+```typescript
+// src/instrumentation.ts
+export async function register() {
+  // ... existing code ...
+
+  // Explicitly import task handlers to register them
+  await import("@/features/source-document/server/tasks/parse-source-document");
+  await import("@/features/ledger/server/tasks/generate-category-metadata");
+  await import("@/features/ledger/server/tasks/categorize-entry");
+  await import("@/features/my-feature/server/tasks/process-document"); // <-- Add your task
 }
 ```
 
-### 2. Submit Tasks
+### 3. Submit Tasks
 
 Submit tasks from Server Actions or other parts of your code:
 
@@ -124,20 +143,21 @@ export interface ProcessDocumentOutput {
 
 // In your task file
 import { ProcessDocumentInput, ProcessDocumentOutput } from "./types";
+import { FlowTaskHandler, FlowContext } from "@/lib/flow";
 
-export default function register(engine: typeof flowEngine) {
-  engine.register("process-document", {
-    async execute(input, context): Promise<ProcessDocumentOutput> {
-      const { documentId, options } = input as ProcessDocumentInput;
-      // ... process
-      return {
-        extractedText: "...",
-        totalAmount: 100,
-        entries: [...],
-      };
-    },
-  });
-}
+const processDocumentHandler: FlowTaskHandler<ProcessDocumentInput, ProcessDocumentOutput> = {
+  async execute(input, context): Promise<ProcessDocumentOutput> {
+    const { documentId, options } = input;
+    // ... process
+    return {
+      extractedText: "...",
+      totalAmount: 100,
+      entries: [...],
+    };
+  },
+};
+
+flowEngine.register("process-document", processDocumentHandler);
 ```
 
 ## Best Practices
@@ -252,30 +272,34 @@ Write unit tests for your task handlers:
 
 ```typescript
 // tests/unit/my-feature/tasks/process-document.test.ts
-import { describe, it, expect, vi } from "vitest";
-import register from "@/features/my-feature/server/tasks/process-document.task";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { flowEngine } from "@/lib/flow";
+
+// Import the task module to trigger registration
+import "@/features/my-feature/server/tasks/process-document";
 
 describe("process-document task", () => {
   it("should process document successfully", async () => {
-    // Register task
-    register(flowEngine);
-
     // Mock context
     const mockContext = {
       updateProgress: vi.fn(),
       reportTokens: vi.fn(),
       signal: { aborted: false },
+      ai: {
+        getText: vi.fn(),
+        getJSON: vi.fn(),
+      },
     };
 
-    // Get registered handler
-    const handler = vi.mocked(flowEngine.register).mock.calls[0][1];
-
-    // Execute
-    const result = await handler.execute(
+    // Submit task and get the registered handler
+    const taskId = await flowEngine.submit(
+      "process-document",
       { documentId: "doc-123" },
-      mockContext
+      { title: "Test", scopeId: "ledger-1", entityType: "document", entityId: "doc-123" }
     );
+
+    // Execute the task
+    const result = await flowEngine.executeTask(taskId);
 
     // Assert
     expect(result).toBeDefined();
@@ -284,33 +308,44 @@ describe("process-document task", () => {
 });
 ```
 
-## Migration from Manual Registration
+## Migrating from Auto-Discovery
 
-If you have existing tasks using the old manual import pattern in `instrumentation.ts`:
+If you have existing tasks using the old auto-discovery pattern with `*.task.ts` files:
 
 ### Before
-
-```typescript
-// src/instrumentation.ts
-await import("@/features/my-feature/server/tasks/my-task");
-
-// src/features/my-feature/server/tasks/my-task.ts
-import { flowEngine } from "@/lib/flow";
-flowEngine.register("my-task", { ... });
-```
-
-### After
 
 ```typescript
 // src/features/my-feature/server/tasks/my-task.task.ts
 import { flowEngine } from "@/lib/flow";
 
+// Export a default function that registers the task
 export default function register(engine: typeof flowEngine) {
   engine.register("my-task", { ... });
 }
 ```
 
-Just rename the file to `*.task.ts` and export a default function — no `instrumentation.ts` changes needed!
+### After
+
+```typescript
+// src/features/my-feature/server/tasks/my-task.ts
+import { flowEngine } from "@/lib/flow";
+
+// Direct registration at module level (side effect)
+flowEngine.register("my-task", { ... });
+```
+
+Then add the import to `src/instrumentation.ts`:
+
+```typescript
+// src/instrumentation.ts
+await import("@/features/my-feature/server/tasks/my-task");
+```
+
+Key changes:
+1. Rename file from `*.task.ts` to `*.ts` (naming is now flexible)
+2. Remove the `export default function register` wrapper
+3. Use direct `flowEngine.register()` call at module level
+4. Add explicit import in `instrumentation.ts`
 
 ## Troubleshooting
 
@@ -318,14 +353,14 @@ Just rename the file to `*.task.ts` and export a default function — no `instru
 
 If you see "Task type not found" errors:
 
-1. Verify the file matches the pattern `**/server/tasks/*.task.ts`
-2. Check that the file exports a default function
-3. Ensure the task type name matches in `engine.register()` and `flowEngine.submit()`
+1. Verify the task is imported in `src/instrumentation.ts`
+2. Check that `flowEngine.register()` is called at module level (not inside a function)
+3. Ensure the task type name matches in `flowEngine.register()` and `flowEngine.submit()`
 
 ### Task not executing
 
 1. Check the server logs for registration messages
-2. Verify `autoRegisterTasks()` is called in `instrumentation.ts`
+2. Verify the task module is being imported in `instrumentation.ts`
 3. Ensure `process.env.NEXT_RUNTIME === 'nodejs'` for server-side execution
 
 ### Task errors not shown
