@@ -285,7 +285,6 @@
         "theme": "主题",
         "themeDescription": "设置当前界面的色彩模式",
         "themeAuto": "跟随系统",
-        "themeSystem": "跟随系统",
         "themeLight": "浅色模式",
         "themeDark": "深色模式",
         "uiLanguage": "界面语言",
