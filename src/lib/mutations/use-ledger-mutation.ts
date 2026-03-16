@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { invalidateLedgerCache } from "@/lib/query-keys";
+import { useMutationStore } from "@/lib/store/mutation-state";
 import { toast } from "sonner";
 
 // Type for snapshot data returned by onOptimisticUpdate
@@ -113,24 +114,28 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
   options: UseLedgerMutationOptions<TData, TVariables, TContext>
 ) {
   const queryClient = useQueryClient();
+  const { incrementLedgerMutation, decrementLedgerMutation } = useMutationStore();
 
   const {
     mutationFn,
-    successMessage,
-    errorMessage,
     onOptimisticUpdate,
     onRollback,
+    successMessage,
+    errorMessage,
+    skipInvalidation = false,
+    customInvalidation,
     onSuccessExtra,
     onErrorExtra,
     onSettledExtra,
-    customInvalidation,
-    skipInvalidation = false,
   } = options;
 
   return useMutation<TData, Error, TVariables, TContext>({
     mutationFn,
 
     onMutate: async (variables) => {
+      // Increment mutation counter to pause polling
+      incrementLedgerMutation();
+
       // Cancel outgoing queries to prevent race conditions
       if (ledgerId) {
         await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
@@ -185,20 +190,25 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     },
 
     onSettled: async (data, error, variables) => {
-      // Only invalidate queries if the mutation doesn't return data
-      // or if skipInvalidation is false. When mutation returns data,
-      // onSuccessExtra should handle cache updates directly.
-      if (!skipInvalidation && !error && data === undefined) {
-        if (customInvalidation) {
-          customInvalidation(queryClient);
-        } else if (ledgerId) {
-          await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      try {
+        // Only invalidate queries if the mutation doesn't return data
+        // or if skipInvalidation is false. When mutation returns data,
+        // onSuccessExtra should handle cache updates directly.
+        if (!skipInvalidation && !error && data === undefined) {
+          if (customInvalidation) {
+            customInvalidation(queryClient);
+          } else if (ledgerId) {
+            await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+          }
         }
-      }
 
-      // Run additional settled callback
-      if (onSettledExtra) {
-        onSettledExtra(queryClient, variables, data, error);
+        // Run additional settled callback
+        if (onSettledExtra) {
+          onSettledExtra(queryClient, variables, data, error);
+        }
+      } finally {
+        // Always decrement, even if there was an error
+        decrementLedgerMutation();
       }
     },
   });
