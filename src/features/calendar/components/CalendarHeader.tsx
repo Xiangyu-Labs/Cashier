@@ -9,6 +9,7 @@
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 import type { CalendarViewType } from '../types';
 
 interface CalendarHeaderProps {
@@ -30,8 +31,10 @@ export function CalendarHeader({
   showFilters,
   className,
 }: CalendarHeaderProps) {
+  const t = useTranslations('Calendar');
+
   // Format date display based on view type
-  const dateDisplay = formatDateDisplay(anchorDate, viewType);
+  const dateDisplay = formatDateDisplay(anchorDate, viewType, t);
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -76,7 +79,7 @@ export function CalendarHeader({
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                {viewLabels[view]}
+                {t(viewLabels[view])}
               </button>
             ))}
           </div>
@@ -96,18 +99,22 @@ export function CalendarHeader({
 }
 
 const viewLabels: Record<CalendarViewType, string> = {
-  month: '月',
-  year: '年',
+  month: 'month',
+  year: 'year',
 };
 
-function formatDateDisplay(dateStr: string, viewType: CalendarViewType): string {
+function formatDateDisplay(
+  dateStr: string,
+  viewType: CalendarViewType,
+  t: (key: string, values?: Record<string, string | number>) => string
+): string {
   const [year, month] = dateStr.split('-').map(Number);
 
   switch (viewType) {
     case 'month':
-      return `${year}年${month}月`;
+      return t('dateFormat', { year, month });
     case 'year':
-      return `${year}年`;
+      return `${year}${t('year')}`;
     default:
       return dateStr;
   }
