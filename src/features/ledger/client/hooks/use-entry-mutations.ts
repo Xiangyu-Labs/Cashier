@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, matchLedgerEntries } from "@/lib/query-keys";
 import {
     useLedgerMutation,
     createListSnapshots,
@@ -47,7 +47,7 @@ export function useEntryMutations({
             const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
 
             queryClient.setQueriesData<InfiniteData>(
-                { queryKey: queryKeys.ledgerEntries(ledgerId) },
+                { predicate: matchLedgerEntries(ledgerId) },
                 (old) => {
                     if (!old?.pages) return old;
                     return {
@@ -99,7 +99,7 @@ export function useEntryMutations({
             const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
 
             queryClient.setQueriesData<InfiniteData>(
-                { queryKey: queryKeys.ledgerEntries(ledgerId) },
+                { predicate: matchLedgerEntries(ledgerId) },
                 (old) => {
                     if (!old?.pages) return old;
                     return {
