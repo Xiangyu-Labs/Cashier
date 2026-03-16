@@ -13,8 +13,8 @@ import { TaskQueueContent } from "./TaskQueueContent";
 import { TaskQueueDialogs } from "./TaskQueueDialogs";
 
 /**
- * 将数字格式化为简写形式 (k, m, b)
- * 例如: 1500 -> 1.5k, 1000000 -> 1m, 2500000000 -> 2.5b
+ * Format number to compact form (k, m, b)
+ * Example: 1500 -> 1.5k, 1000000 -> 1m, 2500000000 -> 2.5b
  */
 function formatCompactNumber(num: number): string {
     if (num >= 1_000_000_000) {
