@@ -5,6 +5,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { getHeatmapColor, formatCellAmount } from '../../lib/heatmap-colors';
 import type { HeatmapLevel } from '../../types';
@@ -19,6 +20,7 @@ interface DayCellLargeProps {
 
 export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCellLargeProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const t = useTranslations('Calendar');
 
   return (
     <div className="relative">
@@ -64,9 +66,9 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-50 pointer-events-none">
           <div className="font-medium">{date}</div>
           {amount > 0 ? (
-            <div>支出: {formatCellAmount(amount)}</div>
+            <div>{t('expense')}: {formatCellAmount(amount)}</div>
           ) : (
-            <div className="text-muted-foreground">无消费</div>
+            <div className="text-muted-foreground">{t('noConsumption')}</div>
           )}
         </div>
       )}

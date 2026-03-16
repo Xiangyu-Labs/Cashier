@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { getHeatmapColor, formatCellAmount } from '../../lib/heatmap-colors';
 import type { HeatmapLevel } from '../../types';
@@ -20,6 +21,7 @@ interface DayCellSmallProps {
 
 export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSmallProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const t = useTranslations('Calendar');
 
   return (
     <div className="relative">
@@ -42,11 +44,11 @@ export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSma
           <div className="font-medium">{date}</div>
           {amount > 0 ? (
             <>
-              <div>支出: {formatCellAmount(amount)}</div>
-              <div>笔数: {count}笔</div>
+              <div>{t('expense')}: {formatCellAmount(amount)}</div>
+              <div>{t('count', { count })}</div>
             </>
           ) : (
-            <div className="text-muted-foreground">无消费</div>
+            <div className="text-muted-foreground">{t('noConsumption')}</div>
           )}
         </div>
       )}
