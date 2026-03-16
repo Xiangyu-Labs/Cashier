@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { desc, lte, gte, inArray, and, eq, or, lt, type SQL } from "drizzle-orm";
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
+import { AppError } from "@/lib/errors";
 import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import {
     type SerializedSourceDocument,
@@ -330,7 +331,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(async (
         return result;
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get all source documents");
-        throw new Error(safeError(error));
+        throw new AppError(safeError(error), "QUERY_ERROR", 500);
     }
 });
 
@@ -365,7 +366,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(async (
         };
     } catch (error) {
         logger.error({ error, ledgerId }, "Failed to get pending source documents");
-        throw new Error(safeError(error));
+        throw new AppError(safeError(error), "QUERY_ERROR", 500);
     }
 });
 

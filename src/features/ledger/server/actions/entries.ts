@@ -7,6 +7,7 @@ import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { CurrencyService } from "@/features/currency/server/service";
 import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
+import { NotFoundError } from "@/lib/errors";
 
 const createLedgerEntrySchema = z.object({
     amount: z.number(),
@@ -147,7 +148,7 @@ export const updateLedgerEntryAction = withLedgerAccess(async (ledgerId: string,
         .where(q.whereId(ledgerEntryId))
         .returning();
 
-    if (!updatedEntry) throw new Error("Entry not found or access denied");
+    if (!updatedEntry) throw new NotFoundError("Entry");
 
     return serializeLedgerEntry(updatedEntry);
 });

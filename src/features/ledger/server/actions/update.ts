@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { updateLedgerSchema, type UpdateLedgerInput } from "./schemas";
 import { recalculateEntriesConvertedAmount } from "./helpers";
 import { updateTag } from "next/cache";
+import { NotFoundError, ForbiddenError } from "@/lib/errors";
 
 export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<import("@/types/api").Ledger> => {
     // Verify ownership
@@ -15,8 +16,12 @@ export const updateLedgerAction = withAuth(async (userId: string, id: string, da
         where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
     });
 
-    if (!existing || existing.userId !== userId) {
-        throw new Error("Ledger not found or access denied");
+    if (!existing) {
+        throw new NotFoundError("Ledger");
+    }
+
+    if (existing.userId !== userId) {
+        throw new ForbiddenError("Access denied to this ledger");
     }
 
     const validated = updateLedgerSchema.parse(data);

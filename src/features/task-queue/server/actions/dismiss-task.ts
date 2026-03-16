@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { eq, and, inArray, isNull } from "drizzle-orm";
+import { NotFoundError, ForbiddenError } from "@/lib/errors";
 
 /**
  * Helper to extract ledgerId from task scopeId
@@ -26,13 +27,13 @@ export const dismissTaskAction = withLedgerAccess(async (ledgerId: string, taskI
     });
 
     if (!task) {
-        throw new Error("Task not found");
+        throw new NotFoundError("Task");
     }
 
     // Verify ledgerId from scopeId matches
     const taskLedgerId = getLedgerIdFromTask(task);
     if (taskLedgerId !== ledgerId) {
-        throw new Error("Task does not belong to this ledger");
+        throw new ForbiddenError("Task does not belong to this ledger");
     }
 
     // Soft delete the task
