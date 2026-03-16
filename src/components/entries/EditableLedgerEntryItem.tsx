@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import { LedgerEntry, EntryCategory } from "@/types/api";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,8 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
     pendingChanges,
     sourceDocumentEntryDate,
 }: EditableLedgerEntryItemProps) {
+    const t = useTranslations("Calendar");
+
     // Merge pending changes with original data
     const displayData = {
         itemName: pendingChanges?.itemName ?? ledgerEntry.itemName,
@@ -116,7 +119,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
                     <EditableField
                         value={displayData.itemName}
                         onChange={(v) => handleChange("itemName", v)}
-                        placeholder="商品名称"
+                        placeholder={t("productName")}
                         displayClassName="font-medium text-text text-sm"
                         inputClassName="text-sm font-medium"
                     />
@@ -131,7 +134,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
                                 <EditableField
                                     value={displayData.description || ""}
                                     onChange={(v) => handleChange("description", v || null)}
-                                    placeholder="备注"
+                                    placeholder={t("notes")}
                                     displayClassName="truncate text-muted-foreground/60 text-[11px] italic"
                                     inputClassName="text-[11px]"
                                 />
