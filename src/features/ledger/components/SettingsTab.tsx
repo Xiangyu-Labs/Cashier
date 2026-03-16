@@ -86,18 +86,19 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                                 <p className="text-sm text-[var(--muted)]">{t('themeDescription')}</p>
                             </div>
                             <div className="flex w-full sm:w-auto bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
+                                const themeKeyMap = { system: 'themeAuto', light: 'themeLight', dark: 'themeDark' } as const;
                                 {(['system', 'light', 'dark'] as const).map((tName) => (
                                     <button
                                         key={tName}
                                         onClick={() => setTheme(tName)}
                                         className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 p-1.5 rounded-md transition-all ${theme === tName ? 'bg-[var(--surface)] shadow-sm text-primary' : 'text-[var(--muted)] hover:text-text'}`}
-                                        title={t(`theme${tName.charAt(0).toUpperCase() + tName.slice(1)}` as const)}
+                                        title={t(themeKeyMap[tName])}
                                         disabled={isPending}
                                     >
                                         {tName === 'system' && <Monitor className="h-4 w-4" />}
                                         {tName === 'light' && <Sun className="h-4 w-4" />}
                                         {tName === 'dark' && <Moon className="h-4 w-4" />}
-                                        <span className="sm:hidden text-xs">{t(`theme${tName.charAt(0).toUpperCase() + tName.slice(1)}` as const)}</span>
+                                        <span className="sm:hidden text-xs">{t(themeKeyMap[tName])}</span>
                                     </button>
                                 ))}
                             </div>
