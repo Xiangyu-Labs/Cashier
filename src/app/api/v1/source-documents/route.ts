@@ -13,11 +13,11 @@ import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handl
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const sourceDocumentInputSchema = z.object({
-    text: z.string().optional(),
+    text: z.string().max(10000, "Text too long").optional(),
     images: z.array(z.object({
         data: z.string(), // base64
-        mimeType: z.string()
-    })).refine(
+        mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type")
+    })).max(10, "Maximum 10 images allowed").refine(
         (images) => {
             if (!images || images.length === 0) return true;
             // Validate base64 data size
@@ -31,8 +31,14 @@ const sourceDocumentInputSchema = z.object({
             message: `Image size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
         }
     ).optional(),
-    entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    timezone: z.string().optional(),
+    entryDate: z.string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .refine((date) => {
+            const parsed = new Date(date);
+            return !isNaN(parsed.getTime()) && date === parsed.toISOString().slice(0, 10);
+        }, "Invalid date")
+        .optional(),
+    timezone: z.string().max(50).optional(),
 });
 
 export async function POST(request: NextRequest) {
