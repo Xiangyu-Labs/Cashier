@@ -16,11 +16,13 @@ export async function register() {
     }, "Service configuration status");
 
     try {
-        // Dynamic import to avoid Edge Runtime static analysis issues
-        const { autoRegisterTasks } = await import("@/lib/flow/task-registry");
-        // Auto-discover and register all task handlers
-        await autoRegisterTasks();
-        logger.info("Task handlers auto-registered successfully");
+        // Explicitly import task handlers to register them
+        // Each module registers itself via side effect (flowEngine.register())
+        await import("@/features/source-document/server/tasks/parse-source-document");
+        await import("@/features/ledger/server/tasks/generate-category-metadata");
+        await import("@/features/ledger/server/tasks/categorize-entry");
+
+        logger.info("Task handlers registered successfully");
     } catch (error) {
         logger.error({ error }, "Failed during startup initialization");
     }
