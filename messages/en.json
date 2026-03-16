@@ -22,6 +22,7 @@
         "quickEntry": "Quick Entry"
     },
     "DetailsTab": {
+        "noMore": "No more items",
         "expenseSummary": "Expense Summary",
         "today": "Today",
         "yesterday": "Yesterday",
@@ -110,6 +111,7 @@
         "vsPreviousPeriod": "vs previous period"
     },
     "LedgerEntriesTab": {
+        "retry": "Edit & Retry",
         "processing": "Processing",
         "abnormal": "Abnormal Records",
         "confirmDeleteSelected": "Are you sure you want to delete the selected {count} items?",
@@ -159,9 +161,11 @@
         "categoryRequired": "Please select a category"
     },
     "Common": {
-        "confirm": "Confirm",
+        "deselectAll": "Deselect All",
+        "edit": "Edit",
         "delete": "Delete",
         "retry": "Edit & Retry",
+        "selectAll": "Select All",
         "cancel": "Cancel",
         "save": "Save",
         "saveSuccess": "Saved successfully",
