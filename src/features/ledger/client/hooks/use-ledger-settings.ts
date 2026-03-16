@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";

@@ -14,13 +14,13 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
 /**
  * A wrapper around useQuery that implements smart polling with adaptive intervals.
  * 
- * - Active period: Polls at base `interval` (3s) when isActive returns true
+ * - Active period: Polls at base `interval` (5s) when isActive returns true
  * - Cooldown period: If data hasn't changed in 2+ polls, slows to `cooldownInterval` (10s)
  */
 export function useSmartPolling<TData = unknown, TError = unknown>(
     options: SmartPollingOptions<TData, TError>
 ) {
-    const { isActive, interval = 3000, cooldownInterval = 10000, idleInterval, ...queryOptions } = options;
+    const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ...queryOptions } = options;
 
     // Track consecutive unchanged polls
     const unchangedCountRef = useRef(0);

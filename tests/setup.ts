@@ -188,5 +188,6 @@ vi.mock("next/image", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
   unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
