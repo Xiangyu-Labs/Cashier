@@ -12,6 +12,8 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
     idleInterval?: number;
     /** Ledger ID for tenant-scoped mutation pausing */
     ledgerId: string;
+    /** Optional key extractor to avoid JSON.stringify on large objects */
+    dataKey?: (data: TData | undefined) => string | undefined;
 }
 
 /**
@@ -33,7 +35,9 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
     const lastDataRef = useRef<string | undefined>(undefined);
 
     const checkDataChanged = useCallback((data: TData | undefined) => {
-        const dataStr = JSON.stringify(data);
+        const dataStr = options.dataKey
+            ? options.dataKey(data)
+            : JSON.stringify(data);
         const changed = dataStr !== lastDataRef.current;
         lastDataRef.current = dataStr;
 
@@ -44,7 +48,7 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
         }
 
         return changed;
-    }, []);
+    }, [options.dataKey]);
 
     return useQuery<TData, TError>({
         ...queryOptions,
