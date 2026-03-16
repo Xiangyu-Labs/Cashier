@@ -4,33 +4,11 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin();
 
 // Build remotePatterns from environment
-const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = [
-  {
-    protocol: "https",
-    hostname: "*.r2.cloudflarestorage.com",
-  },
-  {
-    protocol: "https",
-    hostname: "*.r2.dev",
-  },
-];
-
-// Add custom R2 public URL if configured
-if (process.env.R2_PUBLIC_URL) {
-  try {
-    const url = new URL(process.env.R2_PUBLIC_URL);
-    remotePatterns.push({
-      protocol: url.protocol === "https:" ? "https" : "http",
-      hostname: url.hostname,
-    });
-  } catch {
-    // Invalid URL, ignore
-  }
-}
+const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = [];
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["@aws-sdk/client-s3"],
+  serverExternalPackages: [],
   images: {
     unoptimized: process.env.NODE_ENV === "development",
     remotePatterns,

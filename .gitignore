@@ -66,3 +66,6 @@ docs/superpowers/
 
 # serena
 .serena/
+
+# Local uploads
+/uploads/
