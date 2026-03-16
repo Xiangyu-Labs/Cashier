@@ -47,7 +47,7 @@ export function EntriesTabSkeleton() {
 }
 
 /**
- * Skeleton for the Details (明细) tab.
+ * Skeleton for the Details tab.
  * Shows a list of detail item placeholders.
  */
 export function DetailsTabSkeleton() {
@@ -77,7 +77,7 @@ export function DetailsTabSkeleton() {
 }
 
 /**
- * Skeleton for the Stats (统计) tab.
+ * Skeleton for the Stats tab.
  * Shows chart area + summary card placeholders.
  */
 export function StatsTabSkeleton() {
@@ -110,7 +110,7 @@ export function StatsTabSkeleton() {
 }
 
 /**
- * Skeleton for the Settings (设置) tab.
+ * Skeleton for the Settings tab.
  * Shows settings section placeholders.
  */
 export function SettingsTabSkeleton() {
