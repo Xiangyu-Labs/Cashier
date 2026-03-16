@@ -12,6 +12,26 @@ import { useTaskQueueModal } from "../client/hooks/use-task-queue-modal";
 import { TaskQueueContent } from "./TaskQueueContent";
 import { TaskQueueDialogs } from "./TaskQueueDialogs";
 
+/**
+ * 将数字格式化为简写形式 (k, m, b)
+ * 例如: 1500 -> 1.5k, 1000000 -> 1m, 2500000000 -> 2.5b
+ */
+function formatCompactNumber(num: number): string {
+    if (num >= 1_000_000_000) {
+        const value = num / 1_000_000_000;
+        return value % 1 === 0 ? `${value.toFixed(0)}b` : `${value.toFixed(1)}b`;
+    }
+    if (num >= 1_000_000) {
+        const value = num / 1_000_000;
+        return value % 1 === 0 ? `${value.toFixed(0)}m` : `${value.toFixed(1)}m`;
+    }
+    if (num >= 1_000) {
+        const value = num / 1_000;
+        return value % 1 === 0 ? `${value.toFixed(0)}k` : `${value.toFixed(1)}k`;
+    }
+    return num.toString();
+}
+
 interface TaskQueueModalProps {
     ledgerId: string;
     open: boolean;
@@ -113,9 +133,9 @@ export function TaskQueueModal({
                         <div className="pt-2 border-t border-border shrink-0">
                             <p className="text-[10px] text-muted-foreground text-center">
                                 {t("tokenStats", {
-                                    input: stats.totalInputTokens.toLocaleString(),
-                                    output: stats.totalOutputTokens.toLocaleString(),
-                                    avg: stats.avgTokensPerTask.toLocaleString(),
+                                    input: formatCompactNumber(stats.totalInputTokens),
+                                    output: formatCompactNumber(stats.totalOutputTokens),
+                                    avg: formatCompactNumber(stats.avgTokensPerTask),
                                 })}
                             </p>
                         </div>
