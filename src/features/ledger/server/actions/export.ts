@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers } from "@/lib/db/schema";
-import { eq, and, isNull, asc } from "drizzle-orm";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
+import { eq, and, isNull, asc, gte, lte } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { NotFoundError } from "@/lib/errors";
 
@@ -67,7 +67,11 @@ function formatDateTime(date: Date | string | number | null | undefined): string
 }
 
 export const exportLedgerEntriesAction = withLedgerAccess(
-  async (ledgerId: string, locale: string = "en"): Promise<ExportResult> => {
+  async (
+    ledgerId: string,
+    locale: string = "en",
+    options?: { startDate?: string; endDate?: string; limit?: number }
+  ): Promise<ExportResult> => {
     // Get ledger info for filename
     const ledger = await db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
@@ -77,10 +81,27 @@ export const exportLedgerEntriesAction = withLedgerAccess(
       throw new NotFoundError("Ledger not found");
     }
 
-    // Get all entries with category info
+    // Build conditions with date range
+    const conditions = [
+      eq(ledgerEntries.ledgerId, ledgerId),
+      isNull(ledgerEntries.deletedAt),
+    ];
+
+    if (options?.startDate) {
+      conditions.push(gte(sourceDocuments.entryDate, options.startDate));
+    }
+    if (options?.endDate) {
+      conditions.push(lte(sourceDocuments.entryDate, options.endDate));
+    }
+
+    // Add limit if specified (default to reasonable max)
+    const limit = options?.limit || 10000;
+
+    // Get entries with category info
     const entries = await db.query.ledgerEntries.findMany({
-      where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+      where: and(...conditions),
       orderBy: [asc(ledgerEntries.createdAt)],
+      limit,
       with: {
         category: true,
         sourceDocument: true,
