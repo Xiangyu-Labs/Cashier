@@ -7,9 +7,7 @@ export async function register() {
     logger.info({
         nodeEnv: process.env.NODE_ENV ?? "not set",
         databaseUrl: process.env.DATABASE_URL ? "configured" : "not configured",
-        r2Enabled: process.env.ENABLE_R2_STORAGE === "true",
-        r2Endpoint: process.env.R2_ENDPOINT ? "configured" : "not configured",
-        r2Bucket: process.env.R2_BUCKET_NAME ? "configured" : "not configured",
+        localStorage: process.env.LOCAL_STORAGE_PATH ?? "./data/uploads",
     }, "Service configuration status");
 
     // Only run on server-side runtime (not edge or browser)
@@ -20,19 +18,6 @@ export async function register() {
             // Auto-discover and register all task handlers
             await autoRegisterTasks();
             logger.info("Task handlers auto-registered successfully");
-
-            // Migrate images to local storage (idempotent, runs once)
-            const { migrateImagesToLocal } = await import("@/lib/db/migrate-images");
-            const stats = await migrateImagesToLocal();
-            if (stats.totalImages > 0) {
-                logger.info({
-                    total: stats.totalImages,
-                    base64: stats.migratedFromBase64,
-                    r2: stats.migratedFromR2,
-                    local: stats.alreadyLocal,
-                    failed: stats.failedImages,
-                }, "Image migration completed");
-            }
         } catch (error) {
             logger.error({ error }, "Failed during startup initialization");
         }
