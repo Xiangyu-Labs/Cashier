@@ -18,3 +18,4 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads

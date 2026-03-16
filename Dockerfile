@@ -41,6 +41,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy scripts directory for migration scripts (R2 migration, etc.)
 COPY --from=builder /app/scripts ./scripts
 
+# Create uploads directory
+RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh

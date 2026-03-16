@@ -33,23 +33,5 @@ else
     echo "[INIT] Skipping database migrations (SKIP_MIGRATIONS=true)"
 fi
 
-# Run R2 migration if enabled (auto-detect from ENABLE_R2_STORAGE)
-# Skip if explicitly disabled via SKIP_R2_MIGRATION
-if [ "$ENABLE_R2_STORAGE" = "true" ] && [ "$SKIP_R2_MIGRATION" != "true" ]; then
-    echo "[INIT] R2 storage enabled, running R2 migration..."
-    # Use || true to not block startup on failure (e.g., first deploy with no legacy images)
-    if npm run migrate:r2; then
-        echo "[INIT] R2 migration completed successfully"
-    else
-        echo "[WARN] R2 migration encountered issues (some images may remain in database)"
-    fi
-else
-    if [ "$SKIP_R2_MIGRATION" = "true" ]; then
-        echo "[INIT] Skipping R2 migration (SKIP_R2_MIGRATION=true)"
-    else
-        echo "[INIT] R2 storage not enabled, skipping R2 migration"
-    fi
-fi
-
 echo "[INIT] Starting application..."
 exec node server.js
