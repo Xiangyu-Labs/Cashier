@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { CACHE_VERSION } from "@/lib/cache-version";
-import { TIME } from "@/lib/constants";
+import { TIME, QUERY } from "@/lib/constants";
 
 // Only persist specific query types (not real-time data)
 function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
@@ -34,7 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes - data is considered fresh for 5 minutes
+            staleTime: QUERY.DEFAULT_STALE_TIME_MS, // 5 minutes
             gcTime: 24 * 60 * 60 * 1000, // 24 hours - cache retention
             refetchOnWindowFocus: false,
             refetchOnMount: false, // Use SSR hydrated data, don't refetch on mount
