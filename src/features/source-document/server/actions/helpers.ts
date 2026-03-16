@@ -104,7 +104,7 @@ export async function processImages(
                 imageUrls.push(url);
 
                 logger.debug(
-                    { key, originalSize: buffer.length, compressedSize: processedBuffer.length, mimeType: outputMimeType },
+                    { key, originalSize: buffer.length, processedSize: processedBuffer.length, originalMime: img.mimeType, outputMime: outputMimeType },
                     "Image uploaded to R2"
                 );
             } catch (error) {

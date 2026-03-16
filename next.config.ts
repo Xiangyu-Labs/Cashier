@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
     // Device sizes for responsive images
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    // Image formats (prefer WebP, fallback to JPEG)
-    formats: ["image/webp", "image/jpeg"],
+    // Image formats (prefer WebP, AVIF as alternative)
+    formats: ["image/webp"],
     // Disable dangerous SVG optimization (security)
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

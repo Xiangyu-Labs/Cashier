@@ -99,8 +99,8 @@ export async function processImage(
         break;
 
       case "png":
+        // PNG uses lossless compression, quality option is ignored by sharp
         outputBuffer = await pipeline.png({
-          quality: opts.quality,
           compressionLevel: 9,
           progressive: true,
         }).toBuffer();
@@ -133,8 +133,8 @@ export async function processImage(
           }).toBuffer();
           outputMimeType = mimeType;
         } else if (mimeType === "image/png") {
+          // PNG uses lossless compression, quality option is ignored by sharp
           outputBuffer = await pipeline.png({
-            quality: opts.quality,
             compressionLevel: 9,
             progressive: true,
           }).toBuffer();
