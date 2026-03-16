@@ -224,7 +224,7 @@ describe("SettingsTab", () => {
         );
 
         // Expand the Account section first
-        const accountButton = screen.getByText("account");
+        const accountButton = screen.getByText("accountAndSecurity");
         await user.click(accountButton);
 
         const signOutButton = screen.getAllByText("signOut")[1]; // Get the button text, not the section header

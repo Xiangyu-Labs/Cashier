@@ -35,12 +35,9 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
     const [currentDate, setCurrentDate] = useState(initialDate || new Date());
     const [chartView, setChartView] = useState<'trend' | 'heatmap'>('heatmap');
 
-    // Get monthStartDay from ledger settings (default to 1)
-    const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
-
     const { startDate, endDate } = useMemo(
-        () => getDateRange(currentDate, rangeType, monthStartDay),
-        [currentDate, rangeType, monthStartDay]
+        () => getDateRange(currentDate, rangeType),
+        [currentDate, rangeType]
     );
 
     const { startDate: prevDateStart, endDate: prevDateEnd } = useMemo(() => {
@@ -48,10 +45,9 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
         if (rangeType === 'week') prevAnchor.setDate(prevAnchor.getDate() - 7);
         if (rangeType === 'month') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
         if (rangeType === 'year') prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
-        if (rangeType === 'currentPeriod') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
 
-        return getDateRange(prevAnchor, rangeType, monthStartDay);
-    }, [currentDate, rangeType, monthStartDay]);
+        return getDateRange(prevAnchor, rangeType);
+    }, [currentDate, rangeType]);
 
     const label = useMemo(() => {
         switch (rangeType) {
@@ -61,8 +57,6 @@ export function StatsTab({ ledgerId, ledger, onCategoryDrilldown, onDateDrilldow
                 return format.dateTime(startDate, { year: "numeric", month: "long" });
             case "year":
                 return format.dateTime(startDate, { year: "numeric" });
-            case "currentPeriod":
-                return `${format.dateTime(startDate, { month: "numeric", day: "numeric" })} - ${format.dateTime(endDate, { month: "numeric", day: "numeric" })}`;
             default:
                 return "";
         }

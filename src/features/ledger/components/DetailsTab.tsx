@@ -43,7 +43,6 @@ interface DetailsTabProps {
         minAmount?: number | null;
         maxAmount?: number | null;
     }) => void;
-    monthStartDay?: number;
 }
 
 export function DetailsTab({
@@ -55,7 +54,6 @@ export function DetailsTab({
     _onFiltersChange,
     advancedFilters,
     onAdvancedFiltersChange,
-    monthStartDay = 1,
 }: DetailsTabProps) {
     const t = useTranslations("DetailsTab");
     const tCommon = useTranslations("Common");
@@ -181,7 +179,6 @@ export function DetailsTab({
                             onPeriodChange={onPeriodChange}
                             categories={categories}
                             preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
-                            monthStartDay={monthStartDay}
                             className="flex-1 sm:flex-none"
                         />
                         <span className="text-xs text-muted-foreground font-mono ml-auto">

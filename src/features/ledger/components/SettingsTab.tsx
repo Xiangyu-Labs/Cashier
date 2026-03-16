@@ -188,26 +188,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Billing Cycle - Month Start Day */}
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h3 className="text-base font-medium">{t('monthStartDay')}</h3>
-                                <p className="text-sm text-[var(--muted)]">{t('monthStartDayDesc')}</p>
-                            </div>
-                            <select
-                                value={settingsLedger.metadata?.settings?.monthStartDay || 1}
-                                onChange={(e) => updateLedgerMutation.mutate({ monthStartDay: parseInt(e.target.value) })}
-                                disabled={isPending}
-                                className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[100px] disabled:opacity-50"
-                            >
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                    <option key={day} value={day}>{day}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="h-px bg-[var(--border)]" />
-
                         {/* AI Language Setting */}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>

@@ -35,7 +35,7 @@ export default async function LedgerPage({
   const queryClient = new QueryClient();
   const STALE_TIME = LEDGER.STALE_TIME_MS; // 10 minutes
 
-  // Step 1: First fetch ledger data (other queries depend on it for mainCurrency and monthStartDay)
+  // Step 1: First fetch ledger data (other queries depend on it for mainCurrency)
   const ledger = await queryClient.fetchQuery({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
@@ -50,13 +50,7 @@ export default async function LedgerPage({
     );
   }
 
-  // Get actual settings from ledger (ensures server/client query key consistency)
-  const monthStartDay = ledger?.metadata?.settings?.monthStartDay ?? 1;
-
-  const enrichedPeriodParams = periodParams.period === 'currentPeriod'
-    ? { ...periodParams, monthStartDay }
-    : periodParams;
-  const dateRange = periodToDateRange(enrichedPeriodParams);
+  const dateRange = periodToDateRange(periodParams);
 
   // Step 2: Prefetch core data (used by all tabs) and History Tab data
   await Promise.all([
@@ -98,7 +92,7 @@ export default async function LedgerPage({
 
   return (
     <HydrationBoundary state={dehydratedState}>
-      <LedgerPageClient ledgerId={ledgerId} initialPeriod={enrichedPeriodParams} initialStatsDate={initialStatsDate} />
+      <LedgerPageClient ledgerId={ledgerId} initialPeriod={periodParams} initialStatsDate={initialStatsDate} />
     </HydrationBoundary>
   );
 }

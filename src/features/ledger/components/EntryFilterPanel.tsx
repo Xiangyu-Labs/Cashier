@@ -21,7 +21,7 @@ import { useTranslations } from "next-intl";
 import { EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
-import { PeriodParams, PeriodPreset, getBillingPeriod } from "@/lib/period-utils";
+import { PeriodParams, PeriodPreset } from "@/lib/period-utils";
 
 export interface EntryFilters {
     startDate?: Date;
@@ -41,7 +41,6 @@ interface EntryFilterPanelProps {
     preferredCurrencies?: string[];
     showCategory?: boolean;
     showCurrency?: boolean;
-    monthStartDay?: number;
     className?: string;
 }
 
@@ -54,7 +53,6 @@ export function EntryFilterPanel({
     preferredCurrencies = [],
     showCategory = true,
     showCurrency = true,
-    monthStartDay = 1,
     className,
 }: EntryFilterPanelProps) {
     const t = useTranslations("EntryFilterPanel");
@@ -86,13 +84,11 @@ export function EntryFilterPanel({
 
     // Get active preset from periodParams if available, otherwise derive from filters
     const activePreset: PeriodPreset = periodParams?.period ?? (() => {
-        if (!filters.startDate && !filters.endDate) return "currentPeriod";
-
         const now = new Date();
         const start = filters.startDate;
         const end = filters.endDate;
 
-        if (!start || !end) return "custom";
+        if (!start || !end) return "thisMonth";
 
         // Check thisMonth
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -113,24 +109,19 @@ export function EntryFilterPanel({
         return "custom";
     })();
 
-    // Map preset string to PeriodPreset type (only named presets, not legacy-only ones)
+    // Map preset string to PeriodPreset type
     const toNamedPreset = (preset: string): PeriodPreset | null => {
-        if (preset === "currentPeriod" || preset === "week" || preset === "thisMonth") return preset;
+        if (preset === "week" || preset === "thisMonth") return preset;
+        // Map legacy "currentPeriod" to "thisMonth"
+        if (preset === "currentPeriod") return "thisMonth";
         return null;
     };
 
-    // Legacy date preset handler for backward compatibility
+    // Date preset handler
     const handleDatePresetLegacy = (preset: string, applyImmediately = false) => {
         let newFilters = { ...filters };
 
-        if (preset === "currentPeriod") {
-            const billing = getBillingPeriod(monthStartDay);
-            newFilters = {
-                ...newFilters,
-                startDate: new Date(`${billing.startDate}T00:00:00`),
-                endDate: new Date(`${billing.endDate}T23:59:59.999`),
-            };
-        } else if (preset !== "custom") {
+        if (preset !== "custom") {
             const end = new Date();
             const start = new Date();
 
@@ -172,23 +163,24 @@ export function EntryFilterPanel({
     const handleApply = () => {
         onFiltersChange(tempFilters);
         if (tempPeriod !== null && onPeriodChange) {
-            onPeriodChange({ period: tempPeriod, monthStartDay });
+            onPeriodChange({ period: tempPeriod });
         }
         setOpen(false);
     };
 
     const handleReset = () => {
-        const billing = getBillingPeriod(monthStartDay);
+        // Use thisMonth logic instead of billing period
+        const now = new Date();
         const defaultFilters: EntryFilters = {
-            startDate: new Date(`${billing.startDate}T00:00:00`),
-            endDate: new Date(`${billing.endDate}T23:59:59.999`),
+            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
             categoryId: null,
             currency: null,
             minAmount: null,
             maxAmount: null,
         };
         setTempFilters(defaultFilters);
-        setTempPeriod('currentPeriod');
+        setTempPeriod('thisMonth');
     };
 
     return (
@@ -224,11 +216,11 @@ export function EntryFilterPanel({
                             </div>
                             <div className="grid grid-cols-5 gap-1">
                                 {([
-                                    { preset: "currentPeriod", label: t("currentPeriod") },
-                                    { preset: "week", label: tDateRange("pastWeek") },
                                     { preset: "thisMonth", label: tDateRange("thisMonth") },
+                                    { preset: "week", label: tDateRange("pastWeek") },
                                     { preset: "month", label: tDateRange("pastMonth") },
                                     { preset: "3months", label: tDateRange("past3Months") },
+                                    { preset: "6months", label: tDateRange("past6Months") },
                                 ] as const).map(({ preset, label }) => {
                                     const displayPreset = tempPeriod ?? activePreset;
                                     const isActive = displayPreset === preset;

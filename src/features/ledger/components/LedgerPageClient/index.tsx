@@ -114,14 +114,13 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
     pathname,
   });
 
-  const monthStartDay = ledger?.metadata?.settings?.monthStartDay || 1;
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
   const {
     periodParams,
     filterParams,
     handlePeriodChange,
     handleFiltersChange,
-  } = usePeriodFilter({ pathname, searchParams, initialPeriod, monthStartDay });
+  } = usePeriodFilter({ pathname, searchParams, initialPeriod });
 
   // 使用原始的 handleTabChange
 
@@ -249,7 +248,6 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
                 onFiltersChange={handleFiltersChange}
-                monthStartDay={monthStartDay}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
               />
             </Suspense>
@@ -266,7 +264,6 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
                 _onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
                 onAdvancedFiltersChange={handleAdvancedFiltersChange}
-                monthStartDay={monthStartDay}
               />
             </Suspense>
           </TabsContent>

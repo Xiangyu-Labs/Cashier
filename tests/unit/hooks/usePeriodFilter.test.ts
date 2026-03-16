@@ -111,7 +111,7 @@ describe("usePeriodFilter", () => {
     expect(endDate.getDate()).toBe(31);
   });
 
-  it("should default to currentPeriod when no period in URL", () => {
+  it("should default to thisMonth when no period in URL", () => {
     const searchParams = new URLSearchParams();
     const { result } = renderHook(() =>
       usePeriodFilter({
@@ -121,7 +121,7 @@ describe("usePeriodFilter", () => {
       })
     );
 
-    expect(result.current.periodParams.period).toBe("currentPeriod");
+    expect(result.current.periodParams.period).toBe("thisMonth");
   });
 
   it("should update URL when period changes", () => {
@@ -232,14 +232,13 @@ describe("usePeriodFilter", () => {
     );
   });
 
-  it("should reset to currentPeriod URL when filter changes have no dates", () => {
+  it("should reset to thisMonth URL when filter changes have no dates", () => {
     const searchParams = new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
         searchParams,
         initialPeriod: { period: "custom", startDate: "2024-01-01", endDate: "2024-01-31" },
-        monthStartDay: 15,
       })
     );
 
@@ -247,28 +246,25 @@ describe("usePeriodFilter", () => {
       result.current.handleFiltersChange({});
     });
 
-    // Should update URL to currentPeriod
+    // Should update URL to thisMonth
     expect(window.history.replaceState).toHaveBeenCalledWith(
       null,
       "",
-      expect.stringContaining("period=currentPeriod")
+      expect.stringContaining("period=thisMonth")
     );
   });
 
-  it("should use monthStartDay for currentPeriod calculation", () => {
-    const searchParams = new URLSearchParams("period=currentPeriod");
+  it("should calculate thisMonth period correctly", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
         searchParams,
-        initialPeriod: { period: "currentPeriod" },
-        monthStartDay: 15,
+        initialPeriod: { period: "thisMonth" },
       })
     );
 
-    // The hook should use monthStartDay in the period params
-    expect(result.current.periodParams.period).toBe("currentPeriod");
-    expect(result.current.periodParams.monthStartDay).toBe(15);
+    expect(result.current.periodParams.period).toBe("thisMonth");
     expect(result.current.dateRange.startDate).toBeDefined();
     expect(result.current.dateRange.endDate).toBeDefined();
   });

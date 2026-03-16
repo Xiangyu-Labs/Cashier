@@ -32,7 +32,6 @@ interface LedgerEntriesTabProps {
     periodParams: PeriodParams;
     onPeriodChange: (params: PeriodParams) => void;
     onFiltersChange: (filters: EntryFilters) => void;
-    monthStartDay?: number;
     collapseEntriesDefault?: boolean;
 }
 
@@ -43,7 +42,6 @@ export function LedgerEntriesTab({
     periodParams,
     onPeriodChange,
     onFiltersChange,
-    monthStartDay = 1,
     collapseEntriesDefault = false,
 }: LedgerEntriesTabProps) {
     const t = useTranslations("LedgerEntriesTab");
@@ -219,7 +217,6 @@ export function LedgerEntriesTab({
                             onPeriodChange={onPeriodChange}
                             showCategory={false}
                             showCurrency={false}
-                            monthStartDay={monthStartDay}
                             className="w-auto"
                         />
                         <span className="text-xs text-muted-foreground font-mono ml-auto">
