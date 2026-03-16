@@ -8,6 +8,7 @@ import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/acti
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
+import { LEDGER, QUERY } from "@/lib/constants";
 
 export default async function LedgerPage({
   params,
@@ -32,7 +33,7 @@ export default async function LedgerPage({
 
   // Create a new QueryClient for this request
   const queryClient = new QueryClient();
-  const STALE_TIME = 5 * 60 * 1000;
+  const STALE_TIME = LEDGER.STALE_TIME_MS; // 10 minutes
 
   // Step 1: First fetch ledger data (other queries depend on it for mainCurrency and monthStartDay)
   const ledger = await queryClient.fetchQuery({
@@ -75,7 +76,7 @@ export default async function LedgerPage({
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'pending'),
       queryFn: () => getPendingSourceDocumentsAction(ledgerId),
-      staleTime: 30 * 1000,
+      staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS, // 30 seconds
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.sourceDocuments(ledgerId, 'all', dateRange.startDate, dateRange.endDate),
@@ -83,7 +84,7 @@ export default async function LedgerPage({
         startDate: dateRange.startDate ?? undefined,
         endDate: dateRange.endDate ?? undefined,
       }),
-      staleTime: 30 * 1000,
+      staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS, // 30 seconds
     }),
   ]);
 
