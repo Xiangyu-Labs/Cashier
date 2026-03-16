@@ -12,8 +12,10 @@ echo "========================================"
 # Ensure the data directory exists for SQLite
 if [ -n "$DATABASE_URL" ]; then
     # Extract directory path from file:./path/to/db or ./path/to/db
-    DB_DIR=$(echo "$DATABASE_URL" | sed 's/file://' | sed 's\/[^/]*$//')
-    if [ "$DB_DIR" != "$DATABASE_URL" ] && [ "$DB_DIR" != "." ] && [ -n "$DB_DIR" ]; then
+    # Remove 'file:' prefix first, then extract directory
+    DB_PATH=$(echo "$DATABASE_URL" | sed 's|file:||')
+    DB_DIR=$(echo "$DB_PATH" | sed 's|/[^/]*$||')
+    if [ "$DB_DIR" != "$DB_PATH" ] && [ "$DB_DIR" != "." ] && [ -n "$DB_DIR" ]; then
         echo "[INIT] Ensuring database directory exists: $DB_DIR"
         mkdir -p "$DB_DIR"
     fi
