@@ -5,6 +5,12 @@ import { sourceDocuments } from "@/lib/db/schema";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, inArray } from "drizzle-orm";
+import { ValidationError } from "@/lib/errors";
+import { SourceDocumentStatusType } from "@/features/source-document/server/schema";
+
+const VALID_STATUSES: SourceDocumentStatusType[] = [
+    'queued', 'processing', 'parsing', 'completed', 'anomaly', 'failed'
+];
 
 /**
  * Update source document metadata (e.g. title, entryDate)
@@ -31,6 +37,11 @@ export const batchUpdateSourceDocumentsAction = withLedgerAccess(async (
     data: { status?: string; title?: string; entryDate?: string }
 ): Promise<void> => {
     if (sourceDocumentIds.length === 0) return;
+
+    const { status } = data;
+    if (status && !VALID_STATUSES.includes(status as SourceDocumentStatusType)) {
+        throw new ValidationError(`Invalid status: ${status}`);
+    }
 
     const q = forLedger(sourceDocuments, ledgerId);
 
