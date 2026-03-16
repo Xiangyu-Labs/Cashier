@@ -500,12 +500,12 @@
         "signOutDevice": "退出此设备",
         "signOutAll": "退出所有其他设备",
         "signOutSuccess": "已成功退出设备",
-        "signOutAllSuccess": "All other devices signed out successfully",
-        "confirmLogoutTitle": "Sign Out Device",
-        "confirmLogoutDesc": "Are you sure you want to sign out this device? It will need to log in again to access the account.",
-        "activeNow": "Active now",
-        "unknownIp": "Unknown IP",
-        "unknownDevice": "Unknown Device"
+        "signOutAllSuccess": "已成功退出所有其他设备",
+        "confirmLogoutTitle": "退出设备",
+        "confirmLogoutDesc": "确定要退出此设备吗？该设备将需要重新登录才能访问账户。",
+        "activeNow": "当前在线",
+        "unknownIp": "未知 IP",
+        "unknownDevice": "未知设备"
     },
     "Account": {
         "title": "账户管理",
