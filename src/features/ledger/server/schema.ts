@@ -30,7 +30,6 @@ export interface LedgerMetadata {
         mainCurrency?: string;
         collapseEntriesDefault?: boolean;
         aiCustomPrompt?: string;
-        monthStartDay?: number;      // 每月起始日 (1-31)，默认 1
     };
 }
 
