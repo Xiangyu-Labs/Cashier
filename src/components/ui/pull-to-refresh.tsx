@@ -136,7 +136,7 @@ export function PullToRefresh({
             ref={containerRef}
             className={className}
         >
-            {/* 下拉指示器 */}
+            {/* Pull-down indicator */}
             <AnimatePresence>
                 {(pullDistance > 0 || isRefreshing) && (
                     <motion.div
@@ -150,7 +150,7 @@ export function PullToRefresh({
                         className="flex flex-col items-center justify-end overflow-hidden"
                     >
                         <div className="flex items-center gap-2 pb-2">
-                            {/* 旋转指示器 */}
+                            {/* Spinner indicator */}
                             <motion.div
                                 className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary"
                                 animate={{
@@ -167,7 +167,7 @@ export function PullToRefresh({
                                 }}
                             />
 
-                            {/* 文字提示 */}
+                            {/* Text hint */}
                             {showText && (
                                 <motion.span
                                     initial={{ opacity: 0 }}
