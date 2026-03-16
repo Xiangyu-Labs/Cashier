@@ -3,8 +3,6 @@ import type { NextAuthConfig } from "next-auth";
 
 // Notice this is only an object, not a full NextAuth instance
 export const authConfig = {
-    // Trust the host header in Docker/reverse proxy environments
-    trustHost: true,
     pages: {
         signIn: "/login",
         verifyRequest: "/login/verify",
