@@ -122,7 +122,7 @@ export class LocalStorageProvider implements StorageProvider {
       return null;
     }
 
-    let key = urlWithoutQuery.slice(prefix.length);
+    const key = urlWithoutQuery.slice(prefix.length);
 
     // Prevent path traversal attacks
     if (key.includes('..') || key.includes('\\')) {
