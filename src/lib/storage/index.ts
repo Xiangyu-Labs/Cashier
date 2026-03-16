@@ -62,6 +62,13 @@ export function isHttpUrl(url: string): boolean {
 }
 
 /**
+ * Check if a URL is a local upload URL (/api/uploads/)
+ */
+export function isLocalUploadUrl(url: string): boolean {
+  return url.startsWith('/api/uploads/');
+}
+
+/**
  * Convert base64 data URL to Buffer
  */
 export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: string } {

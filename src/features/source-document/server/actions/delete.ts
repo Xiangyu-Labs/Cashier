@@ -6,8 +6,8 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
-import { isHttpUrl } from "@/lib/storage";
+import { getLocalStorage } from "@/lib/storage/local";
+import { isLocalUploadUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { NotFoundError } from "@/lib/errors";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -16,39 +16,38 @@ import * as schemaModule from "@/lib/db/schema";
 type DbSchema = typeof schemaModule;
 
 /**
- * Delete images from R2 storage
+ * Delete images from local storage
  * @returns Results of delete operations (success and failures)
  */
-async function deleteR2Images(imageUrls: string[]): Promise<{ success: string[]; failed: { url: string; key: string; error: Error }[] }> {
-    const result = {
-        success: [] as string[],
-        failed: [] as { url: string; key: string; error: Error }[],
-    };
-
-    if (!isR2Enabled() || imageUrls.length === 0) {
-        return result;
-    }
-
-    const storage = getR2Storage();
+async function deleteLocalImages(imageUrls: string[]): Promise<{
+    success: string[];
+    failed: { url: string; key: string; error: Error }[];
+}> {
+    const storage = getLocalStorage();
+    const success: string[] = [];
+    const failed: { url: string; key: string; error: Error }[] = [];
 
     for (const url of imageUrls) {
-        // Only delete HTTP URLs (R2 URLs)
-        if (isHttpUrl(url)) {
-            const key = storage.extractKeyFromUrl(url);
-            if (key) {
-                const deleteResult = await storage.delete(key);
-                if (deleteResult.success) {
-                    result.success.push(url);
-                    logger.debug({ key }, "Deleted image from R2");
-                } else {
-                    result.failed.push({ url, key, error: deleteResult.error! });
-                    logger.error({ error: deleteResult.error, key, url }, "Failed to delete image from R2");
-                }
-            }
+        // Only delete local upload URLs
+        if (!isLocalUploadUrl(url)) {
+            continue;
+        }
+
+        const key = storage.extractKeyFromUrl(url);
+        if (!key) {
+            logger.warn({ url }, "Could not extract key from URL during deletion");
+            continue;
+        }
+
+        const deleteResult = await storage.delete(key);
+        if (deleteResult.success) {
+            success.push(url);
+        } else {
+            failed.push({ url, key, error: deleteResult.error! });
         }
     }
 
-    return result;
+    return { success, failed };
 }
 
 /**
@@ -168,9 +167,9 @@ export const deleteSourceDocumentAction = withLedgerAccess(async (
         softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
 
-    // Delete images from R2 after successful soft delete
+    // Delete images from local storage after successful soft delete
     if (sourceDoc.imageUrls && sourceDoc.imageUrls.length > 0) {
-        await deleteR2Images(sourceDoc.imageUrls);
+        await deleteLocalImages(sourceDoc.imageUrls);
     }
 });
 
@@ -207,8 +206,8 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(async (
         softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
     });
 
-    // Delete images from R2 after successful soft delete
+    // Delete images from local storage after successful soft delete
     if (allImageUrls.length > 0) {
-        await deleteR2Images(allImageUrls);
+        await deleteLocalImages(allImageUrls);
     }
 });
