@@ -1,10 +1,7 @@
 /**
  * Storage Provider Interface
  *
- * Abstracts file storage operations to support multiple backends:
- - R2 (Cloudflare) - production
- - Memory - testing
- * Local filesystem - future option
+ * Local filesystem storage only
  */
 
 export interface StorageProvider {
@@ -48,43 +45,8 @@ export interface StorageProvider {
 }
 
 /**
- * Check if a URL is a base64 data URL
- */
-export function isBase64Url(url: string): boolean {
-  return url.startsWith('data:');
-}
-
-/**
- * Check if a URL is an HTTP(S) URL
- */
-export function isHttpUrl(url: string): boolean {
-  return url.startsWith('http://') || url.startsWith('https://');
-}
-
-/**
  * Check if a URL is a local upload URL (/api/uploads/)
  */
 export function isLocalUploadUrl(url: string): boolean {
   return url.startsWith('/api/uploads/');
-}
-
-/**
- * Convert base64 data URL to Buffer
- */
-export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: string } {
-  const matches = base64Url.match(/^data:([^;]+);base64,(.+)$/);
-  if (!matches) {
-    throw new Error('Invalid base64 data URL');
-  }
-  const [, mimeType, base64Data] = matches;
-  const buffer = Buffer.from(base64Data, 'base64');
-  return { buffer, mimeType };
-}
-
-/**
- * Convert Buffer to base64 data URL
- */
-export function bufferToBase64(buffer: Buffer, mimeType: string): string {
-  const base64 = buffer.toString('base64');
-  return `data:${mimeType};base64,${base64}`;
 }
