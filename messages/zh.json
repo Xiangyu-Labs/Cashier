@@ -361,8 +361,6 @@
         "ledgerManagement": "账本",
         "noLedgerAvailable": "暂无账本",
         "ledgerSettings": "账本设置",
-        "monthStartDay": "每月起始日",
-        "monthStartDayDesc": "账单周期从每月第几天开始计算",
         "exportData": "导出数据",
         "exportDataDesc": "将账本数据导出为 CSV 文件",
         "exportButton": "导出",

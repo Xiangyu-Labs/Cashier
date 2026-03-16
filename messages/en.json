@@ -354,8 +354,6 @@
         "ledgerManagement": "Ledger",
         "noLedgerAvailable": "No ledger available",
         "ledgerSettings": "Ledger Settings",
-        "monthStartDay": "Billing Cycle Start",
-        "monthStartDayDesc": "The day of the month when the billing cycle starts",
         "exportData": "Export Data",
         "exportDataDesc": "Export ledger data as CSV file",
         "exportButton": "Export",
