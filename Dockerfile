@@ -40,7 +40,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 
 # Create uploads directory
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+
+USER node
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./

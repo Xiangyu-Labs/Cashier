@@ -41,8 +41,9 @@ describe("createDefaultLedgerForUser", () => {
 
         const categoryNames = categories.map(c => c.name);
         expect(categoryNames).toContain("餐饮");
-        expect(categoryNames).toContain("日用");
+        expect(categoryNames).toContain("生活");
         expect(categoryNames).toContain("交通");
+        expect(categoryNames).toContain("住房");
     });
 
     it("should create a ledger with English default settings when locale is en", async () => {
@@ -80,8 +81,9 @@ describe("createDefaultLedgerForUser", () => {
 
         const categoryNames = categories.map(c => c.name);
         expect(categoryNames).toContain("Dining");
-        expect(categoryNames).toContain("Groceries");
+        expect(categoryNames).toContain("Living");
         expect(categoryNames).toContain("Transport");
+        expect(categoryNames).toContain("Housing");
     });
 
     it("should default to Chinese settings when no locale is provided", async () => {
