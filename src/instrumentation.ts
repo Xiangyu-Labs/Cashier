@@ -20,6 +20,19 @@ export async function register() {
             // Auto-discover and register all task handlers
             await autoRegisterTasks();
             logger.info("Task handlers auto-registered successfully");
+
+            // Migrate images to local storage (idempotent, runs once)
+            const { migrateImagesToLocal } = await import("@/lib/db/migrate-images");
+            const stats = await migrateImagesToLocal();
+            if (stats.totalImages > 0) {
+                logger.info({
+                    total: stats.totalImages,
+                    base64: stats.migratedFromBase64,
+                    r2: stats.migratedFromR2,
+                    local: stats.alreadyLocal,
+                    failed: stats.failedImages,
+                }, "Image migration completed");
+            }
         } catch (error) {
             logger.error({ error }, "Failed during startup initialization");
         }

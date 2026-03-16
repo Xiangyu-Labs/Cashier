@@ -9,6 +9,9 @@ const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = 
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: [],
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     unoptimized: process.env.NODE_ENV === "development",
     remotePatterns,
