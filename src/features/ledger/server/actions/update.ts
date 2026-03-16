@@ -7,7 +7,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { updateLedgerSchema, type UpdateLedgerInput } from "./schemas";
 import { recalculateEntriesConvertedAmount } from "./helpers";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 
 export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<import("@/types/api").Ledger> => {
     // Verify ownership
@@ -43,8 +43,8 @@ export const updateLedgerAction = withAuth(async (userId: string, id: string, da
         .where(eq(ledgers.id, id))
         .returning();
 
-    // Revalidate cache to ensure fresh data on next request
-    revalidateTag('ledger');
+    // Invalidate cache to ensure fresh data on next request
+    updateTag('ledger');
 
     // If main currency changed, recalculate all entries' convertedAmount
     if (newMainCurrency && newMainCurrency !== oldMainCurrency) {

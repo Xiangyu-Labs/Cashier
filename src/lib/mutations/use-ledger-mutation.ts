@@ -185,8 +185,10 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     },
 
     onSettled: async (data, error, variables) => {
-      // Always invalidate queries to ensure fresh data
-      if (!skipInvalidation) {
+      // Only invalidate queries if the mutation doesn't return data
+      // or if skipInvalidation is false. When mutation returns data,
+      // onSuccessExtra should handle cache updates directly.
+      if (!skipInvalidation && !error && data === undefined) {
         if (customInvalidation) {
           customInvalidation(queryClient);
         } else if (ledgerId) {
