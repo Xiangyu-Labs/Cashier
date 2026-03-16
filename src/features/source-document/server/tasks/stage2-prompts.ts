@@ -47,6 +47,27 @@ ${userRules}
 ### Context
 - User's preferred language for output: ${aiLanguage}
 
+### Core Parsing Principles
+
+**Granularity by Nature**
+Determine the appropriate level of detail based on the consumption type:
+- For tangible goods (shopping, retail items): Preserve individual items as separate entries - each distinct product should have its own line
+- For experiential services (meals, deliveries, subscriptions): Items can be merged when they form a unified experience
+- When uncertain, prefer more granular detail over aggregation
+
+**Conservation of Amount**
+All extracted entries must sum to the total amount shown in the document:
+- If a grand total is visible, the sum of all entry amounts must match it exactly
+- When distributing discounts, fees, or adjustments across items, ensure the math remains consistent
+- Round to 2 decimal places; if rounding creates discrepancies, adjust the largest item to compensate
+
+**Reasonable Inference for Incomplete Data**
+When item details are partially hidden or collapsed but the total is known:
+- Create a single representative entry for the collapsed items using the most likely category
+- Use descriptive names like "Other items (collapsed)" or similar
+- Add a note indicating this entry represents multiple unspecified items
+- Never invent specific product names for unknown items
+
 ### Rules
 1. Extract EACH individual item as a separate entry (unless user rules specify merging)
 2. Use the pre-identified currencies - only use other currencies if clearly different
