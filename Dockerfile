@@ -40,7 +40,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 
 # Create uploads directory
-RUN mkdir -p /app/uploads /app/data && chown -R node:node /app/uploads /app/data
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 
 USER node
 
