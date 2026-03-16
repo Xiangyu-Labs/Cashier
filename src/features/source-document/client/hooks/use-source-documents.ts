@@ -99,7 +99,7 @@ export function useSourceDocuments(
 
     // Single query with flat cache structure
     // The 'all' key stores the raw flat array
-    const { data: rawData, isLoading } = useSmartPolling({
+    const { data: response, isLoading } = useSmartPolling({
         queryKey: queryKeys.sourceDocuments(ledgerId, 'all', startDate, endDate),
         queryFn: () => getAllSourceDocumentsAction(ledgerId, {
             startDate: startDate ?? undefined,
@@ -107,7 +107,7 @@ export function useSourceDocuments(
         }),
         isActive: (data) => {
             if (!data) return false;
-            return data.some(doc =>
+            return data.items.some(doc =>
                 doc.status === 'queued' ||
                 doc.status === 'processing' ||
                 doc.status === 'parsing'
@@ -116,6 +116,9 @@ export function useSourceDocuments(
         interval: 3000,
         ledgerId,
     });
+
+    // Extract items from paginated response
+    const rawData = response?.items;
 
     // Use useMemo to apply client-side grouping and filtering
     // This replaces the server-side grouping from the old hook

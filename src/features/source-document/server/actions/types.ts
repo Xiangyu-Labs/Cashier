@@ -76,6 +76,13 @@ import type {
 
 export type { SerializedSourceDocument, SerializedLedgerEntry, SourceDocumentGroup };
 
+// Paginated response for source documents
+export interface PaginatedSourceDocumentsResponse {
+    items: SourceDocumentWithEntries[];
+    hasMore: boolean;
+    total: number;
+}
+
 // Quick Entry schema
 export const createQuickEntrySchema = z.object({
     categoryId: z.string().min(1),
