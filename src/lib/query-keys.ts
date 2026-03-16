@@ -90,3 +90,33 @@ export function invalidateLedgerCache(ledgerId: string) {
         return Array.isArray(key) && key.includes(ledgerId);
     };
 }
+
+/**
+ * Helper to create a predicate for matching all source document queries for a ledger.
+ * This matches queries regardless of date range filters.
+ *
+ * Usage:
+ *   queryClient.setQueriesData({ predicate: matchSourceDocuments(ledgerId) }, updater)
+ *   queryClient.invalidateQueries({ predicate: matchSourceDocuments(ledgerId) })
+ */
+export function matchSourceDocuments(ledgerId: string) {
+    return (query: { queryKey: readonly unknown[] }) => {
+        const key = query.queryKey;
+        return Array.isArray(key) &&
+               key[0] === 'sourceDocuments' &&
+               key[1] === ledgerId;
+    };
+}
+
+/**
+ * Helper to create a predicate for matching all ledger entries queries for a ledger.
+ * This matches queries regardless of filters.
+ */
+export function matchLedgerEntries(ledgerId: string) {
+    return (query: { queryKey: readonly unknown[] }) => {
+        const key = query.queryKey;
+        return Array.isArray(key) &&
+               key[0] === 'ledgerEntries' &&
+               key[1] === ledgerId;
+    };
+}
