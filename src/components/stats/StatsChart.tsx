@@ -98,7 +98,7 @@ export function StatsChart({
                 if (rangeType === "week") {
                     label = curr.toLocaleString(locale, { weekday: "short" });
                 } else {
-                    // Day number for Month or currentPeriod view
+                    // Day number for Month view
                     label = String(curr.getDate());
                 }
 
@@ -266,7 +266,7 @@ export function StatsChart({
                     let showLabel = false;
                     if (rangeType === "week" || rangeType === "year") {
                         showLabel = true;
-                    } else if (rangeType === "month" || rangeType === "currentPeriod") {
+                    } else if (rangeType === "month") {
                         // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
                         if (i === 0 || i === chartPoints.length - 1 || (i) % 5 === 0) {
                             showLabel = true;
