@@ -50,18 +50,16 @@ export function useLoginFlow(
 
         try {
             const result = await sendOTPAction(email);
-            if (!result.success) {
-                setError(result.error || t("sendCodeFailed"));
-                setIsLoading(false);
-                return;
-            }
-
             setExpiresAt(result.expiresAt || null);
             setCanResendAt(result.canResendAt || null);
             setStep("otp");
             setIsLoading(false);
-        } catch {
-            setError(t("unexpectedError"));
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError(t("unexpectedError"));
+            }
             setIsLoading(false);
         }
     };
@@ -76,12 +74,7 @@ export function useLoginFlow(
         setError(null);
 
         try {
-            const verifyResult = await verifyOTPAction(email, otp);
-            if (!verifyResult.success) {
-                setError(verifyResult.error || t("verifyFailed"));
-                setIsLoading(false);
-                return;
-            }
+            await verifyOTPAction(email, otp);
 
             const signInResult = await signIn("otp", {
                 email,
@@ -97,8 +90,12 @@ export function useLoginFlow(
                 router.push(callbackUrl);
                 router.refresh();
             }
-        } catch {
-            setError(t("unexpectedError"));
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError(t("unexpectedError"));
+            }
             setIsLoading(false);
         }
     };
@@ -108,14 +105,14 @@ export function useLoginFlow(
         setOtp("");
         try {
             const result = await sendOTPAction(email);
-            if (!result.success) {
-                setError(result.error || t("resendFailed"));
-                return;
-            }
             setExpiresAt(result.expiresAt || null);
             setCanResendAt(result.canResendAt || null);
-        } catch {
-            setError(t("resendFailed"));
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError(t("resendFailed"));
+            }
         }
     };
 
