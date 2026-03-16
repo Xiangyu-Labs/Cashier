@@ -26,7 +26,7 @@ interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData,
 export function useSmartPolling<TData = unknown, TError = unknown>(
     options: SmartPollingOptions<TData, TError>
 ) {
-    const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ledgerId, ...queryOptions } = options;
+    const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ledgerId, dataKey, ...queryOptions } = options;
 
     const hasActiveLedgerMutation = useMutationStore((state) => state.hasActiveLedgerMutation);
 
@@ -35,8 +35,8 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
     const lastDataRef = useRef<string | undefined>(undefined);
 
     const checkDataChanged = useCallback((data: TData | undefined) => {
-        const dataStr = options.dataKey
-            ? options.dataKey(data)
+        const dataStr = dataKey
+            ? dataKey(data)
             : JSON.stringify(data);
         const changed = dataStr !== lastDataRef.current;
         lastDataRef.current = dataStr;
@@ -48,7 +48,7 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
         }
 
         return changed;
-    }, [options.dataKey]);
+    }, [dataKey]);
 
     return useQuery<TData, TError>({
         ...queryOptions,
