@@ -2,11 +2,8 @@
 
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
-import {
-    useLedgerMutation,
-    createListSnapshots,
-} from "@/lib/mutations/use-ledger-mutation";
+import { matchSourceDocuments } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
     batchUpdateSourceDocumentsAction,
     batchDeleteSourceDocumentsAction,
@@ -29,18 +26,16 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
-            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
-                queryClient,
-                listKey
-            );
+            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
             queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { queryKey: listKey },
+                { predicate: matchSourceDocuments(ledgerId) },
                 (old) =>
                     old?.map((doc) =>
                         ids.includes(doc.id) ? { ...doc, entryDate } : doc
-                    ) ?? []
+                    )
             );
 
             return { snapshots };
@@ -58,15 +53,13 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, ids) => {
-            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
-                queryClient,
-                listKey
-            );
+            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
             queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { queryKey: listKey },
-                (old) => old?.filter((doc) => !ids.includes(doc.id)) ?? []
+                { predicate: matchSourceDocuments(ledgerId) },
+                (old) => old?.filter((doc) => !ids.includes(doc.id))
             );
 
             return { snapshots };
@@ -84,19 +77,17 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, ids) => {
-            const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-            const snapshots = createListSnapshots<SourceDocumentWithEntries[]>(
-                queryClient,
-                listKey
-            );
+            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
             // Move documents to 'queued' status
             queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { queryKey: listKey },
+                { predicate: matchSourceDocuments(ledgerId) },
                 (old) =>
                     old?.map((doc) =>
                         ids.includes(doc.id) ? { ...doc, status: 'queued' as const } : doc
-                    ) ?? []
+                    )
             );
 
             return { snapshots };
