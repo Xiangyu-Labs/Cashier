@@ -9,7 +9,6 @@
     "HomePage": {
         "loading": "Loading…",
         "creating": "Creating default ledger…",
-        "defaultLedgerName": "My Ledger",
         "createFailed": "Creation failed, please refresh to retry"
     },
     "LedgerPage": {
@@ -21,9 +20,6 @@
         "newRecord": "New Record",
         "aiParse": "AI Parse",
         "quickEntry": "Quick Entry"
-    },
-    "LedgerItem": {
-        "totalExpense": "Total Expense ({count} entries)"
     },
     "DetailsTab": {
         "expenseSummary": "Expense Summary",
@@ -352,9 +348,6 @@
         "autoCategorizeAllPending": "All entries are already in the processing queue",
         "autoCategorizeError": "Failed to submit categorization tasks",
         "confirm": "Confirm",
-        "ledgerName": "Ledger Name",
-        "ledgerNameDesc": "The name of the ledger displayed on the home page",
-        "ledgerNamePlaceholder": "e.g., My Ledger",
         "signOut": "Sign Out",
         "signOutDesc": "Sign out of your current account",
         "ledgerManagement": "Ledger",

@@ -45,7 +45,6 @@ export default async function HomePage(): Promise<ReactNode> {
   // 4. Auto-create default ledger (Server Action called directly)
   try {
     const newLedger = await createLedgerAction({
-      name: t("defaultLedgerName"),
       aiLanguage: locale
     });
 

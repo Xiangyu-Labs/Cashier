@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c2c1f7d0-8d49-4682-be74-f3e84d2b7bf2",
-  "prevId": "5889f88f-721d-47ea-bdbc-5ad94e66f3cf",
+  "id": "3da50953-bd15-4ca7-85de-da89a674ee68",
+  "prevId": "c2c1f7d0-8d49-4682-be74-f3e84d2b7bf2",
   "tables": {
     "accounts": {
       "name": "accounts",
@@ -703,13 +703,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "metadata": {
           "name": "metadata",
           "type": "text",
@@ -753,7 +746,8 @@
           "columns": [
             "user_id"
           ],
-          "isUnique": true
+          "isUnique": true,
+          "where": "\"ledgers\".\"deleted_at\" IS NULL"
         }
       },
       "foreignKeys": {

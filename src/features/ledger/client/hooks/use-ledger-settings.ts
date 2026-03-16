@@ -18,7 +18,6 @@ interface UseLedgerSettingsParams {
 }
 
 interface UpdateLedgerData {
-    name?: string;
     preferredCurrencies?: string[];
     mainCurrency?: string;
     aiLanguage?: string;
@@ -75,7 +74,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
         mutationFn: async (data) => {
             // Transform flat structure to nested structure expected by updateLedgerAction
             const {
-                name,
                 preferredCurrencies,
                 mainCurrency,
                 aiLanguage,
@@ -83,11 +81,7 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                 aiCustomPrompt,
                 monthStartDay,
             } = data;
-            const payload: { name?: string; settings?: Record<string, unknown> } = {};
-
-            if (name !== undefined) {
-                payload.name = name;
-            }
+            const payload: { settings?: Record<string, unknown> } = {};
 
             const settings: Record<string, unknown> = {};
             if (preferredCurrencies !== undefined) settings.currencies = preferredCurrencies;
@@ -116,11 +110,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
                 if (!old) return old;
 
                 const updated = { ...old };
-
-                // Update name if provided
-                if (newData.name !== undefined) {
-                    updated.name = newData.name;
-                }
 
                 // Update settings if provided
                 if (

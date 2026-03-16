@@ -7,7 +7,6 @@ import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/cat
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";
-import { LedgerManagementSection } from "./settings/LedgerManagementSection";
 import { CollapsibleSection } from "./settings/CollapsibleSection";
 import { ExportSection } from "./settings/ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -160,17 +159,6 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                 {/* Ledger Settings - Collapsible */}
                 <CollapsibleSection title={t('ledgerSettings')} defaultOpen={false}>
                     <div className="space-y-8 pt-4">
-                        {/* Ledger Management */}
-                        {allLedgers.length > 0 && (
-                            <>
-                                <LedgerManagementSection
-                                    ledgerId={ledgerId}
-                                    allLedgers={allLedgers}
-                                />
-                                <div className="h-px bg-[var(--border)]" />
-                            </>
-                        )}
-
                         {/* Currency Settings */}
                         <CurrencySection
                             settings={{ ...settingsLedger.metadata?.settings, currencies: settingsLedger.metadata?.settings?.currencies || [] }}

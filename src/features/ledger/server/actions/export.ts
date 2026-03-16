@@ -126,10 +126,9 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     // Add UTF-8 BOM for Excel Chinese support
     const csvWithBom = "\uFEFF" + csv;
 
-    // Generate filename: {ledgerName}_{YYYY-MM-DD}.csv
+    // Generate filename: export_{YYYY-MM-DD}.csv
     const today = new Date().toISOString().slice(0, 10);
-    const sanitizedName = ledger.name.replace(/[\\/:*?"<>|]/g, "_");
-    const filename = `${sanitizedName}_${today}.csv`;
+    const filename = `export_${today}.csv`;
 
     return {
       csvContent: csvWithBom,

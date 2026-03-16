@@ -34,7 +34,6 @@ export const updateLedgerAction = withAuth(async (userId: string, id: string, da
     const [updatedLedger] = await db
         .update(ledgers)
         .set({
-            name: validated.name || existing.name,
             metadata: {
                 ...currentMetadata,
                 settings: newSettings,
@@ -60,7 +59,6 @@ export const updateLedgerAction = withAuth(async (userId: string, id: string, da
     return {
         id: updatedLedger.id,
         userId: updatedLedger.userId,
-        name: updatedLedger.name,
         metadata: updatedLedger.metadata,
         createdAt: updatedLedger.createdAt.toISOString(),
         updatedAt: updatedLedger.updatedAt.toISOString(),

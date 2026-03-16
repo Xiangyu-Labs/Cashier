@@ -31,10 +31,6 @@ export function Header({ ledger, pendingStats, onOpenTaskQueue, onOpenInput }: H
     <header className="bg-surface border-b border-border sticky top-0 z-50 backdrop-blur-md bg-surface/80 supports-[backdrop-filter]:bg-surface/60">
       <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center transition-all duration-300">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold truncate max-w-[100px] sm:max-w-[150px]">
-            {ledger.name}
-          </span>
-
           <Button
             variant="ghost"
             size="sm"

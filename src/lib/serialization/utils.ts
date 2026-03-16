@@ -123,7 +123,6 @@ export function serializeLedger(ledger: DbLedger): SerializedLedger {
     return {
         id: ledger.id,
         userId: ledger.userId,
-        name: ledger.name,
         metadata: ledger.metadata,
         createdAt: serializeDate(ledger.createdAt)!,
         updatedAt: serializeDate(ledger.updatedAt)!,

@@ -9,7 +9,6 @@
     "HomePage": {
         "loading": "加载中…",
         "creating": "正在创建默认账本…",
-        "defaultLedgerName": "我的账本",
         "createFailed": "创建失败，请刷新重试"
     },
     "LedgerPage": {
@@ -21,9 +20,6 @@
         "newRecord": "记一笔",
         "aiParse": "智能记账",
         "quickEntry": "快速记账"
-    },
-    "LedgerItem": {
-        "totalExpense": "总支出 ({count} 笔)"
     },
     "DetailsTab": {
         "expenseSummary": "支出统计",
@@ -359,9 +355,6 @@
         "autoCategorizeAllPending": "所有条目已在处理队列中",
         "autoCategorizeError": "提交分类任务失败",
         "confirm": "确认",
-        "ledgerName": "账本名称",
-        "ledgerNameDesc": "在首页显示的账本名称",
-        "ledgerNamePlaceholder": "例如：我的账本",
         "signOut": "退出登录",
         "signOutDesc": "退出当前账户登录状态",
         "ledgerManagement": "账本",

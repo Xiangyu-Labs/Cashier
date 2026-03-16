@@ -21,7 +21,6 @@ export async function createDefaultLedgerForUser(
             .insert(ledgers)
             .values({
                 userId,
-                name: `${userEmail.split("@")[0]}'s Ledger`,
                 metadata: {
                     settings: {
                         ...defaultLedger.settings,

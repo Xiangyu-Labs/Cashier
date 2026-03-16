@@ -17,7 +17,6 @@ export const getLedgerAction = withAuth(async (userId: string, id: string): Prom
     return {
         id: existing.id,
         userId: existing.userId,
-        name: existing.name,
         metadata: existing.metadata,
         createdAt: existing.createdAt.toISOString(),
         updatedAt: existing.updatedAt.toISOString(),
@@ -34,7 +33,6 @@ export const getLedgersAction = withAuth(async (userId: string): Promise<import(
     return rows.map(row => ({
         id: row.id,
         userId: row.userId,
-        name: row.name,
         metadata: row.metadata,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),

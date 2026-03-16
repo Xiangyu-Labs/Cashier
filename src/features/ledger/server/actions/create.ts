@@ -31,7 +31,6 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
                 .insert(ledgers)
                 .values({
                     userId: userId,
-                    name: validated.name,
                     metadata: {
                         settings: {
                             aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,

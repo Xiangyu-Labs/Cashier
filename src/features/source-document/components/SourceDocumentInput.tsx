@@ -72,7 +72,6 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
             const settingsUpdate: Record<string, unknown> = data.settings || {};
 
             const payload: Partial<Ledger> & { settings?: Record<string, unknown> } = {
-                name: data.name,
                 settings: Object.keys(settingsUpdate).length > 0 ? settingsUpdate : undefined
             };
 

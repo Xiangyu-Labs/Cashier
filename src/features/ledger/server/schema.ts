@@ -14,7 +14,6 @@ export const ledgers = sqliteTable("ledgers", {
     userId: text("user_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
     metadata: text("metadata", { mode: "json" }).$type<LedgerMetadata>().default({}),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),

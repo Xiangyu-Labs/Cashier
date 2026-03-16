@@ -23,7 +23,7 @@ export function SettingsPageClient({ ledger, initialCategories, ledgerId }: Sett
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="text-xl sm:text-2xl font-semibold truncate">{t('title')} - {ledger.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold truncate">{t('title')}</h1>
             </div>
 
             <SettingsTab

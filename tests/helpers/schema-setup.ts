@@ -49,7 +49,7 @@ export async function createTestUser(
 export async function createTestUserWithLedger(
   db: BetterSQLite3Database<typeof schema>,
   email?: string,  // 改为可选，默认使用随机email
-  ledgerName = "Test Ledger",
+  _ledgerName?: string,  // 已废弃，账本名称不再使用
   userId?: string
 ): Promise<{ userId: string; ledgerId: string }> {
   // Generate unique userId if not provided to avoid unique constraint violations
@@ -60,7 +60,6 @@ export async function createTestUserWithLedger(
   await db.insert(schema.ledgers).values({
     id: ledgerId,
     userId: finalUserId,
-    name: ledgerName,
     metadata: {},
   });
 
