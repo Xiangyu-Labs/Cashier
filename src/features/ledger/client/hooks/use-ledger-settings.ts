@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -50,21 +49,18 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
         cooldownInterval: 5000, // Shorter cooldown for faster updates when AI completes
     });
 
-    // Use smart polling for settings data that may need background updates
-    // (e.g., uncategorizedCount and credentials don't change often)
-    const { data: settingsData } = useSmartPolling<{
+    // Use standard query for settings data - it only needs to refresh
+    // when categories change (which triggers its own invalidation via onSettledExtra)
+    const { data: settingsData } = useQuery<{
         uncategorizedCount: number;
         credentials: ServiceCredential[];
     }>({
         queryKey: queryKeys.ledgerSettings(ledgerId),
         queryFn: () => getLedgerSettingsAction(ledgerId),
-        // Polling is active when any category needs metadata generation (icon/description)
-        isActive: () => categories?.some((c) => !c.icon || !c.description) ?? false,
-        interval: 3000,
         initialData: {
             uncategorizedCount: 0,
             credentials: [],
-        }
+        },
     });
 
     const uncategorizedCount = settingsData?.uncategorizedCount || 0;
