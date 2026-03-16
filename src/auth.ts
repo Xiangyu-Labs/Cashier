@@ -37,6 +37,13 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         return null;
     }
 
+    // Build explicit redirect_uri to ensure consistency with IdP configuration
+    // Falls back to NEXT_PUBLIC_APP_URL if AUTH_URL is not set
+    const baseUrl = process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+    const redirectUri = baseUrl
+        ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc`
+        : undefined;
+
     return {
         id: "oidc",
         name: process.env.OIDC_BUTTON_NAME || "SSO",
@@ -45,6 +52,8 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
         wellKnown: `${issuer}/.well-known/openid-configuration`,
         clientId,
         clientSecret,
+        // Explicitly set redirect_uri to ensure it matches IdP configuration
+        ...(redirectUri && { redirect_uri: redirectUri }),
         checks: ["pkce", "state"],
         client: {
             token_endpoint_auth_method: "client_secret_post",

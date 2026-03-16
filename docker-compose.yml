@@ -16,5 +16,6 @@ services:
       - .env
     environment:
       - TZ=Asia/Shanghai
+      - AUTH_URL=${AUTH_URL}
     volumes:
       - ./data:/app/data
