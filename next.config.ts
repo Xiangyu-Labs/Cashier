@@ -9,9 +9,7 @@ const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = 
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: [],
-  experimental: {
-    instrumentationHook: true,
-  },
+  // instrumentation.ts is enabled by default in Next.js 16+
   images: {
     unoptimized: process.env.NODE_ENV === "development",
     remotePatterns,

@@ -21,10 +21,20 @@ interface MigrationStats {
 
 let migrationRunning = false;
 
+// R2 下载并发控制
+let r2DownloadsInProgress = 0;
+const MAX_R2_CONCURRENT = 3;
+
 /**
- * 从 R2 URL 下载图片
+ * 从 R2 URL 下载图片（带并发限制）
  */
 async function downloadFromR2(url: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  // 等待有空闲槽位
+  while (r2DownloadsInProgress >= MAX_R2_CONCURRENT) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  r2DownloadsInProgress++;
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "Cashier-Migration/1.0" },
@@ -42,6 +52,8 @@ async function downloadFromR2(url: string): Promise<{ buffer: Buffer; mimeType: 
   } catch (error) {
     logger.error({ error, url }, "Error downloading from R2");
     return null;
+  } finally {
+    r2DownloadsInProgress--;
   }
 }
 
@@ -192,7 +204,8 @@ export async function migrateImagesToLocal(options?: { concurrency?: number }): 
   }
 
   migrationRunning = true;
-  const concurrency = options?.concurrency ?? 5;
+  // 降低默认并发，避免 SQLite 和网络阻塞
+  const concurrency = options?.concurrency ?? 2;
   logger.info({ concurrency }, "Starting image migration to local storage (batch mode)...");
 
   const storage = getLocalStorage();
