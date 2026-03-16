@@ -1,11 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
-import {
-    useLedgerMutation,
-    createListSnapshots,
-} from "@/lib/mutations/use-ledger-mutation";
+import { matchSourceDocuments } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
     updateLedgerEntryAction,
     deleteLedgerEntryAction,
@@ -24,8 +21,6 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     const tCommon = useTranslations("Common");
     const t = useTranslations("LedgerEntriesTab");
 
-    const listKey = queryKeys.sourceDocuments(ledgerId, 'all');
-
     const updateEntry = useLedgerMutation<LedgerEntry, { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }>(ledgerId, {
         mutationFn: async ({ ledgerEntryId, data }) => {
             const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
@@ -34,12 +29,15 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("saveSuccess"),
         errorMessage: tCommon("saveFailed"),
         onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
-            const snapshots = createListSnapshots(queryClient, listKey);
+            // Use predicate to match all source document queries (including date-ranged ones)
+            const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
-            queryClient.setQueriesData(
-                { queryKey: listKey },
-                (old: SourceDocumentsQueryData) => {
-                    if (!old) return [];
+            queryClient.setQueriesData<SourceDocumentsQueryData>(
+                { predicate: matchSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
                     return old.map((doc) => {
                         const updatedEntries = doc.ledgerEntries?.map((e) => {
                             if (e.id !== ledgerEntryId) return e;
@@ -66,12 +64,14 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ledgerEntryId) => {
-            const snapshots = createListSnapshots(queryClient, listKey);
+            const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
-            queryClient.setQueriesData(
-                { queryKey: listKey },
-                (old: SourceDocumentsQueryData) => {
-                    if (!old) return [];
+            queryClient.setQueriesData<SourceDocumentsQueryData>(
+                { predicate: matchSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
                     return old.map((doc) => {
                         const filteredEntries = doc.ledgerEntries?.filter(
                             (e) => e.id !== ledgerEntryId
@@ -90,11 +90,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: t("deleteFailed"),
         onOptimisticUpdate: (queryClient, id) => {
-            const snapshots = createListSnapshots(queryClient, listKey);
+            const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
-            queryClient.setQueriesData(
-                { queryKey: listKey },
-                (old: SourceDocumentsQueryData) => old?.filter(d => d.id !== id) ?? []
+            queryClient.setQueriesData<SourceDocumentsQueryData>(
+                { predicate: matchSourceDocuments(ledgerId) },
+                (old) => old?.filter(d => d.id !== id)
             );
 
             return { snapshots };
@@ -106,11 +108,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         successMessage: tCommon("deleteSuccess"),
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshots = createListSnapshots(queryClient, listKey);
+            const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
+                predicate: matchSourceDocuments(ledgerId),
+            });
 
-            queryClient.setQueriesData(
-                { queryKey: listKey },
-                (old: SourceDocumentsQueryData) => old?.filter(d => !ids.includes(d.id)) ?? []
+            queryClient.setQueriesData<SourceDocumentsQueryData>(
+                { predicate: matchSourceDocuments(ledgerId) },
+                (old) => old?.filter(d => !ids.includes(d.id))
             );
 
             return { snapshots };
