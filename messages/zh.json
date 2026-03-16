@@ -283,6 +283,7 @@
         "title": "设置",
         "subtitle": "管理您的账本首选项和账户设置",
         "account": "账户",
+        "accountAndSecurity": "账户与安全",
         "appearance": "外观",
         "theme": "主题",
         "themeDescription": "设置当前界面的色彩模式",

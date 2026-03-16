@@ -248,16 +248,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                                 className="w-full min-h-[100px] bg-[var(--background)] border border-[var(--border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none disabled:opacity-50"
                             />
                         </div>
-
-                        <div className="h-px bg-[var(--border)]" />
-
-                        {/* Export Data Section */}
-                        <ExportSection ledgerId={ledgerId} />
                     </div>
                 </CollapsibleSection>
 
-                {/* Account Settings - Collapsible */}
-                <CollapsibleSection title={t('account')} defaultOpen={false}>
+                {/* Account & Security Settings - Collapsible */}
+                <CollapsibleSection title={t('accountAndSecurity')} defaultOpen={false}>
                     <div className="space-y-6 pt-4">
                         {/* Service Credentials */}
                         <ServiceCredentialSection
@@ -265,6 +260,11 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers = 
                             onCreateCredential={(name) => createCredential.mutateAsync(name)}
                             onDeleteCredential={(id) => deleteCredential.mutate(id)}
                         />
+
+                        <div className="h-px bg-[var(--border)]" />
+
+                        {/* Export Data Section */}
+                        <ExportSection ledgerId={ledgerId} />
 
                         <div className="h-px bg-[var(--border)]" />
 

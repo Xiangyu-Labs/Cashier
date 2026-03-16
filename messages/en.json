@@ -278,6 +278,7 @@
         "title": "Settings",
         "subtitle": "Manage your ledger preferences and account settings",
         "account": "Account",
+        "accountAndSecurity": "Account & Security",
         "appearance": "Appearance",
         "theme": "Theme",
         "themeDescription": "Set the color mode for the current interface",
