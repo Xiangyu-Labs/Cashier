@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions, QueryKey as _QueryKey } from "@tanstack/react-query";
 import { useRef, useCallback } from "react";
+import { useMutationStore } from "@/lib/store/mutation-state";
 
 interface SmartPollingOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError>, 'refetchInterval'> {
     isActive: (data: TData | undefined) => boolean;
@@ -22,6 +23,8 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
 ) {
     const { isActive, interval = 5000, cooldownInterval = 10000, idleInterval, ...queryOptions } = options;
 
+    const hasActiveLedgerMutation = useMutationStore((state) => state.hasActiveLedgerMutation);
+
     // Track consecutive unchanged polls
     const unchangedCountRef = useRef(0);
     const lastDataRef = useRef<string | undefined>(undefined);
@@ -43,6 +46,12 @@ export function useSmartPolling<TData = unknown, TError = unknown>(
     return useQuery<TData, TError>({
         ...queryOptions,
         refetchInterval: (query) => {
+            // PAUSE polling when any ledger mutation is active
+            // This prevents polling from overwriting optimistic updates
+            if (hasActiveLedgerMutation()) {
+                return false;
+            }
+
             const data = query.state.data;
 
             if (!isActive(data)) {
