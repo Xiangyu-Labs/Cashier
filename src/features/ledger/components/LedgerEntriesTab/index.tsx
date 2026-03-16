@@ -20,7 +20,7 @@ import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useSelection } from "@/hooks/use-selection";
 import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/use-batch-source-document-actions";
-import { BatchActionToolbar } from "../BatchActionToolbar";
+import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
 import { useGroupedEntries } from "./useGroupedEntries";
