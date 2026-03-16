@@ -73,7 +73,6 @@
         "reset": "Reset",
         "apply": "Apply Filters",
         "moreFilters": "More Filters",
-        "currentPeriod": "Current Period",
         "filteredTotal": "Total"
     },
     "TaskQueue": {
@@ -109,7 +108,6 @@
         "month": "Month",
         "week": "Week",
         "year": "Year",
-        "currentPeriod": "Period",
         "vsPreviousPeriod": "vs previous period"
     },
     "LedgerEntriesTab": {

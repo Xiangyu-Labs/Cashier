@@ -74,7 +74,6 @@
         "reset": "重置",
         "apply": "应用筛选",
         "moreFilters": "更多筛选",
-        "currentPeriod": "本期",
         "filteredTotal": "合计"
     },
     "TaskQueue": {
@@ -110,7 +109,6 @@
         "month": "月",
         "week": "周",
         "year": "年",
-        "currentPeriod": "本期",
         "vsPreviousPeriod": "较上期"
     },
     "LedgerEntriesTab": {

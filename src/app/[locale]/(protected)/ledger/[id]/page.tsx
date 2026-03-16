@@ -21,7 +21,7 @@ export default async function LedgerPage({
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
 
-  // Parse period from URL (default: currentPeriod)
+  // Parse period from URL (default: thisMonth)
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
   const session = await auth();
 
