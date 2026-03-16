@@ -72,3 +72,15 @@ export const LEDGER = {
 export const UI = {
     COPY_FEEDBACK_DURATION_MS: 2000, // 2 seconds
 } as const;
+
+// Query cache configuration
+export const QUERY = {
+    /** 默认staleTime - 5分钟 */
+    DEFAULT_STALE_TIME_MS: 5 * 60 * 1000,
+    /** Ledger数据staleTime - 10分钟（较稳定） */
+    LEDGER_STALE_TIME_MS: 10 * 60 * 1000,
+    /** 源文档staleTime - 30秒（频繁变化） */
+    SOURCE_DOC_STALE_TIME_MS: 30 * 1000,
+    /** 货币汇率staleTime - 24小时（外部数据，变化慢） */
+    CURRENCY_STALE_TIME_MS: 24 * 60 * 60 * 1000,
+} as const;
