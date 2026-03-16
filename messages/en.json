@@ -77,7 +77,6 @@
     },
     "TaskQueue": {
         "taskQueue": "Task Queue",
-        "taskQueue": "Task Queue",
         "runningTasks": "{count} {count, plural, one {task} other {tasks}} processing",
         "noActiveTasks": "No active tasks",
         "noActiveTasksDesc": "New record processing will appear here",
