@@ -78,7 +78,6 @@
     },
     "TaskQueue": {
         "taskQueue": "任务队列",
-        "taskQueue": "任务队列",
         "runningTasks": "{count} 个任务处理中",
         "noActiveTasks": "暂无活跃任务",
         "noActiveTasksDesc": "新的记录处理将显示在这里",
