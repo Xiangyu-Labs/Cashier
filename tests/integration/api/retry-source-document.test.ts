@@ -58,35 +58,48 @@ describe("SourceDocument Retry Action", () => {
         expect(docBefore?.status).toBe("completed");
 
         // 2. Call retry with new text
+        // Note: New retry approach = soft delete old doc + create new doc
         const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Dinner 50" });
         expect(retryRes.status).toBe("queued");
+        const newDocId = retryRes.sourceDocumentId!;
+        expect(newDocId).not.toBe(docId); // New document has different ID
 
-        const docAfterRetry = await db.query.sourceDocuments.findFirst({
+        // Old document should be soft deleted
+        const oldDocAfterRetry = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, docId),
         });
-        expect(docAfterRetry?.status).toBe("queued");
-        expect(docAfterRetry?.text).toBe("Dinner 50");
+        expect(oldDocAfterRetry?.deletedAt).not.toBeNull();
+
+        // New document should be queued with new text
+        const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, newDocId),
+        });
+        expect(newDocAfterRetry?.status).toBe("queued");
+        expect(newDocAfterRetry?.text).toBe("Dinner 50");
 
         // 3. Process tasks again
         await processAllPendingTasks();
 
-        const docFinal = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, docId),
+        // New document should be completed
+        const newDocFinal = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, newDocId),
         });
-        expect(docFinal?.status).toBe("completed");
+        expect(newDocFinal?.status).toBe("completed");
 
-        // Verify entries
-        const entries = await db.query.ledgerEntries.findMany({
+        // Verify entries on NEW document
+        const newEntries = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, newDocId),
+        });
+        const activeNewEntries = newEntries.filter(e => !e.deletedAt);
+        expect(activeNewEntries.length).toBeGreaterThan(0);
+
+        // Old document entries are NOT soft-deleted but linked to deleted source doc
+        // They become invisible because their source doc is soft deleted
+        const oldEntries = await db.query.ledgerEntries.findMany({
             where: eq(ledgerEntries.sourceDocumentId, docId),
         });
-
-        // Should have active entries
-        const activeEntries = entries.filter(e => !e.deletedAt);
-        expect(activeEntries.length).toBeGreaterThan(0);
-
-        // Should have soft-deleted entries (from the first run)
-        const deletedEntries = entries.filter(e => e.deletedAt);
-        expect(deletedEntries.length).toBeGreaterThan(0);
+        // Entries remain but source doc is deleted, so they're effectively hidden
+        expect(oldEntries.length).toBeGreaterThan(0);
     });
 
     it("should retry an anomaly document", async () => {
@@ -101,22 +114,32 @@ describe("SourceDocument Retry Action", () => {
         const docId = doc.id;
 
         // 2. Retry it
+        // Note: New retry approach = soft delete old doc + create new doc
         const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Fixed data" });
         expect(retryRes.status).toBe("queued");
+        const newDocId = retryRes.sourceDocumentId!;
+        expect(newDocId).not.toBe(docId); // New document has different ID
 
-        const docAfterRetry = await db.query.sourceDocuments.findFirst({
+        // Old document should be soft deleted
+        const oldDocAfterRetry = await db.query.sourceDocuments.findFirst({
             where: eq(sourceDocuments.id, docId),
         });
-        expect(docAfterRetry?.status).toBe("queued");
+        expect(oldDocAfterRetry?.deletedAt).not.toBeNull();
+
+        // New document should be queued
+        const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, newDocId),
+        });
+        expect(newDocAfterRetry?.status).toBe("queued");
 
         // 3. Process
         await processAllPendingTasks();
 
-        const docFinal = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, docId),
+        // New document should be completed
+        const newDocFinal = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, newDocId),
         });
-
-        expect(docFinal?.status).toBe("completed");
+        expect(newDocFinal?.status).toBe("completed");
     });
 
     it("should replace old entries with new entries on retry", async () => {
@@ -140,7 +163,7 @@ describe("SourceDocument Retry Action", () => {
         const docId = createRes.sourceDocumentId!;
         await processAllPendingTasks();
 
-        // Verify first entry
+        // Verify first entry on original document
         const entriesBeforeRetry = await db.query.ledgerEntries.findMany({
             where: eq(ledgerEntries.sourceDocumentId, docId),
         });
@@ -164,23 +187,35 @@ describe("SourceDocument Retry Action", () => {
         );
 
         // Retry with new text
-        await retrySourceDocumentAction(testLedgerId, docId, { text: "晚餐 50元" });
+        // Note: New retry approach = soft delete old doc + create new doc
+        const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "晚餐 50元" });
+        const newDocId = retryRes.sourceDocumentId!;
+        expect(newDocId).not.toBe(docId); // New document has different ID
+
         await processAllPendingTasks();
 
-        // Verify entries after retry
+        // Old document should be soft deleted with its entries
+        const oldDoc = await db.query.sourceDocuments.findFirst({
+            where: eq(sourceDocuments.id, docId),
+        });
+        expect(oldDoc?.deletedAt).not.toBeNull();
+
+        // Old entries remain but are now hidden because their source doc is deleted
         const entriesAfterRetry = await db.query.ledgerEntries.findMany({
             where: eq(ledgerEntries.sourceDocumentId, docId),
         });
+        // Entries are not soft-deleted, just linked to deleted source doc
+        expect(entriesAfterRetry.length).toBe(1);
+        expect(entriesAfterRetry[0].itemName).toBe("午餐");
+        expect(entriesAfterRetry[0].deletedAt).toBeNull(); // Entry itself is not deleted
 
-        // Old entry should be soft-deleted
-        const deletedEntries = entriesAfterRetry.filter(e => e.deletedAt);
-        expect(deletedEntries.length).toBe(1);
-        expect(deletedEntries[0].itemName).toBe("午餐");
-
-        // New entry should be active
-        const activeAfterRetry = entriesAfterRetry.filter(e => !e.deletedAt);
-        expect(activeAfterRetry.length).toBe(1);
-        expect(activeAfterRetry[0].itemName).toBe("晚餐");
-        expect(activeAfterRetry[0].amount).toBe("50.00");
+        // New document should have new active entries
+        const newEntries = await db.query.ledgerEntries.findMany({
+            where: eq(ledgerEntries.sourceDocumentId, newDocId),
+        });
+        const activeNewEntries = newEntries.filter(e => !e.deletedAt);
+        expect(activeNewEntries.length).toBe(1);
+        expect(activeNewEntries[0].itemName).toBe("晚餐");
+        expect(activeNewEntries[0].amount).toBe("50.00");
     });
 });

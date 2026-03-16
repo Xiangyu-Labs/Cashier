@@ -39,10 +39,22 @@ export function SourceDocumentInput({ ledgerId, onSuccess, mode = "create", sour
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const [isTransitionPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const hasInitializedRef = useRef(false);
+    const prevSourceDocumentIdRef = useRef<string | undefined>(sourceDocumentId);
 
-    // Reset state when initialData changes (for retry mode) using a custom ref-based synchronization or simply conditional rendering
+    // Reset initialization flag when sourceDocumentId changes (different document)
     useEffect(() => {
-        if (initialData) {
+        if (prevSourceDocumentIdRef.current !== sourceDocumentId) {
+            hasInitializedRef.current = false;
+            prevSourceDocumentIdRef.current = sourceDocumentId;
+        }
+    }, [sourceDocumentId]);
+
+    // Only set initial data once per document, not when initialData changes
+    // This prevents user's editing from being reset when background task status changes
+    useEffect(() => {
+        if (initialData && !hasInitializedRef.current) {
+            hasInitializedRef.current = true;
             startTransition(() => {
                 setText(initialData.text || "");
                 setImages(initialData.images || []);

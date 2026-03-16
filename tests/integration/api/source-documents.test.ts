@@ -8,7 +8,7 @@ import {
 } from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgerEntries, sourceDocuments, ledgers } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 
@@ -255,17 +255,30 @@ describe("SourceDocument Actions", () => {
       imageUrls: []
     }).returning();
 
-    // 2. Batch Retry - batchRetrySourceDocumentsAction returns void in new format
+    // 2. Batch Retry
+    // Note: New approach = soft delete old docs + create new docs with new IDs
     await batchRetrySourceDocumentsAction(testLedgerId, [doc1.id, doc2.id]);
 
-    // 3. Verify they are queued
-    const refreshedDocs = await db.query.sourceDocuments.findMany({
-      where: inArray(sourceDocuments.id, [doc1.id, doc2.id])
+    // 3. Verify old docs are soft deleted
+    const oldDocs = await db.query.sourceDocuments.findMany({
+      where: and(
+        inArray(sourceDocuments.id, [doc1.id, doc2.id]),
+        isNull(sourceDocuments.deletedAt)
+      )
     });
+    expect(oldDocs).toHaveLength(0);
 
-    expect(refreshedDocs).toHaveLength(2);
-    refreshedDocs.forEach(d => {
-      expect(d.status).toBe('queued');
+    // 4. Verify new docs are created (status may be queued/processing due to background tasks)
+    // New docs have different IDs, same ledgerId, preserved text
+    const allDocs = await db.query.sourceDocuments.findMany({
+      where: eq(sourceDocuments.ledgerId, testLedgerId)
+    });
+    const newDocs = allDocs.filter(d => d.id !== doc1.id && d.id !== doc2.id);
+    expect(newDocs).toHaveLength(2);
+    newDocs.forEach(d => {
+      // Status could be queued or processing (if task started)
+      expect(['queued', 'processing']).toContain(d.status);
+      expect(d.deletedAt).toBeNull();
     });
 
     // Clean up any tasks that might have been spawned by batchRetry
