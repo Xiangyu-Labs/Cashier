@@ -38,8 +38,6 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy scripts directory for migration scripts (R2 migration, etc.)
-COPY --from=builder /app/scripts ./scripts
 
 # Create uploads directory
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
