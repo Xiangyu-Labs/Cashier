@@ -7,6 +7,7 @@
 
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   getHeatmapColor,
@@ -26,11 +27,12 @@ interface YearViewProps {
 }
 
 export function YearView({ anchorDate, data, onDayClick, className }: YearViewProps) {
+  const t = useTranslations('Calendar');
   const year = parseInt(anchorDate.split('-')[0], 10);
   const { weeks, monthLabels, stats } = useYearData(year, data);
 
   // Weekday labels (Monday to Sunday)
-  const weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
+  const weekdayLabels = t.raw('weekDaysMon') as string[];
 
   return (
     <div className={cn('flex flex-col', className)}>
@@ -114,17 +116,17 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
         {/* Stats */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <span>总支出:</span>
+            <span>{t('totalExpense')}:</span>
             <span className="font-medium text-foreground">
               {formatAmount(stats.totalAmount)}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span>总笔数:</span>
-            <span className="font-medium text-foreground">{stats.totalCount}笔</span>
+            <span>{t('totalCount')}:</span>
+            <span className="font-medium text-foreground">{t('count', { count: stats.totalCount })}</span>
           </div>
           <div className="flex items-center gap-1">
-            <span>日均:</span>
+            <span>{t('dailyAverage')}:</span>
             <span className="font-medium text-foreground">
               {formatAmount(stats.avgDaily)}
             </span>

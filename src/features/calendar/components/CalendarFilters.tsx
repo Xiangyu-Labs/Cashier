@@ -7,6 +7,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -34,6 +35,7 @@ export function CalendarFilters({
   preferredCurrencies,
   className,
 }: CalendarFiltersProps) {
+  const t = useTranslations('Calendar');
   const hasActiveFilters = filters.currency || filters.categoryId;
 
   const handleReset = () => {
@@ -50,7 +52,7 @@ export function CalendarFilters({
       {/* Currency Filter */}
       {preferredCurrencies.length > 0 && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">货币</span>
+          <span className="text-xs text-muted-foreground">{t('currency')}</span>
           <Select
             value={filters.currency || '__all__'}
             onValueChange={(value) =>
@@ -61,10 +63,10 @@ export function CalendarFilters({
             }
           >
             <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue placeholder="全部货币" />
+              <SelectValue placeholder={t('allCurrencies')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">全部货币</SelectItem>
+              <SelectItem value="__all__">{t('allCurrencies')}</SelectItem>
               {preferredCurrencies.map((curr) => (
                 <SelectItem key={curr} value={curr}>
                   {curr}
@@ -77,7 +79,7 @@ export function CalendarFilters({
 
       {/* Category Filter */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">分类</span>
+        <span className="text-xs text-muted-foreground">{t('category')}</span>
         <Select
           value={filters.categoryId || '__all__'}
           onValueChange={(value) =>
@@ -88,11 +90,11 @@ export function CalendarFilters({
           }
         >
           <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue placeholder="全部分类" />
+            <SelectValue placeholder={t('allCategories')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">全部分类</SelectItem>
-            <SelectItem value="__uncategorized__">未分类</SelectItem>
+            <SelectItem value="__all__">{t('allCategories')}</SelectItem>
+            <SelectItem value="__uncategorized__">{t('uncategorized')}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -111,7 +113,7 @@ export function CalendarFilters({
           onClick={handleReset}
         >
           <X className="h-3 w-3 mr-1" />
-          重置
+          {t('reset')}
         </Button>
       )}
     </div>
