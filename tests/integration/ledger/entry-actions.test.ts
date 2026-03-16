@@ -52,7 +52,7 @@ describe("createLedgerEntryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: { settings: { mainCurrency: "CNY" } },
         });
         const doc = await seedDoc(db, ledgerId);
@@ -112,7 +112,7 @@ describe("updateLedgerEntryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: { settings: { mainCurrency: "CNY" } },
         });
 
@@ -181,7 +181,7 @@ describe("deleteLedgerEntryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: {},
         });
     });
@@ -216,7 +216,7 @@ describe("batchDeleteLedgerEntriesAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: {},
         });
     });
@@ -258,7 +258,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: {},
         });
     });
@@ -308,7 +308,7 @@ describe("getLedgerEntriesAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
+
             metadata: {},
         });
     });

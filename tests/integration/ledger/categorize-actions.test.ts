@@ -42,7 +42,6 @@ describe("submitAutoCategorizeAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -292,7 +291,6 @@ describe("submitBatchCategorizeAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });

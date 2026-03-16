@@ -40,7 +40,6 @@ describe("createQuickEntryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: { settings: { mainCurrency: "CNY" } },
         });
 
@@ -155,7 +154,6 @@ describe("createQuickEntryAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: otherUserId,
-            name: "Other Ledger",
             metadata: {},
         });
 

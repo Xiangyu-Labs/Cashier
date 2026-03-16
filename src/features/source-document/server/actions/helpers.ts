@@ -75,7 +75,7 @@ export async function processImages(
                 format: "auto", // Will convert to WebP for better compression (except PNGs)
                 stripMetadata: true,
             });
-            processedBuffer = processed.buffer;
+            processedBuffer = Buffer.from(processed.buffer);
             outputMimeType = processed.mimeType;
 
             logger.debug(

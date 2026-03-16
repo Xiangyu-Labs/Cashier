@@ -364,7 +364,7 @@ describe("D1: Delete Source Document → Related Entries Deleted", () => {
 describe("L2: Create Ledger → Default Categories Created", () => {
     it("should automatically create default categories for new ledger", async () => {
         // Create ledger via action
-        const ledger = await createLedgerAction({ name: "新账本" });
+        const ledger = await createLedgerAction({ aiLanguage: "zh-CN" });
 
         // Verify default categories exist
         const categories = await getEntryCategoriesAction(ledger.id);

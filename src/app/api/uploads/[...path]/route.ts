@@ -99,7 +99,7 @@ export async function GET(
     // 5. Determine MIME type and serve the file
     const contentType = getMimeType(filename);
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         'Content-Type': contentType,

@@ -39,7 +39,6 @@ describe("createEntryCategoryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -106,7 +105,6 @@ describe("createEntryCategoryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId2,
             userId: otherUserId,
-            name: "Second Ledger",
             metadata: {},
         });
 
@@ -158,7 +156,6 @@ describe("deleteEntryCategoryAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -228,7 +225,6 @@ describe("reorderEntryCategoriesAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -267,7 +263,6 @@ describe("getEntryCategoriesAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });

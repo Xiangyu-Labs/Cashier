@@ -82,7 +82,7 @@ describe("Multi-User Isolation", () => {
             });
 
             // should throw error in new format
-            await expect(updateLedgerAction(user2Ledger, { name: "Hacked" }))
+            await expect(updateLedgerAction(user2Ledger, { settings: { aiLanguage: "en" } }))
                 .rejects.toThrow();
         });
 

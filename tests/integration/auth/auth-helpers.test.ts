@@ -136,7 +136,6 @@ describe("requireLedgerAccess", () => {
         await db.insert(ledgers).values({
             id: deletedLedgerId,
             userId: anotherUserId,
-            name: "Deleted Ledger",
             metadata: {},
             deletedAt: new Date(),
         });

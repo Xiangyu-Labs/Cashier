@@ -89,7 +89,6 @@ export async function processImage(
 
     switch (outputFormat) {
       case "jpeg":
-      case "jpg":
         outputBuffer = await pipeline.jpeg({
           quality: opts.quality,
           progressive: true,

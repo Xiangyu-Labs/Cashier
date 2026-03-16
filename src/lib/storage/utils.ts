@@ -3,15 +3,28 @@ import { isLocalUploadUrl } from "./index";
 import { logger } from "@/lib/logger";
 
 /**
+ * Check if a URL is a base64 data URL
+ */
+function isBase64DataUrl(url: string): boolean {
+  return url.startsWith("data:");
+}
+
+/**
  * Load image data for AI processing
- * Only supports local upload URLs
+ * Supports local upload URLs and base64 data URLs
  *
- * @param url - Image URL (must be local upload URL /api/uploads/...)
+ * @param url - Image URL (local upload URL /api/uploads/... or base64 data URL)
  * @returns Base64 data URL for AI API
  */
 export async function loadImageForAI(url: string): Promise<string> {
+  // If it's already a base64 data URL, return as-is
+  if (isBase64DataUrl(url)) {
+    return url;
+  }
+
+  // Must be a local upload URL
   if (!isLocalUploadUrl(url)) {
-    throw new Error(`Invalid image URL format. Only local upload URLs (/api/uploads/...) are supported: ${url.substring(0, 50)}...`);
+    throw new Error(`Invalid image URL format. Only local upload URLs (/api/uploads/...) or base64 data URLs are supported: ${url.substring(0, 50)}...`);
   }
 
   const storage = getLocalStorage();

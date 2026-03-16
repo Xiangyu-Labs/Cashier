@@ -53,27 +53,21 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
                 { email: normalizedEmail, retryAfter: cooldownCheck.retryAfter },
                 "OTP resend cooldown active"
             );
-            const error = new RateLimitError("Please wait before requesting another code");
-            (error as Error & { retryAfter: number }).retryAfter = cooldownCheck.retryAfter;
-            throw error;
+            throw new RateLimitError("Please wait before requesting another code", cooldownCheck.retryAfter);
         }
 
         // Check email rate limit
         const emailRateLimit = await checkSendRateLimit(normalizedEmail);
         if (!emailRateLimit.allowed) {
             logger.warn({ email: normalizedEmail }, "OTP send rate limit exceeded");
-            const error = new RateLimitError("Too many requests. Please try again later.");
-            (error as Error & { retryAfter: number }).retryAfter = emailRateLimit.retryAfter;
-            throw error;
+            throw new RateLimitError("Too many requests. Please try again later.", emailRateLimit.retryAfter);
         }
 
         // Check IP rate limit
         const ipRateLimit = await checkSendRateLimitByIP(ip);
         if (!ipRateLimit.allowed) {
             logger.warn({ ip }, "OTP send IP rate limit exceeded");
-            const error = new RateLimitError("Too many requests from this IP. Please try again later.");
-            (error as Error & { retryAfter: number }).retryAfter = ipRateLimit.retryAfter;
-            throw error;
+            throw new RateLimitError("Too many requests from this IP. Please try again later.", ipRateLimit.retryAfter);
         }
 
         // Generate OTP

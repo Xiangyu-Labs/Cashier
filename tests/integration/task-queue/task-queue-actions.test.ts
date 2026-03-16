@@ -17,7 +17,6 @@ describe("getTaskQueueAction", () => {
         await db.insert(ledgers).values({
             id: ledgerId,
             userId: TEST_USER_ID,
-            name: "Test Ledger",
             metadata: {},
         });
     });
@@ -201,7 +200,6 @@ describe("getTaskQueueAction", () => {
         await db.insert(ledgers).values({
             id: otherLedgerId,
             userId: OTHER_USER_ID,
-            name: "Other Ledger",
             metadata: {},
         });
 

@@ -49,7 +49,6 @@ describe("Ledger single limit constraint", () => {
         await db.insert(ledgers).values({
             id: "ledger-test-1",
             userId: user.id,
-            name: "First Ledger",
             createdAt: new Date(),
             updatedAt: new Date(),
         });

@@ -5,8 +5,7 @@ export function createLedgerData(
   overrides: Partial<{
     id: string;
     userId: string;
-    name: string;
-    aiLanguage: string;
+    metadata: Record<string, unknown>;
     createdAt: Date;
     updatedAt: Date;
   }> = {}
@@ -14,8 +13,7 @@ export function createLedgerData(
   return {
     id: uuidv4(),
     userId: TEST_USER_ID,  // 默认使用测试用户，避免外键约束失败
-    name: `Test Ledger ${Date.now()}`,
-    aiLanguage: "zh-CN",
+    metadata: {},
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -58,6 +56,8 @@ export function createLedgerEntryData(
     itemName: string;
     description: string | null;
     entryDate: string | null; // yyyy-MM-dd format
+    convertedAmount: string | null;
+    exchangeRate: string | null;
     createdAt: Date;
   }> = {}
 ) {
@@ -74,6 +74,8 @@ export function createLedgerEntryData(
     itemName: "午餐",
     description: null,
     entryDate: null,
+    convertedAmount: null,
+    exchangeRate: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -88,7 +90,7 @@ export function createSourceDocumentData(
     imageUrls: string[];
     metadata: Record<string, unknown>;
     status: "queued" | "processing" | "completed" | "anomaly" | "failed";
-    type: "receipt" | "invoice" | "note" | null;
+    type: "ai_parsed" | "manual";
     anomalyReason: string | null;
     entryDate: string | null;
     createdAt: Date;
@@ -105,7 +107,7 @@ export function createSourceDocumentData(
     imageUrls: [],
     metadata: {},
     status: "completed" as const,
-    type: "note" as const,
+    type: "ai_parsed" as const,
     anomalyReason: null,
     entryDate: null,
     createdAt: now,

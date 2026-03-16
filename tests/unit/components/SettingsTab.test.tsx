@@ -116,7 +116,6 @@ vi.mock("./settings/LedgerManagementSection", () => ({
 describe("SettingsTab", () => {
     const mockLedger: Ledger = {
         id: "l1",
-        name: "Test Ledger",
         userId: "u1",
         metadata: {
             settings: {
