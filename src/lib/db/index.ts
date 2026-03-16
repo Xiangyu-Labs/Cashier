@@ -10,12 +10,16 @@ const globalForDb = global as unknown as {
     conn: Database.Database | undefined;
 };
 
-const client = globalForDb.conn ?? new Database(sqlitePath);
+const client = globalForDb.conn ?? new Database(sqlitePath, {
+    timeout: 5000, // 5 second timeout
+    verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
+});
 
 // Configure SQLite PRAGMA for performance and data integrity
 client.pragma("journal_mode = WAL");
 client.pragma("foreign_keys = ON");
 client.pragma("synchronous = NORMAL");
+client.pragma("busy_timeout = 5000");
 
 if (process.env.NODE_ENV !== "production") {
     globalForDb.conn = client;
