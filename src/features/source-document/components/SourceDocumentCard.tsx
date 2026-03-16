@@ -268,7 +268,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           </div>
         )}
 
-        {/* 左侧折叠按钮 */}
+        {/* Left collapse button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -280,7 +280,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground hover:text-text", isItemsExpanded && "rotate-180")} />
         </button>
 
-        {/* 中间主体 - 点击打开详情（非选择模式下） */}
+        {/* Middle section - click to open details (non-selection mode) */}
         <div
           onClick={!selectionMode ? _onViewDetails : undefined}
           className={cn(
@@ -312,7 +312,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
         </div>
 
-        {/* 右侧 - 状态、金额和菜单 */}
+        {/* Right section - status, amount and menu */}
         <div className="flex items-center gap-2 shrink-0">
           {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
