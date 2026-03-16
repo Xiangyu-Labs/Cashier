@@ -7,6 +7,7 @@ echo "========================================"
 echo "Environment: ${NODE_ENV:-production}"
 echo "Database: ${DATABASE_URL:-file:./data/sqlite.db}"
 echo "Skip Migrations: ${SKIP_MIGRATIONS:-false}"
+echo "Skip Image Migration: ${SKIP_IMAGE_MIGRATION:-false}"
 echo "========================================"
 
 # Ensure the data directory exists for SQLite
@@ -31,6 +32,18 @@ if [ "$SKIP_MIGRATIONS" != "true" ]; then
     fi
 else
     echo "[INIT] Skipping database migrations (SKIP_MIGRATIONS=true)"
+fi
+
+# Run image migration only if not skipped
+if [ "$SKIP_IMAGE_MIGRATION" != "true" ]; then
+    echo "[INIT] Running image migration check..."
+    if npx tsx -r tsconfig-paths/register scripts/migrate-on-start.ts; then
+        echo "[INIT] Image migration completed"
+    else
+        echo "[WARN] Image migration had issues, continuing anyway..."
+    fi
+else
+    echo "[INIT] Skipping image migration (SKIP_IMAGE_MIGRATION=true)"
 fi
 
 echo "[INIT] Starting application..."

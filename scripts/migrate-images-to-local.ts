@@ -11,7 +11,24 @@
  *   npm run migrate:local            # 执行迁移
  */
 
-import { db } from "@/lib/db";
+// 手动加载 DATABASE_URL (和 drizzle.config.ts 一致)
+import fs from "fs";
+import path from "path";
+
+// 加载所有环境变量
+import { config } from "dotenv";
+config({ path: path.resolve(process.cwd(), ".env.local") });
+
+// 强制使用 drizzle-kit 相同的数据库路径（覆盖 .env.local 中的设置）
+process.env.DATABASE_URL = "sqlite.db";
+
+// 延迟加载 db 模块
+let db: typeof import("@/lib/db").db;
+
+async function initDb() {
+  const dbModule = await import("@/lib/db");
+  db = dbModule.db;
+}
 import { sourceDocuments } from "@/features/source-document/server/schema";
 import { getLocalStorage } from "@/lib/storage/local";
 import { base64ToBuffer, isBase64Url, isHttpUrl } from "@/lib/storage/index";
@@ -67,6 +84,7 @@ function inferMimeType(url: string): string {
 }
 
 async function migrateImagesToLocal(dryRun: boolean): Promise<MigrationStats> {
+  await initDb();
   const storage = getLocalStorage();
   const stats: MigrationStats = {
     totalDocuments: 0,
@@ -216,6 +234,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error({ error }, "Migration failed");
+  console.error("Migration failed with error:");
+  console.error(error);
+  if (error.cause) {
+    console.error("Cause:", error.cause);
+  }
   process.exit(1);
 });
