@@ -7,10 +7,13 @@ import type { Ledger } from "@/lib/db/schema";
 import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
 import { logger } from "@/lib/logger";
 import { ValidationError } from "@/lib/errors";
+import { processImage, isSupportedImageFormat } from "@/lib/storage/image-processing";
 import crypto from "crypto";
 
-// Maximum file size: 10MB
+// Maximum file size: 10MB (before compression)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size after compression: 5MB
+const MAX_COMPRESSED_FILE_SIZE = 5 * 1024 * 1024;
 
 /**
  * Process images: upload to R2 if enabled, otherwise normalize to base64
@@ -40,16 +43,49 @@ export async function processImages(
             try {
                 // Parse base64 data - use [^;]+ to match MIME types with special chars like image/svg+xml
                 const base64Data = img.data.replace(/^data:image\/[^;]+;base64,/, "");
-                const buffer = Buffer.from(base64Data, "base64");
+                let buffer = Buffer.from(base64Data, "base64");
 
-                // Validate file size
+                // Validate file size (before compression)
                 if (buffer.length > MAX_FILE_SIZE) {
                     throw new ValidationError(
                         `File too large: ${(buffer.length / 1024 / 1024).toFixed(2)}MB. Maximum allowed: ${MAX_FILE_SIZE / 1024 / 1024}MB`
                     );
                 }
 
-                // Generate unique key with proper extension based on mimeType
+                // Skip compression for unsupported formats or SVGs
+                let processedBuffer = buffer;
+                let outputMimeType = img.mimeType;
+
+                if (isSupportedImageFormat(img.mimeType) && !img.mimeType.includes("svg")) {
+                    // Process and compress image
+                    const processed = await processImage(buffer, img.mimeType, {
+                        maxDimension: 2048,
+                        quality: 85,
+                        format: "auto", // Will convert to WebP for better compression (except PNGs)
+                        stripMetadata: true,
+                    });
+                    processedBuffer = processed.buffer;
+                    outputMimeType = processed.mimeType;
+
+                    logger.debug(
+                        {
+                            originalSize: buffer.length,
+                            processedSize: processedBuffer.length,
+                            originalMime: img.mimeType,
+                            outputMime: outputMimeType,
+                        },
+                        "Image compressed"
+                    );
+                }
+
+                // Validate compressed size
+                if (processedBuffer.length > MAX_COMPRESSED_FILE_SIZE) {
+                    throw new ValidationError(
+                        `Compressed file still too large: ${(processedBuffer.length / 1024 / 1024).toFixed(2)}MB. Maximum allowed: ${MAX_COMPRESSED_FILE_SIZE / 1024 / 1024}MB`
+                    );
+                }
+
+                // Generate unique key with proper extension based on output mimeType
                 const mimeToExt: Record<string, string> = {
                     "image/jpeg": "jpg",
                     "image/jpg": "jpg",
@@ -58,16 +94,17 @@ export async function processImages(
                     "image/gif": "gif",
                     "image/heic": "heic",
                     "image/heif": "heif",
+                    "image/avif": "avif",
                 };
-                const ext = mimeToExt[img.mimeType] || "jpg";
+                const ext = mimeToExt[outputMimeType] || "jpg";
                 const key = `${ledgerId}/${sourceDocumentId}/${crypto.randomUUID()}.${ext}`;
 
-                // Upload to R2
-                const url = await storage.upload(key, buffer, img.mimeType);
+                // Upload to R2 with cache control (immutable images cached for 1 year)
+                const url = await storage.upload(key, processedBuffer, outputMimeType);
                 imageUrls.push(url);
 
                 logger.debug(
-                    { key, size: buffer.length, mimeType: img.mimeType },
+                    { key, originalSize: buffer.length, compressedSize: processedBuffer.length, mimeType: outputMimeType },
                     "Image uploaded to R2"
                 );
             } catch (error) {

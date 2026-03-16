@@ -13,9 +13,10 @@ export interface StorageProvider {
    * @param key - Unique key/path for the file
    * @param data - File data as Buffer
    * @param contentType - MIME type
+   * @param cacheControl - Cache-Control header (optional)
    * @returns Public URL of the uploaded file
    */
-  upload(key: string, data: Buffer, contentType: string): Promise<string>;
+  upload(key: string, data: Buffer, contentType: string, cacheControl?: string): Promise<string>;
 
   /**
    * Download a file from storage

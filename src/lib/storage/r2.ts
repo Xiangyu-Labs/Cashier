@@ -51,7 +51,12 @@ export class R2StorageProvider implements StorageProvider {
     logger.info({ bucket, endpoint: this.endpoint }, "R2 storage initialized");
   }
 
-  async upload(key: string, data: Buffer, contentType: string): Promise<string> {
+  async upload(
+    key: string,
+    data: Buffer,
+    contentType: string,
+    cacheControl?: string
+  ): Promise<string> {
     try {
       await this.client.send(
         new PutObjectCommand({
@@ -59,11 +64,12 @@ export class R2StorageProvider implements StorageProvider {
           Key: key,
           Body: data,
           ContentType: contentType,
+          CacheControl: cacheControl || "public, max-age=31536000, immutable",
         })
       );
 
       const url = this.getPublicUrl(key);
-      logger.debug({ key, size: data.length, contentType }, "File uploaded to R2");
+      logger.debug({ key, size: data.length, contentType, cacheControl }, "File uploaded to R2");
       return url;
     } catch (error) {
       logger.error({ error, key }, "Failed to upload file to R2");
