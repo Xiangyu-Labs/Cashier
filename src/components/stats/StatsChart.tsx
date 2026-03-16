@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 
 interface StatsChartProps {
@@ -21,6 +21,7 @@ export function StatsChart({
     isLoading
 }: StatsChartProps) {
     const locale = useLocale();
+    const t = useTranslations('StatsChart');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     // Find the latest date with actual data
@@ -158,7 +159,7 @@ export function StatsChart({
             {/* Outlier indicator */}
             {hasOutliers && (
                 <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
-                    已调整显示比例
+                    {t('scaleAdjusted')}
                 </div>
             )}
             {/* Grid Lines */}
@@ -249,8 +250,8 @@ export function StatsChart({
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-50 pointer-events-none">
                                     <div className="font-medium">{displayDate}</div>
                                     <div className={isCapped ? 'text-red-500' : ''}>
-                                        支出: ¥{p.value.toLocaleString()}
-                                        {isCapped && ' (超出显示上限)'}
+                                        {t('expense')}: ¥{p.value.toLocaleString()}
+                                        {isCapped && t('exceedsLimit')}
                                     </div>
                                 </div>
                             )}
