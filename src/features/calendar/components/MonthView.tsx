@@ -7,6 +7,8 @@
 
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { getMonthGrid, formatDate } from '../lib/date-utils';
@@ -21,6 +23,7 @@ interface MonthViewProps {
 }
 
 export function MonthView({ anchorDate, data, onDayClick, className }: MonthViewProps) {
+  const t = useTranslations('Calendar');
   const grid = useMemo(() => getMonthGrid(anchorDate), [anchorDate]);
   const today = formatDate(new Date());
 
@@ -33,8 +36,8 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
     return map;
   }, [data.days]);
 
-  // Weekday headers
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  // Weekday headers (Sunday-first format)
+  const weekdays = t.raw('weekDays') as string[];
 
   return (
     <div className={cn('flex flex-col', className)}>
