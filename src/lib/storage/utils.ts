@@ -1,62 +1,35 @@
 import { getLocalStorage } from "./local";
-import { isBase64Url, isHttpUrl, isLocalUploadUrl } from "./index";
+import { isLocalUploadUrl } from "./index";
 import { logger } from "@/lib/logger";
 
 /**
  * Load image data for AI processing
- * Supports base64 data URLs, local upload URLs, and HTTP URLs
+ * Only supports local upload URLs
  *
- * @param url - Image URL (base64 data URL, local upload URL, or HTTP URL)
+ * @param url - Image URL (must be local upload URL /api/uploads/...)
  * @returns Base64 data URL for AI API
  */
 export async function loadImageForAI(url: string): Promise<string> {
-  // If it's already a base64 data URL, return as-is
-  if (isBase64Url(url)) {
-    return url;
+  if (!isLocalUploadUrl(url)) {
+    throw new Error(`Invalid image URL format. Only local upload URLs (/api/uploads/...) are supported: ${url.substring(0, 50)}...`);
   }
 
-  // If it's a local upload URL, read from local storage
-  if (isLocalUploadUrl(url)) {
-    const storage = getLocalStorage();
-    const key = storage.extractKeyFromUrl(url);
+  const storage = getLocalStorage();
+  const key = storage.extractKeyFromUrl(url);
 
-    if (!key) {
-      throw new Error(`Invalid local upload URL: ${url}`);
-    }
-
-    try {
-      const buffer = await storage.download(key);
-      const mimeType = inferImageMimeType(key);
-      const base64 = buffer.toString("base64");
-      return `data:${mimeType};base64,${base64}`;
-    } catch (error) {
-      logger.error({ error, url, key }, "Failed to load image from local storage for AI");
-      throw new Error(`Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+  if (!key) {
+    throw new Error(`Invalid local upload URL: ${url}`);
   }
 
-  // For any other HTTP URL, fetch directly
-  if (isHttpUrl(url)) {
-    try {
-      const response = await fetch(url, {
-        headers: { "User-Agent": "Cashier-App/1.0" },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status}`);
-      }
-
-      const buffer = Buffer.from(await response.arrayBuffer());
-      const contentType = response.headers.get("content-type") || inferImageMimeType(url);
-      const base64 = buffer.toString("base64");
-      return `data:${contentType};base64,${base64}`;
-    } catch (error) {
-      logger.error({ error, url }, "Failed to fetch external image for AI");
-      throw new Error(`Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+  try {
+    const buffer = await storage.download(key);
+    const mimeType = inferImageMimeType(key);
+    const base64 = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    logger.error({ error, url, key }, "Failed to load image from local storage for AI");
+    throw new Error(`Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
-
-  throw new Error(`Unsupported image URL format: ${url.substring(0, 50)}...`);
 }
 
 /**
@@ -73,7 +46,7 @@ export interface LoadImageResult {
  * Load multiple images for AI processing
  * Uses Promise.allSettled to handle partial failures gracefully
  *
- * @param urls - Array of image URLs
+ * @param urls - Array of image URLs (local upload URLs only)
  * @returns Array of load results (both successful and failed)
  */
 export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]> {
@@ -110,7 +83,7 @@ export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]
  * Filter successful image loads and return data URLs
  * Throws if any images failed to load (use this when all images are required)
  *
- * @param urls - Array of image URLs
+ * @param urls - Array of image URLs (local upload URLs only)
  * @returns Array of base64 data URLs
  * @throws Error if any image fails to load
  */
@@ -124,16 +97,6 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
   }
 
   return results.map(r => r.dataUrl!);
-}
-
-/**
- * Check if an image URL needs to be loaded (converted to base64)
- *
- * @param url - Image URL
- * @returns true if the URL needs to be loaded (is HTTP URL)
- */
-export function needsLoading(url: string): boolean {
-  return isHttpUrl(url) && !isBase64Url(url);
 }
 
 /**
