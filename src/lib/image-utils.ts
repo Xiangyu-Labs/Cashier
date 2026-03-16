@@ -8,21 +8,63 @@
  * @returns A promise that resolves to the compressed base64 string and mime type
  */
 
-let worker: Worker | null = null;
+interface CompressionResult {
+    data: string;
+    mimeType: string;
+}
 
-function getWorker(): Worker | null {
+class WorkerPool {
+    private maxWorkers: number;
+    private workers: Worker[] = [];
+    private queue: Array<{
+        task: () => Promise<CompressionResult>;
+        resolve: (value: CompressionResult) => void;
+        reject: (reason: unknown) => void;
+    }> = [];
+    private activeWorkers = 0;
+
+    constructor(maxWorkers = 3) {
+        this.maxWorkers = maxWorkers;
+    }
+
+    async execute(task: () => Promise<CompressionResult>): Promise<CompressionResult> {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ task, resolve, reject });
+            this.processQueue();
+        });
+    }
+
+    private processQueue(): void {
+        if (this.activeWorkers >= this.maxWorkers || this.queue.length === 0) {
+            return;
+        }
+
+        const { task, resolve, reject } = this.queue.shift()!;
+        this.activeWorkers++;
+
+        task()
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+                this.activeWorkers--;
+                this.processQueue();
+            });
+    }
+}
+
+// Create pool instance
+const workerPool = new WorkerPool(3);
+
+function createWorker(): Worker | null {
     if (typeof window === 'undefined') return null;
     if (typeof OffscreenCanvas === 'undefined') return null;
 
-    if (!worker) {
-        try {
-            worker = new Worker(new URL('./workers/image-compress.worker.ts', import.meta.url));
-        } catch {
-            // Worker creation failed, fall back to sync
-            return null;
-        }
+    try {
+        return new Worker(new URL('./workers/image-compress.worker.ts', import.meta.url));
+    } catch {
+        // Worker creation failed, fall back to sync
+        return null;
     }
-    return worker;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -39,34 +81,36 @@ export async function compressImage(
     maxWidth = 1600,
     maxHeight = 1600,
     quality = 0.8
-): Promise<{ data: string; mimeType: string }> {
-    const w = getWorker();
+): Promise<CompressionResult> {
+    return workerPool.execute(async () => {
+        const worker = createWorker();
 
-    // Use Web Worker if available (non-blocking)
-    if (w) {
-        const arrayBuffer = await file.arrayBuffer();
+        // Use Web Worker if available (non-blocking)
+        if (worker) {
+            const arrayBuffer = await file.arrayBuffer();
 
-        return new Promise((resolve, reject) => {
-            const handler = (e: MessageEvent) => {
-                w.removeEventListener('message', handler);
-                if (e.data.success) {
-                    const base64 = arrayBufferToBase64(e.data.data);
-                    resolve({
-                        data: `data:image/jpeg;base64,${base64}`,
-                        mimeType: 'image/jpeg',
-                    });
-                } else {
-                    reject(new Error(e.data.error));
-                }
-            };
+            return new Promise((resolve, reject) => {
+                const handler = (e: MessageEvent) => {
+                    worker.removeEventListener('message', handler);
+                    if (e.data.success) {
+                        const base64 = arrayBufferToBase64(e.data.data);
+                        resolve({
+                            data: `data:image/jpeg;base64,${base64}`,
+                            mimeType: 'image/jpeg',
+                        });
+                    } else {
+                        reject(new Error(e.data.error));
+                    }
+                };
 
-            w.addEventListener('message', handler);
-            w.postMessage({ imageData: arrayBuffer, maxWidth, maxHeight, quality }, [arrayBuffer]);
-        });
-    }
+                worker.addEventListener('message', handler);
+                worker.postMessage({ imageData: arrayBuffer, maxWidth, maxHeight, quality }, [arrayBuffer]);
+            });
+        }
 
-    // Fallback to synchronous compression (main thread)
-    return compressImageSync(file, maxWidth, maxHeight, quality);
+        // Fallback to synchronous compression (main thread)
+        return compressImageSync(file, maxWidth, maxHeight, quality);
+    });
 }
 
 /**
@@ -77,7 +121,7 @@ function compressImageSync(
     maxWidth: number,
     maxHeight: number,
     quality: number
-): Promise<{ data: string; mimeType: string }> {
+): Promise<CompressionResult> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
