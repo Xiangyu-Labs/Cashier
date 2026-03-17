@@ -71,4 +71,4 @@ public/swe-worker-*.js
 /uploads/
 
 # execute script
-planexe.sh
+chant.sh
