@@ -35,7 +35,9 @@ export const createLedgerAction = withAuth(
             userId: userId,
             metadata: {
               settings: {
-                aiLanguage: validated.aiLanguage || defaultLedger.settings.aiLanguage,
+                aiLanguage: validated.aiLanguage != null && validated.aiLanguage !== ""
+                ? validated.aiLanguage
+                : defaultLedger.settings.aiLanguage,
                 currencies: defaultLedger.settings.currencies,
                 mainCurrency: defaultLedger.settings.mainCurrency,
                 collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,

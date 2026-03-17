@@ -50,14 +50,14 @@ export const createLedgerEntryAction = withLedgerAccess(
     const ledger = await db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
     });
-    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
-    const entryCurrency = validated.currency || "CNY";
+    const mainCurrency = ledger?.metadata?.settings?.mainCurrency != null && ledger.metadata.settings.mainCurrency !== "" ? ledger.metadata.settings.mainCurrency : "CNY";
+    const entryCurrency = validated.currency != null && validated.currency !== "" ? validated.currency : "CNY";
 
     // Get entryDate from source document for currency conversion
     const sourceDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, validated.sourceDocumentId),
     });
-    const entryDate = sourceDoc?.entryDate || undefined;
+    const entryDate = sourceDoc?.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
 
     // Calculate converted amount using CurrencyService
     const conversionResult = await CurrencyService.convertEntryAmount({
@@ -163,7 +163,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
       .where(q.whereId(ledgerEntryId))
       .returning();
 
-    if (!updatedEntry) throw new NotFoundError("Entry");
+    if (updatedEntry == null) throw new NotFoundError("Entry");
 
     return serializeLedgerEntry(updatedEntry);
   }

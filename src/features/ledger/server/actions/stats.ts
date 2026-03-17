@@ -64,9 +64,9 @@ export const getLedgerStatsAction = withLedgerAccess(
       .groupBy(ledgerEntries.currency);
 
     const formattedTotals = totalsQuery.map((t) => ({
-      currency: t.currency || "CNY",
-      total: Number(t.total) || 0,
-      count: Number(t.count) || 0,
+      currency: t.currency ?? "CNY",
+      total: Number(t.total) ?? 0,
+      count: Number(t.count) ?? 0,
     }));
 
     // 2. Trend (Daily Total) - Join with sourceDocuments to get entryDate
@@ -93,15 +93,13 @@ export const getLedgerStatsAction = withLedgerAccess(
     const byCategory: LedgerEntrySummary["byCategory"] = [];
 
     // 4. Converted Total Logic - Use SQL aggregation for performance
-    const effectiveMainCurrency =
-      mainCurrency ||
-      (
-        await db.query.ledgers.findFirst({
-          where: eq(ledgers.id, ledgerId),
-          columns: { metadata: true },
-        })
-      )?.metadata?.settings?.mainCurrency ||
-      "CNY";
+    const ledgerSettings = (
+      await db.query.ledgers.findFirst({
+        where: eq(ledgers.id, ledgerId),
+        columns: { metadata: true },
+      })
+    )?.metadata?.settings?.mainCurrency;
+    const effectiveMainCurrency = mainCurrency ?? ledgerSettings ?? "CNY";
 
     const convertedTotalResult = await db
       .select({

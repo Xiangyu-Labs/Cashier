@@ -222,6 +222,6 @@ export const getUncategorizedCountAction = withLedgerAccess(
         )
       );
 
-    return result[0]?.count || 0;
+    return result[0]?.count ?? 0;
   }
 );

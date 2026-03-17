@@ -36,7 +36,7 @@ export function buildConversionItems(
 ): ConversionItem[] {
   return entries.map((entry) => ({
     amount: Number(entry.amount),
-    from: entry.currency || "CNY",
+    from: entry.currency ?? "CNY",
     to: mainCurrency,
     date: entry.sourceDocument?.entryDate ?? undefined,
   }));

@@ -49,8 +49,8 @@ export function usePeriodFilter({
     () => ({
       categoryId: searchParams.get("categoryId") ?? null,
       currency: searchParams.get("currency") ?? null,
-      minAmount: searchParams.get("minAmount") ? Number(searchParams.get("minAmount")) : null,
-      maxAmount: searchParams.get("maxAmount") ? Number(searchParams.get("maxAmount")) : null,
+      minAmount: searchParams.get("minAmount") !== null ? Number(searchParams.get("minAmount")) : null,
+      maxAmount: searchParams.get("maxAmount") !== null ? Number(searchParams.get("maxAmount")) : null,
     }),
     [searchParams]
   );
@@ -58,8 +58,8 @@ export function usePeriodFilter({
   // Convert to EntryFilters format for compatibility
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+      startDate: dateRange.startDate !== null ? new Date(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate !== null ? new Date(dateRange.endDate) : undefined,
       categoryId: filterParams.categoryId ?? null,
       currency: filterParams.currency ?? null,
       minAmount: filterParams.minAmount,
@@ -79,10 +79,10 @@ export function usePeriodFilter({
       params.set("period", newPeriod.period);
 
       if (newPeriod.period === "custom") {
-        if (newPeriod.startDate != null && newPeriod.startDate !== "") {
+        if (newPeriod.startDate !== null && newPeriod.startDate !== undefined && newPeriod.startDate !== "") {
           params.set("startDate", newPeriod.startDate);
         }
-        if (newPeriod.endDate != null && newPeriod.endDate !== "") {
+        if (newPeriod.endDate !== null && newPeriod.endDate !== undefined && newPeriod.endDate !== "") {
           params.set("endDate", newPeriod.endDate);
         }
       } else {

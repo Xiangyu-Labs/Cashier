@@ -92,14 +92,18 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
 
+  // Convert null to undefined for the query function
+  const startDateForQuery = startDate ?? undefined;
+  const endDateForQuery = endDate ?? undefined;
+
   // Single query with flat cache structure
   // The 'all' key stores the raw flat array
   const { data: response, isLoading } = useSmartPolling({
     queryKey: queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate),
     queryFn: () =>
       getAllSourceDocumentsAction(ledgerId, {
-        startDate: startDate != null ? startDate : undefined,
-        endDate: endDate != null ? endDate : undefined,
+        startDate: startDateForQuery,
+        endDate: endDateForQuery,
       }),
     isActive: (data) => {
       if (!data) return false;
@@ -163,9 +167,9 @@ export function useSourceDocumentFromCache(ledgerId: string, id: string | null) 
 
     // Find the document in any of the cached data
     for (const [, data] of queries) {
-      if (data != null) {
+      if (data !== undefined && data !== null) {
         const doc = data.find((d) => d.id === id);
-        if (doc != null) return doc;
+        if (doc !== undefined && doc !== null) return doc;
       }
     }
 

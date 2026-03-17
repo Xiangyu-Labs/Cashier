@@ -84,7 +84,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   );
 
   const isDifferentCurrency = Boolean(
-    displayData.currency !== "" &&
+    displayData.currency !== "" && displayData.currency !== null && displayData.currency !== undefined &&
     displayData.currency !== mainCurrency &&
     displayData.currency !== "unknown"
   );
@@ -132,7 +132,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
               <span className="text-sm text-text">
-                {entryDate !== ""
+                {entryDate !== "" && entryDate !== null && entryDate !== undefined
                   ? parseDateString(entryDate).toLocaleDateString(locale, {
                       year: "numeric",
                       month: "short",
@@ -164,7 +164,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               displayClassName="text-sm text-text"
               inputClassName="text-sm"
               renderDisplay={(value) =>
-                value !== "" ? (
+                value !== "" && value !== null && value !== undefined ? (
                   <div className="text-sm text-text">
                     <AnimatePresence initial={false}>
                       <motion.div

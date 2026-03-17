@@ -29,7 +29,7 @@ async function getPendingCategorizeTaskEntryIds(): Promise<Set<string>> {
   for (const task of pendingTasks) {
     try {
       const input = task.input as CategorizeEntryInput;
-      if (input?.entryId) {
+      if (input?.entryId != null && input.entryId !== "") {
         pendingEntryIds.add(input.entryId);
       }
     } catch {
@@ -70,7 +70,8 @@ async function getLedgerAILanguage(ledgerId: string): Promise<string> {
   const ledger = await db.query.ledgers.findFirst({
     where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
   });
-  return ledger?.metadata?.settings?.aiLanguage || "zh-CN";
+  const aiLanguage = ledger?.metadata?.settings?.aiLanguage;
+  return aiLanguage != null && aiLanguage !== "" ? aiLanguage : "zh-CN";
 }
 
 /**
@@ -100,7 +101,9 @@ async function submitSingleCategorizeTask(
     amount: entry.amount,
     currency: entry.currency ?? "CNY",
     description: entry.description,
-    entryDate: entry.sourceDocument?.entryDate ?? formatDateTimeForApi(new Date()),
+    entryDate: entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== ""
+      ? entry.sourceDocument.entryDate
+      : formatDateTimeForApi(new Date()),
     sourceDocumentText: entry.sourceDocument?.text || undefined,
     sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
     categories,

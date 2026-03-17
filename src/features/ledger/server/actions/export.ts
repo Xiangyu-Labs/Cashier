@@ -52,7 +52,7 @@ function escapeCsvField(value: string): string {
 
 // Format date to yyyy-MM-dd for consistency
 function formatDate(date: Date | string | number | null | undefined): string {
-  if (!date) return "";
+  if (date == null) return "";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
@@ -60,7 +60,7 @@ function formatDate(date: Date | string | number | null | undefined): string {
 
 // Format datetime to yyyy-MM-dd HH:mm:ss
 function formatDateTime(date: Date | string | number | null | undefined): string {
-  if (!date) return "";
+  if (date == null) return "";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   return d.toISOString().replace("T", " ").slice(0, 19);
@@ -92,7 +92,7 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     }
 
     // Add limit if specified (default to reasonable max)
-    const limit = options?.limit || 10000;
+    const limit = options?.limit ?? 10000;
 
     // Get entries with category info
     const entries = await db.query.ledgerEntries.findMany({
@@ -117,7 +117,7 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     const lines: string[] = [];
 
     // Header row (localized)
-    const headers = CSV_HEADERS[locale] || CSV_HEADERS.en;
+    const headers = CSV_HEADERS[locale] ?? CSV_HEADERS.en;
     lines.push(headers.join(","));
 
     // Data rows
