@@ -272,7 +272,7 @@ export function LedgerEntriesTab({
                       <div className="h-3 w-24 bg-surface2 rounded" />
                     </div>
                     {/* Daily total */}
-                    <div className="h-3 w-20 bg-surface2 rounded" />
+                    <div className="h-3 w-20 bg-surface2 rounded font-mono" />
                   </div>
 
                   {/* Source document cards for this date */}
@@ -293,7 +293,7 @@ export function LedgerEntriesTab({
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           {/* Amount */}
-                          <div className="h-4 w-16 bg-border rounded" />
+                          <div className="h-4 w-16 bg-border rounded font-mono" />
                           {/* More menu button */}
                           <div className="h-7 w-7 bg-border rounded" />
                         </div>
@@ -313,7 +313,7 @@ export function LedgerEntriesTab({
                               </div>
                             </div>
                             {/* Entry amount */}
-                            <div className="h-4 w-14 bg-border rounded" />
+                            <div className="h-4 w-14 bg-border rounded font-mono" />
                           </div>
                         ))}
                       </div>

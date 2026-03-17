@@ -19,7 +19,7 @@ export function EntriesTabSkeleton() {
         {/* Spacer */}
         <div className="flex-1" />
         {/* Total amount text */}
-        <div className="h-4 w-28 bg-surface2 rounded animate-pulse" />
+        <div className="h-4 w-28 bg-surface2 rounded animate-pulse font-mono" />
       </div>
 
       {/* Date group skeletons */}
@@ -34,7 +34,7 @@ export function EntriesTabSkeleton() {
               <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
             </div>
             {/* Daily total */}
-            <div className="h-3 w-20 bg-surface2 rounded animate-pulse" />
+            <div className="h-3 w-20 bg-surface2 rounded animate-pulse font-mono" />
           </div>
 
           {/* Source document cards for this date */}
@@ -55,7 +55,7 @@ export function EntriesTabSkeleton() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   {/* Amount */}
-                  <div className="h-4 w-16 bg-border rounded animate-pulse" />
+                  <div className="h-4 w-16 bg-border rounded animate-pulse font-mono" />
                   {/* More menu button */}
                   <div className="h-7 w-7 bg-border rounded animate-pulse" />
                 </div>
@@ -76,7 +76,7 @@ export function EntriesTabSkeleton() {
                       </div>
                     </div>
                     {/* Entry amount */}
-                    <div className="h-4 w-14 bg-border rounded animate-pulse" />
+                    <div className="h-4 w-14 bg-border rounded animate-pulse font-mono" />
                   </div>
                 ))}
               </div>
