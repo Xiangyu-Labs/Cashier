@@ -111,7 +111,7 @@ export function BatchActionToolbar({
   // Container classes based on variant
   const containerClasses =
     variant === "fixed"
-      ? "fixed bottom-0 left-0 right-0 z-50 px-2 sm:px-4 pb-2 sm:pb-4 pointer-events-none"
+      ? "fixed bottom-0 left-0 right-0 z-action-bar px-2 sm:px-4 pb-2 sm:pb-4 pointer-events-none"
       : "shrink-0 pointer-events-auto";
 
   const innerWrapperClasses = variant === "fixed" ? "max-w-lg mx-auto pointer-events-auto" : "";
