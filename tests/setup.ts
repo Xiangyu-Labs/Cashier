@@ -167,7 +167,7 @@ vi.mock("@/auth", () => ({
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof import("react");
-  const messages = require("../messages/zh.json");
+  const messages = await import("../messages/zh.json").then(m => m.default || m);
 
   return {
     useTranslations: (namespace?: string) => {
