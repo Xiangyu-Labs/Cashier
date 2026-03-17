@@ -201,18 +201,6 @@
     "cropHint": "Drag to select the area you want to keep",
     "drawHint": "Draw on the image to mask or annotate"
   },
-  "ImageEditor": {
-    "title": "Edit Image",
-    "crop": "Crop",
-    "draw": "Draw",
-    "brushSize": "Brush Size",
-    "reset": "Reset",
-    "applyCrop": "Apply Crop",
-    "cancel": "Cancel",
-    "save": "Save",
-    "cropHint": "Drag to select the area you want to keep",
-    "drawHint": "Draw on the image to mask or annotate"
-  },
   "SourceDocumentInput": {
     "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
     "image": "Image",
@@ -221,7 +209,8 @@
     "uploadSuccess": "Submitted successfully",
     "uploadError": "Failed to submit",
     "retrySuccess": "Retry submitted",
-    "retryError": "Failed to retry"
+    "retryError": "Failed to retry",
+    "editImage": "Edit image"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"

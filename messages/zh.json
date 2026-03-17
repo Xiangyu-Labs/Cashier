@@ -201,18 +201,6 @@
     "cropHint": "拖动选择要保留的区域",
     "drawHint": "在图片上涂抹以遮盖或标注"
   },
-  "ImageEditor": {
-    "title": "编辑图片",
-    "crop": "裁剪",
-    "draw": "涂鸦",
-    "brushSize": "画笔大小",
-    "reset": "重置",
-    "applyCrop": "应用裁剪",
-    "cancel": "取消",
-    "save": "保存",
-    "cropHint": "拖动选择要保留的区域",
-    "drawHint": "在图片上涂抹以遮盖或标注"
-  },
   "SourceDocumentInput": {
     "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
     "image": "图片",
@@ -221,7 +209,8 @@
     "uploadSuccess": "提交成功",
     "uploadError": "提交失败",
     "retrySuccess": "重试已提交",
-    "retryError": "重试失败"
+    "retryError": "重试失败",
+    "editImage": "编辑图片"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"
