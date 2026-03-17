@@ -67,7 +67,7 @@ Categorize the following ledger entry into one of the available categories.
 ### Entry Details
 - Item Name: ${input.itemName}
 - Amount: ${input.amount} ${input.currency}
-- Description: ${input.description || "N/A"}
+- Description: ${input.description != null && input.description !== "" ? input.description : "N/A"}
 - Date: ${input.entryDate}
 
 ### Available Categories (use category_index in output)
@@ -95,8 +95,8 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
     ): Promise<CategorizeEntryOutput> {
       const { signal, ai } = context;
 
-      if (!input.ledgerId) throw new Error("Missing ledgerId");
-      if (!input.entryId) throw new Error("Missing entryId");
+      if (input.ledgerId === "") throw new Error("Missing ledgerId");
+      if (input.entryId === "") throw new Error("Missing entryId");
 
       if (signal.aborted) {
         throw new Error("Task cancelled");
@@ -156,7 +156,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       input: CategorizeEntryInput,
       _context: FlowContext
     ): Promise<void> {
-      if (!input.ledgerId || !input.entryId) return;
+      if (input.ledgerId === "" || input.entryId === "") return;
 
       // Only update if we have a valid category match
       if (output.categoryIndex > 0 && output.categoryIndex <= input.categories.length && input.ledgerId !== "" && input.entryId !== "") {
