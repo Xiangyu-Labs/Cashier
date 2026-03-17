@@ -23,7 +23,8 @@ export const taskRuns = sqliteTable("task_runs", {
     entityId: text("entity_id"),                // Entity ID (e.g., sourceDocumentId, categoryId)
 
     // Result
-    status: text("status").notNull().default("pending"), // 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+    status: text("status").notNull().default("pending")
+        .$type<"pending" | "running" | "completed" | "failed" | "cancelled">(),
     error: text("error"),
     progress: text("progress"), // Current progress message
 

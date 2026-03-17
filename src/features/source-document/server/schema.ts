@@ -39,7 +39,8 @@ export const sourceDocuments = sqliteTable("source_documents", {
         .$type<string[]>()
         .default([]),
 
-    status: text("status").notNull().default("queued"),
+    status: text("status").notNull().default("queued")
+        .$type<"queued" | "processing" | "completed" | "anomaly" | "failed">(),
     type: text("type").notNull().default("ai_parsed"),
     anomalyReason: text("anomaly_reason"),  // 异常原因（直接显示给用户）
     entryDate: text("entry_date"),  // 交易日期 yyyy-MM-dd 格式
