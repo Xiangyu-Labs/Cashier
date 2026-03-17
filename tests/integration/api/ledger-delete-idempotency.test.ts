@@ -1,9 +1,20 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories, sourceDocuments, ledgerEntries } from "@/lib/db/schema";
 import { eq, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import { auth } from "@/auth";
+
+// Mock next/cache
+vi.mock("next/cache", () => ({
+  updateTag: vi.fn(),
+}));
+
+// Mock auth module
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
+}));
 
 /**
  * 删除账本的幂等性测试
@@ -24,6 +35,12 @@ describe("Ledger Delete Idempotency", () => {
     await db.delete(entryCategories);
     await db.delete(ledgers);
     testUserId = TEST_USER_ID;
+
+    // Setup auth mock for each test
+    vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: { id: TEST_USER_ID, email: "test@example.com" },
+      expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+    });
   });
 
   it("应该允许重复删除同一个账本（幂等性）", async () => {
@@ -32,16 +49,16 @@ describe("Ledger Delete Idempotency", () => {
     // 1. 创建账本
     const { ledgerId } = await createTestUserWithLedger(db, undefined, "待删除的账本", TEST_USER_ID);
 
-    // 2. 第一次删除 - 应该成功
+    // 2. 第一次删除 - 应该成功（withAuth 从 session 提取 userId，只传 ledgerId）
     await expect(
-      deleteLedgerAction(testUserId, ledgerId)
+      deleteLedgerAction(ledgerId)
     ).resolves.not.toThrow();
 
     // 3. 【问题】第二次删除同同一个账本（模拟竞态条件或重复点击）
     // 当前行为：抛出 NotFoundError ❌
     // 期望行为：应该成功（幂等）✅
     await expect(
-      deleteLedgerAction(testUserId, ledgerId)
+      deleteLedgerAction(ledgerId)
     ).resolves.not.toThrow();  // 修复后这行应该通过
 
     // 4. 验证账本被软删除
@@ -67,7 +84,7 @@ describe("Ledger Delete Idempotency", () => {
     // 当前行为：抛出 NotFoundError，用户看到"删除失败" ❌
     // 期望行为：静默成功，因为目标状态（已删除）已经达成 ✅
     await expect(
-      deleteLedgerAction(testUserId, ledgerId)
+      deleteLedgerAction(ledgerId)
     ).resolves.toBeUndefined();  // 修复后应该返回 undefined（成功）
 
     // 4. 验证账本仍然被软删除（状态未改变）
@@ -84,8 +101,8 @@ describe("Ledger Delete Idempotency", () => {
     const { ledgerId } = await createTestUserWithLedger(db, undefined, "并发删除测试账本", TEST_USER_ID);
 
     // 2. 模拟两个并发的删除请求
-    const delete1 = deleteLedgerAction(testUserId, ledgerId);
-    const delete2 = deleteLedgerAction(testUserId, ledgerId);
+    const delete1 = deleteLedgerAction(ledgerId);
+    const delete2 = deleteLedgerAction(ledgerId);
 
     // 两个请求都应该成功（不抛出错误）
     const [result1, result2] = await Promise.allSettled([delete1, delete2]);
@@ -108,7 +125,7 @@ describe("Ledger Delete Idempotency", () => {
     const fakeLedgerId = "00000000-0000-0000-0000-000000000000";
 
     await expect(
-      deleteLedgerAction(testUserId, fakeLedgerId)
+      deleteLedgerAction(fakeLedgerId)
     ).rejects.toThrow("Ledger");
   });
 });

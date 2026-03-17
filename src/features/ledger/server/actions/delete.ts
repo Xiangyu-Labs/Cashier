@@ -11,16 +11,23 @@ import { forLedger } from "@/lib/db/scoped-query";
 
 /**
  * Soft delete a ledger and all its related data (entries, categories, source documents)
+ * 幂等删除：删除已软删除的账本时静默成功
  */
 export const deleteLedgerAction = withAuth(
   async (userId: string, ledgerId: string): Promise<void> => {
-    // Verify ownership
+    // Verify ownership - 查询包括已软删除的记录
     const existing = await db.query.ledgers.findFirst({
-      where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+      where: eq(ledgers.id, ledgerId),
     });
 
+    // 如果账本不存在，抛出错误（不是幂等情况）
     if (!existing) {
       throw new NotFoundError("Ledger");
+    }
+
+    // 如果账本已软删除，静默成功（幂等）
+    if (existing.deletedAt != null) {
+      return;
     }
 
     if (existing.userId !== userId) {
