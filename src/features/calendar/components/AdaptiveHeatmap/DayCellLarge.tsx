@@ -63,7 +63,7 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
 
       {/* Tooltip */}
       {isHovered && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-50 pointer-events-none">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
           <div className="font-medium">{date}</div>
           {amount > 0 ? (
             <div>
