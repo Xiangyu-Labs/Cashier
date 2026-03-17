@@ -46,7 +46,7 @@ export type SourceDocumentWithEntries = {
         ledgerId: string;
         description: string | null;
         categoryId: string | null;
-        sourceDocumentId: string;
+        sourceDocumentId: string | null;
         amount: string;
         currency: string | null;
         itemName: string;

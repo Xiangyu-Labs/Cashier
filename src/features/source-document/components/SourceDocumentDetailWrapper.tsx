@@ -286,7 +286,7 @@ export function SourceDocumentDetailWrapper({
                                 if (doc.id !== id) return doc;
                                 const updatedEntries = doc.ledgerEntries?.map((entry) =>
                                     ids.includes(entry.id)
-                                        ? { ...entry, ...data }
+                                        ? { ...entry, ...(data as Partial<typeof entry>) }
                                         : entry
                                 ) ?? [];
                                 return { ...doc, ledgerEntries: updatedEntries };
@@ -301,7 +301,7 @@ export function SourceDocumentDetailWrapper({
                                     if (doc.id !== id) return doc;
                                     const updatedEntries = doc.ledgerEntries?.map((entry) =>
                                         ids.includes(entry.id)
-                                            ? { ...entry, ...data }
+                                            ? { ...entry, ...(data as Partial<typeof entry>) }
                                             : entry
                                     ) ?? [];
                                     return { ...doc, ledgerEntries: updatedEntries };
