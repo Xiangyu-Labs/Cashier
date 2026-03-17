@@ -33,7 +33,7 @@ export function useLoginFlow(
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
@@ -52,8 +52,8 @@ export function useLoginFlow(
 
     try {
       const result = await sendOTPAction(email);
-      setExpiresAt(result.expiresAt || null);
-      setCanResendAt(result.canResendAt || null);
+      setExpiresAt(result.expiresAt ?? null);
+      setCanResendAt(result.canResendAt ?? null);
       setStep("otp");
       setIsLoading(false);
     } catch (err) {
@@ -108,8 +108,8 @@ export function useLoginFlow(
     setOtp("");
     try {
       const result = await sendOTPAction(email);
-      setExpiresAt(result.expiresAt || null);
-      setCanResendAt(result.canResendAt || null);
+      setExpiresAt(result.expiresAt ?? null);
+      setCanResendAt(result.canResendAt ?? null);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
