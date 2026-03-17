@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [],
   // instrumentation.ts is enabled by default in Next.js 16+
   images: {
-    unoptimized: process.env.NODE_ENV === "development",
+    unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload
     remotePatterns,
     // Cache optimized images for 1 year (they include hash in URL)
     minimumCacheTTL: 31536000,
