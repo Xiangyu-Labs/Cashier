@@ -297,7 +297,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         />
 
         {/* Bottom Actions */}
-        <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-50">
+        <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-modal-footer">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

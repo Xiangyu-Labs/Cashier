@@ -6,7 +6,7 @@ export function LedgerPageSkeleton() {
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* Header skeleton */}
-      <header className="bg-surface border-b border-border sticky top-0 z-50">
+      <header className="bg-surface border-b border-border sticky top-0 z-header">
         <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center">
           <div className="flex items-center gap-2">
             {/* Ledger switcher skeleton */}

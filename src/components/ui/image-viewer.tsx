@@ -108,7 +108,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
         <DialogDescription className="sr-only">Image Viewer</DialogDescription>
 
         {/* Toolbar */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 pointer-events-auto">
+        <div className="absolute top-4 right-4 z-modal-control flex items-center gap-2 pointer-events-auto">
           <div className="flex bg-black/50 rounded-lg p-1 mr-2 sm:mr-4 backdrop-blur-sm border border-white/10 hidden sm:flex">
             <Button
               variant="ghost"
@@ -216,7 +216,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
             <Button
               variant="ghost"
               size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 h-16 w-16 hidden sm:flex z-50"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 h-16 w-16 hidden sm:flex z-modal-control"
               onClick={handlePrev}
               disabled={index === 0}
             >
@@ -225,7 +225,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 h-16 w-16 hidden sm:flex z-50"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 h-16 w-16 hidden sm:flex z-modal-control"
               onClick={handleNext}
               disabled={index === images.length - 1}
             >
@@ -233,7 +233,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
             </Button>
 
             {/* Thumbnails indicator */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[80vw] p-2 bg-black/50 backdrop-blur-sm rounded-full z-10 pointer-events-auto">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[80vw] p-2 bg-black/50 backdrop-blur-sm rounded-full z-modal-thumb pointer-events-auto">
               {images.map((img, i) => (
                 <button
                   key={i}
