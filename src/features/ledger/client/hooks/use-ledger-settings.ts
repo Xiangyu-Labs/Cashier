@@ -9,6 +9,7 @@ import { updateLedgerAction } from "@/features/ledger/server/actions/update";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { fireAndForget } from "@/lib/safe-async";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
 
 interface UseLedgerSettingsParams {
@@ -146,7 +147,10 @@ export function useLedgerSettings({
       return { snapshots };
     },
     onSettledExtra: (qc) => {
-      void qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+      fireAndForget(
+        qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) }),
+        { context: "use-ledger-settings" }
+      );
     },
   });
 
