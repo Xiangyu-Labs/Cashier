@@ -12,7 +12,7 @@ export async function register() {
   logger.info(
     {
       nodeEnv: process.env.NODE_ENV ?? "not set",
-      databaseUrl: process.env.DATABASE_URL ? "configured" : "not configured",
+      databaseUrl: process.env.DATABASE_URL != null ? "configured" : "not configured",
       localStorage: process.env.LOCAL_STORAGE_PATH ?? "./data/uploads",
     },
     "Service configuration status"
