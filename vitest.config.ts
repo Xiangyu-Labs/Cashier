@@ -16,9 +16,9 @@ export default defineConfig({
       reporter: ["text", "json", "html"],
       exclude: ["node_modules", ".next", "tests"],
     },
-    // 启用并行执行
+    // Enable parallel test execution with per-file database isolation
     pool: "threads",
-    // 限制并发数为 CPU 核数的 50%，避免 SQLite 锁竞争
+    fileParallelism: true,
     maxWorkers: "50%",
     // 保持测试隔离
     isolate: true,
