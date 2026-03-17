@@ -175,7 +175,7 @@ describe("useLedgerMutation", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(onSuccessExtra).toHaveBeenCalledWith({ id: "123" }, { data: "test" });
+    expect(onSuccessExtra).toHaveBeenCalledWith({ id: "123" }, { data: "test" }, undefined);
   });
 });
 
