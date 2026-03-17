@@ -189,7 +189,7 @@ export function LedgerPageClient({
         // 预加载 ledger 数据（SourceDocumentInput 需要）
         const cached = queryClient.getQueryData(queryKeys.ledger(ledgerId));
         if (cached === undefined) {
-          queryClient.prefetchQuery({
+          void queryClient.prefetchQuery({
             queryKey: queryKeys.ledger(ledgerId),
             queryFn: () => getLedgerAction(ledgerId),
             staleTime: STALE_TIME,
@@ -207,16 +207,16 @@ export function LedgerPageClient({
     const preloadTabs = () => {
       // 根据当前活动 Tab 预加载其他 Tab
       if (activeTab !== "details") {
-        import("../DetailsTab");
+        void import("../DetailsTab");
       }
       if (activeTab !== "stats") {
-        import("../StatsTab");
+        void import("../StatsTab");
       }
       if (activeTab !== "settings") {
-        import("../SettingsTab");
+        void import("../SettingsTab");
       }
       if (activeTab !== "stream") {
-        import("../LedgerEntriesTab");
+        void import("../LedgerEntriesTab");
       }
     };
 
