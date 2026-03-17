@@ -53,7 +53,7 @@ export const updateLedgerAction = withAuth(
     updateTag("ledger");
 
     // If main currency changed, recalculate all entries' convertedAmount
-    if (newMainCurrency && newMainCurrency !== oldMainCurrency) {
+    if (newMainCurrency != null && newMainCurrency !== oldMainCurrency) {
       logger.info(
         { ledgerId: id, oldMainCurrency, newMainCurrency },
         "Main currency changed, recalculating entries"

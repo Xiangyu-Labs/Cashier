@@ -235,7 +235,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     const totals: Record<string, number> = {};
 
     ledgerEntries.forEach((entry) => {
-      if (entry.currency != null && entry.currency !== "") {
+      if (entry.currency !== null && entry.currency !== undefined && entry.currency !== "") {
         const amount = parseAmount(entry.amount);
         totals[entry.currency] = (totals[entry.currency] ?? 0) + amount;
       }
@@ -308,7 +308,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
         >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-            {(sourceDocument.entryDate != null && sourceDocument.entryDate !== ""
+            {(sourceDocument.entryDate !== null && sourceDocument.entryDate !== undefined && sourceDocument.entryDate !== ""
               ? parseDateString(sourceDocument.entryDate)
               : new Date(sourceDocument.createdAt)
             ).toLocaleDateString(locale, {
@@ -319,7 +319,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {status !== "processing" &&
             status !== "queued" &&
             status !== "failed" &&
-            sourceDocument.title != null &&
+            sourceDocument.title !== null &&
+            sourceDocument.title !== undefined &&
             sourceDocument.title !== "" && (
               <>
                 <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>

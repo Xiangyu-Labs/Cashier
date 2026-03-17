@@ -104,7 +104,7 @@ async function submitSingleCategorizeTask(
     entryDate: entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== ""
       ? entry.sourceDocument.entryDate
       : formatDateTimeForApi(new Date()),
-    sourceDocumentText: entry.sourceDocument?.text || undefined,
+    sourceDocumentText: entry.sourceDocument?.text ?? undefined,
     sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
     categories,
     aiLanguage,
