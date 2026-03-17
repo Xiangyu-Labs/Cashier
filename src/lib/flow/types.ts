@@ -24,9 +24,10 @@ export interface TaskInput {
   type: string;
   title?: string | null;
   input?: unknown;
-  scopeId?: string | null; // Scope ID (e.g., ledgerId in Cashier)
-  entityType?: string | null; // Entity type (e.g., "source_document", "category")
-  entityId?: string | null; // Entity ID (e.g., sourceDocumentId, categoryId)
+  scopeId?: string | null;     // Scope ID (e.g., ledgerId in Cashier)
+  entityType?: string | null;  // Entity type (e.g., "source_document", "category")
+  entityId?: string | null;    // Entity ID (e.g., sourceDocumentId, categoryId)
+  deduplicationKey?: string | null;  // Key for preventing duplicate tasks
 }
 
 /**
@@ -157,7 +158,13 @@ export interface FlowEngine {
   submit<TInput>(
     name: string,
     input: TInput,
-    meta?: { title?: string; scopeId?: string; entityType?: string; entityId?: string }
+    meta?: {
+      title?: string;
+      scopeId?: string;
+      entityType?: string;
+      entityId?: string;
+      deduplicationKey?: string;
+    }
   ): Promise<string>;
 
   /**
