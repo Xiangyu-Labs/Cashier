@@ -69,11 +69,6 @@
   --space-lg: 24px;
   --space-xl: 32px;
 
-  --z-base: 0;
-  --z-dropdown: 1000;
-  --z-modal: 2000;
-  --z-toast: 3000;
-
   /* Shadcn Mappings */
   --background: var(--bg);
   --foreground: var(--text);
