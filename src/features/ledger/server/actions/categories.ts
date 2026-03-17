@@ -1,12 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { entryCategories } from "@/lib/db/schema";
+import { entryCategories, taskRuns, ledgerEntries } from "@/lib/db/schema";
 import { z } from "zod";
 import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
 import { withLedgerAccess } from "@/lib/auth-actions";
+import { flowEngine } from "@/lib/flow";
+import { TASK_TYPE_GENERATE_CATEGORY_METADATA } from "@/features/ledger/server/tasks/generate-category-metadata";
+import { forLedger } from "@/lib/db/scoped-query";
 
 const createCategorySchema = z.object({
   name: z.string().min(1),
@@ -18,8 +21,6 @@ const createCategorySchema = z.object({
 const updateCategorySchema = createCategorySchema.partial().extend({
   sortOrder: z.number().optional(),
 });
-
-import { forLedger } from "@/lib/db/scoped-query";
 
 export const createEntryCategoryAction = withLedgerAccess(
   async (
@@ -57,11 +58,6 @@ export const createEntryCategoryAction = withLedgerAccess(
           where: and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)),
           columns: { name: true, description: true, icon: true },
         });
-
-        // Dynamically import to avoid circular dependency issues
-        const { flowEngine } = await import("@/lib/flow");
-        const { TASK_TYPE_GENERATE_CATEGORY_METADATA } =
-          await import("@/features/ledger/server/tasks/generate-category-metadata");
 
         await flowEngine.submit(
           TASK_TYPE_GENERATE_CATEGORY_METADATA,
@@ -105,9 +101,6 @@ export const updateEntryCategoryAction = withLedgerAccess(
 export const deleteEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, categoryId: string): Promise<void> => {
     // Cancel any pending/running background tasks for this category
-    const { flowEngine } = await import("@/lib/flow");
-    const { taskRuns } = await import("@/features/task-queue/server/schema");
-
     const pendingTasks = await db
       .select({ id: taskRuns.id })
       .from(taskRuns)
@@ -125,7 +118,6 @@ export const deleteEntryCategoryAction = withLedgerAccess(
       await flowEngine.cancel(task.id);
     }
 
-    const { ledgerEntries } = await import("@/lib/db/schema");
     const q = forLedger(entryCategories, ledgerId);
 
     // better-sqlite3 transactions are synchronous, so we use a sync callback
@@ -176,7 +168,6 @@ export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string
   });
 
   // Get entry counts for each category
-  const { ledgerEntries } = await import("@/lib/db/schema");
   const entryCounts = await db
     .select({
       categoryId: ledgerEntries.categoryId,
@@ -207,8 +198,6 @@ export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string
  */
 export const getUncategorizedCountAction = withLedgerAccess(
   async (ledgerId: string): Promise<number> => {
-    const { ledgerEntries } = await import("@/lib/db/schema");
-
     const result = await db
       .select({
         count: sql<number>`count(*)`.as("count"),
