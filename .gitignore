@@ -54,10 +54,6 @@ public/swe-worker-*.js
 
 .agent
 
-# documentation plans (temporary planning files)
-docs/plans/
-docs/superpowers/
-
 # SQLite empty file in root
 /sqlite.db
 
@@ -66,6 +62,9 @@ docs/superpowers/
 
 # serena
 .serena/
+
+# claude
+.claude/
 
 # Local uploads
 /uploads/

@@ -1,0 +1,42 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-17-api-v1-query-endpoints.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: GET /api/v1/entries 端点",
+      "status": "pending",
+      "blockedBy": []
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: GET /api/v1/source-documents 列表端点",
+      "status": "pending",
+      "blockedBy": [1]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: GET /api/v1/stats 统计端点",
+      "status": "pending",
+      "blockedBy": [1]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: GET /api/v1/categories 分类列表端点",
+      "status": "pending",
+      "blockedBy": [1]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: 集成测试",
+      "status": "pending",
+      "blockedBy": [1, 2, 3, 4]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: 手动测试验证",
+      "status": "pending",
+      "blockedBy": [1, 2, 3, 4]
+    }
+  ],
+  "lastUpdated": "2026-03-17T00:00:00Z"
+}
