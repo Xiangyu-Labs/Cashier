@@ -322,8 +322,29 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     async cancel(taskId: string): Promise<void> {
       // First, check if task is waiting in the queue (hasn't started yet)
       if (removeFromQueue(taskId)) {
-        // Task was pending in queue, mark as cancelled directly
-        await config.storage.update(taskId, { status: "cancelled", progress: null });
+        // Task was pending in queue - get task details and call onCancel
+        const task = await config.storage.get(taskId);
+        if (task) {
+          const handler = handlers.get(task.type);
+          if (handler?.onCancel) {
+            try {
+              const context: FlowContext = {
+                taskId,
+                signal: new AbortController().signal,
+                reportTokens: () => {},
+                updateProgress: async () => {},
+                ai: createAIContext(new AbortController().signal, () => {}),
+              };
+              await handler.onCancel(task.input, context);
+            } catch (cancelError) {
+              logger.error(
+                { error: cancelError, taskId },
+                "Error in task onCancel handler during pending cancellation"
+              );
+            }
+          }
+          await config.storage.update(taskId, { status: "cancelled", progress: null });
+        }
         abortControllers.delete(taskId);
         logger.info({ taskId }, "Task cancelled from pending queue");
         return;
