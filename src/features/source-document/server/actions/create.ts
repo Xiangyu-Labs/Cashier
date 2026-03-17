@@ -27,7 +27,7 @@ export async function createSourceDocumentAction(
   const q = forLedger(sourceDocuments, ledgerId);
 
   // Save source document with 'queued' status
-  const today = entryDate || formatDateTimeForApi(new Date());
+  const today = entryDate != null && entryDate !== "" ? entryDate : formatDateTimeForApi(new Date());
   const [savedDoc] = await db
     .insert(sourceDocuments)
     .values({
@@ -42,7 +42,7 @@ export async function createSourceDocumentAction(
   const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
 
   // Update with normalized image URLs if any
-  if (imageUrls.length > 0 && ledgerId !== "") {
+  if (imageUrls.length > 0) {
     await db.update(sourceDocuments).set({ imageUrls }).where(q.whereId(savedDoc.id));
   }
 
