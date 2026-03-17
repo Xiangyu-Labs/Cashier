@@ -194,7 +194,7 @@ export function QuickEntryForm({
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
-          selectedCategory !== null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
+          selectedCategory != null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
         }
         className="text-sm"
       />

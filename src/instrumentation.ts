@@ -1,5 +1,4 @@
 import { logger } from "@/lib/logger";
-import { registerAllTasks } from "@/lib/flow/task-registry";
 
 export async function register() {
   // Only run on server-side runtime (not edge or browser)
@@ -20,6 +19,9 @@ export async function register() {
   );
 
   try {
+    // Dynamically import task registry to avoid loading Node.js modules in Edge Runtime
+    const { registerAllTasks } = await import("@/lib/flow/task-registry");
+
     // Register all task handlers via centralized registry
     await registerAllTasks();
 

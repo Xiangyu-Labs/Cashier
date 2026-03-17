@@ -173,21 +173,24 @@ vi.mock("next-intl", async () => {
   const React = actual as typeof ReactModule;
   const messages = await import("../messages/zh.json").then((m) => m.default ?? m);
 
+  const messagesRecord = messages as Record<string, unknown>;
+
   return {
     useTranslations: (namespace?: string) => {
-      const nsMessages = namespace != null ? messages[namespace] : messages;
+      const nsMessages = namespace != null ? messagesRecord[namespace] as Record<string, unknown> : messagesRecord;
       return (key: string, values?: Record<string, unknown>) => {
         let msg = nsMessages?.[key];
         if (msg == null) {
-          for (const ns in messages) {
-            if (messages[ns] != null && typeof messages[ns] === "object" && messages[ns][key] != null) {
-              msg = messages[ns][key];
+          for (const ns in messagesRecord) {
+            const nsMsg = messagesRecord[ns] as Record<string, unknown>;
+            if (nsMsg != null && typeof nsMsg === "object" && nsMsg[key] != null) {
+              msg = nsMsg[key];
               break;
             }
           }
         }
         if (msg == null) return key;
-        let translated = msg;
+        let translated = msg as string;
         if (values != null && typeof translated === "string") {
           Object.keys(values).forEach((k) => {
             translated = translated.replace(`{${k}}`, String(values[k]));

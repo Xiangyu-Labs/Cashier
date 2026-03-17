@@ -70,8 +70,8 @@ export function LedgerEntriesTab({
   );
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
-  const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
+  const startDateStr = formatDateTimeForApi(filters.startDate) ?? undefined;
+  const endDateStr = formatDateTimeForApi(filters.endDate) ?? undefined;
 
   const { data: summaryData } = useQuery({
     queryKey: queryKeys.ledgerEntries(

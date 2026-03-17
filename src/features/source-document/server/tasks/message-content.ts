@@ -44,7 +44,7 @@ export function buildMessageContent(
       type: "text",
       text: `用户直接提供的描述：\n${text}`,
     });
-    for (const url of imageUrls) {
+    for (const url of imageUrls ?? []) {
       content.push({ type: "image_url", image_url: { url } });
     }
   } else if (hasUserText) {
@@ -62,7 +62,7 @@ export function buildMessageContent(
   } else if ((imageUrls?.length ?? 0) > 0) {
     // Fallback: send raw images (when no vision model configured)
     // Note: Assumes images are already base64 or will be loaded by caller
-    for (const url of imageUrls) {
+    for (const url of imageUrls ?? []) {
       content.push({ type: "image_url", image_url: { url } });
     }
   }
@@ -96,7 +96,7 @@ export async function buildMessageContentAsync(
       type: "text",
       text: `用户直接提供的描述：\n${text}`,
     });
-    const loadedResults = await loadImagesForAI(imageUrls);
+    const loadedResults = await loadImagesForAI(imageUrls ?? []);
     const failures = loadedResults.filter((r) => !r.success);
     if (failures.length > 0) {
       const failureMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
@@ -121,7 +121,7 @@ export async function buildMessageContentAsync(
     });
   } else if ((imageUrls?.length ?? 0) > 0) {
     // Load images (handles both base64 and R2 URLs)
-    const loadedResults = await loadImagesForAI(imageUrls);
+    const loadedResults = await loadImagesForAI(imageUrls ?? []);
     const failures = loadedResults.filter((r) => !r.success);
     if (failures.length > 0) {
       const failureMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");

@@ -229,7 +229,7 @@ export function LedgerPageClient({
     return () => clearTimeout(timer);
   }, [activeTab]);
 
-  if (ledger === undefined) {
+  if (ledger === undefined || ledger === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <p className="text-muted">{t("notFound")}</p>
