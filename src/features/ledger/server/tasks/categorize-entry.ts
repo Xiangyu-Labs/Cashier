@@ -109,13 +109,16 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
         { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
       > = [];
 
-      if (input.sourceDocumentText != null && input.sourceDocumentText !== "") {
-        content.push({ type: "text", text: `Source Document:\n${input.sourceDocumentText}` });
+      const sourceDocumentText = input.sourceDocumentText;
+      const hasSourceText = sourceDocumentText !== undefined && sourceDocumentText !== "";
+      if (hasSourceText) {
+        content.push({ type: "text", text: `Source Document:\n${sourceDocumentText}` });
       }
 
-      if (input.sourceDocumentImageUrls != null && input.sourceDocumentImageUrls.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-        for (const url of input.sourceDocumentImageUrls) {
+      const sourceDocumentImageUrls = input.sourceDocumentImageUrls;
+      const hasImageUrls = sourceDocumentImageUrls !== undefined && sourceDocumentImageUrls.length > 0;
+      if (hasImageUrls) {
+        for (const url of sourceDocumentImageUrls) {
           content.push({ type: "image_url", image_url: { url } });
         }
       }
@@ -156,7 +159,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       if (!input.ledgerId || !input.entryId) return;
 
       // Only update if we have a valid category match
-      if (output.categoryIndex > 0 && output.categoryIndex <= input.categories.length && input.ledgerId.length > 0 && input.entryId.length > 0) {
+      if (output.categoryIndex > 0 && output.categoryIndex <= input.categories.length && input.ledgerId !== "" && input.entryId !== "") {
         const category = input.categories.find((c) => c.index === output.categoryIndex);
 
         if (category?.id != null && category.id !== "") {

@@ -157,14 +157,15 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           {/* Description - Editable */}
           <div className="border-t border-border/50 pt-4 mt-2">
             <EditableField
-              value={displayData.description || ""}
-              onChange={(v) => handleFieldChange("description", v || null)}
+              value={displayData.description ?? ""}
+              onChange={(v) => handleFieldChange("description", v != null && v !== "" ? v : null)}
               type="textarea"
               placeholder={t("addDescription")}
               displayClassName="text-sm text-text"
               inputClassName="text-sm"
-              renderDisplay={(value) =>
-                value != null && value !== "" ? (
+              renderDisplay={(value: string) => {
+                const hasValue = value.length > 0;
+                return hasValue ? (
                   <div className="text-sm text-text">
                     <AnimatePresence initial={false}>
                       <motion.div
@@ -201,8 +202,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                   <span className="text-sm text-muted-foreground/50 italic">
                     {t("noDescription")}
                   </span>
-                )
-              }
+                );
+              }}
             />
           </div>
 
