@@ -39,7 +39,7 @@ function createSourceDocSnapshots(
 ): MutationSnapshot {
   const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(documentId));
 
-  if (ledgerId) {
+  if (ledgerId != null && ledgerId !== "") {
     const listKey = queryKeys.sourceDocuments(ledgerId, "all");
     const listSnapshots = createListSnapshots(queryClient, listKey);
     snapshots.push(...listSnapshots);
@@ -72,7 +72,7 @@ export function SourceDocumentDetailWrapper({
   const { data: lightData, isLoading: isLoadingLight } = useQuery({
     queryKey: queryKeys.sourceDocumentLight(id),
     queryFn: () => getSourceDocumentLightAction(id),
-    enabled: open && !!id,
+    enabled: open && id !== "",
     staleTime: 5 * 60 * 1000,
   });
 
@@ -80,7 +80,7 @@ export function SourceDocumentDetailWrapper({
   const { data: fullData, error } = useQuery({
     queryKey: queryKeys.sourceDocument(id),
     queryFn: () => getSourceDocumentByIdAction(id),
-    enabled: open && !!id,
+    enabled: open && id !== "",
     retry: false,
   });
 
@@ -96,7 +96,7 @@ export function SourceDocumentDetailWrapper({
     ledgerId,
     {
       mutationFn: async (data) => {
-        if (!ledgerId) return;
+        if (ledgerId == null || ledgerId === "") return;
         await updateSourceDocumentAction(ledgerId, id, data);
       },
       errorMessage: tCommon("saveFailed"),
@@ -122,7 +122,7 @@ export function SourceDocumentDetailWrapper({
         );
 
         // 3. Update flat list cache (new architecture)
-        if (ledgerId) {
+        if (ledgerId != null && ledgerId !== "") {
           queryClient.setQueriesData<
             PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]
           >({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") }, (old) => {
@@ -161,7 +161,7 @@ export function SourceDocumentDetailWrapper({
     { entryId: string; data: Partial<EntryEditData> }
   >(ledgerId, {
     mutationFn: async ({ entryId, data }) => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       const convertedData = {
         ...data,
         amount: data.amount !== undefined ? parseFloat(data.amount) : undefined,
@@ -187,7 +187,7 @@ export function SourceDocumentDetailWrapper({
       );
 
       // 2. Update flat list cache (new architecture)
-      if (ledgerId) {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
@@ -239,7 +239,7 @@ export function SourceDocumentDetailWrapper({
     { ids: string[]; data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number } }
   >(ledgerId, {
     mutationFn: async ({ ids, data }) => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: tCommon("saveFailed"),
@@ -261,7 +261,7 @@ export function SourceDocumentDetailWrapper({
       );
 
       // 2. Update flat list cache (new architecture)
-      if (ledgerId) {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
@@ -314,7 +314,7 @@ export function SourceDocumentDetailWrapper({
   // Delete single entry
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {
     mutationFn: async (entryId) => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await deleteLedgerEntryAction(ledgerId, entryId);
     },
     successMessage: tCommon("deleteSuccess"),
@@ -335,7 +335,7 @@ export function SourceDocumentDetailWrapper({
       );
 
       // 2. Update flat list cache (new architecture)
-      if (ledgerId) {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
@@ -380,7 +380,7 @@ export function SourceDocumentDetailWrapper({
   // Batch delete entries
   const batchDeleteMutation = useLedgerMutation<void, string[]>(ledgerId, {
     mutationFn: async (ids) => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await batchDeleteLedgerEntriesAction(ledgerId, ids);
     },
     successMessage: tCommon("deleteSuccess"),
@@ -401,7 +401,7 @@ export function SourceDocumentDetailWrapper({
       );
 
       // 2. Update flat list cache (new architecture)
-      if (ledgerId) {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
@@ -446,7 +446,7 @@ export function SourceDocumentDetailWrapper({
   // Delete document
   const deleteDocumentMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await deleteSourceDocumentAction(ledgerId, id);
     },
     successMessage: tCommon("deleteSuccess"),
@@ -461,7 +461,7 @@ export function SourceDocumentDetailWrapper({
       queryClient.setQueriesData({ queryKey: queryKeys.sourceDocument(id) }, () => undefined);
 
       // 2. Remove from flat list cache (new architecture)
-      if (ledgerId) {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
