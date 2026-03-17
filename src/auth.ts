@@ -175,7 +175,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: TIME_SECONDS.MONTH, // 30 days
+    maxAge: parseInt(process.env.SESSION_MAX_AGE_DAYS ?? "14", 10) * TIME_SECONDS.DAY,
     updateAge: TIME_SECONDS.DAY, // Refresh daily
   },
   pages: {

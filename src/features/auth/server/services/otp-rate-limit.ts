@@ -10,10 +10,16 @@ const OTP_VERIFY_PREFIX = "otp:verify:";
 // Rate limits (configurable via environment variables)
 const SEND_MAX_ATTEMPTS = parseInt(process.env.AUTH_RATE_LIMIT_MAX ?? "10", 10);
 const SEND_WINDOW_SECONDS = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW ?? "900", 10);
-const IP_MAX_ATTEMPTS = 10; // 10 sends per IP
-const IP_WINDOW_SECONDS = 60 * 60; // 1 hour
-const VERIFY_MAX_ATTEMPTS = 10; // 10 verifies per IP per minute
-const VERIFY_WINDOW_SECONDS = 60; // 1 minute
+const IP_MAX_ATTEMPTS = parseInt(
+  process.env.OTP_IP_MAX_ATTEMPTS_PER_HOUR ?? "10",
+  10
+); // sends per IP per hour
+const IP_WINDOW_SECONDS = 60 * 60; // 1 hour (fixed)
+const VERIFY_MAX_ATTEMPTS = parseInt(
+  process.env.OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE ?? "5",
+  10
+); // verifies per IP per minute
+const VERIFY_WINDOW_SECONDS = 60; // 1 minute (fixed)
 
 /**
  * Check if an email can send OTP (10 per 15 minutes)

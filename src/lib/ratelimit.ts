@@ -84,9 +84,9 @@ const rateLimiter = new MemoryRateLimiter();
  * Rate limit configurations for different endpoints
  */
 export const RateLimitConfig = {
-  // API v1: 20 requests per minute per API key
+  // API v1: configurable requests per minute per API key
   API_V1: {
-    limit: 20,
+    limit: parseInt(process.env.API_RATE_LIMIT_PER_MINUTE ?? "60", 10),
     windowMs: 60 * 1000,
   },
 } as const;

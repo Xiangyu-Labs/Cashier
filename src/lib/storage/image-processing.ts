@@ -22,11 +22,25 @@ export interface ImageProcessingOptions {
 }
 
 /**
+ * Get default image quality from environment or use fallback
+ */
+const getDefaultQuality = (): number => {
+  const envQuality = process.env.MAX_IMAGE_QUALITY;
+  if (envQuality != null) {
+    const parsed = parseInt(envQuality, 10);
+    if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) {
+      return parsed;
+    }
+  }
+  return 85;
+};
+
+/**
  * Default processing options optimized for receipt/invoice images
  */
 export const DEFAULT_IMAGE_OPTIONS: Required<ImageProcessingOptions> = {
   maxDimension: 2048,
-  quality: 85,
+  quality: getDefaultQuality(),
   format: "auto",
   stripMetadata: true,
 };
@@ -54,7 +68,7 @@ export async function processImage(
   try {
     let pipeline = sharp(buffer, {
       // Limit input dimensions to prevent memory issues
-      limitInputPixels: 100_000_000, // ~10k x 10k
+      limitInputPixels: parseInt(process.env.MAX_INPUT_PIXELS ?? "25000000", 10),
     });
 
     // Get image metadata

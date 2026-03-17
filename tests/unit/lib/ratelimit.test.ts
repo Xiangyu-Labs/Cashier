@@ -14,25 +14,25 @@ describe("MemoryRateLimiter", () => {
   });
 
   describe("rateLimitApiV1", () => {
-    it("should allow first 20 requests within 1 minute", async () => {
+    it("should allow first 60 requests within 1 minute", async () => {
       const apiKey = "test-api-key-123";
 
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 60; i++) {
         const result = await rateLimitApiV1(apiKey);
         expect(result.success).toBe(true);
-        expect(result.remaining).toBe(20 - i - 1);
+        expect(result.remaining).toBe(60 - i - 1);
       }
     });
 
-    it("should block 21st request", async () => {
+    it("should block 61st request", async () => {
       const apiKey = "test-api-key-123";
 
-      // Use up 20 requests
-      for (let i = 0; i < 20; i++) {
+      // Use up 60 requests
+      for (let i = 0; i < 60; i++) {
         await rateLimitApiV1(apiKey);
       }
 
-      // 21st request should be blocked
+      // 61st request should be blocked
       const result = await rateLimitApiV1(apiKey);
       expect(result.success).toBe(false);
       expect(result.remaining).toBe(0);
@@ -43,7 +43,7 @@ describe("MemoryRateLimiter", () => {
       const apiKey2 = "key2";
 
       // Use up key1
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 60; i++) {
         await rateLimitApiV1(apiKey1);
       }
 
@@ -54,8 +54,8 @@ describe("MemoryRateLimiter", () => {
       expect((await rateLimitApiV1(apiKey2)).success).toBe(true);
     });
 
-    it("should use correct config (20 requests per minute)", async () => {
-      expect(RateLimitConfig.API_V1.limit).toBe(20);
+    it("should use correct config (60 requests per minute)", async () => {
+      expect(RateLimitConfig.API_V1.limit).toBe(60);
       expect(RateLimitConfig.API_V1.windowMs).toBe(60 * 1000);
     });
   });

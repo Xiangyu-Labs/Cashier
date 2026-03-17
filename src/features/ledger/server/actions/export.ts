@@ -41,6 +41,12 @@ const CSV_HEADERS: Record<string, string[]> = {
   ],
 };
 
+// Default export limit from environment or fallback
+const DEFAULT_EXPORT_LIMIT = parseInt(
+  process.env.EXPORT_MAX_ENTRIES ?? "2000",
+  10
+);
+
 // Escape CSV field value
 function escapeCsvField(value: string): string {
   // If field contains comma, newline, or quote, wrap in quotes and escape quotes
@@ -92,7 +98,7 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     }
 
     // Add limit if specified (default to reasonable max)
-    const limit = options?.limit ?? 10000;
+    const limit = options?.limit ?? DEFAULT_EXPORT_LIMIT;
 
     // Get entries with category info
     const entries = await db.query.ledgerEntries.findMany({

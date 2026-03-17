@@ -34,7 +34,6 @@ export const FILE_SIZE = {
 export const RETRY = {
   DEFAULT_RETRIES: 3,
   DEFAULT_DELAY_MS: 1000,
-  REQUEST_TIMEOUT_MS: 5000,
 } as const;
 
 // Pagination
@@ -79,8 +78,20 @@ export const QUERY = {
   DEFAULT_STALE_TIME_MS: 5 * 60 * 1000,
   /** Ledger数据staleTime - 10分钟（较稳定） */
   LEDGER_STALE_TIME_MS: 10 * 60 * 1000,
-  /** 源文档staleTime - 30秒（频繁变化） */
-  SOURCE_DOC_STALE_TIME_MS: 30 * 1000,
-  /** 货币汇率staleTime - 24小时（外部数据，变化慢） */
-  CURRENCY_STALE_TIME_MS: 24 * 60 * 60 * 1000,
+  /** 源文档staleTime - 2分钟（频繁变化但避免过度刷新） */
+  SOURCE_DOC_STALE_TIME_MS: parseInt(
+    process.env.SOURCE_DOC_STALE_TIME_MS ?? "120000",
+    10
+  ),
+  /** 货币汇率staleTime - 4小时（外部数据，工作日变化较快） */
+  CURRENCY_STALE_TIME_MS: parseInt(
+    process.env.CURRENCY_STALE_TIME_MS ?? "14400000",
+    10
+  ),
+} as const;
+
+// AI Configuration
+export const AI = {
+  /** 默认 temperature - 结构化任务使用较低值提高确定性 */
+  TEMPERATURE: parseFloat(process.env.AI_TEMPERATURE ?? "0.3"),
 } as const;

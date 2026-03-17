@@ -189,6 +189,30 @@
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
   },
+  "ImageEditor": {
+    "title": "Edit Image",
+    "crop": "Crop",
+    "draw": "Draw",
+    "brushSize": "Brush Size",
+    "reset": "Reset",
+    "applyCrop": "Apply Crop",
+    "cancel": "Cancel",
+    "save": "Save",
+    "cropHint": "Drag to select the area you want to keep",
+    "drawHint": "Draw on the image to mask or annotate"
+  },
+  "ImageEditor": {
+    "title": "Edit Image",
+    "crop": "Crop",
+    "draw": "Draw",
+    "brushSize": "Brush Size",
+    "reset": "Reset",
+    "applyCrop": "Apply Crop",
+    "cancel": "Cancel",
+    "save": "Save",
+    "cropHint": "Drag to select the area you want to keep",
+    "drawHint": "Draw on the image to mask or annotate"
+  },
   "SourceDocumentInput": {
     "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
     "image": "Image",
