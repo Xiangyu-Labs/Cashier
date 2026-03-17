@@ -34,6 +34,8 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
         entityId: task.entityId ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        startedAt: null,
+        completedAt: null,
       };
       tasks.set(id, record);
       return id;

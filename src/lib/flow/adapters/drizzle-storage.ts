@@ -165,5 +165,7 @@ function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
     entityId: record.entityId ?? null,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+    startedAt: record.startedAt ?? null,
+    completedAt: record.completedAt ?? null,
   };
 }
