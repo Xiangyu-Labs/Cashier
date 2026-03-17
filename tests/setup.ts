@@ -25,7 +25,6 @@ const dbInstances = new Map<
 
 // Get current test file path from Vitest state
 function getCurrentTestFile(): string {
-  // @ts-expect-error - Vitest internal API
   return expect.getState().testPath || "unknown";
 }
 

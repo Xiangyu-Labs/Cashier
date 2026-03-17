@@ -30,14 +30,24 @@ export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string)
                 ));
         })(),
 
-        // 2. Get service credentials
-        db.query.serviceCredentials.findMany({
-            where: and(
+        // 2. Get service credentials using standard select instead of relational query
+        // to avoid potential Drizzle relation caching issues
+        db
+            .select({
+                id: serviceCredentials.id,
+                key: serviceCredentials.key,
+                ledgerId: serviceCredentials.ledgerId,
+                name: serviceCredentials.name,
+                createdAt: serviceCredentials.createdAt,
+                lastUsedAt: serviceCredentials.lastUsedAt,
+                deletedAt: serviceCredentials.deletedAt,
+            })
+            .from(serviceCredentials)
+            .where(and(
                 eq(serviceCredentials.ledgerId, ledgerId),
                 isNull(serviceCredentials.deletedAt)
-            ),
-            orderBy: [desc(serviceCredentials.createdAt)],
-        }),
+            ))
+            .orderBy(desc(serviceCredentials.createdAt)),
     ]);
 
     // Serialize credentials

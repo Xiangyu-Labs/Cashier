@@ -6,6 +6,7 @@ import { serviceCredentials, sourceDocuments, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createServiceCredentialAction, deleteServiceCredentialAction, getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
+import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
@@ -122,5 +123,23 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         });
         expect(check).toBeDefined();
         expect(check?.deletedAt).not.toBeNull();
+    });
+
+    it("should return credentials with key via getLedgerSettingsAction", async () => {
+        const db = getTestDb();
+        // Insert an existing credential (simulating old credential)
+        await db.insert(serviceCredentials).values({
+            ledgerId: testLedgerId,
+            name: "Old Existing Credential",
+            key: "sk_live_existing_key_for_testing"
+        }).returning();
+
+        // Get settings via getLedgerSettingsAction
+        const settings = await getLedgerSettingsAction(testLedgerId);
+
+        expect(settings.credentials).toHaveLength(1);
+        expect(settings.credentials[0].name).toBe("Old Existing Credential");
+        // This is the critical test - the key must be returned
+        expect(settings.credentials[0].key).toBe("sk_live_existing_key_for_testing");
     });
 });
