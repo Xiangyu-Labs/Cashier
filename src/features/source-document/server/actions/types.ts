@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
 
 export interface SourceDocumentActionInput {
     text?: string;
@@ -32,7 +33,7 @@ export type SourceDocumentWithEntries = {
     deletedAt: string | null;
     type: string;
     title: string | null;
-    status: string;
+    status: SourceDocumentStatusType;
     metadata: Record<string, unknown> | null;
     ledgerId: string;
     imageUrls: string[] | null;

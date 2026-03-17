@@ -142,7 +142,7 @@ export function LedgerEntriesTab({
             deleteSourceDocument.mutate(deleteConfirm.id);
             setDeleteConfirm({ ...deleteConfirm, open: false });
         } else if (deleteConfirm.id === "ALL_ERRORS") {
-            const ids = groups.anomaly.map((g: SourceDocumentGroup) => g.sourceDocument.id);
+            const ids = groups.anomaly.map((g) => g.sourceDocument.id);
             batchDeleteSourceDocuments.mutate(ids);
             setDeleteConfirm({ ...deleteConfirm, open: false });
         } else if (deleteConfirm.type === "ledgerEntry") {

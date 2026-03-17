@@ -43,7 +43,7 @@ export interface PendingGroups<T> {
  * @param options - Grouping options
  * @returns Grouped documents
  */
-export function groupSourceDocumentsByStatus<T extends { status: string; ledgerEntries?: unknown }>(
+export function groupSourceDocumentsByStatus<T extends { status: SourceDocumentStatusType; ledgerEntries?: unknown }>(
     docs: T[],
     options: { includeCompleted?: boolean } = {}
 ): GroupedSourceDocuments<T> {
@@ -93,7 +93,7 @@ export function groupSourceDocumentsByStatus<T extends { status: string; ledgerE
  * @param docs - Array of documents to group
  * @returns Grouped pending documents
  */
-export function groupPendingSourceDocuments<T extends { status: string; ledgerEntries?: unknown }>(
+export function groupPendingSourceDocuments<T extends { status: SourceDocumentStatusType; ledgerEntries?: unknown }>(
     docs: T[]
 ): PendingGroups<T> {
     const groups = groupSourceDocumentsByStatus(docs, { includeCompleted: false });

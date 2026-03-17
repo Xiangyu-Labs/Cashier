@@ -31,7 +31,7 @@ export const getProcessingTasksAction = withLedgerAccess(async (ledgerId: string
     ];
 
     if (activeOnly) {
-        conditions.push(inArray(taskRuns.status, ["running", "queued"]));
+        conditions.push(inArray(taskRuns.status, ["running", "pending"]));
     }
 
     const filteredTasks = await db.query.taskRuns.findMany({

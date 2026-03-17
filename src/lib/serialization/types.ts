@@ -12,6 +12,7 @@ import type {
 } from "@/features/ledger/server/schema";
 import type {
     SourceDocument as DbSourceDocument,
+    SourceDocumentStatusType,
 } from "@/features/source-document/server/schema";
 import type { ServiceCredential as DbServiceCredential } from "@/features/ledger/server/schema";
 
@@ -43,13 +44,15 @@ export type SerializedServiceCredential = Serialized<DbServiceCredential>;
 // Source Document Module
 // ============================================================================
 
-export type SerializedSourceDocument = Serialized<DbSourceDocument> & {
+export type SerializedSourceDocument = Omit<Serialized<DbSourceDocument>, "status"> & {
+    status: SourceDocumentStatusType;
     ledgerEntries?: SerializedLedgerEntry[];
     hasImages?: boolean;
 };
 
 // Light version without nested entries (for list views)
-export type SerializedSourceDocumentLight = Serialized<DbSourceDocument> & {
+export type SerializedSourceDocumentLight = Omit<Serialized<DbSourceDocument>, "status"> & {
+    status: SourceDocumentStatusType;
     hasImages?: boolean;
 };
 
