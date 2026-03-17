@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { SessionProvider } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { CACHE_VERSION } from "@/lib/cache-version";
@@ -47,18 +47,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  const [persister] = useState(() =>
-    typeof window !== 'undefined'
-      ? createSyncStoragePersister({
-          storage: window.localStorage,
-          key: 'cashier-query-cache',
-        })
-      : undefined
-  );
+  // Use state to track if we're on the client to avoid hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const persister = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return createSyncStoragePersister({
+        storage: window.localStorage,
+        key: 'cashier-query-cache',
+      });
+    }
+    return undefined;
+  }, []);
 
   return (
     <SessionProvider>
-      {persister ? (
+      {persister && isClient ? (
         <PersistQueryClientProvider
           client={queryClient}
           persistOptions={{
