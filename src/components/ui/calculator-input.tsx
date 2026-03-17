@@ -133,10 +133,10 @@ export function CalculatorInput({
 
   const handleNumber = (digit: string) => {
     setCalcState((prev) => {
-      if (prev.hasResult) {
+      if (prev.hasResult === true) {
         return { displayValue: digit, operator: null, operand: "", hasResult: false };
       }
-      if (!prev.operator) {
+      if (prev.operator === null) {
         const newDisplay = prev.displayValue === "0" ? digit : prev.displayValue + digit;
         return { ...prev, displayValue: newDisplay };
       } else {
@@ -149,10 +149,10 @@ export function CalculatorInput({
 
   const handleDecimal = () => {
     setCalcState((prev) => {
-      if (prev.hasResult) {
+      if (prev.hasResult === true) {
         return { displayValue: "0.", operator: null, operand: "", hasResult: false };
       }
-      if (!prev.operator) {
+      if (prev.operator === null) {
         if (!prev.displayValue.includes(".")) {
           return { ...prev, displayValue: prev.displayValue + "." };
         }
@@ -171,7 +171,7 @@ export function CalculatorInput({
       if (prev.hasResult) {
         return { ...prev, operator: op, operand: "", hasResult: false };
       }
-      if (prev.operator && prev.operand) {
+      if (prev.operator !== null && prev.operand !== "") {
         const a = parseFloat(prev.displayValue);
         const b = parseFloat(prev.operand);
         const result = calculate(a, prev.operator, b);
@@ -190,7 +190,7 @@ export function CalculatorInput({
 
   const handleEquals = () => {
     setCalcState((prev) => {
-      if (!prev.operator || !prev.operand) return prev;
+      if (prev.operator === null || prev.operand === "") return prev;
       const a = parseFloat(prev.displayValue);
       const b = parseFloat(prev.operand);
       const result = calculate(a, prev.operator, b);
@@ -212,7 +212,7 @@ export function CalculatorInput({
 
   const handleDelete = () => {
     setCalcState((prev) => {
-      if (prev.hasResult) {
+      if (prev.hasResult === true) {
         return {
           displayValue: value === 0 ? "0" : value.toFixed(2),
           operator: null,
@@ -220,10 +220,10 @@ export function CalculatorInput({
           hasResult: false,
         };
       }
-      if (!prev.operator) {
-        const newDisplay = prev.displayValue.slice(0, -1) || "0";
+      if (prev.operator === null) {
+        const newDisplay = prev.displayValue.slice(0, -1) ?? "0";
         return { ...prev, displayValue: newDisplay };
-      } else if (prev.operand) {
+      } else if (prev.operand !== "") {
         return { ...prev, operand: prev.operand.slice(0, -1) };
       } else {
         return { ...prev, operator: null };
@@ -240,9 +240,9 @@ export function CalculatorInput({
   };
 
   const getExpression = (): string => {
-    if (calcState.operator && calcState.operand) {
+    if (calcState.operator !== null && calcState.operand !== "") {
       return `${calcState.displayValue} ${calcState.operator} ${calcState.operand}`;
-    } else if (calcState.operator) {
+    } else if (calcState.operator !== null) {
       return `${calcState.displayValue} ${calcState.operator}`;
     }
     return "";
@@ -250,7 +250,7 @@ export function CalculatorInput({
 
   const expression = getExpression();
   const hasCompleteExpression = calcState.operator !== null && calcState.operand !== "";
-  const showEqualsButton = hasCompleteExpression && !calcState.hasResult;
+  const showEqualsButton = hasCompleteExpression && calcState.hasResult === false;
 
   const buttonBase =
     "h-12 rounded-lg font-medium transition-all duration-100 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -319,7 +319,7 @@ export function CalculatorInput({
 
         {/* Expression Display */}
         <div className="mb-2 h-6 text-right">
-          {expression && (
+          {expression !== "" && (
             <span className="text-sm text-muted-foreground font-mono truncate block">
               {expression}
             </span>

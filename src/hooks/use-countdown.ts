@@ -64,7 +64,7 @@ export function useCountdown({ targetTime, onExpired }: UseCountdownOptions): Us
 
   // Calculate remaining time based on current time
   const calculateRemaining = useCallback(() => {
-    if (!targetTime) return 0;
+    if (targetTime == null) return 0;
     const now = Math.floor(Date.now() / 1000);
     return Math.max(0, targetTime - now);
   }, [targetTime]);

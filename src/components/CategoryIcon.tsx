@@ -8,7 +8,7 @@ interface CategoryIconProps {
 }
 
 export function CategoryIcon({ iconName, className }: CategoryIconProps) {
-  if (!iconName) {
+  if (iconName == null || iconName === "") {
     const PackageIcon = icons.Package;
     return <PackageIcon className={className} />;
   }

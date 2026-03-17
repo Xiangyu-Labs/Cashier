@@ -47,7 +47,7 @@ export function StatsChart({
 
       // Find month with latest data
       let dataMaxMonth = currentMonth;
-      if (latestDataDate && latestDataDate.startsWith(String(year))) {
+      if (latestDataDate != null && latestDataDate.startsWith(String(year))) {
         dataMaxMonth = parseInt(latestDataDate.split("-")[1], 10);
       }
 
@@ -77,7 +77,7 @@ export function StatsChart({
 
       // End date is the later of: today or latest data date
       let effectiveEndDate: Date;
-      if (latestDataDate) {
+      if (latestDataDate != null) {
         const latestDate = new Date(latestDataDate);
         effectiveEndDate = latestDate > today ? latestDate : today;
       } else {
@@ -130,7 +130,7 @@ export function StatsChart({
     // 计算95th percentile
     const sorted = [...values].sort((a, b) => a - b);
     const p95Index = Math.floor(sorted.length * 0.95);
-    const p95Value = sorted[p95Index] || maxVal;
+    const p95Value = sorted[p95Index] ?? maxVal;
 
     // 如果95th percentile与最大值差距不大（<20%），直接使用最大值
     if (maxVal - p95Value < maxVal * 0.2) {

@@ -12,7 +12,7 @@ class TaskVersionManager {
    * @returns The new version number
    */
   acquire(key: string): number {
-    const newVersion = (this.versions.get(key) || 0) + 1;
+    const newVersion = (this.versions.get(key) ?? 0) + 1;
     this.versions.set(key, newVersion);
     return newVersion;
   }

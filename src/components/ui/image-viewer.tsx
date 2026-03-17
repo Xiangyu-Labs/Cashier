@@ -95,7 +95,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
 
   const handleMouseUp = () => setIsDragging(false);
 
-  if (!images.length) return null;
+  if (images.length === 0) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

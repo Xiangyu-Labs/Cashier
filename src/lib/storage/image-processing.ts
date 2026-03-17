@@ -59,8 +59,8 @@ export async function processImage(
 
     // Get image metadata
     const metadata = await pipeline.metadata();
-    const width = metadata.width || 0;
-    const height = metadata.height || 0;
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
 
     // Resize if dimensions exceed max
     const maxDim = opts.maxDimension;
@@ -239,7 +239,7 @@ export async function getImageDimensions(
 ): Promise<{ width: number; height: number } | null> {
   try {
     const metadata = await sharp(buffer).metadata();
-    if (metadata.width && metadata.height) {
+    if (metadata.width != null && metadata.height != null) {
       return { width: metadata.width, height: metadata.height };
     }
     return null;

@@ -88,7 +88,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 if (!shouldPersistQuery(query)) return;
                 const dataUpdatedAt = query.state.dataUpdatedAt;
                 // Only invalidate if data is older than 1 minute (indicates localStorage restore, not SSR)
-                if (dataUpdatedAt && now - dataUpdatedAt > 60 * 1000) {
+                if (dataUpdatedAt != null && now - dataUpdatedAt > 60 * 1000) {
                   query.invalidate();
                 }
               });

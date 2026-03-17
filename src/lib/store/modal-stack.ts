@@ -21,7 +21,7 @@ export const useModalStackStore = create<ModalStackState>((set, get) => ({
     set((state) => {
       // Optional: Prevent exact duplicates at the top of the stack
       const top = state.stack[state.stack.length - 1];
-      if (top && top.type === item.type && top.id === item.id) {
+      if (top != null && top.type === item.type && top.id === item.id) {
         return state;
       }
       return { stack: [...state.stack, item] };

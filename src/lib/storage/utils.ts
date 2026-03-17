@@ -32,7 +32,7 @@ export async function loadImageForAI(url: string): Promise<string> {
   const storage = getLocalStorage();
   const key = storage.extractKeyFromUrl(url);
 
-  if (!key) {
+  if (key == null) {
     throw new Error(`Invalid local upload URL: ${url}`);
   }
 
@@ -136,5 +136,5 @@ export function inferImageMimeType(url: string): string {
     avif: "image/avif",
   };
 
-  return mimeTypes[ext || ""] || "image/jpeg";
+  return mimeTypes[ext ?? ""] ?? "image/jpeg";
 }

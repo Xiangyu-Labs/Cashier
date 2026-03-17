@@ -30,7 +30,7 @@ export function EditableDateField({
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return placeholder;
+    if (dateStr === "") return placeholder;
     try {
       return parseDateString(dateStr).toLocaleDateString(locale, displayFormat);
     } catch {
@@ -41,7 +41,7 @@ export function EditableDateField({
   const handleDateChange = (date: Date | null) => {
     if (date) {
       const dateStr = formatDateTimeForApi(date);
-      if (dateStr) {
+      if (dateStr !== "") {
         onChange(dateStr);
       }
     }
@@ -49,7 +49,7 @@ export function EditableDateField({
   };
 
   // Parse value to Date for Calendar
-  const dateValue = value ? parseDateString(value) : null;
+  const dateValue = value !== "" ? parseDateString(value) : null;
 
   if (disabled) {
     return (
@@ -81,7 +81,7 @@ export function EditableDateField({
           )}
         >
           <Calendar className="h-3 w-3 text-primary/60 shrink-0" />
-          <span className={cn("text-sm", !value && "text-muted-foreground/50")}>
+          <span className={cn("text-sm", value === "" && "text-muted-foreground/50")}>
             {formatDisplayDate(value)}
           </span>
         </div>

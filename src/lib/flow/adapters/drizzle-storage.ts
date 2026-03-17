@@ -96,10 +96,10 @@ export function createDrizzleStorage(): StorageAdapter {
     async list(filter?: TaskFilter): Promise<TaskRecord[]> {
       const conditions: ReturnType<typeof eq>[] = [];
 
-      if (filter?.type) {
+      if (filter?.type != null) {
         conditions.push(eq(taskRuns.type, filter.type));
       }
-      if (filter?.status) {
+      if (filter?.status != null) {
         conditions.push(eq(taskRuns.status, filter.status));
       }
 
@@ -109,10 +109,10 @@ export function createDrizzleStorage(): StorageAdapter {
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(taskRuns.createdAt));
 
-      if (filter?.limit) {
+      if (filter?.limit != null && filter.limit > 0) {
         query.limit(filter.limit);
       }
-      if (filter?.offset) {
+      if (filter?.offset != null && filter.offset >= 0) {
         query.offset(filter.offset);
       }
 

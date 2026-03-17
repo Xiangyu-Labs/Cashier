@@ -134,15 +134,15 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
     onMutate: async (variables) => {
       // Increment mutation counter to pause polling for this ledger
-      if (ledgerId) incrementLedgerMutation(ledgerId);
+      if (ledgerId != null) incrementLedgerMutation(ledgerId);
 
       // Cancel outgoing queries to prevent race conditions
-      if (ledgerId) {
+      if (ledgerId != null) {
         await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
       }
 
       // Perform optimistic update if provided
-      if (onOptimisticUpdate) {
+      if (onOptimisticUpdate != null) {
         return await onOptimisticUpdate(queryClient, variables);
       }
 
@@ -195,9 +195,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         // or if skipInvalidation is false. When mutation returns data,
         // onSuccessExtra should handle cache updates directly.
         if (!skipInvalidation && !error && data === undefined) {
-          if (customInvalidation) {
+          if (customInvalidation != null) {
             customInvalidation(queryClient);
-          } else if (ledgerId) {
+          } else if (ledgerId != null) {
             await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
           }
         }
@@ -208,7 +208,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         }
       } finally {
         // Always decrement, even if there was an error
-        if (ledgerId) decrementLedgerMutation(ledgerId);
+        if (ledgerId != null) decrementLedgerMutation(ledgerId);
       }
     },
   });

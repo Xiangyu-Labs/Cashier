@@ -7,7 +7,7 @@ const isDev = process.env.NODE_ENV === "development";
  * Best Practice: Use standard JSON for production, and pino-pretty for development.
  */
 export const logger = pino({
-  level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
+  level: process.env.LOG_LEVEL ?? (isDev ? "debug" : "info"),
   transport:
     isDev && process.env.NEXT_RUNTIME === "nodejs"
       ? {

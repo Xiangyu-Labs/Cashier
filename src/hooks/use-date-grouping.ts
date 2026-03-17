@@ -75,7 +75,7 @@ export function useDateGrouping<T>({
         });
       }
 
-      if (!groups[dateKey]) {
+      if (groups[dateKey] == null) {
         groups[dateKey] = {
           title: dateKey,
           timestamp: sortTimestamp,

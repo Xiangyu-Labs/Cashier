@@ -15,9 +15,9 @@ export async function getClientIP(): Promise<string> {
   const headersList = await headers();
 
   // If configured with trusted proxies, prefer X-Real-IP (set by nginx, etc.)
-  if (process.env.TRUSTED_PROXY) {
+  if (process.env.TRUSTED_PROXY != null && process.env.TRUSTED_PROXY !== "") {
     const realIP = headersList.get("x-real-ip");
-    if (realIP) {
+    if (realIP != null && realIP !== "") {
       const trimmed = realIP.trim();
       if (isValidIP(trimmed)) {
         return trimmed;
@@ -27,7 +27,7 @@ export async function getClientIP(): Promise<string> {
 
   // Fallback to X-Forwarded-For (take the first hop)
   const forwarded = headersList.get("x-forwarded-for");
-  if (forwarded) {
+  if (forwarded != null && forwarded !== "") {
     const firstHop = forwarded.split(",")[0].trim();
     if (isValidIP(firstHop)) {
       return firstHop;
@@ -42,7 +42,7 @@ export async function getClientIP(): Promise<string> {
  * Validates IPv4 and IPv6 addresses.
  */
 function isValidIP(ip: string): boolean {
-  if (!ip || ip.length > 45) return false;
+  if (ip === "" || ip.length > 45) return false;
 
   // IPv4 regex pattern
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;

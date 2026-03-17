@@ -47,7 +47,7 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
 
   const configItem = config[status];
   const { label: configLabel, icon: Icon, colorClass, bgClass } = configItem;
-  const displayLabel = label || configLabel;
+  const displayLabel = label ?? configLabel;
 
   return (
     <div className={cn("inline-flex items-center gap-2", className)}>

@@ -76,7 +76,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
     amount: parseAmount(displayData.amount),
     currency: displayData.currency,
     mainCurrency,
-    date: sourceDocumentEntryDate || ledgerEntry.createdAt,
+    date: sourceDocumentEntryDate ?? ledgerEntry.createdAt,
   });
 
   const category = categories.find((c) => c.id === displayData.categoryId);
@@ -118,15 +118,15 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
           />
         </div>
 
-        {(displayData.description || category) && (
+        {(displayData.description != null || category != null) && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-            {category && <span className="shrink-0">{category.name}</span>}
-            {displayData.description && (
+            {category != null && <span className="shrink-0">{category.name}</span>}
+            {displayData.description != null && displayData.description !== "" && (
               <>
                 <span className="text-muted-foreground/30">·</span>
                 <EditableField
-                  value={displayData.description || ""}
-                  onChange={(v) => handleChange("description", v || null)}
+                  value={displayData.description ?? ""}
+                  onChange={(v) => handleChange("description", v !== "" ? v : null)}
                   placeholder={t("notes")}
                   displayClassName="truncate text-muted-foreground/60 text-[11px] italic"
                   inputClassName="text-[11px]"
@@ -142,7 +142,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         <Popover modal={true}>
           <PopoverTrigger asChild>
             <button className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5">
-              {displayData.currency || "?"}
+              {displayData.currency ?? "?"}
               <ChevronDown className="h-2.5 w-2.5 opacity-50" />
             </button>
           </PopoverTrigger>

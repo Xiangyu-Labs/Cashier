@@ -46,17 +46,17 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   discardLabel,
 }: ConfirmDialogProps) {
   const t = useTranslations("Common");
-  const displayConfirmLabel = confirmLabel || t("confirm");
-  const displayCancelLabel = cancelLabel || t("cancel");
-  const displaySaveLabel = saveLabel || t("save");
-  const displayDiscardLabel = discardLabel || t("discard");
+  const displayConfirmLabel = confirmLabel ?? t("confirm");
+  const displayCancelLabel = cancelLabel ?? t("cancel");
+  const displaySaveLabel = saveLabel ?? t("save");
+  const displayDiscardLabel = discardLabel ?? t("discard");
 
   // Check if we're using the three-button layout (for unsaved changes dialog)
-  const hasThreeButtonLayout = onSave !== undefined || onDiscard !== undefined;
+  const hasThreeButtonLayout = onSave != null || onDiscard != null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {trigger != null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

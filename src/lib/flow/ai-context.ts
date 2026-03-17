@@ -57,7 +57,7 @@ export function createAIContext(
         vision: process.env.AI_MODEL_VISION,
       };
       const model = modelMap[options.model];
-      if (!model) {
+      if (model == null || model === "") {
         throw new Error(`AI_MODEL_${options.model.toUpperCase()} environment variable is required`);
       }
 
@@ -88,7 +88,7 @@ export function createAIContext(
         const extracted = extractJson(result.content);
         logger.debug({ extracted: extracted.substring(0, 1000) }, "AI extracted JSON");
 
-        if (!isValidJson(extracted)) {
+        if (isValidJson(extracted) === false) {
           logger.warn(
             { content: result.content.substring(0, 500) },
             "AI returned invalid JSON, attempting repair"
@@ -96,7 +96,7 @@ export function createAIContext(
 
           // Use text model for repair (via AIModelTier selection)
           const textModel = modelMap["text"];
-          if (!textModel) {
+          if (textModel == null || textModel === "") {
             throw new Error("AI_MODEL_TEXT is required for JSON repair");
           }
 
@@ -116,7 +116,7 @@ export function createAIContext(
 
           const repairedExtracted = extractJson(repairResult.content);
 
-          if (!isValidJson(repairedExtracted)) {
+          if (isValidJson(repairedExtracted) === false) {
             logger.error(
               {
                 original: result.content.substring(0, 500),
@@ -142,7 +142,7 @@ export function createAIContext(
       }
 
       // Auto-report tokens unless disabled
-      if (options.autoReportTokens !== false && result.usage) {
+      if (options.autoReportTokens !== false && result.usage != null) {
         reportTokens({
           model,
           input: result.usage.promptTokens,

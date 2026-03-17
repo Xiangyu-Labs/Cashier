@@ -63,10 +63,10 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-            {ledgerEntry.category && (
+            {ledgerEntry.category != null && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground truncate min-w-0 flex-1">
                 <span className="shrink-0">{ledgerEntry.category.name}</span>
-                {ledgerEntry.description && (
+                {ledgerEntry.description != null && ledgerEntry.description !== "" && (
                   <span className="hidden sm:contents">
                     <span className="text-muted-foreground/30 shrink-0">·</span>
                     <span className="truncate text-muted-foreground/60 text-[11px] italic">
@@ -85,7 +85,7 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
         amount={parseAmount(ledgerEntry.amount)}
         currency={ledgerEntry.currency}
         mainCurrency={mainCurrency}
-        date={sourceDocumentEntryDate || ledgerEntry.createdAt}
+        date={sourceDocumentEntryDate ?? ledgerEntry.createdAt}
         size="sm"
         className="shrink-0 ml-3"
       />

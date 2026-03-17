@@ -9,7 +9,7 @@ export class OpenAIClient {
     const apiKey = process.env.OPENAI_API_KEY;
     const baseURL = process.env.OPENAI_BASE_URL;
 
-    if (!apiKey) {
+    if (apiKey == null || apiKey === "") {
       throw new Error("OPENAI_API_KEY is not set");
     }
 
@@ -37,8 +37,8 @@ export class OpenAIClient {
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
     const effectiveMaxTokens = maxTokens ?? 8192;
     const effectiveTemperature = temperature ?? 1;
-    const maxRetries = parseInt(process.env.AI_MAX_RETRIES || "3", 10);
-    const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10);
+    const maxRetries = parseInt(process.env.AI_MAX_RETRIES ?? "3", 10);
+    const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS ?? "1000", 10);
 
     let lastError: unknown;
 
@@ -66,7 +66,7 @@ export class OpenAIClient {
         );
 
         if (
-          !response.choices ||
+          response.choices == null ||
           !Array.isArray(response.choices) ||
           response.choices.length === 0
         ) {
@@ -75,10 +75,10 @@ export class OpenAIClient {
         }
 
         const choice = response.choices[0];
-        const content = choice?.message?.content || "";
+        const content = choice?.message?.content ?? "";
 
         // Handle empty response with specific finish reasons
-        if (!content && choice?.finish_reason) {
+        if (content === "" && choice?.finish_reason != null) {
           if (choice.finish_reason === "content_filter") {
             throw new Error(
               "Content was filtered by OpenAI safety systems. The image may contain content that cannot be processed."
@@ -111,7 +111,7 @@ export class OpenAIClient {
         let isRetryable = true;
 
         // If it's an OpenAI APIError, check the status code
-        if (error instanceof OpenAI.APIError && error.status) {
+        if (error instanceof OpenAI.APIError && error.status != null) {
           // 4xx errors are generally NOT retryable, except for 429 (Rate Limit)
           if (error.status >= 400 && error.status < 500 && error.status !== 429) {
             isRetryable = false;

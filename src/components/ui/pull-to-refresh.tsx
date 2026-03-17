@@ -44,21 +44,21 @@ export function PullToRefresh({
     const handleTouchStart = (e: TouchEvent) => {
       // Only allow pull when at top
       const scrollTop = container.scrollTop;
-      const bodyScrollTop = window.scrollY || document.documentElement.scrollTop;
+      const bodyScrollTop = window.scrollY ?? document.documentElement.scrollTop;
 
-      if (scrollTop === 0 && bodyScrollTop === 0 && !isRefreshing) {
+      if (scrollTop === 0 && bodyScrollTop === 0 && isRefreshing === false) {
         startYRef.current = e.touches[0].clientY;
         isPullingRef.current = true;
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPullingRef.current || isRefreshing) return;
+      if (!isPullingRef.current || isRefreshing === true) return;
 
       const currentY = e.touches[0].clientY;
       const distance = currentY - startYRef.current;
       const containerScrollTop = container.scrollTop;
-      const bodyScrollTop = window.scrollY || document.documentElement.scrollTop;
+      const bodyScrollTop = window.scrollY ?? document.documentElement.scrollTop;
 
       // Only when pulling down and at top
       if (distance > 0 && containerScrollTop === 0 && bodyScrollTop === 0) {

@@ -38,7 +38,7 @@ export function DateFilter({
 
   // Parse value to Date
   const dateValue = React.useMemo(() => {
-    if (!value) return null;
+    if (value == null) return null;
     if (value instanceof Date) return value;
     // Handle ISO string or date string
     const parsed = new Date(value);
@@ -74,9 +74,9 @@ export function DateFilter({
         >
           <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
           <span className="truncate flex-1">
-            {dateValue
+            {dateValue != null
               ? format.dateTime(dateValue, { year: "numeric", month: "short", day: "numeric" })
-              : placeholder || t("selectDate")}
+              : placeholder ?? t("selectDate")}
           </span>
           {showClear && dateValue ? (
             <X

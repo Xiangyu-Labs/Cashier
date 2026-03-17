@@ -3,7 +3,7 @@ import Database from "better-sqlite3";
 
 import * as schema from "./schema";
 
-const sqlitePath = (process.env.DATABASE_URL || "sqlite.db").replace(/^file:/, "");
+const sqlitePath = (process.env.DATABASE_URL ?? "sqlite.db").replace(/^file:/, "");
 
 // Singleton pattern for database connection
 const globalForDb = global as unknown as {

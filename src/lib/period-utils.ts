@@ -39,7 +39,7 @@ export function periodToDateRange(params: PeriodParams): DateRange {
     return { startDate: null, endDate: null };
   }
 
-  if (period === "custom" && startDate && endDate) {
+  if (period === "custom" && startDate != null && endDate != null) {
     // Convert YYYY-MM-DD to full datetime
     const start = new Date(`${startDate}T00:00:00`);
     const end = new Date(`${endDate}T23:59:59.999`);

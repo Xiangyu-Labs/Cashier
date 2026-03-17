@@ -25,13 +25,13 @@ export const useMutationStore = create<MutationState>((set, get) => ({
     set((state) => ({
       activeMutationsByLedger: {
         ...state.activeMutationsByLedger,
-        [ledgerId]: (state.activeMutationsByLedger[ledgerId] || 0) + 1,
+        [ledgerId]: (state.activeMutationsByLedger[ledgerId] ?? 0) + 1,
       },
     })),
 
   decrementLedgerMutation: (ledgerId: string) =>
     set((state) => {
-      const current = state.activeMutationsByLedger[ledgerId] || 0;
+      const current = state.activeMutationsByLedger[ledgerId] ?? 0;
       if (current <= 0) return state;
       return {
         activeMutationsByLedger: {
@@ -42,6 +42,6 @@ export const useMutationStore = create<MutationState>((set, get) => ({
     }),
 
   hasActiveLedgerMutation: (ledgerId: string) => {
-    return (get().activeMutationsByLedger[ledgerId] || 0) > 0;
+    return (get().activeMutationsByLedger[ledgerId] ?? 0) > 0;
   },
 }));

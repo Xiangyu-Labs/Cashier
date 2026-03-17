@@ -203,7 +203,7 @@ export function serializeSourceDocument(
     updatedAt: serializeDate(doc.updatedAt)!,
     deletedAt: serializeDate(doc.deletedAt),
     ledgerEntries,
-    ...(includeHasImages ? { hasImages: (doc.imageUrls?.length || 0) > 0 } : {}),
+    ...(includeHasImages ? { hasImages: (doc.imageUrls?.length ?? 0) > 0 } : {}),
   };
 }
 

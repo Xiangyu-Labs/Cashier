@@ -137,7 +137,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
     // Token reporter function (shared between context and AI context)
     const reportTokens = (usage: TokenUsage) => {
-      if (!tokenUsage[usage.model]) {
+      if (tokenUsage[usage.model] == null) {
         tokenUsage[usage.model] = { input: 0, output: 0 };
       }
       tokenUsage[usage.model].input += usage.input;

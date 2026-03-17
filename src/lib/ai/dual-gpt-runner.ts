@@ -113,13 +113,13 @@ async function runArbitration<T>(
 
   if (arbitrationResult.choice === 0) {
     throw new Error(
-      `ARBITRATION_FAILED: ${taskName} - ${arbitrationResult.reason || "Both results invalid"}`
+      `ARBITRATION_FAILED: ${taskName} - ${arbitrationResult.reason ?? "Both results invalid"}`
     );
   }
 
   const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
   const reasoning =
-    (chosenResult as { reasoning?: string }).reasoning || arbitrationResult.reason || "";
+    (chosenResult as { reasoning?: string }).reasoning ?? arbitrationResult.reason ?? "";
 
   return { result: chosenResult, reasoning };
 }
@@ -147,7 +147,7 @@ export async function runDualGptWithArbitration<T>({
   if (compareResults(result1, result2)) {
     return {
       result: result1,
-      reasoning: (result1 as { reasoning?: string }).reasoning || "",
+      reasoning: (result1 as { reasoning?: string }).reasoning ?? "",
       wasArbitrated: false,
     };
   }

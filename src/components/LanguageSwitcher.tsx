@@ -15,7 +15,7 @@ export function LanguageSwitcher() {
   const switchLocale = (newLocale: string) => {
     // Construct the new URL preserving query parameters
     const params = new URLSearchParams(searchParams.toString());
-    const query = params.toString() ? `?${params.toString()}` : "";
+    const query = params.toString() !== "" ? `?${params.toString()}` : "";
 
     router.replace(`${pathname}${query}`, { locale: newLocale });
   };

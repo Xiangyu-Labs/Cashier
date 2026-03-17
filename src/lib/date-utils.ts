@@ -95,7 +95,7 @@ export { serializeDates } from "@/lib/serialization/utils";
 export function formatDateTimeForApi(date: Date): string;
 export function formatDateTimeForApi(date: Date | undefined): string | undefined;
 export function formatDateTimeForApi(date: Date | undefined): string | undefined {
-  if (!date) return undefined;
+  if (date == null) return undefined;
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -109,7 +109,7 @@ export function formatDateTimeForApi(date: Date | undefined): string | undefined
  * Uses date-fns for reliable parsing and day boundary calculation.
  */
 export function parseDateRangeStart(dateStr: string | null | undefined): Date | null {
-  if (!dateStr) return null;
+  if (dateStr == null || dateStr === "") return null;
 
   // parseISO handles both "yyyy-MM-dd" and full ISO strings
   const parsed = parseISO(dateStr);
@@ -125,7 +125,7 @@ export function parseDateRangeStart(dateStr: string | null | undefined): Date | 
  * Uses date-fns for reliable parsing and day boundary calculation.
  */
 export function parseDateRangeEnd(dateStr: string | null | undefined): Date | null {
-  if (!dateStr) return null;
+  if (dateStr == null || dateStr === "") return null;
 
   // parseISO handles both "yyyy-MM-dd" and full ISO strings
   const parsed = parseISO(dateStr);
@@ -151,7 +151,7 @@ export function parseDateString(dateStr: string): Date {
  * Uses Intl API — works regardless of server's TZ setting.
  */
 export function getDateInTimezone(timezone?: string): string | undefined {
-  if (!timezone) return undefined;
+  if (timezone == null || timezone === "") return undefined;
   try {
     return new Intl.DateTimeFormat("sv-SE", { timeZone: timezone }).format(new Date());
   } catch {

@@ -10,10 +10,10 @@ export function cn(...inputs: ClassValue[]) {
  * Works in non-secure contexts (HTTP) via a hidden textarea fallback.
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  if (!text) return false;
+  if (text === "") return false;
 
   // Try modern Clipboard API if available and in secure context
-  if (navigator.clipboard && window.isSecureContext) {
+  if (navigator.clipboard != null && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
       return true;

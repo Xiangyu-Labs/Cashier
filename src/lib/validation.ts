@@ -32,7 +32,7 @@ export function isValidUuid(id: string): boolean {
  * @throws Error if not a valid UUID v4
  */
 export function assertValidUuid(id: string, message?: string): void {
-  if (!isValidUuid(id)) {
-    throw new Error(message || `Invalid UUID: ${id}`);
+  if (isValidUuid(id) === false) {
+    throw new Error(message ?? `Invalid UUID: ${id}`);
   }
 }

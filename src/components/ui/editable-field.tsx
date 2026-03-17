@@ -57,7 +57,8 @@ export function EditableField({
     textarea.style.height = "auto";
 
     // Calculate line height (approximate if not available)
-    const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+    const parsedLineHeight = parseInt(getComputedStyle(textarea).lineHeight);
+    const lineHeight = Number.isNaN(parsedLineHeight) ? 20 : parsedLineHeight;
     const minHeight = lineHeight * minRows;
     const maxHeight = lineHeight * maxRows;
 
@@ -137,7 +138,7 @@ export function EditableField({
   if (disabled) {
     return (
       <div className={cn(containerStyles, displayClassName)}>
-        {renderDisplay ? renderDisplay(value) : value || placeholder}
+        {renderDisplay != null ? renderDisplay(value) : value !== "" ? value : placeholder}
       </div>
     );
   }
@@ -237,8 +238,8 @@ export function EditableField({
       {renderDisplay ? (
         renderDisplay(value)
       ) : (
-        <span className={cn(!value && "text-muted-foreground/50", "truncate")}>
-          {value || placeholder}
+        <span className={cn(value === "" && "text-muted-foreground/50", "truncate")}>
+          {value !== "" ? value : placeholder}
         </span>
       )}
     </div>

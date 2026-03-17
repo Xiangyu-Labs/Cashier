@@ -92,7 +92,7 @@ export async function compressImage(
       return new Promise((resolve, reject) => {
         const handler = (e: MessageEvent) => {
           worker.removeEventListener("message", handler);
-          if (e.data.success) {
+          if (e.data.success === true) {
             const base64 = arrayBufferToBase64(e.data.data);
             resolve({
               data: `data:image/jpeg;base64,${base64}`,

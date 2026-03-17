@@ -38,7 +38,7 @@ import { createDrizzleStorage } from "./adapters/drizzle-storage";
  * Concurrency is controlled by MAX_TASK_WORKER env variable (default: 10).
  * Set to 0 for unlimited concurrent tasks.
  */
-const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER || "10", 10);
+const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER ?? "10", 10);
 
 export const flowEngine = createFlowEngine({
   storage: createDrizzleStorage(),

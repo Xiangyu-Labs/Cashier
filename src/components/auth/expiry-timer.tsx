@@ -18,7 +18,7 @@ export function ExpiryTimer({ expiresAt, onExpired, className }: ExpiryTimerProp
 
   const t = useTranslations("Auth");
 
-  if (!expiresAt) {
+  if (expiresAt == null) {
     return null;
   }
 

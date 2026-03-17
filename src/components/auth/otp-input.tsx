@@ -29,7 +29,7 @@ export function OTPInput({
 
     // Only allow digits
     const sanitized = digit.replace(/\D/g, "");
-    if (!sanitized && digit !== "") return;
+    if (sanitized === "" && digit !== "") return;
 
     const newDigits = [...digits];
     newDigits[index] = sanitized.slice(0, 1);
@@ -37,7 +37,7 @@ export function OTPInput({
     onChange(newValue);
 
     // Auto-focus next input
-    if (sanitized && index < length - 1) {
+    if (sanitized !== "" && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -46,7 +46,7 @@ export function OTPInput({
     if (disabled) return;
 
     if (e.key === "Backspace") {
-      if (!digits[index] || digits[index] === " ") {
+      if (digits[index] === " " || digits[index] === "") {
         // If current input is empty, focus previous and delete its value
         if (index > 0) {
           const newDigits = [...digits];
@@ -77,7 +77,7 @@ export function OTPInput({
     const pastedData = e.clipboardData.getData("text/plain");
     const sanitized = pastedData.replace(/\D/g, "").slice(0, length);
 
-    if (sanitized) {
+    if (sanitized !== "") {
       onChange(sanitized);
       // Focus the last filled input or the next empty one
       const nextIndex = Math.min(sanitized.length, length - 1);

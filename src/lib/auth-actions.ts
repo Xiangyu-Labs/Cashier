@@ -18,7 +18,7 @@ export function withAuth<TArgs extends unknown[], TReturn>(
   return async (...args: TArgs) => {
     const session = await auth();
 
-    if (!session?.user?.id) {
+    if (session?.user?.id == null) {
       throw new UnauthorizedError("Please log in to perform this action");
     }
 
@@ -33,7 +33,7 @@ export function withAuth<TArgs extends unknown[], TReturn>(
 export async function requireAuth(): Promise<string> {
   const session = await auth();
 
-  if (!session?.user?.id) {
+  if (session?.user?.id == null) {
     throw new UnauthorizedError("Please log in to perform this action");
   }
 
