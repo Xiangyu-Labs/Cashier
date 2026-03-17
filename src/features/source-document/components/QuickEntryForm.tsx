@@ -43,7 +43,7 @@ export function QuickEntryForm({
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
-  const isFormValid = selectedCategoryId != null && amount > 0;
+  // Form validation state (used in handleSubmit)
 
   const mutation = useLedgerMutation(ledgerId, {
     mutationFn: (data: {
@@ -92,7 +92,7 @@ export function QuickEntryForm({
         ledgerId,
         type: "manual",
         status: "completed",
-        title: selectedCategory?.name || null,
+        title: selectedCategory?.name ?? null,
         text: null,
         entryDate: entryDateStr,
         createdAt: now,
@@ -116,7 +116,7 @@ export function QuickEntryForm({
             itemName: variables.itemName ?? selectedCategory?.name ?? "",
             convertedAmount: variables.amount.toFixed(2),
             exchangeRate: "1",
-            category: selectedCategory
+            category: selectedCategory !== undefined
               ? {
                   id: selectedCategory.id,
                   name: selectedCategory.name,
@@ -178,11 +178,11 @@ export function QuickEntryForm({
   });
 
   const handleSubmit = () => {
-    if (selectedCategoryId == null || amount <= 0) return;
+    if (selectedCategoryId === null || amount <= 0) return;
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,
-      itemName: itemName || undefined,
+      itemName: itemName !== "" ? itemName : undefined,
       entryDate: formatDateTimeForApi(entryDate),
     });
   };
@@ -194,7 +194,7 @@ export function QuickEntryForm({
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
-          selectedCategory != null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
+          selectedCategory !== null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
         }
         className="text-sm"
       />
@@ -246,7 +246,7 @@ export function QuickEntryForm({
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={selectedCategoryId == null || amount <= 0 || mutation.isPending}
+        disabled={selectedCategoryId === null || amount <= 0 || mutation.isPending}
         className="w-full"
       >
         {mutation.isPending ? (
