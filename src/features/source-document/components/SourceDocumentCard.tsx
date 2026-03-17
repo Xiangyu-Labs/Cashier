@@ -54,12 +54,12 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({
     let mainCurrencyTotal = 0;
 
     entries.forEach((entry) => {
-      const curr = entry.currency || mainCurrency;
+      const curr = entry.currency != null && entry.currency !== "" ? entry.currency : mainCurrency;
       const amount = parseAmount(entry.amount);
-      groups[curr] = (groups[curr] || 0) + amount;
+      groups[curr] = (groups[curr] ?? 0) + amount;
 
       // Use convertedAmount if available, otherwise use amount (for main currency)
-      if (entry.convertedAmount) {
+      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
         mainCurrencyTotal += parseAmount(entry.convertedAmount);
       } else if (curr === mainCurrency) {
         mainCurrencyTotal += amount;
@@ -72,11 +72,11 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({
     const breakdown: CurrencyBreakdown[] = uniqueCurrencies.map((currency) => {
       // Calculate converted amount for this currency by summing all entries of this currency
       const convertedAmount = entries
-        .filter((e) => (e.currency || mainCurrency) === currency)
+        .filter((e) => (e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === currency)
         .reduce((sum, e) => {
-          if (e.convertedAmount) {
+          if (e.convertedAmount != null && e.convertedAmount !== "") {
             return sum + parseAmount(e.convertedAmount);
-          } else if ((e.currency || mainCurrency) === mainCurrency) {
+          } else if ((e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === mainCurrency) {
             return sum + parseAmount(e.amount);
           }
           return sum;
@@ -235,9 +235,10 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     const totals: Record<string, number> = {};
 
     ledgerEntries.forEach((entry) => {
-      if (entry.currency !== null && entry.currency !== undefined && entry.currency !== "") {
+      const currency = entry.currency;
+      if (currency != null && currency !== "") {
         const amount = parseAmount(entry.amount);
-        totals[entry.currency] = (totals[entry.currency] ?? 0) + amount;
+        totals[currency] = (totals[currency] ?? 0) + amount;
       }
     });
 
@@ -248,7 +249,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     // imageUrls may not exist in SourceDocumentLight
     const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
     return {
-      text: sourceDocument.text,
+      text: sourceDocument.text ?? "",
       images: imageUrls ?? [],
     };
   }, [sourceDocument]);
@@ -308,7 +309,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
         >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-            {(sourceDocument.entryDate !== null && sourceDocument.entryDate !== undefined && sourceDocument.entryDate !== ""
+            {(sourceDocument.entryDate != null && sourceDocument.entryDate !== ""
               ? parseDateString(sourceDocument.entryDate)
               : new Date(sourceDocument.createdAt)
             ).toLocaleDateString(locale, {
@@ -319,8 +320,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {status !== "processing" &&
             status !== "queued" &&
             status !== "failed" &&
-            sourceDocument.title !== null &&
-            sourceDocument.title !== undefined &&
+            sourceDocument.title != null &&
             sourceDocument.title !== "" && (
               <>
                 <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
@@ -341,7 +341,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
               status={status === "anomaly" || status === "failed" ? "error" : status}
-              label={status === "anomaly" && anomalyReason ? anomalyReason : undefined}
+              label={status === "anomaly" && anomalyReason != null && anomalyReason !== "" ? anomalyReason : undefined}
             />
           )}
 
@@ -415,7 +415,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                     </div>
                   )}
 
-                  {text && (
+                  {text !== "" && (
                     <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
                       {text}
                     </div>
@@ -445,7 +445,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
       <ImageViewer
         images={images}
-        initialIndex={typeof selectedImageIndex === "number" ? selectedImageIndex : 0}
+        initialIndex={selectedImageIndex !== null ? selectedImageIndex : 0}
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
