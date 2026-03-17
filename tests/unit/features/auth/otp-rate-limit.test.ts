@@ -202,24 +202,24 @@ describe("OTP Rate Limiting", () => {
   });
 
   describe("checkVerifyRateLimit (brute force protection)", () => {
-    it("should allow first 10 verifications per minute", async () => {
+    it("should allow first 5 verifications per minute", async () => {
       const ip = "192.168.1.1";
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 5; i++) {
         const result = await checkVerifyRateLimit(ip);
         expect(result).toBe(true);
       }
     });
 
-    it("should block 11th verification", async () => {
+    it("should block 6th verification", async () => {
       const ip = "192.168.1.1";
 
-      // Use up 10 attempts
-      for (let i = 0; i < 10; i++) {
+      // Use up 5 attempts
+      for (let i = 0; i < 5; i++) {
         await checkVerifyRateLimit(ip);
       }
 
-      // 11th attempt should be blocked
+      // 6th attempt should be blocked
       const result = await checkVerifyRateLimit(ip);
       expect(result).toBe(false);
     });

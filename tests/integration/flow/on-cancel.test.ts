@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createFlowEngine } from '@/lib/flow/engine'
-import type { StorageAdapter, TaskRecord, TaskInput, FlowTaskHandler, FlowContext } from '@/lib/flow/types'
+import type { StorageAdapter, TaskRecord, TaskInput, FlowTaskHandler } from '@/lib/flow/types'
 
 function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord>; clear(): void } {
   const tasks = new Map<string, TaskRecord>()
@@ -46,10 +46,10 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
     },
     async list(filter?: { type?: string; status?: string }): Promise<TaskRecord[]> {
       let result = Array.from(tasks.values())
-      if (filter?.type) {
+      if (filter?.type != null) {
         result = result.filter(t => t.type === filter.type)
       }
-      if (filter?.status) {
+      if (filter?.status != null) {
         result = result.filter(t => t.status === filter.status)
       }
       return result

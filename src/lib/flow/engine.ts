@@ -271,7 +271,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       }
 
       // Check for duplicate tasks if deduplicationKey provided
-      if (meta?.deduplicationKey) {
+      if (meta?.deduplicationKey != null && meta.deduplicationKey !== "") {
         // Check both pending and running tasks to prevent duplicates
         const [pendingTasks, runningTasks] = await Promise.all([
           config.storage.list({ type: name, status: "pending" }),
@@ -281,7 +281,11 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
         for (const task of existingTasks) {
           const taskInput = task.input as { deduplicationKey?: string } | undefined;
-          if (taskInput?.deduplicationKey === meta.deduplicationKey) {
+          if (
+            taskInput?.deduplicationKey != null &&
+            meta?.deduplicationKey != null &&
+            taskInput.deduplicationKey === meta.deduplicationKey
+          ) {
             logger.info({
               taskId: task.id,
               deduplicationKey: meta.deduplicationKey,
@@ -298,7 +302,9 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         title: meta?.title,
         input: {
           ...(input as object),
-          ...(meta?.deduplicationKey ? { deduplicationKey: meta.deduplicationKey } : {}),
+          ...(meta?.deduplicationKey != null && meta.deduplicationKey !== ""
+            ? { deduplicationKey: meta.deduplicationKey }
+            : {}),
         },
         scopeId: meta?.scopeId,
         entityType: meta?.entityType,

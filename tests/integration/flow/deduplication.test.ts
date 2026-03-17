@@ -45,10 +45,10 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
     },
     async list(filter?: { type?: string; status?: string; limit?: number; offset?: number }): Promise<TaskRecord[]> {
       let result = Array.from(tasks.values())
-      if (filter?.type) {
+      if (filter?.type != null) {
         result = result.filter(t => t.type === filter.type)
       }
-      if (filter?.status) {
+      if (filter?.status != null) {
         result = result.filter(t => t.status === filter.status)
       }
       return result

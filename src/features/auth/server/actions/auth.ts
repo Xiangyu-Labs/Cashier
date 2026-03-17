@@ -151,16 +151,6 @@ export async function verifyOTPAction(email: string, otp: string) {
 
     const normalizedEmail = normalizeEmail(email);
 
-    // Get IP address for rate limiting
-    const ip = await getClientIP();
-
-    // Check verify rate limit
-    const isAllowed = await checkVerifyRateLimit(ip);
-    if (!isAllowed) {
-      logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded");
-      throw new RateLimitError("Too many verification attempts. Please try again later.");
-    }
-
     // Find OTP record first (data access layer)
     const record = await findOTPRecord(normalizedEmail);
     if (!record) {
@@ -168,6 +158,28 @@ export async function verifyOTPAction(email: string, otp: string) {
       throw new UnauthorizedError(
         "Invalid or expired verification code. Please try again or request a new code."
       );
+    }
+
+    // Check if account is already locked BEFORE checking IP rate limit
+    // This ensures locked users get proper error message instead of generic rate limit
+    if (record.lockedUntil && record.lockedUntil > new Date()) {
+      const error = new RateLimitError(
+        "Account temporarily locked due to too many failed attempts. Please try again later."
+      );
+      (error as Error & { lockedUntil?: number }).lockedUntil = Math.floor(
+        record.lockedUntil.getTime() / 1000
+      );
+      throw error;
+    }
+
+    // Get IP address for rate limiting (only check if account not already locked)
+    const ip = await getClientIP();
+
+    // Check verify rate limit
+    const isAllowed = await checkVerifyRateLimit(ip);
+    if (!isAllowed) {
+      logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded");
+      throw new RateLimitError("Too many verification attempts. Please try again later.");
     }
 
     // Verify the OTP with business logic (service layer)
