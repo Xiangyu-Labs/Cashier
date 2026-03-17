@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getSourceDocumentsAction } from "@/features/source-document/server/actions/queries";
 import { validateServiceCredential } from "@/features/ledger/server/actions/credentials";
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server/schema";
@@ -177,5 +178,65 @@ export async function POST(request: NextRequest) {
     logError("api/v1/source-documents", error);
 
     return NextResponse.json(toErrorResponse(error), { status: getErrorStatusCode(error) });
+  }
+}
+
+const listQuerySchema = z.object({
+  status: z.enum(["queued", "processing", "completed", "anomaly", "failed"]).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  includeEntries: z.enum(["true", "false"]).default("false"),
+});
+
+export async function GET(request: NextRequest) {
+  try {
+    // 1. 认证
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new UnauthorizedError("Missing or invalid Authorization header");
+    }
+
+    const key = authHeader.split(" ")[1];
+    const credential = await validateServiceCredential(key);
+    if (!credential) {
+      throw new UnauthorizedError("Invalid Service Credential");
+    }
+
+    // 2. 限流
+    const rateLimitResult = await rateLimitApiV1(key);
+    if (!rateLimitResult.success) {
+      throw new RateLimitError("Rate limit exceeded");
+    }
+
+    // 3. 解析查询参数
+    const { searchParams } = new URL(request.url);
+    const params = listQuerySchema.parse({
+      status: searchParams.get("status") ?? undefined,
+      startDate: searchParams.get("startDate") ?? undefined,
+      endDate: searchParams.get("endDate") ?? undefined,
+      cursor: searchParams.get("cursor") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+      includeEntries: searchParams.get("includeEntries") ?? "false",
+    });
+
+    // 4. 查询数据
+    const result = await getSourceDocumentsAction(credential.ledgerId, {
+      status: params.status ?? null,
+      startDate: params.startDate ?? null,
+      endDate: params.endDate ?? null,
+      cursor: params.cursor ?? null,
+      limit: params.limit,
+      includeLedgerEntries: params.includeEntries === "true",
+    });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    logError("api/v1/source-documents:GET", error);
+    return NextResponse.json(
+      toErrorResponse(error),
+      { status: getErrorStatusCode(error) }
+    );
   }
 }
