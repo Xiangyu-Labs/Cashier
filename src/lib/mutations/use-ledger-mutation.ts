@@ -46,7 +46,7 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
   /**
    * Additional callback to run on success (e.g., close modal, clear selection)
    */
-  onSuccessExtra?: (data: TData, variables: TVariables) => void;
+  onSuccessExtra?: (data: TData, variables: TVariables, context: TContext | undefined) => void;
 
   /**
    * Additional callback to run on error
@@ -151,7 +151,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       return undefined as unknown as TContext;
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (data, variables, context) => {
       // Show success toast if message provided
       if (successMessage !== null && successMessage !== undefined) {
         toast.success(successMessage);
@@ -159,7 +159,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
       // Run additional success callback
       if (onSuccessExtra) {
-        onSuccessExtra(data, variables);
+        onSuccessExtra(data, variables, context);
       }
     },
 

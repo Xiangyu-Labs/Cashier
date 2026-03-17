@@ -100,13 +100,14 @@ beforeEach(async () => {
     "currency_rates",
     "accounts",
     "otp_tokens",
+    "users",
   ];
 
   for (const table of tables) {
     client.prepare(`DELETE FROM "${table}"`).run();
   }
 
-  // Ensure default test user exists
+  // Ensure default test user exists (ignore unique constraint errors)
   try {
     await db.insert(schema.users).values({
       id: '00000000-0000-0000-0000-000000000000',
@@ -114,8 +115,9 @@ beforeEach(async () => {
       name: 'Test User',
       emailVerified: new Date(),
     });
-  } catch (_e) {
+  } catch (e) {
     // User already exists, which is the expected case
+    console.log('[Test Setup] Test user already exists or other error:', e);
   }
 });
 

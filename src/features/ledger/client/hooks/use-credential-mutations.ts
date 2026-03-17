@@ -2,11 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
-import {
-    useLedgerMutation,
-    optimisticallyAddToList,
-    optimisticallyDeleteFromList,
-} from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
     createServiceCredentialAction,
     deleteServiceCredentialAction,
@@ -15,7 +11,8 @@ import type { ServiceCredential } from "@/types/api";
 
 export function useCredentialMutations(ledgerId: string) {
     const t = useTranslations("Settings");
-    const queryKey = queryKeys.serviceCredentials(ledgerId);
+    // Use the same queryKey as useLedgerSettings to ensure optimistic updates are reflected immediately
+    const queryKey = queryKeys.ledgerSettings(ledgerId);
 
     const createCredential = useLedgerMutation<ServiceCredential, string>(ledgerId, {
         mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
@@ -31,11 +28,33 @@ export function useCredentialMutations(ledgerId: string) {
                 deletedAt: null,
                 lastUsedAt: null,
             };
-            return optimisticallyAddToList<ServiceCredential>(queryClient, queryKey, tempCredential);
+            // Optimistically add to the ledgerSettings query data
+            const prevData = queryClient.getQueryData<{ uncategorizedCount: number; credentials: ServiceCredential[] }>(queryKey);
+            if (prevData) {
+                queryClient.setQueryData(queryKey, {
+                    ...prevData,
+                    credentials: [...prevData.credentials, tempCredential],
+                });
+            }
+            return { prevData, tempId: tempCredential.id };
         },
-        onSettledExtra: (queryClient) => {
-            // Invalidate ledgerSettings to refresh credentials list in settings page
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+        onSuccessExtra: (data, _variables, context) => {
+            // Replace the temp credential with the real one from server
+            const currentData = queryClient.getQueryData<{ uncategorizedCount: number; credentials: ServiceCredential[] }>(queryKey);
+            if (currentData) {
+                queryClient.setQueryData(queryKey, {
+                    ...currentData,
+                    credentials: currentData.credentials.map((c) =>
+                        c.id === (context as { tempId: string } | undefined)?.tempId ? data : c
+                    ),
+                });
+            }
+        },
+        onRollback: (queryClient, context) => {
+            // Rollback to previous data if mutation fails
+            if (context?.prevData) {
+                queryClient.setQueryData(queryKey, context.prevData);
+            }
         },
     });
 
@@ -44,11 +63,21 @@ export function useCredentialMutations(ledgerId: string) {
         successMessage: t("credentialDeleted"),
         errorMessage: t("deleteFailed"),
         onOptimisticUpdate: (queryClient, id) => {
-            return optimisticallyDeleteFromList<ServiceCredential>(queryClient, queryKey, id);
+            // Optimistically remove from the ledgerSettings query data
+            const prevData = queryClient.getQueryData<{ uncategorizedCount: number; credentials: ServiceCredential[] }>(queryKey);
+            if (prevData) {
+                queryClient.setQueryData(queryKey, {
+                    ...prevData,
+                    credentials: prevData.credentials.filter((c) => c.id !== id),
+                });
+            }
+            return { prevData };
         },
-        onSettledExtra: (queryClient) => {
-            // Invalidate ledgerSettings to refresh credentials list in settings page
-            queryClient.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+        onRollback: (queryClient, context) => {
+            // Rollback to previous data if mutation fails
+            if (context?.prevData) {
+                queryClient.setQueryData(queryKey, context.prevData);
+            }
         },
     });
 
