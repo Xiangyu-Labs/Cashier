@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   checkSendRateLimit,
   checkSendRateLimitByIP,
@@ -6,18 +6,18 @@ import {
   setResendCooldown,
   getCanResendAt,
   checkVerifyRateLimit,
-} from '@/features/auth/server/services/otp-rate-limit';
-import { memoryStore } from '@/lib/memory-store';
+} from "@/features/auth/server/services/otp-rate-limit";
+import { memoryStore } from "@/lib/memory-store";
 
-describe('OTP Rate Limiting', () => {
+describe("OTP Rate Limiting", () => {
   beforeEach(async () => {
     // Clear all rate limit keys before each test
     await memoryStore.flushall();
   });
 
-  describe('checkSendRateLimit (per email)', () => {
-    it('should allow first 10 sends within 15 minutes', async () => {
-      const email = 'test@example.com';
+  describe("checkSendRateLimit (per email)", () => {
+    it("should allow first 10 sends within 15 minutes", async () => {
+      const email = "test@example.com";
 
       for (let i = 0; i < 10; i++) {
         const result = await checkSendRateLimit(email);
@@ -26,8 +26,8 @@ describe('OTP Rate Limiting', () => {
       }
     });
 
-    it('should block 11th send and return retryAfter', async () => {
-      const email = 'test@example.com';
+    it("should block 11th send and return retryAfter", async () => {
+      const email = "test@example.com";
 
       // Use up 10 attempts
       for (let i = 0; i < 10; i++) {
@@ -42,28 +42,28 @@ describe('OTP Rate Limiting', () => {
       expect(result.retryAfter).toBeLessThanOrEqual(15 * 60); // Max 15 minutes
     });
 
-    it('should be case-insensitive for email', async () => {
+    it("should be case-insensitive for email", async () => {
       // Use up 9 attempts with different cases
       for (let i = 0; i < 9; i++) {
-        await checkSendRateLimit(i % 2 === 0 ? 'Test@Example.COM' : 'TEST@EXAMPLE.COM');
+        await checkSendRateLimit(i % 2 === 0 ? "Test@Example.COM" : "TEST@EXAMPLE.COM");
       }
 
       // 10th attempt with lowercase should still work
-      const result1 = await checkSendRateLimit('test@example.com');
+      const result1 = await checkSendRateLimit("test@example.com");
       expect(result1.allowed).toBe(true);
 
       // 11th attempt should be blocked
-      const result2 = await checkSendRateLimit('test@example.com');
+      const result2 = await checkSendRateLimit("test@example.com");
       expect(result2.allowed).toBe(false);
       expect(result2.remainingAttempts).toBe(0);
     });
 
-    it('should fail open on error', async () => {
+    it("should fail open on error", async () => {
       // Mock memoryStore.incr to throw an error
       const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error('Store error'));
+      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
 
-      const result = await checkSendRateLimit('test@example.com');
+      const result = await checkSendRateLimit("test@example.com");
       expect(result.allowed).toBe(true);
       expect(result.remainingAttempts).toBe(10); // Default max attempts
 
@@ -72,9 +72,9 @@ describe('OTP Rate Limiting', () => {
     });
   });
 
-  describe('checkSendRateLimitByIP', () => {
-    it('should allow first 10 sends within 1 hour', async () => {
-      const ip = '192.168.1.1';
+  describe("checkSendRateLimitByIP", () => {
+    it("should allow first 10 sends within 1 hour", async () => {
+      const ip = "192.168.1.1";
 
       for (let i = 0; i < 10; i++) {
         const result = await checkSendRateLimitByIP(ip);
@@ -83,8 +83,8 @@ describe('OTP Rate Limiting', () => {
       }
     });
 
-    it('should block 11th send and return retryAfter', async () => {
-      const ip = '192.168.1.1';
+    it("should block 11th send and return retryAfter", async () => {
+      const ip = "192.168.1.1";
 
       // Use up 10 attempts
       for (let i = 0; i < 10; i++) {
@@ -99,11 +99,11 @@ describe('OTP Rate Limiting', () => {
       expect(result.retryAfter).toBeLessThanOrEqual(60 * 60); // Max 1 hour
     });
 
-    it('should fail open on error', async () => {
+    it("should fail open on error", async () => {
       const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error('Store error'));
+      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
 
-      const result = await checkSendRateLimitByIP('192.168.1.1');
+      const result = await checkSendRateLimitByIP("192.168.1.1");
       expect(result.allowed).toBe(true);
       expect(result.remainingAttempts).toBe(10);
 
@@ -111,17 +111,17 @@ describe('OTP Rate Limiting', () => {
     });
   });
 
-  describe('checkResendCooldown', () => {
-    it('should allow resend when no cooldown is active', async () => {
-      const email = 'test@example.com';
+  describe("checkResendCooldown", () => {
+    it("should allow resend when no cooldown is active", async () => {
+      const email = "test@example.com";
 
       const result = await checkResendCooldown(email);
       expect(result.allowed).toBe(true);
       expect(result.retryAfter).toBeUndefined();
     });
 
-    it('should block resend when cooldown is active', async () => {
-      const email = 'test@example.com';
+    it("should block resend when cooldown is active", async () => {
+      const email = "test@example.com";
 
       // Set cooldown
       await setResendCooldown(email);
@@ -133,27 +133,27 @@ describe('OTP Rate Limiting', () => {
       expect(result.retryAfter).toBeLessThanOrEqual(60); // Max 60 seconds
     });
 
-    it('should be case-insensitive for email', async () => {
-      await setResendCooldown('Test@Example.COM');
+    it("should be case-insensitive for email", async () => {
+      await setResendCooldown("Test@Example.COM");
 
-      const result = await checkResendCooldown('test@example.com');
+      const result = await checkResendCooldown("test@example.com");
       expect(result.allowed).toBe(false);
     });
 
-    it('should fail open on error', async () => {
+    it("should fail open on error", async () => {
       const originalTtl = memoryStore.ttl;
-      memoryStore.ttl = vi.fn().mockRejectedValue(new Error('Store error'));
+      memoryStore.ttl = vi.fn().mockRejectedValue(new Error("Store error"));
 
-      const result = await checkResendCooldown('test@example.com');
+      const result = await checkResendCooldown("test@example.com");
       expect(result.allowed).toBe(true);
 
       memoryStore.ttl = originalTtl;
     });
   });
 
-  describe('setResendCooldown', () => {
-    it('should set cooldown that expires after configured time', async () => {
-      const email = 'test@example.com';
+  describe("setResendCooldown", () => {
+    it("should set cooldown that expires after configured time", async () => {
+      const email = "test@example.com";
 
       await setResendCooldown(email);
 
@@ -163,23 +163,23 @@ describe('OTP Rate Limiting', () => {
 
       // Wait for cooldown to expire (using a short wait for testing)
       // In real scenario, this would be 60 seconds
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Note: In a real test with actual timing, we'd need to wait 60s or mock time
       // For now, we just verify the cooldown was set
     });
   });
 
-  describe('getCanResendAt', () => {
-    it('should return null when no cooldown is active', async () => {
-      const email = 'test@example.com';
+  describe("getCanResendAt", () => {
+    it("should return null when no cooldown is active", async () => {
+      const email = "test@example.com";
 
       const canResendAt = await getCanResendAt(email);
       expect(canResendAt).toBeNull();
     });
 
-    it('should return future timestamp when cooldown is active', async () => {
-      const email = 'test@example.com';
+    it("should return future timestamp when cooldown is active", async () => {
+      const email = "test@example.com";
       const now = Math.floor(Date.now() / 1000);
 
       await setResendCooldown(email);
@@ -190,20 +190,20 @@ describe('OTP Rate Limiting', () => {
       expect(canResendAt!).toBeLessThanOrEqual(now + 60); // Within 60 seconds
     });
 
-    it('should fail open on error', async () => {
+    it("should fail open on error", async () => {
       const originalTtl = memoryStore.ttl;
-      memoryStore.ttl = vi.fn().mockRejectedValue(new Error('Store error'));
+      memoryStore.ttl = vi.fn().mockRejectedValue(new Error("Store error"));
 
-      const result = await getCanResendAt('test@example.com');
+      const result = await getCanResendAt("test@example.com");
       expect(result).toBeNull();
 
       memoryStore.ttl = originalTtl;
     });
   });
 
-  describe('checkVerifyRateLimit (brute force protection)', () => {
-    it('should allow first 10 verifications per minute', async () => {
-      const ip = '192.168.1.1';
+  describe("checkVerifyRateLimit (brute force protection)", () => {
+    it("should allow first 10 verifications per minute", async () => {
+      const ip = "192.168.1.1";
 
       for (let i = 0; i < 10; i++) {
         const result = await checkVerifyRateLimit(ip);
@@ -211,8 +211,8 @@ describe('OTP Rate Limiting', () => {
       }
     });
 
-    it('should block 11th verification', async () => {
-      const ip = '192.168.1.1';
+    it("should block 11th verification", async () => {
+      const ip = "192.168.1.1";
 
       // Use up 10 attempts
       for (let i = 0; i < 10; i++) {
@@ -224,21 +224,21 @@ describe('OTP Rate Limiting', () => {
       expect(result).toBe(false);
     });
 
-    it('should fail open on error', async () => {
+    it("should fail open on error", async () => {
       const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error('Store error'));
+      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
 
-      const result = await checkVerifyRateLimit('192.168.1.1');
+      const result = await checkVerifyRateLimit("192.168.1.1");
       expect(result).toBe(true); // Fail open
 
       memoryStore.incr = originalIncr;
     });
   });
 
-  describe('Rate limit isolation', () => {
-    it('should isolate rate limits between different emails', async () => {
-      const email1 = 'user1@example.com';
-      const email2 = 'user2@example.com';
+  describe("Rate limit isolation", () => {
+    it("should isolate rate limits between different emails", async () => {
+      const email1 = "user1@example.com";
+      const email2 = "user2@example.com";
 
       // Use up email1's attempts
       for (let i = 0; i < 10; i++) {
@@ -251,9 +251,9 @@ describe('OTP Rate Limiting', () => {
       expect(result.remainingAttempts).toBe(9);
     });
 
-    it('should isolate rate limits between different IPs', async () => {
-      const ip1 = '192.168.1.1';
-      const ip2 = '192.168.1.2';
+    it("should isolate rate limits between different IPs", async () => {
+      const ip1 = "192.168.1.1";
+      const ip2 = "192.168.1.2";
 
       // Use up ip1's attempts
       for (let i = 0; i < 10; i++) {

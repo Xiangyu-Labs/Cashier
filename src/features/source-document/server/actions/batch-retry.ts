@@ -18,122 +18,120 @@ import { logger } from "@/lib/logger";
  * Note: Batch retry does not have editing functionality, uses original text and imageUrls.
  */
 export async function batchRetrySourceDocumentsAction(
-    ledgerId: string,
-    sourceDocumentIds: string[]
+  ledgerId: string,
+  sourceDocumentIds: string[]
 ): Promise<void> {
-    const { ledger, error } = await requireLedgerAccess(ledgerId);
-    if (error) throw new UnauthorizedError();
+  const { ledger, error } = await requireLedgerAccess(ledgerId);
+  if (error) throw new UnauthorizedError();
 
-    if (sourceDocumentIds.length === 0) {
-        logger.debug({ ledgerId }, "Batch retry called with empty document list");
-        return;
-    }
+  if (sourceDocumentIds.length === 0) {
+    logger.debug({ ledgerId }, "Batch retry called with empty document list");
+    return;
+  }
 
-    const q = forLedger(sourceDocuments, ledgerId);
+  const q = forLedger(sourceDocuments, ledgerId);
 
-    // 1. Fetch all old documents to get their data
-    const oldDocs = await db.query.sourceDocuments.findMany({
-        where: and(
-            q.whereActive,
-            inArray(sourceDocuments.id, sourceDocumentIds)
-        )
+  // 1. Fetch all old documents to get their data
+  const oldDocs = await db.query.sourceDocuments.findMany({
+    where: and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)),
+  });
+
+  if (oldDocs.length === 0) {
+    logger.debug({ ledgerId, sourceDocumentIds }, "No active documents found for batch retry");
+    return;
+  }
+
+  // 2. Find all related task_runs before creating new documents
+  const relatedTaskRuns = await db.query.taskRuns.findMany({
+    where: and(
+      isNull(taskRuns.deletedAt),
+      eq(taskRuns.scopeId, ledgerId),
+      eq(taskRuns.entityType, "source_document"),
+      inArray(taskRuns.entityId, sourceDocumentIds)
+    ),
+  });
+
+  // 3. Create new documents for each old document (preserving only ledgerId and entryDate)
+  const newDocMappings: Array<{
+    oldDocId: string;
+    newDocId: string;
+    text: string | undefined;
+    imageUrls: string[];
+  }> = [];
+
+  for (const oldDoc of oldDocs) {
+    const newDocId = crypto.randomUUID();
+    newDocMappings.push({
+      oldDocId: oldDoc.id,
+      newDocId,
+      text: oldDoc.text || undefined,
+      imageUrls: oldDoc.imageUrls || [],
     });
+  }
 
-    if (oldDocs.length === 0) {
-        logger.debug({ ledgerId, sourceDocumentIds }, "No active documents found for batch retry");
-        return;
-    }
+  // Insert all new documents
+  await db.insert(sourceDocuments).values(
+    newDocMappings.map((mapping) => ({
+      id: mapping.newDocId,
+      ledgerId: ledgerId,
+      entryDate: oldDocs.find((d) => d.id === mapping.oldDocId)?.entryDate,
+      text: mapping.text,
+      imageUrls: mapping.imageUrls,
+      status: "queued" as const,
+      type: "ai_parsed" as const,
+      title: null, // Let AI regenerate title
+      metadata: {}, // Empty metadata for fresh parse
+    }))
+  );
 
-    // 2. Find all related task_runs before creating new documents
-    const relatedTaskRuns = await db.query.taskRuns.findMany({
-        where: and(
-            isNull(taskRuns.deletedAt),
-            eq(taskRuns.scopeId, ledgerId),
-            eq(taskRuns.entityType, 'source_document'),
-            inArray(taskRuns.entityId, sourceDocumentIds)
-        ),
-    });
+  logger.debug(
+    { ledgerId, count: newDocMappings.length },
+    "Created new source documents for batch retry"
+  );
 
-    // 3. Create new documents for each old document (preserving only ledgerId and entryDate)
-    const newDocMappings: Array<{
-        oldDocId: string;
-        newDocId: string;
-        text: string | undefined;
-        imageUrls: string[];
-    }> = [];
+  // 4. Soft delete old documents
+  await db
+    .update(sourceDocuments)
+    .set({ deletedAt: new Date() })
+    .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)));
 
-    for (const oldDoc of oldDocs) {
-        const newDocId = crypto.randomUUID();
-        newDocMappings.push({
-            oldDocId: oldDoc.id,
-            newDocId,
-            text: oldDoc.text || undefined,
-            imageUrls: oldDoc.imageUrls || [],
-        });
-    }
+  logger.debug(
+    { ledgerId, oldDocIds: sourceDocumentIds },
+    "Soft deleted old source documents for batch retry"
+  );
 
-    // Insert all new documents
-    await db.insert(sourceDocuments).values(
-        newDocMappings.map(mapping => ({
-            id: mapping.newDocId,
-            ledgerId: ledgerId,
-            entryDate: oldDocs.find(d => d.id === mapping.oldDocId)?.entryDate,
-            text: mapping.text,
-            imageUrls: mapping.imageUrls,
-            status: "queued" as const,
-            type: "ai_parsed" as const,
-            title: null, // Let AI regenerate title
-            metadata: {}, // Empty metadata for fresh parse
-        }))
+  // 5. Cancel any running/pending tasks for old documents
+  // Note: handleParseCancel will be triggered but old docs are already soft deleted
+  const runningTasks = relatedTaskRuns.filter(
+    (task) => task.status === "pending" || task.status === "running"
+  );
+  for (const task of runningTasks) {
+    await flowEngine.cancel(task.id);
+  }
+
+  // 6. Soft delete old task_runs for old documents (clean up)
+  const taskIdsToDelete = relatedTaskRuns.map((t) => t.id);
+  if (taskIdsToDelete.length > 0) {
+    await db
+      .update(taskRuns)
+      .set({ deletedAt: new Date() })
+      .where(inArray(taskRuns.id, taskIdsToDelete));
+  }
+
+  // 7. Submit new tasks for each new document using Promise.allSettled to handle partial failures
+  const results = await Promise.allSettled(
+    newDocMappings.map(async (mapping) => {
+      const images = mapping.imageUrls.map((url) => ({ data: url, mimeType: "image/jpeg" }));
+      await prepareSourceDocumentTask(ledgerId, ledger, mapping.text, images, mapping.newDocId);
+    })
+  );
+
+  // Log any failures but don't fail the entire batch
+  const failures = results.filter((r) => r.status === "rejected");
+  if (failures.length > 0) {
+    logger.warn(
+      { ledgerId, failedCount: failures.length, totalCount: newDocMappings.length },
+      "Some documents failed to retry in batch operation"
     );
-
-    logger.debug(
-        { ledgerId, count: newDocMappings.length },
-        "Created new source documents for batch retry"
-    );
-
-    // 4. Soft delete old documents
-    await db.update(sourceDocuments)
-        .set({ deletedAt: new Date() })
-        .where(and(
-            q.whereActive,
-            inArray(sourceDocuments.id, sourceDocumentIds)
-        ));
-
-    logger.debug(
-        { ledgerId, oldDocIds: sourceDocumentIds },
-        "Soft deleted old source documents for batch retry"
-    );
-
-    // 5. Cancel any running/pending tasks for old documents
-    // Note: handleParseCancel will be triggered but old docs are already soft deleted
-    const runningTasks = relatedTaskRuns.filter(
-        task => task.status === 'pending' || task.status === 'running'
-    );
-    for (const task of runningTasks) {
-        await flowEngine.cancel(task.id);
-    }
-
-    // 6. Soft delete old task_runs for old documents (clean up)
-    const taskIdsToDelete = relatedTaskRuns.map(t => t.id);
-    if (taskIdsToDelete.length > 0) {
-        await db.update(taskRuns)
-            .set({ deletedAt: new Date() })
-            .where(inArray(taskRuns.id, taskIdsToDelete));
-    }
-
-    // 7. Submit new tasks for each new document using Promise.allSettled to handle partial failures
-    const results = await Promise.allSettled(newDocMappings.map(async (mapping) => {
-        const images = mapping.imageUrls.map(url => ({ data: url, mimeType: "image/jpeg" }));
-        await prepareSourceDocumentTask(ledgerId, ledger, mapping.text, images, mapping.newDocId);
-    }));
-
-    // Log any failures but don't fail the entire batch
-    const failures = results.filter(r => r.status === 'rejected');
-    if (failures.length > 0) {
-        logger.warn(
-            { ledgerId, failedCount: failures.length, totalCount: newDocMappings.length },
-            "Some documents failed to retry in batch operation"
-        );
-    }
+  }
 }

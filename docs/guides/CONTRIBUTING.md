@@ -41,26 +41,28 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 <!-- AUTO-GENERATED: Synced from package.json -->
+
 ## Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Production build with type checking |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm test` | Run tests in watch mode |
-| `npm run test:run` | Run tests once |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run db:push` | Push schema changes to database |
-| `npm run db:generate` | Generate Drizzle migrations |
-| `npm run db:migrate` | Run Drizzle migrations |
-| `npm run db:studio` | Launch Drizzle Studio GUI |
-| `npm run db:drop` | Drop database (use with caution) |
-| `npm run docker:dev` | Start dev container with hot reload |
-| `npm run docker:build` | Build Docker image only |
-| `npm run docker:prod` | Build and start production container |
-| `npm run docker:down` | Stop and remove containers |
+| Command                 | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `npm run dev`           | Start development server with hot reload |
+| `npm run build`         | Production build with type checking      |
+| `npm run start`         | Start production server                  |
+| `npm run lint`          | Run ESLint                               |
+| `npm test`              | Run tests in watch mode                  |
+| `npm run test:run`      | Run tests once                           |
+| `npm run test:coverage` | Run tests with coverage report           |
+| `npm run db:push`       | Push schema changes to database          |
+| `npm run db:generate`   | Generate Drizzle migrations              |
+| `npm run db:migrate`    | Run Drizzle migrations                   |
+| `npm run db:studio`     | Launch Drizzle Studio GUI                |
+| `npm run db:drop`       | Drop database (use with caution)         |
+| `npm run docker:dev`    | Start dev container with hot reload      |
+| `npm run docker:build`  | Build Docker image only                  |
+| `npm run docker:prod`   | Build and start production container     |
+| `npm run docker:down`   | Stop and remove containers               |
+
 <!-- END AUTO-GENERATED -->
 
 ### Docker Development (Alternative)
@@ -77,9 +79,9 @@ We use **Vitest** for testing with **in-memory SQLite** for fast, isolated tests
 
 ### Test Types
 
-| Type | Location | Description |
-|------|----------|-------------|
-| **Unit Tests** | `tests/unit/**/*.test.ts` | Single function logic, no database |
+| Type                  | Location                         | Description                                     |
+| --------------------- | -------------------------------- | ----------------------------------------------- |
+| **Unit Tests**        | `tests/unit/**/*.test.ts`        | Single function logic, no database              |
 | **Integration Tests** | `tests/integration/**/*.test.ts` | Server Actions, Database Queries, API Endpoints |
 
 ### Running Tests
@@ -120,7 +122,7 @@ Never hit the real OpenAI API in tests. A global mock is provided in `tests/setu
 import { vi } from "vitest";
 
 vi.mocked(getOpenAIClient).mockReturnValue({
-    generateContent: vi.fn().mockResolvedValue({ content: "Custom Result" })
+  generateContent: vi.fn().mockResolvedValue({ content: "Custom Result" }),
 } as any);
 ```
 
@@ -133,13 +135,13 @@ Always create new objects, never mutate existing ones:
 ```typescript
 // WRONG
 function addItem(items: Item[], newItem: Item) {
-    items.push(newItem);  // Mutates original
-    return items;
+  items.push(newItem); // Mutates original
+  return items;
 }
 
 // CORRECT
 function addItem(items: Item[], newItem: Item) {
-    return [...items, newItem];  // Returns new array
+  return [...items, newItem]; // Returns new array
 }
 ```
 
@@ -153,6 +155,7 @@ function addItem(items: Item[], newItem: Item) {
 ### Error Handling
 
 Always handle errors comprehensively:
+
 - Handle errors explicitly at every level
 - Provide user-friendly error messages in UI-facing code
 - Log detailed error context on the server side
@@ -161,6 +164,7 @@ Always handle errors comprehensively:
 ### Input Validation
 
 Always validate at system boundaries:
+
 - Validate all user input before processing
 - Use schema-based validation (Zod) where available
 - Fail fast with clear error messages
@@ -169,6 +173,7 @@ Always validate at system boundaries:
 ### Code Quality Checklist
 
 Before submitting:
+
 - [ ] Code is readable and well-named
 - [ ] Functions are small (<50 lines)
 - [ ] Files are focused (<800 lines)
@@ -198,6 +203,7 @@ type: description
 ```
 
 **Types**:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `refactor`: Code change that neither fixes a bug nor adds a feature
@@ -220,19 +226,23 @@ feat: add batch operations to ledger entries
 ## Troubleshooting
 
 ### Database Error
+
 - Database file is created automatically in `./data/sqlite.db`
 - Ensure the `./data` directory is writable
 
 ### Auth.js Error
+
 - Generate a new secret: `openssl rand -base64 32`
 - Add it to `AUTH_SECRET` in `.env.local`
 
 ### OpenAI_API_KEY not set
+
 - Ensure you've added your API key to `.env.local`
 - Check the key is valid and has credits
 
 ## Questions?
 
 If you have questions, please:
+
 1. Check existing documentation in `/docs`
 2. Review the [CLAUDE.md](../CLAUDE.md) for architecture decisions

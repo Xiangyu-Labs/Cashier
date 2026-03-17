@@ -4,10 +4,7 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
-import {
-    type SerializedSourceDocument,
-    serializeSourceDocument,
-} from "@/lib/serialization";
+import { type SerializedSourceDocument, serializeSourceDocument } from "@/lib/serialization";
 
 // Return type for getSourceDocumentByIdAction - uses standardized API types
 export type SourceDocumentWithEntries = SerializedSourceDocument;
@@ -21,46 +18,41 @@ export type SourceDocumentWithEntries = SerializedSourceDocument;
  * until after we fetch the document metadata. It also returns null instead of throwing
  * to avoid leaking document existence information.
  */
-export async function getSourceDocumentByIdAction(id: string): Promise<SourceDocumentWithEntries | null> {
-    // First, get just the ledgerId to check access (minimal data exposure)
-    const docMeta = await db.query.sourceDocuments.findFirst({
-        where: and(
-            eq(sourceDocuments.id, id),
-            isNull(sourceDocuments.deletedAt)
-        ),
-        columns: { ledgerId: true }
-    });
+export async function getSourceDocumentByIdAction(
+  id: string
+): Promise<SourceDocumentWithEntries | null> {
+  // First, get just the ledgerId to check access (minimal data exposure)
+  const docMeta = await db.query.sourceDocuments.findFirst({
+    where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),
+    columns: { ledgerId: true },
+  });
 
-    if (!docMeta) {
-        return null;
-    }
+  if (!docMeta) {
+    return null;
+  }
 
-    // Verify access before fetching full document
-    const { error } = await requireLedgerAccess(docMeta.ledgerId);
-    if (error) {
-        // Return null instead of throwing to avoid leaking document existence
-        return null;
-    }
+  // Verify access before fetching full document
+  const { error } = await requireLedgerAccess(docMeta.ledgerId);
+  if (error) {
+    // Return null instead of throwing to avoid leaking document existence
+    return null;
+  }
 
-    // Now fetch full document with relations
-    const doc = await db.query.sourceDocuments.findFirst({
-        where: and(
-            eq(sourceDocuments.id, id),
-            isNull(sourceDocuments.deletedAt)
-        ),
-        with: {
-            ledgerEntries: {
-                where: (entries, { isNull }) => isNull(entries.deletedAt),
-                with: { category: true }
-            }
-        }
-    });
+  // Now fetch full document with relations
+  const doc = await db.query.sourceDocuments.findFirst({
+    where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),
+    with: {
+      ledgerEntries: {
+        where: (entries, { isNull }) => isNull(entries.deletedAt),
+        with: { category: true },
+      },
+    },
+  });
 
-    if (!doc) {
-        return null;
-    }
+  if (!doc) {
+    return null;
+  }
 
-    // Serialize to JSON-compatible format with string dates
-    return serializeSourceDocument(doc);
+  // Serialize to JSON-compatible format with string dates
+  return serializeSourceDocument(doc);
 }
-

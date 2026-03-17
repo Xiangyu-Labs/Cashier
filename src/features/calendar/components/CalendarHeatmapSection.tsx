@@ -9,14 +9,14 @@
  * No calendar features - just a pure heatmap.
  */
 
-'use client';
+"use client";
 
-import { useMemo, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
-import { cn } from '@/lib/utils';
-import { AdaptiveHeatmap } from './AdaptiveHeatmap';
-import { getHeatmapLegend } from '../lib/heatmap-colors';
-import type { CalendarDayData, CalendarHeatmapStats } from '../types';
+import { useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import { AdaptiveHeatmap } from "./AdaptiveHeatmap";
+import { getHeatmapLegend } from "../lib/heatmap-colors";
+import type { CalendarDayData, CalendarHeatmapStats } from "../types";
 
 interface CalendarHeatmapSectionProps {
   days: CalendarDayData[];
@@ -40,7 +40,7 @@ export function CalendarHeatmapSection({
   className,
   queryRange,
 }: CalendarHeatmapSectionProps) {
-  const t = useTranslations('Calendar');
+  const t = useTranslations("Calendar");
 
   // Handle day click
   const handleDayClick = useCallback(
@@ -60,23 +60,28 @@ export function CalendarHeatmapSection({
     return (
       <div
         className={cn(
-          'h-[200px] flex items-center justify-center text-muted-foreground text-sm bg-surface rounded-lg',
+          "h-[200px] flex items-center justify-center text-muted-foreground text-sm bg-surface rounded-lg",
           className
         )}
       >
-        {t('noData')}
+        {t("noData")}
       </div>
     );
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Heatmap grid */}
-      <AdaptiveHeatmap days={days} stats={stats} onDayClick={handleDayClick} queryRange={queryRange} />
+      <AdaptiveHeatmap
+        days={days}
+        stats={stats}
+        onDayClick={handleDayClick}
+        queryRange={queryRange}
+      />
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 pt-2">
-        <span className="text-xs text-muted-foreground">{t('less')}</span>
+        <span className="text-xs text-muted-foreground">{t("less")}</span>
         <div className="flex gap-1">
           {legend.map((item) => (
             <div
@@ -87,7 +92,7 @@ export function CalendarHeatmapSection({
             />
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">{t('more')}</span>
+        <span className="text-xs text-muted-foreground">{t("more")}</span>
       </div>
     </div>
   );

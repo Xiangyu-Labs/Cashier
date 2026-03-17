@@ -4,10 +4,15 @@ import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-  getSourceDocumentsAction
+  getSourceDocumentsAction,
 } from "@/features/source-document/server/actions";
 import { getTestDb } from "../../setup";
-import { entryCategories as categories, ledgerEntries, sourceDocuments, ledgers } from "@/lib/db/schema";
+import {
+  entryCategories as categories,
+  ledgerEntries,
+  sourceDocuments,
+  ledgers,
+} from "@/lib/db/schema";
 import { eq, inArray, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
@@ -63,17 +68,21 @@ describe("SourceDocument Actions", () => {
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock({
         categories: ["水果"],
-        entries: [{
-          item_name: "苹果",
-          amount: 20,
-          currency: "CNY",
-          category_index: 1,
-          notes: "2kg * 10元/kg, 红富士苹果"
-        }]
+        entries: [
+          {
+            item_name: "苹果",
+            amount: 20,
+            currency: "CNY",
+            category_index: 1,
+            notes: "2kg * 10元/kg, 红富士苹果",
+          },
+        ],
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    const result = await createSourceDocumentAction(testLedgerId, { text: "苹果2公斤，每公斤10元" });
+    const result = await createSourceDocumentAction(testLedgerId, {
+      text: "苹果2公斤，每公斤10元",
+    });
 
     expect(result.status).toBe("queued");
 
@@ -82,7 +91,7 @@ describe("SourceDocument Actions", () => {
 
     const db = getTestDb();
     const savedEntry = await db.query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId)
+      where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId),
     });
 
     expect(savedEntry).toBeDefined();
@@ -120,7 +129,7 @@ describe("SourceDocument Actions", () => {
     const db = getTestDb();
     const savedEntries = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, result.sourceDocumentId!),
-      with: { category: true }
+      with: { category: true },
     });
 
     expect(savedEntries).toHaveLength(1);
@@ -146,13 +155,16 @@ describe("SourceDocument Actions", () => {
     await processAllPendingTasks();
   });
 
-
   it("should return error when no input provided", async () => {
-    await expect(createSourceDocumentAction(testLedgerId, {})).rejects.toThrow("At least one input");
+    await expect(createSourceDocumentAction(testLedgerId, {})).rejects.toThrow(
+      "At least one input"
+    );
   });
 
   it("should return error for non-existent ledger", async () => {
-    await expect(createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })).rejects.toThrow("Unauthorized or Ledger not found");
+    await expect(
+      createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })
+    ).rejects.toThrow("Unauthorized or Ledger not found");
   });
 
   it("should handle image input", async () => {
@@ -180,7 +192,9 @@ describe("SourceDocument Actions", () => {
 
   it("should delete source document and associated ledger entries", async () => {
     // 1. Create a message first
-    const createRes = await createSourceDocumentAction(testLedgerId, { text: "待删除的项目 100元" });
+    const createRes = await createSourceDocumentAction(testLedgerId, {
+      text: "待删除的项目 100元",
+    });
     const sourceDocumentId = createRes.sourceDocumentId!;
 
     // Process
@@ -203,12 +217,11 @@ describe("SourceDocument Actions", () => {
     expect(docAfter).toBeDefined();
     expect(docAfter?.deletedAt).not.toBeNull();
 
-
     const entriesAfter = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
     });
     expect(entriesAfter.length).toBeGreaterThan(0);
-    entriesAfter.forEach(entry => {
+    entriesAfter.forEach((entry) => {
       expect(entry.deletedAt).not.toBeNull();
     });
   });
@@ -226,13 +239,13 @@ describe("SourceDocument Actions", () => {
     // 3. Verify
     const db = getTestDb();
     const docs = await db.query.sourceDocuments.findMany({
-      where: inArray(sourceDocuments.id, ids)
+      where: inArray(sourceDocuments.id, ids),
     });
     expect(docs).toHaveLength(2);
-    docs.forEach(d => expect(d.deletedAt).not.toBeNull());
+    docs.forEach((d) => expect(d.deletedAt).not.toBeNull());
 
     const retained = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, res3.sourceDocumentId!)
+      where: eq(sourceDocuments.id, res3.sourceDocumentId!),
     });
     expect(retained).toBeDefined();
   });
@@ -241,19 +254,25 @@ describe("SourceDocument Actions", () => {
     const db = getTestDb();
 
     // 1. Manually create docs in anomaly/completed state to avoid initial background processing
-    const [doc1] = await db.insert(sourceDocuments).values({
-      ledgerId: testLedgerId,
-      text: "Retry 1",
-      status: 'anomaly',
-      imageUrls: []
-    }).returning();
+    const [doc1] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Retry 1",
+        status: "anomaly",
+        imageUrls: [],
+      })
+      .returning();
 
-    const [doc2] = await db.insert(sourceDocuments).values({
-      ledgerId: testLedgerId,
-      text: "Retry 2",
-      status: 'anomaly',
-      imageUrls: []
-    }).returning();
+    const [doc2] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Retry 2",
+        status: "anomaly",
+        imageUrls: [],
+      })
+      .returning();
 
     // 2. Batch Retry
     // Note: New approach = soft delete old docs + create new docs with new IDs
@@ -264,20 +283,20 @@ describe("SourceDocument Actions", () => {
       where: and(
         inArray(sourceDocuments.id, [doc1.id, doc2.id]),
         isNull(sourceDocuments.deletedAt)
-      )
+      ),
     });
     expect(oldDocs).toHaveLength(0);
 
     // 4. Verify new docs are created (status may be queued/processing due to background tasks)
     // New docs have different IDs, same ledgerId, preserved text
     const allDocs = await db.query.sourceDocuments.findMany({
-      where: eq(sourceDocuments.ledgerId, testLedgerId)
+      where: eq(sourceDocuments.ledgerId, testLedgerId),
     });
-    const newDocs = allDocs.filter(d => d.id !== doc1.id && d.id !== doc2.id);
+    const newDocs = allDocs.filter((d) => d.id !== doc1.id && d.id !== doc2.id);
     expect(newDocs).toHaveLength(2);
-    newDocs.forEach(d => {
+    newDocs.forEach((d) => {
       // Status could be queued or processing (if task started)
-      expect(['queued', 'processing']).toContain(d.status);
+      expect(["queued", "processing"]).toContain(d.status);
       expect(d.deletedAt).toBeNull();
     });
 
@@ -288,12 +307,15 @@ describe("SourceDocument Actions", () => {
   it("should fetch ledger entries with relations when requested", async () => {
     // 1. Create a doc manually to avoid background processing
     const db = getTestDb();
-    const [doc] = await db.insert(sourceDocuments).values({
-      ledgerId: testLedgerId,
-      text: "Lunch",
-      status: "completed",
-      imageUrls: []
-    }).returning();
+    const [doc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Lunch",
+        status: "completed",
+        imageUrls: [],
+      })
+      .returning();
     const docId = doc.id;
 
     // 2. Add an entry manually
@@ -308,10 +330,13 @@ describe("SourceDocument Actions", () => {
 
     // 3. Fetch with includeLedgerEntries
     const result = await getSourceDocumentsAction(testLedgerId, {
-      includeLedgerEntries: true
+      includeLedgerEntries: true,
     });
 
-    const foundDoc = result.items.find(d => d.id === docId) as unknown as { id: string, ledgerEntries: { category?: { id: string } }[] };
+    const foundDoc = result.items.find((d) => d.id === docId) as unknown as {
+      id: string;
+      ledgerEntries: { category?: { id: string } }[];
+    };
     expect(foundDoc).toBeDefined();
     expect(foundDoc?.ledgerEntries).toHaveLength(1);
     expect(foundDoc?.ledgerEntries?.[0].category).toBeDefined();
@@ -322,24 +347,30 @@ describe("SourceDocument Actions", () => {
     const db = getTestDb();
 
     // Create doc with entryDate in Jan but created now (March)
-    const [docA] = await db.insert(sourceDocuments).values({
-      ledgerId: testLedgerId,
-      text: "January expense",
-      status: "completed",
-      imageUrls: [],
-      entryDate: "2024-01-15",  // Entry date in January
-      createdAt: new Date("2024-03-01"), // Created in March
-    }).returning();
+    const [docA] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "January expense",
+        status: "completed",
+        imageUrls: [],
+        entryDate: "2024-01-15", // Entry date in January
+        createdAt: new Date("2024-03-01"), // Created in March
+      })
+      .returning();
 
     // Create doc with entryDate in March but created in January
-    const [docB] = await db.insert(sourceDocuments).values({
-      ledgerId: testLedgerId,
-      text: "March expense",
-      status: "completed",
-      imageUrls: [],
-      entryDate: "2024-03-15",  // Entry date in March
-      createdAt: new Date("2024-01-01"), // Created in January
-    }).returning();
+    const [docB] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "March expense",
+        status: "completed",
+        imageUrls: [],
+        entryDate: "2024-03-15", // Entry date in March
+        createdAt: new Date("2024-01-01"), // Created in January
+      })
+      .returning();
 
     // Filter for January 2024
     const result = await getSourceDocumentsAction(testLedgerId, {
@@ -348,7 +379,7 @@ describe("SourceDocument Actions", () => {
     });
 
     // Should only return docA (entryDate in January), not docB
-    const ids = result.items.map(d => d.id);
+    const ids = result.items.map((d) => d.id);
     expect(ids).toContain(docA.id);
     expect(ids).not.toContain(docB.id);
   });

@@ -19,15 +19,15 @@
 //   // Check status
 //   const status = await flowEngine.getStatus(taskId)
 
-export * from './types'
-export { createFlowEngine } from './engine'
-export { createAIContext } from './ai-context'
-export { createDrizzleStorage } from './adapters/drizzle-storage'
+export * from "./types";
+export { createFlowEngine } from "./engine";
+export { createAIContext } from "./ai-context";
+export { createDrizzleStorage } from "./adapters/drizzle-storage";
 
 // ===== Default Cashier Instance =====
 
-import { createFlowEngine } from './engine'
-import { createDrizzleStorage } from './adapters/drizzle-storage'
+import { createFlowEngine } from "./engine";
+import { createDrizzleStorage } from "./adapters/drizzle-storage";
 
 /**
  * Default Flow Engine instance for Cashier
@@ -38,9 +38,9 @@ import { createDrizzleStorage } from './adapters/drizzle-storage'
  * Concurrency is controlled by MAX_TASK_WORKER env variable (default: 10).
  * Set to 0 for unlimited concurrent tasks.
  */
-const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER || '10', 10)
+const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER || "10", 10);
 
 export const flowEngine = createFlowEngine({
   storage: createDrizzleStorage(),
   maxConcurrentTasks,
-})
+});

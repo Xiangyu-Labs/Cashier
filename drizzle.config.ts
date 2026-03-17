@@ -26,7 +26,7 @@ export default defineConfig({
     "./src/features/ledger/server/schema.ts",
     "./src/features/source-document/server/schema.ts",
     "./src/features/task-queue/server/schema.ts",
-    "./src/lib/db/relations.ts"
+    "./src/lib/db/relations.ts",
   ],
   out: "./src/lib/db/migrations",
   dialect: "sqlite",

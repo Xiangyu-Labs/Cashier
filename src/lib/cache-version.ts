@@ -9,11 +9,11 @@ export const CACHE_VERSION = 2;
  * Call this on app initialization.
  */
 export function validateCacheVersion() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
-  const storedVersion = localStorage.getItem('cashier-cache-version');
+  const storedVersion = localStorage.getItem("cashier-cache-version");
   if (storedVersion !== String(CACHE_VERSION)) {
-    localStorage.removeItem('cashier-query-cache');
-    localStorage.setItem('cashier-cache-version', String(CACHE_VERSION));
+    localStorage.removeItem("cashier-query-cache");
+    localStorage.setItem("cashier-cache-version", String(CACHE_VERSION));
   }
 }

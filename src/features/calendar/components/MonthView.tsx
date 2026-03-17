@@ -5,15 +5,15 @@
  * Clean, borderless design optimized for readability.
  */
 
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import { getMonthGrid, formatDate } from '../lib/date-utils';
-import { getHeatmapLevel, getHeatmapColor, formatCellAmount } from '../lib/heatmap-colors';
-import type { CalendarHeatmapData } from '../types';
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { getMonthGrid, formatDate } from "../lib/date-utils";
+import { getHeatmapLevel, getHeatmapColor, formatCellAmount } from "../lib/heatmap-colors";
+import type { CalendarHeatmapData } from "../types";
 
 interface MonthViewProps {
   anchorDate: string;
@@ -23,7 +23,7 @@ interface MonthViewProps {
 }
 
 export function MonthView({ anchorDate, data, onDayClick, className }: MonthViewProps) {
-  const t = useTranslations('Calendar');
+  const t = useTranslations("Calendar");
   const grid = useMemo(() => getMonthGrid(anchorDate), [anchorDate]);
   const today = formatDate(new Date());
 
@@ -37,17 +37,14 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
   }, [data.days]);
 
   // Weekday headers (Sunday-first format)
-  const weekdays = t.raw('weekDays') as string[];
+  const weekdays = t.raw("weekDays") as string[];
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn("flex flex-col", className)}>
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-3">
         {weekdays.map((day) => (
-          <div
-            key={day}
-            className="text-center text-xs font-medium text-muted-foreground py-1"
-          >
+          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
             {day}
           </div>
         ))}
@@ -61,18 +58,18 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
           const count = dayData?.count || 0;
           const isToday = date === today;
           const level = getHeatmapLevel(amount, data.stats);
-          const dayNumber = parseInt(date.split('-')[2], 10);
+          const dayNumber = parseInt(date.split("-")[2], 10);
 
           return (
             <button
               key={date}
               onClick={() => onDayClick(date)}
               className={cn(
-                'relative flex flex-col items-center justify-start pt-1.5 rounded-lg transition-all duration-200',
-                'h-16 min-h-[4rem]',
-                'hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary',
-                !isCurrentMonth && 'opacity-30',
-                isToday && 'ring-2 ring-primary ring-offset-2'
+                "relative flex flex-col items-center justify-start pt-1.5 rounded-lg transition-all duration-200",
+                "h-16 min-h-[4rem]",
+                "hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary",
+                !isCurrentMonth && "opacity-30",
+                isToday && "ring-2 ring-primary ring-offset-2"
               )}
               style={{
                 backgroundColor: getHeatmapColor(level),
@@ -81,8 +78,8 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
               {/* Day number - top center */}
               <span
                 className={cn(
-                  'text-xs font-medium leading-none',
-                  level >= 4 ? 'text-white' : 'text-foreground'
+                  "text-xs font-medium leading-none",
+                  level >= 4 ? "text-white" : "text-foreground"
                 )}
               >
                 {dayNumber}
@@ -92,8 +89,8 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
               {amount > 0 && (
                 <span
                   className={cn(
-                    'mt-1 text-sm font-semibold leading-tight',
-                    level >= 4 ? 'text-white' : 'text-foreground'
+                    "mt-1 text-sm font-semibold leading-tight",
+                    level >= 4 ? "text-white" : "text-foreground"
                   )}
                 >
                   {formatCellAmount(amount)}
@@ -104,8 +101,8 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
               {count > 0 && amount === 0 && (
                 <span
                   className={cn(
-                    'mt-1 text-[10px]',
-                    level >= 4 ? 'text-white/80' : 'text-muted-foreground'
+                    "mt-1 text-[10px]",
+                    level >= 4 ? "text-white/80" : "text-muted-foreground"
                   )}
                 >
                   {count}笔

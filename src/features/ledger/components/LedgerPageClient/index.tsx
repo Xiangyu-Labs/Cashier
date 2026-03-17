@@ -9,12 +9,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/get";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue";
 import { useTranslations } from "next-intl";
@@ -22,22 +17,34 @@ import { LEDGER } from "@/lib/constants";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
-  () => import("@/features/source-document/components/SourceDocumentInput").then((m) => ({ default: m.SourceDocumentInput })),
+  () =>
+    import("@/features/source-document/components/SourceDocumentInput").then((m) => ({
+      default: m.SourceDocumentInput,
+    })),
   { ssr: false }
 );
 
 const QuickEntryForm = dynamic(
-  () => import("@/features/source-document/components/QuickEntryForm").then((m) => ({ default: m.QuickEntryForm })),
+  () =>
+    import("@/features/source-document/components/QuickEntryForm").then((m) => ({
+      default: m.QuickEntryForm,
+    })),
   { ssr: false }
 );
 
 const TaskQueueModal = dynamic(
-  () => import("@/features/task-queue/components/TaskQueueModal").then((m) => ({ default: m.TaskQueueModal })),
+  () =>
+    import("@/features/task-queue/components/TaskQueueModal").then((m) => ({
+      default: m.TaskQueueModal,
+    })),
   { ssr: false }
 );
 
 const ModalStackRenderer = dynamic(
-  () => import("@/components/providers/ModalStackRenderer").then((m) => ({ default: m.ModalStackRenderer })),
+  () =>
+    import("@/components/providers/ModalStackRenderer").then((m) => ({
+      default: m.ModalStackRenderer,
+    })),
   { ssr: false }
 );
 import { type PeriodParams } from "@/lib/period-utils";
@@ -45,7 +52,12 @@ import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filte
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { Header } from "./Header";
-import { EntriesTabSkeleton, DetailsTabSkeleton, StatsTabSkeleton, SettingsTabSkeleton } from "@/components/skeletons/TabSkeletons";
+import {
+  EntriesTabSkeleton,
+  DetailsTabSkeleton,
+  StatsTabSkeleton,
+  SettingsTabSkeleton,
+} from "@/components/skeletons/TabSkeletons";
 
 // Lazy load tab components to reduce initial bundle size
 const LedgerEntriesTab = dynamic(
@@ -55,19 +67,13 @@ const LedgerEntriesTab = dynamic(
   }
 );
 
-const DetailsTab = dynamic(
-  () => import("../DetailsTab").then((m) => ({ default: m.DetailsTab })),
-  {
-    loading: () => <DetailsTabSkeleton />,
-  }
-);
+const DetailsTab = dynamic(() => import("../DetailsTab").then((m) => ({ default: m.DetailsTab })), {
+  loading: () => <DetailsTabSkeleton />,
+});
 
-const StatsTab = dynamic(
-  () => import("../StatsTab").then((m) => ({ default: m.StatsTab })),
-  {
-    loading: () => <StatsTabSkeleton />,
-  }
-);
+const StatsTab = dynamic(() => import("../StatsTab").then((m) => ({ default: m.StatsTab })), {
+  loading: () => <StatsTabSkeleton />,
+});
 
 const SettingsTab = dynamic(
   () => import("../SettingsTab").then((m) => ({ default: m.SettingsTab })),
@@ -85,7 +91,11 @@ interface LedgerPageClientProps {
 const STALE_TIME = LEDGER.STALE_TIME_MS;
 const INPUT_PREFETCH_DELAY = 2000; // Prefetch input modal data after 2 seconds
 
-export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: LedgerPageClientProps) {
+export function LedgerPageClient({
+  ledgerId,
+  initialPeriod,
+  initialStatsDate,
+}: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -115,12 +125,11 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
   });
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
-  const {
-    periodParams,
-    filterParams,
-    handlePeriodChange,
-    handleFiltersChange,
-  } = usePeriodFilter({ pathname, searchParams, initialPeriod });
+  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange } = usePeriodFilter({
+    pathname,
+    searchParams,
+    initialPeriod,
+  });
 
   // 使用原始的 handleTabChange
 
@@ -133,36 +142,39 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
   });
 
   // Update URL when user changes advanced filters
-  const handleAdvancedFiltersChange = useCallback((filters: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  }) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const handleAdvancedFiltersChange = useCallback(
+    (filters: {
+      categoryId?: string | null;
+      currency?: string | null;
+      minAmount?: number | null;
+      maxAmount?: number | null;
+    }) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    if (filters.categoryId !== undefined) {
-      if (filters.categoryId) params.set("categoryId", filters.categoryId);
-      else params.delete("categoryId");
-    }
+      if (filters.categoryId !== undefined) {
+        if (filters.categoryId) params.set("categoryId", filters.categoryId);
+        else params.delete("categoryId");
+      }
 
-    if (filters.currency !== undefined) {
-      if (filters.currency) params.set("currency", filters.currency);
-      else params.delete("currency");
-    }
+      if (filters.currency !== undefined) {
+        if (filters.currency) params.set("currency", filters.currency);
+        else params.delete("currency");
+      }
 
-    if (filters.minAmount !== undefined) {
-      if (filters.minAmount !== null) params.set("minAmount", String(filters.minAmount));
-      else params.delete("minAmount");
-    }
+      if (filters.minAmount !== undefined) {
+        if (filters.minAmount !== null) params.set("minAmount", String(filters.minAmount));
+        else params.delete("minAmount");
+      }
 
-    if (filters.maxAmount !== undefined) {
-      if (filters.maxAmount !== null) params.set("maxAmount", String(filters.maxAmount));
-      else params.delete("maxAmount");
-    }
+      if (filters.maxAmount !== undefined) {
+        if (filters.maxAmount !== null) params.set("maxAmount", String(filters.maxAmount));
+        else params.delete("maxAmount");
+      }
 
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
-  }, [pathname, searchParams]);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    },
+    [pathname, searchParams]
+  );
 
   const [isInputOpen, setIsInputOpen] = useState(false);
   const [inputMode, setInputMode] = useState<"ai" | "quick">("ai");
@@ -194,16 +206,16 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
   useEffect(() => {
     const preloadTabs = () => {
       // 根据当前活动 Tab 预加载其他 Tab
-      if (activeTab !== 'details') {
+      if (activeTab !== "details") {
         import("../DetailsTab");
       }
-      if (activeTab !== 'stats') {
+      if (activeTab !== "stats") {
         import("../StatsTab");
       }
-      if (activeTab !== 'settings') {
+      if (activeTab !== "settings") {
         import("../SettingsTab");
       }
-      if (activeTab !== 'stream') {
+      if (activeTab !== "stream") {
         import("../LedgerEntriesTab");
       }
     };
@@ -293,11 +305,17 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
         </Tabs>
       </main>
 
-      <Dialog open={isInputOpen} onOpenChange={(open) => {
-        setIsInputOpen(open);
-        if (!open) setInputMode("ai");
-      }}>
-        <DialogContent className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl" aria-describedby={undefined}>
+      <Dialog
+        open={isInputOpen}
+        onOpenChange={(open) => {
+          setIsInputOpen(open);
+          if (!open) setInputMode("ai");
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle>{t("newRecord")}</DialogTitle>
           </DialogHeader>
@@ -330,7 +348,12 @@ export function LedgerPageClient({ ledgerId, initialPeriod, initialStatsDate }: 
           {inputMode === "ai" ? (
             <SourceDocumentInput ledgerId={ledgerId} onSuccess={() => setIsInputOpen(false)} />
           ) : (
-            <QuickEntryForm ledgerId={ledgerId} categories={categories} mainCurrency={mainCurrency} onSuccess={() => setIsInputOpen(false)} />
+            <QuickEntryForm
+              ledgerId={ledgerId}
+              categories={categories}
+              mainCurrency={mainCurrency}
+              onSuccess={() => setIsInputOpen(false)}
+            />
           )}
         </DialogContent>
       </Dialog>

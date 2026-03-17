@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getEntryCategoriesAction, createEntryCategoryAction, reorderEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import {
+  getEntryCategoriesAction,
+  createEntryCategoryAction,
+  reorderEntryCategoriesAction,
+} from "@/features/ledger/server/actions/categories";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgers } from "@/lib/db/schema";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -108,12 +112,26 @@ describe("reorderEntryCategoriesAction", () => {
     const db = getTestDb();
     // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
-    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Reorder Test Ledger", TEST_USER_ID);
+    const { ledgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      "Reorder Test Ledger",
+      TEST_USER_ID
+    );
     testLedgerId = ledgerId;
 
-    const [c1] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 1", sortOrder: 0 }).returning();
-    const [c2] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 2", sortOrder: 1 }).returning();
-    const [c3] = await db.insert(categories).values({ ledgerId: testLedgerId, name: "Cat 3", sortOrder: 2 }).returning();
+    const [c1] = await db
+      .insert(categories)
+      .values({ ledgerId: testLedgerId, name: "Cat 1", sortOrder: 0 })
+      .returning();
+    const [c2] = await db
+      .insert(categories)
+      .values({ ledgerId: testLedgerId, name: "Cat 2", sortOrder: 1 })
+      .returning();
+    const [c3] = await db
+      .insert(categories)
+      .values({ ledgerId: testLedgerId, name: "Cat 3", sortOrder: 2 })
+      .returning();
 
     category1Id = c1.id;
     category2Id = c2.id;

@@ -4,7 +4,7 @@ import { useLedgerTabs } from "@/features/ledger/components/LedgerPageClient/use
 
 // Mock window.history.replaceState
 const mockReplaceState = vi.fn();
-Object.defineProperty(window, 'history', {
+Object.defineProperty(window, "history", {
   value: {
     replaceState: mockReplaceState,
   },
@@ -60,11 +60,7 @@ describe("useLedgerTabs", () => {
     });
 
     // Verify URL was updated
-    expect(mockReplaceState).toHaveBeenCalledWith(
-      null,
-      "",
-      "/ledger/test-id?tab=details"
-    );
+    expect(mockReplaceState).toHaveBeenCalledWith(null, "", "/ledger/test-id?tab=details");
 
     // Simulate URL change being reflected back to component (like Next.js router would do)
     searchParams = new URLSearchParams("tab=details");

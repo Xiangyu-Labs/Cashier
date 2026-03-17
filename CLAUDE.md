@@ -41,6 +41,7 @@ npm run docker:down      # Stop containers
 ## Architecture
 
 ### Directory Structure
+
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
 - `src/features/` - Domain modules: `ai`, `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `tasks`. Each self-contained with `server/` (actions, services, schema), `components/`, and `client/` (hooks)
@@ -53,7 +54,9 @@ npm run docker:down      # Stop containers
 - `tests/` - Unit tests in `unit/`, integration tests in `integration/`, shared fixtures in `fixtures/`
 
 ### Feature Module Structure
+
 Each feature under `src/features/` follows this layout:
+
 ```
 src/features/{domain}/
 ├── server/
@@ -74,12 +77,14 @@ src/features/{domain}/
 **In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are auto-discovered from `**/server/tasks/*.task.ts` files via `autoRegisterTasks()` in `src/instrumentation.ts`.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
+
 - `AppError` - Base error class with `code`, `statusCode`, and `details`
 - `ValidationError` (400), `UnauthorizedError` (401), `ForbiddenError` (403), `NotFoundError` (404), `RateLimitError` (429)
 - Use `toErrorResponse(error)` and `getErrorStatusCode(error)` from `src/lib/error-handlers.ts` for consistent API error responses
 - Server Actions should throw errors directly (not return `{ success, error }` objects)
 
 **Custom Hooks**: Extract complex component logic into focused hooks:
+
 - `usePendingChanges()` - Track pending form changes with dirty checking
 - `useSelection()` - Manage batch selection state (selection mode, selected IDs, select all)
 - Place feature-specific hooks in `src/features/{domain}/client/hooks/`
@@ -94,6 +99,7 @@ src/features/{domain}/
 **Optimistic updates**: Mutations use TanStack Query's `onMutate`/`onError`/`onSettled` pattern — never manual `useState` for optimistic state. Always `cancelQueries` before update, save previous data for rollback, and `invalidateQueries` in `onSettled`.
 
 ### Testing
+
 - Tests use in-memory SQLite (`:memory:`), no external DB needed
 - `fileParallelism: false` in vitest config for DB consistency
 - Global mocks in `tests/setup.ts`: `@/lib/db`, `@/auth` (test user `00000000-0000-0000-0000-000000000000`), `next-intl`, `next/cache`
@@ -101,6 +107,7 @@ src/features/{domain}/
 - Test fixtures in `tests/fixtures/`
 
 ### Development Preferences
+
 - Server Actions throw errors directly (no `{ success, error }` result objects)
 - Use Zod for validation at system boundaries
 - Use skeleton loading states, not spinners
@@ -139,10 +146,7 @@ export async function POST(request: Request) {
     // ... logic
   } catch (error) {
     logError("api/my-endpoint", error);
-    return NextResponse.json(
-      toErrorResponse(error),
-      { status: getErrorStatusCode(error) }
-    );
+    return NextResponse.json(toErrorResponse(error), { status: getErrorStatusCode(error) });
   }
 }
 ```
@@ -160,7 +164,7 @@ export default function register(engine: typeof flowEngine) {
     async execute(input, context) {
       // Task logic
       return result;
-    }
+    },
   });
 }
 ```
@@ -193,7 +197,7 @@ const {
   handleSelect,
   handleSelectAll,
   toggleSelectionMode,
-} = useSelection({ allIds: entries.map(e => e.id) });
+} = useSelection({ allIds: entries.map((e) => e.id) });
 ```
 
 Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
@@ -203,12 +207,15 @@ Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hook
 Configuration is organized into three tiers:
 
 #### 1. System Configuration (`.env.local`)
+
 Sensitive and startup-required settings. **Never expose to frontend.**
 
 **Database:**
+
 - `DATABASE_URL` - SQLite path (e.g., `file:./data/sqlite.db`)
 
 **OpenAI:**
+
 - `OPENAI_API_KEY` - Your OpenAI API Key
 - `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies
 - `AI_MODEL_TEXT` - Text model for business logic (default: `gpt-4o-mini`)
@@ -217,6 +224,7 @@ Sensitive and startup-required settings. **Never expose to frontend.**
 - `AI_RETRY_DELAY_MS` - Retry delay in ms (default: 1000)
 
 **Authentication:**
+
 - `AUTH_SECRET` - Secret key for signing cookies and tokens
 - `AUTH_RESEND_KEY` - Resend API key for OTP emails
 - `AUTH_EMAIL_FROM` - Email address for sending OTPs
@@ -224,13 +232,16 @@ Sensitive and startup-required settings. **Never expose to frontend.**
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` - (Optional) SSO configuration
 
 **Storage & Network:**
+
 - `LOCAL_STORAGE_PATH` - Local file storage path (default: `./data/uploads`)
 - `TRUSTED_PROXY` - (Optional) Trusted proxy for IP extraction
 
 #### 2. Runtime Configuration (`.env.local` → Future: Admin Panel)
+
 Business logic settings. Currently in `.env`, future migration to admin panel.
 
 **OTP Settings:**
+
 - `OTP_EXPIRES_SECONDS` - OTP expiration time (default: 300)
 - `OTP_LOCKOUT_MINUTES` - Account lockout duration (default: 15)
 - `OTP_MAX_ATTEMPTS` - Max verification attempts (default: 5)
@@ -239,10 +250,12 @@ Business logic settings. Currently in `.env`, future migration to admin panel.
 - `AUTH_RATE_LIMIT_WINDOW` - Rate limit window in seconds (default: 900)
 
 **System Settings:**
+
 - `LOG_LEVEL` - Logging level (default: `info`)
 - `MAX_TASK_WORKER` - Max concurrent background tasks (default: 10)
 
 #### 3. Frontend Configuration (Build-time)
+
 Exposed to browser via `NEXT_PUBLIC_` prefix. **Requires rebuild to change.**
 
 - `NEXT_PUBLIC_APP_URL` - Public app URL
@@ -252,4 +265,5 @@ Exposed to browser via `NEXT_PUBLIC_` prefix. **Requires rebuild to change.**
 ## Workflow
 
 ### Task Completion
+
 After completing a significant task or feature implementation, always ask the user whether to commit and push or continue adjusting. Present options using the `<options>` XML block at the end of the response.

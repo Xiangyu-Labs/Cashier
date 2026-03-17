@@ -58,7 +58,7 @@ export function useQueueItemActions({
   // Resolve display title
   const displayTitle = useMemo(() => {
     // For completed parse_source_document tasks, use the enriched title from backend
-    if (item.status === 'completed' && item.taskType === 'parse_source_document') {
+    if (item.status === "completed" && item.taskType === "parse_source_document") {
       return item.title;
     }
     const key = item.taskType ? TASK_TYPE_I18N[item.taskType] : undefined;
@@ -67,9 +67,7 @@ export function useQueueItemActions({
 
   // Determine available actions
   const canCancel =
-    item.kind === "task" &&
-    (item.status === "pending" || item.status === "running") &&
-    !!onCancel;
+    item.kind === "task" && (item.status === "pending" || item.status === "running") && !!onCancel;
 
   const canRetry =
     !!item.sourceDocumentId &&
@@ -89,21 +87,15 @@ export function useQueueItemActions({
       item.status === "running");
 
   const canDismiss =
-    item.kind === "task" &&
-    item.status === "failed" &&
-    !item.sourceDocumentId &&
-    !!onDismiss;
+    item.kind === "task" && item.status === "failed" && !item.sourceDocumentId && !!onDismiss;
 
   // UI flags
-  const showDirectCancel =
-    item.status === "running" && canCancel && !item.sourceDocumentId;
+  const showDirectCancel = item.status === "running" && canCancel && !item.sourceDocumentId;
   const showCancelInDropdown = canCancel && !item.sourceDocumentId;
   const showDropdown = canRetry || canDelete || canDismiss || showCancelInDropdown;
   const canExpand = !!item.sourceDocumentId;
   const useSpecialInteraction =
-    item.status === "completed" &&
-    item.taskType === "parse_source_document" &&
-    !!onViewDetails;
+    item.status === "completed" && item.taskType === "parse_source_document" && !!onViewDetails;
 
   // Content flags
   const showSubtitleInline = !!item.subtitle;

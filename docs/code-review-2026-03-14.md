@@ -57,8 +57,9 @@ import { getR2Storage, isR2Enabled } from "./r2";
 **问题**: `loadImageForAI` 函数直接依赖R2实现，无法与其他存储提供者一起工作，破坏了 `StorageProvider` 接口的抽象。
 
 **建议**: 使用工厂模式获取当前配置的存储提供者：
+
 ```typescript
-export async function loadImageForAI(url: string, storage?: StorageProvider): Promise<string>
+export async function loadImageForAI(url: string, storage?: StorageProvider): Promise<string>;
 ```
 
 #### 🟠 高优先级
@@ -74,6 +75,7 @@ import { getR2Storage, isR2Enabled } from "@/lib/storage/r2";
 **问题**: 代码直接导入特定提供者，添加新提供者需要修改所有调用点。
 
 **建议**: 在 `index.ts` 中添加：
+
 ```typescript
 export function getStorage(): StorageProvider {
   if (isR2Enabled()) return getR2Storage();
@@ -96,15 +98,16 @@ export function getStorage(): StorageProvider {
 **2.1 `base64ToBuffer` 函数重复定义且行为不一致**
 
 **位置**:
+
 - `scripts/migrate-images-to-r2.ts:67`
 - `src/lib/storage/index.ts:65`
 
 ```typescript
 // 迁移脚本中返回 Buffer
-function base64ToBuffer(base64Url: string): Buffer
+function base64ToBuffer(base64Url: string): Buffer;
 
 // 库函数中返回对象
-export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: string }
+export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: string };
 ```
 
 **影响**: 维护困难，行为不一致，潜在bug。
@@ -118,6 +121,7 @@ export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: s
 **问题**: 单个函数包含参数解析、环境验证、数据处理、上传、数据库更新、VACUUM等多个职责。
 
 **建议**: 拆分为独立函数：
+
 - `validateEnvironment()`
 - `fetchDocumentsWithBase64Images()`
 - `processBatch()`
@@ -131,9 +135,10 @@ export function base64ToBuffer(base64Url: string): { buffer: Buffer; mimeType: s
 **问题**: `deleteSourceDocumentAction` 和 `batchDeleteSourceDocumentsAction` 有约50行重复代码（任务取消、事务逻辑、R2删除）。
 
 **建议**: 提取公共函数：
+
 ```typescript
-async function cancelRunningTasks(taskIds: string[]): Promise<void>
-async function softDeleteInTransaction(tx, sourceIds: string[], ledgerId: string): Promise<void>
+async function cancelRunningTasks(taskIds: string[]): Promise<void>;
+async function softDeleteInTransaction(tx, sourceIds: string[], ledgerId: string): Promise<void>;
 ```
 
 **2.4 危险类型断言**
@@ -230,18 +235,17 @@ const response = await fetch(url);
 
 ```typescript
 for (const url of doc.imageUrls) {
-    // ... 串行执行
-    const uploadedUrl = await storage.upload(key, buffer, mimeType);
+  // ... 串行执行
+  const uploadedUrl = await storage.upload(key, buffer, mimeType);
 }
 ```
 
 **问题**: 同一文档的多张图片串行上传，没有利用并行能力。
 
 **建议**: 使用 `Promise.all` 并行上传：
+
 ```typescript
-const uploads = await Promise.all(
-    doc.imageUrls.filter(isBase64Url).map(url => uploadToR2(url))
-);
+const uploads = await Promise.all(doc.imageUrls.filter(isBase64Url).map((url) => uploadToR2(url)));
 ```
 
 #### 🟠 高优先级
@@ -264,7 +268,7 @@ const docs = await db.query.sourceDocuments.findMany({...});
 
 ```typescript
 for (const [oldUrl, newUrl] of urlMapping.entries()) {
-    if (url === oldUrl) return newUrl;
+  if (url === oldUrl) return newUrl;
 }
 ```
 
@@ -339,12 +343,12 @@ return Promise.all(urls.map((url) => loadImageForAI(url)));
 
 **6.1 存储层完全缺乏测试**
 
-| 文件 | 测试状态 |
-|------|----------|
-| `src/lib/storage/r2.ts` | 完全缺失 |
+| 文件                        | 测试状态 |
+| --------------------------- | -------- |
+| `src/lib/storage/r2.ts`     | 完全缺失 |
 | `src/lib/storage/memory.ts` | 完全缺失 |
-| `src/lib/storage/utils.ts` | 完全缺失 |
-| `src/lib/storage/index.ts` | 完全缺失 |
+| `src/lib/storage/utils.ts`  | 完全缺失 |
+| `src/lib/storage/index.ts`  | 完全缺失 |
 
 **建议**: 创建 `tests/unit/lib/storage/` 目录，添加全面测试。
 
@@ -359,6 +363,7 @@ return Promise.all(urls.map((url) => loadImageForAI(url)));
 **6.3 R2删除行为未测试**
 
 **问题**: 未验证：
+
 - R2图片是否正确删除
 - R2删除失败时的行为
 - 批量删除多个文档
@@ -370,6 +375,7 @@ return Promise.all(urls.map((url) => loadImageForAI(url)));
 ### 错误处理不一致
 
 存储模块中错误处理策略不一致：
+
 - `upload()`: 抛出错误
 - `download()`: 抛出错误
 - `delete()`: 静默吞掉错误
@@ -419,20 +425,20 @@ return Promise.all(urls.map((url) => loadImageForAI(url)));
 
 ### 审查覆盖文件
 
-| 文件 | 审查角度 |
-|------|----------|
-| `scripts/migrate-images-to-r2.ts` | 架构、质量、性能、安全、错误处理 |
-| `src/lib/storage/index.ts` | 架构、质量 |
-| `src/lib/storage/r2.ts` | 架构、性能、安全、错误处理 |
-| `src/lib/storage/memory.ts` | 架构 |
-| `src/lib/storage/utils.ts` | 架构、安全、错误处理 |
-| `src/features/source-document/server/actions/delete.ts` | 质量、安全、错误处理 |
-| `src/features/source-document/server/actions/helpers.ts` | 质量、安全、错误处理 |
-| `src/features/source-document/server/actions/queries.ts` | 性能、质量 |
-| `src/features/source-document/server/actions/retry.ts` | 错误处理 |
-| `src/features/source-document/server/schema.ts` | 架构 |
-| `tests/integration/source-document-actions.test.ts` | 测试 |
-| `tests/helpers/factories.ts` | 测试 |
+| 文件                                                     | 审查角度                         |
+| -------------------------------------------------------- | -------------------------------- |
+| `scripts/migrate-images-to-r2.ts`                        | 架构、质量、性能、安全、错误处理 |
+| `src/lib/storage/index.ts`                               | 架构、质量                       |
+| `src/lib/storage/r2.ts`                                  | 架构、性能、安全、错误处理       |
+| `src/lib/storage/memory.ts`                              | 架构                             |
+| `src/lib/storage/utils.ts`                               | 架构、安全、错误处理             |
+| `src/features/source-document/server/actions/delete.ts`  | 质量、安全、错误处理             |
+| `src/features/source-document/server/actions/helpers.ts` | 质量、安全、错误处理             |
+| `src/features/source-document/server/actions/queries.ts` | 性能、质量                       |
+| `src/features/source-document/server/actions/retry.ts`   | 错误处理                         |
+| `src/features/source-document/server/schema.ts`          | 架构                             |
+| `tests/integration/source-document-actions.test.ts`      | 测试                             |
+| `tests/helpers/factories.ts`                             | 测试                             |
 
 ### 工具建议
 

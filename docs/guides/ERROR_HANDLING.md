@@ -25,14 +25,14 @@ class AppError extends Error {
 
 ### Specific Error Types
 
-| Error Class | Status Code | Use Case |
-|-------------|-------------|----------|
-| `ValidationError` | 400 | Invalid input data |
-| `UnauthorizedError` | 401 | Authentication required or failed |
-| `ForbiddenError` | 403 | Permission denied |
-| `NotFoundError` | 404 | Resource not found |
-| `ConflictError` | 409 | Resource conflict (e.g., duplicate) |
-| `RateLimitError` | 429 | Too many requests |
+| Error Class         | Status Code | Use Case                            |
+| ------------------- | ----------- | ----------------------------------- |
+| `ValidationError`   | 400         | Invalid input data                  |
+| `UnauthorizedError` | 401         | Authentication required or failed   |
+| `ForbiddenError`    | 403         | Permission denied                   |
+| `NotFoundError`     | 404         | Resource not found                  |
+| `ConflictError`     | 409         | Resource conflict (e.g., duplicate) |
+| `RateLimitError`    | 429         | Too many requests                   |
 
 ## Usage Patterns
 
@@ -101,10 +101,7 @@ export async function POST(request: Request) {
     logError("api/my-endpoint", error);
 
     // Return standardized error response
-    return NextResponse.json(
-      toErrorResponse(error),
-      { status: getErrorStatusCode(error) }
-    );
+    return NextResponse.json(toErrorResponse(error), { status: getErrorStatusCode(error) });
   }
 }
 ```
@@ -118,7 +115,9 @@ All API errors return a consistent JSON structure:
   "error": {
     "message": "Human-readable error message",
     "code": "ERROR_CODE",
-    "details": { /* optional additional context */ }
+    "details": {
+      /* optional additional context */
+    }
   }
 }
 ```

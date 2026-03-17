@@ -14,9 +14,7 @@ describe("useCountdown", () => {
   it("应该正确计算剩余时间", () => {
     const targetTime = Math.floor(Date.now() / 1000) + 60; // 60秒后
 
-    const { result } = renderHook(() =>
-      useCountdown({ targetTime })
-    );
+    const { result } = renderHook(() => useCountdown({ targetTime }));
 
     expect(result.current.remaining).toBeLessThanOrEqual(60);
     expect(result.current.remaining).toBeGreaterThan(55);
@@ -26,9 +24,7 @@ describe("useCountdown", () => {
   it("应该每秒递减剩余时间", async () => {
     const targetTime = Math.floor(Date.now() / 1000) + 10;
 
-    const { result } = renderHook(() =>
-      useCountdown({ targetTime })
-    );
+    const { result } = renderHook(() => useCountdown({ targetTime }));
 
     const initialRemaining = result.current.remaining;
 
@@ -44,9 +40,7 @@ describe("useCountdown", () => {
     const onExpired = vi.fn();
     const targetTime = Math.floor(Date.now() / 1000) + 3;
 
-    renderHook(() =>
-      useCountdown({ targetTime, onExpired })
-    );
+    renderHook(() => useCountdown({ targetTime, onExpired }));
 
     // 前进3秒
     act(() => {
@@ -57,9 +51,7 @@ describe("useCountdown", () => {
   });
 
   it("当targetTime为null时应该返回0", () => {
-    const { result } = renderHook(() =>
-      useCountdown({ targetTime: null })
-    );
+    const { result } = renderHook(() => useCountdown({ targetTime: null }));
 
     expect(result.current.remaining).toBe(0);
     expect(result.current.isExpired).toBe(true);
@@ -69,12 +61,8 @@ describe("useCountdown", () => {
     const targetTime1 = Math.floor(Date.now() / 1000) + 10;
     const targetTime2 = Math.floor(Date.now() / 1000) + 20;
 
-    const { result: result1 } = renderHook(() =>
-      useCountdown({ targetTime: targetTime1 })
-    );
-    const { result: result2 } = renderHook(() =>
-      useCountdown({ targetTime: targetTime2 })
-    );
+    const { result: result1 } = renderHook(() => useCountdown({ targetTime: targetTime1 }));
+    const { result: result2 } = renderHook(() => useCountdown({ targetTime: targetTime2 }));
 
     const remaining1Before = result1.current.remaining;
     const remaining2Before = result2.current.remaining;

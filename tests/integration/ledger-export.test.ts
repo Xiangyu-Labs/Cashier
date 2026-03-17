@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/export";
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, users, sourceDocuments, entryCategories } from "@/lib/db/schema";
-import { createLedgerData, createLedgerEntryData, createSourceDocumentData, createCategoryData } from "../helpers/factories";
+import {
+  createLedgerData,
+  createLedgerEntryData,
+  createSourceDocumentData,
+  createCategoryData,
+} from "../helpers/factories";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -15,7 +20,12 @@ describe("exportLedgerEntriesAction", () => {
   const testUserId = "00000000-0000-0000-0000-000000000000";
 
   beforeEach(() => {
-    vi.mocked(auth as unknown as () => Promise<{ user: { id: string; email: string }; expires: string } | null>).mockResolvedValue({
+    vi.mocked(
+      auth as unknown as () => Promise<{
+        user: { id: string; email: string };
+        expires: string;
+      } | null>
+    ).mockResolvedValue({
       user: { id: testUserId, email: "test@example.com" },
       expires: new Date(Date.now() + 3600 * 1000).toISOString(),
     });
@@ -62,8 +72,10 @@ describe("exportLedgerEntriesAction", () => {
 
     // Check headers (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, '');
-    expect(headerLine).toBe("Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At");
+    const headerLine = lines[0].replace(/^\uFEFF/, "");
+    expect(headerLine).toBe(
+      "Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At"
+    );
 
     // Check data row
     const dataRow = lines[1];
@@ -129,20 +141,22 @@ describe("exportLedgerEntriesAction", () => {
     const otherUserId = "11111111-1111-1111-1111-111111111111";
 
     // Ensure other user exists
-    await db.insert(users).values({
-      id: otherUserId,
-      email: "other@example.com",
-      name: "Other User",
-      emailVerified: new Date(),
-    }).onConflictDoNothing();
+    await db
+      .insert(users)
+      .values({
+        id: otherUserId,
+        email: "other@example.com",
+        name: "Other User",
+        emailVerified: new Date(),
+      })
+      .onConflictDoNothing();
 
     // Create Ledger for another user
     const ledgerData = createLedgerData({ userId: otherUserId });
     await db.insert(ledgers).values(ledgerData);
 
     // Export should throw Unauthorized
-    await expect(exportLedgerEntriesAction(ledgerData.id))
-      .rejects.toThrow("Ledger not found");
+    await expect(exportLedgerEntriesAction(ledgerData.id)).rejects.toThrow("Ledger not found");
   });
 
   it("should generate localized CSV headers for Chinese locale", async () => {
@@ -165,7 +179,7 @@ describe("exportLedgerEntriesAction", () => {
 
     // 5. Assertions (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, '');
+    const headerLine = lines[0].replace(/^\uFEFF/, "");
     expect(headerLine).toBe("日期,项目名称,金额,币种,分类,描述,转换金额,汇率,来源文档,创建时间");
   });
 
@@ -189,8 +203,10 @@ describe("exportLedgerEntriesAction", () => {
 
     // 5. Assertions - should fallback to English (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, '');
-    expect(headerLine).toBe("Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At");
+    const headerLine = lines[0].replace(/^\uFEFF/, "");
+    expect(headerLine).toBe(
+      "Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At"
+    );
   });
 
   it("should handle null values gracefully", async () => {

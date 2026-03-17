@@ -1,12 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  rateLimitApiV1,
-  rateLimit,
-  RateLimitConfig,
-} from '@/lib/ratelimit';
-import { memoryStore } from '@/lib/memory-store';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { rateLimitApiV1, rateLimit, RateLimitConfig } from "@/lib/ratelimit";
+import { memoryStore } from "@/lib/memory-store";
 
-describe('MemoryRateLimiter', () => {
+describe("MemoryRateLimiter", () => {
   beforeEach(async () => {
     // Clear all rate limit keys before each test
     await memoryStore.flushall();
@@ -17,9 +13,9 @@ describe('MemoryRateLimiter', () => {
     vi.useRealTimers();
   });
 
-  describe('rateLimitApiV1', () => {
-    it('should allow first 20 requests within 1 minute', async () => {
-      const apiKey = 'test-api-key-123';
+  describe("rateLimitApiV1", () => {
+    it("should allow first 20 requests within 1 minute", async () => {
+      const apiKey = "test-api-key-123";
 
       for (let i = 0; i < 20; i++) {
         const result = await rateLimitApiV1(apiKey);
@@ -28,8 +24,8 @@ describe('MemoryRateLimiter', () => {
       }
     });
 
-    it('should block 21st request', async () => {
-      const apiKey = 'test-api-key-123';
+    it("should block 21st request", async () => {
+      const apiKey = "test-api-key-123";
 
       // Use up 20 requests
       for (let i = 0; i < 20; i++) {
@@ -42,9 +38,9 @@ describe('MemoryRateLimiter', () => {
       expect(result.remaining).toBe(0);
     });
 
-    it('should isolate rate limits by API key', async () => {
-      const apiKey1 = 'key1';
-      const apiKey2 = 'key2';
+    it("should isolate rate limits by API key", async () => {
+      const apiKey1 = "key1";
+      const apiKey2 = "key2";
 
       // Use up key1
       for (let i = 0; i < 20; i++) {
@@ -58,15 +54,15 @@ describe('MemoryRateLimiter', () => {
       expect((await rateLimitApiV1(apiKey2)).success).toBe(true);
     });
 
-    it('should use correct config (20 requests per minute)', async () => {
+    it("should use correct config (20 requests per minute)", async () => {
       expect(RateLimitConfig.API_V1.limit).toBe(20);
       expect(RateLimitConfig.API_V1.windowMs).toBe(60 * 1000);
     });
   });
 
-  describe('rateLimit (generic)', () => {
-    it('should enforce custom limit and window', async () => {
-      const identifier = 'custom-key';
+  describe("rateLimit (generic)", () => {
+    it("should enforce custom limit and window", async () => {
+      const identifier = "custom-key";
       const limit = 5;
       const windowMs = 1000;
 
@@ -82,8 +78,8 @@ describe('MemoryRateLimiter', () => {
       expect(result.remaining).toBe(0);
     });
 
-    it('should calculate resetTime correctly', async () => {
-      const identifier = 'test-key';
+    it("should calculate resetTime correctly", async () => {
+      const identifier = "test-key";
       const windowMs = 5000; // 5 seconds
       const before = Date.now();
 
@@ -93,9 +89,9 @@ describe('MemoryRateLimiter', () => {
       expect(result.resetTime).toBeLessThanOrEqual(before + windowMs + 1000); // Allow 1s tolerance
     });
 
-    it('should handle multiple identifiers independently', async () => {
-      const id1 = 'user1';
-      const id2 = 'user2';
+    it("should handle multiple identifiers independently", async () => {
+      const id1 = "user1";
+      const id2 = "user2";
       const limit = 3;
       const windowMs = 1000;
 
@@ -112,9 +108,9 @@ describe('MemoryRateLimiter', () => {
     });
   });
 
-  describe('Fixed Window algorithm behavior', () => {
-    it('should reset counter after window expires', async () => {
-      const identifier = 'test-key';
+  describe("Fixed Window algorithm behavior", () => {
+    it("should reset counter after window expires", async () => {
+      const identifier = "test-key";
       const limit = 2;
       const windowMs = 1000; // 1 second window for testing
 
@@ -134,8 +130,8 @@ describe('MemoryRateLimiter', () => {
       expect(result.remaining).toBe(limit - 1);
     });
 
-    it('should maintain remaining count correctly', async () => {
-      const identifier = 'test-key';
+    it("should maintain remaining count correctly", async () => {
+      const identifier = "test-key";
       const limit = 5;
       const windowMs = 1000;
 
@@ -149,8 +145,8 @@ describe('MemoryRateLimiter', () => {
       expect(r3.remaining).toBe(2);
     });
 
-    it('should never return negative remaining', async () => {
-      const identifier = 'test-key';
+    it("should never return negative remaining", async () => {
+      const identifier = "test-key";
       const limit = 2;
       const windowMs = 1000;
 

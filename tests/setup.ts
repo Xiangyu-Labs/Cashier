@@ -33,7 +33,9 @@ export function getTestDb() {
   const testPath = getCurrentTestFile();
   const instance = dbInstances.get(testPath);
   if (!instance) {
-    throw new Error(`No database instance found for test file: ${testPath}. Make sure beforeAll ran.`);
+    throw new Error(
+      `No database instance found for test file: ${testPath}. Make sure beforeAll ran.`
+    );
   }
   return instance.db;
 }
@@ -110,14 +112,14 @@ beforeEach(async () => {
   // Ensure default test user exists (ignore unique constraint errors)
   try {
     await db.insert(schema.users).values({
-      id: '00000000-0000-0000-0000-000000000000',
-      email: 'test@example.com',
-      name: 'Test User',
+      id: "00000000-0000-0000-0000-000000000000",
+      email: "test@example.com",
+      name: "Test User",
       emailVerified: new Date(),
     });
   } catch (e) {
     // User already exists, which is the expected case
-    console.log('[Test Setup] Test user already exists or other error:', e);
+    console.log("[Test Setup] Test user already exists or other error:", e);
   }
 });
 
@@ -169,7 +171,7 @@ import type * as ReactModule from "react";
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof ReactModule;
-  const messages = await import("../messages/zh.json").then(m => m.default || m);
+  const messages = await import("../messages/zh.json").then((m) => m.default || m);
 
   return {
     useTranslations: (namespace?: string) => {
@@ -178,7 +180,7 @@ vi.mock("next-intl", async () => {
         let msg = nsMessages?.[key];
         if (!msg) {
           for (const ns in messages) {
-            if (messages[ns] && typeof messages[ns] === 'object' && messages[ns][key]) {
+            if (messages[ns] && typeof messages[ns] === "object" && messages[ns][key]) {
               msg = messages[ns][key];
               break;
             }
@@ -206,7 +208,7 @@ vi.mock("next-intl", async () => {
 // Mock next/image
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: (props: { src: string; alt: string;[key: string]: unknown }) => {
+  default: (props: { src: string; alt: string; [key: string]: unknown }) => {
     return React.createElement("img", { ...props, src: props.src });
   },
 }));

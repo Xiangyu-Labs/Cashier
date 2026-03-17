@@ -7,12 +7,14 @@ const sqlitePath = (process.env.DATABASE_URL || "sqlite.db").replace(/^file:/, "
 
 // Singleton pattern for database connection
 const globalForDb = global as unknown as {
-    conn: Database.Database | undefined;
+  conn: Database.Database | undefined;
 };
 
-const client = globalForDb.conn ?? new Database(sqlitePath, {
+const client =
+  globalForDb.conn ??
+  new Database(sqlitePath, {
     timeout: 5000, // 5 second timeout
-});
+  });
 
 // Configure SQLite PRAGMA for performance and data integrity
 client.pragma("journal_mode = WAL");
@@ -21,8 +23,7 @@ client.pragma("synchronous = NORMAL");
 client.pragma("busy_timeout = 5000");
 
 if (process.env.NODE_ENV !== "production") {
-    globalForDb.conn = client;
+  globalForDb.conn = client;
 }
 
 export const db = drizzle(client, { schema });
-

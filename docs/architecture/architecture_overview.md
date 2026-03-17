@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Cashier is built on a **Feature-Based Architecture** (often called "Vertical Slices"). Instead of organizing code by technical layer (controllers, views, models), we organize it by *domain feature* (auth, ledger, ai).
+Cashier is built on a **Feature-Based Architecture** (often called "Vertical Slices"). Instead of organizing code by technical layer (controllers, views, models), we organize it by _domain feature_ (auth, ledger, ai).
 
 ## High-Level Directory Structure
 
@@ -33,6 +33,7 @@ src/features/ledger/
 ```
 
 ### Rules for Features
+
 1.  **Colocation**: Everything related to a feature should stay within that feature's folder.
 2.  **Public API**: Features should ideally export a clear API for other features to use, rather than deep linking into internal implementation details (e.g., import from `features/ledger/server` not `.../server/internal_helper`).
 
@@ -52,6 +53,7 @@ Avoid putting business logic in `src/lib`. If logic belongs to "Users", put it i
 The `src/app` directory (Next.js App Router) should be kept "thin". It serves as the glue that connects URLs to Feature Components.
 
 **Example Page (`src/app/(dashboard)/ledger/page.tsx`):**
+
 ```tsx
 import { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
 

@@ -34,6 +34,7 @@ cp .env.example .env.local
 ```
 
 Key variables:
+
 ```bash
 # Database (SQLite file path)
 DATABASE_URL="file:./data/sqlite.db"
@@ -50,11 +51,13 @@ OPENAI_API_KEY="sk-..."
 ### Installation
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Set up the database:
+
    ```bash
    npm run db:push
    ```
@@ -85,18 +88,19 @@ npm run docker:prod
 ```
 
 Or manually:
+
 ```bash
 docker compose up -d --build
 ```
 
 ### Docker Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run docker:dev` | Start dev container with hot reload |
-| `npm run docker:prod` | Build and start production container |
-| `npm run docker:build` | Build production image only |
-| `npm run docker:down` | Stop and remove containers |
+| Command                | Description                          |
+| ---------------------- | ------------------------------------ |
+| `npm run docker:dev`   | Start dev container with hot reload  |
+| `npm run docker:prod`  | Build and start production container |
+| `npm run docker:build` | Build production image only          |
+| `npm run docker:down`  | Stop and remove containers           |
 
 ## Testing
 

@@ -2,122 +2,125 @@
 
 import { useTranslations } from "next-intl";
 import { queryKeys, matchLedgerEntries } from "@/lib/query-keys";
+import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
-    useLedgerMutation,
-    createListSnapshots,
-} from "@/lib/mutations/use-ledger-mutation";
-import {
-    updateLedgerEntryAction,
-    deleteLedgerEntryAction,
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
 } from "@/features/ledger/server/actions/entries";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 
 interface UseEntryMutationsParams {
-    ledgerId: string;
-    categories: EntryCategory[];
-    selectedLedgerEntry: LedgerEntry | null;
-    setSelectedLedgerEntry: (entry: LedgerEntry | null) => void;
-    setIsDetailModalOpen: (open: boolean) => void;
+  ledgerId: string;
+  categories: EntryCategory[];
+  selectedLedgerEntry: LedgerEntry | null;
+  setSelectedLedgerEntry: (entry: LedgerEntry | null) => void;
+  setIsDetailModalOpen: (open: boolean) => void;
 }
 
 interface InfiniteData {
-    pages?: { items?: LedgerEntry[] }[];
+  pages?: { items?: LedgerEntry[] }[];
 }
 
 export function useEntryMutations({
-    ledgerId,
-    categories,
-    selectedLedgerEntry,
-    setSelectedLedgerEntry,
-    setIsDetailModalOpen,
+  ledgerId,
+  categories,
+  selectedLedgerEntry,
+  setSelectedLedgerEntry,
+  setIsDetailModalOpen,
 }: UseEntryMutationsParams) {
-    const tCommon = useTranslations("Common");
-    const tLedger = useTranslations("LedgerEntriesTab");
+  const tCommon = useTranslations("Common");
+  const tLedger = useTranslations("LedgerEntriesTab");
 
-    const updateEntry = useLedgerMutation<
-        LedgerEntry,
-        { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, 'amount'>> & { amount?: number } }
-    >(ledgerId, {
-        mutationFn: async ({ ledgerEntryId, data }) => {
-            const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-            return result;
-        },
-        errorMessage: tCommon("saveFailed"),
-        onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
-            const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
+  const updateEntry = useLedgerMutation<
+    LedgerEntry,
+    { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number } }
+  >(ledgerId, {
+    mutationFn: async ({ ledgerEntryId, data }) => {
+      const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
+      return result;
+    },
+    errorMessage: tCommon("saveFailed"),
+    onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
+      const snapshots = createListSnapshots<InfiniteData>(
+        queryClient,
+        queryKeys.ledgerEntries(ledgerId)
+      );
 
-            queryClient.setQueriesData<InfiniteData>(
-                { predicate: matchLedgerEntries(ledgerId) },
-                (old) => {
-                    if (!old?.pages) return old;
-                    return {
-                        ...old,
-                        pages: old.pages.map(page => ({
-                            ...page,
-                            items: page.items?.map(e =>
-                                e.id === ledgerEntryId
-                                    ? {
-                                        ...e,
-                                        ...data,
-                                        amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                                        category: data.categoryId
-                                            ? categories.find(c => c.id === data.categoryId) || e.category
-                                            : e.category,
-                                    } satisfies LedgerEntry
-                                    : e
-                            )
-                        }))
-                    };
-                }
-            );
+      queryClient.setQueriesData<InfiniteData>(
+        { predicate: matchLedgerEntries(ledgerId) },
+        (old) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items?.map((e) =>
+                e.id === ledgerEntryId
+                  ? ({
+                      ...e,
+                      ...data,
+                      amount: data.amount !== undefined ? String(data.amount) : e.amount,
+                      category: data.categoryId
+                        ? categories.find((c) => c.id === data.categoryId) || e.category
+                        : e.category,
+                    } satisfies LedgerEntry)
+                  : e
+              ),
+            })),
+          };
+        }
+      );
 
-            // Also update selected entry immediately for modal
-            if (selectedLedgerEntry && selectedLedgerEntry.id === ledgerEntryId) {
-                setSelectedLedgerEntry({
-                    ...selectedLedgerEntry,
-                    ...data,
-                    amount: data.amount !== undefined ? String(data.amount) : selectedLedgerEntry.amount,
-                    category: data.categoryId
-                        ? categories.find(c => c.id === data.categoryId) || selectedLedgerEntry.category
-                        : selectedLedgerEntry.category
-                } satisfies LedgerEntry);
-            }
+      // Also update selected entry immediately for modal
+      if (selectedLedgerEntry && selectedLedgerEntry.id === ledgerEntryId) {
+        setSelectedLedgerEntry({
+          ...selectedLedgerEntry,
+          ...data,
+          amount: data.amount !== undefined ? String(data.amount) : selectedLedgerEntry.amount,
+          category: data.categoryId
+            ? categories.find((c) => c.id === data.categoryId) || selectedLedgerEntry.category
+            : selectedLedgerEntry.category,
+        } satisfies LedgerEntry);
+      }
 
-            return { snapshots };
-        },
-    });
+      return { snapshots };
+    },
+  });
 
-    const deleteEntry = useLedgerMutation<void, string>(ledgerId, {
-        mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
-        successMessage: tLedger("deleteSuccess"),
-        errorMessage: tCommon("deleteFailed"),
-        onSuccessExtra: () => {
-            setIsDetailModalOpen(false);
-            setSelectedLedgerEntry(null);
-        },
-        onOptimisticUpdate: (queryClient, ledgerEntryId) => {
-            const snapshots = createListSnapshots<InfiniteData>(queryClient, queryKeys.ledgerEntries(ledgerId));
+  const deleteEntry = useLedgerMutation<void, string>(ledgerId, {
+    mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
+    successMessage: tLedger("deleteSuccess"),
+    errorMessage: tCommon("deleteFailed"),
+    onSuccessExtra: () => {
+      setIsDetailModalOpen(false);
+      setSelectedLedgerEntry(null);
+    },
+    onOptimisticUpdate: (queryClient, ledgerEntryId) => {
+      const snapshots = createListSnapshots<InfiniteData>(
+        queryClient,
+        queryKeys.ledgerEntries(ledgerId)
+      );
 
-            queryClient.setQueriesData<InfiniteData>(
-                { predicate: matchLedgerEntries(ledgerId) },
-                (old) => {
-                    if (!old?.pages) return old;
-                    return {
-                        ...old,
-                        pages: old.pages.map(page => ({
-                            ...page,
-                            items: page.items?.filter(e => e.id !== ledgerEntryId)
-                        }))
-                    };
-                }
-            );
+      queryClient.setQueriesData<InfiniteData>(
+        { predicate: matchLedgerEntries(ledgerId) },
+        (old) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items?.filter((e) => e.id !== ledgerEntryId),
+            })),
+          };
+        }
+      );
 
-            return { snapshots };
-        },
-    });
+      return { snapshots };
+    },
+  });
 
-    return {
-        updateEntry,
-        deleteEntry,
-    };
+  return {
+    updateEntry,
+    deleteEntry,
+  };
 }

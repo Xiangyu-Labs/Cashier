@@ -58,16 +58,9 @@ const timerStore = createTimerStore();
  * is calculated during render based on the current time, not updated
  * synchronously within an effect.
  */
-export function useCountdown({
-  targetTime,
-  onExpired,
-}: UseCountdownOptions): UseCountdownResult {
+export function useCountdown({ targetTime, onExpired }: UseCountdownOptions): UseCountdownResult {
   // Subscribe to the global timer tick (using underscore prefix since we only need the subscription)
-  useSyncExternalStore(
-    timerStore.subscribe,
-    timerStore.getSnapshot,
-    timerStore.getSnapshot
-  );
+  useSyncExternalStore(timerStore.subscribe, timerStore.getSnapshot, timerStore.getSnapshot);
 
   // Calculate remaining time based on current time
   const calculateRemaining = useCallback(() => {

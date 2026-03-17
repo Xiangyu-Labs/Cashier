@@ -10,11 +10,7 @@ interface ExpiryTimerProps {
   className?: string;
 }
 
-export function ExpiryTimer({
-  expiresAt,
-  onExpired,
-  className,
-}: ExpiryTimerProps) {
+export function ExpiryTimer({ expiresAt, onExpired, className }: ExpiryTimerProps) {
   const { remaining, isExpired } = useCountdown({
     targetTime: expiresAt,
     onExpired,
@@ -34,12 +30,7 @@ export function ExpiryTimer({
   return (
     <div className={cn("text-sm", className)}>
       {!isExpired ? (
-        <p
-          className={cn(
-            "text-muted-foreground",
-            isUrgent && "text-destructive font-medium"
-          )}
-        >
+        <p className={cn("text-muted-foreground", isUrgent && "text-destructive font-medium")}>
           {t("codeExpiresTimer", { time: `${minutes}:${seconds.toString().padStart(2, "0")}` })}
         </p>
       ) : (

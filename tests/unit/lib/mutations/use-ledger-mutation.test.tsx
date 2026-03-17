@@ -84,7 +84,10 @@ describe("useLedgerMutation", () => {
   it("应该支持乐观更新并在失败时自动回滚", async () => {
     const mutationFn = vi.fn().mockRejectedValue(new Error("Network error"));
     const onOptimisticUpdate = vi.fn().mockReturnValue({
-      snapshots: [[["test-data", "ledger-123"], [{ id: "1", name: "Item 1" }]]] as [QueryKey, unknown][],
+      snapshots: [[["test-data", "ledger-123"], [{ id: "1", name: "Item 1" }]]] as [
+        QueryKey,
+        unknown,
+      ][],
     });
 
     const { result } = renderHook(
@@ -178,4 +181,3 @@ describe("useLedgerMutation", () => {
     expect(onSuccessExtra).toHaveBeenCalledWith({ id: "123" }, { data: "test" }, undefined);
   });
 });
-

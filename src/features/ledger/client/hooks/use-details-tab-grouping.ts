@@ -17,9 +17,7 @@ export interface UseDetailsTabGroupingReturn {
   getDateStr: (entry: LedgerEntry) => string;
 }
 
-export function useDetailsTabGrouping(
-  entries: LedgerEntry[],
-): UseDetailsTabGroupingReturn {
+export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGroupingReturn {
   const t = useTranslations("DetailsTab");
   const locale = useLocale();
 

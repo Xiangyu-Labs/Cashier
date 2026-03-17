@@ -12,11 +12,7 @@ interface ResendCountdownProps {
   disabled?: boolean;
 }
 
-export function ResendCountdown({
-  canResendAt,
-  onResend,
-  disabled = false,
-}: ResendCountdownProps) {
+export function ResendCountdown({ canResendAt, onResend, disabled = false }: ResendCountdownProps) {
   const { remaining } = useCountdown({ targetTime: canResendAt });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,12 +29,7 @@ export function ResendCountdown({
   const isDisabled = disabled || isLoading || remaining > 0;
 
   return (
-    <Button
-      variant="ghost"
-      disabled={isDisabled}
-      onClick={handleResend}
-      className="text-sm"
-    >
+    <Button variant="ghost" disabled={isDisabled} onClick={handleResend} className="text-sm">
       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
       {remaining > 0 ? t("resendIn", { seconds: remaining }) : t("resend")}
     </Button>

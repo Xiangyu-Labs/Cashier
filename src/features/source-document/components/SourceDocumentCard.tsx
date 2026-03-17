@@ -1,4 +1,9 @@
-import { type SourceDocument, type SourceDocumentLight, type LedgerEntry, type EntryCategory } from "@/types/api";
+import {
+  type SourceDocument,
+  type SourceDocumentLight,
+  type LedgerEntry,
+  type EntryCategory,
+} from "@/types/api";
 import { LedgerEntryItem } from "@/components/entries";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
@@ -14,11 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,7 +39,13 @@ interface CurrencyBreakdown {
   convertedAmount?: number;
 }
 
-const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCurrency }: { entries: LedgerEntry[], mainCurrency: string }) {
+const SourceDocumentTotal = memo(function SourceDocumentTotal({
+  entries,
+  mainCurrency,
+}: {
+  entries: LedgerEntry[];
+  mainCurrency: string;
+}) {
   const t = useTranslations("SourceDocumentCard");
 
   // Calculate subtotals by currency and total in main currency
@@ -46,7 +53,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
     const groups: Record<string, number> = {};
     let mainCurrencyTotal = 0;
 
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       const curr = entry.currency || mainCurrency;
       const amount = parseAmount(entry.amount);
       groups[curr] = (groups[curr] || 0) + amount;
@@ -65,7 +72,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
     const breakdown: CurrencyBreakdown[] = uniqueCurrencies.map((currency) => {
       // Calculate converted amount for this currency by summing all entries of this currency
       const convertedAmount = entries
-        .filter(e => (e.currency || mainCurrency) === currency)
+        .filter((e) => (e.currency || mainCurrency) === currency)
         .reduce((sum, e) => {
           if (e.convertedAmount) {
             return sum + parseAmount(e.convertedAmount);
@@ -82,13 +89,20 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
       };
     });
 
-    return { subtotalsByCurrency: groups, totalInMainCurrency: mainCurrencyTotal, breakdownData: breakdown };
+    return {
+      subtotalsByCurrency: groups,
+      totalInMainCurrency: mainCurrencyTotal,
+      breakdownData: breakdown,
+    };
   }, [entries, mainCurrency]);
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
   const hasMultipleCurrencies = uniqueCurrencies.length > 1;
 
-  const formattedTotal = totalInMainCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedTotal = totalInMainCurrency.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   // If only one currency, just show the total
   if (!hasMultipleCurrencies) {
@@ -124,10 +138,19 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
               <div key={currency} className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">{currency}</span>
                 <div className="text-right">
-                  <span className="font-medium">{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="font-medium">
+                    {amount.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
                   {currency !== mainCurrency && convertedAmount !== undefined && (
                     <span className="text-xs text-muted-foreground ml-1.5">
-                      ≈ {mainCurrency} {convertedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ≈ {mainCurrency}{" "}
+                      {convertedAmount.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </span>
                   )}
                 </div>
@@ -145,7 +168,6 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({ entries, mainCur
     </Popover>
   );
 });
-
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -202,7 +224,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
       const aOrder = a.category?.sortOrder ?? 999999;
@@ -225,14 +246,12 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
   const { text, images } = useMemo(() => {
     // imageUrls may not exist in SourceDocumentLight
-    const imageUrls = 'imageUrls' in sourceDocument ? sourceDocument.imageUrls : undefined;
+    const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
     return {
       text: sourceDocument.text,
       images: imageUrls || [],
     };
   }, [sourceDocument]);
-
-
 
   async function handleRetry() {
     if (!onRetry) return;
@@ -256,15 +275,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
         {/* Selection checkbox */}
         {selectionMode && (
-          <div
-            className="mr-2 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={onToggleSelect}
-              className="h-5 w-5"
-            />
+          <div className="mr-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5" />
           </div>
         )}
 
@@ -277,7 +289,12 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           className="p-1.5 -ml-1.5 hover:bg-accent/10 rounded shrink-0 transition-colors"
           aria-label={isItemsExpanded ? t("collapse") : t("expand")}
         >
-          <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground hover:text-text", isItemsExpanded && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform text-muted-foreground hover:text-text",
+              isItemsExpanded && "rotate-180"
+            )}
+          />
         </button>
 
         {/* Middle section - click to open details (non-selection mode) */}
@@ -285,7 +302,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           onClick={!selectionMode ? _onViewDetails : undefined}
           className={cn(
             "flex items-center gap-2 overflow-hidden flex-1 px-2 py-1 -my-1 rounded",
-            _onViewDetails && !selectionMode && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
+            _onViewDetails &&
+              !selectionMode &&
+              "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
           )}
         >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
@@ -297,14 +316,17 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
               day: "numeric",
             })}
           </span>
-          {status !== "processing" && status !== "queued" && status !== "failed" && sourceDocument.title && (
-            <>
-              <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
-              <span className="text-sm font-semibold text-text truncate">
-                {sourceDocument.title}
-              </span>
-            </>
-          )}
+          {status !== "processing" &&
+            status !== "queued" &&
+            status !== "failed" &&
+            sourceDocument.title && (
+              <>
+                <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
+                <span className="text-sm font-semibold text-text truncate">
+                  {sourceDocument.title}
+                </span>
+              </>
+            )}
           {sourceDocument.type === "manual" && (
             <span className="text-xs text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
               {t("quickEntry")}
@@ -316,16 +338,13 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         <div className="flex items-center gap-2 shrink-0">
           {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
-              status={(status === "anomaly" || status === "failed") ? "error" : status}
+              status={status === "anomaly" || status === "failed" ? "error" : status}
               label={status === "anomaly" && anomalyReason ? anomalyReason : undefined}
             />
           )}
 
           {!["queued", "processing", "anomaly", "failed"].includes(status) && (
-            <SourceDocumentTotal
-              entries={ledgerEntries}
-              mainCurrency={mainCurrency}
-            />
+            <SourceDocumentTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
           )}
 
           <div className="flex items-center gap-1.5 ml-1">
@@ -344,27 +363,23 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 {onRetry && sourceDocument.type !== "manual" && (
                   <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                    {status === "queued" || status === "processing" || status === "failed" ? tCommon("retry") : t("editRetry")}
+                    {status === "queued" || status === "processing" || status === "failed"
+                      ? tCommon("retry")
+                      : t("editRetry")}
                   </DropdownMenuItem>
                 )}
 
                 {onDelete && (
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="text-danger focus:text-danger"
-                  >
+                  <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
                     <Trash2 className="mr-2 h-4 w-4" />
                     {tCommon("delete")}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-
-
           </div>
         </div>
       </div>
-
 
       <AnimatePresence initial={false}>
         {isItemsExpanded && (
@@ -422,17 +437,16 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 ))}
               </div>
             )}
-
           </motion.div>
         )}
       </AnimatePresence>
 
       <ImageViewer
         images={images}
-        initialIndex={typeof selectedImageIndex === 'number' ? selectedImageIndex : 0}
+        initialIndex={typeof selectedImageIndex === "number" ? selectedImageIndex : 0}
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
-    </div >
+    </div>
   );
 });

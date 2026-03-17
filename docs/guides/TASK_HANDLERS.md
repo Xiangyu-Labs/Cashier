@@ -13,6 +13,7 @@ Tasks are registered via **explicit imports** in `src/instrumentation.ts`. When 
 ### Current Registered Tasks
 
 The following tasks are registered in `src/instrumentation.ts`:
+
 - `parse_source_document` - Parses uploaded receipts and documents
 - `generate_category_metadata` - Generates icon and description for categories
 - `categorize_entry` - Auto-categorizes ledger entries
@@ -86,13 +87,13 @@ import { flowEngine } from "@/lib/flow";
 
 // Submit a task
 const taskId = await flowEngine.submit(
-  "process-document",        // task type (must match registration)
+  "process-document", // task type (must match registration)
   { documentId: "doc-123" }, // input payload
   {
-    title: "Process Document",           // display title
-    scopeId: ledgerId,                   // tenant scope
-    entityType: "source_document",       // entity type
-    entityId: "doc-123",                 // entity ID
+    title: "Process Document", // display title
+    scopeId: ledgerId, // tenant scope
+    entityType: "source_document", // entity type
+    entityId: "doc-123", // entity ID
   }
 );
 
@@ -113,11 +114,11 @@ async execute(
 
 ### Context Methods
 
-| Method | Description |
-|--------|-------------|
+| Method                            | Description                           |
+| --------------------------------- | ------------------------------------- |
 | `context.updateProgress(message)` | Update progress message (shown in UI) |
-| `context.reportTokens(usage)` | Report token usage for AI calls |
-| `context.signal` | AbortSignal for cancellation support |
+| `context.reportTokens(usage)`     | Report token usage for AI calls       |
+| `context.signal`                  | AbortSignal for cancellation support  |
 
 ### Input/Output Types
 
@@ -342,6 +343,7 @@ await import("@/features/my-feature/server/tasks/my-task");
 ```
 
 Key changes:
+
 1. Rename file from `*.task.ts` to `*.ts` (naming is now flexible)
 2. Remove the `export default function register` wrapper
 3. Use direct `flowEngine.register()` call at module level

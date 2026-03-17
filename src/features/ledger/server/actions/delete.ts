@@ -12,18 +12,19 @@ import { forLedger } from "@/lib/db/scoped-query";
 /**
  * Soft delete a ledger and all its related data (entries, categories, source documents)
  */
-export const deleteLedgerAction = withAuth(async (userId: string, ledgerId: string): Promise<void> => {
+export const deleteLedgerAction = withAuth(
+  async (userId: string, ledgerId: string): Promise<void> => {
     // Verify ownership
     const existing = await db.query.ledgers.findFirst({
-        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+      where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
     });
 
     if (!existing) {
-        throw new NotFoundError("Ledger");
+      throw new NotFoundError("Ledger");
     }
 
     if (existing.userId !== userId) {
-        throw new ForbiddenError("Access denied to this ledger");
+      throw new ForbiddenError("Access denied to this ledger");
     }
 
     const qEntries = forLedger(ledgerEntries, ledgerId);
@@ -32,34 +33,23 @@ export const deleteLedgerAction = withAuth(async (userId: string, ledgerId: stri
 
     // Soft delete all related data in a transaction (sync for better-sqlite3)
     db.transaction((tx) => {
-        // 1. Soft delete all ledger entries
-        tx.update(ledgerEntries)
-            .set(qEntries.softDelete)
-            .where(qEntries.whereActive)
-            .run();
+      // 1. Soft delete all ledger entries
+      tx.update(ledgerEntries).set(qEntries.softDelete).where(qEntries.whereActive).run();
 
-        // 2. Soft delete all entry categories
-        tx.update(entryCategories)
-            .set(qCategories.softDelete)
-            .where(qCategories.whereActive)
-            .run();
+      // 2. Soft delete all entry categories
+      tx.update(entryCategories).set(qCategories.softDelete).where(qCategories.whereActive).run();
 
-        // 3. Soft delete all source documents
-        tx.update(sourceDocuments)
-            .set(qSourceDocs.softDelete)
-            .where(qSourceDocs.whereActive)
-            .run();
+      // 3. Soft delete all source documents
+      tx.update(sourceDocuments).set(qSourceDocs.softDelete).where(qSourceDocs.whereActive).run();
 
-        // 4. Soft delete the ledger itself
-        tx.update(ledgers)
-            .set({ deletedAt: new Date() })
-            .where(eq(ledgers.id, ledgerId))
-            .run();
+      // 4. Soft delete the ledger itself
+      tx.update(ledgers).set({ deletedAt: new Date() }).where(eq(ledgers.id, ledgerId)).run();
     });
 
     // Clear defaultLedgerId for users who had this ledger as default
     await clearUserDefaultLedger(ledgerId);
 
     // Invalidate cache
-    updateTag('ledger');
-});
+    updateTag("ledger");
+  }
+);

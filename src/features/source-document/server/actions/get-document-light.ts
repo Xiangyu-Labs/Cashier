@@ -23,14 +23,13 @@ export interface SourceDocumentLight extends SerializedSourceDocument {
  * Fetch a source document with light payload (excluding imageUrls).
  * Used for prefetching in list views where images are loaded on demand.
  */
-export async function getSourceDocumentLightAction(id: string): Promise<SourceDocumentLight | null> {
+export async function getSourceDocumentLightAction(
+  id: string
+): Promise<SourceDocumentLight | null> {
   // First, get just the ledgerId to check access
   const docMeta = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.id, id),
-      isNull(sourceDocuments.deletedAt)
-    ),
-    columns: { ledgerId: true, imageUrls: true }
+    where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),
+    columns: { ledgerId: true, imageUrls: true },
   });
 
   if (!docMeta) {
@@ -45,10 +44,7 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
 
   // Fetch document (include imageUrls for serialization, will be stripped later)
   const doc = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.id, id),
-      isNull(sourceDocuments.deletedAt)
-    ),
+    where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),
     columns: {
       id: true,
       ledgerId: true,
@@ -67,9 +63,9 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
     with: {
       ledgerEntries: {
         where: isNull(ledgerEntries.deletedAt),
-        with: { category: true }
-      }
-    }
+        with: { category: true },
+      },
+    },
   });
 
   if (!doc) {
@@ -78,10 +74,10 @@ export async function getSourceDocumentLightAction(id: string): Promise<SourceDo
 
   // Use unified serialization
   const serializedDoc = serializeSourceDocument(doc, {
-    stripMetadataFields: ['visionDescription'],
+    stripMetadataFields: ["visionDescription"],
     imageUrlsOverride: [],
     includeHasImages: true,
-    ledgerEntries: doc.ledgerEntries.map(entry =>
+    ledgerEntries: doc.ledgerEntries.map((entry) =>
       serializeLedgerEntry({
         ...entry,
         category: entry.category,

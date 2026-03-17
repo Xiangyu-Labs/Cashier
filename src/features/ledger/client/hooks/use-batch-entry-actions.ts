@@ -4,73 +4,73 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations";
 import {
-    batchUpdateLedgerEntriesAction,
-    batchDeleteLedgerEntriesAction,
+  batchUpdateLedgerEntriesAction,
+  batchDeleteLedgerEntriesAction,
 } from "@/features/ledger/server/actions/entries";
 import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/categorize";
 
 export function useBatchEntryActions(ledgerId: string, clearSelection: () => void) {
-    const tCommon = useTranslations("Common");
-    const tBatch = useTranslations("BatchActions");
+  const tCommon = useTranslations("Common");
+  const tBatch = useTranslations("BatchActions");
 
-    const batchCategorize = useLedgerMutation(ledgerId, {
-        mutationFn: async (ids: string[]) => {
-            const result = await submitBatchCategorizeAction(ledgerId, ids);
-            return result;
-        },
-        successMessage: "", // Custom message based on result
-        errorMessage: tCommon("error"),
-        onSuccessExtra: (result) => {
-            if (result.submittedCount > 0) {
-                toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
-            }
-            if (result.skippedCount > 0) {
-                toast.info(tBatch("aiCategorizeSkipped", { count: result.skippedCount }));
-            }
-            clearSelection();
-        },
-    });
+  const batchCategorize = useLedgerMutation(ledgerId, {
+    mutationFn: async (ids: string[]) => {
+      const result = await submitBatchCategorizeAction(ledgerId, ids);
+      return result;
+    },
+    successMessage: "", // Custom message based on result
+    errorMessage: tCommon("error"),
+    onSuccessExtra: (result) => {
+      if (result.submittedCount > 0) {
+        toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));
+      }
+      if (result.skippedCount > 0) {
+        toast.info(tBatch("aiCategorizeSkipped", { count: result.skippedCount }));
+      }
+      clearSelection();
+    },
+  });
 
-    const batchChangeCategory = useLedgerMutation(ledgerId, {
-        mutationFn: async ({ ids, categoryId }: { ids: string[]; categoryId: string | null }) => {
-            await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId });
-        },
-        successMessage: "", // Custom message with count
-        errorMessage: tCommon("error"),
-        onSuccessExtra: (_data, { ids }) => {
-            toast.success(tBatch("categoryChanged", { count: ids.length }));
-            clearSelection();
-        },
-    });
+  const batchChangeCategory = useLedgerMutation(ledgerId, {
+    mutationFn: async ({ ids, categoryId }: { ids: string[]; categoryId: string | null }) => {
+      await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId });
+    },
+    successMessage: "", // Custom message with count
+    errorMessage: tCommon("error"),
+    onSuccessExtra: (_data, { ids }) => {
+      toast.success(tBatch("categoryChanged", { count: ids.length }));
+      clearSelection();
+    },
+  });
 
-    const batchChangeCurrency = useLedgerMutation(ledgerId, {
-        mutationFn: async ({ ids, currency }: { ids: string[]; currency: string }) => {
-            await batchUpdateLedgerEntriesAction(ledgerId, ids, { currency });
-        },
-        successMessage: "",
-        errorMessage: tCommon("error"),
-        onSuccessExtra: (_data, { ids }) => {
-            toast.success(tBatch("currencyChanged", { count: ids.length }));
-            clearSelection();
-        },
-    });
+  const batchChangeCurrency = useLedgerMutation(ledgerId, {
+    mutationFn: async ({ ids, currency }: { ids: string[]; currency: string }) => {
+      await batchUpdateLedgerEntriesAction(ledgerId, ids, { currency });
+    },
+    successMessage: "",
+    errorMessage: tCommon("error"),
+    onSuccessExtra: (_data, { ids }) => {
+      toast.success(tBatch("currencyChanged", { count: ids.length }));
+      clearSelection();
+    },
+  });
 
-    const batchDelete = useLedgerMutation(ledgerId, {
-        mutationFn: async (ids: string[]) => {
-            await batchDeleteLedgerEntriesAction(ledgerId, ids);
-        },
-        successMessage: "", // Custom message with count
-        errorMessage: tCommon("error"),
-        onSuccessExtra: (_data, ids) => {
-            toast.success(tBatch("entriesDeleted", { count: ids.length }));
-            clearSelection();
-        },
-    });
+  const batchDelete = useLedgerMutation(ledgerId, {
+    mutationFn: async (ids: string[]) => {
+      await batchDeleteLedgerEntriesAction(ledgerId, ids);
+    },
+    successMessage: "", // Custom message with count
+    errorMessage: tCommon("error"),
+    onSuccessExtra: (_data, ids) => {
+      toast.success(tBatch("entriesDeleted", { count: ids.length }));
+      clearSelection();
+    },
+  });
 
-    return {
-        batchCategorize,
-        batchChangeCategory,
-        batchChangeCurrency,
-        batchDelete,
-    };
+  return {
+    batchCategorize,
+    batchChangeCategory,
+    batchChangeCurrency,
+    batchDelete,
+  };
 }

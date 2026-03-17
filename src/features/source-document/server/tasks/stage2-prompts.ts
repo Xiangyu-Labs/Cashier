@@ -1,6 +1,6 @@
 /**
  * Stage 2 Prompts
- * 
+ *
  * Detailed parsing prompts that use Stage 1.5 validation summary as context.
  */
 
@@ -12,19 +12,21 @@ export function buildDetailedParsePrompt(
   aiLanguage: string = "zh-CN"
 ): string {
   // Build context section from validation summary
-  const currencyHints = validationSummary.summary?.currencies
-    .map(c => `- ${c.code}: ${c.hint}`)
-    .join("\n") || "No currency hints";
+  const currencyHints =
+    validationSummary.summary?.currencies.map((c) => `- ${c.code}: ${c.hint}`).join("\n") ||
+    "No currency hints";
 
   // Use original categories with correct indices (1-based)
-  const categoryHints = originalCategories
-    .map((c, index) => ({ index: index + 1, name: c.name, description: c.description || "" }));
-  const categoryHintsStr = categoryHints.length > 0
-    ? JSON.stringify(categoryHints, null, 2)
-    : "No categories available";
+  const categoryHints = originalCategories.map((c, index) => ({
+    index: index + 1,
+    name: c.name,
+    description: c.description || "",
+  }));
+  const categoryHintsStr =
+    categoryHints.length > 0 ? JSON.stringify(categoryHints, null, 2) : "No categories available";
 
   const userRules = validationSummary.summary?.rules?.length
-    ? `### User-Defined Rules\n${validationSummary.summary.rules.map(r => `- ${r}`).join("\n")}`
+    ? `### User-Defined Rules\n${validationSummary.summary.rules.map((r) => `- ${r}`).join("\n")}`
     : "";
 
   return `You are a detailed financial document parser. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.

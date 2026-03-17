@@ -3,10 +3,14 @@ import { updateLedgerEntryAction } from "@/features/ledger/server/actions/entrie
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger, createTestSourceDocument, TEST_USER_ID } from "../../helpers/schema-setup";
+import {
+  createTestUserWithLedger,
+  createTestSourceDocument,
+  TEST_USER_ID,
+} from "../../helpers/schema-setup";
 
 // Mock the exchange rate service
-vi.mock('@/features/currency/server/exchange-rate-service', () => ({
+vi.mock("@/features/currency/server/exchange-rate-service", () => ({
   ExchangeRateService: {
     convert: vi.fn().mockImplementation((amount: number) => {
       // Mock: 1 USD = 7 CNY
@@ -16,172 +20,176 @@ vi.mock('@/features/currency/server/exchange-rate-service', () => ({
 }));
 
 describe("Ledger Entry Update Action", () => {
-    let testLedgerId: string;
-    let testEntryId: string;
-    let testCategoryId: string;
-    let testSourceDocId: string;
+  let testLedgerId: string;
+  let testEntryId: string;
+  let testCategoryId: string;
+  let testSourceDocId: string;
 
-    beforeEach(async () => {
-        const db = getTestDb();
+  beforeEach(async () => {
+    const db = getTestDb();
 
-        // Clean up existing ledger for TEST_USER_ID and create new one
-        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
-        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
-        testLedgerId = ledgerId;
+    // Clean up existing ledger for TEST_USER_ID and create new one
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
+    testLedgerId = ledgerId;
 
-        const [category] = await db
-            .insert(entryCategories)
-            .values({ ledgerId: testLedgerId, name: "Dining", sortOrder: 1 })
-            .returning();
-        testCategoryId = category.id;
+    const [category] = await db
+      .insert(entryCategories)
+      .values({ ledgerId: testLedgerId, name: "Dining", sortOrder: 1 })
+      .returning();
+    testCategoryId = category.id;
 
-        // Create a test source document for entries
-        testSourceDocId = await createTestSourceDocument(db, testLedgerId);
+    // Create a test source document for entries
+    testSourceDocId = await createTestSourceDocument(db, testLedgerId);
 
-        const [entry] = await db
-            .insert(ledgerEntries)
-            .values({
-                ledgerId: testLedgerId,
-                sourceDocumentId: testSourceDocId,
-                amount: "100.00",
-                itemName: "Test Item",
-                description: "Initial description",
-                categoryId: testCategoryId,
-            })
-            .returning();
-        testEntryId = entry.id;
+    const [entry] = await db
+      .insert(ledgerEntries)
+      .values({
+        ledgerId: testLedgerId,
+        sourceDocumentId: testSourceDocId,
+        amount: "100.00",
+        itemName: "Test Item",
+        description: "Initial description",
+        categoryId: testCategoryId,
+      })
+      .returning();
+    testEntryId = entry.id;
+  });
+
+  it("should update description correctly", async () => {
+    const newDescription = "Updated description";
+
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      description: newDescription,
     });
 
-    it("should update description correctly", async () => {
-        const newDescription = "Updated description";
+    expect(result).toBeDefined();
+    expect(result.description).toBe(newDescription);
 
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { description: newDescription });
+    // Verify in DB
+    const db = getTestDb();
+    const [updatedEntry] = await db
+      .select()
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.id, testEntryId));
 
-        expect(result).toBeDefined();
-        expect(result.description).toBe(newDescription);
+    expect(updatedEntry.description).toBe(newDescription);
+  });
 
-        // Verify in DB
-        const db = getTestDb();
-        const [updatedEntry] = await db
-            .select()
-            .from(ledgerEntries)
-            .where(eq(ledgerEntries.id, testEntryId));
+  it("should update other fields correctly", async () => {
+    const changes = {
+      amount: 200,
+      itemName: "Updated Item",
+      currency: "USD",
+    };
 
-        expect(updatedEntry.description).toBe(newDescription);
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
+
+    expect(result).toBeDefined();
+    expect(result.amount).toBe("200.00");
+    expect(result.itemName).toBe(changes.itemName);
+    expect(result.currency).toBe(changes.currency);
+  });
+
+  it("should handle partial updates", async () => {
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      itemName: "Only Name Changed",
     });
 
-    it("should update other fields correctly", async () => {
-        const changes = {
-            amount: 200,
-            itemName: "Updated Item",
-            currency: "USD",
-        };
+    expect(result).toBeDefined();
+    expect(result.itemName).toBe("Only Name Changed");
+    expect(result.amount).toBe("100.00"); // Original value
+  });
 
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
+  it("should recalculate convertedAmount and exchangeRate when currency changes", async () => {
+    const db = getTestDb();
 
-        expect(result).toBeDefined();
-        expect(result.amount).toBe("200.00");
-        expect(result.itemName).toBe(changes.itemName);
-        expect(result.currency).toBe(changes.currency);
+    // Set ledger's main currency to CNY
+    await db
+      .update(ledgers)
+      .set({
+        metadata: {
+          settings: {
+            mainCurrency: "CNY",
+          },
+        },
+      })
+      .where(eq(ledgers.id, testLedgerId));
+
+    // Update entry to use USD (different from main currency)
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      currency: "USD",
+      amount: 100,
     });
 
-    it("should handle partial updates", async () => {
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, { itemName: "Only Name Changed" });
+    expect(result).toBeDefined();
+    expect(result.currency).toBe("USD");
+    expect(result.amount).toBe("100.00");
+    // Mock converts at 1 USD = 7 CNY
+    expect(result.convertedAmount).toBe("700.00");
+    expect(result.exchangeRate).toBe("7.000000");
+  });
 
-        expect(result).toBeDefined();
-        expect(result.itemName).toBe("Only Name Changed");
-        expect(result.amount).toBe("100.00"); // Original value
+  it("should recalculate when amount changes with different currency", async () => {
+    const db = getTestDb();
+
+    // Set ledger's main currency to CNY
+    await db
+      .update(ledgers)
+      .set({
+        metadata: {
+          settings: {
+            mainCurrency: "CNY",
+          },
+        },
+      })
+      .where(eq(ledgers.id, testLedgerId));
+
+    // First set currency to USD and amount
+    await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      currency: "USD",
+      amount: 100,
     });
 
-    it("should recalculate convertedAmount and exchangeRate when currency changes", async () => {
-        const db = getTestDb();
-
-        // Set ledger's main currency to CNY
-        await db
-            .update(ledgers)
-            .set({
-                metadata: {
-                    settings: {
-                        mainCurrency: 'CNY',
-                    },
-                },
-            })
-            .where(eq(ledgers.id, testLedgerId));
-
-        // Update entry to use USD (different from main currency)
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-            currency: 'USD',
-            amount: 100,
-        });
-
-        expect(result).toBeDefined();
-        expect(result.currency).toBe('USD');
-        expect(result.amount).toBe('100.00');
-        // Mock converts at 1 USD = 7 CNY
-        expect(result.convertedAmount).toBe('700.00');
-        expect(result.exchangeRate).toBe('7.000000');
+    // Then update amount - should trigger recalculation
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      amount: 200,
     });
 
-    it("should recalculate when amount changes with different currency", async () => {
-        const db = getTestDb();
+    expect(result).toBeDefined();
+    expect(result.amount).toBe("200.00");
+    expect(result.currency).toBe("USD"); // Should retain USD
+    // Mock converts at 1 USD = 7 CNY, so 200 USD = 1400 CNY
+    expect(result.convertedAmount).toBe("1400.00");
+    expect(result.exchangeRate).toBe("7.000000");
+  });
 
-        // Set ledger's main currency to CNY
-        await db
-            .update(ledgers)
-            .set({
-                metadata: {
-                    settings: {
-                        mainCurrency: 'CNY',
-                    },
-                },
-            })
-            .where(eq(ledgers.id, testLedgerId));
+  it("should set convertedAmount equal to amount when currency matches main currency", async () => {
+    const db = getTestDb();
 
-        // First set currency to USD and amount
-        await updateLedgerEntryAction(testLedgerId, testEntryId, {
-            currency: 'USD',
-            amount: 100,
-        });
+    // Set ledger's main currency to CNY
+    await db
+      .update(ledgers)
+      .set({
+        metadata: {
+          settings: {
+            mainCurrency: "CNY",
+          },
+        },
+      })
+      .where(eq(ledgers.id, testLedgerId));
 
-        // Then update amount - should trigger recalculation
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-            amount: 200,
-        });
-
-        expect(result).toBeDefined();
-        expect(result.amount).toBe('200.00');
-        expect(result.currency).toBe('USD'); // Should retain USD
-        // Mock converts at 1 USD = 7 CNY, so 200 USD = 1400 CNY
-        expect(result.convertedAmount).toBe('1400.00');
-        expect(result.exchangeRate).toBe('7.000000');
+    // Update entry to use CNY (same as main currency)
+    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
+      currency: "CNY",
+      amount: 100,
     });
 
-    it("should set convertedAmount equal to amount when currency matches main currency", async () => {
-        const db = getTestDb();
-
-        // Set ledger's main currency to CNY
-        await db
-            .update(ledgers)
-            .set({
-                metadata: {
-                    settings: {
-                        mainCurrency: 'CNY',
-                    },
-                },
-            })
-            .where(eq(ledgers.id, testLedgerId));
-
-        // Update entry to use CNY (same as main currency)
-        const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-            currency: 'CNY',
-            amount: 100,
-        });
-
-        expect(result).toBeDefined();
-        expect(result.currency).toBe('CNY');
-        expect(result.amount).toBe('100.00');
-        // When currencies match, convertedAmount should equal amount
-        expect(result.convertedAmount).toBe('100.00');
-        expect(result.exchangeRate).toBe('1');
-    });
+    expect(result).toBeDefined();
+    expect(result.currency).toBe("CNY");
+    expect(result.amount).toBe("100.00");
+    // When currencies match, convertedAmount should equal amount
+    expect(result.convertedAmount).toBe("100.00");
+    expect(result.exchangeRate).toBe("1");
+  });
 });

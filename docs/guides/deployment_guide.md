@@ -5,6 +5,7 @@ Cashier can be deployed as a containerized application using **Docker** or run d
 ## Architecture
 
 Cashier is a **simple, self-contained application**:
+
 - **SQLite** database (file-based, no external DB required)
 - Next.js handles both web requests and background AI processing
 - No Redis or external queue system needed
@@ -24,20 +25,21 @@ docker compose up -d --build
 
 ### 1.2 Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | SQLite path (default: `file:./data/sqlite.db`) | No |
-| `AUTH_SECRET` | Generate with `openssl rand -base64 32` | Yes |
-| `AUTH_URL` | Your domain (e.g., `https://cashier.example.com`) | Yes |
-| `OPENAI_API_KEY` | OpenAI API key | Yes |
-| `AUTH_RESEND_KEY` | Resend API key for email OTP | Yes |
-| `DISABLE_REGISTRATION` | Set `true` for private instance | No |
+| Variable               | Description                                       | Required |
+| ---------------------- | ------------------------------------------------- | -------- |
+| `DATABASE_URL`         | SQLite path (default: `file:./data/sqlite.db`)    | No       |
+| `AUTH_SECRET`          | Generate with `openssl rand -base64 32`           | Yes      |
+| `AUTH_URL`             | Your domain (e.g., `https://cashier.example.com`) | Yes      |
+| `OPENAI_API_KEY`       | OpenAI API key                                    | Yes      |
+| `AUTH_RESEND_KEY`      | Resend API key for email OTP                      | Yes      |
+| `DISABLE_REGISTRATION` | Set `true` for private instance                   | No       |
 
 ### 1.3 Data Persistence
 
 SQLite data is stored in `./data/sqlite.db` and is mounted as a Docker volume.
 
 **Backup**:
+
 ```bash
 cp ./data/sqlite.db ./backups/sqlite-$(date +%Y%m%d).db
 ```
@@ -45,6 +47,7 @@ cp ./data/sqlite.db ./backups/sqlite-$(date +%Y%m%d).db
 ### 1.4 Automatic Migrations
 
 The container runs database migrations automatically on startup via `docker-entrypoint.sh`.
+
 - Set `SKIP_MIGRATIONS=true` to disable auto-migration.
 
 ## 2. Updates & Rollbacks
@@ -76,15 +79,18 @@ docker compose -f docker-compose.dev.yml up --build
 ## 4. Troubleshooting
 
 ### View Logs
+
 ```bash
 docker compose logs -f app
 ```
 
 ### Database Issues
+
 - Check if `./data` directory exists and is writable
 - Verify `DATABASE_URL` points to the correct path
 
 ### Container Health
+
 ```bash
 docker compose ps
 docker compose exec app wget -q --spider http://localhost:3000/api/health

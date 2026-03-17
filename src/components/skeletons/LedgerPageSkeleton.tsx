@@ -51,10 +51,7 @@ export function LedgerPageSkeleton() {
               {/* Card content - entry items */}
               <div className="p-3 space-y-3">
                 {[1, 2].map((entryIndex) => (
-                  <div
-                    key={entryIndex}
-                    className="flex items-center justify-between py-1"
-                  >
+                  <div key={entryIndex} className="flex items-center justify-between py-1">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
                       <div className="space-y-1.5">

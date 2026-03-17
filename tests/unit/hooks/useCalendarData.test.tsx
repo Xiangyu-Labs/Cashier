@@ -24,9 +24,7 @@ const createWrapper = () => {
     },
   });
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -50,10 +48,9 @@ describe("useCalendarData hooks", () => {
 
       vi.mocked(heatmapActions.getCalendarHeatmapData).mockResolvedValue(mockData);
 
-      const { result } = renderHook(
-        () => useCalendarHeatmap(mockLedgerId, "month", "2024-03-01"),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useCalendarHeatmap(mockLedgerId, "month", "2024-03-01"), {
+        wrapper: createWrapper(),
+      });
 
       // Initially loading
       expect(result.current.isLoading).toBe(true);
@@ -82,10 +79,9 @@ describe("useCalendarData hooks", () => {
 
       vi.mocked(heatmapActions.getCalendarHeatmapData).mockResolvedValue(mockData);
 
-      const { result } = renderHook(
-        () => useCalendarHeatmap(mockLedgerId, "year", "2024-01-01"),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useCalendarHeatmap(mockLedgerId, "year", "2024-01-01"), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -171,10 +167,9 @@ describe("useCalendarData hooks", () => {
 
       vi.mocked(heatmapActions.getCalendarDayDetail).mockResolvedValue(mockData);
 
-      const { result } = renderHook(
-        () => useCalendarDayDetail(mockLedgerId, "2024-03-15"),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useCalendarDayDetail(mockLedgerId, "2024-03-15"), {
+        wrapper: createWrapper(),
+      });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -187,10 +182,9 @@ describe("useCalendarData hooks", () => {
     });
 
     it("should not fetch when date is null", () => {
-      const { result } = renderHook(
-        () => useCalendarDayDetail(mockLedgerId, null),
-        { wrapper: createWrapper() }
-      );
+      const { result } = renderHook(() => useCalendarDayDetail(mockLedgerId, null), {
+        wrapper: createWrapper(),
+      });
 
       expect(result.current.isLoading).toBe(false);
       expect(result.current.fetchStatus).toBe("idle");

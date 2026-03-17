@@ -1,12 +1,12 @@
 /**
  * Stage 1 Prompt Builders
- * 
+ *
  * All prompts are in English for better model instruction following.
  * User's preferred language (aiLanguage) is injected as output language.
  */
 
 export function buildValidityCheckPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a financial document validation AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a financial document validation AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Determine if the input is a valid financial record that contains at least one identifiable monetary amount.
@@ -23,7 +23,7 @@ Determine if the input is a valid financial record that contains at least one id
 }
 
 export function buildCompletenessCheckPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a bookkeeping record completeness checker. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a bookkeeping record completeness checker. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Determine if the input contains sufficient information for personal expense tracking. Accept various forms of records, not limited to formal transaction receipts.
@@ -64,14 +64,15 @@ If INCOMPLETE: {"is_complete": false, "issue": "Description in ${aiLanguage}"}`;
 }
 
 export function buildCurrencyRecognitionPrompt(
-    aiLanguage: string = "zh-CN",
-    preferredCurrencies: string[] = []
+  aiLanguage: string = "zh-CN",
+  preferredCurrencies: string[] = []
 ): string {
-    const currencyHint = preferredCurrencies.length > 0
-        ? `User's preferred currencies (as hints, not restrictions): ${preferredCurrencies.join(", ")}`
-        : "No preferred currencies specified";
+  const currencyHint =
+    preferredCurrencies.length > 0
+      ? `User's preferred currencies (as hints, not restrictions): ${preferredCurrencies.join(", ")}`
+      : "No preferred currencies specified";
 
-    return `You are a currency recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a currency recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Identify all currencies present in the financial document.
@@ -92,14 +93,14 @@ Identify all currencies present in the financial document.
 }
 
 export function buildCategoryRecognitionPrompt(
-    aiLanguage: string = "zh-CN",
-    categories: { name: string; description: string | null }[]
+  aiLanguage: string = "zh-CN",
+  categories: { name: string; description: string | null }[]
 ): string {
-    const categoryList = categories
-        .map(c => `- ${c.name}${c.description ? `: ${c.description}` : ""}`)
-        .join("\n");
+  const categoryList = categories
+    .map((c) => `- ${c.name}${c.description ? `: ${c.description}` : ""}`)
+    .join("\n");
 
-    return `You are a category recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a category recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Identify which categories from the provided list are present in this financial document.
@@ -121,7 +122,7 @@ ${categoryList}
 }
 
 export function buildTitleExtractionPrompt(aiLanguage: string = "zh-CN"): string {
-    return `You are a title extraction AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a title extraction AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Generate a concise, descriptive title for this financial document.
@@ -140,10 +141,10 @@ Generate a concise, descriptive title for this financial document.
 }
 
 export function buildUserRequirementsPrompt(
-    aiLanguage: string = "zh-CN",
-    userPrompt: string
+  aiLanguage: string = "zh-CN",
+  userPrompt: string
 ): string {
-    return `You are a requirements interpreter AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
+  return `You are a requirements interpreter AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 
 ### Task
 Convert the user's custom requirements into specific processing rules for the financial document parser.

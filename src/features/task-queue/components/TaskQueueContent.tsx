@@ -37,7 +37,7 @@ interface TaskQueueContentProps {
   onRetry: (item: QueueItem) => void;
   onDeleteSingle: (item: QueueItem) => void;
   onDeleteAll: () => void;
-  onRetryAll: (status: 'failed' | 'anomaly') => void;
+  onRetryAll: (status: "failed" | "anomaly") => void;
   onCancel: (item: QueueItem) => void;
   onDismiss: (item: QueueItem) => void;
   onDismissAll: () => void;
@@ -89,7 +89,8 @@ export function TaskQueueContent({
     );
   }
 
-  const { withSourceDoc: failedWithSourceDoc, withoutSourceDoc: failedWithoutSourceDoc } = failedStats;
+  const { withSourceDoc: failedWithSourceDoc, withoutSourceDoc: failedWithoutSourceDoc } =
+    failedStats;
 
   return (
     <>
@@ -172,7 +173,7 @@ export function TaskQueueContent({
                       variant="destructive"
                       size="sm"
                       className="h-6 px-2 text-xs"
-                      onClick={() => onRetryAll('failed')}
+                      onClick={() => onRetryAll("failed")}
                     >
                       {t("retryAll")}
                     </Button>
@@ -211,7 +212,9 @@ export function TaskQueueContent({
                   size="sm"
                   className="h-6 px-2 text-xs bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-50 hover:border-amber-200"
                   onClick={() => {
-                    const ids = groupedItems.anomaly.map(item => item.sourceDocumentId).filter(Boolean) as string[];
+                    const ids = groupedItems.anomaly
+                      .map((item) => item.sourceDocumentId)
+                      .filter(Boolean) as string[];
                     onDeleteAllAnomaly(ids);
                   }}
                 >
@@ -222,7 +225,7 @@ export function TaskQueueContent({
                 variant="default"
                 size="sm"
                 className="h-6 px-2 text-xs bg-amber-500 hover:bg-amber-600"
-                onClick={() => onRetryAll('anomaly')}
+                onClick={() => onRetryAll("anomaly")}
               >
                 {t("retryAll")}
               </Button>

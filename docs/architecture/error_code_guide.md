@@ -6,8 +6,8 @@
 
 来源文档共有 `queued`, `processing`, `completed`, `anomaly` 四种基本状态。当状态为 `anomaly` 时，我们通过 `anomalyCodes` 数组来提供更细粒度的错误原因。
 
--   `internal_error`: 系统内部错误（AI 服务超时、数据库异常、内容解析失败等）
--   `invalid_content`: 非有效流水（输入不含财务信息）
+- `internal_error`: 系统内部错误（AI 服务超时、数据库异常、内容解析失败等）
+- `invalid_content`: 非有效流水（输入不含财务信息）
 
 ## 增加步骤
 
@@ -20,9 +20,9 @@
 ```typescript
 // src/features/source-document/server/schema.ts
 // SQLite 使用 text 类型存储枚举值，在 TypeScript 层面定义类型
-export type AnomalyCode = 
-  | "internal_error" 
-  | "invalid_content" 
+export type AnomalyCode =
+  | "internal_error"
+  | "invalid_content"
   | "evidence_anomaly"
   | "rate_limit_exceeded"; // 新增
 ```
@@ -64,13 +64,14 @@ async execute(input, context) {
 
 ## UI 显示说明
 
--   系统会自动根据 `anomalyCodes` 在 `SourceDocumentCard` 中查找对应的国际化文本。
--   错误信息将替代原有的“处理异常”标签，并以红色圆点样式显示。
--   所有 `anomaly` 状态的记录都会自动显示“重试”和“删除”按钮。
+- 系统会自动根据 `anomalyCodes` 在 `SourceDocumentCard` 中查找对应的国际化文本。
+- 错误信息将替代原有的“处理异常”标签，并以红色圆点样式显示。
+- 所有 `anomaly` 状态的记录都会自动显示“重试”和“删除”按钮。
 
 ## 测试建议
 
 增加新错误码后，请通过以下测试确保逻辑正确：
+
 - **Hook 测试**: `tests/unit/hooks/useUnifiedSourceDocuments.test.tsx` - 验证前端 Hook 能正确处理新的状态和错误码组合。
 - **Action 测试**: `tests/integration/source-document-actions.test.ts` - 验证后端存储和检索错误码的逻辑。
 - **Schema 验证**: 确保 `tests/helpers/schema-setup.ts`（如果存在）或测试环境已同步最新的 Enum 定义。

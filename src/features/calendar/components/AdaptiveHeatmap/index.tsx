@@ -6,11 +6,11 @@
  * - > 35 days: Small grid (12px cells) GitHub-style with horizontal scroll
  */
 
-'use client';
+"use client";
 
-import { LargeGridHeatmap } from './LargeGrid';
-import { SmallGridHeatmap } from './SmallGrid';
-import type { CalendarDayData, CalendarHeatmapStats } from '../../types';
+import { LargeGridHeatmap } from "./LargeGrid";
+import { SmallGridHeatmap } from "./SmallGrid";
+import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
 
 interface AdaptiveHeatmapProps {
   days: CalendarDayData[];

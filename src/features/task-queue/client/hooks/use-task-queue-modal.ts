@@ -55,18 +55,20 @@ export interface UseTaskQueueModalReturn {
   setIsAnomalyCollapsed: (value: boolean) => void;
   setIsCompletedCollapsed: (value: boolean) => void;
   setRetrySourceDocId: (id: string | null) => void;
-  setDeleteConfirm: React.Dispatch<React.SetStateAction<{
-    open: boolean;
-    type: "single" | "all" | null;
-    id: string | null;
-    title: string;
-    description: string;
-  }>>;
+  setDeleteConfirm: React.Dispatch<
+    React.SetStateAction<{
+      open: boolean;
+      type: "single" | "all" | null;
+      id: string | null;
+      title: string;
+      description: string;
+    }>
+  >;
   handleDeleteConfirmAction: () => void;
   handleRetry: (item: QueueItem) => void;
   handleDeleteSingle: (item: QueueItem) => void;
   handleDeleteAll: () => void;
-  handleRetryAll: (status: 'failed' | 'anomaly') => void;
+  handleRetryAll: (status: "failed" | "anomaly") => void;
   handleCancel: (item: QueueItem) => void;
   handleDismiss: (item: QueueItem) => void;
   handleDismissAll: () => void;
@@ -79,14 +81,8 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const queryClient = useQueryClient();
 
   const { items, stats, isLoading } = useTaskQueue(ledgerId);
-  const {
-    deleteSourceDocument,
-    batchDelete,
-    batchRetry,
-    cancelTask,
-    dismissTask,
-    batchDismiss,
-  } = useTaskQueueMutations(ledgerId);
+  const { deleteSourceDocument, batchDelete, batchRetry, cancelTask, dismissTask, batchDismiss } =
+    useTaskQueueMutations(ledgerId);
 
   // Collapsible section states - merged into single object to reduce state count
   const [collapsedSections, setCollapsedSections] = useState({
@@ -108,19 +104,25 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   }>({ open: false, type: null, id: null, title: "", description: "" });
 
   // Destructure for backward compatibility
-  const { pending: isPendingCollapsed, running: isRunningCollapsed, failed: isFailedCollapsed, anomaly: isAnomalyCollapsed, completed: isCompletedCollapsed } = collapsedSections;
+  const {
+    pending: isPendingCollapsed,
+    running: isRunningCollapsed,
+    failed: isFailedCollapsed,
+    anomaly: isAnomalyCollapsed,
+    completed: isCompletedCollapsed,
+  } = collapsedSections;
 
   // Helper to update individual section
   const setSectionCollapsed = (section: keyof typeof collapsedSections, value: boolean) => {
-    setCollapsedSections(prev => ({ ...prev, [section]: value }));
+    setCollapsedSections((prev) => ({ ...prev, [section]: value }));
   };
 
   // Create setters for backward compatibility
-  const setIsPendingCollapsed = (value: boolean) => setSectionCollapsed('pending', value);
-  const setIsRunningCollapsed = (value: boolean) => setSectionCollapsed('running', value);
-  const setIsFailedCollapsed = (value: boolean) => setSectionCollapsed('failed', value);
-  const setIsAnomalyCollapsed = (value: boolean) => setSectionCollapsed('anomaly', value);
-  const setIsCompletedCollapsed = (value: boolean) => setSectionCollapsed('completed', value);
+  const setIsPendingCollapsed = (value: boolean) => setSectionCollapsed("pending", value);
+  const setIsRunningCollapsed = (value: boolean) => setSectionCollapsed("running", value);
+  const setIsFailedCollapsed = (value: boolean) => setSectionCollapsed("failed", value);
+  const setIsAnomalyCollapsed = (value: boolean) => setSectionCollapsed("anomaly", value);
+  const setIsCompletedCollapsed = (value: boolean) => setSectionCollapsed("completed", value);
 
   const groupedItems = useMemo(() => {
     const pending: QueueItem[] = [];

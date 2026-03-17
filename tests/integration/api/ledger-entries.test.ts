@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories, ledgerEntries } from "@/lib/db/schema";
-import { createTestUserWithLedger, createTestSourceDocument, TEST_USER_ID } from "../../helpers/schema-setup";
+import {
+  createTestUserWithLedger,
+  createTestSourceDocument,
+  TEST_USER_ID,
+} from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 
 describe("getLedgerEntriesAction", () => {
@@ -65,8 +69,20 @@ describe("getLedgerEntriesAction", () => {
       .returning();
 
     await db.insert(ledgerEntries).values([
-      { ledgerId: testLedgerId, categoryId: testCategoryId, sourceDocumentId: testSourceDocId, amount: "10", itemName: "餐饮交易" },
-      { ledgerId: testLedgerId, categoryId: otherCategory.id, sourceDocumentId: testSourceDocId, amount: "20", itemName: "交通交易" },
+      {
+        ledgerId: testLedgerId,
+        categoryId: testCategoryId,
+        sourceDocumentId: testSourceDocId,
+        amount: "10",
+        itemName: "餐饮交易",
+      },
+      {
+        ledgerId: testLedgerId,
+        categoryId: otherCategory.id,
+        sourceDocumentId: testSourceDocId,
+        amount: "20",
+        itemName: "交通交易",
+      },
     ]);
 
     const data = await getLedgerEntriesAction(testLedgerId, { categoryId: testCategoryId });

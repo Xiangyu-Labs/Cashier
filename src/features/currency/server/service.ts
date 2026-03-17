@@ -10,65 +10,57 @@ import { logger } from "@/lib/logger";
 import { formatAmountStandard } from "@/lib/formatters";
 
 export interface ConversionResult {
-    convertedAmount: string;
-    exchangeRate: string;
+  convertedAmount: string;
+  exchangeRate: string;
 }
 
 export interface ConversionInput {
-    amount: number;
-    fromCurrency: string;
-    toCurrency: string;
-    date?: string;
+  amount: number;
+  fromCurrency: string;
+  toCurrency: string;
+  date?: string;
 }
 
 export class CurrencyService {
-    /**
-     * Convert an entry amount and format the result
-     */
-    static async convertEntryAmount(input: ConversionInput): Promise<ConversionResult | null> {
-        const { amount, fromCurrency, toCurrency, date } = input;
+  /**
+   * Convert an entry amount and format the result
+   */
+  static async convertEntryAmount(input: ConversionInput): Promise<ConversionResult | null> {
+    const { amount, fromCurrency, toCurrency, date } = input;
 
-        // Same currency - no conversion needed
-        if (fromCurrency === toCurrency) {
-            return {
-                convertedAmount: amount.toFixed(2),
-                exchangeRate: "1",
-            };
-        }
-
-        try {
-            const converted = await ExchangeRateService.convert(
-                amount,
-                fromCurrency,
-                toCurrency,
-                date
-            );
-
-            return {
-                convertedAmount: converted.toFixed(2),
-                exchangeRate: (converted / amount).toFixed(6),
-            };
-        } catch (err) {
-            logger.warn(
-                { err, fromCurrency, toCurrency, date },
-                "Currency conversion failed"
-            );
-            return null;
-        }
+    // Same currency - no conversion needed
+    if (fromCurrency === toCurrency) {
+      return {
+        convertedAmount: amount.toFixed(2),
+        exchangeRate: "1",
+      };
     }
 
-    /**
-     * Format amount to standard decimal string (2 decimal places)
-     * @deprecated Use formatAmountStandard from @/lib/formatters instead
-     */
-    static formatAmount(amount: number): string {
-        return formatAmountStandard(amount);
-    }
+    try {
+      const converted = await ExchangeRateService.convert(amount, fromCurrency, toCurrency, date);
 
-    /**
-     * Calculate exchange rate between two amounts
-     */
-    static calculateExchangeRate(fromAmount: number, toAmount: number): string {
-        return (toAmount / fromAmount).toFixed(6);
+      return {
+        convertedAmount: converted.toFixed(2),
+        exchangeRate: (converted / amount).toFixed(6),
+      };
+    } catch (err) {
+      logger.warn({ err, fromCurrency, toCurrency, date }, "Currency conversion failed");
+      return null;
     }
+  }
+
+  /**
+   * Format amount to standard decimal string (2 decimal places)
+   * @deprecated Use formatAmountStandard from @/lib/formatters instead
+   */
+  static formatAmount(amount: number): string {
+    return formatAmountStandard(amount);
+  }
+
+  /**
+   * Calculate exchange rate between two amounts
+   */
+  static calculateExchangeRate(fromAmount: number, toAmount: number): string {
+    return (toAmount / fromAmount).toFixed(6);
+  }
 }

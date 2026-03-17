@@ -1,14 +1,14 @@
 import { create } from "zustand";
 
 interface MutationState {
-    /** Ledger-scoped active mutation counters */
-    activeMutationsByLedger: Record<string, number>;
-    /** Increment mutation counter for a specific ledger */
-    incrementLedgerMutation: (ledgerId: string) => void;
-    /** Decrement mutation counter for a specific ledger */
-    decrementLedgerMutation: (ledgerId: string) => void;
-    /** Check if a specific ledger has active mutations */
-    hasActiveLedgerMutation: (ledgerId: string) => boolean;
+  /** Ledger-scoped active mutation counters */
+  activeMutationsByLedger: Record<string, number>;
+  /** Increment mutation counter for a specific ledger */
+  incrementLedgerMutation: (ledgerId: string) => void;
+  /** Decrement mutation counter for a specific ledger */
+  decrementLedgerMutation: (ledgerId: string) => void;
+  /** Check if a specific ledger has active mutations */
+  hasActiveLedgerMutation: (ledgerId: string) => boolean;
 }
 
 /**
@@ -19,29 +19,29 @@ interface MutationState {
  * to avoid overwriting optimistic updates.
  */
 export const useMutationStore = create<MutationState>((set, get) => ({
-    activeMutationsByLedger: {},
+  activeMutationsByLedger: {},
 
-    incrementLedgerMutation: (ledgerId: string) =>
-        set((state) => ({
-            activeMutationsByLedger: {
-                ...state.activeMutationsByLedger,
-                [ledgerId]: (state.activeMutationsByLedger[ledgerId] || 0) + 1
-            }
-        })),
+  incrementLedgerMutation: (ledgerId: string) =>
+    set((state) => ({
+      activeMutationsByLedger: {
+        ...state.activeMutationsByLedger,
+        [ledgerId]: (state.activeMutationsByLedger[ledgerId] || 0) + 1,
+      },
+    })),
 
-    decrementLedgerMutation: (ledgerId: string) =>
-        set((state) => {
-            const current = state.activeMutationsByLedger[ledgerId] || 0;
-            if (current <= 0) return state;
-            return {
-                activeMutationsByLedger: {
-                    ...state.activeMutationsByLedger,
-                    [ledgerId]: current - 1
-                }
-            };
-        }),
+  decrementLedgerMutation: (ledgerId: string) =>
+    set((state) => {
+      const current = state.activeMutationsByLedger[ledgerId] || 0;
+      if (current <= 0) return state;
+      return {
+        activeMutationsByLedger: {
+          ...state.activeMutationsByLedger,
+          [ledgerId]: current - 1,
+        },
+      };
+    }),
 
-    hasActiveLedgerMutation: (ledgerId: string) => {
-        return (get().activeMutationsByLedger[ledgerId] || 0) > 0;
-    }
+  hasActiveLedgerMutation: (ledgerId: string) => {
+    return (get().activeMutationsByLedger[ledgerId] || 0) > 0;
+  },
 }));

@@ -18,15 +18,16 @@
 
 **文件位置**: `src/lib/ai/openai-client.ts`
 
-| 配置项 | 当前值 | 评估 |
-|--------|--------|------|
-| SDK 默认超时 | **10 分钟** | 过长，高延迟下会长时间挂起 |
-| 应用级超时 | **未设置** | 风险高 |
-| 重试次数 | `AI_MAX_RETRIES` (默认 3) | 可配置 |
-| 重试延迟 | `AI_RETRY_DELAY_MS` (默认 1000ms) | 可配置 |
-| AbortSignal 支持 | 已支持 | 良好 |
+| 配置项           | 当前值                            | 评估                       |
+| ---------------- | --------------------------------- | -------------------------- |
+| SDK 默认超时     | **10 分钟**                       | 过长，高延迟下会长时间挂起 |
+| 应用级超时       | **未设置**                        | 风险高                     |
+| 重试次数         | `AI_MAX_RETRIES` (默认 3)         | 可配置                     |
+| 重试延迟         | `AI_RETRY_DELAY_MS` (默认 1000ms) | 可配置                     |
+| AbortSignal 支持 | 已支持                            | 良好                       |
 
 **代码分析**:
+
 ```typescript
 // 第 16-20 行: OpenAI 客户端初始化
 this.client = new OpenAI({
@@ -43,11 +44,13 @@ const response = await this.client.chat.completions.create({...}, {
 ```
 
 **高延迟风险评估**: **高**
+
 - 10 分钟默认超时在网络分区或高延迟下会导致请求长时间挂起
 - 每次重试都会重新经历完整超时周期
 - 最坏情况下：3 次重试 × 10 分钟 = 30 分钟挂起
 
 **连锁反应**:
+
 - Flow Engine 并发槽位被长期占用（默认 10 个并发）
 - 新任务无法执行，队列堆积
 - 用户无法取消已超时的任务（AbortController 只能在运行中取消）
@@ -58,14 +61,15 @@ const response = await this.client.chat.completions.create({...}, {
 
 **文件位置**: `src/features/currency/server/exchange-rate-service.ts`
 
-| 配置项 | 当前值 | 评估 |
-|--------|--------|------|
-| 超时设置 | **5 秒** | 合理 |
-| 重试次数 | 3 次 | 合理 |
-| 重试延迟 | 指数退避 (1s, 2s, 4s) | 合理 |
-| 请求折叠 | 已实现 | 良好（防止重复请求）|
+| 配置项   | 当前值                | 评估                 |
+| -------- | --------------------- | -------------------- |
+| 超时设置 | **5 秒**              | 合理                 |
+| 重试次数 | 3 次                  | 合理                 |
+| 重试延迟 | 指数退避 (1s, 2s, 4s) | 合理                 |
+| 请求折叠 | 已实现                | 良好（防止重复请求） |
 
 **代码分析**:
+
 ```typescript
 // 第 91 行: 5 秒超时配置
 return await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -84,6 +88,7 @@ private static async fetchWithRetry(url: string, retries = 3, delay = 1000): Pro
 ```
 
 **高延迟风险评估**: **低**
+
 - 5 秒超时配置合理
 - 指数退避重试策略适当
 - 最坏情况下总等待时间：5s + 1s + 5s + 2s + 5s + 4s + 5s = 27 秒
@@ -93,17 +98,19 @@ private static async fetchWithRetry(url: string, retries = 3, delay = 1000): Pro
 ### 1.3 邮件服务 (Resend)
 
 **文件位置**:
+
 - `src/features/auth/server/actions/auth.ts` (第 88 行)
 - `src/features/auth/server/services/notifications.ts` (第 21 行)
 
-| 配置项 | 当前值 | 评估 |
-|--------|--------|------|
-| SDK 版本 | 6.9.3 | - |
-| 超时设置 | **未设置** | **高风险** |
-| 重试策略 | **无** | **高风险** |
+| 配置项      | 当前值     | 评估       |
+| ----------- | ---------- | ---------- |
+| SDK 版本    | 6.9.3      | -          |
+| 超时设置    | **未设置** | **高风险** |
+| 重试策略    | **无**     | **高风险** |
 | AbortSignal | **不支持** | **高风险** |
 
 **代码分析**:
+
 ```typescript
 // src/features/auth/server/actions/auth.ts 第 22 行
 const resend = new Resend(process.env.AUTH_RESEND_KEY);
@@ -118,12 +125,14 @@ await resend.emails.send({
 ```
 
 **Resend SDK 分析**:
+
 - Resend SDK 底层使用 `fetch()` 但没有暴露超时配置选项
 - 没有内置重试机制
 - 不支持 AbortSignal/取消操作
 - 依赖 Node.js 默认的 HTTP 超时（可能无限挂起）
 
 **高延迟风险评估**: **高**
+
 - 无超时保护，网络故障时可能无限挂起
 - 发生在用户登录关键路径上，直接影响用户体验
 - OTP 发送失败无优雅降级（仅记录日志）
@@ -134,29 +143,31 @@ await resend.emails.send({
 
 **文件位置**: `src/auth.ts`
 
-| 配置项 | 当前值 | 评估 |
-|--------|--------|------|
-| 发现端点 | `.well-known/openid-configuration` | 动态获取 |
-| 超时设置 | **未配置** | **中风险** |
-| 依赖库 | NextAuth.js 5.0.0-beta.30 | - |
+| 配置项   | 当前值                             | 评估       |
+| -------- | ---------------------------------- | ---------- |
+| 发现端点 | `.well-known/openid-configuration` | 动态获取   |
+| 超时设置 | **未配置**                         | **中风险** |
+| 依赖库   | NextAuth.js 5.0.0-beta.30          | -          |
 
 **代码分析**:
+
 ```typescript
 // 第 30-48 行: OIDC Provider 配置
 const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
-    // ...
-    return {
-        id: "oidc",
-        name: process.env.OIDC_BUTTON_NAME || "SSO",
-        type: "oidc",
-        issuer,
-        wellKnown: `${issuer}/.well-known/openid-configuration`, // 发现端点
-        // 无超时配置
-    };
+  // ...
+  return {
+    id: "oidc",
+    name: process.env.OIDC_BUTTON_NAME || "SSO",
+    type: "oidc",
+    issuer,
+    wellKnown: `${issuer}/.well-known/openid-configuration`, // 发现端点
+    // 无超时配置
+  };
 })();
 ```
 
 **高延迟风险评估**: **中**
+
 - NextAuth.js 内部处理 OIDC 流程，超时行为由库控制
 - 发现端点获取、token 交换、用户信息获取都可能受延迟影响
 - 用户可刷新页面重试，非关键后台任务
@@ -184,29 +195,29 @@ Parse Source Document Task
 
 ### 2.2 最坏情况下的 OpenAI 调用次数
 
-| 阶段 | 正常情况 | 需要仲裁 | 总计 (最坏) |
-|------|----------|----------|-------------|
-| Stage 0 | 1 | 0 | 1 |
-| Stage 1 Validity | 2 | 1 | 3 |
-| Stage 1 Completeness | 1 | 0 | 1 |
-| Stage 1 Currency | 2 | 1 | 3 |
-| Stage 1 Category | 2 | 1 | 3 |
-| Stage 1 Title | 1 | 0 | 1 |
-| Stage 1.5 | 1 | 0 | 1 |
-| Stage 2 | 2 | 1 | 3 |
-| **总计** | **12** | **4** | **16** |
+| 阶段                 | 正常情况 | 需要仲裁 | 总计 (最坏) |
+| -------------------- | -------- | -------- | ----------- |
+| Stage 0              | 1        | 0        | 1           |
+| Stage 1 Validity     | 2        | 1        | 3           |
+| Stage 1 Completeness | 1        | 0        | 1           |
+| Stage 1 Currency     | 2        | 1        | 3           |
+| Stage 1 Category     | 2        | 1        | 3           |
+| Stage 1 Title        | 1        | 0        | 1           |
+| Stage 1.5            | 1        | 0        | 1           |
+| Stage 2              | 2        | 1        | 3           |
+| **总计**             | **12**   | **4**    | **16**      |
 
 ### 2.3 高延迟下的时间估算
 
 假设网络延迟 200ms，丢包率 10%：
 
-| 场景 | 计算 | 预估时间 |
-|------|------|----------|
-| 单次调用 (正常) | 200ms RTT + 处理 | ~500ms |
-| 单次调用 (重试) | 3 次尝试 × 500ms | ~1.5s |
-| 完整文档解析 (正常) | 12 × 500ms | ~6 秒 |
-| 完整文档解析 (高延迟+仲裁) | 16 × 1.5s | ~24 秒 |
-| 最坏情况 (每次调用都超时重试) | 16 × 30 分钟 | **8 小时** |
+| 场景                          | 计算             | 预估时间   |
+| ----------------------------- | ---------------- | ---------- |
+| 单次调用 (正常)               | 200ms RTT + 处理 | ~500ms     |
+| 单次调用 (重试)               | 3 次尝试 × 500ms | ~1.5s      |
+| 完整文档解析 (正常)           | 12 × 500ms       | ~6 秒      |
+| 完整文档解析 (高延迟+仲裁)    | 16 × 1.5s        | ~24 秒     |
+| 最坏情况 (每次调用都超时重试) | 16 × 30 分钟     | **8 小时** |
 
 **风险**: 在高延迟环境下，单个文档解析任务可能占用 Flow Engine 并发槽位数小时，导致其他任务完全无法执行。
 
@@ -216,18 +227,18 @@ Parse Source Document Task
 
 ### 3.1 高风险问题
 
-| # | 问题 | 位置 | 影响 |
-|---|------|------|------|
-| 1 | OpenAI 默认 10 分钟超时 | `openai-client.ts:16` | 任务挂起 30 分钟+ |
-| 2 | Resend 无超时配置 | `auth.ts:88`, `notifications.ts:21` | 登录流程无限挂起 |
-| 3 | 无整体任务超时 | `flow/engine.ts` | 任务可能永远运行 |
+| #   | 问题                    | 位置                                | 影响              |
+| --- | ----------------------- | ----------------------------------- | ----------------- |
+| 1   | OpenAI 默认 10 分钟超时 | `openai-client.ts:16`               | 任务挂起 30 分钟+ |
+| 2   | Resend 无超时配置       | `auth.ts:88`, `notifications.ts:21` | 登录流程无限挂起  |
+| 3   | 无整体任务超时          | `flow/engine.ts`                    | 任务可能永远运行  |
 
 ### 3.2 中风险问题
 
-| # | 问题 | 位置 | 影响 |
-|---|------|------|------|
-| 4 | OIDC 无超时配置 | `auth.ts:45` | SSO 登录缓慢/失败 |
-| 5 | JSON 修复无单独超时 | `ai-context.ts:76-105` | 可能额外增加 10 分钟+ |
+| #   | 问题                | 位置                   | 影响                  |
+| --- | ------------------- | ---------------------- | --------------------- |
+| 4   | OIDC 无超时配置     | `auth.ts:45`           | SSO 登录缓慢/失败     |
+| 5   | JSON 修复无单独超时 | `ai-context.ts:76-105` | 可能额外增加 10 分钟+ |
 
 ---
 
@@ -269,27 +280,27 @@ constructor() {
 ```typescript
 // 添加带超时的邮件发送包装函数
 async function sendEmailWithTimeout(
-    resend: Resend,
-    options: Parameters<Resend['emails']['send']>[0],
-    timeoutMs = 10000
+  resend: Resend,
+  options: Parameters<Resend["emails"]["send"]>[0],
+  timeoutMs = 10000
 ): Promise<void> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-        // 注意: Resend SDK 可能不直接支持 AbortSignal
-        // 需要检查 SDK 版本或使用底层 fetch 实现
-        await Promise.race([
-            resend.emails.send(options),
-            new Promise((_, reject) => {
-                controller.signal.addEventListener('abort', () => {
-                    reject(new Error('Email send timeout'));
-                });
-            }),
-        ]);
-    } finally {
-        clearTimeout(timeoutId);
-    }
+  try {
+    // 注意: Resend SDK 可能不直接支持 AbortSignal
+    // 需要检查 SDK 版本或使用底层 fetch 实现
+    await Promise.race([
+      resend.emails.send(options),
+      new Promise((_, reject) => {
+        controller.signal.addEventListener("abort", () => {
+          reject(new Error("Email send timeout"));
+        });
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 ```
 
@@ -330,15 +341,15 @@ async function runTask<TInput>(...) {
 
 ```typescript
 return {
-    id: "oidc",
-    name: process.env.OIDC_BUTTON_NAME || "SSO",
-    type: "oidc",
-    issuer,
-    wellKnown: `${issuer}/.well-known/openid-configuration`,
-    httpOptions: {
-        timeout: 10000, // 10 秒超时
-    },
-    // ...
+  id: "oidc",
+  name: process.env.OIDC_BUTTON_NAME || "SSO",
+  type: "oidc",
+  issuer,
+  wellKnown: `${issuer}/.well-known/openid-configuration`,
+  httpOptions: {
+    timeout: 10000, // 10 秒超时
+  },
+  // ...
 };
 ```
 
@@ -365,17 +376,17 @@ EMAIL_TIMEOUT_MS=10000
 
 ```typescript
 class AdaptiveTimeout {
-    private history: number[] = [];
+  private history: number[] = [];
 
-    recordLatency(ms: number) {
-        this.history.push(ms);
-        if (this.history.length > 10) this.history.shift();
-    }
+  recordLatency(ms: number) {
+    this.history.push(ms);
+    if (this.history.length > 10) this.history.shift();
+  }
 
-    getRecommendedTimeout(): number {
-        const avg = this.history.reduce((a, b) => a + b, 0) / this.history.length;
-        return Math.max(30000, avg * 3); // 3x 平均延迟，最小 30 秒
-    }
+  getRecommendedTimeout(): number {
+    const avg = this.history.reduce((a, b) => a + b, 0) / this.history.length;
+    return Math.max(30000, avg * 3); // 3x 平均延迟，最小 30 秒
+  }
 }
 ```
 
@@ -385,15 +396,15 @@ class AdaptiveTimeout {
 
 ```typescript
 class CircuitBreaker {
-    private failures = 0;
-    private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private failures = 0;
+  private state: "closed" | "open" | "half-open" = "closed";
 
-    async execute<T>(fn: () => Promise<T>): Promise<T> {
-        if (this.state === 'open') {
-            throw new Error('Circuit breaker is open');
-        }
-        // ... 实现逻辑
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === "open") {
+      throw new Error("Circuit breaker is open");
     }
+    // ... 实现逻辑
+  }
 }
 ```
 
@@ -428,13 +439,13 @@ AUTH_EMAIL_FROM=noreply@example.com
 
 ### 5.2 各场景推荐超时值
 
-| 场景 | 推荐超时 | 理由 |
-|------|----------|------|
-| OpenAI API 调用 | 60 秒 | 足够处理复杂图像解析 |
-| 汇率 API 调用 | 5 秒 | 轻量级 REST API，已配置 |
-| 邮件发送 | 10 秒 | 邮件服务通常快速响应 |
-| OIDC 发现/Token | 10 秒 | OAuth 标准流程 |
-| 整体任务执行 | 5 分钟 | 防止无限挂起，允许复杂文档 |
+| 场景            | 推荐超时 | 理由                       |
+| --------------- | -------- | -------------------------- |
+| OpenAI API 调用 | 60 秒    | 足够处理复杂图像解析       |
+| 汇率 API 调用   | 5 秒     | 轻量级 REST API，已配置    |
+| 邮件发送        | 10 秒    | 邮件服务通常快速响应       |
+| OIDC 发现/Token | 10 秒    | OAuth 标准流程             |
+| 整体任务执行    | 5 分钟   | 防止无限挂起，允许复杂文档 |
 
 ---
 
@@ -454,15 +465,15 @@ toxiproxy-cli toxic add -t timeout -a timeout=10000 openai
 
 ```typescript
 // tests/unit/lib/ai/openai-client.test.ts
-describe('OpenAI Client Timeout', () => {
-    it('should timeout after AI_TIMEOUT_MS', async () => {
-        // 模拟延迟响应
-        // 验证超时行为
-    });
+describe("OpenAI Client Timeout", () => {
+  it("should timeout after AI_TIMEOUT_MS", async () => {
+    // 模拟延迟响应
+    // 验证超时行为
+  });
 
-    it('should retry on timeout with exponential backoff', async () => {
-        // 验证重试逻辑
-    });
+  it("should retry on timeout with exponential backoff", async () => {
+    // 验证重试逻辑
+  });
 });
 ```
 
@@ -479,11 +490,11 @@ describe('OpenAI Client Timeout', () => {
 
 ### 7.2 风险等级分布
 
-| 等级 | 数量 | 问题 |
-|------|------|------|
-| 高 | 3 | OpenAI 超时、Resend 无超时、任务无整体超时 |
-| 中 | 2 | OIDC 无超时、JSON 修复无超时 |
-| 低 | 1 | 汇率 API 配置良好 |
+| 等级 | 数量 | 问题                                       |
+| ---- | ---- | ------------------------------------------ |
+| 高   | 3    | OpenAI 超时、Resend 无超时、任务无整体超时 |
+| 中   | 2    | OIDC 无超时、JSON 修复无超时               |
+| 低   | 1    | 汇率 API 配置良好                          |
 
 ### 7.3 修复优先级
 
@@ -496,15 +507,15 @@ describe('OpenAI Client Timeout', () => {
 
 ## 附录: 相关文件清单
 
-| 文件路径 | 说明 |
-|----------|------|
-| `src/lib/ai/openai-client.ts` | OpenAI 客户端实现 |
-| `src/lib/flow/ai-context.ts` | AI 上下文（含 JSON 修复）|
-| `src/lib/flow/engine.ts` | 任务引擎实现 |
-| `src/features/currency/server/exchange-rate-service.ts` | 汇率服务（配置良好）|
-| `src/features/auth/server/actions/auth.ts` | OTP 发送（Resend）|
-| `src/features/auth/server/services/notifications.ts` | 登录通知邮件 |
-| `src/auth.ts` | NextAuth + OIDC 配置 |
-| `src/features/source-document/server/tasks/parse-source-document.ts` | 文档解析任务 |
-| `src/features/source-document/server/tasks/stage1-executor.ts` | Stage 1 执行器 |
-| `src/lib/ai/dual-gpt-runner.ts` | 双 GPT + 仲裁模式 |
+| 文件路径                                                             | 说明                      |
+| -------------------------------------------------------------------- | ------------------------- |
+| `src/lib/ai/openai-client.ts`                                        | OpenAI 客户端实现         |
+| `src/lib/flow/ai-context.ts`                                         | AI 上下文（含 JSON 修复） |
+| `src/lib/flow/engine.ts`                                             | 任务引擎实现              |
+| `src/features/currency/server/exchange-rate-service.ts`              | 汇率服务（配置良好）      |
+| `src/features/auth/server/actions/auth.ts`                           | OTP 发送（Resend）        |
+| `src/features/auth/server/services/notifications.ts`                 | 登录通知邮件              |
+| `src/auth.ts`                                                        | NextAuth + OIDC 配置      |
+| `src/features/source-document/server/tasks/parse-source-document.ts` | 文档解析任务              |
+| `src/features/source-document/server/tasks/stage1-executor.ts`       | Stage 1 执行器            |
+| `src/lib/ai/dual-gpt-runner.ts`                                      | 双 GPT + 仲裁模式         |

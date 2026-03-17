@@ -51,10 +51,7 @@ describe("Category mutations optimistic updates", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    const { result } = renderHook(
-      () => useCategoryMutations(ledgerId, []),
-      { wrapper }
-    );
+    const { result } = renderHook(() => useCategoryMutations(ledgerId, []), { wrapper });
 
     // 触发更新
     act(() => {
@@ -66,7 +63,9 @@ describe("Category mutations optimistic updates", () => {
 
     // 乐观更新应立即生效 - cache 已更新
     await waitFor(() => {
-      const categories = queryClient.getQueryData<Record<string, unknown>[]>(queryKeys.entryCategories(ledgerId));
+      const categories = queryClient.getQueryData<Record<string, unknown>[]>(
+        queryKeys.entryCategories(ledgerId)
+      );
       expect(categories?.[0]?.description).toBe("吃饭和饮料");
     });
 

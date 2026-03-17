@@ -48,5 +48,5 @@ export interface StorageProvider {
  * Check if a URL is a local upload URL (/api/uploads/)
  */
 export function isLocalUploadUrl(url: string): boolean {
-  return url.startsWith('/api/uploads/');
+  return url.startsWith("/api/uploads/");
 }

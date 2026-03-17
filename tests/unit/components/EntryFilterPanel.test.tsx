@@ -86,7 +86,6 @@ describe("EntryFilterPanel", () => {
     });
   });
 
-
   it("hides category filter when showCategory is false", async () => {
     render(
       <EntryFilterPanel

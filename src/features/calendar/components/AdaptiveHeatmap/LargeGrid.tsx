@@ -3,14 +3,14 @@
  * 7-column grid with 40px cells showing date and amount
  */
 
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import { getHeatmapLevel } from '../../lib/heatmap-colors';
-import { formatDate } from '../../lib/date-utils';
-import type { CalendarDayData, CalendarHeatmapStats } from '../../types';
-import { DayCellLarge } from './DayCellLarge';
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { getHeatmapLevel } from "../../lib/heatmap-colors";
+import { formatDate } from "../../lib/date-utils";
+import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
+import { DayCellLarge } from "./DayCellLarge";
 
 interface LargeGridHeatmapProps {
   days: CalendarDayData[];
@@ -73,13 +73,13 @@ export function LargeGridHeatmap({
   }, [days, dayMap, queryRange]);
 
   return (
-    <div className={cn('w-full flex justify-center', className)}>
+    <div className={cn("w-full flex justify-center", className)}>
       {/* 7-column grid for days of week layout */}
       <div className="grid grid-cols-7 gap-2 w-full lg:max-w-[800px] xl:max-w-[900px] lg:gap-3 xl:gap-4">
         {gridDays.map(({ date, dayData }) => {
           const amount = dayData?.totalAmount || 0;
           const level = getHeatmapLevel(amount, stats);
-          const dayNumber = parseInt(date.split('-')[2], 10);
+          const dayNumber = parseInt(date.split("-")[2], 10);
 
           return (
             <DayCellLarge

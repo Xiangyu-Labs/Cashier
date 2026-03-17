@@ -155,7 +155,8 @@ describe("OTP Repository", () => {
 
       // Manually set expiration to past
       // Manually set expiration to past
-      await db.update(otpTokens)
+      await db
+        .update(otpTokens)
         .set({ expires: new Date(Date.now() - 1000 * 60 * 60) })
         .where(eq(otpTokens.email, testEmail.toLowerCase()));
 
@@ -217,7 +218,8 @@ describe("OTP Repository", () => {
 
       // Set lockout to past
       // Set lockout to past
-      await db.update(otpTokens)
+      await db
+        .update(otpTokens)
         .set({ lockedUntil: new Date(Date.now() - 1000 * 60 * 60) })
         .where(eq(otpTokens.email, testEmail.toLowerCase()));
 
@@ -252,7 +254,8 @@ describe("OTP Repository", () => {
 
       // Expire first token - use a fixed past date to be absolutely sure
       // Expire first token - use a fixed past date to be absolutely sure
-      await db.update(otpTokens)
+      await db
+        .update(otpTokens)
         .set({ expires: new Date("2000-01-01") })
         .where(eq(otpTokens.email, "user1@example.com"));
 

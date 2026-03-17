@@ -9,12 +9,12 @@
 /**
  * Discriminant for the source of the queue item
  */
-export type QueueItemKind = 'task' | 'anomaly';
+export type QueueItemKind = "task" | "anomaly";
 
 /**
  * Unified status enum covering task statuses and anomaly status
  */
-export type QueueItemStatus = 'pending' | 'running' | 'failed' | 'completed' | 'anomaly';
+export type QueueItemStatus = "pending" | "running" | "failed" | "completed" | "anomaly";
 
 /**
  * Unified queue item for display in TaskQueueModal
@@ -91,7 +91,7 @@ export function canRetry(item: QueueItem): boolean {
 export function canCancel(item: QueueItem): boolean {
   // Only pending/running tasks can be cancelled
   // Anomalies have no running task to cancel
-  return item.kind === 'task' && (item.status === 'pending' || item.status === 'running');
+  return item.kind === "task" && (item.status === "pending" || item.status === "running");
 }
 
 /**
@@ -102,7 +102,10 @@ export function canDelete(item: QueueItem): boolean {
   // Pending tasks with source docs can also be deleted
   return (
     item.sourceDocumentId !== undefined &&
-    (item.status === 'failed' || item.status === 'anomaly' || item.status === 'pending' || item.status === 'running')
+    (item.status === "failed" ||
+      item.status === "anomaly" ||
+      item.status === "pending" ||
+      item.status === "running")
   );
 }
 
@@ -112,5 +115,5 @@ export function canDelete(item: QueueItem): boolean {
  */
 export function canDismiss(item: QueueItem): boolean {
   // Only failed tasks without source document can be dismissed
-  return item.kind === 'task' && item.status === 'failed' && item.sourceDocumentId === undefined;
+  return item.kind === "task" && item.status === "failed" && item.sourceDocumentId === undefined;
 }

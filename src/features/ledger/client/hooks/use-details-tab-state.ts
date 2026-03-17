@@ -28,12 +28,15 @@ export function useDetailsTabState(): UseDetailsTabStateReturn {
   const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntry | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const handleDeleteConfirm = useCallback((onDelete: (id: string) => void) => {
-    if (deleteConfirm.id) {
-      onDelete(deleteConfirm.id);
-      setDeleteConfirm({ open: false, id: null });
-    }
-  }, [deleteConfirm.id]);
+  const handleDeleteConfirm = useCallback(
+    (onDelete: (id: string) => void) => {
+      if (deleteConfirm.id) {
+        onDelete(deleteConfirm.id);
+        setDeleteConfirm({ open: false, id: null });
+      }
+    },
+    [deleteConfirm.id]
+  );
 
   const handleViewEntry = useCallback((entry: LedgerEntry) => {
     setSelectedLedgerEntry(entry);

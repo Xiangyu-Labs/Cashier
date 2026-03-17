@@ -24,16 +24,18 @@
 ### 2.1 StorageAdapter 接口
 
 **当前状态**:
+
 ```typescript
 export interface StorageAdapter {
-  create(task: TaskInput): Promise<string>
-  update(id: string, data: Partial<TaskRecord>): Promise<void>
-  get(id: string): Promise<TaskRecord | null>
-  list(filter?: TaskFilter): Promise<TaskRecord[]>
+  create(task: TaskInput): Promise<string>;
+  update(id: string, data: Partial<TaskRecord>): Promise<void>;
+  get(id: string): Promise<TaskRecord | null>;
+  list(filter?: TaskFilter): Promise<TaskRecord[]>;
 }
 ```
 
 **评估**:
+
 - **抽象成本**: 高
   - 需要维护接口定义
   - 需要类型映射层 (`mapToTaskRecord`)
@@ -50,17 +52,19 @@ export interface StorageAdapter {
 ### 2.2 FlowContext.ai (AI 能力注入)
 
 **当前状态**:
+
 ```typescript
 export interface FlowContext {
-  taskId: string
-  signal: AbortSignal
-  reportTokens: (usage: TokenUsage) => void
-  updateProgress: (message: string) => Promise<void>
-  ai: AIContext  // 内置 AI 能力
+  taskId: string;
+  signal: AbortSignal;
+  reportTokens: (usage: TokenUsage) => void;
+  updateProgress: (message: string) => Promise<void>;
+  ai: AIContext; // 内置 AI 能力
 }
 ```
 
 **评估**:
+
 - **抽象成本**: 中
   - AIContext 与 Flow Engine 耦合
   - 所有任务都继承 AI 依赖，即使不需要 AI 的任务
@@ -76,18 +80,20 @@ export interface FlowContext {
 ### 2.3 TaskInput 的 scopeId/entityType/entityId
 
 **当前状态**:
+
 ```typescript
 export interface TaskInput {
-  type: string
-  title?: string | null
-  input?: unknown
-  scopeId?: string | null     // 租户隔离
-  entityType?: string | null  // 实体类型
-  entityId?: string | null    // 实体 ID
+  type: string;
+  title?: string | null;
+  input?: unknown;
+  scopeId?: string | null; // 租户隔离
+  entityType?: string | null; // 实体类型
+  entityId?: string | null; // 实体 ID
 }
 ```
 
 **评估**:
+
 - **抽象成本**: 低
   - 数据库表需要这些字段
   - 查询时需要这些索引
@@ -96,6 +102,7 @@ export interface TaskInput {
   - `entityType`/`entityId`: 用于关联查询（如查找某文档的所有任务）
 
 **使用统计**:
+
 - `scopeId`: 100% 任务使用（ledgerId）
 - `entityType`/`entityId`: 用于 source document retry、batch operations
 
@@ -106,12 +113,14 @@ export interface TaskInput {
 ### 2.4 Logger 注入
 
 **当前状态**:
+
 ```typescript
 // 直接导入全局 logger
-import { logger } from '@/lib/logger'
+import { logger } from "@/lib/logger";
 ```
 
 **评估**:
+
 - **抽象成本**: 低（当前方式）
 - **实际收益**: 中
   - Pino 已经是结构化日志
@@ -119,12 +128,13 @@ import { logger } from '@/lib/logger'
   - 但缺乏按任务实例的上下文注入
 
 **问题**:
+
 ```typescript
 // 当前：所有任务共享全局 logger
-logger.info({ taskId }, 'Task completed')
+logger.info({ taskId }, "Task completed");
 
 // 理想：logger 自动绑定 taskId
-context.logger.info('Task completed')  // 自动包含 taskId
+context.logger.info("Task completed"); // 自动包含 taskId
 ```
 
 **结论**: **抽象不足** - 建议通过 FlowContext 注入带上下文的 logger。
@@ -134,18 +144,20 @@ context.logger.info('Task completed')  // 自动包含 taskId
 ### 2.5 环境变量读取
 
 **当前状态**:
+
 ```typescript
 // 模块级别直接读取
-const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER || '10', 10)
+const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER || "10", 10);
 
 // ai-context.ts
 const modelMap: Record<AIModelTier, string | undefined> = {
   text: process.env.AI_MODEL_TEXT,
   vision: process.env.AI_MODEL_VISION,
-}
+};
 ```
 
 **评估**:
+
 - **抽象成本**: 低（当前方式）
 - **问题**:
   - 难以测试（需要修改 process.env）
@@ -161,11 +173,13 @@ const modelMap: Record<AIModelTier, string | undefined> = {
 ### 3.1 删除 StorageAdapter 接口
 
 **理由**:
+
 - 只有一个实现，无替换需求
 - 增加不必要的类型映射层
 - 测试使用内存 SQLite，不需要 Mock
 
 **重构后代码**:
+
 ```typescript
 // src/lib/flow/storage.ts
 import { db } from '@/lib/db'
@@ -187,32 +201,33 @@ export async function updateTaskRecord(id: string, data: Partial<TaskRecord>): P
 ### 3.2 集中配置管理
 
 **建议结构**:
+
 ```typescript
 // src/lib/flow/config.ts
 export interface FlowConfig {
-  maxConcurrentTasks: number
+  maxConcurrentTasks: number;
   aiModels: {
-    text: string
-    vision: string
-  }
+    text: string;
+    vision: string;
+  };
   retryConfig: {
-    maxRetries: number
-    baseDelayMs: number
-  }
+    maxRetries: number;
+    baseDelayMs: number;
+  };
 }
 
 export function loadFlowConfig(): FlowConfig {
   return {
-    maxConcurrentTasks: parseInt(process.env.MAX_TASK_WORKER || '10', 10),
+    maxConcurrentTasks: parseInt(process.env.MAX_TASK_WORKER || "10", 10),
     aiModels: {
-      text: requireEnv('AI_MODEL_TEXT'),
-      vision: requireEnv('AI_MODEL_VISION'),
+      text: requireEnv("AI_MODEL_TEXT"),
+      vision: requireEnv("AI_MODEL_VISION"),
     },
     retryConfig: {
-      maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3', 10),
-      baseDelayMs: parseInt(process.env.AI_RETRY_DELAY_MS || '1000', 10),
-    }
-  }
+      maxRetries: parseInt(process.env.AI_MAX_RETRIES || "3", 10),
+      baseDelayMs: parseInt(process.env.AI_RETRY_DELAY_MS || "1000", 10),
+    },
+  };
 }
 ```
 
@@ -221,6 +236,7 @@ export function loadFlowConfig(): FlowConfig {
 ### 3.3 上下文 Logger
 
 **建议实现**:
+
 ```typescript
 export interface FlowContext {
   taskId: string
@@ -269,16 +285,18 @@ src/lib/flow/
 ```
 
 **引擎初始化**:
+
 ```typescript
 // src/lib/flow/index.ts
-import { loadFlowConfig } from './config'
-import { createFlowEngine } from './engine'
+import { loadFlowConfig } from "./config";
+import { createFlowEngine } from "./engine";
 
-const config = loadFlowConfig()
-export const flowEngine = createFlowEngine(config)
+const config = loadFlowConfig();
+export const flowEngine = createFlowEngine(config);
 ```
 
 **引擎实现**:
+
 ```typescript
 // src/lib/flow/engine.ts
 export function createFlowEngine(config: FlowConfig): FlowEngine {
@@ -292,15 +310,16 @@ export function createFlowEngine(config: FlowConfig): FlowEngine {
 
 ## 5. 评估总结
 
-| 抽象点 | 当前状态 | 建议 | 优先级 |
-|--------|----------|------|--------|
-| StorageAdapter 接口 | 过早抽象 | **删除** | 高 |
-| FlowContext.ai | 合理 | 保留，明确为必需 | - |
-| scopeId/entityType/entityId | 合理 | 保留 | - |
-| Logger 注入 | 抽象不足 | **通过 Context 注入** | 中 |
-| 环境变量读取 | 抽象不足 | **集中配置管理** | 中 |
+| 抽象点                      | 当前状态 | 建议                  | 优先级 |
+| --------------------------- | -------- | --------------------- | ------ |
+| StorageAdapter 接口         | 过早抽象 | **删除**              | 高     |
+| FlowContext.ai              | 合理     | 保留，明确为必需      | -      |
+| scopeId/entityType/entityId | 合理     | 保留                  | -      |
+| Logger 注入                 | 抽象不足 | **通过 Context 注入** | 中     |
+| 环境变量读取                | 抽象不足 | **集中配置管理**      | 中     |
 
 **核心原则**:
+
 1. **YAGNI**: 没有多实现的接口不要抽象
 2. **显式优于隐式**: 配置通过参数传递，不依赖全局状态
 3. **上下文传递**: Logger 等横切关注点通过 Context 注入

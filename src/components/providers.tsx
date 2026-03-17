@@ -16,15 +16,15 @@ function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
   // Persist: ledger metadata, categories, source documents, currency conversions
   // Don't persist: tasks, processing status (real-time data)
   return [
-    'ledger',
-    'ledgers',
-    'entryCategories',
-    'sourceDocuments',
-    'ledgerEntries',
-    'batchConvert',
-    'convert',
-    'summary',
-    'enhanced-stats',
+    "ledger",
+    "ledgers",
+    "entryCategories",
+    "sourceDocuments",
+    "ledgerEntries",
+    "batchConvert",
+    "convert",
+    "summary",
+    "enhanced-stats",
   ].includes(queryType as string);
 }
 
@@ -50,15 +50,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Use useSyncExternalStore to track if we're on the client to avoid hydration mismatch
   const isClient = useSyncExternalStore(
     () => () => {}, // No subscription needed, this is static
-    () => true,     // Client-side: return true
-    () => false     // Server-side: return false
+    () => true, // Client-side: return true
+    () => false // Server-side: return false
   );
 
   const persister = useMemo(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       return createSyncStoragePersister({
         storage: window.localStorage,
-        key: 'cashier-query-cache',
+        key: "cashier-query-cache",
       });
     }
     return undefined;
@@ -81,14 +81,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
             // After restore from localStorage, mark old queries as stale to trigger background refetch
             // But don't invalidate queries that were just hydrated from SSR (they are fresh)
             const now = Date.now();
-            queryClient.getQueryCache().getAll().forEach((query) => {
-              if (!shouldPersistQuery(query)) return;
-              const dataUpdatedAt = query.state.dataUpdatedAt;
-              // Only invalidate if data is older than 1 minute (indicates localStorage restore, not SSR)
-              if (dataUpdatedAt && now - dataUpdatedAt > 60 * 1000) {
-                query.invalidate();
-              }
-            });
+            queryClient
+              .getQueryCache()
+              .getAll()
+              .forEach((query) => {
+                if (!shouldPersistQuery(query)) return;
+                const dataUpdatedAt = query.state.dataUpdatedAt;
+                // Only invalidate if data is older than 1 minute (indicates localStorage restore, not SSR)
+                if (dataUpdatedAt && now - dataUpdatedAt > 60 * 1000) {
+                  query.invalidate();
+                }
+              });
           }}
         >
           <ThemeProvider
@@ -117,5 +120,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </SessionProvider>
   );
 }
-
-

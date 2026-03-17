@@ -34,10 +34,7 @@ export function useDetailsTabFilters({
   advancedFilters,
 }: UseDetailsTabFiltersProps): UseDetailsTabFiltersReturn {
   // Convert periodParams to date range
-  const dateRange = useMemo(
-    () => periodToDateRange(periodParams),
-    [periodParams]
-  );
+  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
 
   // Combine period-based dates with advanced filters
   const filters: EntryFilters = useMemo(
@@ -72,29 +69,29 @@ export function useDetailsTabFilters({
         maxAmount?: number | null;
       }) => void
     ) =>
-    (newFilters: EntryFilters) => {
-      // If dates changed, propagate to parent (period change)
-      const newStartStr = formatDateTimeForApi(newFilters.startDate);
-      const newEndStr = formatDateTimeForApi(newFilters.endDate);
-      const currentStartStr = formatDateTimeForApi(filters.startDate);
-      const currentEndStr = formatDateTimeForApi(filters.endDate);
+      (newFilters: EntryFilters) => {
+        // If dates changed, propagate to parent (period change)
+        const newStartStr = formatDateTimeForApi(newFilters.startDate);
+        const newEndStr = formatDateTimeForApi(newFilters.endDate);
+        const currentStartStr = formatDateTimeForApi(filters.startDate);
+        const currentEndStr = formatDateTimeForApi(filters.endDate);
 
-      if (newStartStr !== currentStartStr || newEndStr !== currentEndStr) {
-        onPeriodChange({
-          period: "custom",
-          startDate: newStartStr,
-          endDate: newEndStr,
+        if (newStartStr !== currentStartStr || newEndStr !== currentEndStr) {
+          onPeriodChange({
+            period: "custom",
+            startDate: newStartStr,
+            endDate: newEndStr,
+          });
+        }
+
+        // Update advanced filters (category, currency, amount)
+        onAdvancedFiltersChange({
+          categoryId: newFilters.categoryId,
+          currency: newFilters.currency,
+          minAmount: newFilters.minAmount,
+          maxAmount: newFilters.maxAmount,
         });
-      }
-
-      // Update advanced filters (category, currency, amount)
-      onAdvancedFiltersChange({
-        categoryId: newFilters.categoryId,
-        currency: newFilters.currency,
-        minAmount: newFilters.minAmount,
-        maxAmount: newFilters.maxAmount,
-      });
-    },
+      },
     [filters.startDate, filters.endDate]
   );
 

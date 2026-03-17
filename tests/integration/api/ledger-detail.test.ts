@@ -36,7 +36,10 @@ describe("Ledger Actions", () => {
   });
 
   it("should throw error for non-existent ledger (Update)", async () => {
-    await expect(updateLedgerAction("00000000-0000-0000-0000-000000000000", { settings: { mainCurrency: "USD" } }))
-      .rejects.toThrow();
+    await expect(
+      updateLedgerAction("00000000-0000-0000-0000-000000000000", {
+        settings: { mainCurrency: "USD" },
+      })
+    ).rejects.toThrow();
   });
 });

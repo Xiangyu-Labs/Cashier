@@ -65,38 +65,54 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   }, [pendingChanges]);
 
   // Get original values for comparison
-  const getOriginalValue = useCallback((field: keyof EntryPendingChanges) => {
-    if (!ledgerEntry) return undefined;
-    switch (field) {
-      case "itemName": return ledgerEntry.itemName;
-      case "amount": return parseFloat(ledgerEntry.amount);
-      case "currency": return ledgerEntry.currency;
-      case "categoryId": return ledgerEntry.categoryId;
-      case "description": return ledgerEntry.description;
-      default: return undefined;
-    }
-  }, [ledgerEntry]);
+  const getOriginalValue = useCallback(
+    (field: keyof EntryPendingChanges) => {
+      if (!ledgerEntry) return undefined;
+      switch (field) {
+        case "itemName":
+          return ledgerEntry.itemName;
+        case "amount":
+          return parseFloat(ledgerEntry.amount);
+        case "currency":
+          return ledgerEntry.currency;
+        case "categoryId":
+          return ledgerEntry.categoryId;
+        case "description":
+          return ledgerEntry.description;
+        default:
+          return undefined;
+      }
+    },
+    [ledgerEntry]
+  );
 
   // Handle field change - only add to pending if value actually changed
-  const handleFieldChange = useCallback((changes: EntryPendingChanges) => {
-    setPendingChanges(prev => {
-      const next = { ...prev };
-      for (const [key, value] of Object.entries(changes)) {
-        const field = key as keyof EntryPendingChanges;
-        const originalValue = getOriginalValue(field);
+  const handleFieldChange = useCallback(
+    (changes: EntryPendingChanges) => {
+      setPendingChanges((prev) => {
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(changes)) {
+          const field = key as keyof EntryPendingChanges;
+          const originalValue = getOriginalValue(field);
 
-        // Compare values - if same as original, remove from pending
-        if (value === originalValue ||
-          (value === null && originalValue === null) ||
-          (typeof value === "number" && typeof originalValue === "number" && value === originalValue)) {
-          delete next[field];
-        } else {
-          (next as Record<string, unknown>)[field] = value;
+          // Compare values - if same as original, remove from pending
+          if (
+            value === originalValue ||
+            (value === null && originalValue === null) ||
+            (typeof value === "number" &&
+              typeof originalValue === "number" &&
+              value === originalValue)
+          ) {
+            delete next[field];
+          } else {
+            (next as Record<string, unknown>)[field] = value;
+          }
         }
-      }
-      return next;
-    });
-  }, [getOriginalValue]);
+        return next;
+      });
+    },
+    [getOriginalValue]
+  );
 
   // Handle save
   const handleSave = useCallback(() => {
@@ -111,7 +127,8 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
       updateData.amount = pendingChanges.amount;
     }
     if (pendingChanges.currency !== undefined) {
-      updateData.currency = pendingChanges.currency === "unknown" ? "unknown" : pendingChanges.currency;
+      updateData.currency =
+        pendingChanges.currency === "unknown" ? "unknown" : pendingChanges.currency;
     }
     if (pendingChanges.categoryId !== undefined) {
       updateData.categoryId = pendingChanges.categoryId;
@@ -165,7 +182,10 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg" aria-describedby={undefined}>
+        <DialogContent
+          className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg"
+          aria-describedby={undefined}
+        >
           <VisuallyHidden.Root>
             <DialogTitle>{t("unsavedChanges")}</DialogTitle>
           </VisuallyHidden.Root>
@@ -204,9 +224,11 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
               onSave={handleSave}
               onDiscard={handleDiscard}
               onDelete={() => setShowDeleteConfirm(true)}
-              onViewSourceDocument={onViewSourceDocument && ledgerEntry.sourceDocumentId
-                ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!)
-                : undefined}
+              onViewSourceDocument={
+                onViewSourceDocument && ledgerEntry.sourceDocumentId
+                  ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!)
+                  : undefined
+              }
             />
           )}
         </DialogContent>

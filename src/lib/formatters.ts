@@ -10,9 +10,9 @@
  * @returns Parsed number, or 0 if null/undefined/invalid
  */
 export function parseAmount(amount: string | null | undefined): number {
-    if (amount == null) return 0;
-    const parsed = parseFloat(amount);
-    return isNaN(parsed) ? 0 : parsed;
+  if (amount == null) return 0;
+  const parsed = parseFloat(amount);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 /**
@@ -22,12 +22,12 @@ export function parseAmount(amount: string | null | undefined): number {
  * @returns Parsed number, or fallback if null/undefined/invalid
  */
 export function parseAmountWithFallback(
-    amount: string | null | undefined,
-    fallback: number
+  amount: string | null | undefined,
+  fallback: number
 ): number {
-    if (amount == null) return fallback;
-    const parsed = parseFloat(amount);
-    return isNaN(parsed) ? fallback : parsed;
+  if (amount == null) return fallback;
+  const parsed = parseFloat(amount);
+  return isNaN(parsed) ? fallback : parsed;
 }
 
 /**
@@ -36,7 +36,7 @@ export function parseAmountWithFallback(
  * @returns Formatted string with 2 decimal places
  */
 export function formatAmountStandard(amount: number): string {
-    return amount.toFixed(2);
+  return amount.toFixed(2);
 }
 
 /**
@@ -49,13 +49,13 @@ export function formatAmountStandard(amount: number): string {
  * @returns Formatted compact string
  */
 export function formatAmountCompact(amount: number): string {
-    if (amount >= 10000) {
-        return `${(amount / 10000).toFixed(1)}万`;
-    }
-    if (amount >= 1000) {
-        return `${(amount / 1000).toFixed(1)}k`;
-    }
-    return amount.toFixed(2);
+  if (amount >= 10000) {
+    return `${(amount / 10000).toFixed(1)}万`;
+  }
+  if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(1)}k`;
+  }
+  return amount.toFixed(2);
 }
 
 /**
@@ -66,14 +66,14 @@ export function formatAmountCompact(amount: number): string {
  * @returns Formatted string with locale-specific separators
  */
 export function formatNumber(
-    value: number,
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2
+  value: number,
+  minimumFractionDigits = 2,
+  maximumFractionDigits = 2
 ): string {
-    return value.toLocaleString(undefined, {
-        minimumFractionDigits,
-        maximumFractionDigits,
-    });
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  });
 }
 
 /**
@@ -83,10 +83,10 @@ export function formatNumber(
  * @returns Total sum
  */
 export function calculateTotal<T>(
-    items: T[],
-    amountGetter: (item: T) => string | null | undefined
+  items: T[],
+  amountGetter: (item: T) => string | null | undefined
 ): number {
-    return items.reduce((sum, item) => {
-        return sum + parseAmount(amountGetter(item));
-    }, 0);
+  return items.reduce((sum, item) => {
+    return sum + parseAmount(amountGetter(item));
+  }, 0);
 }

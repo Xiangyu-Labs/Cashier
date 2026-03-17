@@ -2,7 +2,7 @@ import {
   type Ledger as DbLedger,
   type EntryCategory as DbEntryCategory,
   type LedgerEntry as DbLedgerEntry,
-  type ServiceCredential as DbServiceCredential
+  type ServiceCredential as DbServiceCredential,
 } from "@/features/ledger/server/schema";
 import { type SourceDocument as DbSourceDocument } from "@/features/source-document/server/schema";
 import { type TaskRun as DbTaskRun } from "@/features/task-queue/server/schema";
@@ -23,7 +23,7 @@ export type CurrencyRate = Serialized<DbCurrencyRate>;
 
 // Light version of SourceDocument without large payload fields
 // Used in list views to reduce payload size
-export type SourceDocumentLight = Omit<SourceDocument, 'imageUrls'> & {
+export type SourceDocumentLight = Omit<SourceDocument, "imageUrls"> & {
   hasImages?: boolean;
 };
 
@@ -41,7 +41,6 @@ import { type LedgerMetadata } from "@/features/ledger/server/schema";
 export type Settings = {
   id?: string;
 } & NonNullable<LedgerMetadata["settings"]>;
-
 
 export interface LedgerEntrySummary {
   convertedTotal: {

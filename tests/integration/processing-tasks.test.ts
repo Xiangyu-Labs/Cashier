@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
-    auth: vi.fn(),
+  auth: vi.fn(),
 }));
 
 import { auth } from "@/auth";
@@ -13,84 +13,81 @@ import { auth } from "@/auth";
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 describe("Task status query", () => {
-    let counter = 0;
+  let counter = 0;
 
-    beforeEach(() => {
-        counter++;
+  beforeEach(() => {
+    counter++;
 
-        // Setup auth mock for each test
-        vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({
-            user: { id: TEST_USER_ID, email: "test@example.com" },
-            expires: new Date(Date.now() + 3600 * 1000).toISOString(),
-        });
+    // Setup auth mock for each test
+    vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: { id: TEST_USER_ID, email: "test@example.com" },
+      expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+    });
+  });
+
+  it("should query tasks with correct active statuses", async () => {
+    const db = getTestDb();
+
+    // Arrange
+    const ledgerId = `ledger-${counter}`;
+
+    await db.insert(ledgers).values({
+      id: ledgerId,
+      userId: TEST_USER_ID,
+      metadata: {},
     });
 
-    it("should query tasks with correct active statuses", async () => {
-        const db = getTestDb();
-
-        // Arrange
-        const ledgerId = `ledger-${counter}`;
-
-        await db.insert(ledgers).values({
-            id: ledgerId,
-            userId: TEST_USER_ID,
-            metadata: {},
-        });
-
-        // Insert tasks with various statuses
-        await db.insert(taskRuns).values({
-            id: `task-running-${counter}`,
-            type: "parse",
-            title: "Running Task",
-            status: "running",
-            scopeId: ledgerId,
-        });
-
-        await db.insert(taskRuns).values({
-            id: `task-pending-${counter}`,
-            type: "parse",
-            title: "Pending Task",
-            status: "pending",
-            scopeId: ledgerId,
-        });
-
-        await db.insert(taskRuns).values({
-            id: `task-completed-${counter}`,
-            type: "parse",
-            title: "Completed Task",
-            status: "completed",
-            scopeId: ledgerId,
-        });
-
-        // Act: Query active tasks (simulating getProcessingTasksAction behavior)
-        const activeStatuses = ["running", "pending"];
-        const activeTasks = await db.query.taskRuns.findMany({
-            where: and(
-                eq(taskRuns.scopeId, ledgerId),
-                inArray(taskRuns.status, activeStatuses)
-            ),
-        });
-
-        // Assert
-        const taskIds = activeTasks.map(t => t.id);
-        expect(taskIds).toContain(`task-running-${counter}`);
-        expect(taskIds).toContain(`task-pending-${counter}`);
-        expect(taskIds).not.toContain(`task-completed-${counter}`);
+    // Insert tasks with various statuses
+    await db.insert(taskRuns).values({
+      id: `task-running-${counter}`,
+      type: "parse",
+      title: "Running Task",
+      status: "running",
+      scopeId: ledgerId,
     });
 
-    it("should use 'pending' status not 'queued' for task_runs", async () => {
-        // This test documents the bug fix where 'queued' was incorrectly used
-        // instead of 'pending' for task_runs status
-
-        const validStatuses = ["pending", "running", "completed", "failed", "cancelled"];
-        const invalidStatus = "queued"; // This is source_documents status, not task_runs
-
-        expect(validStatuses).not.toContain(invalidStatus);
-        expect(validStatuses).toContain("pending");
+    await db.insert(taskRuns).values({
+      id: `task-pending-${counter}`,
+      type: "parse",
+      title: "Pending Task",
+      status: "pending",
+      scopeId: ledgerId,
     });
+
+    await db.insert(taskRuns).values({
+      id: `task-completed-${counter}`,
+      type: "parse",
+      title: "Completed Task",
+      status: "completed",
+      scopeId: ledgerId,
+    });
+
+    // Act: Query active tasks (simulating getProcessingTasksAction behavior)
+    const activeStatuses = ["running", "pending"];
+    const activeTasks = await db.query.taskRuns.findMany({
+      where: and(eq(taskRuns.scopeId, ledgerId), inArray(taskRuns.status, activeStatuses)),
+    });
+
+    // Assert
+    const taskIds = activeTasks.map((t) => t.id);
+    expect(taskIds).toContain(`task-running-${counter}`);
+    expect(taskIds).toContain(`task-pending-${counter}`);
+    expect(taskIds).not.toContain(`task-completed-${counter}`);
+  });
+
+  it("should use 'pending' status not 'queued' for task_runs", async () => {
+    // This test documents the bug fix where 'queued' was incorrectly used
+    // instead of 'pending' for task_runs status
+
+    const validStatuses = ["pending", "running", "completed", "failed", "cancelled"];
+    const invalidStatus = "queued"; // This is source_documents status, not task_runs
+
+    expect(validStatuses).not.toContain(invalidStatus);
+    expect(validStatuses).toContain("pending");
+  });
 });
 
 // Helper for combining conditions
 function and(...conditions: (ReturnType<typeof eq> | ReturnType<typeof inArray>)[]) {
-    return conditions.reduce((acc, condition) => acc && condition);
+  return conditions.reduce((acc, condition) => acc && condition);
 }

@@ -57,10 +57,7 @@ export async function deleteOTPToken(email: string): Promise<void> {
  */
 export async function cleanupExpiredOTPTokens(): Promise<number> {
   try {
-    const result = await db
-      .delete(otpTokens)
-      .where(lt(otpTokens.expires, new Date()))
-      .returning();
+    const result = await db.delete(otpTokens).where(lt(otpTokens.expires, new Date())).returning();
 
     const deletedCount = result.length;
     logger.info({ deleted: deletedCount }, "Cleaned up expired OTP tokens");

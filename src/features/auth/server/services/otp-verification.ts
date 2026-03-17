@@ -87,10 +87,7 @@ async function handleFailedVerification(
     })
     .where(eq(otpTokens.email, normalizedEmail));
 
-  logger.warn(
-    { email: normalizedEmail, attempts: newAttempts },
-    "Invalid OTP provided"
-  );
+  logger.warn({ email: normalizedEmail, attempts: newAttempts }, "Invalid OTP provided");
 
   return {
     success: false,

@@ -12,7 +12,7 @@ export function createLedgerData(
 ) {
   return {
     id: uuidv4(),
-    userId: TEST_USER_ID,  // 默认使用测试用户，避免外键约束失败
+    userId: TEST_USER_ID, // 默认使用测试用户，避免外键约束失败
     metadata: {},
     createdAt: new Date(),
     updatedAt: new Date(),

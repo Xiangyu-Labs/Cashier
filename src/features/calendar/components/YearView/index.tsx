@@ -5,18 +5,15 @@
  * 53 weeks x 7 days continuous grid layout.
  */
 
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
-import { cn } from '@/lib/utils';
-import {
-  getHeatmapColor,
-  getHeatmapLabel,
-} from '../../lib/heatmap-colors';
-import { formatAmount } from '../../lib/date-utils';
-import { useYearData } from './useYearData';
-import { DayCell } from './DayCell';
-import type { CalendarHeatmapData, HeatmapLevel } from '../../types';
+import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import { getHeatmapColor, getHeatmapLabel } from "../../lib/heatmap-colors";
+import { formatAmount } from "../../lib/date-utils";
+import { useYearData } from "./useYearData";
+import { DayCell } from "./DayCell";
+import type { CalendarHeatmapData, HeatmapLevel } from "../../types";
 
 interface YearViewProps {
   anchorDate: string;
@@ -27,15 +24,15 @@ interface YearViewProps {
 }
 
 export function YearView({ anchorDate, data, onDayClick, className }: YearViewProps) {
-  const t = useTranslations('Calendar');
-  const year = parseInt(anchorDate.split('-')[0], 10);
+  const t = useTranslations("Calendar");
+  const year = parseInt(anchorDate.split("-")[0], 10);
   const { weeks, monthLabels, stats } = useYearData(year, data);
 
   // Weekday labels (Monday to Sunday)
-  const weekdayLabels = t.raw('weekDaysMon') as string[];
+  const weekdayLabels = t.raw("weekDaysMon") as string[];
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn("flex flex-col", className)}>
       {/* Month labels - with relative positioning container */}
       <div className="relative h-5 mb-1 ml-7">
         {monthLabels.map(({ month, weekIndex, label }) => {
@@ -61,10 +58,10 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
             <div
               key={day}
               className={cn(
-                'text-[11px] text-muted-foreground w-5 flex items-center justify-center',
-                index % 2 === 1 && 'invisible' // Show every other label to save space
+                "text-[11px] text-muted-foreground w-5 flex items-center justify-center",
+                index % 2 === 1 && "invisible" // Show every other label to save space
               )}
-              style={{ height: '12px' }}
+              style={{ height: "12px" }}
             >
               {day}
             </div>
@@ -102,9 +99,7 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
                 key={level}
                 className="w-3 h-3 rounded-sm flex-shrink-0"
                 style={{
-                  backgroundColor: level === 0
-                    ? 'var(--muted)'
-                    : getHeatmapColor(level)
+                  backgroundColor: level === 0 ? "var(--muted)" : getHeatmapColor(level),
                 }}
                 title={getHeatmapLabel(level)}
               />
@@ -116,20 +111,18 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
         {/* Stats */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <span>{t('totalExpense')}:</span>
+            <span>{t("totalExpense")}:</span>
+            <span className="font-medium text-foreground">{formatAmount(stats.totalAmount)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span>{t("totalCount")}:</span>
             <span className="font-medium text-foreground">
-              {formatAmount(stats.totalAmount)}
+              {t("count", { count: stats.totalCount })}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span>{t('totalCount')}:</span>
-            <span className="font-medium text-foreground">{t('count', { count: stats.totalCount })}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span>{t('dailyAverage')}:</span>
-            <span className="font-medium text-foreground">
-              {formatAmount(stats.avgDaily)}
-            </span>
+            <span>{t("dailyAverage")}:</span>
+            <span className="font-medium text-foreground">{formatAmount(stats.avgDaily)}</span>
           </div>
         </div>
       </div>
@@ -137,5 +130,5 @@ export function YearView({ anchorDate, data, onDayClick, className }: YearViewPr
   );
 }
 
-export { DayCell } from './DayCell';
-export { useYearData } from './useYearData';
+export { DayCell } from "./DayCell";
+export { useYearData } from "./useYearData";

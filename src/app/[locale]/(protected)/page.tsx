@@ -1,4 +1,3 @@
-
 import { type ReactNode } from "react";
 import { redirect } from "@/i18n/routing";
 import { getTranslations, getLocale } from "next-intl/server";
@@ -11,11 +10,11 @@ import { serializeLedger } from "@/lib/serialization/utils";
 
 // Inline data access - simplified architecture (no services layer)
 async function getLedgers(userId: string) {
-    const rows = await db.query.ledgers.findMany({
-        where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
-        orderBy: [desc(ledgers.createdAt)],
-    });
-    return rows.map(serializeLedger);
+  const rows = await db.query.ledgers.findMany({
+    where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
+    orderBy: [desc(ledgers.createdAt)],
+  });
+  return rows.map(serializeLedger);
 }
 
 export default async function HomePage(): Promise<ReactNode> {
@@ -35,7 +34,7 @@ export default async function HomePage(): Promise<ReactNode> {
   // 2. Check default ledger from session
   // Before redirecting, verify the ledger exists
   if (session.user.defaultLedgerId) {
-    const defaultLedger = ledgers.find(l => l.id === session.user.defaultLedgerId);
+    const defaultLedger = ledgers.find((l) => l.id === session.user.defaultLedgerId);
     if (defaultLedger) {
       redirect({ href: `/ledger/${session.user.defaultLedgerId}`, locale });
     }
@@ -50,7 +49,7 @@ export default async function HomePage(): Promise<ReactNode> {
   // 4. Auto-create default ledger (Server Action called directly)
   try {
     const newLedger = await createLedgerAction({
-      aiLanguage: locale
+      aiLanguage: locale,
     });
 
     redirect({ href: `/ledger/${newLedger.id}`, locale });
@@ -65,5 +64,3 @@ export default async function HomePage(): Promise<ReactNode> {
     );
   }
 }
-
-

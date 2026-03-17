@@ -76,7 +76,11 @@ describe("queryKeys", () => {
     });
 
     it("应该生成正确的sourceDocumentLight query key", () => {
-      expect(queryKeys.sourceDocumentLight("doc-789")).toEqual(["sourceDocument", "light", "doc-789"]);
+      expect(queryKeys.sourceDocumentLight("doc-789")).toEqual([
+        "sourceDocument",
+        "light",
+        "doc-789",
+      ]);
     });
   });
 
@@ -121,7 +125,13 @@ describe("queryKeys", () => {
 
   describe("currency keys", () => {
     it("应该生成正确的convert query key", () => {
-      expect(queryKeys.convert(100, "USD", "CNY")).toEqual(["convert", 100, "USD", "CNY", undefined]);
+      expect(queryKeys.convert(100, "USD", "CNY")).toEqual([
+        "convert",
+        100,
+        "USD",
+        "CNY",
+        undefined,
+      ]);
     });
 
     it("应该生成带日期的convert query key", () => {
@@ -166,8 +176,18 @@ describe("queryKeys", () => {
 
     it("应该生成带过滤器的calendarHeatmap query key", () => {
       expect(
-        queryKeys.calendarHeatmap(ledgerId, "year", "2024-01-01", { currency: "CNY", categoryId: "cat-1" })
-      ).toEqual(["calendar", "heatmap", ledgerId, "year", "2024-01-01", { currency: "CNY", categoryId: "cat-1" }]);
+        queryKeys.calendarHeatmap(ledgerId, "year", "2024-01-01", {
+          currency: "CNY",
+          categoryId: "cat-1",
+        })
+      ).toEqual([
+        "calendar",
+        "heatmap",
+        ledgerId,
+        "year",
+        "2024-01-01",
+        { currency: "CNY", categoryId: "cat-1" },
+      ]);
     });
 
     it("应该生成正确的calendarHeatmapForRange query key", () => {
@@ -184,7 +204,14 @@ describe("queryKeys", () => {
     it("应该生成带过滤器的calendarHeatmapForRange query key", () => {
       expect(
         queryKeys.calendarHeatmapForRange(ledgerId, "2024-01-01", "2024-12-31", { currency: "USD" })
-      ).toEqual(["calendar", "heatmap-range", ledgerId, "2024-01-01", "2024-12-31", { currency: "USD" }]);
+      ).toEqual([
+        "calendar",
+        "heatmap-range",
+        ledgerId,
+        "2024-01-01",
+        "2024-12-31",
+        { currency: "USD" },
+      ]);
     });
 
     it("应该生成正确的calendarDayDetail query key", () => {
@@ -198,9 +225,13 @@ describe("queryKeys", () => {
     });
 
     it("应该生成带过滤器的calendarDayDetail query key", () => {
-      expect(
-        queryKeys.calendarDayDetail(ledgerId, "2024-03-15", { categoryId: "cat-1" })
-      ).toEqual(["calendar", "day", ledgerId, "2024-03-15", { categoryId: "cat-1" }]);
+      expect(queryKeys.calendarDayDetail(ledgerId, "2024-03-15", { categoryId: "cat-1" })).toEqual([
+        "calendar",
+        "day",
+        ledgerId,
+        "2024-03-15",
+        { categoryId: "cat-1" },
+      ]);
     });
   });
 });

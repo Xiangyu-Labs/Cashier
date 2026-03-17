@@ -6,7 +6,10 @@ import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/get";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
-import { getPendingSourceDocumentsAction, getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
+import {
+  getPendingSourceDocumentsAction,
+  getAllSourceDocumentsAction,
+} from "@/features/source-document/server/actions";
 import { parsePeriodFromSearchParams, periodToDateRange } from "@/lib/period-utils";
 import { LEDGER, QUERY } from "@/lib/constants";
 
@@ -17,7 +20,6 @@ export default async function LedgerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
 
@@ -68,12 +70,12 @@ export default async function LedgerPage({
 
     // ===== History Tab data (default active tab) =====
     queryClient.prefetchQuery({
-      queryKey: queryKeys.sourceDocuments(ledgerId, 'pending'),
+      queryKey: queryKeys.sourceDocuments(ledgerId, "pending"),
       queryFn: () => getPendingSourceDocumentsAction(ledgerId),
       staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS, // 30 seconds
     }),
     queryClient.prefetchQuery({
-      queryKey: queryKeys.sourceDocuments(ledgerId, 'all', dateRange.startDate, dateRange.endDate),
+      queryKey: queryKeys.sourceDocuments(ledgerId, "all", dateRange.startDate, dateRange.endDate),
       queryFn: async () => {
         const response = await getAllSourceDocumentsAction(ledgerId, {
           startDate: dateRange.startDate ?? undefined,
@@ -92,8 +94,11 @@ export default async function LedgerPage({
 
   return (
     <HydrationBoundary state={dehydratedState}>
-      <LedgerPageClient ledgerId={ledgerId} initialPeriod={periodParams} initialStatsDate={initialStatsDate} />
+      <LedgerPageClient
+        ledgerId={ledgerId}
+        initialPeriod={periodParams}
+        initialStatsDate={initialStatsDate}
+      />
     </HydrationBoundary>
   );
 }
-

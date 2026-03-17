@@ -67,9 +67,15 @@ describe("copyToClipboard", () => {
       focus: vi.fn(),
       select: vi.fn(),
     };
-    const createElementSpy = vi.spyOn(document, "createElement").mockReturnValue(mockTextArea as unknown as HTMLTextAreaElement);
-    const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation(() => mockTextArea as unknown as Node);
-    const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation(() => mockTextArea as unknown as Node);
+    const createElementSpy = vi
+      .spyOn(document, "createElement")
+      .mockReturnValue(mockTextArea as unknown as HTMLTextAreaElement);
+    const appendChildSpy = vi
+      .spyOn(document.body, "appendChild")
+      .mockImplementation(() => mockTextArea as unknown as Node);
+    const removeChildSpy = vi
+      .spyOn(document.body, "removeChild")
+      .mockImplementation(() => mockTextArea as unknown as Node);
 
     const result = await copyToClipboard("Test text");
 
@@ -96,9 +102,15 @@ describe("copyToClipboard", () => {
       focus: vi.fn(),
       select: vi.fn(),
     };
-    vi.spyOn(document, "createElement").mockReturnValue(mockTextArea as unknown as HTMLTextAreaElement);
-    vi.spyOn(document.body, "appendChild").mockImplementation(() => mockTextArea as unknown as Node);
-    vi.spyOn(document.body, "removeChild").mockImplementation(() => mockTextArea as unknown as Node);
+    vi.spyOn(document, "createElement").mockReturnValue(
+      mockTextArea as unknown as HTMLTextAreaElement
+    );
+    vi.spyOn(document.body, "appendChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
+    vi.spyOn(document.body, "removeChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
 
     const result = await copyToClipboard("Test text");
 
@@ -119,9 +131,15 @@ describe("copyToClipboard", () => {
       focus: vi.fn(),
       select: vi.fn(),
     };
-    vi.spyOn(document, "createElement").mockReturnValue(mockTextArea as unknown as HTMLTextAreaElement);
-    vi.spyOn(document.body, "appendChild").mockImplementation(() => mockTextArea as unknown as Node);
-    vi.spyOn(document.body, "removeChild").mockImplementation(() => mockTextArea as unknown as Node);
+    vi.spyOn(document, "createElement").mockReturnValue(
+      mockTextArea as unknown as HTMLTextAreaElement
+    );
+    vi.spyOn(document.body, "appendChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
+    vi.spyOn(document.body, "removeChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
 
     const result = await copyToClipboard("Test text");
 
@@ -143,9 +161,15 @@ describe("copyToClipboard", () => {
       focus: vi.fn(),
       select: vi.fn(),
     };
-    vi.spyOn(document, "createElement").mockReturnValue(mockTextArea as unknown as HTMLTextAreaElement);
-    vi.spyOn(document.body, "appendChild").mockImplementation(() => mockTextArea as unknown as Node);
-    vi.spyOn(document.body, "removeChild").mockImplementation(() => mockTextArea as unknown as Node);
+    vi.spyOn(document, "createElement").mockReturnValue(
+      mockTextArea as unknown as HTMLTextAreaElement
+    );
+    vi.spyOn(document.body, "appendChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
+    vi.spyOn(document.body, "removeChild").mockImplementation(
+      () => mockTextArea as unknown as Node
+    );
 
     const result = await copyToClipboard("Test text");
 

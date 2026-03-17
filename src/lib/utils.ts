@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
@@ -18,7 +18,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
-      console.error('Modern clipboard API failed:', err);
+      console.error("Modern clipboard API failed:", err);
       // Fall through to legacy method
     }
   }
@@ -54,9 +54,9 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
   let successful = false;
   try {
-    successful = document.execCommand('copy');
+    successful = document.execCommand("copy");
   } catch (err) {
-    console.error('Fallback copy failed:', err);
+    console.error("Fallback copy failed:", err);
   } finally {
     document.body.removeChild(textArea);
   }

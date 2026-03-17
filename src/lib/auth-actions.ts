@@ -1,6 +1,6 @@
-import { auth } from '@/auth';
-import { UnauthorizedError, NotFoundError } from '@/lib/errors';
-import { requireLedgerAccess } from '@/features/auth/server/utils/helpers';
+import { auth } from "@/auth";
+import { UnauthorizedError, NotFoundError } from "@/lib/errors";
+import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 
 /**
  * Wraps a server action to automatically handle authentication.
@@ -19,7 +19,7 @@ export function withAuth<TArgs extends unknown[], TReturn>(
     const session = await auth();
 
     if (!session?.user?.id) {
-      throw new UnauthorizedError('Please log in to perform this action');
+      throw new UnauthorizedError("Please log in to perform this action");
     }
 
     return action(session.user.id, ...args);
@@ -34,7 +34,7 @@ export async function requireAuth(): Promise<string> {
   const session = await auth();
 
   if (!session?.user?.id) {
-    throw new UnauthorizedError('Please log in to perform this action');
+    throw new UnauthorizedError("Please log in to perform this action");
   }
 
   return session.user.id;
@@ -62,7 +62,7 @@ export function withLedgerAccess<TArgs extends unknown[], TReturn>(
       if (status === 404) {
         throw new NotFoundError("Ledger");
       }
-      throw new UnauthorizedError('Unauthorized');
+      throw new UnauthorizedError("Unauthorized");
     }
 
     return action(ledgerId, ...args);

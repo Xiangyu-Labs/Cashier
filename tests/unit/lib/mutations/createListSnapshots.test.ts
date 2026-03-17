@@ -23,8 +23,13 @@ describe("createListSnapshots", () => {
       // 设置不同过滤参数的 queries
       queryClient.setQueryData(["sourceDocuments", ledgerId], []);
       queryClient.setQueryData(["sourceDocuments", ledgerId, "unified"], { items: [] });
-      queryClient.setQueryData(["sourceDocuments", ledgerId, "unified", "2024-01-01"], { items: [] });
-      queryClient.setQueryData(["sourceDocuments", ledgerId, "completed", "2024-01-01", "2024-12-31"], { items: [] });
+      queryClient.setQueryData(["sourceDocuments", ledgerId, "unified", "2024-01-01"], {
+        items: [],
+      });
+      queryClient.setQueryData(
+        ["sourceDocuments", ledgerId, "completed", "2024-01-01", "2024-12-31"],
+        { items: [] }
+      );
       queryClient.setQueryData(["sourceDocuments", ledgerId, "active"], []);
 
       const baseKey = ["sourceDocuments", ledgerId];
@@ -38,9 +43,16 @@ describe("createListSnapshots", () => {
       const ledgerId = "ledger-456";
 
       queryClient.setQueryData(["ledgerEntries", ledgerId], []);
-      queryClient.setQueryData(["ledgerEntries", ledgerId, "summary", "2024-01-01", "2024-12-31"], { total: 100 });
-      queryClient.setQueryData(["ledgerEntries", ledgerId, "infinite", "2024-01-01"], { pages: [] });
-      queryClient.setQueryData(["ledgerEntries", ledgerId, "monthly-expense", "2024-01-01", "2024-12-31"], []);
+      queryClient.setQueryData(["ledgerEntries", ledgerId, "summary", "2024-01-01", "2024-12-31"], {
+        total: 100,
+      });
+      queryClient.setQueryData(["ledgerEntries", ledgerId, "infinite", "2024-01-01"], {
+        pages: [],
+      });
+      queryClient.setQueryData(
+        ["ledgerEntries", ledgerId, "monthly-expense", "2024-01-01", "2024-12-31"],
+        []
+      );
 
       const baseKey = ["ledgerEntries", ledgerId];
       const snapshots = createListSnapshots(queryClient, baseKey);

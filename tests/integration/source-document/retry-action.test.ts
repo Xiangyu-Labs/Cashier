@@ -8,284 +8,308 @@ import { flowEngine } from "@/lib/flow";
 
 // Mock flowEngine to avoid registration issues
 vi.mock("@/lib/flow", async () => {
-    const actual = await vi.importActual("@/lib/flow");
-    return {
-        ...actual,
-        flowEngine: {
-            register: vi.fn(),
-            cancel: vi.fn(),
-            submit: vi.fn(),
-        },
-    };
+  const actual = await vi.importActual("@/lib/flow");
+  return {
+    ...actual,
+    flowEngine: {
+      register: vi.fn(),
+      cancel: vi.fn(),
+      submit: vi.fn(),
+    },
+  };
 });
 
 describe("retrySourceDocumentAction", () => {
-    let testLedgerId: string;
+  let testLedgerId: string;
 
-    beforeEach(async () => {
-        vi.clearAllMocks();
+  beforeEach(async () => {
+    vi.clearAllMocks();
 
-        const db = getTestDb();
-        // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
-        await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
-        const { ledgerId } = await createTestUserWithLedger(db, undefined, "Retry Test Ledger", TEST_USER_ID);
-        testLedgerId = ledgerId;
+    const db = getTestDb();
+    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
+    await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
+    const { ledgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      "Retry Test Ledger",
+      TEST_USER_ID
+    );
+    testLedgerId = ledgerId;
 
-        // Create a test category
-        await db.insert(entryCategories).values({
-            ledgerId: testLedgerId,
-            name: "餐饮",
-            description: "餐饮类别",
-            sortOrder: 1,
-        });
+    // Create a test category
+    await db.insert(entryCategories).values({
+      ledgerId: testLedgerId,
+      name: "餐饮",
+      description: "餐饮类别",
+      sortOrder: 1,
+    });
+  });
+
+  it("should create new document and soft delete old document on retry", async () => {
+    const db = getTestDb();
+
+    // Create an old document
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Old receipt text",
+        imageUrls: ["https://example.com/old-image.jpg"],
+        status: "anomaly",
+        entryDate: "2025-01-15",
+        title: "Old Title",
+        metadata: { visionDescription: "Old description" },
+      })
+      .returning();
+
+    const oldDocId = oldDoc.id;
+
+    // Call retry with new text
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "New edited text",
     });
 
-    it("should create new document and soft delete old document on retry", async () => {
-        const db = getTestDb();
+    // Verify result has new document ID
+    expect(result.sourceDocumentId).not.toBe(oldDocId);
+    expect(result.status).toBe("queued");
 
-        // Create an old document
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Old receipt text",
-            imageUrls: ["https://example.com/old-image.jpg"],
-            status: "anomaly",
-            entryDate: "2025-01-15",
-            title: "Old Title",
-            metadata: { visionDescription: "Old description" },
-        }).returning();
+    // Verify old document is soft deleted
+    const oldDocAfter = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, oldDocId),
+    });
+    expect(oldDocAfter?.deletedAt).not.toBeNull();
+    expect(oldDocAfter?.deletedAt).toBeInstanceOf(Date);
 
-        const oldDocId = oldDoc.id;
+    // Verify new document is created with correct data
+    const newDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
+    });
+    expect(newDoc).not.toBeNull();
+    expect(newDoc?.ledgerId).toBe(testLedgerId);
+    expect(newDoc?.entryDate).toBe("2025-01-15"); // Preserved
+    expect(newDoc?.text).toBe("New edited text"); // Updated
+    expect(newDoc?.status).toBe("queued");
+    expect(newDoc?.deletedAt).toBeNull();
+    expect(newDoc?.title).toBeNull(); // Let AI regenerate
+    expect(newDoc?.metadata).toEqual({}); // Empty for fresh parse
+  });
 
-        // Call retry with new text
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "New edited text",
-        });
+  it("should preserve imageUrls when no new images provided", async () => {
+    const db = getTestDb();
 
-        // Verify result has new document ID
-        expect(result.sourceDocumentId).not.toBe(oldDocId);
-        expect(result.status).toBe("queued");
+    // Create an old document with images
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Receipt with images",
+        imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
+        status: "failed",
+        entryDate: "2025-02-20",
+      })
+      .returning();
 
-        // Verify old document is soft deleted
-        const oldDocAfter = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, oldDocId),
-        });
-        expect(oldDocAfter?.deletedAt).not.toBeNull();
-        expect(oldDocAfter?.deletedAt).toBeInstanceOf(Date);
+    const oldDocId = oldDoc.id;
 
-        // Verify new document is created with correct data
-        const newDoc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, result.sourceDocumentId),
-        });
-        expect(newDoc).not.toBeNull();
-        expect(newDoc?.ledgerId).toBe(testLedgerId);
-        expect(newDoc?.entryDate).toBe("2025-01-15"); // Preserved
-        expect(newDoc?.text).toBe("New edited text"); // Updated
-        expect(newDoc?.status).toBe("queued");
-        expect(newDoc?.deletedAt).toBeNull();
-        expect(newDoc?.title).toBeNull(); // Let AI regenerate
-        expect(newDoc?.metadata).toEqual({}); // Empty for fresh parse
+    // Call retry without new images
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "Same receipt",
     });
 
-    it("should preserve imageUrls when no new images provided", async () => {
-        const db = getTestDb();
+    // Verify new document preserves old images
+    const newDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
+    });
+    expect(newDoc?.imageUrls).toEqual([
+      "https://example.com/image1.jpg",
+      "https://example.com/image2.jpg",
+    ]);
+  });
 
-        // Create an old document with images
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Receipt with images",
-            imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
-            status: "failed",
-            entryDate: "2025-02-20",
-        }).returning();
+  it("should use new images when provided", async () => {
+    const db = getTestDb();
 
-        const oldDocId = oldDoc.id;
+    // Create an old document
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Old receipt",
+        imageUrls: ["https://example.com/old.jpg"],
+        status: "anomaly",
+        entryDate: "2025-03-10",
+      })
+      .returning();
 
-        // Call retry without new images
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "Same receipt",
-        });
+    const oldDocId = oldDoc.id;
 
-        // Verify new document preserves old images
-        const newDoc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, result.sourceDocumentId),
-        });
-        expect(newDoc?.imageUrls).toEqual([
-            "https://example.com/image1.jpg",
-            "https://example.com/image2.jpg",
-        ]);
+    // Call retry with new images (base64 data)
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "Updated receipt",
+      images: [{ data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" }],
     });
 
-    it("should use new images when provided", async () => {
-        const db = getTestDb();
+    // Verify new document has new images
+    const newDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
+    });
+    // Verify new document has new images stored as local URLs
+    expect(newDoc?.imageUrls).toHaveLength(1);
+    expect(newDoc?.imageUrls[0]).toMatch(/^\/api\/uploads\//);
+  });
 
-        // Create an old document
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Old receipt",
-            imageUrls: ["https://example.com/old.jpg"],
-            status: "anomaly",
-            entryDate: "2025-03-10",
-        }).returning();
+  it("should cancel old tasks and create new task", async () => {
+    const db = getTestDb();
 
-        const oldDocId = oldDoc.id;
+    // Create an old document
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Processing document",
+        status: "processing",
+        entryDate: "2025-04-01",
+      })
+      .returning();
 
-        // Call retry with new images (base64 data)
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "Updated receipt",
-            images: [
-                { data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" },
-            ],
-        });
+    const oldDocId = oldDoc.id;
 
-        // Verify new document has new images
-        const newDoc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, result.sourceDocumentId),
-        });
-        // Verify new document has new images stored as local URLs
-        expect(newDoc?.imageUrls).toHaveLength(1);
-        expect(newDoc?.imageUrls[0]).toMatch(/^\/api\/uploads\//);
+    // Create a running task for the old document
+    const [oldTask] = await db
+      .insert(taskRuns)
+      .values({
+        scopeId: testLedgerId,
+        entityType: "source_document",
+        entityId: oldDocId,
+        type: "parse_source_document",
+        status: "running",
+        title: "Parse old document",
+      })
+      .returning();
+
+    // Call retry
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "Retry this",
     });
 
-    it("should cancel old tasks and create new task", async () => {
-        const db = getTestDb();
+    // Verify old task was cancelled
+    expect(flowEngine.cancel).toHaveBeenCalledWith(oldTask.id);
 
-        // Create an old document
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Processing document",
-            status: "processing",
-            entryDate: "2025-04-01",
-        }).returning();
+    // Verify new task was submitted
+    expect(flowEngine.submit).toHaveBeenCalled();
+    const submitCall = vi.mocked(flowEngine.submit).mock.calls[0];
+    expect(submitCall[0]).toBe("parse_source_document");
+    expect(submitCall[1].sourceDocumentId).toBe(result.sourceDocumentId);
+    expect(submitCall[1].ledgerId).toBe(testLedgerId);
+    expect(submitCall[1].text).toBe("Retry this");
+  });
 
-        const oldDocId = oldDoc.id;
+  it("should soft delete old task_runs after retry", async () => {
+    const db = getTestDb();
 
-        // Create a running task for the old document
-        const [oldTask] = await db.insert(taskRuns).values({
-            scopeId: testLedgerId,
-            entityType: "source_document",
-            entityId: oldDocId,
-            type: "parse_source_document",
-            status: "running",
-            title: "Parse old document",
-        }).returning();
+    // Create an old document
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Document with tasks",
+        status: "completed",
+        entryDate: "2025-05-01",
+      })
+      .returning();
 
-        // Call retry
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "Retry this",
-        });
+    const oldDocId = oldDoc.id;
 
-        // Verify old task was cancelled
-        expect(flowEngine.cancel).toHaveBeenCalledWith(oldTask.id);
+    // Create multiple task runs for the old document
+    await db.insert(taskRuns).values([
+      {
+        scopeId: testLedgerId,
+        entityType: "source_document",
+        entityId: oldDocId,
+        type: "parse_source_document",
+        status: "completed",
+        title: "First parse",
+      },
+      {
+        scopeId: testLedgerId,
+        entityType: "source_document",
+        entityId: oldDocId,
+        type: "parse_source_document",
+        status: "anomaly",
+        title: "Retry parse",
+      },
+    ]);
 
-        // Verify new task was submitted
-        expect(flowEngine.submit).toHaveBeenCalled();
-        const submitCall = vi.mocked(flowEngine.submit).mock.calls[0];
-        expect(submitCall[0]).toBe("parse_source_document");
-        expect(submitCall[1].sourceDocumentId).toBe(result.sourceDocumentId);
-        expect(submitCall[1].ledgerId).toBe(testLedgerId);
-        expect(submitCall[1].text).toBe("Retry this");
+    // Call retry
+    await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "Final retry",
     });
 
-    it("should soft delete old task_runs after retry", async () => {
-        const db = getTestDb();
+    // Verify old task_runs are soft deleted
+    const oldTasks = await db.query.taskRuns.findMany({
+      where: and(eq(taskRuns.entityId, oldDocId), isNull(taskRuns.deletedAt)),
+    });
+    expect(oldTasks.length).toBe(0);
+  });
 
-        // Create an old document
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Document with tasks",
-            status: "completed",
-            entryDate: "2025-05-01",
-        }).returning();
+  it("should handle document without entryDate", async () => {
+    const db = getTestDb();
 
-        const oldDocId = oldDoc.id;
+    // Create an old document without entryDate
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "No date document",
+        status: "anomaly",
+      })
+      .returning();
 
-        // Create multiple task runs for the old document
-        await db.insert(taskRuns).values([
-            {
-                scopeId: testLedgerId,
-                entityType: "source_document",
-                entityId: oldDocId,
-                type: "parse_source_document",
-                status: "completed",
-                title: "First parse",
-            },
-            {
-                scopeId: testLedgerId,
-                entityType: "source_document",
-                entityId: oldDocId,
-                type: "parse_source_document",
-                status: "anomaly",
-                title: "Retry parse",
-            },
-        ]);
+    const oldDocId = oldDoc.id;
 
-        // Call retry
-        await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "Final retry",
-        });
-
-        // Verify old task_runs are soft deleted
-        const oldTasks = await db.query.taskRuns.findMany({
-            where: and(
-                eq(taskRuns.entityId, oldDocId),
-                isNull(taskRuns.deletedAt)
-            ),
-        });
-        expect(oldTasks.length).toBe(0);
+    // Call retry
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
+      text: "With date now",
     });
 
-    it("should handle document without entryDate", async () => {
-        const db = getTestDb();
-
-        // Create an old document without entryDate
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "No date document",
-            status: "anomaly",
-        }).returning();
-
-        const oldDocId = oldDoc.id;
-
-        // Call retry
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
-            text: "With date now",
-        });
-
-        // Verify new document has null entryDate
-        const newDoc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, result.sourceDocumentId),
-        });
-        expect(newDoc?.entryDate).toBeNull();
+    // Verify new document has null entryDate
+    const newDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
+    expect(newDoc?.entryDate).toBeNull();
+  });
 
-    it("should throw NotFoundError when document does not exist", async () => {
-        const nonExistentId = "00000000-0000-0000-0000-000000000000";
+  it("should throw NotFoundError when document does not exist", async () => {
+    const nonExistentId = "00000000-0000-0000-0000-000000000000";
 
-        await expect(
-            retrySourceDocumentAction(testLedgerId, nonExistentId, { text: "Retry" })
-        ).rejects.toThrow("Source document");
+    await expect(
+      retrySourceDocumentAction(testLedgerId, nonExistentId, { text: "Retry" })
+    ).rejects.toThrow("Source document");
+  });
+
+  it("should use default text if no input text provided", async () => {
+    const db = getTestDb();
+
+    // Create an old document
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: "Original text to keep",
+        status: "failed",
+        entryDate: "2025-06-01",
+      })
+      .returning();
+
+    const oldDocId = oldDoc.id;
+
+    // Call retry without text input
+    const result = await retrySourceDocumentAction(testLedgerId, oldDocId);
+
+    // Verify new document uses old text
+    const newDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
-
-    it("should use default text if no input text provided", async () => {
-        const db = getTestDb();
-
-        // Create an old document
-        const [oldDoc] = await db.insert(sourceDocuments).values({
-            ledgerId: testLedgerId,
-            text: "Original text to keep",
-            status: "failed",
-            entryDate: "2025-06-01",
-        }).returning();
-
-        const oldDocId = oldDoc.id;
-
-        // Call retry without text input
-        const result = await retrySourceDocumentAction(testLedgerId, oldDocId);
-
-        // Verify new document uses old text
-        const newDoc = await db.query.sourceDocuments.findFirst({
-            where: eq(sourceDocuments.id, result.sourceDocumentId),
-        });
-        expect(newDoc?.text).toBe("Original text to keep");
-    });
+    expect(newDoc?.text).toBe("Original text to keep");
+  });
 });

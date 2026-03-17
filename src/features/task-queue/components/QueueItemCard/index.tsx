@@ -78,16 +78,20 @@ export const QueueItemCard = memo(function QueueItemCard({
   });
 
   return (
-    <div className={cn(
-      "rounded-lg border border-l-4 overflow-hidden transition-colors",
-      statusStyles[item.status],
-      className
-    )}>
+    <div
+      className={cn(
+        "rounded-lg border border-l-4 overflow-hidden transition-colors",
+        statusStyles[item.status],
+        className
+      )}
+    >
       {/* Header */}
       <div
         className={cn(
           "px-3 py-2.5 flex justify-between items-center transition-all",
-          canExpand && !useSpecialInteraction && "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
+          canExpand &&
+            !useSpecialInteraction &&
+            "cursor-pointer hover:bg-surface2/50 active:scale-[0.995]"
         )}
         onClick={() => canExpand && !useSpecialInteraction && setIsExpanded(!isExpanded)}
       >
@@ -98,16 +102,20 @@ export const QueueItemCard = memo(function QueueItemCard({
               className="p-1 -ml-1 hover:bg-accent/10 rounded shrink-0 transition-colors"
               aria-label={isExpanded ? t("collapse") : t("expand")}
             >
-              <ChevronDown className={cn(
-                "h-3.5 w-3.5 transition-transform text-muted-foreground",
-                isExpanded && "rotate-180"
-              )} />
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform text-muted-foreground",
+                  isExpanded && "rotate-180"
+                )}
+              />
             </button>
           ) : canExpand ? (
-            <ChevronDown className={cn(
-              "h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground",
-              isExpanded && "rotate-180"
-            )} />
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground",
+                isExpanded && "rotate-180"
+              )}
+            />
           ) : null}
 
           <StatusIcon status={item.status} />
@@ -132,7 +140,7 @@ export const QueueItemCard = memo(function QueueItemCard({
             <span
               className={cn(
                 "text-xs truncate hidden sm:inline",
-                item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
+                item.status === "anomaly" ? "text-amber-600" : "text-muted-foreground"
               )}
               title={item.subtitle}
             >
@@ -142,7 +150,10 @@ export const QueueItemCard = memo(function QueueItemCard({
 
           {/* Progress - inline for running tasks */}
           {showProgressInline && (
-            <span className="text-xs text-muted-foreground truncate hidden sm:inline" title={item.progress}>
+            <span
+              className="text-xs text-muted-foreground truncate hidden sm:inline"
+              title={item.progress}
+            >
               — {item.progress}
             </span>
           )}
@@ -150,7 +161,10 @@ export const QueueItemCard = memo(function QueueItemCard({
 
         {/* Direct Cancel Button */}
         {showDirectCancel && (
-          <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center gap-1 shrink-0 ml-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               variant="ghost"
               size="icon-sm"
@@ -164,7 +178,10 @@ export const QueueItemCard = memo(function QueueItemCard({
 
         {/* Dropdown Menu */}
         {showDropdown && (
-          <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center gap-1 shrink-0 ml-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -189,10 +206,7 @@ export const QueueItemCard = memo(function QueueItemCard({
                   </DropdownMenuItem>
                 )}
                 {canDelete && (
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="text-danger focus:text-danger"
-                  >
+                  <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
                     <Trash2 className="mr-2 h-3.5 w-3.5" />
                     {tCommon("delete")}
                   </DropdownMenuItem>
@@ -213,17 +227,17 @@ export const QueueItemCard = memo(function QueueItemCard({
       {(showSubtitleInline || showProgressInline) && (
         <div className="px-3 pb-2 sm:hidden">
           {showSubtitleInline && (
-            <p className={cn(
-              "text-xs truncate",
-              item.status === 'anomaly' ? "text-amber-600" : "text-muted-foreground"
-            )}>
+            <p
+              className={cn(
+                "text-xs truncate",
+                item.status === "anomaly" ? "text-amber-600" : "text-muted-foreground"
+              )}
+            >
               {item.subtitle}
             </p>
           )}
           {showProgressInline && (
-            <p className="text-xs text-muted-foreground truncate">
-              {item.progress}
-            </p>
+            <p className="text-xs text-muted-foreground truncate">{item.progress}</p>
           )}
         </div>
       )}

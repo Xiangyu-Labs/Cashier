@@ -8,10 +8,10 @@
  */
 export function isValidJson(content: string): boolean {
   try {
-    JSON.parse(content)
-    return true
+    JSON.parse(content);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -20,9 +20,9 @@ export function isValidJson(content: string): boolean {
  */
 export function tryParseJson<T = unknown>(content: string): T | null {
   try {
-    return JSON.parse(content) as T
+    return JSON.parse(content) as T;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -32,19 +32,19 @@ export function tryParseJson<T = unknown>(content: string): T | null {
  * - Trim whitespace
  */
 export function cleanJsonContent(content: string): string {
-  let cleaned = content.trim()
+  let cleaned = content.trim();
 
   // Remove markdown code fences
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7)
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3)
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
   }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3)
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
   }
 
-  return cleaned.trim()
+  return cleaned.trim();
 }
 
 /**
@@ -53,35 +53,35 @@ export function cleanJsonContent(content: string): string {
  */
 export function extractJson(content: string): string {
   // First try cleaning markdown fences
-  const cleaned = cleanJsonContent(content)
-  if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
-    return cleaned
+  const cleaned = cleanJsonContent(content);
+  if (cleaned.startsWith("{") || cleaned.startsWith("[")) {
+    return cleaned;
   }
 
   // Try to find JSON object boundaries
-  const jsonStart = content.indexOf('{')
-  const jsonEnd = content.lastIndexOf('}')
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
 
   if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-    return content.substring(jsonStart, jsonEnd + 1)
+    return content.substring(jsonStart, jsonEnd + 1);
   }
 
   // Try array
-  const arrStart = content.indexOf('[')
-  const arrEnd = content.lastIndexOf(']')
+  const arrStart = content.indexOf("[");
+  const arrEnd = content.lastIndexOf("]");
 
   if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
-    return content.substring(arrStart, arrEnd + 1)
+    return content.substring(arrStart, arrEnd + 1);
   }
 
-  return cleaned
+  return cleaned;
 }
 
 /**
  * Build repair prompt for fixing malformed JSON
  */
 export function buildRepairPrompt(originalContent: string): string {
-  const hasJson = originalContent.includes('{') || originalContent.includes('[')
+  const hasJson = originalContent.includes("{") || originalContent.includes("[");
 
   if (!hasJson) {
     return `You are a JSON extraction assistant. The AI model was supposed to return a JSON object but instead returned natural language text. Extract the relevant information from the text below and format it as a valid JSON object.
@@ -94,7 +94,7 @@ Rules:
 Text to convert:
 ${originalContent}
 
-Return the JSON object now:`
+Return the JSON object now:`;
   }
 
   return `You are a JSON repair assistant. Fix the malformed JSON content below.
@@ -108,5 +108,5 @@ Rules:
 Content to repair:
 ${originalContent}
 
-Return the corrected JSON now:`
+Return the corrected JSON now:`;
 }

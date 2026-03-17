@@ -6,60 +6,60 @@
 
 // Define types locally to avoid import issues
 export interface CalendarDayData {
-    date: string; // yyyy-MM-dd
-    totalAmount: number;
-    entryCount: number;
-    currencies: string[];
+  date: string; // yyyy-MM-dd
+  totalAmount: number;
+  entryCount: number;
+  currencies: string[];
 }
 
 export interface CalendarHeatmapStats {
-    minAmount: number;
-    maxAmount: number;
-    avgAmount: number;
-    p80Amount: number; // 80th percentile for color mapping
+  minAmount: number;
+  maxAmount: number;
+  avgAmount: number;
+  p80Amount: number; // 80th percentile for color mapping
 }
 
-export type CalendarViewType = 'month' | 'year';
+export type CalendarViewType = "month" | "year";
 
 export interface CalendarFilters {
-    currency?: string;
-    categoryId?: string;
+  currency?: string;
+  categoryId?: string;
 }
 
 export interface CalendarHeatmapData {
-    days: CalendarDayData[];
-    range: {
-        startDate: string;
-        endDate: string;
-    };
-    stats: CalendarHeatmapStats;
+  days: CalendarDayData[];
+  range: {
+    startDate: string;
+    endDate: string;
+  };
+  stats: CalendarHeatmapStats;
 }
 
 export interface CalendarDayDetailEntry {
-    id: string;
-    itemName: string;
-    amount: number;
-    currency: string;
-    convertedAmount?: number;
-    categoryId?: string;
-    categoryName?: string;
-    categoryIcon?: string;
-    sourceDocumentId: string;
-    sourceDocumentTitle?: string;
+  id: string;
+  itemName: string;
+  amount: number;
+  currency: string;
+  convertedAmount?: number;
+  categoryId?: string;
+  categoryName?: string;
+  categoryIcon?: string;
+  sourceDocumentId: string;
+  sourceDocumentTitle?: string;
 }
 
 export interface CalendarDayDetailResponse {
-    date: string;
-    entries: CalendarDayDetailEntry[];
-    totalAmount: number;
-    totalCount: number;
+  date: string;
+  entries: CalendarDayDetailEntry[];
+  totalAmount: number;
+  totalCount: number;
 }
 
 // Heatmap color level (0-5)
 export type HeatmapLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface HeatmapColorConfig {
-    level: HeatmapLevel;
-    color: string;
-    label: string;
+  level: HeatmapLevel;
+  color: string;
+  label: string;
 }

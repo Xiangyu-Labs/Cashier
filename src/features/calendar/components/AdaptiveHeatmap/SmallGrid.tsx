@@ -3,14 +3,14 @@
  * GitHub-style 12px cells with horizontal scroll
  */
 
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import { getHeatmapLevel } from '../../lib/heatmap-colors';
-import { formatDate } from '../../lib/date-utils';
-import type { CalendarDayData, CalendarHeatmapStats } from '../../types';
-import { DayCellSmall } from './DayCellSmall';
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { getHeatmapLevel } from "../../lib/heatmap-colors";
+import { formatDate } from "../../lib/date-utils";
+import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
+import { DayCellSmall } from "./DayCellSmall";
 
 interface SmallGridHeatmapProps {
   days: CalendarDayData[];
@@ -94,7 +94,7 @@ export function SmallGridHeatmap({
   }, [days, dayMap, queryRange]);
 
   return (
-    <div className={cn('w-full overflow-x-auto pb-2', className)}>
+    <div className={cn("w-full overflow-x-auto pb-2", className)}>
       {/* Inner container with overflow-visible to allow tooltip to show outside */}
       <div className="flex gap-[2px] min-h-[100px]">
         {weeks.map((week) => (

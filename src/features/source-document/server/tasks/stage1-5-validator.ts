@@ -1,6 +1,6 @@
 /**
  * Stage 1.5 Validator
- * 
+ *
  * Single GPT that reviews Stage 1 results and has two responsibilities:
  * 1. Veto power - reject if results are unreasonable
  * 2. Consolidation - merge results and add guidance hints for Stage 2
@@ -15,37 +15,44 @@ import { buildMessageContent } from "./message-content";
 // ===== Zod Schema for Validation Output =====
 
 const validationOutputSchema = z.object({
-    is_reasonable: z.boolean(),
-    summary: z.object({
-        title: z.string(),
-        currencies: z.array(z.object({
-            code: z.string(),
-            hint: z.string(),
-        })),
-        categories: z.array(z.object({
-            name: z.string(),
-            hint: z.string(),
-        })),
-        rules: z.array(z.string()).optional(),
-    }).optional(),
-    rejection_reason: z.string().optional(),
+  is_reasonable: z.boolean(),
+  summary: z
+    .object({
+      title: z.string(),
+      currencies: z.array(
+        z.object({
+          code: z.string(),
+          hint: z.string(),
+        })
+      ),
+      categories: z.array(
+        z.object({
+          name: z.string(),
+          hint: z.string(),
+        })
+      ),
+      rules: z.array(z.string()).optional(),
+    })
+    .optional(),
+  rejection_reason: z.string().optional(),
 });
 
 // ===== Build Validation Prompt =====
 
-function buildValidationPrompt(
-    stage1Results: Stage1Results,
-    aiLanguage: string = "zh-CN"
-): string {
-    const resultsJson = JSON.stringify({
-        validity: stage1Results.validity,
-        currency: stage1Results.currency,
-        category: stage1Results.category,
-        title: stage1Results.title,
-        userRequirements: stage1Results.userRequirements,
-    }, null, 2);
+function buildValidationPrompt(stage1Results: Stage1Results, aiLanguage: string = "zh-CN"): string {
+  const resultsJson = JSON.stringify(
+    {
+      validity: stage1Results.validity,
+      currency: stage1Results.currency,
+      category: stage1Results.category,
+      title: stage1Results.title,
+      userRequirements: stage1Results.userRequirements,
+    },
+    null,
+    2
+  );
 
-    return `You are a validation AI that reviews pre-analysis results.
+  return `You are a validation AI that reviews pre-analysis results.
 
 ### Task
 Review the Stage 1 pre-analysis results and determine if they are reasonable and consistent.
@@ -94,32 +101,32 @@ If REASONABLE:
 // ===== Main Validator Function =====
 
 export interface ValidationInput {
-    text?: string;
-    imageUrls?: string[];
-    visionDescription?: string;
-    aiLanguage?: string;
-    stage1Results: Stage1Results;
+  text?: string;
+  imageUrls?: string[];
+  visionDescription?: string;
+  aiLanguage?: string;
+  stage1Results: Stage1Results;
 }
 
 export async function executeStage1_5Validation(
-    input: ValidationInput,
-    ai: AIContext
+  input: ValidationInput,
+  ai: AIContext
 ): Promise<ValidationSummary> {
-    const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
-    const prompt = buildValidationPrompt(input.stage1Results, input.aiLanguage);
+  const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
+  const prompt = buildValidationPrompt(input.stage1Results, input.aiLanguage);
 
-    const response = await ai.generate({
-        prompt,
-        messages: [{ role: "user", content: messageContent }],
-        requireJson: true,
-        model: 'text',
-    });
+  const response = await ai.generate({
+    prompt,
+    messages: [{ role: "user", content: messageContent }],
+    requireJson: true,
+    model: "text",
+  });
 
-    const result = parseJsonResponse(response.content, validationOutputSchema);
+  const result = parseJsonResponse(response.content, validationOutputSchema);
 
-    return {
-        is_reasonable: result.is_reasonable,
-        summary: result.summary,
-        rejection_reason: result.rejection_reason,
-    };
+  return {
+    is_reasonable: result.is_reasonable,
+    summary: result.summary,
+    rejection_reason: result.rejection_reason,
+  };
 }

@@ -22,15 +22,15 @@
 
 ### 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 框架 | Next.js 16 (App Router) |
-| 语言 | TypeScript 5 |
-| 数据库 | SQLite + Drizzle ORM |
-| 状态管理 | TanStack Query + Zustand |
-| AI | OpenAI GPT-4o / DeepSeek |
-| 认证 | NextAuth.js + OTP |
-| 测试 | Vitest + in-memory SQLite |
+| 层级     | 技术                      |
+| -------- | ------------------------- |
+| 框架     | Next.js 16 (App Router)   |
+| 语言     | TypeScript 5              |
+| 数据库   | SQLite + Drizzle ORM      |
+| 状态管理 | TanStack Query + Zustand  |
+| AI       | OpenAI GPT-4o / DeepSeek  |
+| 认证     | NextAuth.js + OTP         |
+| 测试     | Vitest + in-memory SQLite |
 
 ### 架构概述
 
@@ -54,6 +54,7 @@ Data Layer: SQLite
 ```
 
 **关键架构决策：**
+
 - Server Actions 作为主要 API 接口（非 API Routes）
 - 进程内任务引擎处理后台 AI 任务（无需 Redis）
 - 租户隔离通过 `ledgerId` 实现
@@ -62,12 +63,14 @@ Data Layer: SQLite
 ### 质量初评
 
 **优点：**
+
 - 架构清晰，模块边界明确
 - 类型安全，TypeScript 覆盖率高
 - 命名规范，代码可读性好
 - 测试覆盖核心业务逻辑
 
 **改进空间：**
+
 - 缺少 Prettier/ESLint 严格配置
 - 部分文件偏大（超过 400 行）
 - 数据库连接缺少错误处理
@@ -121,10 +124,10 @@ Data Layer: SQLite
 - **建议**:
   ```typescript
   const batchUpdateSchema = z.object({
-      categoryId: z.string().nullable().optional(),
-      currency: z.string().nullable().optional(),
-      description: z.string().nullable().optional(),
-      itemName: z.string().optional(),
+    categoryId: z.string().nullable().optional(),
+    currency: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    itemName: z.string().optional(),
   });
   ```
 
@@ -155,10 +158,10 @@ Data Layer: SQLite
   ```typescript
   let client: Database.Database;
   try {
-      client = globalForDb.conn ?? new Database(sqlitePath);
+    client = globalForDb.conn ?? new Database(sqlitePath);
   } catch (error) {
-      logger.error({ error, path: sqlitePath }, "Database connection failed");
-      process.exit(1);
+    logger.error({ error, path: sqlitePath }, "Database connection failed");
+    process.exit(1);
   }
   ```
 
@@ -240,12 +243,15 @@ Data Layer: SQLite
 ## 跨角度问题模式
 
 ### 1. Actions 层职责过重
+
 多个 feature 的 Actions 层包含业务逻辑而非简单的参数验证和委托。这违反了分层架构原则，导致代码难以测试和复用。
 
 ### 2. 类型安全与运行时验证的脱节
+
 部分代码依赖 TypeScript 类型系统保证安全，但缺少运行时验证（如 Zod）。这在处理用户输入时尤其危险。
 
 ### 3. 乐观更新模式的一致性问题
+
 虽然项目使用了统一的 `useLedgerMutation` 封装，但乐观更新与后续状态同步之间仍可能存在竞态。
 
 ---
@@ -307,6 +313,7 @@ Data Layer: SQLite
 ### A. 审查覆盖范围
 
 **已审查的文件类别：**
+
 - 核心基础设施：`src/lib/db/`, `src/lib/flow/`, `src/lib/mutations/`
 - Feature 模块：`src/features/*/server/`
 - 前端 Hooks：`src/hooks/`, `src/features/*/client/hooks/`
@@ -316,6 +323,7 @@ Data Layer: SQLite
 ### B. 工具与配置建议
 
 **建议添加的配置：**
+
 ```json
 // .prettierrc
 {
@@ -327,6 +335,7 @@ Data Layer: SQLite
 ```
 
 **建议的 ESLint 规则：**
+
 - `@typescript-eslint/no-non-null-assertion`: warn
 - `@typescript-eslint/explicit-function-return-type`: off (已有良好类型推断)
 

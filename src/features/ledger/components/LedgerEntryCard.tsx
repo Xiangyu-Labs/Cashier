@@ -62,7 +62,10 @@ export function LedgerEntryCard({
             const target = e.target as HTMLElement;
             // Don't trigger on interactive elements (except checkbox in selection mode)
             const isCheckbox = target.closest("[data-checkbox]");
-            if (!isCheckbox && (target.closest("button") || target.closest("select") || target.closest("input"))) {
+            if (
+              !isCheckbox &&
+              (target.closest("button") || target.closest("select") || target.closest("input"))
+            ) {
               return;
             }
 
@@ -77,21 +80,12 @@ export function LedgerEntryCard({
             <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
               {/* Checkbox for selection mode */}
               {selectionMode && (
-                <div
-                  className="shrink-0"
-                  data-checkbox="true"
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    className="h-5 w-5"
-                  />
+                <div className="shrink-0" data-checkbox="true">
+                  <Checkbox checked={isSelected} className="h-5 w-5" />
                 </div>
               )}
               <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg text-text shrink-0">
-                <CategoryIcon
-                  iconName={ledgerEntry.category?.icon}
-                  className="w-4 h-4"
-                />
+                <CategoryIcon iconName={ledgerEntry.category?.icon} className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
@@ -121,7 +115,9 @@ export function LedgerEntryCard({
                         {t("needsCategory")}
                       </Badge>
                       {ledgerEntry.description && (
-                        <span className="text-xs text-muted-foreground truncate">{ledgerEntry.description}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {ledgerEntry.description}
+                        </span>
                       )}
                     </div>
                   )}

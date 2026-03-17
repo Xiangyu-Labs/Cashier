@@ -236,8 +236,9 @@ export function optimisticallyDeleteFromList<T extends { id: string }>(
 ): { snapshots: MutationSnapshot } {
   const snapshots = createListSnapshots<T[]>(queryClient, queryKey);
 
-  queryClient.setQueriesData<T[]>({ queryKey }, (old) =>
-    old?.filter((item) => item.id !== idToDelete) ?? []
+  queryClient.setQueriesData<T[]>(
+    { queryKey },
+    (old) => old?.filter((item) => item.id !== idToDelete) ?? []
   );
 
   return { snapshots };
@@ -271,8 +272,9 @@ export function optimisticallyUpdateInList<T extends { id: string }>(
 ): { snapshots: MutationSnapshot } {
   const snapshots = createListSnapshots<T[]>(queryClient, queryKey);
 
-  queryClient.setQueriesData<T[]>({ queryKey }, (old) =>
-    old?.map((item) => (item.id === idToUpdate ? { ...item, ...updates } : item)) ?? []
+  queryClient.setQueriesData<T[]>(
+    { queryKey },
+    (old) => old?.map((item) => (item.id === idToUpdate ? { ...item, ...updates } : item)) ?? []
   );
 
   return { snapshots };

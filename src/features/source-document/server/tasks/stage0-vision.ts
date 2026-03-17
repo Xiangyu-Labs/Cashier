@@ -11,21 +11,21 @@ import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
 
 export interface Stage0Input {
-    imageUrls: string[];
-    focusHints?: string[];
-    aiLanguage?: string;
+  imageUrls: string[];
+  focusHints?: string[];
+  aiLanguage?: string;
 }
 
 export interface Stage0Output {
-    description: string;
+  description: string;
 }
 
 function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]): string {
-    const focusSection = focusHints?.length
-        ? `\n### Focus Areas\nPay special attention to:\n${focusHints.map(h => `- ${h}`).join("\n")}\n`
-        : "";
+  const focusSection = focusHints?.length
+    ? `\n### Focus Areas\nPay special attention to:\n${focusHints.map((h) => `- ${h}`).join("\n")}\n`
+    : "";
 
-    return `You are a financial document transcription AI. Your job is to produce a complete, detailed text description of the document image(s) so that another AI can parse it WITHOUT seeing the original image.
+  return `You are a financial document transcription AI. Your job is to produce a complete, detailed text description of the document image(s) so that another AI can parse it WITHOUT seeing the original image.
 
 ### Task
 Describe EVERYTHING visible in this financial document. Be exhaustive — the downstream parser will rely entirely on your description.
@@ -81,49 +81,48 @@ ${focusSection}
 Respond with plain text following the sections above. Do not use JSON or markdown code blocks.`;
 }
 
-export async function executeStage0(
-    input: Stage0Input,
-    ai: AIContext
-): Promise<Stage0Output> {
-    if (!input.imageUrls?.length) {
-        return { description: "" };
-    }
+export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<Stage0Output> {
+  if (!input.imageUrls?.length) {
+    return { description: "" };
+  }
 
-    const prompt = buildVisionPrompt(input.aiLanguage, input.focusHints);
+  const prompt = buildVisionPrompt(input.aiLanguage, input.focusHints);
 
-    const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [];
+  const content: Array<
+    { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+  > = [];
 
-    if (input.imageUrls.length > 1) {
-        content.push({
-            type: "text",
-            text: `This document consists of ${input.imageUrls.length} images. Describe all of them as a single document.`,
-        });
-    }
-
-    // Load images (handles both base64 and R2 URLs)
-    const loadedResults = await loadImagesForAI(input.imageUrls);
-    const failures = loadedResults.filter(r => !r.success);
-    if (failures.length > 0) {
-        const failureMessages = failures.map(f => `${f.url}: ${f.error?.message}`).join("; ");
-        throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
-    }
-
-    for (const result of loadedResults) {
-        if (result.dataUrl) {
-            content.push({ type: "image_url", image_url: { url: result.dataUrl } });
-        }
-    }
-
-    const response = await ai.generate({
-        prompt,
-        messages: [{ role: "user", content }],
-        model: "vision",
+  if (input.imageUrls.length > 1) {
+    content.push({
+      type: "text",
+      text: `This document consists of ${input.imageUrls.length} images. Describe all of them as a single document.`,
     });
+  }
 
-    logger.info(
-        { descriptionLength: response.content.length },
-        "Stage 0: Vision description completed"
-    );
+  // Load images (handles both base64 and R2 URLs)
+  const loadedResults = await loadImagesForAI(input.imageUrls);
+  const failures = loadedResults.filter((r) => !r.success);
+  if (failures.length > 0) {
+    const failureMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
+    throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
+  }
 
-    return { description: response.content };
+  for (const result of loadedResults) {
+    if (result.dataUrl) {
+      content.push({ type: "image_url", image_url: { url: result.dataUrl } });
+    }
+  }
+
+  const response = await ai.generate({
+    prompt,
+    messages: [{ role: "user", content }],
+    model: "vision",
+  });
+
+  logger.info(
+    { descriptionLength: response.content.length },
+    "Stage 0: Vision description completed"
+  );
+
+  return { description: response.content };
 }

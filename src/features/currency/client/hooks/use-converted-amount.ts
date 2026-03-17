@@ -3,50 +3,50 @@ import { convertCurrencyAction } from "@/features/currency/server/actions";
 import { queryKeys } from "@/lib/query-keys";
 
 interface ConversionData {
-    amount: number;
-    from: string;
-    to: string;
-    date?: string;
-    converted: number;
+  amount: number;
+  from: string;
+  to: string;
+  date?: string;
+  converted: number;
 }
 
 export function useConvertedAmount(
-    amount: number,
-    from: string | null | undefined,
-    to: string | null | undefined,
-    date?: string | null
+  amount: number,
+  from: string | null | undefined,
+  to: string | null | undefined,
+  date?: string | null
 ) {
-    // If same currency or missing info, return amount immediately
-    const isSameCurrency = from === to;
-    const isMissingInfo = !amount || !from || !to || from === "unknown" || to === "unknown";
+  // If same currency or missing info, return amount immediately
+  const isSameCurrency = from === to;
+  const isMissingInfo = !amount || !from || !to || from === "unknown" || to === "unknown";
 
-    const { data, isLoading, error } = useQuery<ConversionData>({
-        queryKey: queryKeys.convert(amount, from!, to!, date || undefined),
-        queryFn: async () => {
-            const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
-            return {
-                amount,
-                from: from!,
-                to: to!,
-                date: date || undefined,
-                converted: result.converted,
-            };
-        },
-        enabled: !isSameCurrency && !isMissingInfo,
-        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
-    });
+  const { data, isLoading, error } = useQuery<ConversionData>({
+    queryKey: queryKeys.convert(amount, from!, to!, date || undefined),
+    queryFn: async () => {
+      const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
+      return {
+        amount,
+        from: from!,
+        to: to!,
+        date: date || undefined,
+        converted: result.converted,
+      };
+    },
+    enabled: !isSameCurrency && !isMissingInfo,
+    staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
+  });
 
-    if (isSameCurrency || isMissingInfo) {
-        return {
-            converted: amount,
-            isLoading: false,
-            error: null,
-        };
-    }
-
+  if (isSameCurrency || isMissingInfo) {
     return {
-        converted: data?.converted ?? amount,
-        isLoading,
-        error,
+      converted: amount,
+      isLoading: false,
+      error: null,
     };
+  }
+
+  return {
+    converted: data?.converted ?? amount,
+    isLoading,
+    error,
+  };
 }

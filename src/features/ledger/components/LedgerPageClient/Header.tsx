@@ -24,7 +24,12 @@ interface HeaderProps {
   onOpenInput: () => void;
 }
 
-export function Header({ ledger: _ledger, pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
+export function Header({
+  ledger: _ledger,
+  pendingStats,
+  onOpenTaskQueue,
+  onOpenInput,
+}: HeaderProps) {
   useTranslations("LedgerPage"); // Keep translation namespace registered
 
   return (
@@ -71,11 +76,7 @@ export function Header({ ledger: _ledger, pendingStats, onOpenTaskQueue, onOpenI
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={onOpenInput}
-            className="rounded-full h-8 w-8 p-0"
-          >
+          <Button size="sm" onClick={onOpenInput} className="rounded-full h-8 w-8 p-0">
             <Plus className="h-5 w-5" />
           </Button>
         </div>

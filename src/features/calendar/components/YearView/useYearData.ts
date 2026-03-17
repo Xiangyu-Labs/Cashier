@@ -4,10 +4,10 @@
  * Calculates year heatmap data including weeks grid, month labels, and statistics.
  */
 
-import { useMemo } from 'react';
-import { getHeatmapLevel } from '../../lib/heatmap-colors';
-import { formatDate } from '../../lib/date-utils';
-import type { CalendarHeatmapData, CalendarDayData, HeatmapLevel } from '../../types';
+import { useMemo } from "react";
+import { getHeatmapLevel } from "../../lib/heatmap-colors";
+import { formatDate } from "../../lib/date-utils";
+import type { CalendarHeatmapData, CalendarDayData, HeatmapLevel } from "../../types";
 
 interface DayCellData {
   date: string;
@@ -40,10 +40,7 @@ interface UseYearDataResult {
   stats: YearStats;
 }
 
-export function useYearData(
-  year: number,
-  data: CalendarHeatmapData
-): UseYearDataResult {
+export function useYearData(year: number, data: CalendarHeatmapData): UseYearDataResult {
   // Create a map of date -> day data for quick lookup
   const dayDataMap = useMemo(() => {
     const map = new Map<string, CalendarDayData>();
@@ -99,7 +96,20 @@ export function useYearData(
   // Calculate month labels and their positions
   const monthLabels = useMemo<MonthLabel[]>(() => {
     const labels: MonthLabel[] = [];
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const monthNames = [
+      "1月",
+      "2月",
+      "3月",
+      "4月",
+      "5月",
+      "6月",
+      "7月",
+      "8月",
+      "9月",
+      "10月",
+      "11月",
+      "12月",
+    ];
 
     for (let month = 0; month < 12; month++) {
       // Find the first day of this month

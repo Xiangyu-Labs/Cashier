@@ -19,7 +19,12 @@ describe("Source Document Update Actions", () => {
   const testUserId = "00000000-0000-0000-0000-000000000000";
 
   beforeEach(() => {
-    vi.mocked(auth as unknown as () => Promise<{ user: { id: string; email: string }; expires: string } | null>).mockResolvedValue({
+    vi.mocked(
+      auth as unknown as () => Promise<{
+        user: { id: string; email: string };
+        expires: string;
+      } | null>
+    ).mockResolvedValue({
       user: { id: testUserId, email: "test@example.com" },
       expires: new Date(Date.now() + 3600 * 1000).toISOString(),
     });

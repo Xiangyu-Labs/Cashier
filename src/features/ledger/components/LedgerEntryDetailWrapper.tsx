@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import {
-    updateLedgerEntryAction,
-    deleteLedgerEntryAction,
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
 } from "@/features/ledger/server/actions/entries";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -17,107 +17,111 @@ import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledg
 import type { EntryCategory, LedgerEntry } from "@/types/api";
 
 interface LedgerEntryDetailWrapperProps {
-    id: string;
-    open: boolean;
-    onClose: () => void;
-    categories: EntryCategory[];
+  id: string;
+  open: boolean;
+  onClose: () => void;
+  categories: EntryCategory[];
 }
 
 export function LedgerEntryDetailWrapper({
-    id,
-    open,
-    onClose,
-    categories,
+  id,
+  open,
+  onClose,
+  categories,
 }: LedgerEntryDetailWrapperProps) {
-    const tCommon = useTranslations("Common");
-    const push = useModalStackStore((state) => state.push);
+  const tCommon = useTranslations("Common");
+  const push = useModalStackStore((state) => state.push);
 
-    const { data: ledgerEntry, isLoading, error } = useQuery({
-        queryKey: queryKeys.ledgerEntry(id),
-        queryFn: () => getLedgerEntryAction(id),
-        enabled: open && !!id,
-        retry: false,
-    });
+  const {
+    data: ledgerEntry,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.ledgerEntry(id),
+    queryFn: () => getLedgerEntryAction(id),
+    enabled: open && !!id,
+    retry: false,
+  });
 
-    const ledgerId = ledgerEntry?.ledgerId;
+  const ledgerId = ledgerEntry?.ledgerId;
 
-    const updateMutation = useLedgerMutation<void, Partial<Omit<LedgerEntry, "amount">> & { amount?: number }>(
-        ledgerId,
-        {
-            mutationFn: async (data) => {
-                if (!ledgerId) return;
-                await updateLedgerEntryAction(ledgerId, id, data);
-            },
-            errorMessage: tCommon("saveFailed"),
-            onOptimisticUpdate: (queryClient, data) => {
-                const snapshotKey = queryKeys.ledgerEntry(id);
-                const snapshots = createListSnapshots(queryClient, snapshotKey);
+  const updateMutation = useLedgerMutation<
+    void,
+    Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
+  >(ledgerId, {
+    mutationFn: async (data) => {
+      if (!ledgerId) return;
+      await updateLedgerEntryAction(ledgerId, id, data);
+    },
+    errorMessage: tCommon("saveFailed"),
+    onOptimisticUpdate: (queryClient, data) => {
+      const snapshotKey = queryKeys.ledgerEntry(id);
+      const snapshots = createListSnapshots(queryClient, snapshotKey);
 
-                queryClient.setQueriesData({ queryKey: snapshotKey }, (old: unknown) => {
-                    if (!old) return old;
-                    return { ...old, ...data };
-                });
+      queryClient.setQueriesData({ queryKey: snapshotKey }, (old: unknown) => {
+        if (!old) return old;
+        return { ...old, ...data };
+      });
 
-                return { snapshots };
-            },
-        }
-    );
+      return { snapshots };
+    },
+  });
 
-    const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
-        mutationFn: async () => {
-            if (!ledgerId) return;
-            await deleteLedgerEntryAction(ledgerId, id);
-        },
-        successMessage: tCommon("deleteSuccess"),
-        errorMessage: tCommon("deleteFailed"),
-        onSuccessExtra: () => {
-            onClose();
-        },
-        onOptimisticUpdate: (queryClient) => {
-            const snapshotKey = queryKeys.ledgerEntry(id);
-            const snapshots = createListSnapshots(queryClient, snapshotKey);
+  const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
+    mutationFn: async () => {
+      if (!ledgerId) return;
+      await deleteLedgerEntryAction(ledgerId, id);
+    },
+    successMessage: tCommon("deleteSuccess"),
+    errorMessage: tCommon("deleteFailed"),
+    onSuccessExtra: () => {
+      onClose();
+    },
+    onOptimisticUpdate: (queryClient) => {
+      const snapshotKey = queryKeys.ledgerEntry(id);
+      const snapshots = createListSnapshots(queryClient, snapshotKey);
 
-            // Optimistically remove the entry by setting data to undefined
-            queryClient.setQueriesData({ queryKey: snapshotKey }, () => undefined);
+      // Optimistically remove the entry by setting data to undefined
+      queryClient.setQueriesData({ queryKey: snapshotKey }, () => undefined);
 
-            return { snapshots };
-        },
-    });
+      return { snapshots };
+    },
+  });
 
-    // Handle error state - moved to useEffect to avoid render-path side effects
-    useEffect(() => {
-        if (error) {
-            toast.error(tCommon("error"));
-            onClose();
-        }
-    }, [error, onClose, tCommon]);
+  // Handle error state - moved to useEffect to avoid render-path side effects
+  useEffect(() => {
+    if (error) {
+      toast.error(tCommon("error"));
+      onClose();
+    }
+  }, [error, onClose, tCommon]);
 
-    // Handle deleted/not-found case - moved to useEffect
-    useEffect(() => {
-        if (!isLoading && !ledgerEntry && open) {
-            onClose();
-        }
-    }, [isLoading, ledgerEntry, open, onClose]);
+  // Handle deleted/not-found case - moved to useEffect
+  useEffect(() => {
+    if (!isLoading && !ledgerEntry && open) {
+      onClose();
+    }
+  }, [isLoading, ledgerEntry, open, onClose]);
 
-    // Always render Modal - pass isLoading for skeleton state
-    return (
-        <LedgerEntryDetailModal
-            ledgerEntry={ledgerEntry ?? null}
-            isLoading={isLoading}
-            categories={categories}
-            open={open}
-            onClose={onClose}
-            onUpdate={async (data) => await updateMutation.mutateAsync(data)}
-            onDelete={async () => await deleteMutation.mutateAsync()}
-            onViewSourceDocument={
-                ledgerEntry?.sourceDocumentId
-                    ? () =>
-                        push({
-                            type: "source-document",
-                            id: ledgerEntry.sourceDocumentId!,
-                        })
-                    : undefined
-            }
-        />
-    );
+  // Always render Modal - pass isLoading for skeleton state
+  return (
+    <LedgerEntryDetailModal
+      ledgerEntry={ledgerEntry ?? null}
+      isLoading={isLoading}
+      categories={categories}
+      open={open}
+      onClose={onClose}
+      onUpdate={async (data) => await updateMutation.mutateAsync(data)}
+      onDelete={async () => await deleteMutation.mutateAsync()}
+      onViewSourceDocument={
+        ledgerEntry?.sourceDocumentId
+          ? () =>
+              push({
+                type: "source-document",
+                id: ledgerEntry.sourceDocumentId!,
+              })
+          : undefined
+      }
+    />
+  );
 }

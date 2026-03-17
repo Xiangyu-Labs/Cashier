@@ -27,10 +27,7 @@ export function SettingsSkeleton() {
             {/* Settings items */}
             <div className="bg-surface rounded-xl border border-border divide-y divide-border">
               {[1, 2, 3].map((itemIndex) => (
-                <div
-                  key={itemIndex}
-                  className="px-4 py-3 flex items-center justify-between"
-                >
+                <div key={itemIndex} className="px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-5 w-5 bg-border rounded animate-pulse" />
                     <div className="h-4 w-28 bg-border rounded animate-pulse" />

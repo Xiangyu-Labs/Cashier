@@ -1,119 +1,119 @@
 // ===== Stage 1 Types =====
 
 export interface ValidityCheckInput {
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
 }
 
 export interface ValidityCheckOutput {
-    is_valid: boolean;
-    reasoning: string;
+  is_valid: boolean;
+  reasoning: string;
 }
 
 export interface CompletenessCheckOutput {
-    is_complete: boolean;
-    issue?: string;
+  is_complete: boolean;
+  issue?: string;
 }
 
 export interface CurrencyRecognitionInput {
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
-    preferredCurrencies?: string[];
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
+  preferredCurrencies?: string[];
 }
 
 export interface CurrencyRecognitionOutput {
-    currencies: string[];
-    reasoning: string;
+  currencies: string[];
+  reasoning: string;
 }
 
 export interface CategoryRecognitionInput {
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
-    categories: { name: string; description: string | null }[];
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
+  categories: { name: string; description: string | null }[];
 }
 
 export interface CategoryRecognitionOutput {
-    categories: string[];
-    reasoning: string;
+  categories: string[];
+  reasoning: string;
 }
 
 export interface TitleExtractionInput {
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
 }
 
 export interface TitleExtractionOutput {
-    title: string;
+  title: string;
 }
 
 export interface UserRequirementsInput {
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
-    aiCustomPrompt: string;
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
+  aiCustomPrompt: string;
 }
 
 export interface UserRequirementsOutput {
-    rules: string[];
+  rules: string[];
 }
 
 // ===== Stage 1.5 Types =====
 
 export interface ValidationSummary {
-    is_reasonable: boolean;
-    summary?: {
-        title: string;
-        currencies: { code: string; hint: string }[];
-        categories: { name: string; hint: string }[];
-        rules?: string[];
-    };
-    rejection_reason?: string;
+  is_reasonable: boolean;
+  summary?: {
+    title: string;
+    currencies: { code: string; hint: string }[];
+    categories: { name: string; hint: string }[];
+    rules?: string[];
+  };
+  rejection_reason?: string;
 }
 
 // ===== Stage 2 Types =====
 
 export interface ParsedEntry {
-    item_name: string;
-    amount: number;
-    currency: string;
-    category_index: number;  // 0 = no category, 1+ = index into categories array
-    entry_date?: string;  // Optional: we use source document's entryDate instead
-    notes: string | null;
+  item_name: string;
+  amount: number;
+  currency: string;
+  category_index: number; // 0 = no category, 1+ = index into categories array
+  entry_date?: string; // Optional: we use source document's entryDate instead
+  notes: string | null;
 }
 
 export interface DetailedParseOutput {
-    ledger_entries: ParsedEntry[];
-    reasoning: string;
+  ledger_entries: ParsedEntry[];
+  reasoning: string;
 }
 
 // ===== Arbitration Types =====
 
 export interface ArbitrationInput<T> {
-    taskDescription: string;
-    result1: T;
-    reasoning1: string;
-    result2: T;
-    reasoning2: string;
-    text?: string;
-    imageUrls?: string[];
-    aiLanguage?: string;
+  taskDescription: string;
+  result1: T;
+  reasoning1: string;
+  result2: T;
+  reasoning2: string;
+  text?: string;
+  imageUrls?: string[];
+  aiLanguage?: string;
 }
 
 export interface ArbitrationOutput {
-    choice: 0 | 1 | 2;
-    reason?: string;
+  choice: 0 | 1 | 2;
+  reason?: string;
 }
 
 // ===== Stage 1 Aggregated Result =====
 
 export interface Stage1Results {
-    validity: ValidityCheckOutput;
-    currency: CurrencyRecognitionOutput;
-    category: CategoryRecognitionOutput;
-    title: TitleExtractionOutput;
-    userRequirements?: UserRequirementsOutput;
+  validity: ValidityCheckOutput;
+  currency: CurrencyRecognitionOutput;
+  category: CategoryRecognitionOutput;
+  title: TitleExtractionOutput;
+  userRequirements?: UserRequirementsOutput;
 }

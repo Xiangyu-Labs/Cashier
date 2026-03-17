@@ -89,67 +89,83 @@ export async function processImage(
 
     switch (outputFormat) {
       case "jpeg":
-        outputBuffer = await pipeline.jpeg({
-          quality: opts.quality,
-          progressive: true,
-          mozjpeg: true,
-        }).toBuffer();
+        outputBuffer = await pipeline
+          .jpeg({
+            quality: opts.quality,
+            progressive: true,
+            mozjpeg: true,
+          })
+          .toBuffer();
         outputMimeType = "image/jpeg";
         break;
 
       case "png":
         // PNG uses lossless compression, quality option is ignored by sharp
-        outputBuffer = await pipeline.png({
-          compressionLevel: 9,
-          progressive: true,
-        }).toBuffer();
+        outputBuffer = await pipeline
+          .png({
+            compressionLevel: 9,
+            progressive: true,
+          })
+          .toBuffer();
         outputMimeType = "image/png";
         break;
 
       case "webp":
-        outputBuffer = await pipeline.webp({
-          quality: opts.quality,
-          effort: 6, // Compression effort 0-6
-        }).toBuffer();
+        outputBuffer = await pipeline
+          .webp({
+            quality: opts.quality,
+            effort: 6, // Compression effort 0-6
+          })
+          .toBuffer();
         outputMimeType = "image/webp";
         break;
 
       case "avif":
-        outputBuffer = await pipeline.avif({
-          quality: opts.quality,
-          effort: 4, // Compression effort 0-9
-        }).toBuffer();
+        outputBuffer = await pipeline
+          .avif({
+            quality: opts.quality,
+            effort: 4, // Compression effort 0-9
+          })
+          .toBuffer();
         outputMimeType = "image/avif";
         break;
 
       default:
         // Keep original format with compression
         if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
-          outputBuffer = await pipeline.jpeg({
-            quality: opts.quality,
-            progressive: true,
-            mozjpeg: true,
-          }).toBuffer();
+          outputBuffer = await pipeline
+            .jpeg({
+              quality: opts.quality,
+              progressive: true,
+              mozjpeg: true,
+            })
+            .toBuffer();
           outputMimeType = mimeType;
         } else if (mimeType === "image/png") {
           // PNG uses lossless compression, quality option is ignored by sharp
-          outputBuffer = await pipeline.png({
-            compressionLevel: 9,
-            progressive: true,
-          }).toBuffer();
+          outputBuffer = await pipeline
+            .png({
+              compressionLevel: 9,
+              progressive: true,
+            })
+            .toBuffer();
           outputMimeType = mimeType;
         } else if (mimeType === "image/webp") {
-          outputBuffer = await pipeline.webp({
-            quality: opts.quality,
-            effort: 6,
-          }).toBuffer();
+          outputBuffer = await pipeline
+            .webp({
+              quality: opts.quality,
+              effort: 6,
+            })
+            .toBuffer();
           outputMimeType = mimeType;
         } else {
           // Default to JPEG for unknown formats
-          outputBuffer = await pipeline.jpeg({
-            quality: opts.quality,
-            progressive: true,
-          }).toBuffer();
+          outputBuffer = await pipeline
+            .jpeg({
+              quality: opts.quality,
+              progressive: true,
+            })
+            .toBuffer();
           outputMimeType = "image/jpeg";
         }
     }

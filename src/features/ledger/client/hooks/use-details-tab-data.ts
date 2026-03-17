@@ -52,10 +52,7 @@ export function useDetailsTabData({
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
 
   // Convert periodParams to date range
-  const dateRange = useMemo(
-    () => periodToDateRange(periodParams),
-    [periodParams]
-  );
+  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
 
   // Use string dates directly from periodToDateRange (avoids Date object conversion issues)
   const startDateStr = dateRange.startDate ?? null;
@@ -71,35 +68,34 @@ export function useDetailsTabData({
     if (advancedFilters.maxAmount !== undefined && advancedFilters.maxAmount !== null)
       parts.push(`max:${advancedFilters.maxAmount}`);
     return parts.length > 0 ? parts.join("|") : null;
-  }, [advancedFilters.categoryId, advancedFilters.currency, advancedFilters.minAmount, advancedFilters.maxAmount]);
+  }, [
+    advancedFilters.categoryId,
+    advancedFilters.currency,
+    advancedFilters.minAmount,
+    advancedFilters.maxAmount,
+  ]);
 
   // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
-    queryKey: queryKeys.ledgerEntries(
-      ledgerId,
-      "summary",
-      startDateStr,
-      endDateStr,
-      mainCurrency
-    ),
+    queryKey: queryKeys.ledgerEntries(ledgerId, "summary", startDateStr, endDateStr, mainCurrency),
     queryFn: () =>
-      getLedgerStatsAction(ledgerId, startDateStr || undefined, endDateStr || undefined, mainCurrency, {
-        categoryId: advancedFilters.categoryId,
-        currency: advancedFilters.currency,
-        minAmount: advancedFilters.minAmount,
-        maxAmount: advancedFilters.maxAmount,
-      }),
+      getLedgerStatsAction(
+        ledgerId,
+        startDateStr || undefined,
+        endDateStr || undefined,
+        mainCurrency,
+        {
+          categoryId: advancedFilters.categoryId,
+          currency: advancedFilters.currency,
+          minAmount: advancedFilters.minAmount,
+          maxAmount: advancedFilters.maxAmount,
+        }
+      ),
     enabled: true,
   });
 
   // Infinite query for entries (query key 不包含 filterKey，与预加载保持一致)
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
     queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr),
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {

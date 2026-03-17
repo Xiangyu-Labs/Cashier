@@ -33,7 +33,10 @@ export function generateOTP(): string {
  */
 export function hashOTP(otp: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.createHash("sha256").update(otp + salt).digest("hex");
+  const hash = crypto
+    .createHash("sha256")
+    .update(otp + salt)
+    .digest("hex");
   return `${hash}:${salt}`;
 }
 
@@ -52,7 +55,10 @@ export function verifyOTP(otp: string, storedHash: string): boolean {
     return false;
   }
 
-  const computed = crypto.createHash("sha256").update(otp + salt).digest("hex");
+  const computed = crypto
+    .createHash("sha256")
+    .update(otp + salt)
+    .digest("hex");
 
   // Use timingSafeEqual to prevent timing attacks
   // Buffer lengths must match for timingSafeEqual

@@ -25,7 +25,7 @@
   --radius-xl: var(--radius-xl);
 
   --font-sans: Inter, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
 }
 
 :root {
@@ -116,7 +116,6 @@
      So we just need to update the core tokens here.
   */
 }
-
 
 html {
   background-color: var(--bg);

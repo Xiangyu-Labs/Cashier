@@ -566,7 +566,11 @@ describe("Calendar Heatmap Actions", () => {
       const db = getTestDb();
 
       // Create entries in Jan, Feb, Mar
-      for (const [month, day] of [["01", "15"], ["02", "15"], ["03", "15"]]) {
+      for (const [month, day] of [
+        ["01", "15"],
+        ["02", "15"],
+        ["03", "15"],
+      ]) {
         const [doc] = await db
           .insert(sourceDocuments)
           .values({

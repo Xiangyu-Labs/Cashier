@@ -86,7 +86,9 @@ describe("usePeriodFilter", () => {
   });
 
   it("should handle custom date range from URL", () => {
-    const searchParams = new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31");
+    const searchParams = new URLSearchParams(
+      "period=custom&startDate=2024-01-01&endDate=2024-01-31"
+    );
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
@@ -233,7 +235,9 @@ describe("usePeriodFilter", () => {
   });
 
   it("should reset to thisMonth URL when filter changes have no dates", () => {
-    const searchParams = new URLSearchParams("period=custom&startDate=2024-01-01&endDate=2024-01-31");
+    const searchParams = new URLSearchParams(
+      "period=custom&startDate=2024-01-01&endDate=2024-01-31"
+    );
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
@@ -418,7 +422,9 @@ describe("usePeriodFilter", () => {
   });
 
   it("should handle leap year in custom date range", () => {
-    const searchParams = new URLSearchParams("period=custom&startDate=2024-02-01&endDate=2024-02-29");
+    const searchParams = new URLSearchParams(
+      "period=custom&startDate=2024-02-01&endDate=2024-02-29"
+    );
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
@@ -454,7 +460,9 @@ describe("usePeriodFilter", () => {
       expect(result.current.periodParams.period).toBe("thisMonth");
 
       // Simulate URL change
-      rerender({ searchParams: new URLSearchParams("period=custom&startDate=2024-03-01&endDate=2024-03-31") });
+      rerender({
+        searchParams: new URLSearchParams("period=custom&startDate=2024-03-01&endDate=2024-03-31"),
+      });
 
       expect(result.current.periodParams.period).toBe("custom");
       expect(result.current.periodParams.startDate).toBe("2024-03-01");
@@ -481,7 +489,9 @@ describe("usePeriodFilter", () => {
 
       // Simulate drilldown navigation: URL changes to custom period
       rerender({
-        searchParams: new URLSearchParams("tab=details&period=custom&startDate=2024-01-01&endDate=2024-01-31&categoryId=food"),
+        searchParams: new URLSearchParams(
+          "tab=details&period=custom&startDate=2024-01-01&endDate=2024-01-31&categoryId=food"
+        ),
       });
 
       // Should immediately reflect new URL state

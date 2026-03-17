@@ -8,37 +8,37 @@ import { z } from "zod";
 
 // Base schema with reasoning field - avoids duplication across schemas
 const withReasoning = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
-    schema.extend({ reasoning: z.string() });
+  schema.extend({ reasoning: z.string() });
 
 export const validitySchema = withReasoning(
-    z.object({
-        is_valid: z.boolean(),
-    })
+  z.object({
+    is_valid: z.boolean(),
+  })
 );
 
 export const completenessSchema = z.object({
-    is_complete: z.boolean(),
-    issue: z.string().optional(),
+  is_complete: z.boolean(),
+  issue: z.string().optional(),
 });
 
 export const currencySchema = withReasoning(
-    z.object({
-        currencies: z.array(z.string()),
-    })
+  z.object({
+    currencies: z.array(z.string()),
+  })
 );
 
 export const categorySchema = withReasoning(
-    z.object({
-        categories: z.array(z.string()),
-    })
+  z.object({
+    categories: z.array(z.string()),
+  })
 );
 
 export const titleSchema = z.object({
-    title: z.string(),
+  title: z.string(),
 });
 
 export const rulesSchema = z.object({
-    rules: z.array(z.string()).default([]),
+  rules: z.array(z.string()).default([]),
 });
 
 // Export types derived from schemas

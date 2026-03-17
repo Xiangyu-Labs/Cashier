@@ -88,9 +88,7 @@
       "indexes": {
         "idx_accounts_user_id": {
           "name": "idx_accounts_user_id",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -99,22 +97,15 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "accounts_provider_provider_account_id_pk": {
-          "columns": [
-            "provider",
-            "provider_account_id"
-          ],
+          "columns": ["provider", "provider_account_id"],
           "name": "accounts_provider_provider_account_id_pk"
         }
       },
@@ -199,23 +190,17 @@
       "indexes": {
         "otp_tokens_token_hash_unique": {
           "name": "otp_tokens_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
+          "columns": ["token_hash"],
           "isUnique": true
         },
         "idx_otp_tokens_email": {
           "name": "idx_otp_tokens_email",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": false
         },
         "idx_otp_tokens_expires": {
           "name": "idx_otp_tokens_expires",
-          "columns": [
-            "expires"
-          ],
+          "columns": ["expires"],
           "isUnique": false
         }
       },
@@ -302,9 +287,7 @@
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -341,19 +324,14 @@
       "indexes": {
         "verification_tokens_token_unique": {
           "name": "verification_tokens_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "verification_tokens_identifier_token_pk": {
-          "columns": [
-            "identifier",
-            "token"
-          ],
+          "columns": ["identifier", "token"],
           "name": "verification_tokens_identifier_token_pk"
         }
       },
@@ -478,10 +456,7 @@
       "indexes": {
         "uniq_category_name_per_ledger": {
           "name": "uniq_category_name_per_ledger",
-          "columns": [
-            "ledger_id",
-            "name"
-          ],
+          "columns": ["ledger_id", "name"],
           "isUnique": true,
           "where": "\"entry_categories\".\"deleted_at\" IS NULL"
         }
@@ -491,12 +466,8 @@
           "name": "entry_categories_ledger_id_ledgers_id_fk",
           "tableFrom": "entry_categories",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -618,48 +589,32 @@
       "indexes": {
         "idx_ledger_entries_ledger_date": {
           "name": "idx_ledger_entries_ledger_date",
-          "columns": [
-            "ledger_id",
-            "entry_date"
-          ],
+          "columns": ["ledger_id", "entry_date"],
           "isUnique": false
         },
         "idx_ledger_entries_source_doc": {
           "name": "idx_ledger_entries_source_doc",
-          "columns": [
-            "source_document_id"
-          ],
+          "columns": ["source_document_id"],
           "isUnique": false
         },
         "idx_ledger_entries_created_at": {
           "name": "idx_ledger_entries_created_at",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         },
         "idx_ledger_entries_category_date": {
           "name": "idx_ledger_entries_category_date",
-          "columns": [
-            "ledger_id",
-            "category_id",
-            "entry_date"
-          ],
+          "columns": ["ledger_id", "category_id", "entry_date"],
           "isUnique": false
         },
         "idx_ledger_entries_ledger_created": {
           "name": "idx_ledger_entries_ledger_created",
-          "columns": [
-            "ledger_id",
-            "created_at"
-          ],
+          "columns": ["ledger_id", "created_at"],
           "isUnique": false
         },
         "idx_ledger_entries_deleted_at": {
           "name": "idx_ledger_entries_deleted_at",
-          "columns": [
-            "deleted_at"
-          ],
+          "columns": ["deleted_at"],
           "isUnique": false
         }
       },
@@ -668,12 +623,8 @@
           "name": "ledger_entries_ledger_id_ledgers_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -681,12 +632,8 @@
           "name": "ledger_entries_category_id_entry_categories_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "entry_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -694,12 +641,8 @@
           "name": "ledger_entries_source_document_id_source_documents_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "source_documents",
-          "columnsFrom": [
-            "source_document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_document_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -765,9 +708,7 @@
       "indexes": {
         "idx_ledgers_user_id": {
           "name": "idx_ledgers_user_id",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -776,12 +717,8 @@
           "name": "ledgers_user_id_users_id_fk",
           "tableFrom": "ledgers",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -846,16 +783,12 @@
       "indexes": {
         "service_credentials_key_unique": {
           "name": "service_credentials_key_unique",
-          "columns": [
-            "key"
-          ],
+          "columns": ["key"],
           "isUnique": true
         },
         "idx_service_credentials_ledger_id": {
           "name": "idx_service_credentials_ledger_id",
-          "columns": [
-            "ledger_id"
-          ],
+          "columns": ["ledger_id"],
           "isUnique": false
         }
       },
@@ -864,12 +797,8 @@
           "name": "service_credentials_ledger_id_ledgers_id_fk",
           "tableFrom": "service_credentials",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -972,25 +901,17 @@
       "indexes": {
         "idx_source_docs_ledger_status": {
           "name": "idx_source_docs_ledger_status",
-          "columns": [
-            "ledger_id",
-            "status"
-          ],
+          "columns": ["ledger_id", "status"],
           "isUnique": false
         },
         "idx_source_docs_ledger_created": {
           "name": "idx_source_docs_ledger_created",
-          "columns": [
-            "ledger_id",
-            "created_at"
-          ],
+          "columns": ["ledger_id", "created_at"],
           "isUnique": false
         },
         "idx_source_docs_deleted_at": {
           "name": "idx_source_docs_deleted_at",
-          "columns": [
-            "deleted_at"
-          ],
+          "columns": ["deleted_at"],
           "isUnique": false
         }
       },
@@ -999,12 +920,8 @@
           "name": "source_documents_ledger_id_ledgers_id_fk",
           "tableFrom": "source_documents",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1112,16 +1029,12 @@
       "indexes": {
         "idx_task_runs_status": {
           "name": "idx_task_runs_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "idx_task_runs_created_at": {
           "name": "idx_task_runs_created_at",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },

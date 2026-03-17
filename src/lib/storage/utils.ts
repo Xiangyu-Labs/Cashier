@@ -24,7 +24,9 @@ export async function loadImageForAI(url: string): Promise<string> {
 
   // Must be a local upload URL
   if (!isLocalUploadUrl(url)) {
-    throw new Error(`Invalid image URL format. Only local upload URLs (/api/uploads/...) or base64 data URLs are supported: ${url.substring(0, 50)}...`);
+    throw new Error(
+      `Invalid image URL format. Only local upload URLs (/api/uploads/...) or base64 data URLs are supported: ${url.substring(0, 50)}...`
+    );
   }
 
   const storage = getLocalStorage();
@@ -41,7 +43,9 @@ export async function loadImageForAI(url: string): Promise<string> {
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
     logger.error({ error, url, key }, "Failed to load image from local storage for AI");
-    throw new Error(`Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`);
+    throw new Error(
+      `Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 
@@ -102,14 +106,14 @@ export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]
  */
 export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> {
   const results = await loadImagesForAI(urls);
-  const failures = results.filter(r => !r.success);
+  const failures = results.filter((r) => !r.success);
 
   if (failures.length > 0) {
-    const errorMessages = failures.map(f => `${f.url}: ${f.error?.message}`).join("; ");
+    const errorMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
     throw new Error(`Failed to load ${failures.length} image(s): ${errorMessages}`);
   }
 
-  return results.map(r => r.dataUrl!);
+  return results.map((r) => r.dataUrl!);
 }
 
 /**
@@ -118,19 +122,19 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
  */
 export function inferImageMimeType(url: string): string {
   // Remove query parameters
-  const urlWithoutQuery = url.split('?')[0];
-  const ext = urlWithoutQuery.split('.').pop()?.toLowerCase();
+  const urlWithoutQuery = url.split("?")[0];
+  const ext = urlWithoutQuery.split(".").pop()?.toLowerCase();
 
   const mimeTypes: Record<string, string> = {
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'webp': 'image/webp',
-    'gif': 'image/gif',
-    'heic': 'image/heic',
-    'heif': 'image/heif',
-    'avif': 'image/avif',
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    heic: "image/heic",
+    heif: "image/heif",
+    avif: "image/avif",
   };
 
-  return mimeTypes[ext || ''] || 'image/jpeg';
+  return mimeTypes[ext || ""] || "image/jpeg";
 }

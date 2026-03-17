@@ -57,8 +57,14 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
       itemName: pendingChanges.itemName ?? ledgerEntry.itemName,
       amount: pendingChanges.amount ?? parseFloat(ledgerEntry.amount),
       currency: pendingChanges.currency ?? ledgerEntry.currency ?? mainCurrency,
-      categoryId: pendingChanges.categoryId !== undefined ? pendingChanges.categoryId : ledgerEntry.categoryId,
-      description: pendingChanges.description !== undefined ? pendingChanges.description : ledgerEntry.description,
+      categoryId:
+        pendingChanges.categoryId !== undefined
+          ? pendingChanges.categoryId
+          : ledgerEntry.categoryId,
+      description:
+        pendingChanges.description !== undefined
+          ? pendingChanges.description
+          : ledgerEntry.description,
     }),
     [pendingChanges, ledgerEntry, mainCurrency]
   );
@@ -78,7 +84,9 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   );
 
   const isDifferentCurrency = Boolean(
-    displayData.currency && displayData.currency !== mainCurrency && displayData.currency !== "unknown"
+    displayData.currency &&
+    displayData.currency !== mainCurrency &&
+    displayData.currency !== "unknown"
   );
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([
@@ -190,7 +198,9 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                     )}
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground/50 italic">{t("noDescription")}</span>
+                  <span className="text-sm text-muted-foreground/50 italic">
+                    {t("noDescription")}
+                  </span>
                 )
               }
             />

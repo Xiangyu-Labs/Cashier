@@ -14,8 +14,7 @@
  * - UUID v3/v5 (namespace-based, not random)
  * - Invalid variant bits
  */
-export const UUID_REGEX =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Validate if a string is a valid UUID v4
@@ -23,7 +22,7 @@ export const UUID_REGEX =
  * @returns true if valid UUID v4, false otherwise
  */
 export function isValidUuid(id: string): boolean {
-    return UUID_REGEX.test(id);
+  return UUID_REGEX.test(id);
 }
 
 /**
@@ -33,7 +32,7 @@ export function isValidUuid(id: string): boolean {
  * @throws Error if not a valid UUID v4
  */
 export function assertValidUuid(id: string, message?: string): void {
-    if (!isValidUuid(id)) {
-        throw new Error(message || `Invalid UUID: ${id}`);
-    }
+  if (!isValidUuid(id)) {
+    throw new Error(message || `Invalid UUID: ${id}`);
+  }
 }
