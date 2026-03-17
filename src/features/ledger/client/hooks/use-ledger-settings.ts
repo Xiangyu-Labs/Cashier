@@ -47,7 +47,7 @@ export function useLedgerSettings({
     queryFn: () => getEntryCategoriesAction(ledgerId),
     initialData: initialCategories,
     // Polling is active when any category needs metadata generation (icon/description)
-    isActive: (data) => data?.some((c) => !c.icon || !c.description) ?? false,
+    isActive: (data) => data?.some((c) => c.icon == null || c.icon === "" || c.description == null || c.description === "") ?? false,
     interval: 3000,
     cooldownInterval: 5000, // Shorter cooldown for faster updates when AI completes
     ledgerId,
@@ -66,8 +66,8 @@ export function useLedgerSettings({
     // This prevents showing empty array when data exists but hasn't loaded yet
   });
 
-  const uncategorizedCount = settingsData?.uncategorizedCount || 0;
-  const credentials = settingsData?.credentials || [];
+  const uncategorizedCount = settingsData?.uncategorizedCount ?? 0;
+  const credentials = settingsData?.credentials ?? [];
 
   const ledgerQueryKey = queryKeys.ledger(ledgerId);
   const queryClient = useQueryClient();

@@ -60,8 +60,8 @@ export function useEntryMutations({
                       ...e,
                       ...data,
                       amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                      category: data.categoryId
-                        ? categories.find((c) => c.id === data.categoryId) || e.category
+                      category: data.categoryId != null && data.categoryId !== ""
+                        ? categories.find((c) => c.id === data.categoryId) ?? e.category
                         : e.category,
                     } satisfies LedgerEntry)
                   : e
@@ -77,8 +77,8 @@ export function useEntryMutations({
           ...selectedLedgerEntry,
           ...data,
           amount: data.amount !== undefined ? String(data.amount) : selectedLedgerEntry.amount,
-          category: data.categoryId
-            ? categories.find((c) => c.id === data.categoryId) || selectedLedgerEntry.category
+          category: data.categoryId != null && data.categoryId !== ""
+            ? categories.find((c) => c.id === data.categoryId) ?? selectedLedgerEntry.category
             : selectedLedgerEntry.category,
         } satisfies LedgerEntry);
       }

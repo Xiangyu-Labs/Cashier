@@ -43,7 +43,7 @@ export function LargeGridHeatmap({
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
 
     // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate || sortedDays[0].date;
+    const startDate = queryRange?.startDate ?? sortedDays[0].date;
 
     // End is the later of: today or latest data date (capped by query end)
     const today = new Date();
@@ -53,8 +53,8 @@ export function LargeGridHeatmap({
     const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
 
     // Cap by query end if provided
-    const queryEnd = queryRange?.endDate ? new Date(queryRange.endDate) : null;
-    const endDate = queryEnd && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
+    const queryEnd = queryRange?.endDate != null ? new Date(queryRange.endDate) : null;
+    const endDate = queryEnd != null && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
 
     const result: { date: string; dayData?: CalendarDayData }[] = [];
     const current = new Date(startDate);
@@ -77,7 +77,7 @@ export function LargeGridHeatmap({
       {/* 7-column grid for days of week layout */}
       <div className="grid grid-cols-7 gap-2 w-full lg:max-w-[800px] xl:max-w-[900px] lg:gap-3 xl:gap-4">
         {gridDays.map(({ date, dayData }) => {
-          const amount = dayData?.totalAmount || 0;
+          const amount = dayData?.totalAmount ?? 0;
           const level = getHeatmapLevel(amount, stats);
           const dayNumber = parseInt(date.split("-")[2], 10);
 

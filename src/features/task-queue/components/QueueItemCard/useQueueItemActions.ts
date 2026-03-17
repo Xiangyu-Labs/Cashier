@@ -67,11 +67,12 @@ export function useQueueItemActions({
 
   // Determine available actions
   const canCancel =
-    item.kind === "task" && (item.status === "pending" || item.status === "running") && !!onCancel;
+    item.kind === "task" && (item.status === "pending" || item.status === "running") && onCancel != null;
 
   const canRetry =
-    !!item.sourceDocumentId &&
-    !!onRetry &&
+    item.sourceDocumentId != null &&
+    item.sourceDocumentId !== "" &&
+    onRetry != null &&
     (item.status === "failed" ||
       item.status === "anomaly" ||
       item.status === "pending" ||
@@ -79,27 +80,28 @@ export function useQueueItemActions({
       item.status === "running");
 
   const canDelete =
-    !!item.sourceDocumentId &&
-    !!onDelete &&
+    item.sourceDocumentId != null &&
+    item.sourceDocumentId !== "" &&
+    onDelete != null &&
     (item.status === "failed" ||
       item.status === "anomaly" ||
       item.status === "pending" ||
       item.status === "running");
 
   const canDismiss =
-    item.kind === "task" && item.status === "failed" && !item.sourceDocumentId && !!onDismiss;
+    item.kind === "task" && item.status === "failed" && (item.sourceDocumentId == null || item.sourceDocumentId === "") && onDismiss != null;
 
   // UI flags
-  const showDirectCancel = item.status === "running" && canCancel && !item.sourceDocumentId;
-  const showCancelInDropdown = canCancel && !item.sourceDocumentId;
+  const showDirectCancel = item.status === "running" && canCancel && (item.sourceDocumentId == null || item.sourceDocumentId === "");
+  const showCancelInDropdown = canCancel && (item.sourceDocumentId == null || item.sourceDocumentId === "");
   const showDropdown = canRetry || canDelete || canDismiss || showCancelInDropdown;
-  const canExpand = !!item.sourceDocumentId;
+  const canExpand = item.sourceDocumentId != null && item.sourceDocumentId !== "";
   const useSpecialInteraction =
-    item.status === "completed" && item.taskType === "parse_source_document" && !!onViewDetails;
+    item.status === "completed" && item.taskType === "parse_source_document" && onViewDetails != null;
 
   // Content flags
-  const showSubtitleInline = !!item.subtitle;
-  const showProgressInline = item.status === "running" && !!item.progress;
+  const showSubtitleInline = item.subtitle != null && item.subtitle !== "";
+  const showProgressInline = item.status === "running" && item.progress != null && item.progress !== "";
 
   async function handleRetry() {
     if (!onRetry) return;

@@ -12,14 +12,14 @@ export const authConfig = {
       return true;
     },
     async jwt({ token, user }) {
-      if (user) {
+      if (user != null) {
         token.id = user.id;
         token.sub = user.id;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.id) {
+      if (session.user != null && token.id != null) {
         session.user.id = token.id as string;
       }
       return session;

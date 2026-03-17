@@ -78,10 +78,10 @@ export const getProcessingStatsAction = withLedgerAccess(async (ledgerId: string
       const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
       if (parsed.success) {
         const u = parsed.data;
-        const total = u.total || { input: 0, output: 0 };
-        totalInputTokens += total.input || 0;
-        totalOutputTokens += total.output || 0;
-        totalTokens += (total.input || 0) + (total.output || 0);
+        const total = u.total ?? { input: 0, output: 0 };
+        totalInputTokens += total.input ?? 0;
+        totalOutputTokens += total.output ?? 0;
+        totalTokens += (total.input ?? 0) + (total.output ?? 0);
       }
     }
   }

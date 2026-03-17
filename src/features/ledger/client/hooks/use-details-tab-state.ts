@@ -30,7 +30,7 @@ export function useDetailsTabState(): UseDetailsTabStateReturn {
 
   const handleDeleteConfirm = useCallback(
     (onDelete: (id: string) => void) => {
-      if (deleteConfirm.id) {
+      if (deleteConfirm.id != null && deleteConfirm.id !== "") {
         onDelete(deleteConfirm.id);
         setDeleteConfirm({ open: false, id: null });
       }

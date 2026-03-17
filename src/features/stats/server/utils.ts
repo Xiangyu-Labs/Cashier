@@ -23,11 +23,11 @@ export function convertAmount({
   rates: Record<string, number> | null;
   baseCurrency?: string;
 }): number {
-  if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) {
+  if (fromCurrency === "" || toCurrency === "" || fromCurrency === toCurrency) {
     return amount;
   }
 
-  if (!rates) {
+  if (rates == null) {
     // No rates available for this date, fallback to 1:1 or return original
     // Ideally we should warn, but for UI we might just return original
     return amount;
@@ -37,7 +37,7 @@ export function convertAmount({
   const sourceRate = fromCurrency === baseCurrency ? 1 : rates[fromCurrency];
   const targetRate = toCurrency === baseCurrency ? 1 : rates[toCurrency];
 
-  if (!sourceRate || !targetRate) {
+  if (sourceRate === undefined || targetRate === undefined) {
     // Missing specific currency rate
     return amount;
   }

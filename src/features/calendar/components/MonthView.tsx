@@ -54,8 +54,8 @@ export function MonthView({ anchorDate, data, onDayClick, className }: MonthView
       <div className="grid grid-cols-7 gap-1.5">
         {grid.map(({ date, isCurrentMonth }) => {
           const dayData = dayDataMap.get(date);
-          const amount = dayData?.amount || 0;
-          const count = dayData?.count || 0;
+          const amount = dayData?.amount ?? 0;
+          const count = dayData?.count ?? 0;
           const isToday = date === today;
           const level = getHeatmapLevel(amount, data.stats);
           const dayNumber = parseInt(date.split("-")[2], 10);

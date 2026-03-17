@@ -8,7 +8,7 @@ const resend = new Resend(process.env.AUTH_RESEND_KEY);
  */
 export async function sendLoginNotification(email: string): Promise<void> {
   // Skip if no API key configured (e.g., in development)
-  if (!process.env.AUTH_RESEND_KEY) {
+  if (process.env.AUTH_RESEND_KEY == null || process.env.AUTH_RESEND_KEY === "") {
     logger.warn("AUTH_RESEND_KEY not configured, skipping login notification");
     return;
   }
@@ -19,7 +19,7 @@ export async function sendLoginNotification(email: string): Promise<void> {
     });
 
     await resend.emails.send({
-      from: process.env.AUTH_EMAIL_FROM || "noreply@example.com",
+      from: process.env.AUTH_EMAIL_FROM ?? "noreply@example.com",
       to: email,
       subject: "New login to your account",
       html: `

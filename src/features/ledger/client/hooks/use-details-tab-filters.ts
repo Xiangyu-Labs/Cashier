@@ -39,8 +39,8 @@ export function useDetailsTabFilters({
   // Combine period-based dates with advanced filters
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+      startDate: dateRange.startDate != null ? new Date(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate != null ? new Date(dateRange.endDate) : undefined,
       ...advancedFilters,
     }),
     [dateRange, advancedFilters]
@@ -49,8 +49,8 @@ export function useDetailsTabFilters({
   // Build filter key for queryKey
   const filterKey = useMemo(() => {
     const parts: string[] = [];
-    if (filters.categoryId) parts.push(`cat:${filters.categoryId}`);
-    if (filters.currency) parts.push(`cur:${filters.currency}`);
+    if (filters.categoryId != null && filters.categoryId !== "") parts.push(`cat:${filters.categoryId}`);
+    if (filters.currency != null && filters.currency !== "") parts.push(`cur:${filters.currency}`);
     if (filters.minAmount !== undefined && filters.minAmount !== null)
       parts.push(`min:${filters.minAmount}`);
     if (filters.maxAmount !== undefined && filters.maxAmount !== null)

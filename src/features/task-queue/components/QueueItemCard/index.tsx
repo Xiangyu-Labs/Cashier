@@ -253,7 +253,7 @@ export const QueueItemCard = memo(function QueueItemCard({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 pt-1 border-t border-border/50">
-              {item.sourceDocumentId && (
+              {item.sourceDocumentId != null && item.sourceDocumentId !== "" && (
                 <div className="pt-2">
                   <div className="flex items-start gap-2">
                     <span className="text-xs font-medium text-muted-foreground shrink-0">

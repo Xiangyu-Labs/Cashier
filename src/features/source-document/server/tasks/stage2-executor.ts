@@ -38,7 +38,7 @@ function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boole
     const groups: Record<string, number> = {};
     for (const e of entries) {
       const key = `${e.currency}:${e.category_index}`;
-      groups[key] = (groups[key] || 0) + e.amount;
+      groups[key] = (groups[key] ?? 0) + e.amount;
     }
     return groups;
   };
@@ -168,7 +168,7 @@ async function runStage2Arbitration(
 
   if (arbitrationResult.choice === 0) {
     throw new Error(
-      `STAGE2_ARBITRATION_FAILED: ${arbitrationResult.reason || "Both parsing results invalid"}`
+      `STAGE2_ARBITRATION_FAILED: ${arbitrationResult.reason ?? "Both parsing results invalid"}`
     );
   }
 
@@ -193,7 +193,7 @@ export async function executeStage2(input: Stage2Input, ai: AIContext): Promise<
   if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
     return {
       entries: result1.ledger_entries,
-      title: input.validationSummary.summary?.title || "Untitled",
+      title: input.validationSummary.summary?.title ?? "Untitled",
       reasoning: result1.reasoning,
       wasArbitrated: false,
     };

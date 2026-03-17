@@ -18,21 +18,21 @@ export function useConvertedAmount(
 ) {
   // If same currency or missing info, return amount immediately
   const isSameCurrency = from === to;
-  const isMissingInfo = !amount || !from || !to || from === "unknown" || to === "unknown";
+  const isMissingInfo = amount === 0 || from == null || from === "" || to == null || to === "" || from === "unknown" || to === "unknown";
 
   const { data, isLoading, error } = useQuery<ConversionData>({
-    queryKey: queryKeys.convert(amount, from!, to!, date || undefined),
+    queryKey: queryKeys.convert(amount, from!, to!, date ?? undefined),
     queryFn: async () => {
-      const result = await convertCurrencyAction(amount, from!, to!, date || undefined);
+      const result = await convertCurrencyAction(amount, from!, to!, date ?? undefined);
       return {
         amount,
         from: from!,
         to: to!,
-        date: date || undefined,
+        date: date ?? undefined,
         converted: result.converted,
       };
     },
-    enabled: !isSameCurrency && !isMissingInfo,
+    enabled: !isSameCurrency && !isMissingInfo, // isMissingInfo is already boolean
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
   });
 

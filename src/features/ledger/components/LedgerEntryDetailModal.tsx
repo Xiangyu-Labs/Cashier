@@ -225,7 +225,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
               onDiscard={handleDiscard}
               onDelete={() => setShowDeleteConfirm(true)}
               onViewSourceDocument={
-                onViewSourceDocument && ledgerEntry.sourceDocumentId
+                onViewSourceDocument != null && ledgerEntry.sourceDocumentId != null && ledgerEntry.sourceDocumentId !== ""
                   ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!)
                   : undefined
               }

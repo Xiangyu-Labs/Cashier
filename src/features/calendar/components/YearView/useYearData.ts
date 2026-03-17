@@ -72,8 +72,8 @@ export function useYearData(year: number, data: CalendarHeatmapData): UseYearDat
         const dateStr = formatDate(currentDate);
         const dayData = dayDataMap.get(dateStr);
         const isInYear = currentDate.getFullYear() === year;
-        const amount = dayData?.totalAmount || 0;
-        const count = dayData?.entryCount || 0;
+        const amount = dayData?.totalAmount ?? 0;
+        const count = dayData?.entryCount ?? 0;
 
         weekDays.push({
           date: dateStr,

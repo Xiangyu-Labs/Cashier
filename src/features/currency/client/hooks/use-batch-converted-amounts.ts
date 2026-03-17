@@ -26,7 +26,7 @@ export function useBatchConvertedAmounts(
 ): UseBatchConvertedAmountsResult {
   // Generate a stable cache key based on input (optimized - no JSON.stringify)
   const cacheKey = useMemo(
-    () => items.map((i) => `${i.amount}:${i.currency}:${i.date?.split("T")[0] || ""}`).join("|"),
+    () => items.map((i) => `${i.amount}:${i.currency}:${i.date?.split("T")[0] ?? ""}`).join("|"),
     [items]
   );
 
@@ -36,12 +36,12 @@ export function useBatchConvertedAmounts(
       const result = await batchConvertCurrencyAction(items, targetCurrency!);
       return result.results;
     },
-    enabled: items.length > 0 && !!targetCurrency,
+    enabled: items.length > 0 && targetCurrency != null && targetCurrency !== "",
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
   });
 
   // Return original amounts as fallback when loading or no target currency
-  if (!targetCurrency || items.length === 0) {
+  if (targetCurrency == null || targetCurrency === "" || items.length === 0) {
     return {
       results: items.map((i) => i.amount),
       isLoading: false,
@@ -50,7 +50,7 @@ export function useBatchConvertedAmounts(
   }
 
   return {
-    results: data || items.map((i) => i.amount),
+    results: data ?? items.map((i) => i.amount),
     isLoading,
     error: error as Error | null,
   };

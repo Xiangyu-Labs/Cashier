@@ -46,7 +46,7 @@ export const batchUpdateSourceDocumentsAction = withLedgerAccess(
     if (sourceDocumentIds.length === 0) return;
 
     const { status } = data;
-    if (status && !VALID_STATUSES.includes(status as SourceDocumentStatusType)) {
+    if (status != null && status !== "" && !VALID_STATUSES.includes(status as SourceDocumentStatusType)) {
       throw new ValidationError(`Invalid status: ${status}`);
     }
 

@@ -61,7 +61,7 @@ export async function getUserDefaultLedgerId(userId: string): Promise<string | n
     where: eq(users.id, userId),
   });
 
-  if (user?.defaultLedgerId) {
+  if (user?.defaultLedgerId != null && user.defaultLedgerId !== "") {
     return user.defaultLedgerId;
   }
 

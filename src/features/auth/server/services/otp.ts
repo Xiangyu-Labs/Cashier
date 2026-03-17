@@ -51,7 +51,7 @@ export function verifyOTP(otp: string, storedHash: string): boolean {
   // Parse the stored hash: "hash:salt"
   const [hash, salt] = storedHash.split(":");
 
-  if (!hash || !salt) {
+  if (hash === "" || salt === "") {
     return false;
   }
 
@@ -88,7 +88,7 @@ export function isValidOTPFormat(otp: string): boolean {
  */
 export function getOTPExpiration(): Date {
   const expiresInSeconds = parseInt(
-    process.env.OTP_EXPIRES_SECONDS || String(DEFAULT_OTP_EXPIRES_SECONDS),
+    process.env.OTP_EXPIRES_SECONDS ?? String(DEFAULT_OTP_EXPIRES_SECONDS),
     10
   );
   return new Date(Date.now() + expiresInSeconds * 1000);
@@ -100,7 +100,7 @@ export function getOTPExpiration(): Date {
  */
 export function getLockoutExpiration(): Date {
   const lockoutMinutes = parseInt(
-    process.env.OTP_LOCKOUT_MINUTES || String(DEFAULT_LOCKOUT_MINUTES),
+    process.env.OTP_LOCKOUT_MINUTES ?? String(DEFAULT_LOCKOUT_MINUTES),
     10
   );
   return new Date(Date.now() + lockoutMinutes * 60 * 1000);
@@ -111,7 +111,7 @@ export function getLockoutExpiration(): Date {
  * @returns Number of allowed attempts
  */
 export function getMaxAttempts(): number {
-  return parseInt(process.env.OTP_MAX_ATTEMPTS || String(DEFAULT_MAX_ATTEMPTS), 10);
+  return parseInt(process.env.OTP_MAX_ATTEMPTS ?? String(DEFAULT_MAX_ATTEMPTS), 10);
 }
 
 /**
@@ -120,7 +120,7 @@ export function getMaxAttempts(): number {
  */
 export function getResendCooldown(): number {
   return parseInt(
-    process.env.OTP_RESEND_COOLDOWN_SECONDS || String(DEFAULT_RESEND_COOLDOWN_SECONDS),
+    process.env.OTP_RESEND_COOLDOWN_SECONDS ?? String(DEFAULT_RESEND_COOLDOWN_SECONDS),
     10
   );
 }

@@ -13,20 +13,20 @@ export function buildDetailedParsePrompt(
 ): string {
   // Build context section from validation summary
   const currencyHints =
-    validationSummary.summary?.currencies.map((c) => `- ${c.code}: ${c.hint}`).join("\n") ||
+    validationSummary.summary?.currencies.map((c) => `- ${c.code}: ${c.hint}`).join("\n") ??
     "No currency hints";
 
   // Use original categories with correct indices (1-based)
   const categoryHints = originalCategories.map((c, index) => ({
     index: index + 1,
     name: c.name,
-    description: c.description || "",
+    description: c.description ?? "",
   }));
   const categoryHintsStr =
     categoryHints.length > 0 ? JSON.stringify(categoryHints, null, 2) : "No categories available";
 
-  const userRules = validationSummary.summary?.rules?.length
-    ? `### User-Defined Rules\n${validationSummary.summary.rules.map((r) => `- ${r}`).join("\n")}`
+  const userRules = (validationSummary.summary?.rules?.length ?? 0) > 0
+    ? `### User-Defined Rules\n${validationSummary.summary!.rules.map((r) => `- ${r}`).join("\n")}`
     : "";
 
   return `You are a detailed financial document parser. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
@@ -36,7 +36,7 @@ Parse the financial document into structured ledger entries. Use the pre-analysi
 
 ### Pre-Analysis Context
 
-**Title:** ${validationSummary.summary?.title || "Unknown"}
+**Title:** ${validationSummary.summary?.title ?? "Unknown"}
 
 **Currencies:**
 ${currencyHints}

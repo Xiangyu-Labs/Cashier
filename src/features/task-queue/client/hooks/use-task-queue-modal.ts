@@ -155,15 +155,15 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   }, [items]);
 
   const handleDeleteConfirmAction = useCallback(() => {
-    if (!deleteConfirm.type) return;
+    if (deleteConfirm.type == null) return;
 
-    if (deleteConfirm.type === "single" && deleteConfirm.id) {
+    if (deleteConfirm.type === "single" && deleteConfirm.id != null && deleteConfirm.id !== "") {
       deleteSourceDocument.mutate(deleteConfirm.id, {
         onSuccess: () => setDeleteConfirm((prev) => ({ ...prev, open: false })),
       });
     } else if (deleteConfirm.type === "all") {
       const ids = groupedItems.failed
-        .filter((item) => item.sourceDocumentId)
+        .filter((item) => item.sourceDocumentId != null && item.sourceDocumentId !== "")
         .map((item) => item.sourceDocumentId!);
       batchDelete.mutate(ids, {
         onSuccess: () => setDeleteConfirm((prev) => ({ ...prev, open: false })),
@@ -172,14 +172,14 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   }, [deleteConfirm, deleteSourceDocument, batchDelete, groupedItems.failed]);
 
   const handleRetry = useCallback((item: QueueItem) => {
-    if (item.sourceDocumentId) {
+    if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
       setRetrySourceDocId(item.sourceDocumentId);
     }
   }, []);
 
   const handleDeleteSingle = useCallback(
     (item: QueueItem) => {
-      if (!item.sourceDocumentId) return;
+      if (item.sourceDocumentId == null || item.sourceDocumentId === "") return;
 
       setDeleteConfirm({
         open: true,
@@ -204,7 +204,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
 
   const handleRetryAll = useCallback(
     (status: "failed" | "anomaly") => {
-      const itemsToRetry = groupedItems[status].filter((item) => item.sourceDocumentId);
+      const itemsToRetry = groupedItems[status].filter((item) => item.sourceDocumentId != null && item.sourceDocumentId !== "");
       const ids = itemsToRetry.map((item) => item.sourceDocumentId!);
       batchRetry.mutate(ids);
     },
@@ -213,7 +213,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
 
   const handleCancel = useCallback(
     (item: QueueItem) => {
-      if (item.taskId) {
+      if (item.taskId != null && item.taskId !== "") {
         cancelTask.mutate(item.taskId);
       }
     },
@@ -222,7 +222,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
 
   const handleDismiss = useCallback(
     (item: QueueItem) => {
-      if (item.taskId) {
+      if (item.taskId != null && item.taskId !== "") {
         dismissTask.mutate(item.taskId);
       }
     },
@@ -233,7 +233,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
 
   const handleViewDetails = useCallback(
     (item: QueueItem) => {
-      if (item.sourceDocumentId) {
+      if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
         push({ type: "source-document", id: item.sourceDocumentId });
       }
     },
@@ -242,8 +242,8 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
 
   const isEmpty = stats.total === 0 && groupedItems.completed.length === 0;
 
-  const failedWithSourceDoc = groupedItems.failed.filter((item) => item.sourceDocumentId);
-  const failedWithoutSourceDoc = groupedItems.failed.filter((item) => !item.sourceDocumentId);
+  const failedWithSourceDoc = groupedItems.failed.filter((item) => item.sourceDocumentId != null && item.sourceDocumentId !== "");
+  const failedWithoutSourceDoc = groupedItems.failed.filter((item) => item.sourceDocumentId == null || item.sourceDocumentId === "");
 
   const handleDismissAll = useCallback(() => {
     const ids = failedWithoutSourceDoc.map((item) => item.id);

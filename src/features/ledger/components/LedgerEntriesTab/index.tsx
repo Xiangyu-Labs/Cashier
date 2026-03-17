@@ -63,13 +63,13 @@ export function LedgerEntriesTab({
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
+      startDate: dateRange.startDate != null && dateRange.startDate !== "" ? new Date(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate != null && dateRange.endDate !== "" ? new Date(dateRange.endDate) : undefined,
     }),
     [dateRange]
   );
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const startDateStr = formatDateTimeForApi(filters.startDate) ?? null;
   const endDateStr = formatDateTimeForApi(filters.endDate) ?? null;
 
@@ -85,8 +85,8 @@ export function LedgerEntriesTab({
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
-        startDateStr || undefined,
-        endDateStr || undefined,
+        startDateStr !== "" ? startDateStr : undefined,
+        endDateStr !== "" ? endDateStr : undefined,
         mainCurrency,
         {
           minAmount: filters.minAmount,
@@ -163,7 +163,7 @@ export function LedgerEntriesTab({
 
   // Helper Action Handlers
   function handleDeleteConfirmAction() {
-    if (!deleteConfirm.id || !deleteConfirm.type) return;
+    if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
 
     if (deleteConfirm.type === "sourceDocument") {
       deleteSourceDocument.mutate(deleteConfirm.id);
@@ -370,7 +370,7 @@ export function LedgerEntriesTab({
                                 onRetry={() => handleRetry(group.sourceDocument)}
                                 onDelete={() => handleDeleteSourceConfirm(group.sourceDocument)}
                                 status={
-                                  (group.sourceDocument.status ||
+                                  (group.sourceDocument.status ??
                                     "completed") as SourceDocumentStatusType
                                 }
                                 anomalyReason={group.sourceDocument.anomalyReason}

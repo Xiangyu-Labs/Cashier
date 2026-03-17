@@ -47,8 +47,8 @@ export function usePeriodFilter({
   // Read filter params from URL (single source of truth)
   const filterParams = useMemo<FilterParams>(
     () => ({
-      categoryId: searchParams.get("categoryId"),
-      currency: searchParams.get("currency"),
+      categoryId: searchParams.get("categoryId") ?? null,
+      currency: searchParams.get("currency") ?? null,
       minAmount: searchParams.get("minAmount") ? Number(searchParams.get("minAmount")) : null,
       maxAmount: searchParams.get("maxAmount") ? Number(searchParams.get("maxAmount")) : null,
     }),
@@ -60,8 +60,8 @@ export function usePeriodFilter({
     () => ({
       startDate: dateRange.startDate ? new Date(dateRange.startDate) : undefined,
       endDate: dateRange.endDate ? new Date(dateRange.endDate) : undefined,
-      categoryId: filterParams.categoryId,
-      currency: filterParams.currency,
+      categoryId: filterParams.categoryId ?? null,
+      currency: filterParams.currency ?? null,
       minAmount: filterParams.minAmount,
       maxAmount: filterParams.maxAmount,
     }),
@@ -79,8 +79,12 @@ export function usePeriodFilter({
       params.set("period", newPeriod.period);
 
       if (newPeriod.period === "custom") {
-        if (newPeriod.startDate) params.set("startDate", newPeriod.startDate);
-        if (newPeriod.endDate) params.set("endDate", newPeriod.endDate);
+        if (newPeriod.startDate != null && newPeriod.startDate !== "") {
+          params.set("startDate", newPeriod.startDate);
+        }
+        if (newPeriod.endDate != null && newPeriod.endDate !== "") {
+          params.set("endDate", newPeriod.endDate);
+        }
       } else {
         params.delete("startDate");
         params.delete("endDate");
@@ -95,7 +99,7 @@ export function usePeriodFilter({
   const handleFiltersChange = useCallback(
     (newFilters: EntryFilters) => {
       // If date changed, update period to custom
-      if (newFilters.startDate || newFilters.endDate) {
+      if (newFilters.startDate !== undefined || newFilters.endDate !== undefined) {
         const formatDate = (d?: Date): string | undefined => {
           if (!d) return undefined;
           const y = d.getFullYear();

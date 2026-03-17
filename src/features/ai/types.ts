@@ -46,7 +46,7 @@ export interface SourceDocumentProcessor {
 export type SourceType = "text" | "image" | "mixed";
 
 export function determineSourceType(input: SourceDocumentInput): SourceType {
-  const hasText = !!input.text;
+  const hasText = input.text != null && input.text !== "";
   const hasImages = !!(input.images && input.images.length > 0);
 
   if (hasText && hasImages) return "mixed";

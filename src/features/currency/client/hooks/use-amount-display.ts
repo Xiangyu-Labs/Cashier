@@ -37,7 +37,7 @@ export function useAmountDisplay({
   const { converted, isLoading } = useConvertedAmount(amount, currency, mainCurrency, date);
 
   const isDifferentCurrency = Boolean(
-    currency && currency !== mainCurrency && currency !== "unknown"
+    currency != null && currency !== "" && currency !== mainCurrency && currency !== "unknown"
   );
 
   return {
@@ -45,7 +45,7 @@ export function useAmountDisplay({
     displayAmount: isDifferentCurrency ? converted : amount,
     isDifferentCurrency,
     isLoading,
-    originalCurrency: currency || "?",
+    originalCurrency: currency ?? "?",
     mainCurrency,
   };
 }

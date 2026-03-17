@@ -52,7 +52,7 @@ function validatePathSegments(segments: string[]): boolean {
  */
 function getMimeType(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
-  return MIME_TYPES[ext] || "application/octet-stream";
+  return MIME_TYPES[ext] ?? "application/octet-stream";
 }
 
 export async function GET(
@@ -69,7 +69,7 @@ export async function GET(
     // 2. Extract and validate path segments
     const { path: pathSegments } = await params;
 
-    if (!pathSegments || pathSegments.length < 3) {
+    if (pathSegments == null || pathSegments.length < 3) {
       logger.warn({ pathSegments }, "Invalid path: insufficient segments");
       return new NextResponse("Not Found", { status: 404 });
     }
@@ -84,7 +84,7 @@ export async function GET(
     const [ledgerId, docId, ...filenameParts] = pathSegments;
     const filename = filenameParts.join("/");
 
-    if (!ledgerId || !docId || !filename) {
+    if (ledgerId === "" || docId === "" || filename === "") {
       logger.warn({ ledgerId, docId, filename }, "Invalid path: missing components");
       return new NextResponse("Not Found", { status: 404 });
     }

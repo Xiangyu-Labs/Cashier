@@ -31,12 +31,12 @@ export function useGroupedEntries({
   // Helper to get date string from source document
   const getSourceDocDateStr = useCallback((group: SourceDocumentGroup): string => {
     // Use sourceDocument's entryDate (authoritative source for the document's date)
-    if (group.sourceDocument.entryDate) {
+    if (group.sourceDocument.entryDate != null && group.sourceDocument.entryDate !== "") {
       return group.sourceDocument.entryDate;
     }
     // Fallback to sourceDocument createdAt
     const createdAt = group.sourceDocument.createdAt;
-    if (createdAt) {
+    if (createdAt != null && createdAt !== "") {
       const date = new Date(createdAt);
       return date.toLocaleDateString("sv"); // Returns YYYY-MM-DD
     }
@@ -71,7 +71,7 @@ export function useGroupedEntries({
         });
       }
 
-      if (!dateGroups[dateKey]) {
+      if (dateGroups[dateKey] == null) {
         dateGroups[dateKey] = {
           title: dateKey,
           timestamp: sortTimestamp,
@@ -84,7 +84,7 @@ export function useGroupedEntries({
 
       // Calculate total for this date using converted amount for foreign currency
       group.ledgerEntries.forEach((entry) => {
-        const amount = entry.convertedAmount
+        const amount = entry.convertedAmount != null && entry.convertedAmount !== ""
           ? parseAmount(entry.convertedAmount)
           : parseAmount(entry.amount);
         dateGroups[dateKey].total += amount;

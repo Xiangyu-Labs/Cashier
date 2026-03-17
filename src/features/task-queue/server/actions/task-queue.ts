@@ -149,7 +149,7 @@ export const getTaskQueueAction = withLedgerAccess(
     const completedSourceDocIds = completedTasks
       .filter((task) => task.type === "parse_source_document")
       .map((task) => getSourceDocumentIdFromInput(task.input))
-      .filter((id): id is string => id !== undefined);
+      .filter((id): id is string => id != null && id !== "");
 
     // Fetch source document titles and statuses for completed tasks
     const sourceDocTitles = new Map<string, string | null>();
@@ -178,10 +178,10 @@ export const getTaskQueueAction = withLedgerAccess(
       const sourceDocId = getSourceDocumentIdFromInput(task.input);
       // Skip completed tasks whose source document is in anomaly state
       // (anomaly documents are shown separately in the anomaly section)
-      if (sourceDocId && anomalySourceDocIds.has(sourceDocId)) {
+      if (sourceDocId != null && sourceDocId !== "" && anomalySourceDocIds.has(sourceDocId)) {
         continue;
       }
-      const sourceDocTitle = sourceDocId ? sourceDocTitles.get(sourceDocId) : undefined;
+      const sourceDocTitle = sourceDocId != null && sourceDocId !== "" ? sourceDocTitles.get(sourceDocId) : undefined;
       items.push(taskRunToQueueItem(task, sourceDocTitle));
     }
 

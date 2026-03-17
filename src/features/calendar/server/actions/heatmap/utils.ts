@@ -64,7 +64,7 @@ export function calculateStats(amounts: number[]) {
   const max = sorted[sorted.length - 1];
   const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
   const p80Index = Math.floor(sorted.length * 0.8);
-  const p80 = sorted[p80Index] || max;
+  const p80 = sorted[p80Index] ?? max;
 
   return {
     minAmount: min,

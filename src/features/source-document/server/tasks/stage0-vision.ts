@@ -21,7 +21,7 @@ export interface Stage0Output {
 }
 
 function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]): string {
-  const focusSection = focusHints?.length
+  const focusSection = (focusHints?.length ?? 0) > 0
     ? `\n### Focus Areas\nPay special attention to:\n${focusHints.map((h) => `- ${h}`).join("\n")}\n`
     : "";
 
@@ -82,7 +82,7 @@ Respond with plain text following the sections above. Do not use JSON or markdow
 }
 
 export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<Stage0Output> {
-  if (!input.imageUrls?.length) {
+  if (input.imageUrls == null || input.imageUrls.length === 0) {
     return { description: "" };
   }
 
@@ -108,7 +108,7 @@ export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<
   }
 
   for (const result of loadedResults) {
-    if (result.dataUrl) {
+    if (result.dataUrl != null && result.dataUrl !== "") {
       content.push({ type: "image_url", image_url: { url: result.dataUrl } });
     }
   }

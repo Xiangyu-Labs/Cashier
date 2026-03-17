@@ -43,7 +43,7 @@ export function SmallGridHeatmap({
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
 
     // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate || sortedDays[0].date;
+    const startDate = queryRange?.startDate ?? sortedDays[0].date;
 
     // End is the later of: today or latest data date (capped by query end)
     const today = new Date();
@@ -53,8 +53,8 @@ export function SmallGridHeatmap({
     const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
 
     // Cap by query end if provided
-    const queryEnd = queryRange?.endDate ? new Date(queryRange.endDate) : null;
-    const endDate = queryEnd && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
+    const queryEnd = queryRange?.endDate != null ? new Date(queryRange.endDate) : null;
+    const endDate = queryEnd != null && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
 
     // Find the Monday of the week containing startDate
     const start = new Date(startDate);
@@ -100,8 +100,8 @@ export function SmallGridHeatmap({
         {weeks.map((week) => (
           <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
             {week.days.map(({ date, dayData }) => {
-              const amount = dayData?.totalAmount || 0;
-              const count = dayData?.entryCount || 0;
+              const amount = dayData?.totalAmount ?? 0;
+              const count = dayData?.entryCount ?? 0;
               const level = getHeatmapLevel(amount, stats);
 
               return (

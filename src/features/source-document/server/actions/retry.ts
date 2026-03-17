@@ -37,7 +37,7 @@ export async function retrySourceDocumentAction(
 
   // 2. Create new document with new ID, preserving only ledgerId and entryDate
   const newDocId = crypto.randomUUID();
-  const text = input?.text || existingDoc.text || undefined;
+  const text = input?.text ?? existingDoc.text ?? undefined;
   const images = input?.images;
 
   // Process new images if provided

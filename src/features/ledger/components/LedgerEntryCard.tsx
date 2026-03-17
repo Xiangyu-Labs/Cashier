@@ -100,7 +100,7 @@ export function LedgerEntryCard({
                   {ledgerEntry.category ? (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
                       <span className="shrink-0">{ledgerEntry.category.name}</span>
-                      {ledgerEntry.description && (
+                      {ledgerEntry.description != null && ledgerEntry.description !== "" && (
                         <span className="hidden sm:contents">
                           <span className="text-muted-foreground/30 ml-0.5 shrink-0">·</span>
                           <span className="truncate text-muted-foreground/50 text-[11px] italic flex-1">
@@ -114,7 +114,7 @@ export function LedgerEntryCard({
                       <Badge variant="warning" className="text-[10px] px-1 h-5">
                         {t("needsCategory")}
                       </Badge>
-                      {ledgerEntry.description && (
+                      {ledgerEntry.description != null && ledgerEntry.description !== "" && (
                         <span className="text-xs text-muted-foreground truncate">
                           {ledgerEntry.description}
                         </span>
@@ -122,7 +122,7 @@ export function LedgerEntryCard({
                     </div>
                   )}
 
-                  {!ledgerEntry.currency && (
+                  {(ledgerEntry.currency == null || ledgerEntry.currency === "") && (
                     <Badge variant="warning" className="text-[10px] px-1 h-5">
                       {t("needsCurrency")}
                     </Badge>
@@ -135,7 +135,7 @@ export function LedgerEntryCard({
               amount={parseAmount(ledgerEntry.amount)}
               currency={ledgerEntry.currency}
               mainCurrency={mainCurrency}
-              date={ledgerEntry.sourceDocument?.entryDate || ledgerEntry.createdAt}
+              date={ledgerEntry.sourceDocument?.entryDate ?? ledgerEntry.createdAt}
               size="md"
             />
           </div>

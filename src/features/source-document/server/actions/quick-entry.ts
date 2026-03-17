@@ -17,13 +17,13 @@ import { UnauthorizedError } from "@/lib/errors";
  * Fetch category name for entry title generation
  */
 async function fetchCategoryName(categoryId: string | null): Promise<string> {
-  if (!categoryId) return "";
+  if (categoryId == null || categoryId === "") return "";
 
   const category = await db.query.entryCategories.findFirst({
     where: and(eq(entryCategories.id, categoryId), isNull(entryCategories.deletedAt)),
   });
 
-  return category?.name || "";
+  return category?.name ?? "";
 }
 
 interface ConversionResult {
@@ -70,7 +70,7 @@ function atomicInsertSourceAndEntry(
 ): { sourceDocId: string; entryId: string } {
   const sourceDocId = crypto.randomUUID();
   const entryId = crypto.randomUUID();
-  const itemName = data.itemName || categoryName;
+  const itemName = data.itemName ?? categoryName;
 
   db.transaction((tx) => {
     tx.insert(sourceDocuments)
@@ -119,9 +119,9 @@ export async function createQuickEntryAction(
   if (error) throw new UnauthorizedError("Unauthorized or Ledger not found");
 
   const validated = createQuickEntrySchema.parse(data);
-  const mainCurrency = ledger.metadata?.settings?.mainCurrency || "CNY";
-  const entryCurrency = validated.currency || mainCurrency;
-  const today = validated.entryDate || formatDateTimeForApi(new Date());
+  const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+  const entryCurrency = validated.currency ?? mainCurrency;
+  const today = validated.entryDate ?? formatDateTimeForApi(new Date());
 
   // Gather all data needed for insertion
   const [categoryName, conversion] = await Promise.all([

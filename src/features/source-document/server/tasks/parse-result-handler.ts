@@ -39,7 +39,7 @@ export async function handleParseResult({
   // Handle anomaly - do NOT save entries, just update document status
   if (verificationStatus === "anomaly" || verificationStatus === "invalid") {
     const reason =
-      anomalyReason ||
+      anomalyReason ??
       (verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
 
     await db
@@ -47,7 +47,7 @@ export async function handleParseResult({
       .set({
         status: "anomaly",
         anomalyReason: reason,
-        title: title || undefined,
+        title: title ?? undefined,
       })
       .where(q.whereId(sourceDocumentId));
     return;
@@ -61,7 +61,7 @@ export async function handleParseResult({
       .set({
         status: "anomaly",
         anomalyReason: validation.reason,
-        title: title || undefined,
+        title: title ?? undefined,
       })
       .where(q.whereId(sourceDocumentId));
     return;
@@ -73,10 +73,10 @@ export async function handleParseResult({
   const ledger = await db.query.ledgers.findFirst({
     where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
   });
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   // Get fallback date
-  const { fallbackDate } = getEntryFallbackDate(doc?.entryDate || null);
+  const { fallbackDate } = getEntryFallbackDate(doc?.entryDate ?? null);
 
   // Build entries with currency conversion
   const entriesToInsert = await buildEntriesForInsert({
@@ -126,7 +126,7 @@ export async function handleParseError({
   sourceDocumentId,
   error: _error,
 }: HandleErrorParams): Promise<void> {
-  if (!ledgerId) {
+  if (ledgerId == null || ledgerId === "") {
     return;
   }
 
@@ -149,7 +149,7 @@ export async function handleParseCancel({
   ledgerId,
   sourceDocumentId,
 }: HandleCancelParams): Promise<void> {
-  if (!ledgerId) {
+  if (ledgerId == null || ledgerId === "") {
     return;
   }
 

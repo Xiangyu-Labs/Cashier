@@ -39,11 +39,11 @@ export function TaskQueueDialogs({
         variant="destructive"
       />
 
-      {retrySourceDocId && (
+      {retrySourceDocId != null && retrySourceDocId !== "" && (
         <SourceDocumentEditRetryDialog
           ledgerId={ledgerId}
           sourceDocument={{ id: retrySourceDocId }}
-          open={!!retrySourceDocId}
+          open={retrySourceDocId != null && retrySourceDocId !== ""}
           onOpenChange={(open) => !open && onRetrySourceDocIdChange(null)}
           onSuccess={onRetrySuccess}
         />

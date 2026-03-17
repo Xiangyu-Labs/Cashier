@@ -36,7 +36,7 @@ export function CalendarFilters({
   className,
 }: CalendarFiltersProps) {
   const t = useTranslations("Calendar");
-  const hasActiveFilters = filters.currency || filters.categoryId;
+  const hasActiveFilters = (filters.currency != null && filters.currency !== "") || (filters.categoryId != null && filters.categoryId !== "");
 
   const handleReset = () => {
     onFiltersChange({});
@@ -54,7 +54,7 @@ export function CalendarFilters({
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{t("currency")}</span>
           <Select
-            value={filters.currency || "__all__"}
+            value={filters.currency ?? "__all__"}
             onValueChange={(value) =>
               onFiltersChange({
                 ...filters,
@@ -81,7 +81,7 @@ export function CalendarFilters({
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">{t("category")}</span>
         <Select
-          value={filters.categoryId || "__all__"}
+          value={filters.categoryId ?? "__all__"}
           onValueChange={(value) =>
             onFiltersChange({
               ...filters,
@@ -105,7 +105,7 @@ export function CalendarFilters({
       </div>
 
       {/* Reset Button */}
-      {hasActiveFilters && (
+      {(hasActiveFilters) && (
         <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={handleReset}>
           <X className="h-3 w-3 mr-1" />
           {t("reset")}

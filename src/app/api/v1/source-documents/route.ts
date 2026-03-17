@@ -24,7 +24,7 @@ const sourceDocumentInputSchema = z.object({
     .max(10, "Maximum 10 images allowed")
     .refine(
       (images) => {
-        if (!images || images.length === 0) return true;
+        if (images == null || images.length === 0) return true;
         // Validate base64 data size
         return images.every((img) => {
           const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Authorize
     const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       throw new UnauthorizedError("Missing or invalid Authorization header");
     }
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const { text, images, entryDate, timezone } = result.data;
 
-    if (!text && (!images || images.length === 0)) {
+    if ((text == null || text === "") && (images == null || images.length === 0)) {
       throw new ValidationError("Content (text or images) is required");
     }
 
@@ -102,12 +102,12 @@ export async function POST(request: NextRequest) {
 
     // Save source document with 'queued' status directly
     const { sourceDocuments } = await import("@/lib/db/schema");
-    const today = entryDate || getDateInTimezone(timezone) || formatDateTimeForApi(new Date());
+    const today = entryDate ?? getDateInTimezone(timezone) ?? formatDateTimeForApi(new Date());
     const [savedDoc] = await db
       .insert(sourceDocuments)
       .values({
         ledgerId: credential.ledgerId,
-        text: text || null,
+        text: text ?? null,
         imageUrls: imageUrls,
         status: "queued",
         entryDate: today,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         {
           ledgerId: credential.ledgerId,
           sourceDocumentId: savedDoc.id,
-          text: text || undefined,
+          text: text ?? undefined,
           imageUrls: imageUrls,
           aiLanguage: ledger.metadata?.settings?.aiLanguage,
           preferredCurrencies: ledger.metadata?.settings?.currencies || undefined,

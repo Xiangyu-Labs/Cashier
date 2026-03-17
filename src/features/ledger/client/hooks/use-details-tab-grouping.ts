@@ -22,7 +22,7 @@ export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGrou
   const locale = useLocale();
 
   const getDateStr = useCallback((entry: LedgerEntry) => {
-    if (entry.sourceDocument?.entryDate) return entry.sourceDocument.entryDate;
+    if (entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== "") return entry.sourceDocument.entryDate;
     return new Date(entry.createdAt).toLocaleDateString("sv");
   }, []);
 
@@ -59,7 +59,7 @@ export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGrou
         });
       }
 
-      if (!groups[dateKey]) {
+      if (groups[dateKey] === undefined) {
         groups[dateKey] = {
           title: dateKey,
           timestamp: sortTimestamp,
@@ -69,7 +69,7 @@ export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGrou
       }
 
       groups[dateKey].items.push(entry);
-      groups[dateKey].total += entry.convertedAmount
+      groups[dateKey].total += entry.convertedAmount != null
         ? parseAmount(entry.convertedAmount)
         : parseAmount(entry.amount);
     });

@@ -43,7 +43,7 @@ interface GetSourceDocumentsParams {
  * Build status filter condition
  */
 function buildStatusCondition(status: string | null | undefined): SQL<unknown> | null {
-  if (!status) return null;
+  if (status == null || status === "") return null;
 
   const statuses = status.split(",").filter(Boolean);
   if (statuses.length === 0) return null;
@@ -60,14 +60,14 @@ function buildDateConditions(
 ): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [];
 
-  if (startDate) {
+  if (startDate != null && startDate !== "") {
     const parsedStart = parseDateRangeStart(startDate);
-    if (parsedStart)
+    if (parsedStart != null)
       conditions.push(gte(sourceDocuments.entryDate, format(parsedStart, "yyyy-MM-dd")));
   }
-  if (endDate) {
+  if (endDate != null && endDate !== "") {
     const parsedEnd = parseDateRangeEnd(endDate);
-    if (parsedEnd) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, "yyyy-MM-dd")));
+    if (parsedEnd != null) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, "yyyy-MM-dd")));
   }
 
   return conditions;
@@ -77,12 +77,12 @@ function buildDateConditions(
  * Build cursor pagination condition
  */
 function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> | null {
-  if (!cursor) return null;
+  if (cursor == null || cursor === "") return null;
 
   const parts = cursor.split("|");
 
   // Composite cursor: date|created|id
-  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+  if (parts.length === 3 && parts[0] !== "" && parts[1] !== "" && parts[2] !== "") {
     const [cursorDate, cursorCreated, cursorId] = parts;
     return or(
       lt(sourceDocuments.entryDate, cursorDate),
@@ -99,7 +99,7 @@ function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> |
   }
 
   // Simple cursor: created|id
-  if (parts.length === 2 && parts[0] && parts[1]) {
+  if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") {
     const [cursorCreated, cursorId] = parts;
     return or(
       lt(sourceDocuments.createdAt, new Date(cursorCreated)),
@@ -114,7 +114,7 @@ function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> |
  * Generate next cursor from last item
  */
 function generateNextCursor(lastItem: typeof sourceDocuments.$inferSelect): string {
-  const nextDate = lastItem.entryDate || "0000-00-00";
+  const nextDate = lastItem.entryDate ?? "0000-00-00";
   return `${nextDate}|${lastItem.createdAt.toISOString()}|${lastItem.id}`;
 }
 
@@ -139,8 +139,8 @@ async function fetchEntriesByDocumentId(
 
   entries.forEach((entry) => {
     const docId = entry.sourceDocumentId;
-    if (docId) {
-      const existing = entriesByDocId.get(docId) || [];
+    if (docId != null && docId !== "") {
+      const existing = entriesByDocId.get(docId) ?? [];
       existing.push(serializeLedgerEntry({ ...entry, sourceDocument: null }));
       entriesByDocId.set(docId, existing);
     }
@@ -160,7 +160,7 @@ function serializeSourceDocumentByStatus(
   includeEntries: boolean,
   entriesByDocId: Map<string, SerializedLedgerEntry[]>
 ): SerializedSourceDocument {
-  const entries = includeEntries ? entriesByDocId.get(item.id) || [] : undefined;
+  const entries = includeEntries ? entriesByDocId.get(item.id) ?? [] : undefined;
   const isActiveDocument =
     item.status === "queued" ||
     item.status === "processing" ||
@@ -196,8 +196,8 @@ async function fetchEntriesWithCategories(
   });
 
   entries.forEach((entry) => {
-    if (!entry.sourceDocumentId) return;
-    const list = entriesByDocId.get(entry.sourceDocumentId) || [];
+    if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") return;
+    const list = entriesByDocId.get(entry.sourceDocumentId) ?? [];
     list.push(
       serializeLedgerEntry({
         ...entry,
@@ -235,7 +235,7 @@ function serializeSourceDocumentFlat(
     updatedAt: doc.updatedAt.toISOString(),
     deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
     ledgerEntries: entries,
-    hasImages: (doc.imageUrls?.length || 0) > 0,
+    hasImages: (doc.imageUrls?.length ?? 0) > 0,
   } as SourceDocumentWithEntries;
 }
 
@@ -318,9 +318,9 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
       const { startDate, endDate } = params;
 
       // Calculate pagination parameters
-      const page = Math.max(1, params.page || 1);
+      const page = Math.max(1, params.page ?? 1);
       const pageSize = params.page
-        ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize || DEFAULT_PAGE_SIZE))
+        ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize ?? DEFAULT_PAGE_SIZE))
         : DEFAULT_PAGE_LIMIT;
       const offset = (page - 1) * pageSize;
 
@@ -335,7 +335,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
         .select({ count: sql<number>`count(*)` })
         .from(sourceDocuments)
         .where(and(...conditions));
-      const total = Number(countResult[0]?.count) || 0;
+      const total = Number(countResult[0]?.count) ?? 0;
 
       // Query with limit + 1 to detect hasMore when using explicit pagination
       const queryLimit = params.page ? pageSize + 1 : pageSize;
@@ -366,7 +366,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
       const entriesByDocId = await fetchEntriesWithCategories(docIds, ledgerId);
 
       const result = resultItems.map((doc) =>
-        serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) || [])
+        serializeSourceDocumentFlat(doc, entriesByDocId.get(doc.id) ?? [])
       );
 
       return { items: result, hasMore, total };
@@ -392,7 +392,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
       // Map items to include proper types for grouping
       const typedItems = activeDocsResult.items.map((doc) => ({
         ...(doc as SerializedSourceDocument),
-        ledgerEntries: (doc.ledgerEntries || []) as SerializedLedgerEntry[],
+        ledgerEntries: (doc.ledgerEntries ?? []) as SerializedLedgerEntry[],
       }));
 
       const groups = groupPendingSourceDocuments(typedItems);

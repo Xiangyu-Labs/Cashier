@@ -161,7 +161,7 @@ export function DetailsTab({
               periodParams={periodParams}
               onPeriodChange={onPeriodChange}
               categories={categories}
-              preferredCurrencies={ledger?.metadata?.settings?.currencies || []}
+              preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
               className="flex-1 sm:flex-none"
             />
             <span className="text-xs text-muted-foreground font-mono ml-auto">
@@ -297,7 +297,7 @@ export function DetailsTab({
             }
             onDelete={() => setDeleteConfirm({ open: true, id: selectedLedgerEntry.id })}
             onViewSourceDocument={
-              selectedLedgerEntry.sourceDocumentId
+              selectedLedgerEntry.sourceDocumentId != null && selectedLedgerEntry.sourceDocumentId !== ""
                 ? () =>
                     push({
                       type: "source-document",

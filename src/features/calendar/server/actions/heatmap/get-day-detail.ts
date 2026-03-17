@@ -33,10 +33,10 @@ export async function getCalendarDayDetail(
     sql`${sourceDocuments.entryDate} = ${date}`,
   ];
 
-  if (filters?.currency) {
+  if (filters?.currency != null && filters.currency !== "") {
     conditions.push(eq(ledgerEntries.currency, filters.currency));
   }
-  if (filters?.categoryId) {
+  if (filters?.categoryId != null && filters.categoryId !== "") {
     conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
   }
 
@@ -62,17 +62,17 @@ export async function getCalendarDayDetail(
   const entries: CalendarDayDetailEntry[] = results.map((row) => ({
     id: row.id,
     itemName: row.itemName,
-    amount: parseFloat(row.amount) || 0,
-    currency: row.currency || "",
-    convertedAmount: row.convertedAmount ? parseFloat(row.convertedAmount) : undefined,
-    categoryId: row.categoryId || undefined,
-    categoryName: row.categoryName || undefined,
-    categoryIcon: row.categoryIcon || undefined,
+    amount: parseFloat(row.amount) ?? 0,
+    currency: row.currency ?? "",
+    convertedAmount: row.convertedAmount != null ? parseFloat(row.convertedAmount) : undefined,
+    categoryId: row.categoryId ?? undefined,
+    categoryName: row.categoryName ?? undefined,
+    categoryIcon: row.categoryIcon ?? undefined,
     sourceDocumentId: row.sourceDocumentId!,
-    sourceDocumentTitle: row.sourceDocumentTitle || undefined,
+    sourceDocumentTitle: row.sourceDocumentTitle ?? undefined,
   }));
 
-  const totalAmount = entries.reduce((sum, e) => sum + (e.convertedAmount || e.amount), 0);
+  const totalAmount = entries.reduce((sum, e) => sum + (e.convertedAmount ?? e.amount), 0);
 
   return {
     date,

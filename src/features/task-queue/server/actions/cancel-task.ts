@@ -41,7 +41,7 @@ export const cancelTaskAction = withLedgerAccess(
 
     // For orphaned parse_source_document tasks, the onCancel handler won't fire.
     // Soft delete the source document if needed.
-    if (task.entityType === "source_document" && task.entityId) {
+    if (task.entityType === "source_document" && task.entityId != null && task.entityId !== "") {
       const q = forLedger(sourceDocuments, ledgerId);
       const doc = await db.query.sourceDocuments.findFirst({
         where: q.whereId(task.entityId),
@@ -86,7 +86,7 @@ export const batchCancelTasksAction = withLedgerAccess(
 
     // For orphaned parse_source_document tasks, soft delete source documents
     const sourceDocTasks = validTasks.filter(
-      (task) => task.entityType === "source_document" && task.entityId
+      (task) => task.entityType === "source_document" && task.entityId != null && task.entityId !== ""
     );
 
     if (sourceDocTasks.length > 0) {

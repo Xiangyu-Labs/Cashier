@@ -39,7 +39,7 @@ export function LedgerEntryDetailWrapper({
   } = useQuery({
     queryKey: queryKeys.ledgerEntry(id),
     queryFn: () => getLedgerEntryAction(id),
-    enabled: open && !!id,
+    enabled: open && id !== "",
     retry: false,
   });
 
@@ -50,7 +50,7 @@ export function LedgerEntryDetailWrapper({
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
     mutationFn: async (data) => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: tCommon("saveFailed"),
@@ -69,7 +69,7 @@ export function LedgerEntryDetailWrapper({
 
   const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {
-      if (!ledgerId) return;
+      if (ledgerId == null || ledgerId === "") return;
       await deleteLedgerEntryAction(ledgerId, id);
     },
     successMessage: tCommon("deleteSuccess"),
@@ -114,7 +114,7 @@ export function LedgerEntryDetailWrapper({
       onUpdate={async (data) => await updateMutation.mutateAsync(data)}
       onDelete={async () => await deleteMutation.mutateAsync()}
       onViewSourceDocument={
-        ledgerEntry?.sourceDocumentId
+        ledgerEntry?.sourceDocumentId != null && ledgerEntry.sourceDocumentId !== ""
           ? () =>
               push({
                 type: "source-document",

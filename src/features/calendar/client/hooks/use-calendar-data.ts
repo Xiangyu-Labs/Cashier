@@ -43,10 +43,10 @@ export function useCalendarDayDetail(
   filters?: CalendarFilters
 ) {
   return useQuery<CalendarDayDetailResponse>({
-    queryKey: queryKeys.calendarDayDetail(ledgerId, date || "", filters),
+    queryKey: queryKeys.calendarDayDetail(ledgerId, date ?? "", filters),
     queryFn: () => getCalendarDayDetail({ ledgerId, date: date!, filters }),
     staleTime: CALENDAR_STALE_TIME,
-    enabled: !!date,
+    enabled: date != null && date !== "",
   });
 }
 

@@ -44,7 +44,7 @@ export async function buildEntriesForInsert({
           ? (categories[entry.categoryIndex - 1]?.id ?? null)
           : null;
 
-      const entryCurrency = entry.currency || "CNY";
+      const entryCurrency = entry.currency ?? "CNY";
 
       // Calculate converted amount
       let convertedAmount: string | null = null;
@@ -77,8 +77,8 @@ export async function buildEntriesForInsert({
         sourceDocumentId,
         amount: entry.amount.toFixed(2),
         currency: entryCurrency,
-        itemName: entry.itemName || "Uncategorized",
-        description: entry.notes || null,
+        itemName: entry.itemName !== "" ? entry.itemName : "Uncategorized",
+        description: entry.notes ?? null,
         entryDate: fallbackDate,
         convertedAmount,
         exchangeRate,
@@ -103,7 +103,7 @@ export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult 
   }
 
   const unknownCurrencyEntries = validEntries.filter(
-    (entry) => !entry.currency || entry.currency.toLowerCase() === "unknown"
+    (entry) => entry.currency == null || entry.currency === "" || entry.currency.toLowerCase() === "unknown"
   );
 
   if (unknownCurrencyEntries.length > 0) {
@@ -123,7 +123,7 @@ export interface DateFallbackResult {
  */
 export function getEntryFallbackDate(docEntryDate: string | null): DateFallbackResult {
   const todayDate = formatDateTimeForApi(new Date())!;
-  const fallbackDate = docEntryDate || todayDate;
+  const fallbackDate = docEntryDate ?? todayDate;
 
   return { todayDate, fallbackDate };
 }

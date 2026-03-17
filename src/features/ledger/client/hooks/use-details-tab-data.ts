@@ -49,7 +49,7 @@ export function useDetailsTabData({
   periodParams,
   advancedFilters,
 }: UseDetailsTabDataProps): UseDetailsTabDataReturn {
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   // Convert periodParams to date range
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
@@ -61,8 +61,8 @@ export function useDetailsTabData({
   // Build filter key for queryKey
   const filterKey = useMemo(() => {
     const parts: string[] = [];
-    if (advancedFilters.categoryId) parts.push(`cat:${advancedFilters.categoryId}`);
-    if (advancedFilters.currency) parts.push(`cur:${advancedFilters.currency}`);
+    if (advancedFilters.categoryId != null && advancedFilters.categoryId !== "") parts.push(`cat:${advancedFilters.categoryId}`);
+    if (advancedFilters.currency != null && advancedFilters.currency !== "") parts.push(`cur:${advancedFilters.currency}`);
     if (advancedFilters.minAmount !== undefined && advancedFilters.minAmount !== null)
       parts.push(`min:${advancedFilters.minAmount}`);
     if (advancedFilters.maxAmount !== undefined && advancedFilters.maxAmount !== null)
@@ -81,8 +81,8 @@ export function useDetailsTabData({
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
-        startDateStr || undefined,
-        endDateStr || undefined,
+        startDateStr ?? undefined,
+        endDateStr ?? undefined,
         mainCurrency,
         {
           categoryId: advancedFilters.categoryId,
@@ -99,8 +99,8 @@ export function useDetailsTabData({
     queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr),
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {
-        startDate: startDateStr || undefined,
-        endDate: endDateStr || undefined,
+        startDate: startDateStr ?? undefined,
+        endDate: endDateStr ?? undefined,
         categoryId: advancedFilters.categoryId,
         currency: advancedFilters.currency,
         minAmount: advancedFilters.minAmount,
@@ -124,14 +124,14 @@ export function useDetailsTabData({
 
   // Calculate stats
   const monthStats = useMemo(() => {
-    const totals = summaryData?.totals || [];
+    const totals = summaryData?.totals ?? [];
     const convertedTotal = summaryData?.convertedTotal;
-    const mainTotal = convertedTotal?.total || 0;
+    const mainTotal = convertedTotal?.total ?? 0;
     const hasMultipleCurrencies = totals.length > 1;
 
     return {
       mainTotal,
-      mainCurrency: convertedTotal?.currency || mainCurrency,
+      mainCurrency: convertedTotal?.currency ?? mainCurrency,
       hasMultipleCurrencies,
       breakdown: totals,
     };

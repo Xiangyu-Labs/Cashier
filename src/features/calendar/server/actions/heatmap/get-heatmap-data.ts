@@ -36,10 +36,10 @@ export async function getCalendarHeatmapData(
     sql`${sourceDocuments.entryDate} >= ${startDate} AND ${sourceDocuments.entryDate} <= ${endDate}`,
   ];
 
-  if (filters?.currency) {
+  if (filters?.currency != null && filters.currency !== "") {
     conditions.push(eq(ledgerEntries.currency, filters.currency));
   }
-  if (filters?.categoryId) {
+  if (filters?.categoryId != null && filters.categoryId !== "") {
     conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
   }
 
@@ -60,9 +60,9 @@ export async function getCalendarHeatmapData(
     .filter((row) => row.date !== null)
     .map((row) => ({
       date: normalizeDate(row.date!),
-      totalAmount: parseFloat(row.total) || 0,
+      totalAmount: parseFloat(row.total) ?? 0,
       entryCount: row.count,
-      currencies: row.currencies ? row.currencies.split(",").filter(Boolean) : [],
+      currencies: row.currencies != null ? row.currencies.split(",").filter(Boolean) : [],
     }));
 
   const amounts = days.map((d) => d.totalAmount).filter((a) => a > 0);

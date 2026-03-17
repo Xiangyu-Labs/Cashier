@@ -72,11 +72,11 @@ export function EntryFilterPanel({
 
   // Count advanced filters (category, currency, amount)
   const advancedFilterCount = [
-    showCategory && filters.categoryId,
-    showCurrency && filters.currency,
+    showCategory && filters.categoryId != null && filters.categoryId !== "",
+    showCurrency && filters.currency != null && filters.currency !== "",
     filters.minAmount !== undefined && filters.minAmount !== null,
     filters.maxAmount !== undefined && filters.maxAmount !== null,
-  ].filter(Boolean).length;
+  ].filter((x): x is true => x === true).length;
 
   // Get active preset from periodParams if available, otherwise derive from filters
   const activePreset: PeriodPreset =
@@ -86,7 +86,7 @@ export function EntryFilterPanel({
       const start = filters.startDate;
       const end = filters.endDate;
 
-      if (!start || !end) return "thisMonth";
+      if (start == null || end == null) return "thisMonth";
 
       // Check thisMonth
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -277,7 +277,7 @@ export function EntryFilterPanel({
               <div className="space-y-2">
                 <div className="text-xs font-medium text-muted-foreground">{t("category")}</div>
                 <Select
-                  value={tempFilters.categoryId || "__all__"}
+                  value={tempFilters.categoryId ?? "__all__"}
                   onValueChange={(value) =>
                     setTempFilters((prev) => ({
                       ...prev,
@@ -307,7 +307,7 @@ export function EntryFilterPanel({
               <div className="space-y-2">
                 <div className="text-xs font-medium text-muted-foreground">{t("currency")}</div>
                 <Select
-                  value={tempFilters.currency || "__all__"}
+                  value={tempFilters.currency ?? "__all__"}
                   onValueChange={(value) =>
                     setTempFilters((prev) => ({
                       ...prev,
@@ -341,7 +341,7 @@ export function EntryFilterPanel({
                   onChange={(e) =>
                     setTempFilters((prev) => ({
                       ...prev,
-                      minAmount: e.target.value ? Number(e.target.value) : null,
+                      minAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
                   className="flex-1 h-8 text-sm"
@@ -355,7 +355,7 @@ export function EntryFilterPanel({
                   onChange={(e) =>
                     setTempFilters((prev) => ({
                       ...prev,
-                      maxAmount: e.target.value ? Number(e.target.value) : null,
+                      maxAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
                   className="flex-1 h-8 text-sm"

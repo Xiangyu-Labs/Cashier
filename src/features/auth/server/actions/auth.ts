@@ -30,7 +30,7 @@ const MAX_EMAIL_LENGTH = 254;
 export async function sendOTPAction(email: string, _locale: string = "en") {
   try {
     // Validate email format and length
-    if (!email || typeof email !== "string") {
+    if (email === "" || typeof email !== "string") {
       throw new ValidationError("Invalid email address");
     }
 
@@ -89,16 +89,16 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
     const { expiresAt } = await createOTPToken(normalizedEmail, otp, ip);
 
     // Send email
-    if (!process.env.AUTH_RESEND_KEY) {
+    if (process.env.AUTH_RESEND_KEY == null || process.env.AUTH_RESEND_KEY === "") {
       logger.warn("AUTH_RESEND_KEY not configured, skipping email send");
       // In development, log the OTP
       logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
     } else {
       try {
         const headersList = await headers();
-        const host = headersList.get("host") || "localhost";
+        const host = headersList.get("host") ?? "localhost";
         await resend.emails.send({
-          from: process.env.AUTH_EMAIL_FROM || "noreply@example.com",
+          from: process.env.AUTH_EMAIL_FROM ?? "noreply@example.com",
           to: normalizedEmail,
           subject: `Your verification code is ${otp}`,
           react: OTPEmail({
@@ -136,11 +136,11 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
 export async function verifyOTPAction(email: string, otp: string) {
   try {
     // Validate inputs
-    if (!email || typeof email !== "string") {
+    if (email === "" || typeof email !== "string") {
       throw new ValidationError("Invalid email address");
     }
 
-    if (!otp || typeof otp !== "string") {
+    if (otp === "" || typeof otp !== "string") {
       throw new ValidationError("Invalid verification code");
     }
 

@@ -23,7 +23,7 @@ export class ExchangeRateService {
    * 3. Return rates.
    */
   static async getRates(date?: Date | string): Promise<ExchangeRates> {
-    const targetDateStr = this.formatDate(date || new Date());
+    const targetDateStr = this.formatDate(date ?? new Date());
 
     // 1. Try Cache
     const cached = await db.query.currencyRates.findFirst({
@@ -42,7 +42,7 @@ export class ExchangeRateService {
     // Check for pending request first (fast path)
     let fetchPromise = this.pendingRequests.get(targetDateStr);
 
-    if (!fetchPromise) {
+    if (fetchPromise === undefined) {
       // Create the fetch promise immediately, before any await
       // This ensures the pending request is registered atomically
       fetchPromise = this.fetchAndStore(targetDateStr);
@@ -153,7 +153,7 @@ export class ExchangeRateService {
     if (items.length === 0) return [];
 
     // 1. Collect all unique dates
-    const uniqueDates = [...new Set(items.map((i) => this.formatDate(i.date || new Date())))];
+    const uniqueDates = [...new Set(items.map((i) => this.formatDate(i.date ?? new Date())))];
 
     // 2. Pre-load all rates in parallel (populates cache)
     await Promise.all(uniqueDates.map((date) => this.getRates(date)));

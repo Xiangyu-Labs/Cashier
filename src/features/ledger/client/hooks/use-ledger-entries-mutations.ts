@@ -56,8 +56,8 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
                     amount: data.amount !== undefined ? String(data.amount) : e.amount,
                     currency: data.currency ?? e.currency,
                     categoryId: data.categoryId ?? e.categoryId,
-                    category: data.categoryId
-                      ? categories.find((c) => c.id === data.categoryId) || e.category
+                    category: data.categoryId != null && data.categoryId !== ""
+                      ? categories.find((c) => c.id === data.categoryId) ?? e.category
                       : e.category,
                   };
                   return updated as typeof e;

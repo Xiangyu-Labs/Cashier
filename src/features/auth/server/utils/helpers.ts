@@ -76,7 +76,7 @@ export async function verifyLedgerOwnership(
 > {
   const userId = await getCurrentUserId();
 
-  if (!userId) {
+  if (userId == null || userId === "") {
     return { error: unauthorized() };
   }
 

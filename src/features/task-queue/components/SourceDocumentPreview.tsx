@@ -65,10 +65,10 @@ export function SourceDocumentPreview({ ledgerId, sourceDocumentId }: SourceDocu
     );
   }
 
-  if (!state.data) return null;
+  if (state.data == null) return null;
 
-  const hasImages = state.data.imageUrls && state.data.imageUrls.length > 0;
-  const hasText = state.data.text && state.data.text.trim().length > 0;
+  const hasImages = (state.data.imageUrls?.length ?? 0) > 0;
+  const hasText = state.data.text != null && state.data.text.trim().length > 0;
 
   if (!hasImages && !hasText) return null;
 

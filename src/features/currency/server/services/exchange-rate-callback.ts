@@ -12,7 +12,7 @@ export async function onExchangeRatesUpdated(): Promise<void> {
     });
 
     for (const ledger of allLedgers) {
-      const mainCurrency = ledger.metadata?.settings?.mainCurrency || "CNY";
+      const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
       recalculateEntriesConvertedAmount(ledger.id, mainCurrency).catch((err) => {
         logger.error(
           { err, ledgerId: ledger.id },

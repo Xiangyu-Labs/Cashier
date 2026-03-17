@@ -45,7 +45,7 @@ export function useLoginFlow(
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (email === "") return;
 
     setIsLoading(true);
     setError(null);
@@ -67,7 +67,7 @@ export function useLoginFlow(
   };
 
   const handleVerifyOTP = async () => {
-    if (!otp || otp.length !== OTP_LENGTH) {
+    if (otp === "" || otp.length !== OTP_LENGTH) {
       setError(t("invalidCode"));
       return;
     }
@@ -86,7 +86,7 @@ export function useLoginFlow(
         callbackUrl,
       });
 
-      if (signInResult?.error) {
+      if (signInResult?.error != null) {
         setError(signInResult.error);
         setIsLoading(false);
       } else if (signInResult?.ok) {

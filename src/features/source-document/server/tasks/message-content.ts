@@ -29,8 +29,8 @@ export function buildMessageContent(
   const content: MessageContentPart[] = [];
 
   // Determine which sources are available
-  const hasUserText = !!text?.trim();
-  const hasVisionDescription = !!visionDescription?.trim();
+  const hasUserText = text != null && text.trim() !== "";
+  const hasVisionDescription = visionDescription != null && visionDescription.trim() !== "";
 
   if (hasUserText && hasVisionDescription) {
     // Both sources available - present as complementary inputs in a single text
@@ -38,7 +38,7 @@ export function buildMessageContent(
       type: "text",
       text: `用户直接提供的描述：\n${text}\n\nAI从图片识别的内容：\n${visionDescription}`,
     });
-  } else if (hasUserText && imageUrls?.length) {
+  } else if (hasUserText && (imageUrls?.length ?? 0) > 0) {
     // User text + raw images (no vision description yet) - send as separate parts
     content.push({
       type: "text",
@@ -59,7 +59,7 @@ export function buildMessageContent(
       type: "text",
       text: `AI从图片识别的内容：\n${visionDescription}`,
     });
-  } else if (imageUrls?.length) {
+  } else if ((imageUrls?.length ?? 0) > 0) {
     // Fallback: send raw images (when no vision model configured)
     // Note: Assumes images are already base64 or will be loaded by caller
     for (const url of imageUrls) {
@@ -81,8 +81,8 @@ export async function buildMessageContentAsync(
   const content: MessageContentPart[] = [];
 
   // Determine which sources are available
-  const hasUserText = !!text?.trim();
-  const hasVisionDescription = !!visionDescription?.trim();
+  const hasUserText = text != null && text.trim() !== "";
+  const hasVisionDescription = visionDescription != null && visionDescription.trim() !== "";
 
   if (hasUserText && hasVisionDescription) {
     // Both sources available - present as complementary inputs in a single text
@@ -90,7 +90,7 @@ export async function buildMessageContentAsync(
       type: "text",
       text: `用户直接提供的描述：\n${text}\n\nAI从图片识别的内容：\n${visionDescription}`,
     });
-  } else if (hasUserText && imageUrls?.length) {
+  } else if (hasUserText && (imageUrls?.length ?? 0) > 0) {
     // User text + raw images (no vision description yet) - send as separate parts
     content.push({
       type: "text",
@@ -119,7 +119,7 @@ export async function buildMessageContentAsync(
       type: "text",
       text: `AI从图片识别的内容：\n${visionDescription}`,
     });
-  } else if (imageUrls?.length) {
+  } else if ((imageUrls?.length ?? 0) > 0) {
     // Load images (handles both base64 and R2 URLs)
     const loadedResults = await loadImagesForAI(imageUrls);
     const failures = loadedResults.filter((r) => !r.success);

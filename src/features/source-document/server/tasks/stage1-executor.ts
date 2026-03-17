@@ -164,7 +164,7 @@ async function runUserRequirementsTask(
   aiCustomPrompt: string | undefined,
   ai: AIContext
 ): Promise<UserRequirementsOutput | undefined> {
-  if (!aiCustomPrompt?.trim()) {
+  if (aiCustomPrompt == null || aiCustomPrompt.trim() === "") {
     return undefined;
   }
   const response = await ai.generate({
