@@ -25,13 +25,14 @@ export const deleteLedgerAction = withAuth(
       throw new NotFoundError("Ledger");
     }
 
-    // 如果账本已软删除，静默成功（幂等）
-    if (existing.deletedAt != null) {
-      return;
-    }
-
+    // 先检查权限
     if (existing.userId !== userId) {
       throw new ForbiddenError("Access denied to this ledger");
+    }
+
+    // 再检查幂等性：如果账本已软删除，静默成功
+    if (existing.deletedAt != null) {
+      return;
     }
 
     const qEntries = forLedger(ledgerEntries, ledgerId);
