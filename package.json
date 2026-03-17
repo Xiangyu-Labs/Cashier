@@ -72,8 +72,8 @@
   },
   "overrides": {
     "@auth/core": "0.41.1",
-    "@typescript-eslint/eslint-plugin": "8.57.0",
-    "@typescript-eslint/parser": "8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
     "@react-email/body": "0.3.0",
     "@react-email/tailwind": "1.0.0"
   },
