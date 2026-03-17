@@ -1,5 +1,4 @@
-// Setup for Vitest integration tests
-
+// Setup for Vitest integration tests with per-file database isolation
 
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import React from "react";
@@ -8,44 +7,80 @@ import Database from "better-sqlite3";
 import * as schema from "@/lib/db/schema";
 import { cleanup } from "@testing-library/react";
 import type { Mock } from "vitest";
+import { createTestSchema } from "./helpers/schema-setup";
+import { memoryStore } from "@/lib/memory-store";
 
 // Set required AI model environment variables for tests
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT || "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION || "test-vision-model";
 
-// Test database connection
-let testClient: Database.Database;
-let testDb: ReturnType<typeof drizzle<typeof schema>>;
+// Map to store database instances per test file
+const dbInstances = new Map<
+  string,
+  {
+    client: Database.Database;
+    db: ReturnType<typeof drizzle<typeof schema>>;
+  }
+>();
 
-export function getTestDb() {
-  return testDb;
+// Get current test file path from Vitest state
+function getCurrentTestFile(): string {
+  // @ts-expect-error - Vitest internal API
+  return expect.getState().testPath || "unknown";
 }
 
-import { createTestSchema } from "./helpers/schema-setup";
+// Get database instance for current test file
+export function getTestDb() {
+  const testPath = getCurrentTestFile();
+  const instance = dbInstances.get(testPath);
+  if (!instance) {
+    throw new Error(`No database instance found for test file: ${testPath}. Make sure beforeAll ran.`);
+  }
+  return instance.db;
+}
 
-import { memoryStore } from "@/lib/memory-store";
+// Get database client for current test file (for raw SQL operations)
+function getTestClient(): Database.Database {
+  const testPath = getCurrentTestFile();
+  const instance = dbInstances.get(testPath);
+  if (!instance) {
+    throw new Error(`No database instance found for test file: ${testPath}`);
+  }
+  return instance.client;
+}
 
 beforeAll(async () => {
   if (process.env.NO_DB) return;
 
-  // Use in-memory SQLite for tests
-  testClient = new Database(":memory:");
+  const testPath = getCurrentTestFile();
+
+  // Create independent in-memory SQLite database for this test file
+  const client = new Database(":memory:");
 
   // Configure SQLite PRAGMA for consistency with production
-  testClient.pragma("journal_mode = WAL");
-  testClient.pragma("foreign_keys = ON");
-  testClient.pragma("synchronous = NORMAL");
+  client.pragma("journal_mode = WAL");
+  client.pragma("foreign_keys = ON");
+  client.pragma("synchronous = NORMAL");
 
-  testDb = drizzle(testClient, { schema });
+  const db = drizzle(client, { schema });
+
+  // Store instance
+  dbInstances.set(testPath, { client, db });
 
   // Run migrations
-  await createTestSchema(testDb, testClient);
+  await createTestSchema(db, client);
 });
 
 afterAll(async () => {
-  if (testClient) {
-    testClient.close();
+  // Close all database instances
+  for (const [testPath, { client }] of dbInstances) {
+    try {
+      client.close();
+    } catch (error) {
+      console.warn(`Failed to close database for ${testPath}:`, error);
+    }
   }
+  dbInstances.clear();
 });
 
 beforeEach(async () => {
@@ -53,40 +88,38 @@ beforeEach(async () => {
   await memoryStore.flushall();
 
   // Clean all tables before each test
-  // Note: users table is excluded - it's only created once in beforeAll via createTestSchema
-  if (getTestDb()) {
-    const tables = [
-      "ledger_entries",
-      "source_documents",
-      "entry_categories",
-      "ledgers",
-      "service_credentials",
-      "task_runs",
-      "currency_rates",
-      "accounts",
-      "verification_tokens",
-      "otp_tokens",
-    ];
+  const client = getTestClient();
+  const db = getTestDb();
 
-    for (const table of tables) {
-      testClient.prepare(`DELETE FROM "${table}"`).run();
-    }
+  const tables = [
+    "ledger_entries",
+    "source_documents",
+    "entry_categories",
+    "ledgers",
+    "service_credentials",
+    "task_runs",
+    "currency_rates",
+    "accounts",
+    "verification_tokens",
+    "otp_tokens",
+  ];
 
-    // Ensure default test user exists (created once in schema-setup, but verify here)
-    // This handles edge cases where a test might have deleted the user
-    try {
-      await testDb.insert(schema.users).values({
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'test@example.com',
-        name: 'Test User',
-        emailVerified: new Date(),
-      });
-    } catch (_e) {
-      // User already exists, which is the expected case
-    }
+  for (const table of tables) {
+    client.prepare(`DELETE FROM "${table}"`).run();
+  }
+
+  // Ensure default test user exists
+  try {
+    await db.insert(schema.users).values({
+      id: '00000000-0000-0000-0000-000000000000',
+      email: 'test@example.com',
+      name: 'Test User',
+      emailVerified: new Date(),
+    });
+  } catch (_e) {
+    // User already exists, which is the expected case
   }
 });
-
 
 afterEach(() => {
   cleanup();
@@ -109,7 +142,6 @@ vi.mock("@/lib/db", () => ({
 // Global Auth Mock
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => {
-    // Case 1: Called as a wrapper function auth((req) => {...})
     if (args.length === 1 && typeof args[0] === "function") {
       const handler = args[0] as (req: unknown, ctx: unknown) => unknown;
       return async (req: { auth?: unknown }, ctx: unknown) => {
@@ -122,7 +154,6 @@ vi.mock("@/auth", () => ({
         return handler(req, ctx);
       };
     }
-    // Case 2: Called to get session const session = await auth()
     return Promise.resolve({
       user: {
         id: "00000000-0000-0000-0000-000000000000",
@@ -136,7 +167,6 @@ vi.mock("@/auth", () => ({
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof import("react");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const messages = require("../messages/zh.json");
 
   return {
@@ -144,8 +174,6 @@ vi.mock("next-intl", async () => {
       const nsMessages = namespace ? messages[namespace] : messages;
       return (key: string, values?: Record<string, unknown>) => {
         let msg = nsMessages?.[key];
-
-        // Absolute fallback: search all namespaces
         if (!msg) {
           for (const ns in messages) {
             if (messages[ns] && typeof messages[ns] === 'object' && messages[ns][key]) {
@@ -154,9 +182,7 @@ vi.mock("next-intl", async () => {
             }
           }
         }
-
         if (!msg) return key;
-
         let translated = msg;
         if (values && typeof translated === "string") {
           Object.keys(values).forEach((k) => {
@@ -179,7 +205,6 @@ vi.mock("next-intl", async () => {
 vi.mock("next/image", () => ({
   __esModule: true,
   default: (props: { src: string; alt: string;[key: string]: unknown }) => {
-
     return React.createElement("img", { ...props, src: props.src });
   },
 }));
