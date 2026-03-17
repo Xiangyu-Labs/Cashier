@@ -32,25 +32,25 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
   const clientSecret = process.env.OIDC_CLIENT_SECRET;
 
   // Only configure if all env vars are present
-  if (!issuer || !clientId || !clientSecret) {
+  if (issuer == null || issuer === "" || clientId == null || clientId === "" || clientSecret == null || clientSecret === "") {
     return null;
   }
 
   // Build explicit redirect_uri to ensure consistency with IdP configuration
   // Falls back to NEXT_PUBLIC_APP_URL if AUTH_URL is not set
-  const baseUrl = process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
-  const redirectUri = baseUrl ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc` : undefined;
+  const baseUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const redirectUri = baseUrl != null && baseUrl !== "" ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc` : undefined;
 
   return {
     id: "oidc",
-    name: process.env.OIDC_BUTTON_NAME || "SSO",
+    name: process.env.OIDC_BUTTON_NAME ?? "SSO",
     type: "oidc",
     issuer,
     wellKnown: `${issuer}/.well-known/openid-configuration`,
     clientId,
     clientSecret,
     // Explicitly set redirect_uri to ensure it matches IdP configuration
-    ...(redirectUri && { redirect_uri: redirectUri }),
+    ...(redirectUri != null && redirectUri !== "" ? { redirect_uri: redirectUri } : {}),
     checks: ["pkce", "state"],
     client: {
       token_endpoint_auth_method: "client_secret_post",
@@ -102,7 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         locale: { type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.otp) {
+        if (credentials?.email == null || credentials?.email === "" || credentials?.otp == null || credentials?.otp === "") {
           return null;
         }
 
@@ -117,16 +117,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Verify OTP (defense in depth - already verified in API)
         const record = await findOTPRecord(email);
-        if (!record) {
+        if (record == null) {
           return null;
         }
         const result = await verifyOTPWithPolicy(email, otp, record);
-        if (!result.success) {
+        if (result.success !== true) {
           return null;
         }
 
         // Check registration whitelist
-        if (!(await isRegistrationAllowed(email))) {
+        if (await isRegistrationAllowed(email) !== true) {
           return null;
         }
 
@@ -136,9 +136,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         // Track if this is an existing user (for login notification)
-        const isExistingUser = !!user;
+        const isExistingUser = user != null;
 
-        if (!user) {
+        if (user == null) {
           const [newUser] = await db
             .insert(users)
             .values({
@@ -151,14 +151,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Create default ledger for new user
           const { createDefaultLedgerForUser } =
             await import("@/features/auth/server/services/user-setup");
-          await createDefaultLedgerForUser(user.id, user.email || "New User", locale);
+          await createDefaultLedgerForUser(user.id, user.email ?? "New User", locale);
         }
 
         // Delete the used OTP (one-time use)
         await deleteOTPToken(email);
 
         // Send login notification for existing users
-        if (isExistingUser && user.email) {
+        if (isExistingUser && user.email != null && user.email !== "") {
           const { sendLoginNotification } =
             await import("@/features/auth/server/services/notifications");
           await sendLoginNotification(user.email);
@@ -185,15 +185,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       // When a new user is created, auto-create their default ledger
-      if (user.id) {
+      if (user.id != null && user.id !== "") {
         const { createDefaultLedgerForUser } =
           await import("@/features/auth/server/services/user-setup");
-        await createDefaultLedgerForUser(user.id, user.email || "New User");
+        await createDefaultLedgerForUser(user.id, user.email ?? "New User");
       }
     },
     async signIn({ user, isNewUser }) {
       // Send login notification for existing users (not on first sign up)
-      if (!isNewUser && user.email) {
+      if (isNewUser !== true && user.email != null && user.email !== "") {
         const { sendLoginNotification } =
           await import("@/features/auth/server/services/notifications");
         await sendLoginNotification(user.email);
@@ -203,22 +203,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user }) {
-      if (user.email) {
-        if (!(await isRegistrationAllowed(user.email))) {
+      if (user.email != null && user.email !== "") {
+        if (await isRegistrationAllowed(user.email) !== true) {
           return false;
         }
       }
       return true;
     },
     async jwt({ token, user }) {
-      if (user) {
+      if (user != null) {
         token.id = user.id;
         token.sub = user.id;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token.sub && session.user) {
+      if (token.sub != null && token.sub !== "" && session.user != null) {
         const userId = token.sub;
 
         // Fetch User Data from DB to ensure it's up to date and user still exists
@@ -227,7 +227,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true },
         });
 
-        if (!dbUser) {
+        if (dbUser == null) {
           throw new UnauthorizedError("User not found in database");
         }
 
