@@ -95,30 +95,54 @@ export function EntriesTabSkeleton() {
 
 /**
  * Skeleton for the Details tab.
- * Shows a list of detail item placeholders.
+ * Shows filter toolbar + date groups with entry cards.
  */
 export function DetailsTabSkeleton() {
   return (
-    <div className="space-y-3">
-      {/* Search/filter skeleton */}
-      <div className="h-10 w-full bg-surface2 rounded-lg animate-pulse" />
+    <div className="space-y-4">
+      {/* Filter toolbar - matches: select button + filter panel + total */}
+      <div className="px-2 mb-2 sm:mb-4 flex items-center gap-2">
+        {/* Select mode button */}
+        <div className="h-8 w-8 bg-surface2 rounded-md animate-pulse shrink-0" />
+        {/* Filter panel */}
+        <div className="h-8 w-full sm:w-auto bg-surface2 rounded-md animate-pulse" />
+        {/* Spacer */}
+        <div className="flex-1 hidden sm:block" />
+        {/* Total amount text */}
+        <div className="h-4 w-28 bg-surface2 rounded animate-pulse font-mono ml-auto" />
+      </div>
 
-      {/* Detail items skeleton */}
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between px-4 py-3 bg-surface rounded-xl border border-border"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
-            <div className="space-y-1.5">
-              <div className="h-4 w-32 bg-border rounded animate-pulse" />
-              <div className="h-3 w-20 bg-border rounded animate-pulse" />
+      {/* Date groups skeleton */}
+      {[1, 2, 3].map((dateGroupIndex) => (
+        <div key={dateGroupIndex} className="space-y-2">
+          {/* Date header - matches: dot indicator + title + group total */}
+          <div className="py-2 px-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Dot indicator */}
+              <div className="w-1.5 h-1.5 rounded-full bg-surface2 animate-pulse" />
+              {/* Date text */}
+              <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
             </div>
+            {/* Group total */}
+            <div className="h-3 w-20 bg-surface2 rounded animate-pulse font-mono" />
           </div>
-          <div className="h-4 w-16 bg-border rounded animate-pulse" />
+
+          {/* Entry cards for this group */}
+          <div className="space-y-4 px-2">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-surface rounded-xl border border-border p-4 h-20 animate-pulse"
+              />
+            ))}
+          </div>
         </div>
       ))}
+
+      {/* Infinite scroll loading indicator */}
+      <div className="flex justify-center py-4">
+        <div className="h-4 w-20 bg-surface2 rounded animate-pulse" />
+      </div>
     </div>
   );
 }
@@ -233,22 +257,34 @@ export function StatsTabSkeleton() {
 
 /**
  * Skeleton for the Settings tab.
- * Shows settings section placeholders.
+ * Shows 4 collapsible section placeholders matching actual layout.
  */
 export function SettingsTabSkeleton() {
   return (
-    <div className="space-y-6">
-      {[1, 2].map((sectionIndex) => (
-        <div key={sectionIndex} className="space-y-3">
-          <div className="h-5 w-24 bg-border rounded animate-pulse" />
-          <div className="bg-surface rounded-xl border border-border divide-y divide-border">
+    <div className="space-y-6 sm:space-y-8">
+      {/* 4 Sections: General, Ledger, AI Assistant, Account */}
+      {[1, 2, 3, 4].map((sectionIndex) => (
+        <div key={sectionIndex} className="space-y-4">
+          {/* Section title */}
+          <div className="h-5 w-28 bg-surface2 rounded animate-pulse" />
+
+          {/* Section content */}
+          <div className="space-y-6 pt-4">
+            {/* Multiple setting items per section */}
             {[1, 2, 3].map((itemIndex) => (
-              <div key={itemIndex} className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 bg-border rounded animate-pulse" />
-                  <div className="h-4 w-28 bg-border rounded animate-pulse" />
+              <div key={itemIndex}>
+                {/* Setting item with label + description + control */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  {/* Label and description */}
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-4 w-24 bg-surface2 rounded animate-pulse" />
+                    <div className="h-3 w-40 bg-surface2/70 rounded animate-pulse" />
+                  </div>
+                  {/* Control (button, switch, or select) */}
+                  <div className="h-8 w-24 bg-surface2 rounded animate-pulse shrink-0" />
                 </div>
-                <div className="h-6 w-10 bg-border rounded-full animate-pulse" />
+                {/* Divider between items (except last) */}
+                {itemIndex < 3 && <div className="h-px bg-border mt-4" />}
               </div>
             ))}
           </div>

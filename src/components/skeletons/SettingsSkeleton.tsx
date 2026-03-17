@@ -18,21 +18,28 @@ export function SettingsSkeleton() {
       </header>
 
       <main className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 space-y-6">
-        {/* Settings sections skeleton */}
-        {[1, 2, 3].map((sectionIndex) => (
-          <div key={sectionIndex} className="space-y-3">
+        {/* Settings sections skeleton - 4 sections: General, Ledger, AI, Account */}
+        {[1, 2, 3, 4].map((sectionIndex) => (
+          <div key={sectionIndex} className="space-y-4">
             {/* Section title */}
-            <div className="h-5 w-24 bg-border rounded animate-pulse" />
+            <div className="h-5 w-28 bg-surface2 rounded animate-pulse" />
 
-            {/* Settings items */}
-            <div className="bg-surface rounded-xl border border-border divide-y divide-border">
+            {/* Section content with multiple setting items */}
+            <div className="space-y-4 pt-2">
               {[1, 2, 3].map((itemIndex) => (
-                <div key={itemIndex} className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 bg-border rounded animate-pulse" />
-                    <div className="h-4 w-28 bg-border rounded animate-pulse" />
+                <div key={itemIndex}>
+                  {/* Setting item with label + description + control */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {/* Label and description */}
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-24 bg-surface2 rounded animate-pulse" />
+                      <div className="h-3 w-40 bg-surface2/70 rounded animate-pulse" />
+                    </div>
+                    {/* Control (button, switch, or select) */}
+                    <div className="h-8 w-24 bg-surface2 rounded animate-pulse shrink-0" />
                   </div>
-                  <div className="h-6 w-10 bg-border rounded-full animate-pulse" />
+                  {/* Divider between items (except last) */}
+                  {itemIndex < 3 && <div className="h-px bg-border mt-4" />}
                 </div>
               ))}
             </div>
