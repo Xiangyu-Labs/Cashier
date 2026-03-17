@@ -179,7 +179,7 @@ describe("submitAutoCategorizeAction", () => {
     expect(flowEngine.submit).toHaveBeenCalledTimes(1);
   });
 
-  it("skips entries with pending/running categorize tasks (dedup)", async () => {
+  it("submits entries even with pending/running categorize tasks (engine handles dedup)", async () => {
     const db = getTestDb();
 
     await db.insert(entryCategories).values({
@@ -221,10 +221,19 @@ describe("submitAutoCategorizeAction", () => {
       scopeId: ledgerId,
     });
 
+    // With deduplicationKey, action layer still submits but engine handles dedup
     const result = await submitAutoCategorizeAction(ledgerId);
-    expect(result.submittedCount).toBe(0);
-    expect(result.skippedCount).toBe(1);
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(result.submittedCount).toBe(1);
+    expect(result.skippedCount).toBe(0);
+    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
+    // Verify deduplicationKey is passed
+    expect(flowEngine.submit).toHaveBeenCalledWith(
+      "categorize_entry",
+      expect.any(Object),
+      expect.objectContaining({
+        deduplicationKey: `categorize:${ledgerId}:${entryId}`,
+      })
+    );
   });
 
   it("skips manual (quick entry) source documents", async () => {
@@ -388,7 +397,7 @@ describe("submitBatchCategorizeAction", () => {
     );
   });
 
-  it("skips running tasks for dedup in batch mode", async () => {
+  it("submits entries even with running tasks in batch mode (engine handles dedup)", async () => {
     const db = getTestDb();
 
     await db.insert(entryCategories).values({
@@ -430,9 +439,18 @@ describe("submitBatchCategorizeAction", () => {
       scopeId: ledgerId,
     });
 
+    // With deduplicationKey, action layer still submits but engine handles dedup
     const result = await submitBatchCategorizeAction(ledgerId, [entryId]);
-    expect(result.submittedCount).toBe(0);
-    expect(result.skippedCount).toBe(1);
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(result.submittedCount).toBe(1);
+    expect(result.skippedCount).toBe(0);
+    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
+    // Verify deduplicationKey is passed
+    expect(flowEngine.submit).toHaveBeenCalledWith(
+      "categorize_entry",
+      expect.any(Object),
+      expect.objectContaining({
+        deduplicationKey: `categorize:${ledgerId}:${entryId}`,
+      })
+    );
   });
 });

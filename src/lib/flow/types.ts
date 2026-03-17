@@ -24,9 +24,10 @@ export interface TaskInput {
   type: string;
   title?: string | null;
   input?: unknown;
-  scopeId?: string | null; // Scope ID (e.g., ledgerId in Cashier)
-  entityType?: string | null; // Entity type (e.g., "source_document", "category")
-  entityId?: string | null; // Entity ID (e.g., sourceDocumentId, categoryId)
+  scopeId?: string | null;     // Scope ID (e.g., ledgerId in Cashier)
+  entityType?: string | null;  // Entity type (e.g., "source_document", "category")
+  entityId?: string | null;    // Entity ID (e.g., sourceDocumentId, categoryId)
+  deduplicationKey?: string | null;  // Key for preventing duplicate tasks
 }
 
 /**
@@ -44,18 +45,20 @@ export interface TaskFilter {
  */
 export interface TaskRecord {
   id: string;
-  type: string; // Task type, e.g., 'parse-document'
-  title: string | null; // Task title (optional)
-  status: TaskStatus; // pending / running / completed / failed / cancelled
-  progress: string | null; // "Processing image..."
-  input: unknown | null; // Complete task input (framework-enforced)
-  error: string | null; // Error message on failure
-  tokenUsage: TokenUsageRecord | null; // Token statistics by model
-  scopeId: string | null; // Scope ID (e.g., ledgerId)
-  entityType: string | null; // Entity type (e.g., "source_document")
-  entityId: string | null; // Entity ID (e.g., sourceDocumentId)
+  type: string;                              // Task type, e.g., 'parse-document'
+  title: string | null;                      // Task title (optional)
+  status: TaskStatus;                        // pending / running / completed / failed / cancelled
+  progress: string | null;                   // "Processing image..."
+  input: unknown | null;                     // Complete task input (framework-enforced)
+  error: string | null;                      // Error message on failure
+  tokenUsage: TokenUsageRecord | null;       // Token statistics by model
+  scopeId: string | null;                    // Scope ID (e.g., ledgerId)
+  entityType: string | null;                 // Entity type (e.g., "source_document")
+  entityId: string | null;                   // Entity ID (e.g., sourceDocumentId)
   createdAt: Date;
   updatedAt: Date;
+  startedAt: Date | null;                    // When task transitioned to running
+  completedAt: Date | null;                  // When task reached terminal state
 }
 
 /**
@@ -157,7 +160,13 @@ export interface FlowEngine {
   submit<TInput>(
     name: string,
     input: TInput,
-    meta?: { title?: string; scopeId?: string; entityType?: string; entityId?: string }
+    meta?: {
+      title?: string;
+      scopeId?: string;
+      entityType?: string;
+      entityId?: string;
+      deduplicationKey?: string;
+    }
   ): Promise<string>;
 
   /**

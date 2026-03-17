@@ -204,6 +204,16 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       );
       // Keep categoryId as null - no action needed
     },
+
+    async onCancel(input: CategorizeEntryInput, _context: FlowContext): Promise<void> {
+      logger.info(
+        {
+          entryId: input.entryId,
+        },
+        "Categorize entry task cancelled"
+      );
+      // No cleanup needed - only onComplete writes data
+    },
   };
 
 // Register the task

@@ -257,18 +257,49 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     async submit<TInput>(
       name: string,
       input: TInput,
-      meta?: { title?: string; scopeId?: string; entityType?: string; entityId?: string }
+      meta?: {
+        title?: string;
+        scopeId?: string;
+        entityType?: string;
+        entityId?: string;
+        deduplicationKey?: string;
+      }
     ): Promise<string> {
       // Validate handler exists
       if (!handlers.has(name)) {
         throw new Error(`No handler registered for task: ${name}`);
       }
 
+      // Check for duplicate tasks if deduplicationKey provided
+      if (meta?.deduplicationKey) {
+        // Check both pending and running tasks to prevent duplicates
+        const [pendingTasks, runningTasks] = await Promise.all([
+          config.storage.list({ type: name, status: "pending" }),
+          config.storage.list({ type: name, status: "running" }),
+        ]);
+        const existingTasks = [...pendingTasks, ...runningTasks];
+
+        for (const task of existingTasks) {
+          const taskInput = task.input as { deduplicationKey?: string } | undefined;
+          if (taskInput?.deduplicationKey === meta.deduplicationKey) {
+            logger.info({
+              taskId: task.id,
+              deduplicationKey: meta.deduplicationKey,
+              taskName: name,
+            }, "Duplicate task detected, returning existing taskId");
+            return task.id;
+          }
+        }
+      }
+
       // Create task record
       const taskId = await config.storage.create({
         type: name,
         title: meta?.title,
-        input,
+        input: {
+          ...(input as object),
+          ...(meta?.deduplicationKey ? { deduplicationKey: meta.deduplicationKey } : {}),
+        },
         scopeId: meta?.scopeId,
         entityType: meta?.entityType,
         entityId: meta?.entityId,
@@ -279,15 +310,11 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       abortControllers.set(taskId, controller);
 
       // Fire and forget - execute asynchronously
-      // We intentionally don't await this
       runTask(taskId, name, input, controller.signal).catch((err) => {
         logger.error({ err, taskId }, "Unhandled error in background task runner");
       });
 
-      logger.info(
-        { taskId, type: name, title: meta?.title },
-        "Task submitted for background execution"
-      );
+      logger.info({ taskId, type: name, title: meta?.title }, "Task submitted for background execution");
 
       return taskId;
     },
@@ -295,8 +322,29 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     async cancel(taskId: string): Promise<void> {
       // First, check if task is waiting in the queue (hasn't started yet)
       if (removeFromQueue(taskId)) {
-        // Task was pending in queue, mark as cancelled directly
-        await config.storage.update(taskId, { status: "cancelled", progress: null });
+        // Task was pending in queue - get task details and call onCancel
+        const task = await config.storage.get(taskId);
+        if (task) {
+          const handler = handlers.get(task.type);
+          if (handler?.onCancel) {
+            try {
+              const context: FlowContext = {
+                taskId,
+                signal: new AbortController().signal,
+                reportTokens: () => {},
+                updateProgress: async () => {},
+                ai: createAIContext(new AbortController().signal, () => {}),
+              };
+              await handler.onCancel(task.input, context);
+            } catch (cancelError) {
+              logger.error(
+                { error: cancelError, taskId },
+                "Error in task onCancel handler during pending cancellation"
+              );
+            }
+          }
+          await config.storage.update(taskId, { status: "cancelled", progress: null });
+        }
         abortControllers.delete(taskId);
         logger.info({ taskId }, "Task cancelled from pending queue");
         return;

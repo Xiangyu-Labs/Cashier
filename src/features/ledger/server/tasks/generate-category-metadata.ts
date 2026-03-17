@@ -137,6 +137,29 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
       logger.info({ categoryId: input.categoryId }, "Set default metadata after task failure");
     }
   },
+
+  // 4. Cancellation - set default values like onError
+  async onCancel(
+    input: GenerateCategoryMetadataInput,
+    _context: FlowContext
+  ): Promise<void> {
+    logger.info({ categoryId: input.categoryId }, "Generate category metadata task cancelled");
+
+    // Set default values to prevent UI from showing "generating" forever
+    if (input.ledgerId != null && input.ledgerId !== "" && input.categoryId != null && input.categoryId !== "") {
+      const q = forLedger(entryCategories, input.ledgerId);
+      await db
+        .update(entryCategories)
+        .set({
+          icon: "Package", // Default icon
+          description: "", // Empty description
+          updatedAt: new Date(),
+        })
+        .where(q.whereId(input.categoryId));
+
+      logger.info({ categoryId: input.categoryId }, "Set default metadata after task cancellation");
+    }
+  },
 };
 
 // Register the task

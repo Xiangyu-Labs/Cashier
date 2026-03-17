@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, entryCategories, taskRuns, ledgers } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_CATEGORIZE_ENTRY, type CategorizeEntryInput } from "../tasks/categorize-entry";
@@ -12,32 +12,6 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 export interface CategorizeResult {
   submittedCount: number;
   skippedCount: number;
-}
-
-/**
- * Get pending categorize task entry IDs for duplicate prevention
- */
-async function getPendingCategorizeTaskEntryIds(): Promise<Set<string>> {
-  const pendingTasks = await db.query.taskRuns.findMany({
-    where: and(
-      eq(taskRuns.type, TASK_TYPE_CATEGORIZE_ENTRY),
-      inArray(taskRuns.status, ["pending", "running"])
-    ),
-  });
-
-  const pendingEntryIds = new Set<string>();
-  for (const task of pendingTasks) {
-    try {
-      const input = task.input as CategorizeEntryInput;
-      if (input?.entryId != null && input.entryId !== "") {
-        pendingEntryIds.add(input.entryId);
-      }
-    } catch {
-      // Skip malformed inputs
-    }
-  }
-
-  return pendingEntryIds;
 }
 
 /**
@@ -115,6 +89,7 @@ async function submitSingleCategorizeTask(
     scopeId: ledgerId,
     entityType: "entry",
     entityId: entry.id,
+    deduplicationKey: `categorize:${ledgerId}:${entry.id}`,
   });
 }
 
@@ -125,17 +100,13 @@ function shouldSkipEntry(
   entry: {
     id: string;
     sourceDocument?: { type?: string | null } | null;
-  },
-  pendingEntryIds: Set<string>
+  }
 ): boolean {
   // Skip quick entries (manual type source documents) - user's explicit choice
   if (entry.sourceDocument?.type === "manual") {
     return true;
   }
-  // Skip entries with pending tasks (duplicate prevention)
-  if (pendingEntryIds.has(entry.id)) {
-    return true;
-  }
+  // Duplicate prevention now handled by flowEngine deduplicationKey
   return false;
 }
 
@@ -164,8 +135,7 @@ async function submitCategorizeTasksForEntries(
     return { submittedCount: 0, skippedCount: 0 };
   }
 
-  const [pendingEntryIds, indexedCategories, aiLanguage] = await Promise.all([
-    getPendingCategorizeTaskEntryIds(),
+  const [indexedCategories, aiLanguage] = await Promise.all([
     buildIndexedCategories(ledgerId),
     getLedgerAILanguage(ledgerId),
   ]);
@@ -174,7 +144,7 @@ async function submitCategorizeTasksForEntries(
   let skippedCount = 0;
 
   for (const entry of entries) {
-    if (shouldSkipEntry(entry, pendingEntryIds)) {
+    if (shouldSkipEntry(entry)) {
       skippedCount++;
       continue;
     }

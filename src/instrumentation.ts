@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { registerAllTasks } from "@/lib/flow/task-registry";
 
 export async function register() {
   // Only run on server-side runtime (not edge or browser)
@@ -19,11 +20,8 @@ export async function register() {
   );
 
   try {
-    // Explicitly import task handlers to register them
-    // Each module registers itself via side effect (flowEngine.register())
-    await import("@/features/source-document/server/tasks/parse-source-document");
-    await import("@/features/ledger/server/tasks/generate-category-metadata");
-    await import("@/features/ledger/server/tasks/categorize-entry");
+    // Register all task handlers via centralized registry
+    await registerAllTasks();
 
     logger.info("Task handlers registered successfully");
   } catch (error) {
