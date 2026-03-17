@@ -149,8 +149,8 @@ export function SourceDocumentDetailWrapper({
         return { snapshots };
       },
       onSettledExtra: (queryClient) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) });
       },
     }
   );
@@ -229,7 +229,7 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
     },
   });
 
@@ -307,7 +307,7 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
     },
   });
 
@@ -373,7 +373,7 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
     },
   });
 
@@ -439,7 +439,7 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
     },
   });
 
@@ -489,7 +489,7 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
     },
   });
 
