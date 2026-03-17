@@ -30,31 +30,31 @@ export const deleteLedgerAction = withAuth(async (userId: string, ledgerId: stri
     const qCategories = forLedger(entryCategories, ledgerId);
     const qSourceDocs = forLedger(sourceDocuments, ledgerId);
 
-    // Soft delete all related data in a transaction
-    await db.transaction(async (tx) => {
+    // Soft delete all related data in a transaction (sync for better-sqlite3)
+    db.transaction((tx) => {
         // 1. Soft delete all ledger entries
-        await tx
-            .update(ledgerEntries)
+        tx.update(ledgerEntries)
             .set(qEntries.softDelete)
-            .where(qEntries.whereActive);
+            .where(qEntries.whereActive)
+            .run();
 
         // 2. Soft delete all entry categories
-        await tx
-            .update(entryCategories)
+        tx.update(entryCategories)
             .set(qCategories.softDelete)
-            .where(qCategories.whereActive);
+            .where(qCategories.whereActive)
+            .run();
 
         // 3. Soft delete all source documents
-        await tx
-            .update(sourceDocuments)
+        tx.update(sourceDocuments)
             .set(qSourceDocs.softDelete)
-            .where(qSourceDocs.whereActive);
+            .where(qSourceDocs.whereActive)
+            .run();
 
         // 4. Soft delete the ledger itself
-        await tx
-            .update(ledgers)
+        tx.update(ledgers)
             .set({ deletedAt: new Date() })
-            .where(eq(ledgers.id, ledgerId));
+            .where(eq(ledgers.id, ledgerId))
+            .run();
     });
 
     // Clear defaultLedgerId for users who had this ledger as default
