@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 export default function VerifyPage() {
   const t = useTranslations("Auth");
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
+  const email = searchParams.get("email") ?? "";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
@@ -24,7 +24,7 @@ export default function VerifyPage() {
         <h1 className="text-2xl font-bold text-text mb-2">{t("checkEmail")}</h1>
 
         {/* Description */}
-        <p className="text-muted mb-6">{t("checkEmailDesc", { email: email || "your email" })}</p>
+        <p className="text-muted mb-6">{t("checkEmailDesc", { email: email !== "" ? email : "your email" })}</p>
 
         {/* Email Icon Card */}
         <div className="bg-surface rounded-xl border border-border p-6 mb-6">

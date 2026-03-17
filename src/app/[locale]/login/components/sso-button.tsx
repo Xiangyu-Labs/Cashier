@@ -19,7 +19,8 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
     signIn("oidc", { callbackUrl });
   };
 
-  const buttonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME || t("signInWithSSO");
+  const envButtonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
+  const buttonName = envButtonName !== "" && envButtonName != null ? envButtonName : t("signInWithSSO");
 
   return (
     <Button

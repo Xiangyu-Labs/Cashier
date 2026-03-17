@@ -46,7 +46,7 @@ export function OtpStep({
         </div>
         <ExpiryTimer expiresAt={expiresAt} onExpired={onExpired} className="text-center" />
       </div>
-      {error && (
+      {error != null && (
         <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
       <Button

@@ -37,14 +37,15 @@ export function DeleteAccountForm() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">{t("deleteButton") || "Delete Account"}</Button>
+        <Button variant="destructive">{t("deleteButton") !== "" ? t("deleteButton") : "Delete Account"}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("confirmTitle") || "Are you absolutely sure?"}</DialogTitle>
+          <DialogTitle>{t("confirmTitle") !== "" ? t("confirmTitle") : "Are you absolutely sure?"}</DialogTitle>
           <DialogDescription>
-            {t("confirmDesc") ||
-              "This action cannot be undone. This will permanently delete your account and remove your data from our servers. Type DELETE to confirm."}
+            {t("confirmDesc") !== ""
+              ? t("confirmDesc")
+              : "This action cannot be undone. This will permanently delete your account and remove your data from our servers. Type DELETE to confirm."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

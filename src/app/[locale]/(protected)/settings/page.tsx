@@ -24,7 +24,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!session?.user?.id) {
+  if (session?.user?.id == null) {
     router.push("/login");
     return null;
   }
@@ -36,18 +36,18 @@ export default function SettingsPage() {
   return (
     <div className="container max-w-2xl py-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">{t("title") || "Settings"}</h1>
+        <h1 className="text-3xl font-bold">{t("title") !== "" ? t("title") : "Settings"}</h1>
         <p className="text-muted-foreground mt-2">
-          {t("subtitle") || "Manage your account and preferences"}
+          {t("subtitle") !== "" ? t("subtitle") : "Manage your account and preferences"}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
           <div className="space-y-1">
-            <h2 className="text-sm font-medium">{t("language") || "Language"}</h2>
+            <h2 className="text-sm font-medium">{t("language") !== "" ? t("language") : "Language"}</h2>
             <p className="text-xs text-muted-foreground">
-              {t("languageDesc") || "Select your preferred language"}
+              {t("languageDesc") !== "" ? t("languageDesc") : "Select your preferred language"}
             </p>
           </div>
           <LanguageSwitcher />
@@ -55,13 +55,13 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">{t("account") || "Account"}</h2>
+        <h2 className="text-lg font-semibold">{t("account") !== "" ? t("account") : "Account"}</h2>
       </div>
 
       <div className="pt-8 border-t">
         <Button variant="destructive" className="w-full sm:w-auto" onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
-          {t("signOut") || "Sign Out"}
+          {t("signOut") !== "" ? t("signOut") : "Sign Out"}
         </Button>
       </div>
     </div>

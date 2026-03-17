@@ -24,9 +24,8 @@ export default function LoginErrorPage() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
-  const errorConfig = error
-    ? ERROR_MESSAGES[error] || ERROR_MESSAGES.Default
-    : ERROR_MESSAGES.Default;
+  const errorConfig =
+    error != null ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default) : ERROR_MESSAGES.Default;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">

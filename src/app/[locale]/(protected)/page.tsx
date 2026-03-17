@@ -23,17 +23,17 @@ export default async function HomePage(): Promise<ReactNode> {
   const t = await getTranslations("HomePage");
 
   // Redirect if not authenticated (though middleware should handle this)
-  if (!session?.user?.id) {
+  if (session?.user?.id == null) {
     redirect({ href: "/login", locale });
   }
 
   // 1. Fetch ledgers directly from DB (No API call)
-  if (!session?.user?.id) return null; // Should be handled by redirect above, but satisfies TS
+  if (session?.user?.id == null) return null; // Should be handled by redirect above, but satisfies TS
   const ledgers = await getLedgers(session.user.id);
 
   // 2. Check default ledger from session
   // Before redirecting, verify the ledger exists
-  if (session.user.defaultLedgerId) {
+  if (session.user.defaultLedgerId != null) {
     const defaultLedger = ledgers.find((l) => l.id === session.user.defaultLedgerId);
     if (defaultLedger) {
       redirect({ href: `/ledger/${session.user.defaultLedgerId}`, locale });

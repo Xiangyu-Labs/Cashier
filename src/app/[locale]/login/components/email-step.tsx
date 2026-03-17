@@ -37,10 +37,10 @@ export function EmailStep({ email, isLoading, error, onEmailChange, onSubmit }: 
             autoFocus
           />
         </div>
-        {error && (
+        {error != null && (
           <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
         )}
-        <Button type="submit" className="w-full h-11" disabled={isLoading || !email}>
+        <Button type="submit" className="w-full h-11" disabled={isLoading || email === ""}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

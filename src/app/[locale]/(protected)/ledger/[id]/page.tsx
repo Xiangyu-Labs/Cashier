@@ -29,7 +29,7 @@ export default async function LedgerPage({
 
   const t = await getTranslations("LedgerPage");
 
-  if (!session?.user?.id) {
+  if (session?.user?.id == null) {
     redirect({ href: "/login", locale: "en" });
   }
 
