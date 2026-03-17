@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, type useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";

@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
-import { SourceDocument, SourceDocumentLight } from "@/types/api";
+import { type SourceDocument, type SourceDocumentLight } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/features/source-document/server/actions";

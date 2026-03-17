@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
-import { LedgerEntry, EntryCategory } from "@/types/api";
+import { type LedgerEntry, type EntryCategory } from "@/types/api";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useAmountDisplay } from "@/features/currency/client/hooks/use-amount-display";

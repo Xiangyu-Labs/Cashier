@@ -18,10 +18,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
-import { PeriodParams, PeriodPreset } from "@/lib/period-utils";
+import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
 
 export interface EntryFilters {
     startDate?: Date;

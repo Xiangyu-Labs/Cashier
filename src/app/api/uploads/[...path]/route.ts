@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getLocalStorage } from '@/lib/storage/local';
 import { logger } from '@/lib/logger';
 import { requireAuth } from '@/features/auth/server/utils/helpers';

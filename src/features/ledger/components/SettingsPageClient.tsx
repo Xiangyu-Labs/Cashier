@@ -2,7 +2,7 @@
 
 import { useRouter } from "@/i18n/routing";
 import { SettingsTab } from "./SettingsTab";
-import { EntryCategoryWithCount, Ledger } from "@/types/api";
+import { type EntryCategoryWithCount, type Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';

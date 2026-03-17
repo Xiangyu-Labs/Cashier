@@ -4,8 +4,9 @@ import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { withAuth } from "@/lib/auth-actions";
 import { eq, and, isNull, desc } from "drizzle-orm";
+import type { Ledger } from "@/types/api";
 
-export const getLedgerAction = withAuth(async (userId: string, id: string): Promise<import("@/types/api").Ledger | null> => {
+export const getLedgerAction = withAuth(async (userId: string, id: string): Promise<Ledger | null> => {
     const existing = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
     });
@@ -24,7 +25,7 @@ export const getLedgerAction = withAuth(async (userId: string, id: string): Prom
     };
 });
 
-export const getLedgersAction = withAuth(async (userId: string): Promise<import("@/types/api").Ledger[]> => {
+export const getLedgersAction = withAuth(async (userId: string): Promise<Ledger[]> => {
     const rows = await db.query.ledgers.findMany({
         where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
         orderBy: [desc(ledgers.createdAt)],

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
+import { parseSourceDocumentHandler, type ParseSourceDocumentInput, TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments } from "@/lib/db/schema";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
-import { FlowContext } from "@/lib/flow";
+import { type FlowContext } from "@/lib/flow";
 
 describe("parseSourceDocumentHandler.onError", () => {
     it("should map schema validation errors (zod) to 'invalid_content'", async () => {

@@ -14,9 +14,11 @@ vi.mock("@/lib/processing", () => ({
     createTask: vi.fn(),
 }));
 
+import type * as FlowModule from "@/lib/flow";
+
 // Mock Flow Engine
 vi.mock("@/lib/flow", async (importOriginal) => {
-    const original = await importOriginal<typeof import("@/lib/flow")>();
+    const original = await importOriginal<typeof FlowModule>();
     return {
         ...original,
         flowEngine: {

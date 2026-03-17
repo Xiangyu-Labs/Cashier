@@ -11,7 +11,7 @@ import { createSourceDocumentAction, retrySourceDocumentAction } from "@/feature
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, RefreshCw } from "lucide-react";
-import { Ledger, SourceDocument } from "@/types/api";
+import { type Ledger, type SourceDocument } from "@/types/api";
 import { toast } from "sonner";
 
 import { useTranslations } from "next-intl";

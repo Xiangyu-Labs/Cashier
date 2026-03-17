@@ -7,7 +7,7 @@ import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import {
-    DateRangeType,
+    type DateRangeType,
     getDateRange,
     formatDateTimeForApi,
 } from "@/lib/date-utils";
@@ -17,10 +17,11 @@ import { StatsRanking } from "@/components/stats/StatsRanking";
 import { CalendarHeatmapSection } from "@/features/calendar/components/CalendarHeatmapSection";
 import { useTranslations, useFormatter } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
+import type { Ledger } from "@/types/api";
 
 interface StatsTabProps {
     ledgerId?: string;
-    ledger?: import("@/types/api").Ledger;
+    ledger?: Ledger;
     onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
     onDateDrilldown?: (date: string) => void;
     initialDate?: Date;

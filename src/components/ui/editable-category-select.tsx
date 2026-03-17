@@ -6,7 +6,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 
 interface EditableCategorySelectProps {
     value: string | null; // categoryId

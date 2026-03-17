@@ -1,4 +1,4 @@
-import { LedgerEntry, EntryCategory } from "@/types/api";
+import { type LedgerEntry, type EntryCategory } from "@/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";

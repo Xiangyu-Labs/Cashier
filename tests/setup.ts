@@ -163,10 +163,12 @@ vi.mock("@/auth", () => ({
   },
 }));
 
+import type * as ReactModule from "react";
+
 // Mock i18n globally
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
-  const React = actual as typeof import("react");
+  const React = actual as typeof ReactModule;
   const messages = await import("../messages/zh.json").then(m => m.default || m);
 
   return {

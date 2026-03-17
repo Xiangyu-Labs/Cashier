@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { EntryFilterPanel, EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({

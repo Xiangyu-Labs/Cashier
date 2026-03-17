@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 
 import {
@@ -14,8 +14,8 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragEndEvent,
-    UniqueIdentifier
+    type DragEndEvent,
+    type UniqueIdentifier
 } from '@dnd-kit/core';
 import {
     arrayMove,

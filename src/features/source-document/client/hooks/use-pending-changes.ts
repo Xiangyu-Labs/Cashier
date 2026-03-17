@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { EntryEditData } from "@/components/entries";
-import { SourceDocument, SourceDocumentLight, LedgerEntry } from "@/types/api";
+import { type EntryEditData } from "@/components/entries";
+import { type SourceDocument, type SourceDocumentLight, type LedgerEntry } from "@/types/api";
 
 export interface PendingChanges {
     sourceDoc: {

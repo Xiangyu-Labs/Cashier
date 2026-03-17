@@ -37,9 +37,10 @@ const batchUpdateLedgerEntriesSchema = z.object({
 }).strict(); // Reject unknown keys
 
 import { forLedger } from "@/lib/db/scoped-query";
+import type { LedgerEntry } from "@/lib/db/schema";
 // Date string comparison - no need for date parsing utilities
 
-export const createLedgerEntryAction = withLedgerAccess(async (ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<import("@/lib/db/schema").LedgerEntry> => {
+export const createLedgerEntryAction = withLedgerAccess(async (ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<LedgerEntry> => {
     const validated = createLedgerEntrySchema.parse(data);
 
     // Get ledger's main currency and source document's entryDate

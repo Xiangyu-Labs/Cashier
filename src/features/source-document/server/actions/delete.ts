@@ -11,7 +11,7 @@ import { isLocalUploadUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { NotFoundError } from "@/lib/errors";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import * as schemaModule from "@/lib/db/schema";
+import type * as schemaModule from "@/lib/db/schema";
 
 type DbSchema = typeof schemaModule;
 

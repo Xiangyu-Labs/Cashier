@@ -1,4 +1,4 @@
-import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
+import { type SourceDocument, type SourceDocumentLight, type LedgerEntry, type EntryCategory } from "@/types/api";
 import { LedgerEntryItem } from "@/components/entries";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";

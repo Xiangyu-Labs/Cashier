@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { LedgerEntry, EntryCategory } from "@/types/api";
-import { LedgerEntryViewDetails, EntryPendingChanges } from "./LedgerEntryViewDetails";
+import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
 import { useTranslations } from "next-intl";
 
 interface LedgerEntryDetailModalProps {

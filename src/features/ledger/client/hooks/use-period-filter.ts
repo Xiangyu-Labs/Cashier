@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { PeriodParams, periodToDateRange, parsePeriodFromSearchParams } from "@/lib/period-utils";
+import { type PeriodParams, periodToDateRange, parsePeriodFromSearchParams } from "@/lib/period-utils";
 import type { EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
 
 export interface FilterParams {

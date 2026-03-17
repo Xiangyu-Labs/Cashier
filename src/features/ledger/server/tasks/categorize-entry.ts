@@ -5,7 +5,7 @@
  * Uses index-based category matching for disambiguation.
  */
 
-import { flowEngine, FlowTaskHandler, FlowContext } from '@/lib/flow';
+import { flowEngine, type FlowTaskHandler, type FlowContext } from '@/lib/flow';
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";

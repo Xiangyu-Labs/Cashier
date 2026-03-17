@@ -6,7 +6,7 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, inArray } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
-import { SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 
 const VALID_STATUSES: SourceDocumentStatusType[] = [
     'queued', 'processing', 'completed', 'anomaly', 'failed'

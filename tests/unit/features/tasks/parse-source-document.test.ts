@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseSourceDocumentHandler, ParseSourceDocumentInput, ParseSourceDocumentOutput } from "@/features/source-document/server/tasks/parse-source-document";
+import { parseSourceDocumentHandler, type ParseSourceDocumentInput, type ParseSourceDocumentOutput } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { FlowContext, AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
+import { type FlowContext, type AIContext, type AIGenerateOptions, type AIResponse } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
 /**

@@ -4,7 +4,7 @@ import { useState, useEffect, memo, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
-import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api"
+import { type SourceDocument, type SourceDocumentLight, type LedgerEntry, type EntryCategory } from "@/types/api"
 import {
     Trash2,
     FileText,
@@ -17,7 +17,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails"
 import { usePendingChanges } from "../client/hooks/use-pending-changes"
-import { EntryEditData } from "@/components/entries"
+import { type EntryEditData } from "@/components/entries"
 import { useSelection } from "@/hooks/use-selection"
 import { EditableField } from "@/components/ui/editable-field"
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog"

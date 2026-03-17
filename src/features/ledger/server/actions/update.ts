@@ -9,8 +9,9 @@ import { updateLedgerSchema, type UpdateLedgerInput } from "./schemas";
 import { recalculateEntriesConvertedAmount } from "./helpers";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
+import type { Ledger } from "@/types/api";
 
-export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<import("@/types/api").Ledger> => {
+export const updateLedgerAction = withAuth(async (userId: string, id: string, data: UpdateLedgerInput): Promise<Ledger> => {
     // Verify ownership
     const existing = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),

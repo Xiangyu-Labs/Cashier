@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Trash2, Copy, Plus, Key, Check } from "lucide-react";
-import { ServiceCredential } from "@/types/api";
+import { type ServiceCredential } from "@/types/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

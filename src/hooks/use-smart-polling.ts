@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions, QueryKey as _QueryKey } from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions, QueryKey as _QueryKey } from "@tanstack/react-query";
 import { useRef, useCallback } from "react";
 import { useMutationStore } from "@/lib/store/mutation-state";
 

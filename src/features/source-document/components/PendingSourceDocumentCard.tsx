@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { SourceDocument, SourceDocumentLight } from "@/types/api";
+import { type SourceDocument, type SourceDocumentLight } from "@/types/api";
 import { ProcessingStatus } from "@/components/ui/processing-status";
 import { Button } from "@/components/ui/button";
 import { Trash2, RefreshCw, MoreVertical, ChevronDown } from "lucide-react";

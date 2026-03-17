@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LedgerEntry, EntryCategory, SourceDocument, Ledger } from "@/types/api";
+import { type LedgerEntry, type EntryCategory, type SourceDocument, type Ledger } from "@/types/api";
 import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { SourceDocumentEditRetryDialog } from "@/features/source-document/components/SourceDocumentEditRetryDialog";
@@ -14,7 +14,7 @@ import { type SourceDocumentStatusType } from "@/features/source-document/server
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-ledger-entries-mutations";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -227,37 +227,62 @@ export function LedgerEntriesTab({
                     {/* Unified Loading State */}
                     {isLoading ? (
                         <div className="space-y-6 px-1 animate-pulse">
-                            {/* Skeleton for source document cards */}
-                            {[1, 2, 3].map((idx) => (
-                                <div key={idx} className="bg-surface rounded-xl border border-border overflow-hidden">
-                                    {/* Card header skeleton */}
-                                    <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center justify-between">
+                            {/* Date group skeletons */}
+                            {[1, 2, 3].map((dateGroupIdx) => (
+                                <div key={dateGroupIdx} className="space-y-2">
+                                    {/* Date header skeleton - matches real date header */}
+                                    <div className="py-2 px-2 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-4 w-4 bg-border rounded" />
-                                            <div className="h-3 w-28 bg-border rounded" />
-                                            <div className="h-3 w-1 bg-border rounded" />
-                                            <div className="h-3 w-20 bg-border rounded" />
+                                            {/* Dot indicator */}
+                                            <div className="w-1.5 h-1.5 rounded-full bg-surface2" />
+                                            {/* Date text */}
+                                            <div className="h-3 w-24 bg-surface2 rounded" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-4 w-16 bg-border rounded" />
-                                            <div className="h-7 w-7 bg-border rounded" />
-                                        </div>
+                                        {/* Daily total */}
+                                        <div className="h-3 w-20 bg-surface2 rounded" />
                                     </div>
-                                    {/* Card content skeleton - entries */}
-                                    <div className="border-t border-border p-3 space-y-3 bg-surface2/30">
-                                        {[1, 2].map((entryIdx) => (
-                                            <div key={entryIdx} className="flex items-center justify-between py-1">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-full bg-border" />
-                                                    <div className="space-y-1">
-                                                        <div className="h-4 w-24 bg-border rounded" />
-                                                        <div className="h-3 w-16 bg-border rounded" />
-                                                    </div>
+
+                                    {/* Source document cards for this date */}
+                                    {[1, 2].map((idx) => (
+                                        <div key={idx} className="bg-surface rounded-xl border border-border overflow-hidden">
+                                            {/* Card header skeleton - matches: expand icon + date + title + amount + more button */}
+                                            <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center justify-between">
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                    {/* Expand/collapse chevron */}
+                                                    <div className="h-4 w-4 bg-border rounded shrink-0" />
+                                                    {/* Date (e.g., "3月5日") */}
+                                                    <div className="h-4 w-12 bg-border rounded shrink-0" />
+                                                    {/* Title (e.g., "赫赫海鲜晚餐") */}
+                                                    <div className="h-4 w-28 bg-border rounded" />
                                                 </div>
-                                                <div className="h-4 w-14 bg-border rounded" />
+                                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                                    {/* Amount */}
+                                                    <div className="h-4 w-16 bg-border rounded" />
+                                                    {/* More menu button */}
+                                                    <div className="h-7 w-7 bg-border rounded" />
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                            {/* Card content skeleton - entries */}
+                                            <div className="p-3 space-y-3 bg-surface2/30">
+                                                {[1, 2].map((entryIdx) => (
+                                                    <div key={entryIdx} className="flex items-center justify-between py-1">
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Category/merchant icon */}
+                                                            <div className="h-8 w-8 rounded-full bg-border" />
+                                                            <div className="space-y-1.5">
+                                                                {/* Entry title */}
+                                                                <div className="h-4 w-24 bg-border rounded" />
+                                                                {/* Category/subtitle */}
+                                                                <div className="h-3 w-16 bg-border rounded" />
+                                                            </div>
+                                                        </div>
+                                                        {/* Entry amount */}
+                                                        <div className="h-4 w-14 bg-border rounded" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             ))}
                         </div>

@@ -5,7 +5,7 @@ import { ledgers, ledgerEntries, sourceDocuments } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 
-import { LedgerEntrySummary } from "@/types/api";
+import { type LedgerEntrySummary } from "@/types/api";
 
 import { forLedger } from "@/lib/db/scoped-query";
 

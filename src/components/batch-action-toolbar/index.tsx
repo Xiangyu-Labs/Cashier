@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useBatchActions } from "./use-batch-actions";

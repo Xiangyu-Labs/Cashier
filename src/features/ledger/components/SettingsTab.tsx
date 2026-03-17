@@ -15,7 +15,7 @@ import { useCategoryMutations } from "@/features/ledger/client/hooks/use-categor
 import { useCredentialMutations } from "@/features/ledger/client/hooks/use-credential-mutations";
 import { useLedgerSettings } from "@/features/ledger/client/hooks/use-ledger-settings";
 
-import { Ledger, EntryCategoryWithCount } from "@/types/api";
+import { type Ledger, type EntryCategoryWithCount } from "@/types/api";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';

@@ -4,7 +4,7 @@
  * Displays the entry title, category icon, and amount.
  */
 
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";

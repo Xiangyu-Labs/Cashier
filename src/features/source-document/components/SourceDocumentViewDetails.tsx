@@ -1,6 +1,6 @@
 "use client";
 
-import { SourceDocument, SourceDocumentLight, LedgerEntry, EntryCategory } from "@/types/api";
+import { type SourceDocument, type SourceDocumentLight, type LedgerEntry, type EntryCategory } from "@/types/api";
 import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";

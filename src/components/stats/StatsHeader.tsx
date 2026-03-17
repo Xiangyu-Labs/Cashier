@@ -3,7 +3,7 @@
 
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
+import { type DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
 import { useTranslations } from "next-intl";
 
 interface StatsHeaderProps {

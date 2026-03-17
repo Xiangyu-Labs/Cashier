@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateCategoryMetadataHandler, GenerateCategoryMetadataInput, GenerateCategoryMetadataOutput } from "@/features/ledger/server/tasks/generate-category-metadata";
+import { generateCategoryMetadataHandler, type GenerateCategoryMetadataInput, type GenerateCategoryMetadataOutput } from "@/features/ledger/server/tasks/generate-category-metadata";
 import { getTestDb } from "../../../setup";
 import { entryCategories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { FlowContext } from "@/lib/flow";
+import { type FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 
 describe("generateCategoryMetadataHandler", () => {

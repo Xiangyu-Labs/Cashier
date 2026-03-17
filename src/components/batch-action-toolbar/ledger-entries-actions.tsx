@@ -17,7 +17,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { EntryCategory } from "@/types/api";
+import { type EntryCategory } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";

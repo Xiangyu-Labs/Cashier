@@ -40,7 +40,7 @@ const ModalStackRenderer = dynamic(
   () => import("@/components/providers/ModalStackRenderer").then((m) => ({ default: m.ModalStackRenderer })),
   { ssr: false }
 );
-import { PeriodParams } from "@/lib/period-utils";
+import { type PeriodParams } from "@/lib/period-utils";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";

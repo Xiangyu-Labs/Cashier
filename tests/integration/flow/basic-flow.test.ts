@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
-import { flowEngine, FlowTaskHandler, FlowContext } from "@/lib/flow";
+import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

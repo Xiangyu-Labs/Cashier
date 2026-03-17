@@ -8,7 +8,7 @@ import { type SourceDocument as DbSourceDocument } from "@/features/source-docum
 import { type TaskRun as DbTaskRun } from "@/features/task-queue/server/schema";
 import { type User as DbUser } from "@/features/auth/server/schema";
 import { type CurrencyRate as DbCurrencyRate } from "@/features/currency/server/schema";
-import { Serialized } from "./utils";
+import { type Serialized } from "./utils";
 
 // Re-export Serialized wrapper types
 export type Ledger = Serialized<DbLedger>;
@@ -36,7 +36,7 @@ export type LedgerEntry = Serialized<DbLedgerEntry> & {
 // Derived types (subsets or composites)
 // Settings is a subset of Ledger fields used for configuration
 // Since we now use metadata, we need to extract from there or define manually
-import { LedgerMetadata } from "@/features/ledger/server/schema";
+import { type LedgerMetadata } from "@/features/ledger/server/schema";
 
 export type Settings = {
   id?: string;

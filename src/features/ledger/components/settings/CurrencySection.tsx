@@ -2,7 +2,7 @@
 
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
-import { Settings } from "@/types/api";
+import { type Settings } from "@/types/api";
 import { useTranslations } from "next-intl";
 
 interface CurrencySectionProps {

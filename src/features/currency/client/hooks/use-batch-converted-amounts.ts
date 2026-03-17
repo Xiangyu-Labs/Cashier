@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { batchConvertCurrencyAction, BatchConversionItem } from "@/features/currency/server/actions";
+import { batchConvertCurrencyAction, type BatchConversionItem } from "@/features/currency/server/actions";
 import { queryKeys } from "@/lib/query-keys";
 
 interface UseBatchConvertedAmountsResult {

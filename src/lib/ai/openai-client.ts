@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logger } from "@/lib/logger";
 
 export class OpenAIClient {

@@ -8,8 +8,9 @@ import { createLedgerSchema } from "./schemas";
 import type { CreateLedgerInput } from "./schemas";
 import { eq, isNull, and } from "drizzle-orm";
 import { ConflictError } from "@/lib/errors";
+import type { Ledger } from "@/lib/db/schema";
 
-export const createLedgerAction = withAuth(async (userId: string, data: CreateLedgerInput): Promise<import("@/lib/db/schema").Ledger> => {
+export const createLedgerAction = withAuth(async (userId: string, data: CreateLedgerInput): Promise<Ledger> => {
     const validated = createLedgerSchema.parse(data);
 
     // Check if user already has a ledger
@@ -21,7 +22,7 @@ export const createLedgerAction = withAuth(async (userId: string, data: CreateLe
         throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");
     }
 
-    let newLedger: import("@/lib/db/schema").Ledger;
+    let newLedger: Ledger;
 
     // Atomically create ledger and seed categories in a transaction
     try {

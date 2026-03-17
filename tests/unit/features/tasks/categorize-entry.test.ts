@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { categorizeEntryHandler, CategorizeEntryInput } from "@/features/ledger/server/tasks/categorize-entry";
+import { categorizeEntryHandler, type CategorizeEntryInput } from "@/features/ledger/server/tasks/categorize-entry";
 import { getTestDb } from "../../../setup";
 import { ledgerEntries, entryCategories } from "@/lib/db/schema";
 import { sourceDocuments } from "@/features/source-document/server/schema";
 import { eq } from "drizzle-orm";
-import { FlowContext, AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
+import { type FlowContext, type AIContext, type AIGenerateOptions, type AIResponse } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 import { v4 as uuidv4 } from "uuid";
 

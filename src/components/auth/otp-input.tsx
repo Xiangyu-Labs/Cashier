@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, KeyboardEvent, ClipboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type ClipboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

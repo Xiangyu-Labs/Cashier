@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { usePendingChanges } from "@/features/source-document/client/hooks/use-pending-changes";
-import { SourceDocument, LedgerEntry } from "@/types/api";
+import { type SourceDocument, type LedgerEntry } from "@/types/api";
 
 describe("usePendingChanges", () => {
     const mockSourceDoc = {

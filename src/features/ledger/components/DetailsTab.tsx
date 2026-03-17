@@ -12,7 +12,7 @@ import { invalidateLedgerCache } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
-import { EntryFilterPanel, EntryFilters } from "./EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "./EntryFilterPanel";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { useSelection } from "@/hooks/use-selection";
 import { useEntryMutations } from "../client/hooks/use-entry-mutations";
