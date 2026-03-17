@@ -125,7 +125,7 @@ export function SourceDocumentInput({
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
     },
   });
 
@@ -175,9 +175,9 @@ export function SourceDocumentInput({
     },
     onSettled: () => {
       // Always refetch to ensure server state is in sync
-      queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
       // Also invalidate task queue to trigger smart polling for the new parse task
-      queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
     },
   });
 
@@ -227,9 +227,9 @@ export function SourceDocumentInput({
       toast.error(t("retryError"));
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
       // Also invalidate task queue to trigger smart polling for the retry task
-      queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
     },
   });
 
@@ -262,7 +262,7 @@ export function SourceDocumentInput({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    processFiles(Array.from(files));
+    void processFiles(Array.from(files));
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -274,7 +274,7 @@ export function SourceDocumentInput({
         if (file) files.push(file);
       }
     }
-    if (files.length > 0) processFiles(files);
+    if (files.length > 0) void processFiles(files);
   };
 
   const MAX_FALLBACK_SIZE = 5 * 1024 * 1024; // 5MB
