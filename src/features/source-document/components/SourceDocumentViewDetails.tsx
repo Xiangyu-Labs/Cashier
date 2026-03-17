@@ -44,13 +44,13 @@ function CurrencyBreakdownItem({
 }: CurrencyBreakdownItemProps) {
   // Calculate converted amount and average rate from entries
   const { converted, rate: _rate } = useMemo(() => {
-    const currencyEntries = entries.filter((e) => (e.currency || mainCurrency) === currency);
+    const currencyEntries = entries.filter((e) => (e.currency ?? mainCurrency) === currency);
 
     let totalConverted = 0;
     currencyEntries.forEach((entry) => {
-      if (entry.convertedAmount) {
+      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
         totalConverted += parseAmount(entry.convertedAmount);
-      } else if ((entry.currency || mainCurrency) === mainCurrency) {
+      } else if ((entry.currency ?? mainCurrency) === mainCurrency) {
         totalConverted += parseAmount(entry.amount);
       }
     });
