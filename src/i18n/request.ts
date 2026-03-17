@@ -16,9 +16,9 @@ export default getRequestConfig(async () => {
   // Explicitly type locale
   let locale: (typeof routing.locales)[number] = routing.defaultLocale;
 
-  if (localeCookie && (routing.locales as readonly string[]).includes(localeCookie)) {
+  if (localeCookie != null && (routing.locales as readonly string[]).includes(localeCookie)) {
     locale = localeCookie as (typeof routing.locales)[number];
-  } else if (acceptLanguage) {
+  } else if (acceptLanguage != null) {
     // Very basic check. 'zh-CN' -> 'zh', 'en-US' -> 'en'
     if (acceptLanguage.includes("zh")) locale = "zh";
     else if (acceptLanguage.includes("en")) locale = "en";
