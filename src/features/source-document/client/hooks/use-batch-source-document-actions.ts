@@ -2,7 +2,7 @@
 
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { matchSourceDocuments } from "@/lib/query-keys";
+import { matchPaginatedSourceDocuments } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
     batchUpdateSourceDocumentsAction,
@@ -10,6 +10,7 @@ import {
     batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
 import type { SourceDocumentWithEntries } from "./use-source-documents";
+import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
     const tCommon = useTranslations("Common");
@@ -26,16 +27,21 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
-            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
-                predicate: matchSourceDocuments(ledgerId),
+            const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
-            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { predicate: matchSourceDocuments(ledgerId) },
-                (old) =>
-                    old?.map((doc) =>
-                        ids.includes(doc.id) ? { ...doc, entryDate } : doc
-                    )
+            queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.map((doc) =>
+                            ids.includes(doc.id) ? { ...doc, entryDate } : doc
+                        ),
+                    };
+                }
             );
 
             return { snapshots };
@@ -53,13 +59,20 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
-                predicate: matchSourceDocuments(ledgerId),
+            const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
-            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { predicate: matchSourceDocuments(ledgerId) },
-                (old) => old?.filter((doc) => !ids.includes(doc.id))
+            queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.filter((doc) => !ids.includes(doc.id)),
+                        total: old.total - ids.length,
+                    };
+                }
             );
 
             return { snapshots };
@@ -77,17 +90,22 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
             clearSelection();
         },
         onOptimisticUpdate: (queryClient, ids) => {
-            const snapshots = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
-                predicate: matchSourceDocuments(ledgerId),
+            const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
             // Move documents to 'queued' status
-            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
-                { predicate: matchSourceDocuments(ledgerId) },
-                (old) =>
-                    old?.map((doc) =>
-                        ids.includes(doc.id) ? { ...doc, status: 'queued' as const } : doc
-                    )
+            queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.map((doc) =>
+                            ids.includes(doc.id) ? { ...doc, status: 'queued' as const } : doc
+                        ),
+                    };
+                }
             );
 
             return { snapshots };

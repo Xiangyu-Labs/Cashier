@@ -24,6 +24,7 @@ import {
     type MutationSnapshot,
 } from "@/lib/mutations/use-ledger-mutation";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/use-source-documents";
+import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
 import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
 import type { EntryEditData } from "@/components/entries";
@@ -123,12 +124,21 @@ export function SourceDocumentDetailWrapper({
 
             // 3. Update flat list cache (new architecture)
             if (ledgerId) {
-                queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+                queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old) =>
-                        old?.map((doc) =>
-                            doc.id === id ? { ...doc, ...data } : doc
-                        ) ?? []
+                    (old) => {
+                        // Defensive: check if old has the expected structure
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.map((doc) =>
+                                doc.id === id ? { ...doc, ...data } : doc
+                            ),
+                        };
+                    }
                 );
             }
 
@@ -175,17 +185,23 @@ export function SourceDocumentDetailWrapper({
             if (ledgerId) {
                 queryClient.setQueriesData(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old: SourceDocumentWithEntries[] | undefined) => {
-                        if (!old) return [];
-                        return old.map((doc) => {
-                            if (doc.id !== id) return doc;
-                            const updatedEntries = doc.ledgerEntries?.map((entry) =>
-                                entry.id === entryId
-                                    ? { ...entry, ...data }
-                                    : entry
-                            ) ?? [];
-                            return { ...doc, ledgerEntries: updatedEntries };
-                        });
+                    (old: PaginatedSourceDocumentsResponse | undefined) => {
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.map((doc) => {
+                                if (doc.id !== id) return doc;
+                                const updatedEntries = doc.ledgerEntries?.map((entry) =>
+                                    entry.id === entryId
+                                        ? { ...entry, ...data }
+                                        : entry
+                                ) ?? [];
+                                return { ...doc, ledgerEntries: updatedEntries };
+                            }),
+                        };
                     }
                 );
             }
@@ -228,17 +244,23 @@ export function SourceDocumentDetailWrapper({
             if (ledgerId) {
                 queryClient.setQueriesData(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old: SourceDocumentWithEntries[] | undefined) => {
-                        if (!old) return [];
-                        return old.map((doc) => {
-                            if (doc.id !== id) return doc;
-                            const updatedEntries = doc.ledgerEntries?.map((entry) =>
-                                ids.includes(entry.id)
-                                    ? { ...entry, ...data }
-                                    : entry
-                            ) ?? [];
-                            return { ...doc, ledgerEntries: updatedEntries };
-                        });
+                    (old: PaginatedSourceDocumentsResponse | undefined) => {
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.map((doc) => {
+                                if (doc.id !== id) return doc;
+                                const updatedEntries = doc.ledgerEntries?.map((entry) =>
+                                    ids.includes(entry.id)
+                                        ? { ...entry, ...data }
+                                        : entry
+                                ) ?? [];
+                                return { ...doc, ledgerEntries: updatedEntries };
+                            }),
+                        };
                     }
                 );
             }
@@ -277,15 +299,21 @@ export function SourceDocumentDetailWrapper({
             if (ledgerId) {
                 queryClient.setQueriesData(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old: SourceDocumentWithEntries[] | undefined) => {
-                        if (!old) return [];
-                        return old.map((doc) => {
-                            if (doc.id !== id) return doc;
-                            const filteredEntries = doc.ledgerEntries?.filter(
-                                (entry) => entry.id !== entryId
-                            ) ?? [];
-                            return { ...doc, ledgerEntries: filteredEntries };
-                        });
+                    (old: PaginatedSourceDocumentsResponse | undefined) => {
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.map((doc) => {
+                                if (doc.id !== id) return doc;
+                                const filteredEntries = doc.ledgerEntries?.filter(
+                                    (entry) => entry.id !== entryId
+                                ) ?? [];
+                                return { ...doc, ledgerEntries: filteredEntries };
+                            }),
+                        };
                     }
                 );
             }
@@ -324,15 +352,21 @@ export function SourceDocumentDetailWrapper({
             if (ledgerId) {
                 queryClient.setQueriesData(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old: SourceDocumentWithEntries[] | undefined) => {
-                        if (!old) return [];
-                        return old.map((doc) => {
-                            if (doc.id !== id) return doc;
-                            const filteredEntries = doc.ledgerEntries?.filter(
-                                (entry) => !ids.includes(entry.id)
-                            ) ?? [];
-                            return { ...doc, ledgerEntries: filteredEntries };
-                        });
+                    (old: PaginatedSourceDocumentsResponse | undefined) => {
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.map((doc) => {
+                                if (doc.id !== id) return doc;
+                                const filteredEntries = doc.ledgerEntries?.filter(
+                                    (entry) => !ids.includes(entry.id)
+                                ) ?? [];
+                                return { ...doc, ledgerEntries: filteredEntries };
+                            }),
+                        };
                     }
                 );
             }
@@ -365,7 +399,16 @@ export function SourceDocumentDetailWrapper({
             if (ledgerId) {
                 queryClient.setQueriesData(
                     { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                    (old: SourceDocumentWithEntries[] | undefined) => old?.filter((doc) => doc.id !== id) ?? []
+                    (old: PaginatedSourceDocumentsResponse | undefined) => {
+                        if (!old || !Array.isArray(old.items)) {
+                            console.warn('[optimistic-update] Unexpected cache data structure:', old);
+                            return old;
+                        }
+                        return {
+                            ...old,
+                            items: old.items.filter((doc) => doc.id !== id),
+                        };
+                    }
                 );
             }
 

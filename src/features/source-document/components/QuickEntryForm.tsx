@@ -15,7 +15,7 @@ import { type EntryCategory } from "@/types/api";
 import { DateFilter } from "@/components/ui/date-filter";
 import { queryKeys } from "@/lib/query-keys";
 import type { InfiniteData } from "@tanstack/react-query";
-import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
+import type { SourceDocumentWithEntries, PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 import type { LedgerEntry } from "@/types/api";
 
 interface QuickEntryFormProps {
@@ -116,14 +116,21 @@ export function QuickEntryForm({ ledgerId, categories, mainCurrency = "CNY", onS
                 }],
             };
 
-            // 1. Snapshot and update source documents list (flat array)
-            const docSnapshots = createListSnapshots<SourceDocumentWithEntries[]>(
+            // 1. Snapshot and update source documents list (paginated response)
+            const docSnapshots = createListSnapshots<PaginatedSourceDocumentsResponse>(
                 queryClient,
                 queryKeys.sourceDocuments(ledgerId, 'all')
             );
-            queryClient.setQueriesData<SourceDocumentWithEntries[]>(
+            queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
                 { queryKey: queryKeys.sourceDocuments(ledgerId, 'all') },
-                (old) => [tempDoc, ...(old || [])]
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: [tempDoc, ...old.items],
+                        total: old.total + 1,
+                    };
+                }
             );
 
             // 2. Snapshot and update ledger entries list (infinite query)

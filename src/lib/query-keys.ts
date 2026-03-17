@@ -109,6 +109,24 @@ export function matchSourceDocuments(ledgerId: string) {
 }
 
 /**
+ * Helper to create a predicate for matching paginated source document queries.
+ * This matches only queries with 'all' filter (PaginatedSourceDocumentsResponse),
+ * not 'pending' or other filters which have different response structures.
+ *
+ * Usage:
+ *   queryClient.setQueriesData({ predicate: matchPaginatedSourceDocuments(ledgerId) }, updater)
+ */
+export function matchPaginatedSourceDocuments(ledgerId: string) {
+    return (query: { queryKey: readonly unknown[] }) => {
+        const key = query.queryKey;
+        return Array.isArray(key) &&
+               key[0] === 'sourceDocuments' &&
+               key[1] === ledgerId &&
+               key[2] === 'all';
+    };
+}
+
+/**
  * Helper to create a predicate for matching all ledger entries queries for a ledger.
  * This matches queries regardless of filters.
  */

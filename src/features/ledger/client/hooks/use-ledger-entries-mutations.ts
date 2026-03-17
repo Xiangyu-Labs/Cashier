@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { matchSourceDocuments } from "@/lib/query-keys";
+import { matchPaginatedSourceDocuments } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
     updateLedgerEntryAction,
@@ -13,9 +13,10 @@ import {
 } from "@/features/source-document/server/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/use-source-documents";
+import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
 // Type alias for query data to avoid inline type assertions
-type SourceDocumentsQueryData = SourceDocumentWithEntries[] | undefined;
+type SourceDocumentsQueryData = PaginatedSourceDocumentsResponse | undefined;
 
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
     const tCommon = useTranslations("Common");
@@ -31,27 +32,35 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
             // Use predicate to match all source document queries (including date-ranged ones)
             const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-                predicate: matchSourceDocuments(ledgerId),
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
-                { predicate: matchSourceDocuments(ledgerId) },
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
                 (old) => {
                     if (!old) return old;
-                    return old.map((doc) => {
-                        const updatedEntries = doc.ledgerEntries?.map((e) => {
-                            if (e.id !== ledgerEntryId) return e;
-                            return {
-                                ...e,
-                                ...data,
-                                amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                                category: data.categoryId
-                                    ? categories.find(c => c.id === data.categoryId) || e.category
-                                    : e.category
-                            };
-                        }) ?? [];
-                        return { ...doc, ledgerEntries: updatedEntries };
-                    }) as SourceDocumentsQueryData;
+                    return {
+                        ...old,
+                        items: old.items.map((doc) => {
+                            const updatedEntries = doc.ledgerEntries?.map((e) => {
+                                if (e.id !== ledgerEntryId) return e;
+                                // Build updated entry preserving all required fields
+                                const updated = {
+                                    ...e,
+                                    itemName: data.itemName ?? e.itemName,
+                                    description: data.description ?? e.description,
+                                    amount: data.amount !== undefined ? String(data.amount) : e.amount,
+                                    currency: data.currency ?? e.currency,
+                                    categoryId: data.categoryId ?? e.categoryId,
+                                    category: data.categoryId
+                                        ? categories.find(c => c.id === data.categoryId) || e.category
+                                        : e.category
+                                };
+                                return updated as typeof e;
+                            }) ?? [];
+                            return { ...doc, ledgerEntries: updatedEntries };
+                        }) as SourceDocumentWithEntries[],
+                    };
                 }
             );
 
@@ -65,19 +74,22 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ledgerEntryId) => {
             const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-                predicate: matchSourceDocuments(ledgerId),
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
-                { predicate: matchSourceDocuments(ledgerId) },
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
                 (old): SourceDocumentsQueryData => {
                     if (!old) return old;
-                    return old.map((doc) => {
-                        const filteredEntries = doc.ledgerEntries?.filter(
-                            (e) => e.id !== ledgerEntryId
-                        ) ?? [];
-                        return { ...doc, ledgerEntries: filteredEntries };
-                    });
+                    return {
+                        ...old,
+                        items: old.items.map((doc) => {
+                            const filteredEntries = doc.ledgerEntries?.filter(
+                                (e) => e.id !== ledgerEntryId
+                            ) ?? [];
+                            return { ...doc, ledgerEntries: filteredEntries };
+                        }),
+                    };
                 }
             );
 
@@ -91,12 +103,19 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         errorMessage: t("deleteFailed"),
         onOptimisticUpdate: (queryClient, id) => {
             const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-                predicate: matchSourceDocuments(ledgerId),
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
-                { predicate: matchSourceDocuments(ledgerId) },
-                (old): SourceDocumentsQueryData => old?.filter(d => d.id !== id)
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
+                (old): SourceDocumentsQueryData => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.filter(d => d.id !== id),
+                        total: old.total - 1,
+                    };
+                }
             );
 
             return { snapshots };
@@ -109,12 +128,19 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         errorMessage: tCommon("deleteFailed"),
         onOptimisticUpdate: (queryClient, ids) => {
             const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-                predicate: matchSourceDocuments(ledgerId),
+                predicate: matchPaginatedSourceDocuments(ledgerId),
             });
 
             queryClient.setQueriesData<SourceDocumentsQueryData>(
-                { predicate: matchSourceDocuments(ledgerId) },
-                (old) => old?.filter(d => !ids.includes(d.id))
+                { predicate: matchPaginatedSourceDocuments(ledgerId) },
+                (old) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        items: old.items.filter(d => !ids.includes(d.id)),
+                        total: old.total - ids.length,
+                    };
+                }
             );
 
             return { snapshots };
