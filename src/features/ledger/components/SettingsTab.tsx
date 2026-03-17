@@ -30,6 +30,13 @@ interface SettingsTabProps {
     allLedgers?: Ledger[];
 }
 
+const SECTION_TITLES = {
+    general: 'general',
+    ledger: 'ledger',
+    aiAssistant: 'aiAssistant',
+    account: 'account',
+} as const;
+
 export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _allLedgers = [] }: SettingsTabProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -79,10 +86,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
     return (
         <PullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-6 sm:space-y-8">
-                {/* Appearance Settings - Collapsible */}
-                <CollapsibleSection title={t('appearance')} defaultOpen={false}>
+                {/* 1. General Settings - Theme, Language, Display preferences */}
+                <CollapsibleSection title={t(SECTION_TITLES.general)} defaultOpen={false}>
                     <div className="space-y-6 pt-4">
-                        {/* Theme Setting */}
+                        {/* Theme Setting - Most fundamental visual preference */}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 className="text-base font-medium">{t('theme')}</h3>
@@ -141,7 +148,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Collapse Entries Setting */}
+                        {/* Collapse Entries Setting - Display preference for ledger */}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 className="text-base font-medium">{t('collapseEntries')}</h3>
@@ -155,14 +162,13 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                                 disabled={isPending}
                             />
                         </div>
-
                     </div>
                 </CollapsibleSection>
 
-                {/* Ledger Settings - Collapsible */}
-                <CollapsibleSection title={t('ledgerSettings')} defaultOpen={false}>
+                {/* 2. Ledger Settings - Core ledger configuration */}
+                <CollapsibleSection title={t(SECTION_TITLES.ledger)} defaultOpen={false}>
                     <div className="space-y-8 pt-4">
-                        {/* Currency Settings */}
+                        {/* Currency Settings - Core financial setting */}
                         <CurrencySection
                             settings={{ ...settingsLedger.metadata?.settings, currencies: settingsLedger.metadata?.settings?.currencies || [] }}
                             onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
@@ -170,7 +176,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Category Settings */}
+                        {/* Category Settings - Organization structure */}
                         {categories && (
                             <CategorySection
                                 categories={categories}
@@ -188,10 +194,13 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                                 }}
                             />
                         )}
+                    </div>
+                </CollapsibleSection>
 
-                        <div className="h-px bg-[var(--border)]" />
-
-                        {/* AI Language Setting */}
+                {/* 3. AI Assistant Settings - AI-related configurations */}
+                <CollapsibleSection title={t(SECTION_TITLES.aiAssistant)} defaultOpen={false}>
+                    <div className="space-y-6 pt-4">
+                        {/* AI Language Setting - Basic AI preference */}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 className="text-base font-medium">{t('aiLanguage')}</h3>
@@ -211,7 +220,7 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* AI Prompt */}
+                        {/* AI Prompt - Advanced AI customization */}
                         <div className="space-y-4">
                             <div>
                                 <h3 className="text-base font-medium">{t('aiPrompt')}</h3>
@@ -234,10 +243,10 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
                     </div>
                 </CollapsibleSection>
 
-                {/* Account & Security Settings - Collapsible */}
-                <CollapsibleSection title={t('accountAndSecurity')} defaultOpen={false}>
+                {/* 4. Account Settings - Security and data management */}
+                <CollapsibleSection title={t(SECTION_TITLES.account)} defaultOpen={false}>
                     <div className="space-y-6 pt-4">
-                        {/* Service Credentials */}
+                        {/* Service Credentials - API access management */}
                         <ServiceCredentialSection
                             credentials={credentials || []}
                             onCreateCredential={(name) => createCredential.mutateAsync(name)}
@@ -246,12 +255,12 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, allLedgers: _
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Export Data Section */}
+                        {/* Export Data Section - Data portability */}
                         <ExportSection ledgerId={ledgerId} />
 
                         <div className="h-px bg-[var(--border)]" />
 
-                        {/* Sign Out */}
+                        {/* Sign Out - Account action */}
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 className="text-base font-medium">{t('signOut')}</h3>

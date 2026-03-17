@@ -279,6 +279,9 @@
     "Settings": {
         "title": "设置",
         "subtitle": "管理您的账本首选项和账户设置",
+        "general": "通用",
+        "ledger": "账本",
+        "aiAssistant": "AI 助手",
         "account": "账户",
         "accountAndSecurity": "账户与安全",
         "appearance": "外观",

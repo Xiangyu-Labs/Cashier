@@ -279,6 +279,9 @@
     "Settings": {
         "title": "Settings",
         "subtitle": "Manage your ledger preferences and account settings",
+        "general": "General",
+        "ledger": "Ledger",
+        "aiAssistant": "AI Assistant",
         "account": "Account",
         "accountAndSecurity": "Account & Security",
         "appearance": "Appearance",
