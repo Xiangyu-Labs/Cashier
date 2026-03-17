@@ -124,7 +124,7 @@ export function LedgerPageClient({
     pathname,
   });
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const { periodParams, filterParams, handlePeriodChange, handleFiltersChange } = usePeriodFilter({
     pathname,
     searchParams,
@@ -184,11 +184,11 @@ export function LedgerPageClient({
 
   // 预加载记一笔弹窗数据（当弹窗关闭时）
   useEffect(() => {
-    if (!isInputOpen && ledgerId) {
+    if (isInputOpen === false && ledgerId !== "") {
       const timer = setTimeout(() => {
         // 预加载 ledger 数据（SourceDocumentInput 需要）
         const cached = queryClient.getQueryData(queryKeys.ledger(ledgerId));
-        if (!cached) {
+        if (cached === undefined) {
           queryClient.prefetchQuery({
             queryKey: queryKeys.ledger(ledgerId),
             queryFn: () => getLedgerAction(ledgerId),
@@ -255,7 +255,7 @@ export function LedgerPageClient({
             <Suspense fallback={<EntriesTabSkeleton />}>
               <LedgerEntriesTab
                 ledgerId={ledgerId}
-                categories={categories || []}
+                categories={categories.length > 0 ? categories : []}
                 ledger={ledger}
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
@@ -269,7 +269,7 @@ export function LedgerPageClient({
             <Suspense fallback={<DetailsTabSkeleton />}>
               <DetailsTab
                 ledgerId={ledgerId}
-                categories={categories || []}
+                categories={categories.length > 0 ? categories : []}
                 ledger={ledger}
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
