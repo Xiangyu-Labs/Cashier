@@ -16,7 +16,7 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
 
   const handleSignIn = () => {
     setIsRedirecting(true);
-    signIn("oidc", { callbackUrl });
+    void signIn("oidc", { callbackUrl });
   };
 
   const envButtonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
