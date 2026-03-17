@@ -146,7 +146,7 @@ export function useLedgerSettings({
       return { snapshots };
     },
     onSettledExtra: (qc) => {
-      qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) });
     },
   });
 
