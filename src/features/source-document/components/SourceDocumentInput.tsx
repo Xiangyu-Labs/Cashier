@@ -64,7 +64,8 @@ export function SourceDocumentInput({
   // Only set initial data once per document, not when initialData changes
   // This prevents user's editing from being reset when background task status changes
   useEffect(() => {
-    if (initialData != null && !hasInitializedRef.current) {
+    const hasInitialData = initialData !== undefined && initialData !== null;
+    if (hasInitialData && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
       startTransition(() => {
         setText(initialData.text ?? "");
@@ -119,7 +120,7 @@ export function SourceDocumentInput({
     },
     onError: (_err, _vars, context) => {
       // Rollback on error
-      if (context?.previousLedger) {
+      if (context !== undefined && context.previousLedger !== undefined) {
         queryClient.setQueryData(queryKeys.ledger(ledgerId), context.previousLedger);
       }
     },
@@ -151,19 +152,19 @@ export function SourceDocumentInput({
 
       return { previousPending, previousText, previousImages };
     },
-    onError: (_err, _newData, context) => {
+    onError: (_err, _newData, context: { previousPending?: unknown; previousText?: string; previousImages?: { data: string; mimeType: string }[] } | undefined) => {
       // Rollback: restore the pending documents cache
-      if (context?.previousPending !== undefined) {
+      if (context !== undefined && context.previousPending !== undefined) {
         queryClient.setQueryData(
           queryKeys.sourceDocuments(ledgerId, "pending"),
           context.previousPending
         );
       }
       // Restore the input values so user doesn't lose their data
-      if (context?.previousText !== undefined) {
+      if (context !== undefined && context.previousText !== undefined) {
         setText(context.previousText);
       }
-      if (context?.previousImages !== undefined) {
+      if (context !== undefined && context.previousImages !== undefined) {
         setImages(context.previousImages);
       }
       toast.error(t("uploadError"));
@@ -189,20 +190,21 @@ export function SourceDocumentInput({
       await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
 
       // Snapshot previous data
-      const previousDocument = sourceDocumentId
+      const previousDocument = sourceDocumentId !== undefined
         ? queryClient.getQueryData(queryKeys.sourceDocument(sourceDocumentId))
         : undefined;
 
       // Optimistically update document status to "processing"
-      if (sourceDocumentId) {
+      if (sourceDocumentId !== undefined) {
         queryClient.setQueryData(
           queryKeys.sourceDocument(sourceDocumentId),
           (old: SourceDocument | undefined) => {
             if (!old) return old;
+            const textValue = data.text;
             return {
               ...old,
               status: "processing",
-              ...(data.text && { text: data.text }),
+              ...(textValue !== undefined && textValue !== null && textValue !== "" ? { text: textValue } : {}),
             };
           }
         );
@@ -214,9 +216,9 @@ export function SourceDocumentInput({
       // Dialog already closed optimistically, just show success toast
       toast.success(t("retrySuccess"));
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, _vars, context: { previousDocument?: unknown } | undefined) => {
       // Rollback on error
-      if (context?.previousDocument && sourceDocumentId) {
+      if (context !== undefined && context.previousDocument !== undefined && sourceDocumentId !== undefined) {
         queryClient.setQueryData(
           queryKeys.sourceDocument(sourceDocumentId),
           context.previousDocument
@@ -233,8 +235,11 @@ export function SourceDocumentInput({
 
   const handleSend = () => {
     if (text === "" && images.length === 0) return;
+    const textValue = text;
+    const hasText = textValue.length > 0;
+    const textPayload: string | undefined = hasText ? textValue : undefined;
     const payload = {
-      text: text || undefined,
+      text: textPayload,
       images: images.length > 0 ? images : undefined,
       entryDate: formatDateTimeForApi(new Date()),
     };
