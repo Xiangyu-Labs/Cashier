@@ -80,7 +80,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     displayData.amount,
     displayData.currency,
     mainCurrency,
-    entryDate || ledgerEntry.createdAt
+    entryDate != null && entryDate !== "" ? entryDate : ledgerEntry.createdAt
   );
 
   const isDifferentCurrency = Boolean(

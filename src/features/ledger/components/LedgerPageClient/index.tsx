@@ -152,22 +152,22 @@ export function LedgerPageClient({
       const params = new URLSearchParams(searchParams.toString());
 
       if (filters.categoryId !== undefined) {
-        if (filters.categoryId != null && filters.categoryId !== "") params.set("categoryId", filters.categoryId);
+        if (filters.categoryId !== null && filters.categoryId !== "") params.set("categoryId", filters.categoryId);
         else params.delete("categoryId");
       }
 
       if (filters.currency !== undefined) {
-        if (filters.currency != null && filters.currency !== "") params.set("currency", filters.currency);
+        if (filters.currency !== null && filters.currency !== "") params.set("currency", filters.currency);
         else params.delete("currency");
       }
 
       if (filters.minAmount !== undefined) {
-        if (filters.minAmount !== null) params.set("minAmount", String(filters.minAmount));
+        if (typeof filters.minAmount === "number") params.set("minAmount", String(filters.minAmount));
         else params.delete("minAmount");
       }
 
       if (filters.maxAmount !== undefined) {
-        if (filters.maxAmount !== null) params.set("maxAmount", String(filters.maxAmount));
+        if (typeof filters.maxAmount === "number") params.set("maxAmount", String(filters.maxAmount));
         else params.delete("maxAmount");
       }
 

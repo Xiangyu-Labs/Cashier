@@ -103,7 +103,7 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
           <div className="text-xs text-primary animate-pulse">{t("generating")}</div>
         ) : (
           <EditableField
-            value={category.description || ""}
+            value={category.description ?? ""}
             onChange={(description) => onUpdateCategory(category.id, { description })}
             placeholder={t("categoryDescription")}
             disabled={!isEditable}

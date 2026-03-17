@@ -190,7 +190,7 @@ export function ServiceCredentialSection({
 
       {/* Delete Confirmation Dialog */}
       <Dialog
-        open={!!credentialToDelete}
+        open={credentialToDelete != null}
         onOpenChange={(open) => !open && setCredentialToDelete(null)}
       >
         <DialogContent>
@@ -205,7 +205,7 @@ export function ServiceCredentialSection({
             <Button
               variant="destructive"
               onClick={() => {
-                if (credentialToDelete) {
+                if (credentialToDelete != null) {
                   onDeleteCredential(credentialToDelete);
                   setCredentialToDelete(null);
                 }

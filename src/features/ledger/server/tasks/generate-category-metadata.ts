@@ -41,9 +41,9 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     input: GenerateCategoryMetadataInput,
     context: FlowContext
   ): Promise<GenerateCategoryMetadataOutput> {
-    if (!input.ledgerId) throw new Error("Missing ledgerId in task input");
-    if (!input.categoryId) throw new Error("Missing categoryId");
-    if (!input.categoryName) throw new Error("Missing categoryName");
+    if (input.ledgerId == null || input.ledgerId === "") throw new Error("Missing ledgerId in task input");
+    if (input.categoryId == null || input.categoryId === "") throw new Error("Missing categoryId");
+    if (input.categoryName == null || input.categoryName === "") throw new Error("Missing categoryName");
 
     const prompt = buildCategoryMetadataPrompt(
       input.categoryName,
@@ -89,8 +89,8 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     input: GenerateCategoryMetadataInput,
     _context: FlowContext
   ): Promise<void> {
-    if (!output.success) return;
-    if (!input.ledgerId) return;
+    if (output.success !== true) return;
+    if (input.ledgerId == null || input.ledgerId === "") return;
 
     const q = forLedger(entryCategories, input.ledgerId);
 
@@ -123,7 +123,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     );
 
     // Set default values to prevent UI from showing "generating" forever
-    if (input.ledgerId && input.categoryId) {
+    if (input.ledgerId != null && input.ledgerId !== "" && input.categoryId != null && input.categoryId !== "") {
       const q = forLedger(entryCategories, input.ledgerId);
       await db
         .update(entryCategories)
