@@ -51,16 +51,15 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
 
     // Use standard query for settings data - it only needs to refresh
     // when categories change (which triggers its own invalidation via onSettledExtra)
-    const { data: settingsData } = useQuery<{
+    // Note: This query is prefetched in SSR, so initialData is not needed
+    const { data: settingsData, isLoading: isSettingsLoading } = useQuery<{
         uncategorizedCount: number;
         credentials: ServiceCredential[];
     }>({
         queryKey: queryKeys.ledgerSettings(ledgerId),
         queryFn: () => getLedgerSettingsAction(ledgerId),
-        initialData: {
-            uncategorizedCount: 0,
-            credentials: [],
-        },
+        // No initialData - let SSR prefetch or show loading state
+        // This prevents showing empty array when data exists but hasn't loaded yet
     });
 
     const uncategorizedCount = settingsData?.uncategorizedCount || 0;
@@ -147,5 +146,6 @@ export function useLedgerSettings({ ledgerId, ledger: initialLedger, initialCate
         credentials,
         updateLedgerMutation,
         isPending: updateLedgerMutation.isPending,
+        isSettingsLoading,
     };
 }

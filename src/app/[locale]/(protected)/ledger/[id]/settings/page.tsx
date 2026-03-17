@@ -1,6 +1,7 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
 import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
 import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
@@ -30,6 +31,13 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     const categories = await queryClient.fetchQuery({
         queryKey: queryKeys.entryCategories(ledgerId),
         queryFn: () => getEntryCategoriesAction(ledgerId),
+        staleTime: STALE_TIME,
+    });
+
+    // Prefetch ledger settings (credentials and uncategorized count)
+    await queryClient.prefetchQuery({
+        queryKey: queryKeys.ledgerSettings(ledgerId),
+        queryFn: () => getLedgerSettingsAction(ledgerId),
         staleTime: STALE_TIME,
     });
 

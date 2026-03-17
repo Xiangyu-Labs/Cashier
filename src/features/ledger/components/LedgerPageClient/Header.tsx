@@ -7,7 +7,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, AlertCircle, Clock, ListTodo } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Clock, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Ledger } from "@/types/api";
 
@@ -65,7 +65,7 @@ export function Header({ ledger: _ledger, pendingStats, onOpenTaskQueue, onOpenI
                 )}
               </>
             ) : (
-              <ListTodo className="h-4 w-4 text-muted-foreground" />
+              <Timer className="h-4 w-4 text-muted-foreground" />
             )}
           </Button>
         </div>

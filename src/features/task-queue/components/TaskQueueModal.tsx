@@ -6,7 +6,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { ListTodo } from "lucide-react";
+import { Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTaskQueueModal } from "../client/hooks/use-task-queue-modal";
 import { TaskQueueContent } from "./TaskQueueContent";
@@ -84,7 +84,7 @@ export function TaskQueueModal({
                 <DialogContent className="sm:max-w-md top-[10%] sm:top-[15%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl max-h-[75vh] flex flex-col" aria-describedby={undefined}>
                     <DialogHeader className="pb-2 border-b border-border shrink-0">
                         <DialogTitle className="flex items-center gap-2">
-                            <ListTodo className="h-5 w-5" />
+                            <Timer className="h-5 w-5" />
                             {t("title")}
                             {stats.total > 0 && (
                                 <span className="text-xs font-normal text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded">
