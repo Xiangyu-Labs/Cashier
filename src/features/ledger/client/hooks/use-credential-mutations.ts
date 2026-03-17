@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
@@ -9,12 +10,22 @@ import {
 } from "@/features/ledger/server/actions/credentials";
 import type { ServiceCredential } from "@/types/api";
 
+interface CreateCredentialContext {
+    prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
+    tempId: string;
+}
+
+interface DeleteCredentialContext {
+    prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
+}
+
 export function useCredentialMutations(ledgerId: string) {
     const t = useTranslations("Settings");
+    const queryClient = useQueryClient();
     // Use the same queryKey as useLedgerSettings to ensure optimistic updates are reflected immediately
     const queryKey = queryKeys.ledgerSettings(ledgerId);
 
-    const createCredential = useLedgerMutation<ServiceCredential, string>(ledgerId, {
+    const createCredential = useLedgerMutation<ServiceCredential, string, CreateCredentialContext>(ledgerId, {
         mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
         successMessage: t("credentialCreated"),
         errorMessage: t("createFailed"),
@@ -45,7 +56,7 @@ export function useCredentialMutations(ledgerId: string) {
                 queryClient.setQueryData(queryKey, {
                     ...currentData,
                     credentials: currentData.credentials.map((c) =>
-                        c.id === (context as { tempId: string } | undefined)?.tempId ? data : c
+                        c.id === context?.tempId ? data : c
                     ),
                 });
             }
@@ -58,7 +69,7 @@ export function useCredentialMutations(ledgerId: string) {
         },
     });
 
-    const deleteCredential = useLedgerMutation<void, string>(ledgerId, {
+    const deleteCredential = useLedgerMutation<void, string, DeleteCredentialContext>(ledgerId, {
         mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),
         successMessage: t("credentialDeleted"),
         errorMessage: t("deleteFailed"),
