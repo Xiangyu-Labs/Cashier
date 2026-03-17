@@ -106,7 +106,7 @@ export const PendingSourceDocumentCard = memo(function PendingSourceDocumentCard
           <ProcessingStatus
             status={status === "anomaly" || status === "failed" ? "error" : status}
             label={
-              status === "anomaly" && displayReason ? displayReason : undefined // fallback to default label
+              status === "anomaly" && displayReason != null && displayReason !== "" ? displayReason : undefined // fallback to default label
             }
             className="scale-90"
           />
@@ -174,7 +174,7 @@ export const PendingSourceDocumentCard = memo(function PendingSourceDocumentCard
               )}
 
               {/* Text */}
-              {text && (
+              {text != null && text !== "" && (
                 <div className="text-xs text-muted-foreground bg-surface2/50 p-2 rounded text-ellipsis overflow-hidden whitespace-pre-wrap max-h-20 line-clamp-3">
                   {text}
                 </div>
