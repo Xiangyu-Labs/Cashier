@@ -68,7 +68,6 @@ export function groupSourceDocumentsByStatus<T extends { status: string; ledgerE
                 groups.queued.push(group);
                 break;
             case "processing":
-            case "parsing":
                 groups.processing.push(group);
                 break;
             case "anomaly":

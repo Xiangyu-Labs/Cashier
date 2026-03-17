@@ -11,7 +11,6 @@ import { type InferSelectModel } from "drizzle-orm";
 export const SourceDocumentStatus = {
     Queued: "queued",
     Processing: "processing",
-    Parsing: "parsing",
     Completed: "completed",
     Anomaly: "anomaly",
     Failed: "failed",

@@ -109,8 +109,7 @@ export function useSourceDocuments(
             if (!data) return false;
             return data.items.some(doc =>
                 doc.status === 'queued' ||
-                doc.status === 'processing' ||
-                doc.status === 'parsing'
+                doc.status === 'processing'
             );
         },
         interval: 3000,

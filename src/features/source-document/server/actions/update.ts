@@ -9,7 +9,7 @@ import { ValidationError } from "@/lib/errors";
 import { SourceDocumentStatusType } from "@/features/source-document/server/schema";
 
 const VALID_STATUSES: SourceDocumentStatusType[] = [
-    'queued', 'processing', 'parsing', 'completed', 'anomaly', 'failed'
+    'queued', 'processing', 'completed', 'anomaly', 'failed'
 ];
 
 /**
