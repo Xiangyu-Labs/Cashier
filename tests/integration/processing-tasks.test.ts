@@ -72,7 +72,7 @@ describe("Task status query", () => {
     const taskIds = activeTasks.map((t) => t.id);
     expect(taskIds).toContain(`task-running-${counter}`);
     expect(taskIds).toContain(`task-pending-${counter}`);
-    expect(taskIds).not.toContain(`task-completed-${counter}`);
+    expect(taskIds.includes(`task-completed-${counter}`)).toBe(false);
   });
 
   it("should use 'pending' status not 'queued' for task_runs", async () => {
@@ -89,5 +89,8 @@ describe("Task status query", () => {
 
 // Helper for combining conditions
 function and(...conditions: (ReturnType<typeof eq> | ReturnType<typeof inArray>)[]) {
-  return conditions.reduce((acc, condition) => acc && condition);
+  return conditions.reduce((acc, condition) => {
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    return acc && condition;
+  }, true as unknown as ReturnType<typeof eq>);
 }

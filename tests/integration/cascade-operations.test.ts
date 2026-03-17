@@ -78,7 +78,7 @@ async function createTestEntry(
 ) {
   // If no sourceDocumentId provided, create a source document
   let sourceDocumentId = opts.sourceDocumentId;
-  if (!sourceDocumentId) {
+  if (sourceDocumentId == null) {
     const sourceDoc = await createTestSourceDocument(db, ledgerId);
     sourceDocumentId = sourceDoc.id;
   }

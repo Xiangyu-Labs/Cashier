@@ -100,7 +100,7 @@ describe("Stage 2 Executor", () => {
       const mockAI: AIContext = {
         generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
           callCount++;
-          const prompt = opts.prompt || "";
+          const prompt = opts.prompt ?? "";
 
           // First two calls are dual GPT parsing
           if (callCount === 1) {
@@ -140,7 +140,7 @@ describe("Stage 2 Executor", () => {
             };
           }
           // Third call is arbitration
-          if (prompt.includes("arbitration")) {
+          if (prompt.includes("arbitration") ?? false) {
             return {
               content: JSON.stringify({ choice: 1, reason: "First is correct" }),
               usage: { promptTokens: 100, completionTokens: 50 },
@@ -161,7 +161,7 @@ describe("Stage 2 Executor", () => {
       const mockAI: AIContext = {
         generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
           callCount++;
-          const prompt = opts.prompt || "";
+          const prompt = opts.prompt ?? "";
 
           if (callCount === 1) {
             return {
@@ -199,7 +199,7 @@ describe("Stage 2 Executor", () => {
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("arbitration")) {
+          if (prompt.includes("arbitration") ?? false) {
             return {
               content: JSON.stringify({ choice: 0, reason: "Both wrong" }),
               usage: { promptTokens: 100, completionTokens: 50 },

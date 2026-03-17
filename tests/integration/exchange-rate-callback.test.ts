@@ -71,7 +71,7 @@ describe("Exchange rate callback behavior", () => {
     expect(allLedgers.map((l) => l.id)).not.toContain(deletedLedgerId);
 
     // Verify mainCurrency extraction
-    const currencies = allLedgers.map((l) => l.metadata?.settings?.mainCurrency || "CNY");
+    const currencies = allLedgers.map((l) => l.metadata?.settings?.mainCurrency ?? "CNY");
     expect(currencies).toContain("USD");
     expect(currencies).toContain("EUR");
   });
@@ -93,7 +93,7 @@ describe("Exchange rate callback behavior", () => {
       where: eq(ledgers.id, ledgerId),
     });
 
-    const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+    const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
     // Assert
     expect(mainCurrency).toBe("CNY");

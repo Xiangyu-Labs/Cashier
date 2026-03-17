@@ -19,13 +19,13 @@ vi.mock("next-intl", () => ({
       weekDays: ["日", "一", "二", "三", "四", "五", "六"],
     };
     const t = (key: string) => {
-      const fullKey = ns ? `${ns}.${key}` : key;
-      const value = translations[key] || translations[fullKey] || key;
+      const fullKey = ns != null ? `${ns}.${key}` : key;
+      const value = translations[key] ?? translations[fullKey] ?? key;
       return Array.isArray(value) ? value : value;
     };
     t.raw = (key: string) => {
-      const fullKey = ns ? `${ns}.${key}` : key;
-      return translations[key] || translations[fullKey] || key;
+      const fullKey = ns != null ? `${ns}.${key}` : key;
+      return translations[key] ?? translations[fullKey] ?? key;
     };
     return t;
   },

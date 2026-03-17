@@ -17,7 +17,7 @@ async function createTestUser(email?: string) {
     .insert(users)
     .values({
       id,
-      email: email || `test-${id}@example.com`,
+      email: email ?? `test-${id}@example.com`,
       name: "Test User",
       emailVerified: new Date(),
     })

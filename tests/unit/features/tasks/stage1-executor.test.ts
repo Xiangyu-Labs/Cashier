@@ -10,7 +10,7 @@ function createMockAI(responses: string[]): AIContext {
   let callIndex = 0;
   return {
     generate: vi.fn(async (_options: AIGenerateOptions): Promise<AIResponse> => {
-      const content = responses[callIndex] || '{"error": "no more responses"}';
+      const content = responses[callIndex] ?? '{"error": "no more responses"}';
       callIndex++;
       return { content, usage: { promptTokens: 100, completionTokens: 50 } };
     }),
@@ -113,21 +113,21 @@ describe("Stage 1 Executor", () => {
       let currencyCallCount = 0;
       const mockAI: AIContext = {
         generate: vi.fn(async (options: AIGenerateOptions): Promise<AIResponse> => {
-          const prompt = options.prompt || "";
+          const prompt = options.prompt ?? "";
 
-          if (prompt.includes("financial document validation")) {
+          if (prompt.includes("financial document validation") ?? false) {
             return {
               content: '{"is_valid": true, "reasoning": "valid"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("completeness checker")) {
+          if (prompt.includes("completeness checker") ?? false) {
             return {
               content: '{"is_complete": true}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("currency recognition")) {
+          if (prompt.includes("currency recognition") ?? false) {
             currencyCallCount++;
             if (currencyCallCount === 1) {
               return {
@@ -141,19 +141,19 @@ describe("Stage 1 Executor", () => {
               };
             }
           }
-          if (prompt.includes("arbitration")) {
+          if (prompt.includes("arbitration") ?? false) {
             return {
               content: '{"choice": 1, "reason": "CNY is correct"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("category recognition")) {
+          if (prompt.includes("category recognition") ?? false) {
             return {
               content: '{"categories": ["餐饮"], "reasoning": "food"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("title extraction")) {
+          if (prompt.includes("title extraction") ?? false) {
             return {
               content: '{"title": "午餐"}',
               usage: { promptTokens: 100, completionTokens: 50 },
@@ -175,21 +175,21 @@ describe("Stage 1 Executor", () => {
       let currencyCallCount = 0;
       const mockAI: AIContext = {
         generate: vi.fn(async (options: AIGenerateOptions): Promise<AIResponse> => {
-          const prompt = options.prompt || "";
+          const prompt = options.prompt ?? "";
 
-          if (prompt.includes("financial document validation")) {
+          if (prompt.includes("financial document validation") ?? false) {
             return {
               content: '{"is_valid": true, "reasoning": "valid"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("completeness checker")) {
+          if (prompt.includes("completeness checker") ?? false) {
             return {
               content: '{"is_complete": true}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("currency recognition")) {
+          if (prompt.includes("currency recognition") ?? false) {
             currencyCallCount++;
             if (currencyCallCount === 1) {
               return {
@@ -203,19 +203,19 @@ describe("Stage 1 Executor", () => {
               };
             }
           }
-          if (prompt.includes("arbitration")) {
+          if (prompt.includes("arbitration") ?? false) {
             return {
               content: '{"choice": 0, "reason": "Both are wrong"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("category recognition")) {
+          if (prompt.includes("category recognition") ?? false) {
             return {
               content: '{"categories": ["餐饮"], "reasoning": "r"}',
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (prompt.includes("title extraction")) {
+          if (prompt.includes("title extraction") ?? false) {
             return {
               content: '{"title": "午餐"}',
               usage: { promptTokens: 100, completionTokens: 50 },

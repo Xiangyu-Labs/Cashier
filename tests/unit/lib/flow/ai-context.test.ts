@@ -91,7 +91,7 @@ describe("createAIContext", () => {
     ).rejects.toThrow("AI_MODEL_TEXT environment variable is required");
 
     // Restore original value
-    if (originalTextModel) {
+    if (originalTextModel != null) {
       process.env.AI_MODEL_TEXT = originalTextModel;
     }
   });
@@ -112,7 +112,7 @@ describe("createAIContext", () => {
     ).rejects.toThrow("AI_MODEL_VISION environment variable is required");
 
     // Restore original value
-    if (originalVisionModel) {
+    if (originalVisionModel != null) {
       process.env.AI_MODEL_VISION = originalVisionModel;
     }
   });

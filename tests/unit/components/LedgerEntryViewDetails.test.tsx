@@ -40,7 +40,7 @@ vi.mock("@/components/ui/date-filter", () => ({
             ? value.toISOString().split("T")[0]
             : ""
       }
-      onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+      onChange={(e) => onChange(e.target.value !== "" ? new Date(e.target.value) : null)}
     />
   ),
 }));
@@ -85,7 +85,7 @@ vi.mock("@/components/ui/editable-category-select", () => ({
     onChange: (v: string) => void;
   }) => (
     <button data-testid="editable-category" onClick={() => onChange("c2")}>
-      {value || "Select"}
+      {value ?? "Select"}
     </button>
   ),
 }));

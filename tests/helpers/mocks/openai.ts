@@ -76,10 +76,9 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
 
           // Stage 1.5: Validation (reviews Stage 1 results)
           // MUST check FIRST - prompt contains "validation ai that reviews"
-          if (
-            (prompt.includes("validation") && prompt.includes("reviews")) ||
-            prompt.includes("veto power")
-          ) {
+          const isValidationReview = prompt.includes("validation") && prompt.includes("reviews");
+          const isVetoPower = prompt.includes("veto power");
+          if (isValidationReview || isVetoPower) {
             return Promise.resolve({
               content: JSON.stringify({
                 is_reasonable: true,
@@ -102,18 +101,17 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
 
           // Stage 2: Detailed Parse - detect BEFORE Stage 1.3/1.4 as it contains their keywords
           // Unique keywords: "detailed financial document parser" or "ledger entries" or "pre-analysis context"
-          if (
-            prompt.includes("detailed financial document parser") ||
-            prompt.includes("ledger_entries") ||
-            prompt.includes("pre-analysis context")
-          ) {
+          const isDetailedParser = prompt.includes("detailed financial document parser");
+          const hasLedgerEntries = prompt.includes("ledger_entries");
+          const hasPreAnalysisContext = prompt.includes("pre-analysis context");
+          if (isDetailedParser || hasLedgerEntries || hasPreAnalysisContext) {
             const currentDate = new Date().toISOString().split("T")[0];
             return Promise.resolve({
               content: JSON.stringify({
                 ledger_entries: opts.entries.map((e, index) => ({
                   item_name: e.item_name,
                   amount: e.amount,
-                  currency: e.currency || opts.currencies[0] || "CNY",
+                  currency: e.currency ?? opts.currencies[0] ?? "CNY",
                   category_index: e.category_index ?? index + 1,
                   entry_date: e.entry_date === undefined ? currentDate : e.entry_date,
                   notes: e.notes ?? null,
@@ -125,7 +123,9 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.1: Validity Check
-          if (prompt.includes("validity") || prompt.includes("valid financial")) {
+          const hasValidity = prompt.includes("validity");
+          const hasValidFinancial = prompt.includes("valid financial");
+          if (hasValidity || hasValidFinancial) {
             return Promise.resolve({
               content: JSON.stringify({
                 is_valid: opts.isValid,
@@ -138,11 +138,13 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.2: Completeness Check
-          if (prompt.includes("complete") || prompt.includes("missing content")) {
+          const hasComplete = prompt.includes("complete");
+          const hasMissingContent = prompt.includes("missing content");
+          if (hasComplete || hasMissingContent) {
             return Promise.resolve({
               content: JSON.stringify({
                 is_complete: opts.isComplete ?? true,
-                ...(opts.incompleteReason && !opts.isComplete
+                ...(opts.incompleteReason != null && opts.isComplete === false
                   ? { issue: opts.incompleteReason }
                   : {}),
               }),
@@ -151,7 +153,9 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.3: Currency Recognition
-          if (prompt.includes("currency") || prompt.includes("currencies")) {
+          const hasCurrency = prompt.includes("currency");
+          const hasCurrencies = prompt.includes("currencies");
+          if (hasCurrency || hasCurrencies) {
             return Promise.resolve({
               content: JSON.stringify({
                 currencies: opts.currencies,
@@ -162,7 +166,9 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.4: Category Recognition
-          if (prompt.includes("category") || prompt.includes("categories")) {
+          const hasCategory = prompt.includes("category");
+          const hasCategories = prompt.includes("categories");
+          if (hasCategory || hasCategories) {
             return Promise.resolve({
               content: JSON.stringify({
                 categories: opts.categories,
@@ -173,7 +179,9 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.5: Title Extraction
-          if (prompt.includes("title") || prompt.includes("concise summary")) {
+          const hasTitle = prompt.includes("title");
+          const hasConciseSummary = prompt.includes("concise summary");
+          if (hasTitle || hasConciseSummary) {
             return Promise.resolve({
               content: JSON.stringify({
                 title: opts.title,
@@ -183,17 +191,21 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 1.6: User Requirements
-          if (prompt.includes("user requirement") || prompt.includes("custom prompt")) {
+          const hasUserRequirement = prompt.includes("user requirement");
+          const hasCustomPrompt = prompt.includes("custom prompt");
+          if (hasUserRequirement || hasCustomPrompt) {
             return Promise.resolve({
               content: JSON.stringify({
-                rules: opts.rules || [],
+                rules: opts.rules ?? [],
               }),
               usage: { promptTokens: 100, completionTokens: 50 },
             });
           }
 
           // Arbitration
-          if (prompt.includes("arbitration") || prompt.includes("gpt 1 result")) {
+          const hasArbitration = prompt.includes("arbitration");
+          const hasGpt1Result = prompt.includes("gpt 1 result");
+          if (hasArbitration || hasGpt1Result) {
             return Promise.resolve({
               content: JSON.stringify({
                 choice: 1,
@@ -210,7 +222,7 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
               ledger_entries: opts.entries.map((e, index) => ({
                 item_name: e.item_name,
                 amount: e.amount,
-                currency: e.currency || opts.currencies[0] || "CNY",
+                currency: e.currency ?? opts.currencies[0] ?? "CNY",
                 category_index: e.category_index ?? index + 1,
                 entry_date: e.entry_date === undefined ? currentDate : e.entry_date,
                 notes: e.notes ?? null,

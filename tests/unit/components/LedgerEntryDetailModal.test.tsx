@@ -62,7 +62,7 @@ vi.mock("@/features/ledger/components/LedgerEntryViewDetails", () => ({
     onDiscard: () => void;
     onDelete: () => void;
   }) => {
-    const hasPendingChanges = Object.keys(pendingChanges || {}).length > 0;
+    const hasPendingChanges = Object.keys(pendingChanges ?? {}).length > 0;
     return (
       <div>
         {hasPendingChanges ? (

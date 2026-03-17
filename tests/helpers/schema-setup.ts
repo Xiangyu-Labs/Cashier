@@ -31,14 +31,14 @@ export async function createTestUser(
   id = TEST_USER_ID
 ): Promise<string> {
   // 使用随机email避免唯一约束冲突
-  const finalEmail = email || `test-${crypto.randomUUID()}@example.com`;
+  const finalEmail = email ?? `test-${crypto.randomUUID()}@example.com`;
 
   const existing = await db
     .select()
     .from(schema.users)
     .where(sql`${schema.users.id} = ${id}`)
     .limit(1);
-  if (existing.length > 0) {
+  if (existing.length !== 0) {
     // SQLite doesn't support ON CONFLICT DO UPDATE nicely with returning in all cases for simple execute
     // Just update if exists
     await db
@@ -66,7 +66,7 @@ export async function createTestUserWithLedger(
 ): Promise<{ userId: string; ledgerId: string }> {
   // Generate unique userId if not provided to avoid unique constraint violations
   // 使用随机email避免唯一约束冲突
-  const finalUserId = await createTestUser(db, email, userId || crypto.randomUUID());
+  const finalUserId = await createTestUser(db, email, userId ?? crypto.randomUUID());
 
   const ledgerId = crypto.randomUUID();
   await db.insert(schema.ledgers).values({
@@ -92,9 +92,9 @@ export async function createTestSourceDocument(
     .insert(schema.sourceDocuments)
     .values({
       ledgerId,
-      text: overrides.text || "Test document",
-      status: overrides.status || "completed",
-      imageUrls: overrides.imageUrls || [],
+      text: overrides.text ?? "Test document",
+      status: overrides.status ?? "completed",
+      imageUrls: overrides.imageUrls ?? [],
     })
     .returning();
 

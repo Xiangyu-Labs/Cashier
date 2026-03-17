@@ -11,8 +11,8 @@ import { createTestSchema } from "./helpers/schema-setup";
 import { memoryStore } from "@/lib/memory-store";
 
 // Set required AI model environment variables for tests
-process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT || "test-text-model";
-process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION || "test-vision-model";
+process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
+process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
 
 // Map to store database instances per test file
 const dbInstances = new Map<
@@ -25,14 +25,14 @@ const dbInstances = new Map<
 
 // Get current test file path from Vitest state
 function getCurrentTestFile(): string {
-  return expect.getState().testPath || "unknown";
+  return expect.getState().testPath ?? "unknown";
 }
 
 // Get database instance for current test file
 export function getTestDb() {
   const testPath = getCurrentTestFile();
   const instance = dbInstances.get(testPath);
-  if (!instance) {
+  if (instance == null) {
     throw new Error(
       `No database instance found for test file: ${testPath}. Make sure beforeAll ran.`
     );
@@ -44,14 +44,14 @@ export function getTestDb() {
 function getTestClient(): Database.Database {
   const testPath = getCurrentTestFile();
   const instance = dbInstances.get(testPath);
-  if (!instance) {
+  if (instance == null) {
     throw new Error(`No database instance found for test file: ${testPath}`);
   }
   return instance.client;
 }
 
 beforeAll(async () => {
-  if (process.env.NO_DB) return;
+  if (process.env.NO_DB != null) return;
 
   const testPath = getCurrentTestFile();
 
@@ -119,7 +119,7 @@ beforeEach(async () => {
     });
   } catch (e) {
     // User already exists, which is the expected case
-    console.log("[Test Setup] Test user already exists or other error:", e);
+    console.log("[Test Setup] Test user already exists or other error:", e as Error);
   }
 });
 
@@ -147,7 +147,7 @@ vi.mock("@/auth", () => ({
     if (args.length === 1 && typeof args[0] === "function") {
       const handler = args[0] as (req: unknown, ctx: unknown) => unknown;
       return async (req: { auth?: unknown }, ctx: unknown) => {
-        req.auth = req.auth || {
+        req.auth = req.auth ?? {
           user: {
             id: "00000000-0000-0000-0000-000000000000",
             email: "test@example.com",
@@ -171,24 +171,24 @@ import type * as ReactModule from "react";
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof ReactModule;
-  const messages = await import("../messages/zh.json").then((m) => m.default || m);
+  const messages = await import("../messages/zh.json").then((m) => m.default ?? m);
 
   return {
     useTranslations: (namespace?: string) => {
-      const nsMessages = namespace ? messages[namespace] : messages;
+      const nsMessages = namespace != null ? messages[namespace] : messages;
       return (key: string, values?: Record<string, unknown>) => {
         let msg = nsMessages?.[key];
-        if (!msg) {
+        if (msg == null) {
           for (const ns in messages) {
-            if (messages[ns] && typeof messages[ns] === "object" && messages[ns][key]) {
+            if (messages[ns] != null && typeof messages[ns] === "object" && messages[ns][key] != null) {
               msg = messages[ns][key];
               break;
             }
           }
         }
-        if (!msg) return key;
+        if (msg == null) return key;
         let translated = msg;
-        if (values && typeof translated === "string") {
+        if (values != null && typeof translated === "string") {
           Object.keys(values).forEach((k) => {
             translated = translated.replace(`{${k}}`, String(values[k]));
           });

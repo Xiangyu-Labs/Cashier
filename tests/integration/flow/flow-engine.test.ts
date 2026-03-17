@@ -41,21 +41,22 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
 
     async update(id: string, data: Partial<TaskRecord>): Promise<void> {
       const existing = tasks.get(id);
-      if (existing) {
+      if (existing != null) {
         tasks.set(id, { ...existing, ...data, updatedAt: new Date() });
       }
     },
 
     async get(id: string): Promise<TaskRecord | null> {
-      return tasks.get(id) ?? null;
+      const task = tasks.get(id);
+      return task ?? null;
     },
 
     async list(filter?: TaskFilter): Promise<TaskRecord[]> {
       let results = Array.from(tasks.values());
-      if (filter?.status) {
+      if (filter?.status != null) {
         results = results.filter((t) => t.status === filter.status);
       }
-      if (filter?.type) {
+      if (filter?.type != null) {
         results = results.filter((t) => t.type === filter.type);
       }
       return results;
@@ -74,7 +75,7 @@ async function waitForTaskCompletion(
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const task = await storage.get(taskId);
-    if (task && ["completed", "failed", "cancelled"].includes(task.status)) {
+    if (task != null && ["completed", "failed", "cancelled"].includes(task.status)) {
       return task;
     }
     await new Promise((r) => setTimeout(r, 10));
@@ -254,7 +255,7 @@ describe("FlowEngine", () => {
       // Override update to capture progress
       const originalUpdate = storage.update.bind(storage);
       storage.update = async (id, data) => {
-        if (data.progress) {
+        if (data.progress != null) {
           progressMessages.push(data.progress);
         }
         return originalUpdate(id, data);

@@ -61,7 +61,7 @@ function createMultiStageMockAI(options: {
 
   return {
     generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
-      const prompt = opts.prompt || "";
+      const prompt = opts.prompt ?? "";
 
       // Stage 1.5: Validation (check first due to containing Stage 1 result JSON)
       if (prompt.includes("You are a validation AI")) {
@@ -100,7 +100,7 @@ function createMultiStageMockAI(options: {
       }
 
       // Stage 1: Validity check
-      if (prompt.includes("financial document validation")) {
+      if (prompt.includes("financial document validation") ?? false) {
         return {
           content: JSON.stringify({
             is_valid: isValid,

@@ -62,7 +62,7 @@ export function createLedgerEntryData(
   }> = {}
 ) {
   // sourceDocumentId is required by schema, so generate one if not provided
-  const sourceDocumentId = overrides.sourceDocumentId || uuidv4();
+  const sourceDocumentId = overrides.sourceDocumentId ?? uuidv4();
 
   return {
     id: uuidv4(),
