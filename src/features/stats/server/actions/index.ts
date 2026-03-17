@@ -58,7 +58,7 @@ export async function getEnhancedStats({
     },
   });
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   // 2. Parse Dates for daily average calculation
   const currentStart = new Date(queryRange.from);
@@ -96,7 +96,7 @@ export async function getEnhancedStats({
   const allEntries = [...currentEntries, ...prevEntries];
   // Collect unique dates (as strings YYYY-MM-DD) from source documents
   const uniqueDates = Array.from(
-    new Set(allEntries.map((e) => e.sourceDocument?.entryDate).filter((d): d is string => !!d))
+    new Set(allEntries.map((e) => e.sourceDocument?.entryDate).filter((d): d is string => d != null && d !== ""))
   );
 
   // Fetch rates from DB
@@ -129,14 +129,14 @@ export async function getEnhancedStats({
     const dailyMap = new Map<string, number>();
 
     for (const entry of entries) {
-      const dateStr = entry.sourceDocument?.entryDate || "";
+      const dateStr = entry.sourceDocument?.entryDate ?? "";
       // Use rates for that specific day
-      const dayRates = ratesMap[dateStr] || null;
+      const dayRates = ratesMap[dateStr] ?? null;
 
       // Convert amount
       const converted = convertAmount({
         amount: Number(entry.amount),
-        fromCurrency: entry.currency || mainCurrency, // assumption
+        fromCurrency: entry.currency ?? mainCurrency, // assumption
         toCurrency: mainCurrency,
         rates: dayRates,
       });
@@ -144,9 +144,9 @@ export async function getEnhancedStats({
       total += converted;
 
       // Category Aggregation
-      const catId = entry.categoryId || "uncategorized";
-      const catName = entry.category?.name || "Uncategorized";
-      const catIcon = entry.category?.icon || null;
+      const catId = entry.categoryId ?? "uncategorized";
+      const catName = entry.category?.name ?? "Uncategorized";
+      const catIcon = entry.category?.icon ?? null;
 
       if (!categoryMap.has(catId)) {
         categoryMap.set(catId, {
@@ -162,8 +162,8 @@ export async function getEnhancedStats({
       cat.count += 1;
 
       // Daily Aggregation (for Chart)
-      if (dateStr) {
-        const dayVal = dailyMap.get(dateStr) || 0;
+      if (dateStr !== "") {
+        const dayVal = dailyMap.get(dateStr) ?? 0;
         dailyMap.set(dateStr, dayVal + converted);
       }
     }
@@ -187,7 +187,7 @@ export async function getEnhancedStats({
   const categories: EnhancedCategoryStat[] = Array.from(currentStats.categoryMap.values())
     .map((cat) => {
       // Find same category in prev Stats
-      const prevCatApi = prevStats.categoryMap.get(cat.id || "uncategorized");
+      const prevCatApi = prevStats.categoryMap.get(cat.id ?? "uncategorized");
       const prevAmount = prevCatApi ? prevCatApi.amount : 0;
 
       const growth = calculateGrowth(cat.amount, prevAmount);
@@ -231,7 +231,7 @@ export async function getEnhancedStats({
   const entriesByDate = new Map<string, typeof currentEntries>();
   for (const entry of currentEntries) {
     const date = entry.sourceDocument?.entryDate;
-    if (!date) continue;
+    if (date == null || date === "") continue;
     if (!entriesByDate.has(date)) {
       entriesByDate.set(date, []);
     }
@@ -240,12 +240,12 @@ export async function getEnhancedStats({
 
   const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries())
     .map(([date, total]) => {
-      const dayEntries = entriesByDate.get(date) || [];
+      const dayEntries = entriesByDate.get(date) ?? [];
       return {
         date,
         totalAmount: total,
         entryCount: dayEntries.length,
-        currencies: [...new Set(dayEntries.map((e) => e.currency || mainCurrency))],
+        currencies: [...new Set(dayEntries.map((e) => e.currency ?? mainCurrency))],
       };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -288,7 +288,7 @@ function calculateStats(amounts: number[]): CalendarHeatmapStats {
 
   // Calculate 80th percentile
   const p80Index = Math.floor(sorted.length * 0.8);
-  const p80 = sorted[p80Index] || max;
+  const p80 = sorted[p80Index] ?? max;
 
   return {
     minAmount: min,
