@@ -186,6 +186,7 @@
         "noMore": "No more items",
         "loadMore": "Load More",
         "discard": "Discard",
+        "confirm": "Confirm",
         "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
     },
     "SourceDocumentInput": {
@@ -324,6 +325,7 @@
         "newCategoryPlaceholder": "New Category Name",
         "addCategory": "Add",
         "settingsUpdated": "Settings updated successfully",
+        "updateSuccess": "Settings updated successfully",
         "updateFailed": "Update failed",
         "categoryCreated": "Category created successfully",
         "categoryUpdated": "Category updated successfully",
