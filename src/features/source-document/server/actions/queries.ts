@@ -319,7 +319,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
 
       // Calculate pagination parameters
       const page = Math.max(1, params.page ?? 1);
-      const pageSize = params.page
+      const pageSize = params.page != null
         ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize ?? DEFAULT_PAGE_SIZE))
         : DEFAULT_PAGE_LIMIT;
       const offset = (page - 1) * pageSize;
@@ -338,7 +338,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
       const total = Number(countResult[0]?.count) ?? 0;
 
       // Query with limit + 1 to detect hasMore when using explicit pagination
-      const queryLimit = params.page ? pageSize + 1 : pageSize;
+      const queryLimit = params.page != null ? pageSize + 1 : pageSize;
 
       const items = await db.query.sourceDocuments.findMany({
         where: and(...conditions),
@@ -348,18 +348,18 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
           desc(sourceDocuments.id),
         ],
         limit: queryLimit,
-        offset: params.page ? offset : 0,
+        offset: params.page != null ? offset : 0,
       });
 
       // Warn when hitting the default limit without explicit pagination
-      if (!params.page && items.length === DEFAULT_PAGE_LIMIT) {
+      if (params.page == null && items.length === DEFAULT_PAGE_LIMIT) {
         logger.warn(
           { ledgerId, limit: DEFAULT_PAGE_LIMIT, startDate, endDate },
           "getAllSourceDocumentsAction hit result limit - consider using cursor pagination"
         );
       }
 
-      const hasMore = params.page ? items.length > pageSize : false;
+      const hasMore = params.page != null ? items.length > pageSize : false;
       const resultItems = hasMore ? items.slice(0, pageSize) : items;
 
       const docIds = resultItems.map((d) => d.id);
