@@ -59,6 +59,7 @@ public/swe-worker-*.js
 
 # worktrees
 .worktrees/
+/worktrees/
 
 # serena
 .serena/
@@ -68,3 +69,6 @@ public/swe-worker-*.js
 
 # Local uploads
 /uploads/
+
+# execute script
+planexe.sh
