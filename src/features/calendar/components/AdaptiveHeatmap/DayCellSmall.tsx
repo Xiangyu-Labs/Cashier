@@ -5,10 +5,15 @@
 
 'use client';
 
-import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { getHeatmapColor, formatCellAmount } from '../../lib/heatmap-colors';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { HeatmapLevel } from '../../types';
 
 interface DayCellSmallProps {
@@ -20,27 +25,24 @@ interface DayCellSmallProps {
 }
 
 export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSmallProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const t = useTranslations('Calendar');
 
   return (
-    <div className="relative">
-      <button
-        onClick={onClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={cn(
-          'w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0',
-          'hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary'
-        )}
-        style={{
-          backgroundColor: getHeatmapColor(level),
-        }}
-      />
-
-      {/* Tooltip */}
-      {isHovered && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-50 pointer-events-none">
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              'w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0',
+              'hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary'
+            )}
+            style={{
+              backgroundColor: getHeatmapColor(level),
+            }}
+          />
+        </TooltipTrigger>
+        <TooltipContent side="top" align="center">
           <div className="font-medium">{date}</div>
           {amount > 0 ? (
             <>
@@ -50,8 +52,8 @@ export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSma
           ) : (
             <div className="text-muted-foreground">{t('noConsumption')}</div>
           )}
-        </div>
-      )}
-    </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

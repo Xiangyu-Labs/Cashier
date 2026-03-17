@@ -94,9 +94,9 @@ export function SmallGridHeatmap({
   }, [days, dayMap, queryRange]);
 
   return (
-    <div className={cn('w-full', className)}>
-      {/* Horizontal scroll container */}
-      <div className="flex gap-[2px] overflow-x-auto pb-2 min-h-[100px]">
+    <div className={cn('w-full overflow-x-auto pb-2', className)}>
+      {/* Inner container with overflow-visible to allow tooltip to show outside */}
+      <div className="flex gap-[2px] min-h-[100px]">
         {weeks.map((week) => (
           <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
             {week.days.map(({ date, dayData }) => {
