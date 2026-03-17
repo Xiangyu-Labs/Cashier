@@ -9,7 +9,7 @@ import {
     batchDeleteSourceDocumentsAction,
     batchRetrySourceDocumentsAction,
 } from "@/features/source-document/server/actions";
-import type { SourceDocumentWithEntries } from "./use-source-documents";
+
 import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {

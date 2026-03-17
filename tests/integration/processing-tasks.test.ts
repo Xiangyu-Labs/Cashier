@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { ledgers, taskRuns, users } from "@/lib/db/schema";
+import { ledgers, taskRuns } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 // Mock auth module

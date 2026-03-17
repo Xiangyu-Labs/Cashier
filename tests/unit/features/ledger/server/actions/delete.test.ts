@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../../../../setup";
-import { users, ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
+import { users, ledgers, entryCategories } from "@/lib/db/schema";
 import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { eq } from "drizzle-orm";
 

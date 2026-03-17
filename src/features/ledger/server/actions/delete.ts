@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
 import { withAuth } from "@/lib/auth-actions";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
 import { clearUserDefaultLedger } from "@/features/auth/server/services/user-setup";
