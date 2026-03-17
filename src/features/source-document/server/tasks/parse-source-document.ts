@@ -140,7 +140,7 @@ function checkStage1Results(
     );
     return {
       ledgerEntries: [],
-      anomalyReason: stage1Result.incompleteReason || "Content incomplete",
+      anomalyReason: stage1Result.incompleteReason ?? "Content incomplete",
       verificationStatus: "anomaly",
       title: stage1Result.title,
     };
@@ -149,7 +149,7 @@ function checkStage1Results(
   // Check for unknown currency from Stage 1 - intercept early
   const currencies = stage1Result.results.currency.currencies;
   const hasUnknownCurrency = currencies.some(
-    (c) => !c || c.toLowerCase() === "unknown" || c.toLowerCase() === "undefined"
+    (c) => c === "" || c.toLowerCase() === "unknown" || c.toLowerCase() === "undefined"
   );
   if (hasUnknownCurrency) {
     logger.info({ docId, currencies }, "Stage 1: Unknown currency detected");
@@ -251,7 +251,7 @@ async function runStage1_5(
       "Stage 1.5: Validation rejected"
     );
     throw new Error(
-      `STAGE1_5_ANOMALY:${validationResult.rejection_reason || "Pre-analysis results invalid"}`
+      `STAGE1_5_ANOMALY:${validationResult.rejection_reason ?? "Pre-analysis results invalid"}`
     );
   }
 
