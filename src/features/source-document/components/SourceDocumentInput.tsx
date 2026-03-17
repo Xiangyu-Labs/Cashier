@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { compressImage } from "@/lib/image-utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { fireAndForget } from "@/lib/safe-async";
 
 interface SourceDocumentInputProps {
   ledgerId: string;
@@ -125,7 +126,10 @@ export function SourceDocumentInput({
       }
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      fireAndForget(
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        { context: "SourceDocumentInput" }
+      );
     },
   });
 
@@ -175,9 +179,15 @@ export function SourceDocumentInput({
     },
     onSettled: () => {
       // Always refetch to ensure server state is in sync
-      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      fireAndForget(
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        { context: "SourceDocumentInput" }
+      );
       // Also invalidate task queue to trigger smart polling for the new parse task
-      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        { context: "SourceDocumentInput" }
+      );
     },
   });
 
@@ -227,9 +237,15 @@ export function SourceDocumentInput({
       toast.error(t("retryError"));
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      fireAndForget(
+        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        { context: "SourceDocumentInput" }
+      );
       // Also invalidate task queue to trigger smart polling for the retry task
-      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        { context: "SourceDocumentInput" }
+      );
     },
   });
 
@@ -262,7 +278,7 @@ export function SourceDocumentInput({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    void processFiles(Array.from(files));
+    fireAndForget(processFiles(Array.from(files)), { context: "SourceDocumentInput.processFiles" });
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -274,7 +290,7 @@ export function SourceDocumentInput({
         if (file) files.push(file);
       }
     }
-    if (files.length > 0) void processFiles(files);
+    if (files.length > 0) fireAndForget(processFiles(files), { context: "SourceDocumentInput.processFiles" });
   };
 
   const MAX_FALLBACK_SIZE = 5 * 1024 * 1024; // 5MB

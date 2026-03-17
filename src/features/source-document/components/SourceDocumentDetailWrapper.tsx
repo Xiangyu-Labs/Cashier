@@ -18,6 +18,7 @@ import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
+import { fireAndForget } from "@/lib/safe-async";
 import {
   useLedgerMutation,
   createListSnapshots,
@@ -149,8 +150,14 @@ export function SourceDocumentDetailWrapper({
         return { snapshots };
       },
       onSettledExtra: (queryClient) => {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) });
+        fireAndForget(
+          queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+          { context: "SourceDocumentDetailWrapper" }
+        );
+        fireAndForget(
+          queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) }),
+          { context: "SourceDocumentDetailWrapper" }
+        );
       },
     }
   );
@@ -229,7 +236,10 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
     },
   });
 
@@ -307,7 +317,10 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
     },
   });
 
@@ -373,7 +386,10 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
     },
   });
 
@@ -439,7 +455,10 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
     },
   });
 
@@ -489,7 +508,10 @@ export function SourceDocumentDetailWrapper({
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
     },
   });
 
