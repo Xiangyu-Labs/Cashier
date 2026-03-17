@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { fireAndForget } from "@/lib/safe-async";
 
 interface SSOButtonProps {
   callbackUrl?: string;
@@ -16,7 +18,13 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
 
   const handleSignIn = () => {
     setIsRedirecting(true);
-    void signIn("oidc", { callbackUrl });
+    fireAndForget(signIn("oidc", { callbackUrl }), {
+      context: "sso-button",
+      onError: () => {
+        setIsRedirecting(false);
+        toast.error(t("ssoError"));
+      },
+    });
   };
 
   const envButtonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
