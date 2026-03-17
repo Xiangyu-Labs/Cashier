@@ -233,7 +233,7 @@ export function ImageViewer({ images, initialIndex = 0, open, onOpenChange }: Im
             </Button>
 
             {/* Thumbnails indicator */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[80vw] p-2 bg-black/50 backdrop-blur-sm rounded-full z-modal-thumb pointer-events-auto">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[80vw] p-2 bg-black/50 backdrop-blur-sm rounded-full z-modal-control pointer-events-auto">
               {images.map((img, i) => (
                 <button
                   key={i}
