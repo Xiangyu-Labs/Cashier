@@ -158,8 +158,8 @@ describe("SettingsTab", () => {
             </QueryClientProvider>
         );
 
-        expect(screen.getByText("appearance")).toBeDefined();
-        expect(screen.getByText("ledgerSettings")).toBeDefined();
+        expect(screen.getByText("general")).toBeDefined();
+        expect(screen.getByText("ledger")).toBeDefined();
     });
 
     it("handles theme switching", async () => {
@@ -174,9 +174,9 @@ describe("SettingsTab", () => {
             </QueryClientProvider>
         );
 
-        // Expand the Appearance section first
-        const appearanceButton = screen.getByText("appearance");
-        await user.click(appearanceButton);
+        // Expand the General section first
+        const generalButton = screen.getByText("general");
+        await user.click(generalButton);
 
         const darkButton = screen.getByTitle("themeDark");
         fireEvent.click(darkButton);
@@ -195,9 +195,9 @@ describe("SettingsTab", () => {
             </QueryClientProvider>
         );
 
-        // Expand the Ledger Settings section first (AI settings are now inside, collapsed by default)
-        const ledgerSettingsButton = screen.getByText("ledgerSettings");
-        await user.click(ledgerSettingsButton);
+        // Expand the AI Assistant section first
+        const aiAssistantButton = screen.getByText("aiAssistant");
+        await user.click(aiAssistantButton);
 
         const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
         await user.type(textarea, "New Custom Prompt");
@@ -224,7 +224,7 @@ describe("SettingsTab", () => {
         );
 
         // Expand the Account section first
-        const accountButton = screen.getByText("accountAndSecurity");
+        const accountButton = screen.getByText("account");
         await user.click(accountButton);
 
         const signOutButton = screen.getAllByText("signOut")[1]; // Get the button text, not the section header
