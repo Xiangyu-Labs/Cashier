@@ -133,8 +133,8 @@ export async function createQuickEntryAction(
   const { sourceDocId, entryId } = atomicInsertSourceAndEntry(
     {
       categoryId: validated.categoryId,
-      itemName: validated.itemName || null,
-      description: validated.description || null,
+      itemName: validated.itemName ?? null,
+      description: validated.description ?? null,
       amount: validated.amount,
       entryDate: today,
     },
