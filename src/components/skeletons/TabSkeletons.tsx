@@ -8,89 +8,89 @@
  * Shows filter bar + entry card placeholders with date grouping.
  */
 export function EntriesTabSkeleton() {
-    return (
-        <div className="space-y-4 px-2">
-            {/* Top toolbar skeleton - matches: select button + filter panel + total */}
-            <div className="flex items-center gap-2 mb-2 sm:mb-4">
-                {/* Select mode button */}
-                <div className="h-8 w-8 bg-surface2 rounded-md animate-pulse shrink-0" />
-                {/* Filter panel - "更多筛选" button */}
-                <div className="h-8 w-28 bg-surface2 rounded-md animate-pulse" />
-                {/* Spacer */}
-                <div className="flex-1" />
-                {/* Total amount text */}
-                <div className="h-4 w-28 bg-surface2 rounded animate-pulse" />
+  return (
+    <div className="space-y-4 px-2">
+      {/* Top toolbar skeleton - matches: select button + filter panel + total */}
+      <div className="flex items-center gap-2 mb-2 sm:mb-4">
+        {/* Select mode button */}
+        <div className="h-8 w-8 bg-surface2 rounded-md animate-pulse shrink-0" />
+        {/* Filter panel - "更多筛选" button */}
+        <div className="h-8 w-28 bg-surface2 rounded-md animate-pulse" />
+        {/* Spacer */}
+        <div className="flex-1" />
+        {/* Total amount text */}
+        <div className="h-4 w-28 bg-surface2 rounded animate-pulse" />
+      </div>
+
+      {/* Date group skeletons */}
+      {[1, 2, 3].map((dateGroupIndex) => (
+        <div key={dateGroupIndex} className="space-y-2">
+          {/* Date header - matches: dot indicator + date + daily total */}
+          <div className="py-2 px-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Dot indicator */}
+              <div className="w-1.5 h-1.5 rounded-full bg-surface2 animate-pulse" />
+              {/* Date text */}
+              <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
             </div>
+            {/* Daily total */}
+            <div className="h-3 w-20 bg-surface2 rounded animate-pulse" />
+          </div>
 
-            {/* Date group skeletons */}
-            {[1, 2, 3].map((dateGroupIndex) => (
-                <div key={dateGroupIndex} className="space-y-2">
-                    {/* Date header - matches: dot indicator + date + daily total */}
-                    <div className="py-2 px-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            {/* Dot indicator */}
-                            <div className="w-1.5 h-1.5 rounded-full bg-surface2 animate-pulse" />
-                            {/* Date text */}
-                            <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
-                        </div>
-                        {/* Daily total */}
-                        <div className="h-3 w-20 bg-surface2 rounded animate-pulse" />
-                    </div>
-
-                    {/* Source document cards for this date */}
-                    {[1, 2].map((cardIndex) => (
-                        <div
-                            key={cardIndex}
-                            className="bg-surface rounded-xl border border-border overflow-hidden"
-                        >
-                            {/* Card header - matches: expand icon + date + title + amount + more button */}
-                            <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center justify-between">
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    {/* Expand/collapse chevron */}
-                                    <div className="h-4 w-4 bg-border rounded animate-pulse shrink-0" />
-                                    {/* Date (e.g., "3月5日") */}
-                                    <div className="h-4 w-12 bg-border rounded animate-pulse shrink-0" />
-                                    {/* Title (e.g., "赫赫海鲜晚餐") */}
-                                    <div className="h-4 w-28 bg-border rounded animate-pulse" />
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0 ml-2">
-                                    {/* Amount */}
-                                    <div className="h-4 w-16 bg-border rounded animate-pulse" />
-                                    {/* More menu button */}
-                                    <div className="h-7 w-7 bg-border rounded animate-pulse" />
-                                </div>
-                            </div>
-
-                            {/* Card content - ledger entries */}
-                            <div className="p-3 space-y-3 bg-surface2/30">
-                                {[1, 2].map((entryIndex) => (
-                                    <div key={entryIndex} className="flex items-center justify-between py-1">
-                                        <div className="flex items-center gap-3">
-                                            {/* Category/merchant icon */}
-                                            <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
-                                            <div className="space-y-1.5">
-                                                {/* Entry title */}
-                                                <div className="h-4 w-24 bg-border rounded animate-pulse" />
-                                                {/* Category/subtitle */}
-                                                <div className="h-3 w-16 bg-border rounded animate-pulse" />
-                                            </div>
-                                        </div>
-                                        {/* Entry amount */}
-                                        <div className="h-4 w-14 bg-border rounded animate-pulse" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+          {/* Source document cards for this date */}
+          {[1, 2].map((cardIndex) => (
+            <div
+              key={cardIndex}
+              className="bg-surface rounded-xl border border-border overflow-hidden"
+            >
+              {/* Card header - matches: expand icon + date + title + amount + more button */}
+              <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Expand/collapse chevron */}
+                  <div className="h-4 w-4 bg-border rounded animate-pulse shrink-0" />
+                  {/* Date (e.g., "3月5日") */}
+                  <div className="h-4 w-12 bg-border rounded animate-pulse shrink-0" />
+                  {/* Title (e.g., "赫赫海鲜晚餐") */}
+                  <div className="h-4 w-28 bg-border rounded animate-pulse" />
                 </div>
-            ))}
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {/* Amount */}
+                  <div className="h-4 w-16 bg-border rounded animate-pulse" />
+                  {/* More menu button */}
+                  <div className="h-7 w-7 bg-border rounded animate-pulse" />
+                </div>
+              </div>
 
-            {/* End of list indicator */}
-            <div className="flex justify-center py-4">
-                <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
+              {/* Card content - ledger entries */}
+              <div className="p-3 space-y-3 bg-surface2/30">
+                {[1, 2].map((entryIndex) => (
+                  <div key={entryIndex} className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-3">
+                      {/* Category/merchant icon */}
+                      <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
+                      <div className="space-y-1.5">
+                        {/* Entry title */}
+                        <div className="h-4 w-24 bg-border rounded animate-pulse" />
+                        {/* Category/subtitle */}
+                        <div className="h-3 w-16 bg-border rounded animate-pulse" />
+                      </div>
+                    </div>
+                    {/* Entry amount */}
+                    <div className="h-4 w-14 bg-border rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
             </div>
+          ))}
         </div>
-    );
+      ))}
+
+      {/* End of list indicator */}
+      <div className="flex justify-center py-4">
+        <div className="h-3 w-24 bg-surface2 rounded animate-pulse" />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -98,62 +98,137 @@ export function EntriesTabSkeleton() {
  * Shows a list of detail item placeholders.
  */
 export function DetailsTabSkeleton() {
-    return (
-        <div className="space-y-3">
-            {/* Search/filter skeleton */}
-            <div className="h-10 w-full bg-surface2 rounded-lg animate-pulse" />
+  return (
+    <div className="space-y-3">
+      {/* Search/filter skeleton */}
+      <div className="h-10 w-full bg-surface2 rounded-lg animate-pulse" />
 
-            {/* Detail items skeleton */}
-            {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                    key={i}
-                    className="flex items-center justify-between px-4 py-3 bg-surface rounded-xl border border-border"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
-                        <div className="space-y-1.5">
-                            <div className="h-4 w-32 bg-border rounded animate-pulse" />
-                            <div className="h-3 w-20 bg-border rounded animate-pulse" />
-                        </div>
-                    </div>
-                    <div className="h-4 w-16 bg-border rounded animate-pulse" />
-                </div>
-            ))}
+      {/* Detail items skeleton */}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between px-4 py-3 bg-surface rounded-xl border border-border"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-border animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-32 bg-border rounded animate-pulse" />
+              <div className="h-3 w-20 bg-border rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="h-4 w-16 bg-border rounded animate-pulse" />
         </div>
-    );
+      ))}
+    </div>
+  );
 }
 
 /**
  * Skeleton for the Stats tab.
- * Shows chart area + summary card placeholders.
+ * Shows period selector + date navigator + total expense + heatmap + ranking.
  */
 export function StatsTabSkeleton() {
-    return (
-        <div className="space-y-4">
-            {/* Period selector skeleton */}
-            <div className="flex gap-2">
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-8 w-16 bg-surface2 rounded-lg animate-pulse" />
-                ))}
-            </div>
-
-            {/* Chart area skeleton */}
-            <div className="bg-surface rounded-xl border border-border p-4">
-                <div className="h-5 w-24 bg-border rounded animate-pulse mb-4" />
-                <div className="h-48 w-full bg-surface2 rounded-lg animate-pulse" />
-            </div>
-
-            {/* Summary cards skeleton */}
-            <div className="grid grid-cols-2 gap-3">
-                {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="bg-surface rounded-xl border border-border p-4 space-y-2">
-                        <div className="h-3 w-16 bg-border rounded animate-pulse" />
-                        <div className="h-6 w-24 bg-border rounded animate-pulse" />
-                    </div>
-                ))}
-            </div>
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Stats Header Skeleton */}
+      <div className="flex flex-col gap-6 bg-surface">
+        {/* 1. Period selector (周/月/年) */}
+        <div className="flex p-1 bg-surface2 rounded-lg self-center w-full max-w-xs">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex-1 h-8 bg-surface rounded-md animate-pulse mx-0.5" />
+          ))}
         </div>
-    );
+
+        {/* 2. Date navigator (arrow + label + arrow) */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-4">
+            {/* Left arrow */}
+            <div className="h-8 w-8 rounded-full bg-surface2 animate-pulse" />
+            {/* Date label (e.g., "2026年3月") */}
+            <div className="h-7 w-32 bg-surface2 rounded animate-pulse" />
+            {/* Right arrow */}
+            <div className="h-8 w-8 rounded-full bg-surface2 animate-pulse" />
+          </div>
+        </div>
+
+        {/* 3. Summary stats */}
+        <div className="flex flex-col items-center gap-2">
+          {/* "总支出" label */}
+          <div className="h-4 w-16 bg-surface2 rounded animate-pulse" />
+          {/* Total amount (CNY 3820.47) */}
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-12 bg-surface2 rounded animate-pulse" />
+            <div className="h-10 w-32 bg-surface2 rounded animate-pulse" />
+          </div>
+          {/* Trend badge */}
+          <div className="h-6 w-28 bg-surface2 rounded-full animate-pulse mt-1" />
+          {/* Average daily */}
+          <div className="h-3 w-24 bg-surface2 rounded animate-pulse mt-1" />
+        </div>
+      </div>
+
+      {/* Chart section skeleton */}
+      <div className="space-y-2">
+        {/* Header with title + view toggle */}
+        <div className="flex items-center justify-between px-2">
+          <div className="h-5 w-20 bg-surface2 rounded animate-pulse" />
+          <div className="flex items-center gap-1">
+            {/* Heatmap button */}
+            <div className="h-7 w-16 bg-surface2 rounded animate-pulse" />
+            {/* Trend button */}
+            <div className="h-7 w-16 bg-surface2 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Heatmap grid skeleton - 3 rows of 7 days */}
+        <div className="bg-surface rounded-xl border border-border p-4 space-y-3">
+          {/* Grid cells - simulating a calendar heatmap */}
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 21 }).map((_, i) => (
+              <div key={i} className="aspect-square rounded-lg bg-surface2 animate-pulse" />
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="h-3 w-8 bg-surface2 rounded animate-pulse" />
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="w-4 h-4 rounded-sm bg-surface2 animate-pulse" />
+              ))}
+            </div>
+            <div className="h-3 w-8 bg-surface2 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Ranking skeleton */}
+      <div className="space-y-5 px-2">
+        {/* "支出排行" title */}
+        <div className="h-6 w-24 bg-surface2 rounded animate-pulse" />
+
+        {/* Category items */}
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center gap-3">
+            {/* Icon circle */}
+            <div className="w-10 h-10 rounded-full bg-surface2 animate-pulse shrink-0" />
+            {/* Content */}
+            <div className="flex-1 space-y-2">
+              {/* Top line: Name + Amount */}
+              <div className="flex justify-between items-center">
+                <div className="h-4 w-16 bg-surface2 rounded animate-pulse" />
+                <div className="h-4 w-20 bg-surface2 rounded animate-pulse" />
+              </div>
+              {/* Bottom line: Progress bar + percent */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-1.5 bg-surface2 rounded-full animate-pulse" />
+                <div className="h-3 w-12 bg-surface2 rounded animate-pulse shrink-0" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -161,24 +236,24 @@ export function StatsTabSkeleton() {
  * Shows settings section placeholders.
  */
 export function SettingsTabSkeleton() {
-    return (
-        <div className="space-y-6">
-            {[1, 2].map((sectionIndex) => (
-                <div key={sectionIndex} className="space-y-3">
-                    <div className="h-5 w-24 bg-border rounded animate-pulse" />
-                    <div className="bg-surface rounded-xl border border-border divide-y divide-border">
-                        {[1, 2, 3].map((itemIndex) => (
-                            <div key={itemIndex} className="px-4 py-3 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-5 w-5 bg-border rounded animate-pulse" />
-                                    <div className="h-4 w-28 bg-border rounded animate-pulse" />
-                                </div>
-                                <div className="h-6 w-10 bg-border rounded-full animate-pulse" />
-                            </div>
-                        ))}
-                    </div>
+  return (
+    <div className="space-y-6">
+      {[1, 2].map((sectionIndex) => (
+        <div key={sectionIndex} className="space-y-3">
+          <div className="h-5 w-24 bg-border rounded animate-pulse" />
+          <div className="bg-surface rounded-xl border border-border divide-y divide-border">
+            {[1, 2, 3].map((itemIndex) => (
+              <div key={itemIndex} className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 bg-border rounded animate-pulse" />
+                  <div className="h-4 w-28 bg-border rounded animate-pulse" />
                 </div>
+                <div className="h-6 w-10 bg-border rounded-full animate-pulse" />
+              </div>
             ))}
+          </div>
         </div>
-    );
+      ))}
+    </div>
+  );
 }
