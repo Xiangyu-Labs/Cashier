@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue";
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
+import { fireAndForget } from "@/lib/safe-async";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
@@ -189,11 +190,14 @@ export function LedgerPageClient({
         // 预加载 ledger 数据（SourceDocumentInput 需要）
         const cached = queryClient.getQueryData(queryKeys.ledger(ledgerId));
         if (cached === undefined) {
-          void queryClient.prefetchQuery({
-            queryKey: queryKeys.ledger(ledgerId),
-            queryFn: () => getLedgerAction(ledgerId),
-            staleTime: STALE_TIME,
-          });
+          fireAndForget(
+            queryClient.prefetchQuery({
+              queryKey: queryKeys.ledger(ledgerId),
+              queryFn: () => getLedgerAction(ledgerId),
+              staleTime: STALE_TIME,
+            }),
+            { context: "LedgerPageClient.prefetch" }
+          );
         }
       }, INPUT_PREFETCH_DELAY);
       return () => {
@@ -207,16 +211,16 @@ export function LedgerPageClient({
     const preloadTabs = () => {
       // 根据当前活动 Tab 预加载其他 Tab
       if (activeTab !== "details") {
-        void import("../DetailsTab");
+        fireAndForget(import("../DetailsTab"), { context: "LedgerPageClient.preload" });
       }
       if (activeTab !== "stats") {
-        void import("../StatsTab");
+        fireAndForget(import("../StatsTab"), { context: "LedgerPageClient.preload" });
       }
       if (activeTab !== "settings") {
-        void import("../SettingsTab");
+        fireAndForget(import("../SettingsTab"), { context: "LedgerPageClient.preload" });
       }
       if (activeTab !== "stream") {
-        void import("../LedgerEntriesTab");
+        fireAndForget(import("../LedgerEntriesTab"), { context: "LedgerPageClient.preload" });
       }
     };
 
