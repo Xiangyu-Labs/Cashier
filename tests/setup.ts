@@ -99,7 +99,6 @@ beforeEach(async () => {
     "task_runs",
     "currency_rates",
     "accounts",
-    "verification_tokens",
     "otp_tokens",
   ];
 
