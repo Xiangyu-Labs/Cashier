@@ -194,10 +194,10 @@ export function SettingsTab({
                 onCategoryCreated={categoryCreatedTrigger}
                 onAutoCategorize={async () => {
                   const result = await submitAutoCategorizeAction(ledgerId);
-                  queryClient.invalidateQueries({
+                  await queryClient.invalidateQueries({
                     queryKey: queryKeys.uncategorizedCount(ledgerId),
                   });
-                  queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+                  await queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
                   return {
                     submittedCount: result.submittedCount,
                     skippedCount: result.skippedCount,
