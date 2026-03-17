@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect, useTransition } from "react";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { ImageEditorDialog } from "@/components/ui/image-editor-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
@@ -13,7 +14,7 @@ import {
 } from "@/features/source-document/server/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Send, RefreshCw } from "lucide-react";
+import { Camera, Send, RefreshCw, Pencil } from "lucide-react";
 import { type Ledger, type SourceDocument } from "@/types/api";
 import { toast } from "sonner";
 
@@ -49,6 +50,7 @@ export function SourceDocumentInput({
   );
   const [_isAdvancedOpen, _setIsAdvancedOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
   const [isTransitionPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasInitializedRef = useRef(false);
@@ -333,12 +335,25 @@ export function SourceDocumentInput({
               >
                 <Image src={img.data} alt={`Uploaded ${idx + 1}`} fill className="object-cover" />
               </div>
+
+              {/* Delete button - always visible on hover */}
               <button
                 onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
                 className="absolute -top-2 -right-2 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 ×
               </button>
+
+              {/* Edit button - only in retry mode */}
+              {mode === "retry" && (
+                <button
+                  onClick={() => setEditingImageIndex(idx)}
+                  className="absolute top-1 right-1 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title={t("editImage")}
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -398,6 +413,21 @@ export function SourceDocumentInput({
         open={selectedImageIndex !== null}
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
       />
+
+      {/* Image Editor Dialog */}
+      {editingImageIndex !== null && (
+        <ImageEditorDialog
+          image={images[editingImageIndex]?.data}
+          open={editingImageIndex !== null}
+          onOpenChange={(open) => !open && setEditingImageIndex(null)}
+          onSave={(editedImage) => {
+            setImages((prev) =>
+              prev.map((img, i) => (i === editingImageIndex ? editedImage : img))
+            );
+            setEditingImageIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 }
