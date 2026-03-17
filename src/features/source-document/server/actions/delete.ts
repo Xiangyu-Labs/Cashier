@@ -34,7 +34,7 @@ async function deleteLocalImages(imageUrls: string[]): Promise<{
     }
 
     const key = storage.extractKeyFromUrl(url);
-    if (!key) {
+    if (key == null || key === "") {
       logger.warn({ url }, "Could not extract key from URL during deletion");
       continue;
     }
