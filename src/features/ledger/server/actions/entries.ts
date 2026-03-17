@@ -8,6 +8,7 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { CurrencyService } from "@/features/currency/server/service";
 import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
 import { NotFoundError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 const createLedgerEntrySchema = z.object({
     amount: z.number(),
@@ -196,6 +197,19 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(async (
             q.whereActive,
             inArray(ledgerEntries.id, ledgerEntryIds)
         ));
+
+    // If currency was updated, recalculate converted amounts for affected entries
+    if (validated.currency !== undefined) {
+        const { recalculateEntriesConvertedAmount } = await import("@/features/ledger/server/actions/helpers");
+        const ledger = await db.query.ledgers.findFirst({
+            where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+            columns: { metadata: true },
+        });
+        const mainCurrency = ledger?.metadata?.settings?.mainCurrency || "CNY";
+        recalculateEntriesConvertedAmount(ledgerId, mainCurrency).catch(err => {
+            logger.error({ err, ledgerId }, "Failed to recalculate after batch currency update");
+        });
+    }
 });
 
 export const getLedgerEntriesAction = withLedgerAccess(async (

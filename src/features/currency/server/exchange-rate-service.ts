@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { currencyRates } from "./schema";
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
+import { logger } from "@/lib/logger";
 
 export interface ExchangeRates {
     base: string;
@@ -77,6 +78,12 @@ export class ExchangeRateService {
                     rates: data.rates,
                 })
                 .onConflictDoNothing();
+
+            // Trigger recalculation of converted amounts for all ledgers
+            const { onExchangeRatesUpdated } = await import("./services/exchange-rate-callback");
+            onExchangeRatesUpdated().catch(err => {
+                logger.error({ err }, "Failed to trigger recalculation after exchange rate update");
+            });
 
             return data;
         } finally {
