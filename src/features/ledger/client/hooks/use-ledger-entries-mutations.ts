@@ -41,7 +41,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
       queryClient.setQueriesData<SourceDocumentsQueryData>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
-          if (!old) return old;
+          if (!old || !old.items) return old;
           return {
             ...old,
             items: old.items.map((doc) => {
@@ -84,7 +84,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
       queryClient.setQueriesData<SourceDocumentsQueryData>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old): SourceDocumentsQueryData => {
-          if (!old) return old;
+          if (!old || !old.items) return old;
           return {
             ...old,
             items: old.items.map((doc) => {

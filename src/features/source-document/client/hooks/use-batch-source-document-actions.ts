@@ -34,7 +34,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
-          if (!old) return old;
+          if (!old || !old.items) return old;
           return {
             ...old,
             items: old.items.map((doc) => (ids.includes(doc.id) ? { ...doc, entryDate } : doc)),
@@ -64,7 +64,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
-          if (!old) return old;
+          if (!old || !old.items) return old;
           return {
             ...old,
             items: old.items.filter((doc) => !ids.includes(doc.id)),
@@ -96,7 +96,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
-          if (!old) return old;
+          if (!old || !old.items) return old;
           return {
             ...old,
             items: old.items.map((doc) =>
