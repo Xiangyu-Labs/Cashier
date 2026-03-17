@@ -159,7 +159,6 @@ export function useBatchActions({
     if (!onUpdateDates) return;
 
     const dateStr = formatDateTimeForApi(selectedDate);
-    if (!dateStr) return;
 
     if (isUpdatingDatesProp === undefined) {
       setInternalUpdatingDates(true);
