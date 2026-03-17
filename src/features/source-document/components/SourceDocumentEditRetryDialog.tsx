@@ -31,7 +31,7 @@ export function SourceDocumentEditRetryDialog({
     "imageUrls" in sourceDocument &&
     Array.isArray(sourceDocument.imageUrls) &&
     sourceDocument.imageUrls.length > 0;
-  const hasText = "text" in sourceDocument && sourceDocument.text;
+  const hasText = "text" in sourceDocument && sourceDocument.text != null && sourceDocument.text !== "";
   const hasImages = "hasImages" in sourceDocument && sourceDocument.hasImages;
   // needsFetch is true when:
   // 1. No imageUrls but hasImages flag is true (stripped for performance)
@@ -43,7 +43,7 @@ export function SourceDocumentEditRetryDialog({
     queryKey: ["sourceDocument", "full", ledgerId, sourceDocument.id],
     queryFn: async () => {
       const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
-      if (!result) return null;
+      if (result == null) return null;
       return {
         text: result.text,
         imageUrls: result.imageUrls,
@@ -55,14 +55,14 @@ export function SourceDocumentEditRetryDialog({
 
   const initialData = useMemo(() => {
     // If we fetched full data, use it
-    if (fullData) {
+    if (fullData != null) {
       return {
-        text: fullData.text || undefined,
+        text: fullData.text ?? undefined,
         images:
           fullData.imageUrls?.map((url) => ({
             data: url,
             mimeType: "image/jpeg",
-          })) || [],
+          })) ?? [],
       };
     }
 
@@ -70,12 +70,12 @@ export function SourceDocumentEditRetryDialog({
     const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
     const text = "text" in sourceDocument ? sourceDocument.text : undefined;
     return {
-      text: text || undefined,
+      text: text ?? undefined,
       images:
         imageUrls?.map((url) => ({
           data: url,
           mimeType: "image/jpeg",
-        })) || [],
+        })) ?? [],
     };
   }, [sourceDocument, fullData]);
 

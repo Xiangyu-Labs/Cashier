@@ -36,7 +36,7 @@ export const createEntryCategoryAction = withLedgerAccess(
       limit: 1,
     });
 
-    const maxSortOrder = existingCategories.length > 0 ? existingCategories[0].sortOrder : -1;
+    const maxSortOrder = existingCategories.length > 0 ? existingCategories[0].sortOrder ?? -1 : -1;
     const newSortOrder = validated.sortOrder ?? maxSortOrder + 1;
 
     const [category] = await db
@@ -50,7 +50,7 @@ export const createEntryCategoryAction = withLedgerAccess(
 
     // Trigger AI to generate metadata (async)
     // Only if icon or description is missing
-    if (!validated.icon || !validated.description) {
+    if (validated.icon == null || validated.icon === "" || validated.description == null || validated.description === "") {
       try {
         // Fetch existing categories for context
         const existing = await db.query.entryCategories.findMany({
@@ -194,8 +194,8 @@ export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     // deletedAt is excluded by whereActive but type definition has it
-    deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
-    entryCount: countMap.get(c.id) || 0,
+    deletedAt: c.deletedAt != null ? c.deletedAt.toISOString() : null,
+    entryCount: countMap.get(c.id) ?? 0,
   }));
 
   return categoriesWithCount;

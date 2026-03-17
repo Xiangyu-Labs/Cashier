@@ -86,8 +86,8 @@ export function SourceDocumentDetailWrapper({
 
   // 3. Merge data (prefer full data, fallback to light data)
   const sourceDocument = fullData ?? lightData ?? null;
-  const isLoading = isLoadingLight && !lightData; // Only show loading if light data is not available
-  const isLoadingImages = !fullData?.imageUrls; // Images only available in full data
+  const isLoading = isLoadingLight && lightData == null; // Only show loading if light data is not available
+  const isLoadingImages = fullData?.imageUrls == null; // Images only available in full data
 
   const ledgerId = sourceDocument?.ledgerId;
 
@@ -495,7 +495,7 @@ export function SourceDocumentDetailWrapper({
 
   // Handle error state - moved to useEffect to avoid render-path side effects
   useEffect(() => {
-    if (error) {
+    if (error != null) {
       toast.error(tCommon("error"));
       onClose();
     }
@@ -503,7 +503,7 @@ export function SourceDocumentDetailWrapper({
 
   // Handle deleted/not-found case - moved to useEffect
   useEffect(() => {
-    if (!isLoading && !sourceDocument && open) {
+    if (!isLoading && sourceDocument == null && open) {
       onClose();
     }
   }, [isLoading, sourceDocument, open, onClose]);
@@ -511,19 +511,22 @@ export function SourceDocumentDetailWrapper({
   // Source document from query includes ledgerEntries directly
   const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
 
+  // Safe check for ledgerId
+  const safeLedgerId = ledgerId ?? "";
+
   // Merge and normalize data for display (works with both light and full data)
   const safeSourceDocument: (SourceDocument | SourceDocumentLight) | null = sourceDocument
     ? {
         ...sourceDocument,
-        status: sourceDocument.status || "queued",
+        status: sourceDocument.status ?? "queued",
         // Ensure type is never null (normalize to empty string)
-        type: sourceDocument.type || "",
+        type: sourceDocument.type ?? "",
       }
     : null;
 
   return (
     <SourceDocumentDetailModal
-      ledgerId={ledgerId || ""}
+      ledgerId={safeLedgerId}
       sourceDocument={safeSourceDocument}
       isLoading={isLoading}
       isLoadingImages={isLoadingImages}

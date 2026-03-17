@@ -75,7 +75,7 @@ export function StatsTab({
     queryKey: enhancedStatsKey,
     queryFn: () =>
       getEnhancedStats({
-        ledgerId: ledgerId || "",
+        ledgerId: ledgerId ?? "",
         queryRange: {
           from: formatDateTimeForApi(startDate),
           to: formatDateTimeForApi(endDate),
@@ -85,22 +85,22 @@ export function StatsTab({
           to: formatDateTimeForApi(prevDateEnd),
         },
       }),
-    enabled: !!ledgerId,
+    enabled: ledgerId !== undefined && ledgerId !== "",
     placeholderData: (previousData) => previousData,
   });
 
   const totalExpense = stats?.summary.total || 0;
   const currencySymbol =
-    stats?.summary.currency || ledger?.metadata?.settings?.mainCurrency || "CNY";
+    stats?.summary.currency ?? ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const averageDaily = stats?.summary.dailyAverage || 0;
   const trend = stats?.summary.trend;
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId || "") });
+    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId ?? "") });
   };
 
   const handleCategoryClick = (categoryId: string) => {
-    if (onCategoryDrilldown) {
+    if (onCategoryDrilldown !== undefined) {
       const startStr = formatDateTimeForApi(startDate);
       const endStr = formatDateTimeForApi(endDate);
       onCategoryDrilldown(categoryId, startStr, endStr);

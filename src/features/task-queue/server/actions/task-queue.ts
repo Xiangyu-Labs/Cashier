@@ -64,7 +64,7 @@ function taskRunToQueueItem(task: TaskRun, sourceDocTitle?: string | null): Queu
 
   // For completed parse_source_document tasks, append source document title
   let title = task.title;
-  if (status === "completed" && task.type === "parse_source_document" && sourceDocTitle) {
+  if (status === "completed" && task.type === "parse_source_document" && typeof sourceDocTitle === "string") {
     title = `解析原始凭证：${sourceDocTitle}`;
   }
 
@@ -181,7 +181,7 @@ export const getTaskQueueAction = withLedgerAccess(
       if (sourceDocId != null && sourceDocId !== "" && anomalySourceDocIds.has(sourceDocId)) {
         continue;
       }
-      const sourceDocTitle = sourceDocId != null && sourceDocId !== "" ? sourceDocTitles.get(sourceDocId) : undefined;
+      const sourceDocTitle = typeof sourceDocId === "string" && sourceDocId.length > 0 ? sourceDocTitles.get(sourceDocId) : undefined;
       items.push(taskRunToQueueItem(task, sourceDocTitle));
     }
 

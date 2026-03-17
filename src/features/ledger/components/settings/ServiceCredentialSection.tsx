@@ -46,7 +46,7 @@ export function ServiceCredentialSection({
   }, [hasCopied]);
 
   const handleCreate = async () => {
-    if (!newCredName.trim()) return;
+    if (newCredName.trim() === "") return;
     try {
       const newCred = await onCreateCredential(newCredName.trim());
       setCreatedCredential(newCred);
@@ -100,7 +100,7 @@ export function ServiceCredentialSection({
                   <div className="font-medium text-sm truncate">{cred.name}</div>
                   <div className="text-xs text-muted font-mono truncate">
                     {/* Display masked key directly from prop, no copy button for list items */}
-                    {cred.key || "******"}
+                    {cred.key ?? "******"}
                   </div>
                   <div className="text-[10px] text-muted mt-1">
                     {t("createdAt", { date: new Date(cred.createdAt).toLocaleDateString() })}
@@ -139,7 +139,7 @@ export function ServiceCredentialSection({
             <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleCreate} disabled={!newCredName.trim()}>
+            <Button onClick={handleCreate} disabled={newCredName.trim() === ""}>
               {tCommon("confirm")}
             </Button>
           </DialogFooter>
@@ -163,7 +163,7 @@ export function ServiceCredentialSection({
                 size="sm"
                 variant="outline"
                 className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleCopy(createdCredential?.key || "")}
+                onClick={() => handleCopy(createdCredential?.key ?? "")}
               >
                 {hasCopied ? (
                   <Check size={14} className="mr-1" />
@@ -175,7 +175,7 @@ export function ServiceCredentialSection({
             </div>
             <Button
               className="w-full gap-2"
-              onClick={() => handleCopy(createdCredential?.key || "")}
+              onClick={() => handleCopy(createdCredential?.key ?? "")}
               variant={hasCopied ? "outline" : "default"}
             >
               {hasCopied ? <Check size={16} /> : <Copy size={16} />}

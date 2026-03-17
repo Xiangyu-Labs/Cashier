@@ -61,8 +61,8 @@ export function useQueueItemActions({
     if (item.status === "completed" && item.taskType === "parse_source_document") {
       return item.title;
     }
-    const key = item.taskType ? TASK_TYPE_I18N[item.taskType] : undefined;
-    return key ? t(key) : item.title;
+    const key = typeof item.taskType === "string" ? TASK_TYPE_I18N[item.taskType] : undefined;
+    return typeof key === "string" ? t(key) : item.title;
   }, [item.status, item.taskType, item.title, t]);
 
   // Determine available actions
@@ -100,8 +100,8 @@ export function useQueueItemActions({
     item.status === "completed" && item.taskType === "parse_source_document" && onViewDetails != null;
 
   // Content flags
-  const showSubtitleInline = item.subtitle != null && item.subtitle !== "";
-  const showProgressInline = item.status === "running" && item.progress != null && item.progress !== "";
+  const showSubtitleInline = typeof item.subtitle === "string" && item.subtitle.length > 0;
+  const showProgressInline = item.status === "running" && typeof item.progress === "string" && item.progress.length > 0;
 
   async function handleRetry() {
     if (!onRetry) return;

@@ -42,9 +42,9 @@ export function SourceDocumentInput({
   const t = useTranslations("SourceDocumentInput");
   const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
-  const [text, setText] = useState(initialData?.text || "");
+  const [text, setText] = useState(initialData?.text ?? "");
   const [images, setImages] = useState<{ data: string; mimeType: string }[]>(
-    initialData?.images || []
+    initialData?.images ?? []
   );
   const [_isAdvancedOpen, _setIsAdvancedOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -64,11 +64,11 @@ export function SourceDocumentInput({
   // Only set initial data once per document, not when initialData changes
   // This prevents user's editing from being reset when background task status changes
   useEffect(() => {
-    if (initialData && !hasInitializedRef.current) {
+    if (initialData != null && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
       startTransition(() => {
-        setText(initialData.text || "");
-        setImages(initialData.images || []);
+        setText(initialData.text ?? "");
+        setImages(initialData.images ?? []);
       });
     }
   }, [initialData]);
@@ -232,7 +232,7 @@ export function SourceDocumentInput({
   });
 
   const handleSend = () => {
-    if (!text && images.length === 0) return;
+    if (text === "" && images.length === 0) return;
     const payload = {
       text: text || undefined,
       images: images.length > 0 ? images : undefined,
@@ -252,7 +252,7 @@ export function SourceDocumentInput({
   };
 
   const isPending =
-    (mode === "retry" ? retryMutation.isPending : sendMutation.isPending) || isTransitionPending;
+    (mode === "retry" ? retryMutation.isPending : sendMutation.isPending) ?? isTransitionPending;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -348,7 +348,7 @@ export function SourceDocumentInput({
         <div className="flex-1" />
         <Button
           onClick={handleSend}
-          disabled={isPending || (!text && images.length === 0)}
+          disabled={isPending || (text === "" && images.length === 0)}
           className="flex-1 sm:flex-initial"
         >
           {isPending ? (

@@ -55,7 +55,7 @@ export const PendingSourceDocumentCard = memo(function PendingSourceDocumentCard
   const displayReason = "anomalyReason" in sourceDocument ? sourceDocument.anomalyReason : null;
 
   async function handleRetry() {
-    if (!onRetry) return;
+    if (onRetry == null) return;
     setIsRetrying(true);
     try {
       await onRetry();
@@ -125,13 +125,13 @@ export const PendingSourceDocumentCard = memo(function PendingSourceDocumentCard
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
-              {onRetry && (
+              {onRetry != null && (
                 <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                   <RefreshCw className={cn("mr-2 h-3.5 w-3.5", isRetrying && "animate-spin")} />
                   {tCommon("retry")}
                 </DropdownMenuItem>
               )}
-              {onDelete && (
+              {onDelete != null && (
                 <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
                   <Trash2 className="mr-2 h-3.5 w-3.5" />
                   {tCommon("delete")}

@@ -36,7 +36,7 @@ export function useDrilldownNavigation({
       params.set("endDate", endDate);
 
       // Add categoryId to URL if present and not uncategorized
-      if (categoryId && categoryId !== "__uncategorized__") {
+      if (categoryId !== "" && categoryId !== "__uncategorized__") {
         params.set("categoryId", categoryId);
       } else {
         params.delete("categoryId");
@@ -62,13 +62,13 @@ export function useDrilldownNavigation({
       params.set("endDate", date);
 
       // Add filter params to URL
-      if (filters?.categoryId && filters.categoryId !== "__uncategorized__") {
+      if (filters?.categoryId != null && filters.categoryId !== "" && filters.categoryId !== "__uncategorized__") {
         params.set("categoryId", filters.categoryId);
       } else {
         params.delete("categoryId");
       }
 
-      if (filters?.currency) {
+      if (filters?.currency != null && filters.currency !== "") {
         params.set("currency", filters.currency);
       } else {
         params.delete("currency");

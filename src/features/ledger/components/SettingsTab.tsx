@@ -157,7 +157,7 @@ export function SettingsTab({
                 <p className="text-sm text-[var(--muted)]">{t("collapseEntriesDesc")}</p>
               </div>
               <Switch
-                checked={settingsLedger.metadata?.settings?.collapseEntriesDefault || false}
+                checked={settingsLedger.metadata?.settings?.collapseEntriesDefault ?? false}
                 onCheckedChange={(checked: boolean) => {
                   updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
                 }}
@@ -182,7 +182,7 @@ export function SettingsTab({
             <div className="h-px bg-[var(--border)]" />
 
             {/* Category Settings - Organization structure */}
-            {categories && (
+            {categories.length > 0 && (
               <CategorySection
                 categories={categories}
                 uncategorizedCount={uncategorizedCount}
@@ -217,7 +217,7 @@ export function SettingsTab({
                 <p className="text-sm text-[var(--muted)]">{t("aiLanguageDesc")}</p>
               </div>
               <select
-                value={settingsLedger.metadata?.settings?.aiLanguage || "zh-CN"}
+                value={settingsLedger.metadata?.settings?.aiLanguage ?? "zh-CN"}
                 onChange={(e) => updateLedgerMutation.mutate({ aiLanguage: e.target.value })}
                 disabled={isPending}
                 className="bg-[var(--background)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all max-w-[150px] disabled:opacity-50"
@@ -239,10 +239,10 @@ export function SettingsTab({
                 <p className="text-sm text-[var(--muted)]">{t("aiPromptDesc")}</p>
               </div>
               <textarea
-                defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt || ""}
+                defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt ?? ""}
                 onBlur={(e) => {
                   const newValue = e.target.value;
-                  const currentValue = settingsLedger.metadata?.settings?.aiCustomPrompt || "";
+                  const currentValue = settingsLedger.metadata?.settings?.aiCustomPrompt ?? "";
                   if (newValue !== currentValue) {
                     updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
                   }

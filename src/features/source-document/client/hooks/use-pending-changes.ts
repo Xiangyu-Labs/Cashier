@@ -48,7 +48,7 @@ export function usePendingChanges({ sourceDocument, ledgerEntries }: UsePendingC
           if (field === "title") {
             originalValue = sourceDocument.title ?? "";
           } else if (field === "entryDate") {
-            originalValue = sourceDocument.entryDate?.split("T")[0] || "";
+            originalValue = sourceDocument.entryDate?.split("T")[0] ?? "";
           }
 
           if (value === originalValue) {

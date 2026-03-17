@@ -33,14 +33,14 @@ export function useTaskQueue(ledgerId: string) {
       (data?.stats?.pendingCount ?? 0) > 0 || (data?.stats?.runningCount ?? 0) > 0,
     interval: 3000,
     idleInterval: 60000, // Check every 60s when idle to detect new tasks from API/other sources
-    enabled: ledgerId !== "",
+    enabled: ledgerId.length === 0 ? false : true,
     ledgerId,
   });
 
   return {
     items: data?.items ?? ([] as QueueItem[]),
     stats: data?.stats ?? defaultStats,
-    isLoading: isLoading && !data,
+    isLoading: isLoading && data === undefined,
     refetch,
   };
 }

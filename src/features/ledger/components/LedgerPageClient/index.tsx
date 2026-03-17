@@ -152,12 +152,12 @@ export function LedgerPageClient({
       const params = new URLSearchParams(searchParams.toString());
 
       if (filters.categoryId !== undefined) {
-        if (filters.categoryId) params.set("categoryId", filters.categoryId);
+        if (filters.categoryId != null && filters.categoryId !== "") params.set("categoryId", filters.categoryId);
         else params.delete("categoryId");
       }
 
       if (filters.currency !== undefined) {
-        if (filters.currency) params.set("currency", filters.currency);
+        if (filters.currency != null && filters.currency !== "") params.set("currency", filters.currency);
         else params.delete("currency");
       }
 
@@ -225,7 +225,7 @@ export function LedgerPageClient({
     return () => clearTimeout(timer);
   }, [activeTab]);
 
-  if (!ledger) {
+  if (ledger === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <p className="text-muted">{t("notFound")}</p>

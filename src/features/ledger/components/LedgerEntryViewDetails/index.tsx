@@ -72,7 +72,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   // Get entryDate from source document
   const entryDate =
     ledgerEntry.sourceDocument?.entryDate ??
-    (ledgerEntry.createdAt ? formatDateTimeForApi(new Date(ledgerEntry.createdAt)) : "");
+    (ledgerEntry.createdAt !== undefined ? formatDateTimeForApi(new Date(ledgerEntry.createdAt)) : "");
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -84,7 +84,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   );
 
   const isDifferentCurrency = Boolean(
-    displayData.currency &&
+    displayData.currency !== "" &&
     displayData.currency !== mainCurrency &&
     displayData.currency !== "unknown"
   );
@@ -132,7 +132,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm text-muted-foreground shrink-0">{t("entryDate")}:</span>
               <span className="text-sm text-text">
-                {entryDate
+                {entryDate !== ""
                   ? parseDateString(entryDate).toLocaleDateString(locale, {
                       year: "numeric",
                       month: "short",
@@ -164,7 +164,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               displayClassName="text-sm text-text"
               inputClassName="text-sm"
               renderDisplay={(value) =>
-                value ? (
+                value !== "" ? (
                   <div className="text-sm text-text">
                     <AnimatePresence initial={false}>
                       <motion.div
@@ -175,7 +175,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                         {value}
                       </motion.div>
                     </AnimatePresence>
-                    {needsFolding && (
+                    {needsFolding === true && (
                       <Button
                         variant="ghost"
                         size="sm"

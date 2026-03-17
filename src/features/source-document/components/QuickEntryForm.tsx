@@ -43,6 +43,8 @@ export function QuickEntryForm({
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
+  const isFormValid = selectedCategoryId != null && amount > 0;
+
   const mutation = useLedgerMutation(ledgerId, {
     mutationFn: (data: {
       categoryId: string;
@@ -73,7 +75,7 @@ export function QuickEntryForm({
         categoryId: variables.categoryId,
         amount: variables.amount.toFixed(2),
         currency: mainCurrency,
-        itemName: variables.itemName || selectedCategory?.name || "",
+        itemName: variables.itemName ?? selectedCategory?.name ?? "",
         description: null,
         convertedAmount: variables.amount.toFixed(2),
         exchangeRate: "1",
@@ -111,7 +113,7 @@ export function QuickEntryForm({
             sourceDocumentId: tempDocId,
             amount: variables.amount.toFixed(2),
             currency: mainCurrency,
-            itemName: variables.itemName || selectedCategory?.name || "",
+            itemName: variables.itemName ?? selectedCategory?.name ?? "",
             convertedAmount: variables.amount.toFixed(2),
             exchangeRate: "1",
             category: selectedCategory
@@ -176,7 +178,7 @@ export function QuickEntryForm({
   });
 
   const handleSubmit = () => {
-    if (!selectedCategoryId || amount <= 0) return;
+    if (selectedCategoryId == null || amount <= 0) return;
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,
@@ -192,7 +194,7 @@ export function QuickEntryForm({
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
-          selectedCategory ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
+          selectedCategory != null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
         }
         className="text-sm"
       />
@@ -225,7 +227,7 @@ export function QuickEntryForm({
         <p className="text-sm text-muted-foreground mb-2">{t("selectDate")}</p>
         <DateFilter
           value={entryDate}
-          onChange={(date) => setEntryDate(date || new Date())}
+          onChange={(date) => setEntryDate(date ?? new Date())}
           placeholder={t("selectDate")}
           size="sm"
           className="w-full"
@@ -244,7 +246,7 @@ export function QuickEntryForm({
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={!selectedCategoryId || amount <= 0 || mutation.isPending}
+        disabled={selectedCategoryId == null || amount <= 0 || mutation.isPending}
         className="w-full"
       >
         {mutation.isPending ? (

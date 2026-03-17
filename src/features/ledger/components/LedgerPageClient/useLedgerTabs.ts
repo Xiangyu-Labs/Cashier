@@ -25,7 +25,7 @@ export function useLedgerTabs({
   // Single source of truth: URL search params
   // No useState needed - eliminates sync issues with external URL changes
   const activeTab = useMemo(
-    () => searchParams.get("tab") || initialTab,
+    () => searchParams.get("tab") ?? initialTab,
     [searchParams, initialTab]
   );
 

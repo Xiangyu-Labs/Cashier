@@ -235,9 +235,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     const totals: Record<string, number> = {};
 
     ledgerEntries.forEach((entry) => {
-      if (entry.currency) {
+      if (entry.currency != null && entry.currency !== "") {
         const amount = parseAmount(entry.amount);
-        totals[entry.currency] = (totals[entry.currency] || 0) + amount;
+        totals[entry.currency] = (totals[entry.currency] ?? 0) + amount;
       }
     });
 
@@ -249,12 +249,12 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
     return {
       text: sourceDocument.text,
-      images: imageUrls || [],
+      images: imageUrls ?? [],
     };
   }, [sourceDocument]);
 
   async function handleRetry() {
-    if (!onRetry) return;
+    if (onRetry == null) return;
     setIsRetrying(true);
     try {
       await onRetry();
@@ -308,7 +308,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           )}
         >
           <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-            {(sourceDocument.entryDate
+            {(sourceDocument.entryDate != null && sourceDocument.entryDate !== ""
               ? parseDateString(sourceDocument.entryDate)
               : new Date(sourceDocument.createdAt)
             ).toLocaleDateString(locale, {
@@ -319,7 +319,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {status !== "processing" &&
             status !== "queued" &&
             status !== "failed" &&
-            sourceDocument.title && (
+            sourceDocument.title != null &&
+            sourceDocument.title !== "" && (
               <>
                 <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
                 <span className="text-sm font-semibold text-text truncate">
@@ -360,7 +361,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                {onRetry && sourceDocument.type !== "manual" && (
+                {onRetry != null && sourceDocument.type !== "manual" && (
                   <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
                     {status === "queued" || status === "processing" || status === "failed"
@@ -369,7 +370,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                   </DropdownMenuItem>
                 )}
 
-                {onDelete && (
+                {onDelete != null && (
                   <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
                     <Trash2 className="mr-2 h-4 w-4" />
                     {tCommon("delete")}

@@ -46,7 +46,7 @@ export const createLedgerAction = withAuth(
           .returning()
           .all();
 
-        if (!result || result.length === 0) {
+        if (result.length === 0) {
           throw new Error("Failed to create ledger: no result returned");
         }
 
@@ -74,7 +74,7 @@ export const createLedgerAction = withAuth(
       throw error;
     }
 
-    if (!newLedger) {
+    if (newLedger === undefined) {
       throw new Error("Failed to create ledger: transaction returned no result");
     }
 

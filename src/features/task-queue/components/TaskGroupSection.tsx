@@ -66,7 +66,7 @@ export function TaskGroupSection({
           </motion.div>
         </div>
 
-        {!collapsed && actions && <div className="flex items-center gap-1">{actions}</div>}
+        {!collapsed && actions !== undefined && <div className="flex items-center gap-1">{actions}</div>}
       </div>
 
       <AnimatePresence>

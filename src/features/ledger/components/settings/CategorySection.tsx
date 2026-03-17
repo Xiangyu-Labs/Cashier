@@ -54,8 +54,8 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
     transition,
   };
 
-  const isGenerating = !category.icon || !category.description;
-  const isEditable = category.isEditable !== false;
+  const isGenerating = category.icon == null || category.icon === "" || category.description == null || category.description === "";
+  const isEditable = category.isEditable === undefined || category.isEditable === true;
 
   return (
     <div
@@ -150,7 +150,7 @@ export function CategorySection({
   );
 
   const handleCreate = () => {
-    if (!newCategoryName.trim()) return;
+    if (newCategoryName.trim() === "") return;
     onCreateCategory(newCategoryName.trim());
   };
 

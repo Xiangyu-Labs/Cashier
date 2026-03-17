@@ -42,7 +42,7 @@ function removeItemsBySourceDocId(
   if (old === undefined) return old;
   const idsSet = new Set(sourceDocIds);
   const newItems = old.items.filter(
-    (item) => !item.sourceDocumentId || !idsSet.has(item.sourceDocumentId)
+    (item) => item.sourceDocumentId === undefined || !idsSet.has(item.sourceDocumentId)
   );
   const removedCount = old.items.length - newItems.length;
   return {
@@ -109,7 +109,9 @@ export function useTaskQueueMutations(ledgerId: string) {
           return {
             ...old,
             items: old.items.map((item) =>
-              ids.includes(item.id) ? { ...item, status: "pending" as const } : item
+              ids.includes(item.id) && item.sourceDocumentId !== undefined && item.sourceDocumentId !== ""
+                ? { ...item, status: "pending" as const }
+                : item
             ),
           };
         }

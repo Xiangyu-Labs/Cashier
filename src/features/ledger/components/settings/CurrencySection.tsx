@@ -12,7 +12,7 @@ interface CurrencySectionProps {
 
 export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
   const t = useTranslations("Settings");
-  const selectedCurrencies = settings.currencies || [];
+  const selectedCurrencies = settings.currencies ?? [];
   const mainCurrency = settings.mainCurrency || "CNY";
 
   const toggleCurrency = (currency: string) => {

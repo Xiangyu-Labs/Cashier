@@ -56,11 +56,11 @@ function filterAndGroup(
 ): { groups: GroupedSourceDocuments<SourceDocumentWithEntries>; stats: SourceDocumentsStats } {
   // Apply amount filtering
   let filtered = docs;
-  if (minAmount !== undefined || maxAmount !== undefined) {
+  if (minAmount != null || maxAmount != null) {
     filtered = docs.filter((doc) => {
       const total = calculateTotalAmount(doc);
-      if (minAmount !== undefined && total < minAmount) return false;
-      if (maxAmount !== undefined && total > maxAmount) return false;
+      if (minAmount != null && total < minAmount) return false;
+      if (maxAmount != null && total > maxAmount) return false;
       return true;
     });
   }
@@ -89,8 +89,8 @@ function filterAndGroup(
 export function useSourceDocuments(ledgerId: string, options: UseSourceDocumentsOptions = {}) {
   const { dateRange, minAmount, maxAmount } = options;
 
-  const startDate = formatDateTimeForApi(dateRange?.start) || null;
-  const endDate = formatDateTimeForApi(dateRange?.end) || null;
+  const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
+  const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
 
   // Single query with flat cache structure
   // The 'all' key stores the raw flat array
@@ -98,8 +98,8 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
     queryKey: queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate),
     queryFn: () =>
       getAllSourceDocumentsAction(ledgerId, {
-        startDate: startDate ?? undefined,
-        endDate: endDate ?? undefined,
+        startDate: startDate != null ? startDate : undefined,
+        endDate: endDate != null ? endDate : undefined,
       }),
     isActive: (data) => {
       if (!data) return false;
@@ -163,9 +163,9 @@ export function useSourceDocumentFromCache(ledgerId: string, id: string | null) 
 
     // Find the document in any of the cached data
     for (const [, data] of queries) {
-      if (data) {
+      if (data != null) {
         const doc = data.find((d) => d.id === id);
-        if (doc) return doc;
+        if (doc != null) return doc;
       }
     }
 
