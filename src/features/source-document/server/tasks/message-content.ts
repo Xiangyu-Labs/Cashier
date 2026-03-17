@@ -103,7 +103,7 @@ export async function buildMessageContentAsync(
       throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
     }
     for (const result of loadedResults) {
-      if (result.dataUrl) {
+      if (result.dataUrl != null) {
         content.push({ type: "image_url", image_url: { url: result.dataUrl } });
       }
     }
@@ -128,7 +128,7 @@ export async function buildMessageContentAsync(
       throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
     }
     for (const result of loadedResults) {
-      if (result.dataUrl) {
+      if (result.dataUrl != null) {
         content.push({ type: "image_url", image_url: { url: result.dataUrl } });
       }
     }
