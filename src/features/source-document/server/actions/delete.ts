@@ -154,7 +154,7 @@ export const deleteSourceDocumentAction = withLedgerAccess(
     });
 
     // Delete images from local storage after successful soft delete
-    if (sourceDoc.imageUrls && sourceDoc.imageUrls.length > 0) {
+    if (sourceDoc.imageUrls != null && sourceDoc.imageUrls.length > 0) {
       await deleteLocalImages(sourceDoc.imageUrls);
     }
   }
@@ -189,7 +189,7 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(
     });
 
     // Delete images from local storage after successful soft delete
-    if (allImageUrls.length > 0) {
+    if (allImageUrls.length > 0 && ledgerId !== "") {
       await deleteLocalImages(allImageUrls);
     }
   }

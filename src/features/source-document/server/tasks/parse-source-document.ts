@@ -65,7 +65,7 @@ async function runStage0(
   input: ParseSourceDocumentInput,
   ctx: StageContext
 ): Promise<string | undefined> {
-  if (!input.imageUrls?.length) return undefined;
+  if (input.imageUrls == null || input.imageUrls.length === 0) return undefined;
 
   await ctx.setProgress("正在读取图片...");
 
@@ -81,12 +81,12 @@ async function runStage0(
     ctx.ai
   );
 
-  if (stage0Result.description) {
+  if (stage0Result.description != null && stage0Result.description !== "") {
     // Store in metadata for debugging/retry reuse
     const doc = await db.query.sourceDocuments.findFirst({
       where: and(eq(sourceDocuments.id, ctx.docId), isNull(sourceDocuments.deletedAt)),
     });
-    if (doc) {
+    if (doc != null) {
       await db
         .update(sourceDocuments)
         .set({ metadata: { ...doc.metadata, visionDescription: stage0Result.description } })
@@ -352,7 +352,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
     const { signal, updateProgress, ai } = context;
     const { ledgerId } = input;
 
-    if (!ledgerId) throw new Error("Missing ledgerId in task input");
+    if (ledgerId == null || ledgerId === "") throw new Error("Missing ledgerId in task input");
 
     // Validate document exists
     const doc = await db.query.sourceDocuments.findFirst({

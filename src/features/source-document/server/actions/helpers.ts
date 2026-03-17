@@ -23,7 +23,7 @@ export async function processImages(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<string[]> {
-  if (!images || images.length === 0) {
+  if (images == null || images.length === 0) {
     return [];
   }
 
@@ -99,7 +99,7 @@ export async function processImages(
     }
 
     // Generate unique key with proper extension based on output mimeType
-    const ext = mimeToExt[outputMimeType] || "jpg";
+    const ext = mimeToExt[outputMimeType] ?? "jpg";
     const key = `${ledgerId}/${sourceDocumentId}/${crypto.randomUUID()}.${ext}`;
 
     // Upload to local storage
@@ -139,7 +139,7 @@ export async function prepareSourceDocumentTask(
     orderBy: (table, { asc }) => [asc(table.sortOrder), asc(table.id)],
   });
 
-  const settings = ledger.metadata?.settings || {};
+  const settings = ledger.metadata?.settings ?? {};
 
   await flowEngine.submit(
     TASK_TYPE_PARSE_SOURCE_DOCUMENT,
@@ -148,8 +148,8 @@ export async function prepareSourceDocumentTask(
       sourceDocumentId: sourceDocumentId,
       text: text,
       imageUrls: imageUrls,
-      aiLanguage: settings.aiLanguage || "zh-CN",
-      preferredCurrencies: settings.currencies || undefined,
+      aiLanguage: settings.aiLanguage ?? "zh-CN",
+      preferredCurrencies: settings.currencies ?? undefined,
       categories: categories,
       settings: {
         aiCustomPrompt: settings.aiCustomPrompt,

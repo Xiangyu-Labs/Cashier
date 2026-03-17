@@ -38,7 +38,7 @@ export function buildConversionItems(
     amount: Number(entry.amount),
     from: entry.currency || "CNY",
     to: mainCurrency,
-    date: entry.sourceDocument?.entryDate || undefined,
+    date: entry.sourceDocument?.entryDate ?? undefined,
   }));
 }
 

@@ -17,7 +17,7 @@ export async function createSourceDocumentAction(
   input: SourceDocumentActionInput
 ) {
   const { text, images, entryDate } = input;
-  if (!text && (!images || images.length === 0)) {
+  if ((text == null || text === "") && (images == null || images.length === 0)) {
     throw new ValidationError("At least one input (text or images) is required");
   }
 
@@ -32,7 +32,7 @@ export async function createSourceDocumentAction(
     .insert(sourceDocuments)
     .values({
       ledgerId: ledgerId, // Explicitly set ledgerId
-      text: text || null,
+      text: text ?? null,
       imageUrls: [], // Will update after normalized
       status: "queued",
       entryDate: today,
@@ -42,7 +42,7 @@ export async function createSourceDocumentAction(
   const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
 
   // Update with normalized image URLs if any
-  if (imageUrls.length > 0) {
+  if (imageUrls.length > 0 && ledgerId !== "") {
     await db.update(sourceDocuments).set({ imageUrls }).where(q.whereId(savedDoc.id));
   }
 

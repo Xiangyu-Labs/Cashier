@@ -25,7 +25,7 @@ export const getLedgerStatsAction = withLedgerAccess(
     const q = forLedger(ledgerEntries, ledgerId);
     const conditions = [q.whereActive];
     // Date filtering now uses sourceDocument.entryDate via subquery
-    if (startDate) {
+    if (startDate != null && startDate !== "") {
       conditions.push(
         sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
@@ -33,7 +33,7 @@ export const getLedgerStatsAction = withLedgerAccess(
             )`
       );
     }
-    if (endDate) {
+    if (endDate != null && endDate !== "") {
       conditions.push(
         sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
@@ -42,13 +42,13 @@ export const getLedgerStatsAction = withLedgerAccess(
       );
     }
     // Additional filter conditions
-    if (filters?.categoryId) conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
-    if (filters?.currency) conditions.push(eq(ledgerEntries.currency, filters.currency));
+    if (filters?.categoryId != null && filters.categoryId !== "") conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
+    if (filters?.currency != null && filters.currency !== "") conditions.push(eq(ledgerEntries.currency, filters.currency));
     // Filter by convertedAmount - use CAST to compare as numbers, not strings
-    if (filters?.minAmount !== undefined && filters?.minAmount !== null) {
+    if (filters?.minAmount !== undefined && filters.minAmount !== null) {
       conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) >= ${filters.minAmount}`);
     }
-    if (filters?.maxAmount !== undefined && filters?.maxAmount !== null) {
+    if (filters?.maxAmount !== undefined && filters.maxAmount !== null) {
       conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) <= ${filters.maxAmount}`);
     }
 
@@ -83,10 +83,10 @@ export const getLedgerStatsAction = withLedgerAccess(
 
     // entryDate is now a yyyy-MM-dd string, no conversion needed
     const trend = trendQuery
-      .filter((t) => t.date)
+      .filter((t) => t.date != null && t.date !== "")
       .map((t) => ({
-        date: t.date || "",
-        total: Number(t.total) || 0,
+        date: t.date ?? "",
+        total: Number(t.total) ?? 0,
       }));
 
     // byCategory is handled by getEnhancedStats, this action only provides totals
@@ -110,7 +110,7 @@ export const getLedgerStatsAction = withLedgerAccess(
       .from(ledgerEntries)
       .where(and(...conditions));
 
-    const convertedTotalValue = Number(convertedTotalResult[0]?.total) || 0;
+    const convertedTotalValue = Number(convertedTotalResult[0]?.total) ?? 0;
 
     return {
       convertedTotal: {

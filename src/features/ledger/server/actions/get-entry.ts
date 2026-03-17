@@ -45,7 +45,7 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
       ...serializedEntry.sourceDocument,
       metadata: lightMetadata,
       imageUrls: [], // Strip image URLs
-      hasImages: (entry.sourceDocument?.imageUrls?.length || 0) > 0,
+      hasImages: (entry.sourceDocument?.imageUrls?.length ?? 0) > 0,
     };
   }
 

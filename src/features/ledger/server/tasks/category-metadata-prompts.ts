@@ -5,7 +5,7 @@ export function buildCategoryMetadataPrompt(
   existingCategories: Array<{ name: string; description?: string | null; icon?: string | null }>,
   aiLanguage?: string
 ): string {
-  const lang = aiLanguage || "zh-CN";
+  const lang = aiLanguage ?? "zh-CN";
   const existingList = existingCategories
     .map((c) => `- ${c.name}: ${c.description || "无描述"} (图标: ${c.icon || "无"})`)
     .join("\n");

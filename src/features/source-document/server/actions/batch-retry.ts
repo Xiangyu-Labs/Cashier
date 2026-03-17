@@ -64,8 +64,8 @@ export async function batchRetrySourceDocumentsAction(
     newDocMappings.push({
       oldDocId: oldDoc.id,
       newDocId,
-      text: oldDoc.text || undefined,
-      imageUrls: oldDoc.imageUrls || [],
+      text: oldDoc.text ?? undefined,
+      imageUrls: oldDoc.imageUrls ?? [],
     });
   }
 

@@ -204,7 +204,7 @@ export async function executeStage2(input: Stage2Input, ai: AIContext): Promise<
 
   return {
     entries: chosenResult.ledger_entries,
-    title: input.validationSummary.summary?.title || "Untitled",
+    title: input.validationSummary.summary?.title ?? "Untitled",
     reasoning: chosenResult.reasoning,
     wasArbitrated: true,
   };

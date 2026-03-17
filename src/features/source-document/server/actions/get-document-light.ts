@@ -87,7 +87,7 @@ export async function getSourceDocumentLightAction(
 
   // Override hasImages using docMeta which has the actual imageUrls
   const result = serializedDoc as SourceDocumentLight;
-  result.hasImages = (docMeta.imageUrls?.length || 0) > 0;
+  result.hasImages = (docMeta.imageUrls?.length ?? 0) > 0;
 
   // Delete imageUrls to match expected light response format
   delete (result as { imageUrls?: string[] }).imageUrls;

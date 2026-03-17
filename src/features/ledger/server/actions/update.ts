@@ -30,7 +30,7 @@ export const updateLedgerAction = withAuth(
 
     const currentMetadata = existing.metadata || {};
     const currentSettings = currentMetadata.settings || {};
-    const oldMainCurrency = currentSettings.mainCurrency || "CNY";
+    const oldMainCurrency = currentSettings.mainCurrency ?? "CNY";
     const newMainCurrency = validated.settings?.mainCurrency;
 
     const newSettings = {

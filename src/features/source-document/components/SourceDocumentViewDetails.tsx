@@ -141,10 +141,10 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       const pendingAmount = pendingChanges.entries[entry.id]?.amount;
       const curr = pendingCurrency ?? entry.currency ?? mainCurrency;
       const amt = pendingAmount ?? entry.amount;
-      groups[curr] = (groups[curr] || 0) + parseAmount(amt);
+      groups[curr] = (groups[curr] ?? 0) + parseAmount(amt);
 
       // Use convertedAmount if available, otherwise use amount (for main currency)
-      if (entry.convertedAmount) {
+      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
         mainCurrencyTotal += parseAmount(entry.convertedAmount);
       } else if (curr === mainCurrency) {
         mainCurrencyTotal += parseAmount(amt);
@@ -172,7 +172,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   // imageUrls only exists on full SourceDocument, not on SourceDocumentLight
   const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
   const hasImages = (imageUrls?.length ?? 0) > 0;
-  const hasRawText = sourceDocument.text && sourceDocument.text.trim().length > 0;
+  const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
 
   return (
     <div className="h-full flex flex-col gap-4">

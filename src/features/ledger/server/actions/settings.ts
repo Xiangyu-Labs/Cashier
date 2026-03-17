@@ -57,7 +57,7 @@ export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string)
   }));
 
   return {
-    uncategorizedCount: uncategorizedResult[0]?.count || 0,
+    uncategorizedCount: uncategorizedResult[0]?.count ?? 0,
     credentials: serializedCredentials,
   };
 });

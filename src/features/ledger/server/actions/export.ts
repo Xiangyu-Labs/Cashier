@@ -84,10 +84,10 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     // Build conditions with date range
     const conditions = [eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)];
 
-    if (options?.startDate) {
+    if (options?.startDate != null && options.startDate !== "") {
       conditions.push(gte(sourceDocuments.entryDate, options.startDate));
     }
-    if (options?.endDate) {
+    if (options?.endDate != null && options.endDate !== "") {
       conditions.push(lte(sourceDocuments.entryDate, options.endDate));
     }
 
@@ -124,7 +124,7 @@ export const exportLedgerEntriesAction = withLedgerAccess(
     for (const entry of entries) {
       const row = [
         // Use entryDate from sourceDocument if available, otherwise format createdAt
-        entry.sourceDocument?.entryDate || formatDate(entry.createdAt),
+        entry.sourceDocument?.entryDate ?? formatDate(entry.createdAt),
         entry.itemName ?? "",
         entry.amount ?? "",
         entry.currency ?? "",

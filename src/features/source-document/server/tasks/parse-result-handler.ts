@@ -105,7 +105,7 @@ export async function handleParseResult({
     tx.update(sourceDocuments)
       .set({
         status: "completed",
-        ...(title ? { title } : {}),
+        ...(title != null && title !== "" ? { title } : {}),
       })
       .where(q.whereId(sourceDocumentId))
       .run();
