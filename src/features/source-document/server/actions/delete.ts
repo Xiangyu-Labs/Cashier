@@ -9,7 +9,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getLocalStorage } from "@/lib/storage/local";
 import { isLocalUploadUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
-import { NotFoundError } from "@/lib/errors";
+
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schemaModule from "@/lib/db/schema";
 
@@ -133,12 +133,19 @@ export const deleteSourceDocumentAction = withLedgerAccess(
     const q = forLedger(sourceDocuments, ledgerId);
 
     // Get source document to retrieve image URLs before deletion
+    // Note: query includes soft-deleted records using eq() instead of whereActive
     const sourceDoc = await db.query.sourceDocuments.findFirst({
-      where: and(q.whereActive, q.whereId(sourceId)),
+      where: and(eq(sourceDocuments.ledgerId, ledgerId), q.whereId(sourceId)),
     });
 
+    // If record doesn't exist (including already soft-deleted), silently succeed (idempotent)
     if (!sourceDoc) {
-      throw new NotFoundError("Source document not found");
+      return;
+    }
+
+    // If record is already soft-deleted, also silently succeed
+    if (sourceDoc.deletedAt != null) {
+      return;
     }
 
     // Find and cancel related tasks
