@@ -7,7 +7,6 @@ import { GET as categoriesGET } from "@/app/api/v1/categories/route";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { serviceCredentials, ledgerEntries, sourceDocuments, ledgers, entryCategories } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 // Helper to create a mock NextRequest
 function createMockRequest(url: string, options: { headers?: Record<string, string> } = {}): NextRequest {

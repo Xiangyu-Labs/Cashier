@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { validateServiceCredential } from "@/features/ledger/server/actions/credentials";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
-import { UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
+import { UnauthorizedError, RateLimitError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 import { z } from "zod";
 
