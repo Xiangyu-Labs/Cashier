@@ -51,17 +51,6 @@ export const accounts = sqliteTable("accounts", {
 
 export type Account = InferSelectModel<typeof accounts>;
 
-
-
-// Verification Tokens - Magic Link 验证令牌
-export const verificationTokens = sqliteTable("verification_tokens", {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull().unique(),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
-}, (table) => [
-    primaryKey({ columns: [table.identifier, table.token] }),
-]);
-
 // OTP Tokens - 验证码登录令牌
 export const otpTokens = sqliteTable("otp_tokens", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

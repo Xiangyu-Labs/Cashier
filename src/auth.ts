@@ -6,7 +6,6 @@ import { db } from "@/lib/db";
 import {
     users,
     accounts,
-    verificationTokens,
 } from "@/features/auth/server/schema";
 import { eq, and, isNull } from "drizzle-orm";
 
@@ -93,7 +92,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     adapter: DrizzleAdapter(db, {
         usersTable: users,
         accountsTable: accounts,
-        verificationTokensTable: verificationTokens,
     }),
     providers: [
         ...(OIDCProvider ? [OIDCProvider] : []),
