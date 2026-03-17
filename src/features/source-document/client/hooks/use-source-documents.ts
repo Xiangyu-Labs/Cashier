@@ -38,10 +38,10 @@ interface UseSourceDocumentsOptions {
  * Helper to calculate total converted amount for a source document
  */
 function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
-  if (!doc.ledgerEntries?.length) return 0;
+  if (doc.ledgerEntries == null || doc.ledgerEntries.length === 0) return 0;
   return doc.ledgerEntries.reduce((sum, entry) => {
     const convertedAmount = entry.convertedAmount;
-    const amount = convertedAmount ? parseAmount(convertedAmount) : parseAmount(entry.amount);
+    const amount = convertedAmount != null ? parseAmount(convertedAmount) : parseAmount(entry.amount);
     return sum + Math.abs(amount);
   }, 0);
 }
@@ -158,7 +158,7 @@ export function useSourceDocumentFromCache(ledgerId: string, id: string | null) 
   const queryClient = useQueryClient();
 
   return useMemo(() => {
-    if (!id) return null;
+    if (id == null) return null;
 
     // Get all cached queries for this ledger
     const queries = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
