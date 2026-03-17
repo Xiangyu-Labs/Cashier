@@ -54,8 +54,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       return { snapshots };
     },
     onSettledExtra: (queryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
     },
   });
 
@@ -97,9 +97,9 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
     onSettledExtra: (queryClient) => {
       // Also invalidate uncategorized count since deleted category's entries become uncategorized
-      queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) });
       // Invalidate task queue to immediately reflect cancelled tasks
-      queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
     },
   });
 
