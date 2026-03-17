@@ -66,7 +66,7 @@ export function StatsTab({
   }, [startDate, endDate, rangeType, format]);
 
   const enhancedStatsKey = [
-    ...queryKeys.enhancedStats(ledgerId || ""),
+    ...queryKeys.enhancedStats(ledgerId ?? ""),
     formatDateTimeForApi(startDate),
     rangeType,
     ledger?.metadata?.settings?.mainCurrency,
@@ -89,10 +89,10 @@ export function StatsTab({
     placeholderData: (previousData) => previousData,
   });
 
-  const totalExpense = stats?.summary.total || 0;
+  const totalExpense = stats?.summary.total ?? 0;
   const currencySymbol =
     stats?.summary.currency ?? ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const averageDaily = stats?.summary.dailyAverage || 0;
+  const averageDaily = stats?.summary.dailyAverage ?? 0;
   const trend = stats?.summary.trend;
 
   const handleRefresh = async () => {

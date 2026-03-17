@@ -133,7 +133,8 @@ export function SettingsTab({
                     return;
                   }
                   if (newLocale !== locale) {
-                    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+                    const queryString = searchParams.toString();
+                    const query = queryString !== "" ? `?${queryString}` : "";
                     router.push(`${pathname}${query}`, { locale: newLocale as "en-US" | "zh-CN" });
                   }
                 }}
@@ -260,7 +261,7 @@ export function SettingsTab({
           <div className="space-y-6 pt-4">
             {/* Service Credentials - API access management */}
             <ServiceCredentialSection
-              credentials={credentials || []}
+              credentials={credentials ?? []}
               onCreateCredential={(name) => createCredential.mutateAsync(name)}
               onDeleteCredential={(id) => deleteCredential.mutate(id)}
             />
