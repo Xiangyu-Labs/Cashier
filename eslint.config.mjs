@@ -49,6 +49,14 @@ const eslintConfig = defineConfig([
           allowAny: false,
         },
       ],
+      // 禁止未处理的 Promise - 禁用 ignoreVoid 要求显式处理
+      "@typescript-eslint/no-floating-promises": [
+        "error",
+        {
+          ignoreVoid: false,
+          ignoreIIFE: true,
+        },
+      ],
     },
   },
 ]);
