@@ -252,8 +252,8 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     }
   }, [failedWithoutSourceDoc, batchDismiss]);
 
-  const handleRetrySuccess = useCallback(() => {
-    queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+  const handleRetrySuccess = useCallback(async () => {
+    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
   }, [queryClient, ledgerId]);
 
   return {
