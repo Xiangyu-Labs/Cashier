@@ -5,27 +5,36 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Coverage directory
     "coverage/**",
   ]),
   {
     rules: {
+      // 从 warn 改为 error - 未使用变量
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "caughtErrorsIgnorePattern": "^_"
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_"
         }
       ],
-      "@typescript-eslint/no-explicit-any": "error"
+      // 已是 error，保持不变
+      "@typescript-eslint/no-explicit-any": "error",
+      // 新增：强制使用 import type
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports"
+        }
+      ],
+      // 新增：检查 useEffect 依赖 (降级为 warn 因为可能存在误报)
+      "react-hooks/exhaustive-deps": "warn"
     }
   }
 ]);
