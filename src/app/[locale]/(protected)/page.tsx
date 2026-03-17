@@ -33,8 +33,13 @@ export default async function HomePage(): Promise<ReactNode> {
   const ledgers = await getLedgers(session.user.id);
 
   // 2. Check default ledger from session
+  // Before redirecting, verify the ledger exists
   if (session.user.defaultLedgerId) {
-    redirect({ href: `/ledger/${session.user.defaultLedgerId}`, locale });
+    const defaultLedger = ledgers.find(l => l.id === session.user.defaultLedgerId);
+    if (defaultLedger) {
+      redirect({ href: `/ledger/${session.user.defaultLedgerId}`, locale });
+    }
+    // If defaultLedgerId points to non-existent ledger, fall through to first ledger
   }
 
   // 3. Redirect to first existing ledger

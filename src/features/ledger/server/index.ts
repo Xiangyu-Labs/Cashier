@@ -59,6 +59,11 @@ export {
   exportLedgerEntriesAction,
 } from './actions/export';
 
+// Server Actions - Delete
+export {
+  deleteLedgerAction,
+} from './actions/delete';
+
 // Schema
 export {
   ledgers,

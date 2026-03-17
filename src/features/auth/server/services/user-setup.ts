@@ -72,8 +72,15 @@ export async function getUserDefaultLedgerId(
 }
 
 /**
- * Set a user's default ledger
+ * Clear defaultLedgerId when the ledger is deleted
  */
+export async function clearUserDefaultLedger(ledgerId: string): Promise<void> {
+    await db
+        .update(users)
+        .set({ defaultLedgerId: null })
+        .where(eq(users.defaultLedgerId, ledgerId));
+}
+
 export async function setUserDefaultLedger(
     userId: string,
     ledgerId: string
