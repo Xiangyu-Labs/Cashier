@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-keys";
 import {
   getSourceDocumentByIdAction,
   getSourceDocumentLightAction,
-} from "@/features/source-document/server-actions";
+} from "@/modules/source-document/actions";
 import type { LedgerEntry, SourceDocument, SourceDocumentLight } from "@/types/api";
 
 interface UseSourceDocumentDetailDataOptions {

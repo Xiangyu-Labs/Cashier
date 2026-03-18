@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { users, ledgers } from "@/persistence";
 import { and, eq, isNull } from "drizzle-orm";
 import type { ProvisionUserWorkspaceInput } from "@/modules/auth/contracts";
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { createDefaultLedger } from "@/modules/ledger";
 import { sendLoginNotification } from "@/features/auth/server/services/notifications";
 
 export async function provisionUserWorkspace(

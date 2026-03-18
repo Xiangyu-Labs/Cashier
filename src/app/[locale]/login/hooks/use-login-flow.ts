@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
-import { sendOTPAction, OTP_LENGTH } from "@/features/auth/server-actions";
+import { sendOTPAction, OTP_LENGTH } from "@/modules/auth/actions";
 
 type LoginStep = "email" | "otp";
 

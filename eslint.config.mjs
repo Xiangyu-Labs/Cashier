@@ -12,6 +12,16 @@ const featureNames = [
   "task-queue",
 ];
 
+const moduleNames = [
+  "auth",
+  "currency",
+  "ledger",
+  "source-document",
+  "stats",
+  "task-queue",
+  "workspace",
+];
+
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
     `@/features/${featureName}/server/*/**`,
@@ -31,6 +41,30 @@ function createCrossFeatureBoundaryRule(currentFeature) {
           group: createDeepFeatureImportPatterns(disallowedFeatures),
           message:
             "Cross-feature imports must go through the target feature's public entrypoint.",
+        },
+      ],
+    },
+  ];
+}
+
+function createDeepModuleImportPatterns(targetModules) {
+  return targetModules.flatMap((moduleName) => [
+    `@/modules/${moduleName}/application/**`,
+    `@/modules/${moduleName}/infra/**`,
+    `@/modules/${moduleName}/domain/**`,
+    `@/modules/${moduleName}/ui/**`,
+  ]);
+}
+
+function createCrossModuleBoundaryRule(currentModule) {
+  const disallowedModules = moduleNames.filter((moduleName) => moduleName !== currentModule);
+  return [
+    "error",
+    {
+      patterns: [
+        {
+          group: createDeepModuleImportPatterns(disallowedModules),
+          message: "Cross-module imports must go through the target module's public entrypoint.",
         },
       ],
     },
@@ -128,12 +162,44 @@ const eslintConfig = defineConfig([
               message:
                 "App and shared UI code must import features via public root/server/client/components entrypoints.",
             },
+            {
+              group: ["@/persistence", "@/persistence/**"],
+              message: "App and shared UI code must not depend directly on persistence.",
+            },
           ],
         },
       ],
     },
   },
+  {
+    files: ["src/lib/**/*.ts", "src/lib/**/*.tsx", "src/types/**/*.ts", "src/types/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: createDeepFeatureImportPatterns(featureNames),
+              message: "Shared library/types code must not deep-import feature internals.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/flow/**/*.ts", "src/lib/flow/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   ...featureNames.flatMap((featureName) => createFeatureBoundaryConfigs(featureName)),
+  ...moduleNames.map((moduleName) => ({
+    files: [`src/modules/${moduleName}/**/*.ts`, `src/modules/${moduleName}/**/*.tsx`],
+    rules: {
+      "no-restricted-imports": createCrossModuleBoundaryRule(moduleName),
+    },
+  })),
 ]);
 
 export default eslintConfig;

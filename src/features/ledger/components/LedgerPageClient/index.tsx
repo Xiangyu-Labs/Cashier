@@ -10,7 +10,7 @@ import {
   getLedgerAction,
   getLedgersAction,
   getEntryCategoriesAction,
-} from "@/features/ledger/server-actions";
+} from "@/modules/ledger/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";

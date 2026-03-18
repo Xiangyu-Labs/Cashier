@@ -5,7 +5,7 @@ import { type QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
 import { fireAndForget } from "@/lib/safe-async";
-import { getLedgerAction } from "@/features/ledger/server-actions";
+import { getLedgerAction } from "@/modules/ledger/actions";
 import type { LedgerTab } from "@/features/ledger/lib/tabs";
 
 const INPUT_PREFETCH_DELAY = 2000;

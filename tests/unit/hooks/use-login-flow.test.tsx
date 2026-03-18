@@ -22,7 +22,7 @@ vi.mock("@/i18n/routing", () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
-vi.mock("@/features/auth/server-actions", () => ({
+vi.mock("@/modules/auth/actions", () => ({
   sendOTPAction: (...args: unknown[]) => mockSendOTPAction(...args),
   OTP_LENGTH: 6,
 }));

@@ -8,11 +8,11 @@ import {
   invalidateSourceDocuments,
   queryKeys,
 } from "@/lib/query-keys";
-import { getLedgerEntryAction } from "@/features/ledger/server-actions";
+import { getLedgerEntryAction } from "@/modules/ledger/actions";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/features/ledger/server-actions";
+} from "@/modules/ledger/actions";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";

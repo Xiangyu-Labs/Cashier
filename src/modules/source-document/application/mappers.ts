@@ -4,7 +4,7 @@ import type {
   SourceDocumentGroupDto,
   SourceDocumentListItemDto,
 } from "../contracts";
-import { mapLedgerEntryDto } from "@/modules/ledger/application/mappers";
+import { mapLedgerEntryDto } from "@/modules/ledger";
 
 function toIso(date: Date | null | undefined): string | null {
   if (date == null) return null;

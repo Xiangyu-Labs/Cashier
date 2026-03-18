@@ -14,13 +14,13 @@ import {
   deleteSourceDocumentAction,
   type PaginatedSourceDocumentsResponse,
   type SourceDocumentWithEntries as ServerSourceDocumentWithEntries,
-} from "@/features/source-document/server-actions";
+} from "@/modules/source-document/actions";
 import {
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
   batchDeleteLedgerEntriesAction,
   updateLedgerEntryAction,
-} from "@/features/ledger/server-actions";
+} from "@/modules/ledger/actions";
 import { useTranslations } from "next-intl";
 import { fireAndForget } from "@/lib/safe-async";
 import {

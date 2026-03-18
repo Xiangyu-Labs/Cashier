@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSourceDocumentFullAction } from "@/features/source-document/server-actions";
+import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
 import { ImageIcon, FileText, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { SourceDocumentImageModal } from "@/features/source-document/components";

@@ -12,12 +12,12 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/features/ledger/server-actions";
+} from "@/modules/ledger/actions";
 import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   type PaginatedSourceDocumentsResponse,
-} from "@/features/source-document/server-actions";
+} from "@/modules/source-document/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 import type { SourceDocumentWithEntries } from "@/features/source-document/client";
 

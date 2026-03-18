@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
 import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
