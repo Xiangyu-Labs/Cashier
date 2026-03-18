@@ -40,6 +40,22 @@ interface EntryFilterPanelProps {
   className?: string;
 }
 
+const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "week", "month", "custom"];
+
+function normalizeAmountRange(filters: EntryFilters): EntryFilters {
+  const { minAmount, maxAmount } = filters;
+
+  if (minAmount == null || maxAmount == null || minAmount <= maxAmount) {
+    return filters;
+  }
+
+  return {
+    ...filters,
+    minAmount: maxAmount,
+    maxAmount: minAmount,
+  };
+}
+
 export function EntryFilterPanel({
   filters,
   onFiltersChange,
@@ -80,7 +96,9 @@ export function EntryFilterPanel({
 
   // Get active preset from periodParams if available, otherwise derive from filters
   const activePreset: PeriodPreset =
-    periodParams?.period ??
+    (periodParams?.period != null && VISIBLE_PRESETS.includes(periodParams.period)
+      ? periodParams.period
+      : undefined) ??
     (() => {
       const now = new Date();
       const start = filters.startDate;
@@ -111,7 +129,7 @@ export function EntryFilterPanel({
 
   // Map preset string to PeriodPreset type
   const toNamedPreset = (preset: string): PeriodPreset | null => {
-    if (["thisMonth", "week", "month", "3months", "6months", "year"].includes(preset)) {
+    if (VISIBLE_PRESETS.includes(preset as PeriodPreset)) {
       return preset as PeriodPreset;
     }
 
@@ -120,7 +138,7 @@ export function EntryFilterPanel({
 
   // Date preset handler
   const handleDatePresetLegacy = (preset: string, applyImmediately = false) => {
-    let newFilters = { ...filters };
+    let newFilters = { ...tempFilters };
 
     if (preset !== "custom") {
       const end = new Date();
@@ -162,8 +180,9 @@ export function EntryFilterPanel({
   };
 
   const handleApply = () => {
-    onFiltersChange(tempFilters);
-    if (tempPeriod !== null && onPeriodChange) {
+    const normalizedFilters = normalizeAmountRange(tempFilters);
+    onFiltersChange(normalizedFilters);
+    if (tempPeriod !== null && tempPeriod !== "custom" && onPeriodChange) {
       onPeriodChange({ period: tempPeriod });
     }
     setOpen(false);
@@ -215,14 +234,13 @@ export function EntryFilterPanel({
                 <CalendarIcon className="h-3 w-3" />
                 {t("dateRange")}
               </div>
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-4 gap-1">
                 {(
                   [
                     { preset: "thisMonth", label: tDateRange("thisMonth") },
                     { preset: "week", label: tDateRange("pastWeek") },
                     { preset: "month", label: tDateRange("pastMonth") },
-                    { preset: "3months", label: tDateRange("past3Months") },
-                    { preset: "6months", label: tDateRange("past6Months") },
+                    { preset: "custom", label: tDateRange("customRange") },
                   ] as const
                 ).map(({ preset, label }) => {
                   const displayPreset = tempPeriod ?? activePreset;
@@ -246,12 +264,13 @@ export function EntryFilterPanel({
               <div className="flex gap-2 items-center">
                 <DateFilter
                   value={tempFilters.startDate}
-                  onChange={(date) =>
+                  onChange={(date) => {
                     setTempFilters((prev) => ({
                       ...prev,
                       startDate: date || undefined,
-                    }))
-                  }
+                    }));
+                    setTempPeriod("custom");
+                  }}
                   size="sm"
                   className="flex-1 h-8"
                   showClear={false}
@@ -259,12 +278,13 @@ export function EntryFilterPanel({
                 <span className="text-muted-foreground text-sm">-</span>
                 <DateFilter
                   value={tempFilters.endDate}
-                  onChange={(date) =>
+                  onChange={(date) => {
                     setTempFilters((prev) => ({
                       ...prev,
                       endDate: date || undefined,
-                    }))
-                  }
+                    }));
+                    setTempPeriod("custom");
+                  }}
                   size="sm"
                   className="flex-1 h-8"
                   showClear={false}

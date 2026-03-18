@@ -66,6 +66,16 @@ describe("ledger-url-params", () => {
     });
   });
 
+  it("writes and overwrites numeric filter params", () => {
+    const params = updateLedgerSearchParams(new URLSearchParams("minAmount=5"), {
+      minAmount: 100,
+      maxAmount: 250,
+    });
+
+    expect(params.get("minAmount")).toBe("100");
+    expect(params.get("maxAmount")).toBe("250");
+  });
+
   it("builds URLs without introducing navigation side effects", () => {
     const params = new URLSearchParams("tab=details&period=custom");
 

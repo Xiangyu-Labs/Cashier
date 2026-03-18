@@ -8,8 +8,16 @@ vi.mock("next-intl", () => ({
     const translations: Record<string, string | string[]> = {
       moreFilters: "更多筛选",
       dateRange: "日期范围",
-      all: "全部",
+      priceRange: "价格区间",
+      minAmount: "最小金额",
+      maxAmount: "最大金额",
+      apply: "应用筛选",
+      reset: "重置",
+      pastWeek: "过去7天",
+      pastMonth: "最近30天",
       thisMonth: "本月",
+      customRange: "自定义区间",
+      all: "全部",
       week: "最近7天",
       custom: "自定义",
       selectDate: "选择日期",
@@ -103,5 +111,80 @@ describe("EntryFilterPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("日期范围")).toBeTruthy();
     });
+  });
+
+  it("applies amount filters entered by the user", async () => {
+    render(<EntryFilterPanel filters={{}} onFiltersChange={mockOnFiltersChange} />);
+
+    fireEvent.click(screen.getByText("更多筛选"));
+
+    await waitFor(() => {
+      expect(screen.getByText("价格区间")).toBeTruthy();
+    });
+
+    const minInput = screen.getByPlaceholderText("最小金额");
+    const maxInput = screen.getByPlaceholderText("最大金额");
+
+    fireEvent.change(minInput, { target: { value: "100" } });
+    fireEvent.change(maxInput, { target: { value: "500" } });
+    fireEvent.click(screen.getByText("应用筛选"));
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minAmount: 100,
+        maxAmount: 500,
+      })
+    );
+  });
+
+  it("normalizes reversed amount ranges before applying", async () => {
+    render(<EntryFilterPanel filters={{}} onFiltersChange={mockOnFiltersChange} />);
+
+    fireEvent.click(screen.getByText("更多筛选"));
+
+    await waitFor(() => {
+      expect(screen.getByText("价格区间")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("最小金额"), { target: { value: "500" } });
+    fireEvent.change(screen.getByPlaceholderText("最大金额"), { target: { value: "100" } });
+    fireEvent.click(screen.getByText("应用筛选"));
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minAmount: 100,
+        maxAmount: 500,
+      })
+    );
+  });
+
+  it("resets to thisMonth and clears amount filters", async () => {
+    render(
+      <EntryFilterPanel
+        filters={{
+          startDate: new Date("2024-03-01"),
+          endDate: new Date("2024-03-31"),
+          minAmount: 100,
+          maxAmount: 500,
+        }}
+        onFiltersChange={mockOnFiltersChange}
+      />
+    );
+
+    fireEvent.click(screen.getByText("更多筛选"));
+
+    await waitFor(() => {
+      expect(screen.getByText("价格区间")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("重置"));
+    fireEvent.click(screen.getByText("应用筛选"));
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minAmount: null,
+        maxAmount: null,
+      })
+    );
   });
 });

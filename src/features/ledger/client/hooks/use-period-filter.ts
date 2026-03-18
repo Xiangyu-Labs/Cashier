@@ -87,26 +87,28 @@ export function usePeriodFilter({
   // Handle filter changes from EntryFilterPanel (for advanced filters like amount)
   const handleFiltersChange = useCallback(
     (newFilters: EntryFilters) => {
-      // If date changed, update period to custom
-      if (newFilters.startDate !== undefined || newFilters.endDate !== undefined) {
-        const formatDate = (d?: Date): string | undefined => {
-          if (!d) return undefined;
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, "0");
-          const day = String(d.getDate()).padStart(2, "0");
-          return `${y}-${m}-${day}`;
-        };
-        handlePeriodChange({
-          period: "custom",
-          startDate: formatDate(newFilters.startDate),
-          endDate: formatDate(newFilters.endDate),
-        });
-      } else {
-        // No dates means "thisMonth"
-        handlePeriodChange({ period: "thisMonth" });
-      }
+      const formatDate = (d?: Date): string | null => {
+        if (!d) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+
+      const hasCustomDates = newFilters.startDate !== undefined || newFilters.endDate !== undefined;
+      const params = updateLedgerSearchParams(searchParams, {
+        period: hasCustomDates ? "custom" : "thisMonth",
+        startDate: hasCustomDates ? formatDate(newFilters.startDate) : null,
+        endDate: hasCustomDates ? formatDate(newFilters.endDate) : null,
+        categoryId: newFilters.categoryId ?? null,
+        currency: newFilters.currency ?? null,
+        minAmount: newFilters.minAmount ?? null,
+        maxAmount: newFilters.maxAmount ?? null,
+      });
+
+      replaceLedgerUrl(pathname, params);
     },
-    [handlePeriodChange]
+    [pathname, searchParams]
   );
 
   return {

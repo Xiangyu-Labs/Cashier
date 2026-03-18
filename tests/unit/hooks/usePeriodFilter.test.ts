@@ -255,6 +255,82 @@ describe("usePeriodFilter", () => {
     );
   });
 
+  it("should update URL when only amount filters change", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handleFiltersChange({
+        startDate: result.current.filters.startDate,
+        endDate: result.current.filters.endDate,
+        minAmount: 100,
+        maxAmount: 500,
+      });
+    });
+
+    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    expect(callUrl).toContain("period=custom");
+    expect(callUrl).toContain("minAmount=100");
+    expect(callUrl).toContain("maxAmount=500");
+  });
+
+  it("should remove amount params from URL when cleared", () => {
+    const searchParams = new URLSearchParams("period=thisMonth&minAmount=100&maxAmount=500");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handleFiltersChange({
+        startDate: result.current.filters.startDate,
+        endDate: result.current.filters.endDate,
+        minAmount: null,
+        maxAmount: null,
+      });
+    });
+
+    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    expect(callUrl).not.toContain("minAmount=");
+    expect(callUrl).not.toContain("maxAmount=");
+  });
+
+  it("should update URL with both custom dates and amount filters", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handleFiltersChange({
+        startDate: new Date("2024-06-01"),
+        endDate: new Date("2024-06-30"),
+        minAmount: 88,
+        maxAmount: 188,
+      });
+    });
+
+    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    expect(callUrl).toContain("period=custom");
+    expect(callUrl).toContain("startDate=2024-06-01");
+    expect(callUrl).toContain("endDate=2024-06-30");
+    expect(callUrl).toContain("minAmount=88");
+    expect(callUrl).toContain("maxAmount=188");
+  });
+
   it("should reset to thisMonth URL when filter changes have no dates", () => {
     const searchParams = new URLSearchParams(
       "period=custom&startDate=2024-01-01&endDate=2024-01-31"
