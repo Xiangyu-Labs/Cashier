@@ -51,15 +51,3 @@ export class MemoryStorageProvider implements StorageProvider {
     return this.storage.size;
   }
 }
-
-/**
- * Singleton instance for tests
- */
-let memoryInstance: MemoryStorageProvider | null = null;
-
-export function getMemoryStorage(): MemoryStorageProvider {
-  if (!memoryInstance) {
-    memoryInstance = new MemoryStorageProvider();
-  }
-  return memoryInstance;
-}

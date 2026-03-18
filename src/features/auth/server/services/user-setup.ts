@@ -54,36 +54,8 @@ export async function createDefaultLedgerForUser(
 }
 
 /**
- * Get a user's default ledger ID, or the first ledger if no default is set
- */
-export async function getUserDefaultLedgerId(userId: string): Promise<string | null> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
-
-  if (user?.defaultLedgerId != null && user.defaultLedgerId !== "") {
-    return user.defaultLedgerId;
-  }
-
-  return null;
-}
-
-/**
  * Clear defaultLedgerId when the ledger is deleted
  */
 export async function clearUserDefaultLedger(ledgerId: string): Promise<void> {
   await db.update(users).set({ defaultLedgerId: null }).where(eq(users.defaultLedgerId, ledgerId));
-}
-
-export async function setUserDefaultLedger(userId: string, ledgerId: string): Promise<void> {
-  // Verify the ledger belongs to this user
-  const ledger = await db.query.ledgers.findFirst({
-    where: (l, { and, eq }) => and(eq(l.id, ledgerId), eq(l.userId, userId)),
-  });
-
-  if (!ledger) {
-    throw new Error("Ledger not found or does not belong to user");
-  }
-
-  await db.update(users).set({ defaultLedgerId: ledgerId }).where(eq(users.id, userId));
 }
