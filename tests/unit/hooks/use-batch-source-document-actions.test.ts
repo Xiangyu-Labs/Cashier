@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
 describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
@@ -15,7 +15,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
     );
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       return {
         ...(old as object),
         items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => !["doc-1"].includes(d.id ?? "")),
@@ -47,7 +47,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
     );
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       return {
         ...(old as object),
         items: (old as { items: unknown[] }).items.map((d: { id?: string }) =>
@@ -80,7 +80,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
     );
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       return {
         ...(old as object),
         items: (old as { items: unknown[] }).items.map((d: { id?: string }) =>
@@ -116,7 +116,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
     );
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       return {
         ...(old as object),
         items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => d.id !== "doc-1"),

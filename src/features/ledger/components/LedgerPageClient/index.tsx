@@ -55,6 +55,7 @@ import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filte
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { Header } from "./Header";
+import type { LedgerTab } from "@/features/ledger/lib/tabs";
 import {
   EntriesTabSkeleton,
   DetailsTabSkeleton,
@@ -87,6 +88,7 @@ const SettingsTab = dynamic(
 
 interface LedgerPageClientProps {
   ledgerId: string;
+  initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
 }
@@ -96,6 +98,7 @@ const INPUT_PREFETCH_DELAY = 2000; // Prefetch input modal data after 2 seconds
 
 export function LedgerPageClient({
   ledgerId,
+  initialTab,
   initialPeriod,
   initialStatsDate,
 }: LedgerPageClientProps) {
@@ -123,6 +126,7 @@ export function LedgerPageClient({
   });
 
   const { activeTab, handleTabChange } = useLedgerTabs({
+    initialTab,
     searchParams,
     pathname,
   });

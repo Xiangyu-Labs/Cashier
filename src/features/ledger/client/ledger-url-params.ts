@@ -6,6 +6,7 @@ export interface LedgerFilterParams {
 }
 
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
+type SearchParamsStringLike = Pick<URLSearchParams, "toString">;
 
 interface LedgerUrlUpdate {
   tab?: string | null;
@@ -94,7 +95,7 @@ export function updateLedgerSearchParams(
   return params;
 }
 
-export function buildLedgerUrl(pathname: string, searchParams: SearchParamsLike | URLSearchParams): string {
+export function buildLedgerUrl(pathname: string, searchParams: SearchParamsStringLike | URLSearchParams): string {
   const query = searchParams.toString();
   return query === "" ? pathname : `${pathname}?${query}`;
 }

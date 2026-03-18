@@ -164,7 +164,7 @@ describe("SourceDocument Delete Idempotency", () => {
     // 3. 用户尝试删除 -> 当前会失败
     try {
       await deleteSourceDocumentAction(testLedgerId, sourceDoc.id);
-    } catch (error) {
+    } catch (_error) {
       // 当前行为：抛出错误，但用户看到的UI可能不一致
       // 记录已被软删除，但用户不知道
     }

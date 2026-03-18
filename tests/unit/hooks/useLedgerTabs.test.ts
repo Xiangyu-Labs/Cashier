@@ -133,4 +133,18 @@ describe("useLedgerTabs", () => {
     // Should fall back to initialTab when tab param is removed
     expect(result.current.activeTab).toBe("stream");
   });
+
+  it("should fall back to initialTab when URL tab param is invalid", () => {
+    const searchParams = new URLSearchParams("tab=not-real");
+
+    const { result } = renderHook(() =>
+      useLedgerTabs({
+        pathname: mockPathname,
+        searchParams,
+        initialTab: "stream",
+      })
+    );
+
+    expect(result.current.activeTab).toBe("stream");
+  });
 });

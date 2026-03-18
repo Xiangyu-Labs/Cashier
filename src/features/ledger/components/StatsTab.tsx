@@ -6,7 +6,7 @@ import { getEnhancedStats } from "@/features/stats/server/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
-import { type DateRangeType, getDateRange, formatDateTimeForApi } from "@/lib/date-utils";
+import { type DateRangeType } from "@/lib/date-utils";
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
@@ -14,6 +14,11 @@ import { CalendarHeatmapSection } from "@/features/calendar/components/CalendarH
 import { useTranslations, useFormatter } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
 import type { Ledger } from "@/types/api";
+import { QUERY } from "@/lib/constants";
+import {
+  DEFAULT_STATS_RANGE_TYPE,
+  getStatsInitialQueryState,
+} from "@/features/ledger/lib/initial-query-state";
 
 interface StatsTabProps {
   ledgerId?: string;
@@ -33,24 +38,21 @@ export function StatsTab({
   const t = useTranslations("StatsTab");
   const format = useFormatter();
   const queryClient = useQueryClient();
-  const [rangeType, setRangeType] = useState<DateRangeType>("month");
+  const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
   // Use initialDate from props to avoid hydration mismatch between server and client
   const [currentDate, setCurrentDate] = useState(initialDate || new Date());
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
 
-  const { startDate, endDate } = useMemo(
-    () => getDateRange(currentDate, rangeType),
-    [currentDate, rangeType]
-  );
-
-  const { startDate: prevDateStart, endDate: prevDateEnd } = useMemo(() => {
-    const prevAnchor = new Date(currentDate);
-    if (rangeType === "week") prevAnchor.setDate(prevAnchor.getDate() - 7);
-    if (rangeType === "month") prevAnchor.setMonth(prevAnchor.getMonth() - 1);
-    if (rangeType === "year") prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
-
-    return getDateRange(prevAnchor, rangeType);
-  }, [currentDate, rangeType]);
+  const {
+    startDate,
+    endDate,
+    prevDateStart: _prevDateStart,
+    prevDateEnd: _prevDateEnd,
+    startDateStr,
+    endDateStr,
+    prevDateStartStr,
+    prevDateEndStr,
+  } = useMemo(() => getStatsInitialQueryState(currentDate, rangeType), [currentDate, rangeType]);
 
   const label = useMemo(() => {
     switch (rangeType) {
@@ -67,7 +69,7 @@ export function StatsTab({
 
   const enhancedStatsKey = [
     ...queryKeys.enhancedStats(ledgerId ?? ""),
-    formatDateTimeForApi(startDate),
+    startDateStr,
     rangeType,
     ledger?.metadata?.settings?.mainCurrency,
   ];
@@ -77,16 +79,16 @@ export function StatsTab({
       getEnhancedStats({
         ledgerId: ledgerId ?? "",
         queryRange: {
-          from: formatDateTimeForApi(startDate),
-          to: formatDateTimeForApi(endDate),
+          from: startDateStr,
+          to: endDateStr,
         },
         compareRange: {
-          from: formatDateTimeForApi(prevDateStart),
-          to: formatDateTimeForApi(prevDateEnd),
+          from: prevDateStartStr,
+          to: prevDateEndStr,
         },
-    }),
+      }),
     enabled: ledgerId !== undefined && ledgerId !== "",
-    refetchOnMount: "always",
+    staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
   const totalExpense = stats?.summary.total ?? 0;
@@ -105,9 +107,7 @@ export function StatsTab({
 
   const handleCategoryClick = (categoryId: string) => {
     if (onCategoryDrilldown !== undefined) {
-      const startStr = formatDateTimeForApi(startDate);
-      const endStr = formatDateTimeForApi(endDate);
-      onCategoryDrilldown(categoryId, startStr, endStr);
+      onCategoryDrilldown(categoryId, startDateStr, endDateStr);
     }
   };
 
@@ -168,8 +168,8 @@ export function StatsTab({
               }
               onDateDrilldown={onDateDrilldown}
               queryRange={{
-                startDate: formatDateTimeForApi(startDate),
-                endDate: formatDateTimeForApi(endDate),
+                startDate: startDateStr,
+                endDate: endDateStr,
               }}
             />
           )}

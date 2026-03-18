@@ -22,7 +22,7 @@ function removeItemsById(
   old: TaskQueueResult | undefined,
   ids: string[]
 ): TaskQueueResult | undefined {
-  if (old === undefined || !old.items) return old;
+  if (old === undefined || old.items === undefined) return old;
   const idsSet = new Set(ids);
   const removedItems = old.items.filter((item) => idsSet.has(item.id));
   return {
@@ -39,7 +39,7 @@ function removeItemsBySourceDocId(
   old: TaskQueueResult | undefined,
   sourceDocIds: string[]
 ): TaskQueueResult | undefined {
-  if (old === undefined || !old.items) return old;
+  if (old === undefined || old.items === undefined) return old;
   const idsSet = new Set(sourceDocIds);
   const newItems = old.items.filter(
     (item) => item.sourceDocumentId === undefined || !idsSet.has(item.sourceDocumentId)
@@ -111,7 +111,7 @@ export function useTaskQueueMutations(ledgerId: string) {
       queryClient.setQueriesData<TaskQueueResult>(
         { queryKey: taskQueueKey },
         (old): TaskQueueResult | undefined => {
-          if (old === undefined || !old.items) return old;
+          if (old === undefined || old.items === undefined) return old;
           return {
             ...old,
             items: old.items.map((item) =>

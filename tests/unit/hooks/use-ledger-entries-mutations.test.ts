@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { matchPaginatedSourceDocuments } from "@/lib/query-keys";
 
 describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
   it("should FAIL when cache data is an array (no items property) - reproducing the bug", () => {
@@ -23,7 +22,7 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
     // which does: if (!old) return old;  // old is truthy (array), so continues
     //            old.items.filter(...)   // old.items is undefined -> THROWS
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       // This is the buggy code that exists in the codebase
       return {
         ...old as object,
@@ -61,7 +60,7 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
     );
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
-      if (!old) return old;
+      if (old === undefined) return old;
       return {
         ...old as object,
         items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => d.id !== "doc-1"),

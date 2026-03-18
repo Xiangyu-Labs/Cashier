@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories, sourceDocuments, ledgerEntries } from "@/lib/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { auth } from "@/auth";
 
@@ -24,9 +24,6 @@ vi.mock("@/auth", () => ({
  * 正确行为：删除应该是幂等的 - 多次删除同一条记录应该成功（或至少不抛错）
  */
 describe("Ledger Delete Idempotency", () => {
-  let testUserId: string;
-  let testLedgerId: string;
-
   beforeEach(async () => {
     const db = getTestDb();
     // 清理所有测试数据
@@ -34,7 +31,6 @@ describe("Ledger Delete Idempotency", () => {
     await db.delete(sourceDocuments);
     await db.delete(entryCategories);
     await db.delete(ledgers);
-    testUserId = TEST_USER_ID;
 
     // Setup auth mock for each test
     vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({

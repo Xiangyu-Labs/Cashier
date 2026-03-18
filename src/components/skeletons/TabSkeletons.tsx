@@ -9,7 +9,7 @@
  */
 export function EntriesTabSkeleton() {
   return (
-    <div className="space-y-4 px-2">
+    <div className="space-y-4 px-2" data-testid="entries-tab-skeleton">
       {/* Top toolbar skeleton - matches: select button + filter panel + total */}
       <div className="flex items-center gap-2 mb-2 sm:mb-4">
         {/* Select mode button */}
@@ -99,7 +99,7 @@ export function EntriesTabSkeleton() {
  */
 export function DetailsTabSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="details-tab-skeleton">
       {/* Filter toolbar - matches: select button + filter panel + total */}
       <div className="px-2 mb-2 sm:mb-4 flex items-center gap-2">
         {/* Select mode button */}
@@ -153,7 +153,7 @@ export function DetailsTabSkeleton() {
  */
 export function StatsTabSkeleton() {
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6 pb-24" data-testid="stats-tab-skeleton">
       {/* Stats Header Skeleton */}
       <div className="flex flex-col gap-6 bg-surface">
         {/* 1. Period selector (周/月/年) */}
@@ -261,7 +261,7 @@ export function StatsTabSkeleton() {
  */
 export function SettingsTabSkeleton() {
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8" data-testid="settings-tab-skeleton">
       {/* 4 Sections: General, Ledger, AI Assistant, Account */}
       {[1, 2, 3, 4].map((sectionIndex) => (
         <div key={sectionIndex} className="space-y-4">

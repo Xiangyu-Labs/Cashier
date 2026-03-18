@@ -130,14 +130,16 @@ export function SourceDocumentDetailWrapper({
         await updateSourceDocumentAction(ledgerId, id, data);
       },
       errorMessage: tCommon("saveFailed"),
-      cancelPredicates: ledgerId ? [invalidateSourceDocuments(ledgerId)] : undefined,
-      invalidatePredicates: ledgerId
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+      cancelPredicates:
+        ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
+      invalidatePredicates:
+        ledgerId != null && ledgerId !== ""
+          ? [
+              invalidateSourceDocuments(ledgerId),
+              invalidateLedgerStats(ledgerId),
+              invalidateCalendar(ledgerId),
+            ]
+          : undefined,
       onOptimisticUpdate: (queryClient, data) => {
         const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -429,15 +431,17 @@ export function SourceDocumentDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates: ledgerId ? [invalidateSourceDocuments(ledgerId)] : undefined,
-    invalidatePredicates: ledgerId
-      ? [
-          invalidateSourceDocuments(ledgerId),
-          invalidateLedgerEntries(ledgerId),
-          invalidateLedgerStats(ledgerId),
-          invalidateCalendar(ledgerId),
-        ]
-      : undefined,
+    cancelPredicates:
+      ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerEntries(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onSuccessExtra: () => {
       onClose();
     },

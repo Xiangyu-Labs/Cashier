@@ -60,15 +60,17 @@ export function LedgerEntryDetailWrapper({
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: tCommon("saveFailed"),
-    cancelPredicates: ledgerId ? [invalidateLedgerEntries(ledgerId)] : undefined,
-    invalidatePredicates: ledgerId
-      ? [
-          invalidateLedgerEntries(ledgerId),
-          invalidateSourceDocuments(ledgerId),
-          invalidateLedgerStats(ledgerId),
-          invalidateCalendar(ledgerId),
-        ]
-      : undefined,
+    cancelPredicates:
+      ledgerId != null && ledgerId !== "" ? [invalidateLedgerEntries(ledgerId)] : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateLedgerEntries(ledgerId),
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onOptimisticUpdate: (queryClient, data) => {
       const snapshotKey = queryKeys.ledgerEntry(id);
       const snapshots = createListSnapshots(queryClient, snapshotKey);
@@ -89,15 +91,17 @@ export function LedgerEntryDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates: ledgerId ? [invalidateLedgerEntries(ledgerId)] : undefined,
-    invalidatePredicates: ledgerId
-      ? [
-          invalidateLedgerEntries(ledgerId),
-          invalidateSourceDocuments(ledgerId),
-          invalidateLedgerStats(ledgerId),
-          invalidateCalendar(ledgerId),
-        ]
-      : undefined,
+    cancelPredicates:
+      ledgerId != null && ledgerId !== "" ? [invalidateLedgerEntries(ledgerId)] : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateLedgerEntries(ledgerId),
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onSuccessExtra: () => {
       onClose();
     },

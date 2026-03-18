@@ -5,8 +5,10 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { queryKeys } from "@/lib/query-keys";
-import { periodToDateRange, type PeriodParams } from "@/lib/period-utils";
+import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger, LedgerEntry } from "@/types/api";
+import { QUERY } from "@/lib/constants";
+import { getDetailsInitialQueryState } from "@/features/ledger/lib/initial-query-state";
 
 export interface UseDetailsTabDataReturn {
   // Data
@@ -50,30 +52,10 @@ export function useDetailsTabData({
   advancedFilters,
 }: UseDetailsTabDataProps): UseDetailsTabDataReturn {
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-
-  // Convert periodParams to date range
-  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
-
-  // Use string dates directly from periodToDateRange (avoids Date object conversion issues)
-  const startDateStr = dateRange.startDate ?? null;
-  const endDateStr = dateRange.endDate ?? null;
-
-  // Build filter key for queryKey
-  const filterKey = useMemo(() => {
-    const parts: string[] = [];
-    if (advancedFilters.categoryId != null && advancedFilters.categoryId !== "") parts.push(`cat:${advancedFilters.categoryId}`);
-    if (advancedFilters.currency != null && advancedFilters.currency !== "") parts.push(`cur:${advancedFilters.currency}`);
-    if (advancedFilters.minAmount !== undefined && advancedFilters.minAmount !== null)
-      parts.push(`min:${advancedFilters.minAmount}`);
-    if (advancedFilters.maxAmount !== undefined && advancedFilters.maxAmount !== null)
-      parts.push(`max:${advancedFilters.maxAmount}`);
-    return parts.length > 0 ? parts.join("|") : null;
-  }, [
-    advancedFilters.categoryId,
-    advancedFilters.currency,
-    advancedFilters.minAmount,
-    advancedFilters.maxAmount,
-  ]);
+  const { startDateStr, endDateStr, filterKey } = useMemo(
+    () => getDetailsInitialQueryState(periodParams, advancedFilters),
+    [periodParams, advancedFilters]
+  );
 
   // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
@@ -92,7 +74,7 @@ export function useDetailsTabData({
         }
       ),
     enabled: true,
-    refetchOnMount: "always",
+    staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
   // Infinite query for entries (query key 不包含 filterKey，与预加载保持一致)
@@ -111,7 +93,7 @@ export function useDetailsTabData({
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
-    refetchOnMount: "always",
+    staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
   // Flatten entries

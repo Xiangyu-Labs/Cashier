@@ -7,15 +7,16 @@
 import { useCallback, useMemo } from "react";
 import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
 import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
+import { parseLedgerTab, type LedgerTab } from "@/features/ledger/lib/tabs";
 
 interface UseLedgerTabsOptions {
-  initialTab?: string;
+  initialTab?: LedgerTab;
   searchParams: URLSearchParams;
   pathname: string;
 }
 
 interface UseLedgerTabsResult {
-  activeTab: string;
+  activeTab: LedgerTab;
   handleTabChange: (value: string) => void;
 }
 
@@ -26,10 +27,7 @@ export function useLedgerTabs({
 }: UseLedgerTabsOptions): UseLedgerTabsResult {
   // Single source of truth: URL search params
   // No useState needed - eliminates sync issues with external URL changes
-  const activeTab = useMemo(
-    () => searchParams.get("tab") ?? initialTab,
-    [searchParams, initialTab]
-  );
+  const activeTab = useMemo(() => parseLedgerTab(searchParams, initialTab), [searchParams, initialTab]);
 
   const handleTabChange = useCallback(
     (value: string) => {
