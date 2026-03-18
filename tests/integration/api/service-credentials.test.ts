@@ -117,6 +117,33 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     expect(res.status).toBe(401);
   });
 
+  it("should reject invalid JSON body", async () => {
+    const db = getTestDb();
+    const [credential] = await db
+      .insert(serviceCredentials)
+      .values({
+        ledgerId: testLedgerId,
+        name: "Broken Body Credential",
+        key: "sk_invalid_json",
+      })
+      .returning();
+
+    const req = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${credential.key}`,
+        "Content-Type": "application/json",
+      },
+      body: "{",
+    });
+
+    const res = await ledgerEntryPOST(req);
+    expect(res.status).toBe(400);
+
+    const data = await res.json();
+    expect(data.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("should delete service credential via Action", async () => {
     const db = getTestDb();
     const [c] = await db

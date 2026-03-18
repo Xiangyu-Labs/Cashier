@@ -1,11 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { validateServiceCredential } from "@/features/ledger/server/actions/credentials";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
-import { rateLimitApiV1 } from "@/lib/ratelimit";
-import { UnauthorizedError, RateLimitError } from "@/lib/errors";
-import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 import { z } from "zod";
 import { optionalDateStringSchema } from "@/lib/validation";
+import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 
 const querySchema = z.object({
   startDate: optionalDateStringSchema,
@@ -15,52 +12,29 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  try {
-    // 1. 认证
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw new UnauthorizedError("Missing or invalid Authorization header");
-    }
+  return handleApiV1Route(request, {
+    logContext: "api/v1/stats",
+    handler: async ({ credential, request: authorizedRequest }) => {
+      const { searchParams } = new URL(authorizedRequest.url);
+      const params = querySchema.parse({
+        startDate: searchParams.get("startDate") ?? undefined,
+        endDate: searchParams.get("endDate") ?? undefined,
+        categoryId: searchParams.get("categoryId") ?? undefined,
+        currency: searchParams.get("currency") ?? undefined,
+      });
 
-    const key = authHeader.split(" ")[1];
-    const credential = await validateServiceCredential(key);
-    if (!credential) {
-      throw new UnauthorizedError("Invalid Service Credential");
-    }
+      const result = await getLedgerStatsAction(
+        credential.ledgerId,
+        params.startDate,
+        params.endDate,
+        undefined,
+        {
+          categoryId: params.categoryId ?? null,
+          currency: params.currency ?? null,
+        }
+      );
 
-    // 2. 限流
-    const rateLimitResult = await rateLimitApiV1(key);
-    if (!rateLimitResult.success) {
-      throw new RateLimitError("Rate limit exceeded");
-    }
-
-    // 3. 解析查询参数
-    const { searchParams } = new URL(request.url);
-    const params = querySchema.parse({
-      startDate: searchParams.get("startDate") ?? undefined,
-      endDate: searchParams.get("endDate") ?? undefined,
-      categoryId: searchParams.get("categoryId") ?? undefined,
-      currency: searchParams.get("currency") ?? undefined,
-    });
-
-    // 4. 查询统计数据
-    const result = await getLedgerStatsAction(
-      credential.ledgerId,
-      params.startDate,
-      params.endDate,
-      undefined, // mainCurrency - 使用账本默认
-      {
-        categoryId: params.categoryId ?? null,
-        currency: params.currency ?? null,
-      }
-    );
-
-    return NextResponse.json(result);
-  } catch (error) {
-    logError("api/v1/stats", error);
-    return NextResponse.json(
-      toErrorResponse(error),
-      { status: getErrorStatusCode(error) }
-    );
-  }
+      return NextResponse.json(result);
+    },
+  });
 }

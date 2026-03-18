@@ -8,6 +8,11 @@ import {
 } from "@/lib/period-utils";
 import { parseDateString } from "@/lib/date-utils";
 import type { EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
+import {
+  readLedgerFilterParams,
+  replaceLedgerUrl,
+  updateLedgerSearchParams,
+} from "@/features/ledger/client/ledger-url-params";
 
 export interface FilterParams {
   categoryId: string | null;
@@ -47,12 +52,7 @@ export function usePeriodFilter({
 
   // Read filter params from URL (single source of truth)
   const filterParams = useMemo<FilterParams>(
-    () => ({
-      categoryId: searchParams.get("categoryId") ?? null,
-      currency: searchParams.get("currency") ?? null,
-      minAmount: searchParams.get("minAmount") !== null ? Number(searchParams.get("minAmount")) : null,
-      maxAmount: searchParams.get("maxAmount") !== null ? Number(searchParams.get("maxAmount")) : null,
-    }),
+    () => readLedgerFilterParams(searchParams),
     [searchParams]
   );
 
@@ -74,24 +74,12 @@ export function usePeriodFilter({
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
       if (options?.skipUrlUpdate) return;
 
-      // Update URL without navigation
-      // Preserve existing filter params (categoryId, currency, minAmount, maxAmount)
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("period", newPeriod.period);
-
-      if (newPeriod.period === "custom") {
-        if (newPeriod.startDate !== null && newPeriod.startDate !== undefined && newPeriod.startDate !== "") {
-          params.set("startDate", newPeriod.startDate);
-        }
-        if (newPeriod.endDate !== null && newPeriod.endDate !== undefined && newPeriod.endDate !== "") {
-          params.set("endDate", newPeriod.endDate);
-        }
-      } else {
-        params.delete("startDate");
-        params.delete("endDate");
-      }
-
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      const params = updateLedgerSearchParams(searchParams, {
+        period: newPeriod.period,
+        startDate: newPeriod.startDate ?? null,
+        endDate: newPeriod.endDate ?? null,
+      });
+      replaceLedgerUrl(pathname, params);
     },
     [pathname, searchParams]
   );

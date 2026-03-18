@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/types/api";
 import { parseAmount } from "@/lib/formatters";
+import { formatDateTimeForApi } from "@/lib/date-utils";
+import { useDateGrouping } from "@/hooks/use-date-grouping";
 
 export interface GroupedEntry {
   title: string;
@@ -23,59 +25,20 @@ export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGrou
 
   const getDateStr = useCallback((entry: LedgerEntry) => {
     if (entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== "") return entry.sourceDocument.entryDate;
-    return new Date(entry.createdAt).toLocaleDateString("sv");
+    return formatDateTimeForApi(new Date(entry.createdAt)) ?? formatDateTimeForApi(new Date())!;
   }, []);
 
-  const groupedItems = useMemo(() => {
-    const sortedEntries = [...entries].sort((a, b) => {
-      const dateA = getDateStr(a);
-      const dateB = getDateStr(b);
-      return dateB.localeCompare(dateA);
-    });
-
-    const groups: Record<string, GroupedEntry> = {};
-
-    const todayStr = new Date().toLocaleDateString("sv");
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString("sv");
-
-    sortedEntries.forEach((entry) => {
-      const dateStr = getDateStr(entry);
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const date = new Date(year, month - 1, day);
-      const sortTimestamp = date.getTime();
-
-      let dateKey = "";
-      if (dateStr === todayStr) {
-        dateKey = t("today");
-      } else if (dateStr === yesterdayStr) {
-        dateKey = t("yesterday");
-      } else {
-        dateKey = date.toLocaleDateString(locale, {
-          month: "long",
-          day: "numeric",
-          weekday: "long",
-        });
-      }
-
-      if (groups[dateKey] === undefined) {
-        groups[dateKey] = {
-          title: dateKey,
-          timestamp: sortTimestamp,
-          items: [],
-          total: 0,
-        };
-      }
-
-      groups[dateKey].items.push(entry);
-      groups[dateKey].total += entry.convertedAmount != null
+  const { groupedItems } = useDateGrouping({
+    items: entries,
+    getDateStr,
+    getAmount: (entry) => (
+      entry.convertedAmount != null
         ? parseAmount(entry.convertedAmount)
-        : parseAmount(entry.amount);
-    });
-
-    return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-  }, [entries, locale, t, getDateStr]);
+        : parseAmount(entry.amount)
+    ),
+    locale,
+    t,
+  });
 
   return { groupedItems, getDateStr };
 }

@@ -15,6 +15,10 @@ import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue"
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
 import { fireAndForget } from "@/lib/safe-async";
+import {
+  replaceLedgerUrl,
+  updateLedgerSearchParams,
+} from "@/features/ledger/client/ledger-url-params";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
@@ -150,29 +154,8 @@ export function LedgerPageClient({
       minAmount?: number | null;
       maxAmount?: number | null;
     }) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      if (filters.categoryId !== undefined) {
-        if (filters.categoryId !== null && filters.categoryId !== "") params.set("categoryId", filters.categoryId);
-        else params.delete("categoryId");
-      }
-
-      if (filters.currency !== undefined) {
-        if (filters.currency !== null && filters.currency !== "") params.set("currency", filters.currency);
-        else params.delete("currency");
-      }
-
-      if (filters.minAmount !== undefined) {
-        if (typeof filters.minAmount === "number") params.set("minAmount", String(filters.minAmount));
-        else params.delete("minAmount");
-      }
-
-      if (filters.maxAmount !== undefined) {
-        if (typeof filters.maxAmount === "number") params.set("maxAmount", String(filters.maxAmount));
-        else params.delete("maxAmount");
-      }
-
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      const params = updateLedgerSearchParams(searchParams, filters);
+      replaceLedgerUrl(pathname, params);
     },
     [pathname, searchParams]
   );

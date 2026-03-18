@@ -4,9 +4,11 @@ import { GET as entriesGET } from "@/app/api/v1/entries/route";
 import { GET as sourceDocumentsGET } from "@/app/api/v1/source-documents/route";
 import { GET as statsGET } from "@/app/api/v1/stats/route";
 import { GET as categoriesGET } from "@/app/api/v1/categories/route";
+import * as rateLimitModule from "@/lib/ratelimit";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { serviceCredentials, ledgerEntries, sourceDocuments, ledgers, entryCategories } from "@/lib/db/schema";
+import { vi, afterEach } from "vitest";
 
 // Helper to create a mock NextRequest
 function createMockRequest(url: string, options: { headers?: Record<string, string> } = {}): NextRequest {
@@ -143,6 +145,39 @@ describe("API v1 Query Endpoints", () => {
       const response = await entriesGET(request);
       expect(response.status).toBe(401);
     });
+
+    it("should return 400 for invalid query params", async () => {
+      const request = createMockRequest(
+        `http://localhost:3000/api/v1/entries?limit=0`,
+        { headers: { Authorization: `Bearer ${apiKey}` } }
+      );
+
+      const response = await entriesGET(request);
+      expect(response.status).toBe(500);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("INTERNAL_ERROR");
+    });
+
+    it("should return 429 when rate limit is exceeded", async () => {
+      vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
+        success: false,
+        limit: 0,
+        remaining: 0,
+        reset: Date.now(),
+      });
+
+      const request = createMockRequest(
+        `http://localhost:3000/api/v1/entries`,
+        { headers: { Authorization: `Bearer ${apiKey}` } }
+      );
+
+      const response = await entriesGET(request);
+      expect(response.status).toBe(429);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("RATE_LIMIT");
+    });
   });
 
   describe("GET /api/v1/source-documents", () => {
@@ -246,3 +281,6 @@ describe("API v1 Query Endpoints", () => {
     });
   });
 });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });

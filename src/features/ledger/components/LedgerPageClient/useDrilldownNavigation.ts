@@ -5,8 +5,12 @@
  * All filter state is now stored in URL parameters for consistency.
  */
 
-import { useCallback, startTransition } from "react";
+import { useCallback } from "react";
 import { useRouter } from "@/i18n/routing";
+import {
+  replaceAndNavigateLedgerUrl,
+  updateLedgerSearchParams,
+} from "@/features/ledger/client/ledger-url-params";
 
 interface UseDrilldownNavigationOptions {
   searchParams: URLSearchParams;
@@ -29,58 +33,29 @@ export function useDrilldownNavigation({
 
   const handleCategoryDrilldown = useCallback(
     (categoryId: string, startDate: string, endDate: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", "details");
-      params.set("period", "custom");
-      params.set("startDate", startDate);
-      params.set("endDate", endDate);
-
-      // Add categoryId to URL if present and not uncategorized
-      if (categoryId !== "" && categoryId !== "__uncategorized__") {
-        params.set("categoryId", categoryId);
-      } else {
-        params.delete("categoryId");
-      }
-
-      const newUrl = `${pathname}?${params.toString()}`;
-      // 立即更新 URL（同步）
-      window.history.replaceState(null, "", newUrl);
-      // 使用 startTransition 让 React 知道这是低优先级更新
-      startTransition(() => {
-        router.replace(newUrl, { scroll: false });
+      const params = updateLedgerSearchParams(searchParams, {
+        tab: "details",
+        period: "custom",
+        startDate,
+        endDate,
+        categoryId,
       });
+      replaceAndNavigateLedgerUrl(pathname, params, router);
     },
     [searchParams, pathname, router]
   );
 
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", "details");
-      params.set("period", "custom");
-      params.set("startDate", date);
-      params.set("endDate", date);
-
-      // Add filter params to URL
-      if (filters?.categoryId != null && filters.categoryId !== "" && filters.categoryId !== "__uncategorized__") {
-        params.set("categoryId", filters.categoryId);
-      } else {
-        params.delete("categoryId");
-      }
-
-      if (filters?.currency != null && filters.currency !== "") {
-        params.set("currency", filters.currency);
-      } else {
-        params.delete("currency");
-      }
-
-      const newUrl = `${pathname}?${params.toString()}`;
-      // 立即更新 URL（同步）
-      window.history.replaceState(null, "", newUrl);
-      // 使用 startTransition 让 React 知道这是低优先级更新
-      startTransition(() => {
-        router.replace(newUrl, { scroll: false });
+      const params = updateLedgerSearchParams(searchParams, {
+        tab: "details",
+        period: "custom",
+        startDate: date,
+        endDate: date,
+        categoryId: filters?.categoryId ?? null,
+        currency: filters?.currency ?? null,
       });
+      replaceAndNavigateLedgerUrl(pathname, params, router);
     },
     [searchParams, pathname, router]
   );

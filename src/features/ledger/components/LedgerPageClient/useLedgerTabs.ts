@@ -5,6 +5,10 @@
  */
 
 import { useCallback, useMemo } from "react";
+import {
+  replaceLedgerUrl,
+  updateLedgerSearchParams,
+} from "@/features/ledger/client/ledger-url-params";
 
 interface UseLedgerTabsOptions {
   initialTab?: string;
@@ -31,9 +35,8 @@ export function useLedgerTabs({
 
   const handleTabChange = useCallback(
     (value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", value);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      const params = updateLedgerSearchParams(searchParams, { tab: value });
+      replaceLedgerUrl(pathname, params);
     },
     [searchParams, pathname]
   );

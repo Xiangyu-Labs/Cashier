@@ -7,13 +7,8 @@
 import { useMemo, useCallback } from "react";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { parseAmount } from "@/lib/formatters";
-
-interface DateGroup {
-  title: string;
-  timestamp: number;
-  items: SourceDocumentGroup[];
-  total: number;
-}
+import { formatDateTimeForApi } from "@/lib/date-utils";
+import { useDateGrouping } from "@/hooks/use-date-grouping";
 
 interface UseGroupedEntriesOptions {
   completedGroups: SourceDocumentGroup[];
@@ -37,62 +32,23 @@ export function useGroupedEntries({
     // Fallback to sourceDocument createdAt
     const createdAt = group.sourceDocument.createdAt;
     if (createdAt != null && createdAt !== "") {
-      const date = new Date(createdAt);
-      return date.toLocaleDateString("sv"); // Returns YYYY-MM-DD
+      return formatDateTimeForApi(new Date(createdAt)) ?? formatDateTimeForApi(new Date())!;
     }
-    return new Date().toLocaleDateString("sv");
+    return formatDateTimeForApi(new Date())!;
   }, []);
 
-  // Group completed documents by date
-  const groupedCompletedByDate = useMemo(() => {
-    const todayStr = new Date().toLocaleDateString("sv");
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString("sv");
-
-    const dateGroups: Record<string, DateGroup> = {};
-
-    completedGroups.forEach((group) => {
-      const dateStr = getSourceDocDateStr(group);
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const date = new Date(year, month - 1, day);
-      const sortTimestamp = date.getTime();
-
-      let dateKey = "";
-      if (dateStr === todayStr) {
-        dateKey = tDetails("today");
-      } else if (dateStr === yesterdayStr) {
-        dateKey = tDetails("yesterday");
-      } else {
-        dateKey = date.toLocaleDateString(locale, {
-          month: "long",
-          day: "numeric",
-          weekday: "long",
-        });
-      }
-
-      if (dateGroups[dateKey] == null) {
-        dateGroups[dateKey] = {
-          title: dateKey,
-          timestamp: sortTimestamp,
-          items: [],
-          total: 0,
-        };
-      }
-
-      dateGroups[dateKey].items.push(group);
-
-      // Calculate total for this date using converted amount for foreign currency
-      group.ledgerEntries.forEach((entry) => {
-        const amount = entry.convertedAmount != null && entry.convertedAmount !== ""
-          ? parseAmount(entry.convertedAmount)
-          : parseAmount(entry.amount);
-        dateGroups[dateKey].total += amount;
-      });
-    });
-
-    return Object.values(dateGroups).sort((a, b) => b.timestamp - a.timestamp);
-  }, [completedGroups, getSourceDocDateStr, locale, tDetails]);
+  const { groupedItems: groupedCompletedByDate } = useDateGrouping({
+    items: completedGroups,
+    getDateStr: getSourceDocDateStr,
+    getAmount: (group) => group.ledgerEntries.reduce((sum, entry) => {
+      const amount = entry.convertedAmount != null && entry.convertedAmount !== ""
+        ? parseAmount(entry.convertedAmount)
+        : parseAmount(entry.amount);
+      return sum + amount;
+    }, 0),
+    locale,
+    t: (key) => tDetails(key),
+  });
 
   // Collect all visible source document IDs
   const allSourceDocumentIds = useMemo(() => {

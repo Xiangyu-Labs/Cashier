@@ -17,6 +17,7 @@ describe("useDrilldownNavigation", () => {
   beforeEach(() => {
     mockSearchParams = new URLSearchParams();
     mockReplace.mockClear();
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -55,6 +56,26 @@ describe("useDrilldownNavigation", () => {
 
     const callUrl = mockReplace.mock.calls[0][0];
     expect(callUrl).not.toContain("categoryId");
+  });
+
+  it("should update browser URL before router navigation", () => {
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const { result } = renderHook(() =>
+      useDrilldownNavigation({
+        pathname: mockPathname,
+        searchParams: mockSearchParams,
+      })
+    );
+
+    act(() => {
+      result.current.handleCategoryDrilldown("cat_123", "2024-01-01", "2024-01-31");
+    });
+
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/ledger/test-id?tab=details&period=custom&startDate=2024-01-01&endDate=2024-01-31&categoryId=cat_123"
+    );
   });
 
   it("should preserve existing search params", () => {

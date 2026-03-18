@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 
 export interface DateGroup<T> {
   title: string;
@@ -51,15 +52,15 @@ export function useDateGrouping<T>({
 
     const groups: Record<string, DateGroup<T>> = {};
 
-    const todayStr = new Date().toLocaleDateString("sv");
+    const today = new Date();
+    const todayStr = formatDateTimeForApi(today);
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString("sv");
+    const yesterdayStr = formatDateTimeForApi(yesterdayDate);
 
     sortedItems.forEach((item) => {
       const dateStr = memoizedGetDateStr(item);
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const date = new Date(year, month - 1, day);
+      const date = parseDateString(dateStr);
       const sortTimestamp = date.getTime();
 
       let dateKey = "";

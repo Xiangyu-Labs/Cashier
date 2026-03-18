@@ -183,6 +183,26 @@ describe("usePeriodFilter", () => {
     );
   });
 
+  it("should clear custom dates when switching back to a preset period", () => {
+    const searchParams = new URLSearchParams("period=custom&startDate=2024-03-01&endDate=2024-03-31");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "custom", startDate: "2024-03-01", endDate: "2024-03-31" },
+      })
+    );
+
+    act(() => {
+      result.current.handlePeriodChange({ period: "month" });
+    });
+
+    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    expect(callUrl).toContain("period=month");
+    expect(callUrl).not.toContain("startDate=");
+    expect(callUrl).not.toContain("endDate=");
+  });
+
   it("should not update URL when skipUrlUpdate is true", () => {
     const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
