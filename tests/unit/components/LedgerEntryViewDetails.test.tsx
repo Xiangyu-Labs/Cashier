@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   LedgerEntryViewDetails,
   type EntryPendingChanges,
-} from "@/features/ledger/components/LedgerEntryViewDetails";
+} from "@/modules/ledger/ui/LedgerEntryViewDetails";
 import { type LedgerEntry, type EntryCategory } from "@/types/api";
 
 // Mock next-intl

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LedgerPageSkeleton } from "@/components/skeletons";
-import { parseLedgerTab } from "@/features/ledger/lib/tabs";
+import { parseLedgerTab } from "@/modules/workspace/tabs";
 
 describe("ledger page loading state", () => {
   it("uses the stats skeleton for server search params with tab=stats", () => {

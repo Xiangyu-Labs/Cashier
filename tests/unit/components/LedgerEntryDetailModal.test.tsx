@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { LedgerEntryDetailModal } from "@/features/ledger/components/LedgerEntryDetailModal";
+import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
 import { type LedgerEntry, type EntryCategory } from "@/types/api";
 import { useEffect } from "react";
 
