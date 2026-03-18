@@ -32,5 +32,3 @@ export const SUPPORTED_CURRENCIES = [
 ] as const;
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
-
-export const DEFAULT_CURRENCIES: string[] = ["USD", "CNY"];

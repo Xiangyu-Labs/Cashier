@@ -18,7 +18,7 @@ export async function getCurrentUser() {
  * Get the current user ID from the session.
  * Returns null if not authenticated.
  */
-export async function getCurrentUserId(): Promise<string | null> {
+async function getCurrentUserId(): Promise<string | null> {
   const user = await getCurrentUser();
   return user?.id ?? null;
 }
@@ -27,7 +27,7 @@ export async function getCurrentUserId(): Promise<string | null> {
  * Verify that a ledger belongs to the current user.
  * Returns the ledger if found and owned, or throws a domain error.
  */
-export async function verifyLedgerOwnership(ledgerId: string): Promise<typeof ledgers.$inferSelect> {
+async function verifyLedgerOwnership(ledgerId: string): Promise<typeof ledgers.$inferSelect> {
   const userId = await getCurrentUserId();
 
   if (userId == null || userId === "") {

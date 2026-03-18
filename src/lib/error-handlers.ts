@@ -63,11 +63,3 @@ export function logError(context: string, error: unknown): void {
     logger.error({ error, context }, "Server error occurred");
   }
 }
-
-/**
- * Helper for Server Actions to handle errors consistently
- */
-export function handleActionError(error: unknown): never {
-  logError("server-action", error);
-  throw error;
-}

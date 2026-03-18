@@ -73,10 +73,7 @@ export function getHeatmapColor(level: HeatmapLevel, isDark = false): string {
   return colors[level];
 }
 
-/**
- * Get label for a heatmap level
- */
-export function getHeatmapLabel(level: HeatmapLevel): string {
+function getHeatmapLabel(level: HeatmapLevel): string {
   return HEATMAP_LABELS[level];
 }
 
@@ -90,23 +87,6 @@ export function getHeatmapLegend(isDark = false) {
     color: getHeatmapColor(level, isDark),
     label: getHeatmapLabel(level),
   }));
-}
-
-/**
- * Check if amount text should be shown in cell
- * Only show text for larger cells or lower levels (better contrast)
- */
-export function shouldShowAmount(amount: number, cellSize: "sm" | "md" | "lg"): boolean {
-  if (amount <= 0) return false;
-
-  switch (cellSize) {
-    case "sm":
-      return false; // Never show in small cells
-    case "md":
-      return amount >= 100; // Only show for larger amounts
-    case "lg":
-      return true; // Always show in large cells
-  }
 }
 
 /**

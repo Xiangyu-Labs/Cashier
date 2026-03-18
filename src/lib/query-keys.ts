@@ -161,14 +161,6 @@ export function invalidateTaskQueue(ledgerId: string): QueryPredicate {
 }
 
 /**
- * Helper to match all source document queries for a ledger.
- * This is kept for updater use-sites that need to fan out across date ranges.
- */
-export function matchSourceDocuments(ledgerId: string): QueryPredicate {
-  return invalidateSourceDocuments(ledgerId);
-}
-
-/**
  * Helper to match paginated source document queries with the `all` filter.
  */
 export function matchPaginatedSourceDocuments(ledgerId: string): QueryPredicate {
