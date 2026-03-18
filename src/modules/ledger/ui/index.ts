@@ -1,2 +1,2 @@
-export { SettingsPageClient } from "@/features/ledger/components";
-export { LedgerEntryDetailWrapper } from "@/features/ledger/components";
+export { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
+export { LedgerEntryDetailWrapper } from "@/features/ledger/components/LedgerEntryDetailWrapper";

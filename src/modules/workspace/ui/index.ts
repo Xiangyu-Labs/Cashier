@@ -1,1 +1,1 @@
-export { LedgerPageClient } from "@/features/ledger/components";
+export { LedgerPageClient } from "@/features/ledger/components/LedgerPageClient";
