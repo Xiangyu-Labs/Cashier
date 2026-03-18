@@ -17,9 +17,9 @@ import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   type PaginatedSourceDocumentsResponse,
+  type SourceDocumentWithEntries,
 } from "@/modules/source-document/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
-import type { SourceDocumentWithEntries } from "@/features/source-document/client";
 
 // Type alias for query data to avoid inline type assertions
 type SourceDocumentsQueryData = PaginatedSourceDocumentsResponse | undefined;

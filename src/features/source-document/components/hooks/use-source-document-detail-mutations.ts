@@ -30,7 +30,7 @@ import {
 } from "@/lib/mutations/use-ledger-mutation";
 import type { LedgerEntry } from "@/types/api";
 import type { EntryEditData } from "@/components/entries";
-import type { SourceDocumentWithEntries } from "@/features/source-document/client";
+import type { SourceDocumentWithEntries } from "@/modules/source-document/actions";
 
 type SourceDocumentQueryData = ServerSourceDocumentWithEntries;
 

@@ -1,1 +1,2 @@
-export { ExchangeRateService, CurrencyService } from "@/features/currency/server";
+export { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+export { CurrencyService } from "@/features/currency/server/service";
