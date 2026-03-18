@@ -115,7 +115,7 @@ describe("useDetailsTabData", () => {
     expect(vi.mocked(getLedgerStatsAction).mock.calls[1][4]).toMatchObject({ currency: "USD" });
   });
 
-  it("refetches on remount even with cached data", async () => {
+  it("reuses fresh cached data on remount without forcing a refetch", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false, gcTime: 0, staleTime: Infinity },
@@ -138,7 +138,7 @@ describe("useDetailsTabData", () => {
 
     renderHook(() => useDetailsTabData(props), { wrapper });
 
-    await waitFor(() => expect(getLedgerEntriesAction).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(getLedgerStatsAction).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getLedgerEntriesAction).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getLedgerStatsAction).toHaveBeenCalledTimes(1));
   });
 });
