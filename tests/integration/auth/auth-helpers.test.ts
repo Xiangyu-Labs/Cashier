@@ -13,7 +13,7 @@ import { auth } from "@/auth";
 import {
   getCurrentUser,
   requireLedgerAccess,
-} from "@/features/auth/server/utils/helpers";
+} from "@/modules/auth/helpers";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";

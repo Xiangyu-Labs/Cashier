@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginErrorPage from "@/app/[locale]/login/error/page";
-import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
+import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 
 const mockGet = vi.fn();
 

@@ -2,15 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { otpTokens } from "@/persistence/schema/auth";
-import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
-import { hashOTP } from "@/features/auth/server/services/otp";
+import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
+import { hashOTP } from "@/modules/auth/services";
 import {
   authenticateWithOTP,
   OTPExpiredSignInError,
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
-} from "@/features/auth/server/services/otp-sign-in";
+} from "@/modules/auth/services";
 import { memoryStore } from "@/lib/memory-store";
 
 vi.mock("resend", () => ({

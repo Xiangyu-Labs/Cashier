@@ -7,10 +7,10 @@ import { users, accounts } from "@/persistence/schema/auth";
 import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
-import { authenticateWithOTP } from "@/features/auth/server/services/otp-sign-in";
+import { authenticateWithOTP } from "@/modules/auth/services";
 import {
   isRegistrationAllowed,
-} from "@/features/auth/server/services/registration";
+} from "@/modules/auth/services";
 import { TIME_SECONDS } from "@/lib/constants";
 import { UnauthorizedError } from "@/lib/errors";
 import { provisionUserWorkspace } from "@/modules/auth";
