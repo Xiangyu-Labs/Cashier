@@ -7,7 +7,7 @@ import {
   groupSourceDocumentsByStatus,
   calculateSourceDocumentStats,
   type GroupedSourceDocuments,
-} from "@/features/source-document/lib/grouping";
+} from "@/modules/source-document/grouping";
 import { parseAmount } from "@/lib/formatters";
 
 export type { SourceDocumentWithEntries };

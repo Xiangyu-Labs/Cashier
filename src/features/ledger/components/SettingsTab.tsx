@@ -11,9 +11,9 @@ import { CollapsibleSection } from "./settings/CollapsibleSection";
 import { ExportSection } from "./settings/ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
-import { useCategoryMutations } from "@/features/ledger/client/hooks/use-category-mutations";
-import { useCredentialMutations } from "@/features/ledger/client/hooks/use-credential-mutations";
-import { useLedgerSettings } from "@/features/ledger/client/hooks/use-ledger-settings";
+import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
+import { useCredentialMutations } from "@/modules/ledger/hooks/useCredentialMutations";
+import { useLedgerSettings } from "@/modules/ledger/hooks/useLedgerSettings";
 
 import { type Ledger, type EntryCategoryWithCount } from "@/types/api";
 import { Switch } from "@/components/ui/switch";

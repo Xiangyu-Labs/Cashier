@@ -55,7 +55,7 @@ const ModalStackRenderer = dynamic(
   { ssr: false }
 );
 import { type PeriodParams } from "@/lib/period-utils";
-import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
+import { usePeriodFilter } from "@/modules/workspace/hooks/usePeriodFilter";
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { Header } from "./Header";

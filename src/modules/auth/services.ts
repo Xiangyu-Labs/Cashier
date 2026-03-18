@@ -21,4 +21,18 @@ export {
   getResendCooldown,
   OTP_LENGTH,
 } from "@/features/auth/server/services/otp";
+export {
+  checkSendRateLimit,
+  checkSendRateLimitByIP,
+  checkResendCooldown,
+  setResendCooldown,
+  getCanResendAt,
+  checkVerifyRateLimit,
+} from "@/features/auth/server/services/otp-rate-limit";
+export {
+  findOTPRecord,
+  verifyOTPWithPolicy,
+  isAccountLocked,
+  type VerificationResult,
+} from "@/features/auth/server/services/otp-verification";
 export { createDefaultLedgerForUser } from "@/features/auth/server/services/user-setup";

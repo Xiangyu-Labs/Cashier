@@ -7,5 +7,5 @@ export { SourceDocumentImageModal } from "@/features/source-document/components/
 export { SourceDocumentInput } from "@/features/source-document/components/SourceDocumentInput";
 export { QuickEntryForm } from "@/features/source-document/components/QuickEntryForm";
 
-export { useSourceDocuments } from "@/features/source-document/client/hooks/use-source-documents";
-export { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/use-batch-source-document-actions";
+export { useSourceDocuments } from "../hooks/useSourceDocuments";
+export { useBatchSourceDocumentActions } from "../hooks/useBatchSourceDocumentActions";

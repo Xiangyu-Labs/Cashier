@@ -26,7 +26,7 @@ import {
   groupPendingSourceDocuments,
   calculateSourceDocumentStats,
   calculatePendingTotal,
-} from "@/features/source-document/lib/grouping";
+} from "@/modules/source-document/grouping";
 
 interface GetSourceDocumentsParams {
   status?: string | null;
