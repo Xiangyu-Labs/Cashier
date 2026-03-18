@@ -24,7 +24,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-import { sendOTPAction } from "@/features/auth/server/actions/auth";
+import { sendOTPAction } from "@/modules/auth/actions";
 import { ValidationError, RateLimitError } from "@/lib/errors";
 
 const TEST_EMAIL = "test@example.com";

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { ExchangeRateService } from "@/modules/currency";
 import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence/schema/currency";
 
