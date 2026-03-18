@@ -9,6 +9,7 @@ import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, ValidationError, RateLimitError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
+import { optionalDateStringSchema } from "@/lib/validation";
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -38,14 +39,7 @@ const sourceDocumentInputSchema = z.object({
       }
     )
     .optional(),
-  entryDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((date) => {
-      const parsed = new Date(date);
-      return !isNaN(parsed.getTime()) && date === parsed.toISOString().slice(0, 10);
-    }, "Invalid date")
-    .optional(),
+  entryDate: optionalDateStringSchema,
   timezone: z.string().max(50).optional(),
 });
 
@@ -183,8 +177,8 @@ export async function POST(request: NextRequest) {
 
 const listQuerySchema = z.object({
   status: z.enum(["queued", "processing", "completed", "anomaly", "failed"]).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
   cursor: z.string().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
   includeEntries: z.enum(["true", "false"]).default("false"),

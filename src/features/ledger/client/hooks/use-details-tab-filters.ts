@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { periodToDateRange, type PeriodParams } from "@/lib/period-utils";
 import type { EntryFilters } from "../../components/EntryFilterPanel";
 
@@ -39,8 +39,8 @@ export function useDetailsTabFilters({
   // Combine period-based dates with advanced filters
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate != null ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate != null ? new Date(dateRange.endDate) : undefined,
+      startDate: dateRange.startDate != null ? parseDateString(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate != null ? parseDateString(dateRange.endDate) : undefined,
       ...advancedFilters,
     }),
     [dateRange, advancedFilters]

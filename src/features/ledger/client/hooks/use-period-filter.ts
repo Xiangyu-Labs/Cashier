@@ -6,6 +6,7 @@ import {
   periodToDateRange,
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
+import { parseDateString } from "@/lib/date-utils";
 import type { EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
 
 export interface FilterParams {
@@ -58,8 +59,8 @@ export function usePeriodFilter({
   // Convert to EntryFilters format for compatibility
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate !== null ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate !== null ? new Date(dateRange.endDate) : undefined,
+      startDate: dateRange.startDate !== null ? parseDateString(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate !== null ? parseDateString(dateRange.endDate) : undefined,
       categoryId: filterParams.categoryId ?? null,
       currency: filterParams.currency ?? null,
       minAmount: filterParams.minAmount,

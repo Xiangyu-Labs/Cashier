@@ -5,7 +5,7 @@
  * consistent date range calculation and query key matching.
  */
 
-import { formatDateTimeForApi } from "./date-utils";
+import { formatDateTimeForApi, parseDateString } from "./date-utils";
 
 export type PeriodPreset =
   | "all"
@@ -40,9 +40,8 @@ export function periodToDateRange(params: PeriodParams): DateRange {
   }
 
   if (period === "custom" && startDate != null && endDate != null) {
-    // Convert YYYY-MM-DD to full datetime
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T23:59:59.999`);
+    const start = parseDateString(startDate);
+    const end = parseDateString(endDate);
     return {
       startDate: formatDateTimeForApi(start) ?? null,
       endDate: formatDateTimeForApi(end) ?? null,

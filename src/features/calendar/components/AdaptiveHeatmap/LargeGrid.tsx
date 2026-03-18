@@ -8,7 +8,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
-import { formatDate } from "../../lib/date-utils";
+import { formatDate, parseDate } from "../../lib/date-utils";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
 import { DayCellLarge } from "./DayCellLarge";
 
@@ -49,15 +49,15 @@ export function LargeGridHeatmap({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const latestDataDate = new Date(sortedDays[sortedDays.length - 1].date);
+    const latestDataDate = parseDate(sortedDays[sortedDays.length - 1].date);
     const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
 
     // Cap by query end if provided
-    const queryEnd = queryRange?.endDate != null ? new Date(queryRange.endDate) : null;
+    const queryEnd = queryRange?.endDate != null ? parseDate(queryRange.endDate) : null;
     const endDate = queryEnd != null && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
 
     const result: { date: string; dayData?: CalendarDayData }[] = [];
-    const current = new Date(startDate);
+    const current = parseDate(startDate);
     const end = endDate;
 
     while (current <= end) {

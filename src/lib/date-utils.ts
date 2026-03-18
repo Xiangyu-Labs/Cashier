@@ -147,6 +147,20 @@ export function parseDateString(dateStr: string): Date {
 }
 
 /**
+ * Validate a "YYYY-MM-DD" string by round-tripping through the local date parser.
+ *
+ * This rejects impossible dates like 2026-02-30 while preserving local-time semantics.
+ */
+export function isValidDateString(dateStr: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+
+  const parsed = parseDateString(dateStr);
+  if (isNaN(parsed.getTime())) return false;
+
+  return formatDateTimeForApi(parsed) === dateStr;
+}
+
+/**
  * Get today's date (YYYY-MM-DD) in a specific timezone.
  * Uses Intl API — works regardless of server's TZ setting.
  */

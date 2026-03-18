@@ -1,6 +1,7 @@
 "use server";
 
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { parseDateString } from "@/lib/date-utils";
 
 export interface ConvertCurrencyResult {
   converted: number;
@@ -16,7 +17,7 @@ export async function convertCurrencyAction(
     throw new Error("Missing required parameters");
   }
 
-  const dateObj = date != null && date !== "" ? new Date(date) : undefined;
+  const dateObj = date != null && date !== "" ? parseDateString(date) : undefined;
   const converted = await ExchangeRateService.convert(amount, from, to, dateObj);
 
   return { converted };

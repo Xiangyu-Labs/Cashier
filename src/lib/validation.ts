@@ -4,6 +4,9 @@
  * Shared validation functions used across the application.
  */
 
+import { z } from "zod";
+import { isValidDateString } from "./date-utils";
+
 /**
  * UUID v4 validation regex.
  * Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
@@ -36,3 +39,17 @@ export function assertValidUuid(id: string, message?: string): void {
     throw new Error(message ?? `Invalid UUID: ${id}`);
   }
 }
+
+/**
+ * Shared YYYY-MM-DD validation schema.
+ * Keeps date-only validation logic consistent across APIs and server actions.
+ */
+export const dateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((date) => isValidDateString(date), "Invalid date");
+
+/**
+ * Optional YYYY-MM-DD validation schema.
+ */
+export const optionalDateStringSchema = dateStringSchema.optional();

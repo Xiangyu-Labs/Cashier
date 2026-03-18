@@ -5,10 +5,11 @@ import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, RateLimitError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 import { z } from "zod";
+import { optionalDateStringSchema } from "@/lib/validation";
 
 const querySchema = z.object({
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
   categoryId: z.string().uuid().optional(),
   currency: z.string().length(3).optional(),
   cursor: z.string().optional(),

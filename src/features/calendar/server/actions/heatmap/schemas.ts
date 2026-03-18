@@ -5,11 +5,12 @@
  */
 
 import { z } from "zod";
+import { dateStringSchema } from "@/lib/validation";
 
 export const GetCalendarHeatmapSchema = z.object({
   ledgerId: z.string(),
   viewType: z.enum(["month", "year"]),
-  anchorDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  anchorDate: dateStringSchema,
   filters: z
     .object({
       currency: z.string().optional(),
@@ -20,7 +21,7 @@ export const GetCalendarHeatmapSchema = z.object({
 
 export const GetDayDetailSchema = z.object({
   ledgerId: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateStringSchema,
   filters: z
     .object({
       currency: z.string().optional(),
@@ -31,8 +32,8 @@ export const GetDayDetailSchema = z.object({
 
 export const GetCalendarHeatmapForRangeSchema = z.object({
   ledgerId: z.string(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startDate: dateStringSchema,
+  endDate: dateStringSchema,
   filters: z
     .object({
       currency: z.string().optional(),

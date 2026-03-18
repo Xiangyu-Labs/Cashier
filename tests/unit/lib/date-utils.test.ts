@@ -11,6 +11,8 @@ import {
   formatDateTimeForApi,
   parseDateRangeStart,
   parseDateRangeEnd,
+  parseDateString,
+  isValidDateString,
 } from "@/lib/date-utils";
 
 describe("date-utils", () => {
@@ -192,6 +194,29 @@ describe("date-utils", () => {
 
     it("returns null for invalid date string", () => {
       expect(parseDateRangeEnd("invalid")).toBeNull();
+    });
+  });
+
+  describe("parseDateString", () => {
+    it("parses YYYY-MM-DD using local date parts", () => {
+      const result = parseDateString("2026-03-18");
+      expect(result.getFullYear()).toBe(2026);
+      expect(result.getMonth()).toBe(2);
+      expect(result.getDate()).toBe(18);
+    });
+  });
+
+  describe("isValidDateString", () => {
+    it("accepts a valid date-only string", () => {
+      expect(isValidDateString("2026-03-18")).toBe(true);
+    });
+
+    it("rejects impossible dates", () => {
+      expect(isValidDateString("2026-02-30")).toBe(false);
+    });
+
+    it("rejects malformed date strings", () => {
+      expect(isValidDateString("2026-3-18")).toBe(false);
     });
   });
 });

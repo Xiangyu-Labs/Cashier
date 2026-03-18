@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 describe("usePeriodFilter", () => {
   const mockPathname = "/ledger/test-id";
@@ -307,6 +308,22 @@ describe("usePeriodFilter", () => {
     // Filters should be Date objects
     expect(result.current.filters.startDate).toBeInstanceOf(Date);
     expect(result.current.filters.endDate).toBeInstanceOf(Date);
+  });
+
+  it("should preserve custom period boundaries when converting filters to Date objects", () => {
+    const searchParams = new URLSearchParams(
+      "period=custom&startDate=2024-03-01&endDate=2024-03-31"
+    );
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    expect(formatDateTimeForApi(result.current.filters.startDate)).toBe("2024-03-01");
+    expect(formatDateTimeForApi(result.current.filters.endDate)).toBe("2024-03-31");
   });
 
   describe("filterParams from URL", () => {

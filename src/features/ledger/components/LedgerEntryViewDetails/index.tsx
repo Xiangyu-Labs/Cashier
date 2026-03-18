@@ -94,7 +94,11 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   ]);
 
   const formatDateTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString(locale);
+    return parseDateString(dateStr).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const handleFieldChange = useCallback(

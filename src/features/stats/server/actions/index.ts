@@ -5,6 +5,7 @@ import { ledgerEntries, ledgers } from "@/features/ledger/server/schema";
 import { currencyRates } from "@/features/currency/server/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "../utils";
+import { parseDateString } from "@/lib/date-utils";
 
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
@@ -61,8 +62,8 @@ export async function getEnhancedStats({
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   // 2. Parse Dates for daily average calculation
-  const currentStart = new Date(queryRange.from);
-  const currentEnd = new Date(queryRange.to);
+  const currentStart = parseDateString(queryRange.from);
+  const currentEnd = parseDateString(queryRange.to);
 
   // 3. Fetch Entries
   const fetchEntries = async (startStr: string, endStr: string) => {

@@ -22,7 +22,7 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-ledger-entries-mutations";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useSelection } from "@/hooks/use-selection";
 import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/use-batch-source-document-actions";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
@@ -63,8 +63,14 @@ export function LedgerEntriesTab({
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate: dateRange.startDate != null && dateRange.startDate !== "" ? new Date(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate != null && dateRange.endDate !== "" ? new Date(dateRange.endDate) : undefined,
+      startDate:
+        dateRange.startDate != null && dateRange.startDate !== ""
+          ? parseDateString(dateRange.startDate)
+          : undefined,
+      endDate:
+        dateRange.endDate != null && dateRange.endDate !== ""
+          ? parseDateString(dateRange.endDate)
+          : undefined,
     }),
     [dateRange]
   );
