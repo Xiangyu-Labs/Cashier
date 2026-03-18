@@ -175,5 +175,3 @@ export function useLoginFlow(
     handleOTPExpired,
   };
 }
-
-export { getSignInErrorMessage };

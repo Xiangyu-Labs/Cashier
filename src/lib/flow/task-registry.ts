@@ -23,14 +23,3 @@ export async function registerAllTasks(): Promise<void> {
 
   hasRegisteredTasks = true;
 }
-
-/**
- * Get list of registered task types for debugging/monitoring.
- */
-export function getRegisteredTaskTypes(): string[] {
-  return [
-    parseSourceDocumentTaskDefinition.type,
-    generateCategoryMetadataTaskDefinition.type,
-    categorizeEntryTaskDefinition.type,
-  ];
-}

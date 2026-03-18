@@ -22,7 +22,7 @@ export default async function HomePage(): Promise<ReactNode> {
   const locale = await getLocale();
   const t = await getTranslations("HomePage");
 
-  // Redirect if not authenticated (though middleware should handle this)
+  // Redirect if not authenticated (though proxy should handle this)
   if (session?.user?.id == null) {
     redirect({ href: "/login", locale });
   }

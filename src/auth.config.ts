@@ -25,8 +25,8 @@ export const authConfig = {
       return session;
     },
     authorized() {
-      // We can move the middleware logic here if we wanted to simplify middleware.ts
-      // But we already have custom logic in middleware.ts, so we'll keep this simple or true.
+      // We can move the proxy logic here if we want to simplify src/proxy.ts.
+      // The current request handling stays in src/proxy.ts, so this remains permissive.
       return true;
     },
   },

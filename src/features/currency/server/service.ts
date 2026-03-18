@@ -7,14 +7,13 @@
 
 import { ExchangeRateService } from "./exchange-rate-service";
 import { logger } from "@/lib/logger";
-import { formatAmountStandard } from "@/lib/formatters";
 
-export interface ConversionResult {
+interface ConversionResult {
   convertedAmount: string;
   exchangeRate: string;
 }
 
-export interface ConversionInput {
+interface ConversionInput {
   amount: number;
   fromCurrency: string;
   toCurrency: string;
@@ -48,15 +47,6 @@ export class CurrencyService {
       return null;
     }
   }
-
-  /**
-   * Format amount to standard decimal string (2 decimal places)
-   * @deprecated Use formatAmountStandard from @/lib/formatters instead
-   */
-  static formatAmount(amount: number): string {
-    return formatAmountStandard(amount);
-  }
-
   /**
    * Calculate exchange rate between two amounts
    */

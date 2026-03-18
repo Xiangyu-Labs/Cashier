@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
-import { matchPaginatedSourceDocuments, queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
   groupSourceDocumentsByStatus,
@@ -10,15 +10,10 @@ import {
   type GroupedSourceDocuments,
 } from "@/features/source-document/lib/grouping";
 import { parseAmount } from "@/lib/formatters";
-import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
-// Re-export type for convenience
 export type { SourceDocumentWithEntries };
 
-// Re-export types from grouping lib for backward compatibility
-export type GroupedSourceDocumentsWithEntries = GroupedSourceDocuments<SourceDocumentWithEntries>;
-
-export interface SourceDocumentsStats {
+interface SourceDocumentsStats {
   queuedCount: number;
   processingCount: number;
   anomalyCount: number;
@@ -142,41 +137,10 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
   }, [rawData, minAmount, maxAmount]);
 
   return {
-    // Grouped data for UI
     groups,
     stats,
-    // Raw flat data for optimistic updates
     rawData,
     isLoading,
   };
 }
-
-/**
- * Hook to get a single source document by ID from the cache.
- * Useful for optimistic updates in mutations.
- */
-export function useSourceDocumentFromCache(ledgerId: string, id: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMemo(() => {
-    if (id == null) return null;
-
-    // Get all cached queries for this ledger
-    const queries = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
-      predicate: matchPaginatedSourceDocuments(ledgerId),
-    });
-
-    // Find the document in any of the cached data
-    for (const [, data] of queries) {
-      if (data !== undefined && data !== null) {
-        const doc = data.items.find((d) => d.id === id);
-        if (doc !== undefined && doc !== null) return doc;
-      }
-    }
-
-    return null;
-  }, [queryClient, ledgerId, id]);
-}
-
-// Re-export types for backward compatibility
 export type { UseSourceDocumentsOptions };

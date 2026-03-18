@@ -118,7 +118,6 @@ npm run test:coverage  # With coverage
 - [HTTP API Guide](./docs/guides/HTTP_API.md) - Current HTTP routes, auth model, query params, and test coverage
 - [Error Handling Guide](./docs/guides/ERROR_HANDLING.md) - Standardized error patterns
 - [Task Handler Guide](./docs/guides/TASK_HANDLERS.md) - Creating background task handlers
-- [Future Plan](./future_plan.md) - Roadmap and upcoming features.
 
 ## License
 

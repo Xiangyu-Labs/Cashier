@@ -1,4 +1,4 @@
-export const zhLedger = {
+const zhLedger = {
   settings: {
     aiLanguage: "zh-CN",
     currencies: ["CNY", "USD"] as string[],
@@ -78,7 +78,7 @@ export const zhLedger = {
   ],
 };
 
-export const enLedger = {
+const enLedger = {
   settings: {
     aiLanguage: "en",
     currencies: ["USD", "EUR", "GBP"] as string[],
@@ -166,11 +166,3 @@ export function getDefaultLedger(locale: string = "zh") {
   if (locale.startsWith("zh")) return zhLedger;
   return enLedger;
 }
-
-/**
- * @deprecated Use getDefaultLedger(locale) for locale-specific configurations.
- * Kept for backward compatibility.
- */
-export const defaultLedger = zhLedger;
-
-export default defaultLedger;

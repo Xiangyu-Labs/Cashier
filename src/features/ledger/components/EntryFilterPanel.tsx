@@ -127,17 +127,7 @@ export function EntryFilterPanel({
       return "custom";
     })();
 
-  // Map preset string to PeriodPreset type
-  const toNamedPreset = (preset: string): PeriodPreset | null => {
-    if (VISIBLE_PRESETS.includes(preset as PeriodPreset)) {
-      return preset as PeriodPreset;
-    }
-
-    return null;
-  };
-
-  // Date preset handler
-  const handleDatePresetLegacy = (preset: string, applyImmediately = false) => {
+  const handleDatePreset = (preset: PeriodPreset) => {
     let newFilters = { ...tempFilters };
 
     if (preset !== "custom") {
@@ -157,26 +147,13 @@ export function EntryFilterPanel({
         case "month":
           start.setMonth(end.getMonth() - 1);
           break;
-        case "3months":
-          start.setMonth(end.getMonth() - 3);
-          break;
-        case "6months":
-          start.setMonth(end.getMonth() - 6);
-          break;
-        case "year":
-          start.setFullYear(end.getFullYear() - 1);
-          break;
       }
 
       newFilters = { ...newFilters, startDate: start, endDate: end };
     }
 
-    if (applyImmediately) {
-      onFiltersChange(newFilters);
-    } else {
-      setTempFilters(newFilters);
-      setTempPeriod(toNamedPreset(preset));
-    }
+    setTempFilters(newFilters);
+    setTempPeriod(preset);
   };
 
   const handleApply = () => {
@@ -254,7 +231,7 @@ export function EntryFilterPanel({
                         "text-xs h-7",
                         isActive && "bg-primary/10 text-primary font-medium"
                       )}
-                      onClick={() => handleDatePresetLegacy(preset)}
+                      onClick={() => handleDatePreset(preset)}
                     >
                       {label}
                     </Button>

@@ -106,7 +106,7 @@ Implementation:
 
 Related tests:
 
-- [`tests/unit/middleware.test.ts`](/root/workspace/Cashier/tests/unit/middleware.test.ts)
+- [`tests/unit/proxy.test.ts`](/root/workspace/Cashier/tests/unit/proxy.test.ts)
 
 ### Uploads API
 

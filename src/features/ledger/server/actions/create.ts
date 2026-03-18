@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { ledgers, entryCategories } from "@/lib/db/schema";
-import { defaultLedger } from "@/config/default-ledger";
+import { getDefaultLedger } from "@/config/default-ledger";
 import { withAuth } from "@/lib/auth-actions";
 import { createLedgerSchema } from "./schemas";
 import type { CreateLedgerInput } from "./schemas";
@@ -13,6 +13,7 @@ import type { Ledger } from "@/lib/db/schema";
 export const createLedgerAction = withAuth(
   async (userId: string, data: CreateLedgerInput): Promise<Ledger> => {
     const validated = createLedgerSchema.parse(data);
+    const defaultLedger = getDefaultLedger("zh");
 
     // Check if user already has a ledger
     const existingLedger = await db.query.ledgers.findFirst({
@@ -36,8 +37,8 @@ export const createLedgerAction = withAuth(
             metadata: {
               settings: {
                 aiLanguage: validated.aiLanguage != null && validated.aiLanguage !== ""
-                ? validated.aiLanguage
-                : defaultLedger.settings.aiLanguage,
+                  ? validated.aiLanguage
+                  : defaultLedger.settings.aiLanguage,
                 currencies: defaultLedger.settings.currencies,
                 mainCurrency: defaultLedger.settings.mainCurrency,
                 collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,

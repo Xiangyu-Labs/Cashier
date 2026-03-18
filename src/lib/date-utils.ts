@@ -77,9 +77,6 @@ export function addPeriod(date: Date, type: DateRangeType, amount: number): Date
   }
 }
 
-// Re-export serializeDates from serialization utils for backward compatibility
-export { serializeDates } from "@/lib/serialization/utils";
-
 /**
  * Format date to yyyy-MM-dd string using LOCAL time (not UTC).
  *

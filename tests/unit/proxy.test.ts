@@ -33,10 +33,10 @@ vi.mock("../../src/i18n/routing", () => ({
   },
 }));
 
-// Import the middleware (this executes the mocked NextAuth and exports the callback)
-import middleware from "../../src/middleware";
+// Import the proxy (this executes the mocked NextAuth and exports the callback)
+import proxy from "../../src/proxy";
 
-describe("Middleware Logic", () => {
+describe("Proxy Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default intl middleware response
@@ -51,33 +51,33 @@ describe("Middleware Logic", () => {
     return req;
   }
 
-  const invokeMiddleware = (req: NextRequest) =>
-    (middleware as unknown as (req: NextRequest) => Promise<NextResponse>)(req);
+  const invokeProxy = (req: NextRequest) =>
+    (proxy as unknown as (req: NextRequest) => Promise<NextResponse>)(req);
 
   describe("Public Routes", () => {
     it("should allow access to /login without authentication", async () => {
       const req = createRequest("/login");
-      await invokeMiddleware(req);
+      await invokeProxy(req);
       // /login is a public page, so it should call intlMiddleware
       expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it("should allow access to localized /zh/login without authentication", async () => {
       const req = createRequest("/zh/login");
-      await invokeMiddleware(req);
+      await invokeProxy(req);
       // /zh/login is a public page (locale stripped), so it should call intlMiddleware
       expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it("should allow access to /s/share-id without authentication", async () => {
       const req = createRequest("/s/some-share-id");
-      await invokeMiddleware(req);
+      await invokeProxy(req);
       expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it("should allow access to /api/auth/* without authentication", async () => {
       const req = createRequest("/api/auth/session");
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
       // Returns NextResponse.next() for /api/auth paths, which in Vitest mock might not have headers
       expect(res.status).toBe(200);
     });
@@ -86,16 +86,16 @@ describe("Middleware Logic", () => {
   describe("Protected Page Routes", () => {
     it("should redirect unauthenticated user to login from /dashboard", async () => {
       const req = createRequest("/dashboard");
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
 
-      // Pages are no longer protected by middleware, so it should call intlMiddleware and return 200
+      // Pages are no longer protected by proxy, so it should call intlMiddleware and return 200
       expect(res.status).toBe(200);
       expect(mockIntlMiddleware).toHaveBeenCalled();
     });
 
     it("should redirect unauthenticated user to login from /en/dashboard", async () => {
       const req = createRequest("/en/dashboard");
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
 
       expect(res.status).toBe(200);
       expect(mockIntlMiddleware).toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("Middleware Logic", () => {
 
     it("should allow authenticated user to access /dashboard", async () => {
       const req = createRequest("/dashboard", { user: { id: "user1" } });
-      await invokeMiddleware(req);
+      await invokeProxy(req);
       expect(mockIntlMiddleware).toHaveBeenCalled();
     });
   });
@@ -111,7 +111,7 @@ describe("Middleware Logic", () => {
   describe("Protected API Routes", () => {
     it("should return 401 for unauthenticated access to /api/protected", async () => {
       const req = createRequest("/api/protected");
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
 
       expect(res.status).toBe(401);
       const data = await res.json();
@@ -121,7 +121,7 @@ describe("Middleware Logic", () => {
 
     it("should allow authenticated access to /api/protected", async () => {
       const req = createRequest("/api/protected", { user: { id: "user1" } });
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
 
       // API routes should return next() (status 200)
       expect(res.status).toBe(200);
@@ -130,9 +130,9 @@ describe("Middleware Logic", () => {
   });
 
   describe("Static Assets", () => {
-    it("should skip middleware for _next paths", async () => {
+    it("should skip proxy for _next paths", async () => {
       const req = createRequest("/_next/static/chunk.js");
-      const res = await invokeMiddleware(req);
+      const res = await invokeProxy(req);
       // Returns NextResponse.next() (status 200)
       expect(res.status).toBe(200);
       expect(mockIntlMiddleware).not.toHaveBeenCalled();
