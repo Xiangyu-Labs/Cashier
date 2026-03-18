@@ -12,6 +12,10 @@ import {
   findOTPRecord,
   verifyOTPWithPolicy,
 } from "@/features/auth/server/services/otp-verification";
+import {
+  assertRegistrationAllowed,
+  isRegistrationAllowed,
+} from "@/features/auth/server/services/registration";
 import { TIME_SECONDS } from "@/lib/constants";
 import { UnauthorizedError } from "@/lib/errors";
 
@@ -72,19 +76,6 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
   };
 })();
 
-// Inline helper: Check if registration is allowed (simplified architecture)
-async function isRegistrationAllowed(email: string): Promise<boolean> {
-  if (process.env.DISABLE_REGISTRATION !== "true") {
-    return true;
-  }
-  // Normalize email to lowercase for consistent lookup
-  const normalizedEmail = email.toLowerCase();
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, normalizedEmail),
-  });
-  return !!user;
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: DrizzleAdapter(db, {
@@ -126,9 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         // Check registration whitelist
-        if (await isRegistrationAllowed(email) !== true) {
-          return null;
-        }
+        await assertRegistrationAllowed(email);
 
         // Get or create user
         let user = await db.query.users.findFirst({

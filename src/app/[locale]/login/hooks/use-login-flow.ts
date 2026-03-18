@@ -26,6 +26,21 @@ interface UseLoginFlowReturn {
   handleOTPExpired: () => void;
 }
 
+function getSignInErrorMessage(
+  signInResult: { error?: string; code?: string } | undefined,
+  t: (key: string, values?: Record<string, string | number>) => string
+): string {
+  if (signInResult?.code === "registration_disabled") {
+    return t("registrationDisabledDesc");
+  }
+
+  if (signInResult?.error != null) {
+    return t("errorDesc");
+  }
+
+  return t("unexpectedError");
+}
+
 export function useLoginFlow(
   t: (key: string, values?: Record<string, string | number>) => string
 ): UseLoginFlowReturn {
@@ -86,11 +101,14 @@ export function useLoginFlow(
       });
 
       if (signInResult?.error != null) {
-        setError(signInResult.error);
+        setError(getSignInErrorMessage(signInResult, t));
         setIsLoading(false);
       } else if (signInResult?.ok) {
         router.push(callbackUrl);
         router.refresh();
+      } else {
+        setError(getSignInErrorMessage(signInResult, t));
+        setIsLoading(false);
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -147,3 +165,5 @@ export function useLoginFlow(
     handleOTPExpired,
   };
 }
+
+export { getSignInErrorMessage };
