@@ -87,6 +87,7 @@ export function StatsTab({
       }),
     enabled: ledgerId !== undefined && ledgerId !== "",
     placeholderData: (previousData) => previousData,
+    refetchOnMount: "always",
   });
 
   const totalExpense = stats?.summary.total ?? 0;

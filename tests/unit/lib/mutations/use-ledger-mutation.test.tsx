@@ -180,4 +180,48 @@ describe("useLedgerMutation", () => {
 
     expect(onSuccessExtra).toHaveBeenCalledWith({ id: "123" }, { data: "test" }, undefined);
   });
+
+  it("mutation 返回数据时也应默认失效 ledger 相关缓存", async () => {
+    const mutationFn = vi.fn().mockResolvedValue({ id: "123" });
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const cancelQueries = vi.fn().mockResolvedValue(undefined);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+    queryClient.invalidateQueries = invalidateQueries;
+    queryClient.cancelQueries = cancelQueries;
+
+    function CustomWrapper({ children }: { children: React.ReactNode }) {
+      return React.createElement(QueryClientProvider, { client: queryClient }, children);
+    }
+
+    const { result } = renderHook(
+      () =>
+        useLedgerMutation("ledger-123", {
+          mutationFn,
+        }),
+      { wrapper: CustomWrapper }
+    );
+
+    act(() => {
+      result.current.mutate({ data: "test" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(cancelQueries).toHaveBeenCalled();
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      predicate: expect.any(Function),
+    });
+
+    const predicate = invalidateQueries.mock.calls[0][0].predicate as (query: {
+      queryKey: readonly unknown[];
+    }) => boolean;
+    expect(predicate({ queryKey: ["ledgerEntries", "ledger-123"] })).toBe(true);
+    expect(predicate({ queryKey: ["ledgerEntries", "other-ledger"] })).toBe(false);
+  });
 });

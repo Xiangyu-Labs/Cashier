@@ -191,10 +191,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
     onSettled: async (data, error, variables) => {
       try {
-        // Only invalidate queries if the mutation doesn't return data
-        // or if skipInvalidation is false. When mutation returns data,
-        // onSuccessExtra should handle cache updates directly.
-        if (!skipInvalidation && !error && data === undefined) {
+        // Default to invalidating all ledger-scoped queries after successful mutations.
+        // Mutations that want to fully own cache updates can opt out via skipInvalidation.
+        if (!skipInvalidation && !error) {
           if (customInvalidation != null) {
             customInvalidation(queryClient);
           } else if (ledgerId != null) {

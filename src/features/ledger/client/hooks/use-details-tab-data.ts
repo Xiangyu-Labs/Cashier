@@ -77,7 +77,14 @@ export function useDetailsTabData({
 
   // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
-    queryKey: queryKeys.ledgerEntries(ledgerId, "summary", startDateStr, endDateStr, mainCurrency),
+    queryKey: queryKeys.ledgerEntries(
+      ledgerId,
+      "summary",
+      startDateStr,
+      endDateStr,
+      mainCurrency,
+      filterKey
+    ),
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
@@ -92,11 +99,12 @@ export function useDetailsTabData({
         }
       ),
     enabled: true,
+    refetchOnMount: "always",
   });
 
   // Infinite query for entries (query key 不包含 filterKey，与预加载保持一致)
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
-    queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr),
+    queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {
         startDate: startDateStr ?? undefined,
@@ -111,6 +119,7 @@ export function useDetailsTabData({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
     placeholderData: (previousData) => previousData,
+    refetchOnMount: "always",
   });
 
   // Flatten entries

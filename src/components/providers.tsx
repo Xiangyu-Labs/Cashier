@@ -10,21 +10,21 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { CACHE_VERSION } from "@/lib/cache-version";
 import { TIME, QUERY } from "@/lib/constants";
 
-// Only persist specific query types (not real-time data)
-function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
+// Only persist relatively stable query types.
+// Avoid persisting fast-changing derived data like ledgerEntries/stats,
+// which can otherwise restore stale "empty" states across reloads.
+export function shouldPersistQuery(query: { queryKey: readonly unknown[] }) {
   const [queryType] = query.queryKey;
   // Persist: ledger metadata, categories, source documents, currency conversions
-  // Don't persist: tasks, processing status (real-time data)
+  // Don't persist: tasks, processing status, derived entry/stats views
   return [
     "ledger",
     "ledgers",
     "entryCategories",
     "sourceDocuments",
-    "ledgerEntries",
     "batchConvert",
     "convert",
     "summary",
-    "enhanced-stats",
   ].includes(queryType as string);
 }
 
