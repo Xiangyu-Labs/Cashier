@@ -1,1 +1,116 @@
-export { usePeriodFilter, type FilterParams } from "@/features/ledger/client/hooks/use-period-filter";
+"use client";
+
+import { useCallback, useMemo } from "react";
+import {
+  type PeriodParams,
+  periodToDateRange,
+  parsePeriodFromSearchParams,
+} from "@/lib/period-utils";
+import { parseDateString } from "@/lib/date-utils";
+import type { EntryFilters } from "@/modules/ledger/ui";
+import {
+  readLedgerFilterParams,
+  updateLedgerSearchParams,
+} from "@/modules/workspace/ledger-url-params";
+import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
+
+export interface FilterParams {
+  categoryId: string | null;
+  currency: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+}
+
+interface UsePeriodFilterParams {
+  pathname: string;
+  searchParams: URLSearchParams;
+  initialPeriod: PeriodParams;
+}
+
+interface UsePeriodFilterReturn {
+  periodParams: PeriodParams;
+  dateRange: { startDate: string | null; endDate: string | null };
+  filters: EntryFilters;
+  filterParams: FilterParams;
+  handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
+  handleFiltersChange: (newFilters: EntryFilters) => void;
+}
+
+export function usePeriodFilter({
+  pathname,
+  searchParams,
+  initialPeriod: _initialPeriod,
+}: UsePeriodFilterParams): UsePeriodFilterReturn {
+  const periodParams = useMemo<PeriodParams>(() => {
+    const parsed = parsePeriodFromSearchParams(searchParams);
+    return parsed;
+  }, [searchParams]);
+
+  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
+
+  const filterParams = useMemo<FilterParams>(
+    () => readLedgerFilterParams(searchParams),
+    [searchParams]
+  );
+
+  const filters: EntryFilters = useMemo(
+    () => ({
+      startDate: dateRange.startDate !== null ? parseDateString(dateRange.startDate) : undefined,
+      endDate: dateRange.endDate !== null ? parseDateString(dateRange.endDate) : undefined,
+      categoryId: filterParams.categoryId ?? null,
+      currency: filterParams.currency ?? null,
+      minAmount: filterParams.minAmount,
+      maxAmount: filterParams.maxAmount,
+    }),
+    [dateRange, filterParams]
+  );
+
+  const handlePeriodChange = useCallback(
+    (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
+      if (options?.skipUrlUpdate) return;
+
+      const params = updateLedgerSearchParams(searchParams, {
+        period: newPeriod.period,
+        startDate: newPeriod.startDate ?? null,
+        endDate: newPeriod.endDate ?? null,
+      });
+      replaceLedgerUrl(pathname, params);
+    },
+    [pathname, searchParams]
+  );
+
+  const handleFiltersChange = useCallback(
+    (newFilters: EntryFilters) => {
+      const formatDate = (d?: Date): string | null => {
+        if (!d) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+
+      const hasCustomDates = newFilters.startDate !== undefined || newFilters.endDate !== undefined;
+      const params = updateLedgerSearchParams(searchParams, {
+        period: hasCustomDates ? "custom" : "thisMonth",
+        startDate: hasCustomDates ? formatDate(newFilters.startDate) : null,
+        endDate: hasCustomDates ? formatDate(newFilters.endDate) : null,
+        categoryId: newFilters.categoryId ?? null,
+        currency: newFilters.currency ?? null,
+        minAmount: newFilters.minAmount ?? null,
+        maxAmount: newFilters.maxAmount ?? null,
+      });
+
+      replaceLedgerUrl(pathname, params);
+    },
+    [pathname, searchParams]
+  );
+
+  return {
+    periodParams,
+    dateRange,
+    filters,
+    filterParams,
+    handlePeriodChange,
+    handleFiltersChange,
+  };
+}
