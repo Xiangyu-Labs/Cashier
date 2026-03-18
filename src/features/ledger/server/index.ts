@@ -1,4 +1,3 @@
-export { prepareLedgerPageData } from "./page-data";
 export { createLedgerAction } from "./actions/create";
 export { getLedgerAction, getLedgersAction } from "./actions/get";
 export { listLedgerEntries, getLedgerEntriesAction } from "./actions/entries";
