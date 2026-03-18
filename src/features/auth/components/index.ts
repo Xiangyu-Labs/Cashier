@@ -1,1 +1,0 @@
-export { DeviceIcon } from "./DeviceIcon";

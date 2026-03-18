@@ -1,5 +1,3 @@
-"use server";
-
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 import type { CategoryInfo } from "@/features/ai/types";

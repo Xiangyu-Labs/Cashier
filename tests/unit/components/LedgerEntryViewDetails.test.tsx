@@ -65,17 +65,6 @@ vi.mock("@/components/ui/editable-field", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/editable-date-field", () => ({
-  EditableDateField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
-    <input
-      type="date"
-      data-testid="editable-date-field"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-}));
-
 vi.mock("@/components/ui/editable-category-select", () => ({
   EditableCategorySelect: ({
     value,

@@ -1,5 +1,3 @@
-"use server";
-
 import { db } from "@/lib/db";
 import type { CategoryInfo } from "@/features/ai/types";
 import type { Ledger } from "@/lib/db/schema";

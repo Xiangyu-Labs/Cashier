@@ -13,7 +13,8 @@ describe("feature server boundary lint", () => {
         export const leak = getSourceDocumentsAction;
       `,
       {
-        filePath: "src/features/ledger/server/__lint-fixtures__/cross-feature-boundary.ts",
+        // Use a real project-included path so typescript-eslint can build the TS program.
+        filePath: "src/features/ledger/server/index.ts",
       }
     );
 
