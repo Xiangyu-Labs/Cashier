@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filter";
+import { usePeriodFilter } from "@/modules/workspace/hooks/usePeriodFilter";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 describe("usePeriodFilter", () => {

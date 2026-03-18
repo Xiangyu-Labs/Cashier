@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useDetailsTabGrouping } from "@/features/ledger/client/hooks/use-details-tab-grouping";
+import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { LedgerEntry } from "@/types/api";
 

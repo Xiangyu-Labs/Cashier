@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { useDetailsTabData } from "@/features/ledger/client/hooks/use-details-tab-data";
+import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
 import type { Ledger } from "@/types/api";
 import type { SerializedLedgerEntry } from "@/lib/serialization";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useLedgerTabs } from "@/features/ledger/components/LedgerPageClient/useLedgerTabs";
+import { useLedgerTabs } from "@/modules/workspace/hooks/useLedgerTabs";
 
 // Mock window.history.replaceState
 const mockReplaceState = vi.fn();
