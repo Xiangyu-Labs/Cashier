@@ -14,7 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useTaskQueue } from "@/features/task-queue/client";
+import { useTaskQueue } from "@/modules/task-queue/ui";
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
 import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
@@ -25,7 +25,7 @@ import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
   () =>
-    import("@/features/source-document/components").then((m) => ({
+    import("@/modules/source-document/ui").then((m) => ({
       default: m.SourceDocumentInput,
     })),
   { ssr: false }
@@ -33,7 +33,7 @@ const SourceDocumentInput = dynamic(
 
 const QuickEntryForm = dynamic(
   () =>
-    import("@/features/source-document/components").then((m) => ({
+    import("@/modules/source-document/ui").then((m) => ({
       default: m.QuickEntryForm,
     })),
   { ssr: false }
@@ -41,7 +41,7 @@ const QuickEntryForm = dynamic(
 
 const TaskQueueModal = dynamic(
   () =>
-    import("@/features/task-queue/components").then((m) => ({
+    import("@/modules/task-queue/ui").then((m) => ({
       default: m.TaskQueueModal,
     })),
   { ssr: false }

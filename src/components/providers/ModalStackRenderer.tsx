@@ -1,6 +1,6 @@
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentDetailWrapper } from "@/features/source-document/components";
-import { LedgerEntryDetailWrapper } from "@/features/ledger/components";
+import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
+import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui";
 import type { EntryCategory } from "@/types/api";
 
 interface ModalStackRendererProps {

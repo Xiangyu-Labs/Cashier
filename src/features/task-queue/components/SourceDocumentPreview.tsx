@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
 import { ImageIcon, FileText, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { SourceDocumentImageModal } from "@/features/source-document/components";
+import { SourceDocumentImageModal } from "@/modules/source-document/ui";
 
 interface SourceDocumentPreviewProps {
   ledgerId: string;

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
-import { ExchangeRateService } from "@/features/currency/server";
+import { ExchangeRateService } from "@/modules/currency";
 
 export interface ConversionItem {
   amount: number;

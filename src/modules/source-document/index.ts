@@ -11,3 +11,4 @@ export {
   getPendingSourceDocumentsAction,
   getSourceDocumentFullAction,
 } from "@/features/source-document/server/actions/queries";
+export { type SourceDocumentStatusType } from "@/persistence/schema/source-document";

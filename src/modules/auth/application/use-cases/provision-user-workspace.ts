@@ -3,7 +3,6 @@ import { users, ledgers } from "@/persistence";
 import { and, eq, isNull } from "drizzle-orm";
 import type { ProvisionUserWorkspaceInput } from "@/modules/auth/contracts";
 import { createDefaultLedger } from "@/modules/ledger";
-import { sendLoginNotification } from "@/features/auth/server/services/notifications";
 
 export async function provisionUserWorkspace(
   input: ProvisionUserWorkspaceInput
@@ -14,6 +13,9 @@ export async function provisionUserWorkspace(
 
   if (existingLedger) {
     if (input.trigger === "existing-login") {
+      const { sendLoginNotification } = await import(
+        "@/features/auth/server/services/notifications"
+      );
       await sendLoginNotification(input.email);
     }
     return { ledgerId: existingLedger.id, created: false };

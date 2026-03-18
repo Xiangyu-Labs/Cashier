@@ -2,10 +2,10 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
-import { requireLedgerAccess } from "@/features/auth/server";
+import { requireLedgerAccess } from "@/modules/auth";
 import { and, eq, isNull } from "drizzle-orm";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { CurrencyService } from "@/features/currency/server";
+import { CurrencyService } from "@/modules/currency";
 import { SourceDocumentType } from "@/persistence/schema/source-document";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";

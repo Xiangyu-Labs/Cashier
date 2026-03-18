@@ -1,6 +1,6 @@
 "use client";
 
-import { useAmountDisplay } from "@/features/currency/client";
+import { useAmountDisplay } from "@/modules/currency/client";
 import { formatAmountStandard } from "@/lib/formatters";
 
 interface AmountDisplayProps {

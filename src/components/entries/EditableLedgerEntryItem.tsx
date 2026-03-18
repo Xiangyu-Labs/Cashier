@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { type LedgerEntry, type EntryCategory } from "@/types/api";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useAmountDisplay } from "@/features/currency/client";
+import { useAmountDisplay } from "@/modules/currency/client";
 import { parseAmount } from "@/lib/formatters";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";

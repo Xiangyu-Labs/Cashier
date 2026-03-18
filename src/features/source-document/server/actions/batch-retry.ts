@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/persistence";
-import { requireLedgerAccess } from "@/features/auth/server";
+import { requireLedgerAccess } from "@/modules/auth";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";

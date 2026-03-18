@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { requireLedgerAccess } from "@/features/auth/server";
+import { requireLedgerAccess } from "@/modules/auth";
 import { type SerializedSourceDocument, serializeSourceDocument } from "@/lib/serialization";
 import { AppError } from "@/lib/errors";
 

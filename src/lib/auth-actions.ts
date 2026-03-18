@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { UnauthorizedError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/features/auth/server";
+import { requireLedgerAccess } from "@/modules/auth";
 
 /**
  * Wraps a server action to automatically handle authentication.

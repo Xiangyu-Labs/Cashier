@@ -7,12 +7,12 @@ import {
   getEntryCategoriesAction,
   getLedgerStatsAction,
   getLedgerEntriesAction,
-} from "@/features/ledger/server";
-import { getEnhancedStats } from "@/features/stats/server";
+} from "@/modules/ledger";
+import { getEnhancedStats } from "@/modules/stats";
 import {
   getPendingSourceDocumentsAction,
   getAllSourceDocumentsAction,
-} from "@/features/source-document/server";
+} from "@/modules/source-document";
 import { getDetailsInitialQueryState, getStatsInitialQueryState } from "@/features/ledger/lib/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerTab } from "@/features/ledger/lib/tabs";

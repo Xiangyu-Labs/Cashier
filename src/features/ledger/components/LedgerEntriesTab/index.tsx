@@ -6,16 +6,16 @@ import {
   type SourceDocument,
   type Ledger,
 } from "@/types/api";
-import { SourceDocumentCard } from "@/features/source-document/components";
+import { SourceDocumentCard } from "@/modules/source-document/ui";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "@/features/source-document/components";
+import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
-import { useSourceDocuments, useBatchSourceDocumentActions } from "@/features/source-document/client";
+import { useSourceDocuments, useBatchSourceDocumentActions } from "@/modules/source-document/ui";
 import type { SourceDocumentGroup } from "@/lib/serialization";
-import { type SourceDocumentStatusType } from "@/features/source-document/server";
+import { type SourceDocumentStatusType } from "@/modules/source-document";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";

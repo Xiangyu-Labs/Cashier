@@ -1,1 +1,1 @@
-export { getEnhancedStats } from "@/features/stats/server-actions";
+export { getEnhancedStats } from "@/features/stats/server/actions";
