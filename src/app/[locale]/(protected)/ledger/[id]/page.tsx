@@ -2,12 +2,12 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { LedgerPageClient } from "@/modules/workspace/ui";
 import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
 import { LedgerPageSkeleton } from "@/components/skeletons";
-import { parseLedgerTab, type LedgerTab } from "@/features/ledger";
 
 interface LedgerPageProps {
   params: Promise<{ id: string }>;
