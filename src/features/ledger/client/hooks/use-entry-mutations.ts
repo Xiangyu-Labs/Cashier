@@ -1,7 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { queryKeys, matchLedgerEntries } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  matchLedgerEntries,
+  queryKeys,
+} from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   updateLedgerEntryAction,
@@ -40,6 +47,13 @@ export function useEntryMutations({
       return result;
     },
     errorMessage: tCommon("saveFailed"),
+    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
       const snapshots = createListSnapshots<InfiniteData>(
         queryClient,
@@ -91,6 +105,13 @@ export function useEntryMutations({
     mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
     successMessage: tLedger("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: () => {
       setIsDetailModalOpen(false);
       setSelectedLedgerEntry(null);

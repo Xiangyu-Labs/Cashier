@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
 import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
-import { queryKeys } from "@/lib/query-keys";
+import { matchPaginatedSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
   groupSourceDocumentsByStatus,
@@ -11,6 +10,7 @@ import {
   type GroupedSourceDocuments,
 } from "@/features/source-document/lib/grouping";
 import { parseAmount } from "@/lib/formatters";
+import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
 
 // Re-export type for convenience
 export type { SourceDocumentWithEntries };
@@ -98,19 +98,20 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
 
   // Single query with flat cache structure
   // The 'all' key stores the raw flat array
-  const { data: response, isLoading } = useSmartPolling({
+  const { data: response, isLoading } = useQuery({
     queryKey: queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate),
     queryFn: () =>
       getAllSourceDocumentsAction(ledgerId, {
         startDate: startDateForQuery,
         endDate: endDateForQuery,
       }),
-    isActive: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data;
       if (!data) return false;
-      return data.items.some((doc) => doc.status === "queued" || doc.status === "processing");
+      return data.items.some((doc) => doc.status === "queued" || doc.status === "processing")
+        ? 3000
+        : false;
     },
-    interval: 3000,
-    ledgerId,
   });
 
   // Extract items from paginated response
@@ -161,14 +162,14 @@ export function useSourceDocumentFromCache(ledgerId: string, id: string | null) 
     if (id == null) return null;
 
     // Get all cached queries for this ledger
-    const queries = queryClient.getQueriesData<SourceDocumentWithEntries[]>({
-      queryKey: queryKeys.sourceDocuments(ledgerId, "all"),
+    const queries = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+      predicate: matchPaginatedSourceDocuments(ledgerId),
     });
 
     // Find the document in any of the cached data
     for (const [, data] of queries) {
       if (data !== undefined && data !== null) {
-        const doc = data.find((d) => d.id === id);
+        const doc = data.items.find((d) => d.id === id);
         if (doc !== undefined && doc !== null) return doc;
       }
     }

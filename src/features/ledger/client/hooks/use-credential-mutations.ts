@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createServiceCredentialAction,
@@ -31,6 +31,8 @@ export function useCredentialMutations(ledgerId: string) {
       mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
       successMessage: t("credentialCreated"),
       errorMessage: t("createFailed"),
+      cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+      invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
       onOptimisticUpdate: (queryClient, name) => {
         const tempCredential: ServiceCredential = {
           id: `temp-${Date.now()}`,
@@ -80,6 +82,8 @@ export function useCredentialMutations(ledgerId: string) {
     mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),
     successMessage: t("credentialDeleted"),
     errorMessage: t("deleteFailed"),
+    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
     onOptimisticUpdate: (queryClient, id) => {
       // Optimistically remove from the ledgerSettings query data
       const prevData = queryClient.getQueryData<{

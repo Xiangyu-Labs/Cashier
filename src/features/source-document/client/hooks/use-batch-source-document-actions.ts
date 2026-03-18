@@ -2,7 +2,13 @@
 
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { matchPaginatedSourceDocuments } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  invalidateTaskQueue,
+  matchPaginatedSourceDocuments,
+} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   batchUpdateSourceDocumentsAction,
@@ -22,6 +28,12 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     successMessage: "",
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: (_data, { ids }) => {
       toast.success(tBatch("datesUpdated", { count: ids.length }));
       clearSelection();
@@ -52,6 +64,12 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     successMessage: "",
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: (_data, ids) => {
       toast.success(tBatch("entriesDeleted", { count: ids.length }));
       clearSelection();
@@ -83,6 +101,8 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     successMessage: "",
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateSourceDocuments(ledgerId), invalidateTaskQueue(ledgerId)],
     onSuccessExtra: (_data, ids) => {
       toast.success(tBatch("retrySubmitted", { count: ids.length }));
       clearSelection();

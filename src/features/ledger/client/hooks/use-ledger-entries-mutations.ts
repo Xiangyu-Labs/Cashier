@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { matchPaginatedSourceDocuments } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  matchPaginatedSourceDocuments,
+} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   updateLedgerEntryAction,
@@ -32,6 +38,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     },
     successMessage: tCommon("saveSuccess"),
     errorMessage: tCommon("saveFailed"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
       // Use predicate to match all source document queries (including date-ranged ones)
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
@@ -76,6 +89,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, ledgerEntryId) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
@@ -104,6 +124,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     mutationFn: (sourceDocumentId) => deleteSourceDocumentAction(ledgerId, sourceDocumentId),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: t("deleteFailed"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, id) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
@@ -129,6 +156,13 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
         predicate: matchPaginatedSourceDocuments(ledgerId),

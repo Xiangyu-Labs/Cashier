@@ -13,7 +13,13 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";
 import { type EntryCategory } from "@/types/api";
 import { DateFilter } from "@/components/ui/date-filter";
-import { queryKeys } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
   SourceDocumentWithEntries,
@@ -54,6 +60,13 @@ export function QuickEntryForm({
     }) => createQuickEntryAction(ledgerId, data),
     successMessage: t("quickEntrySuccess"),
     errorMessage: t("quickEntryError"),
+    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: () => {
       setSelectedCategoryId(null);
       setAmount(0);

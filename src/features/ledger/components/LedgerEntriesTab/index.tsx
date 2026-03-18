@@ -17,7 +17,7 @@ import { useSourceDocuments } from "@/features/source-document/client/hooks/use-
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
-import { invalidateLedgerCache, queryKeys } from "@/lib/query-keys";
+import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-ledger-entries-mutations";
@@ -80,14 +80,7 @@ export function LedgerEntriesTab({
   const endDateStr = formatDateTimeForApi(filters.endDate) ?? undefined;
 
   const { data: summaryData } = useQuery({
-    queryKey: queryKeys.ledgerEntries(
-      ledgerId,
-      "summary",
-      startDateStr,
-      endDateStr,
-      mainCurrency,
-      null
-    ),
+    queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, null),
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
@@ -99,7 +92,6 @@ export function LedgerEntriesTab({
           maxAmount: filters.maxAmount,
         }
       ),
-    placeholderData: (previousData) => previousData,
   });
 
   const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
@@ -193,7 +185,10 @@ export function LedgerEntriesTab({
   });
 
   const handleRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+    await Promise.all([
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+    ]);
   }, [queryClient, ledgerId]);
 
   // Selection mode

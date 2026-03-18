@@ -75,61 +75,109 @@ export const queryKeys = {
 // Type helper for extracting query key type
 export type QueryKeys = typeof queryKeys;
 
-/**
- * Helper to create a predicate for invalidating all queries related to a ledger.
- * This ensures all ledger-related data is refreshed after mutations.
- *
- * Usage:
- *   queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) })
- */
-export function invalidateLedgerCache(ledgerId: string) {
-  return (query: { queryKey: readonly unknown[] }) => {
-    const key = query.queryKey;
-    // Check if ledgerId exists anywhere in the query key array
-    // This handles both standard keys (position 0 or 1) and calendar keys (position 2)
-    return Array.isArray(key) && key.includes(ledgerId);
-  };
+type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
+
+function isQueryKeyPrefixMatch(queryKey: readonly unknown[], prefix: readonly unknown[]) {
+  return prefix.every((value, index) => queryKey[index] === value);
+}
+
+function createPrefixPredicate(prefix: readonly unknown[]): QueryPredicate {
+  return (query) => Array.isArray(query.queryKey) && isQueryKeyPrefixMatch(query.queryKey, prefix);
 }
 
 /**
- * Helper to create a predicate for matching all source document queries for a ledger.
- * This matches queries regardless of date range filters.
- *
- * Usage:
- *   queryClient.setQueriesData({ predicate: matchSourceDocuments(ledgerId) }, updater)
- *   queryClient.invalidateQueries({ predicate: matchSourceDocuments(ledgerId) })
+ * Helper to match ledger resource queries for a specific ledger.
  */
-export function matchSourceDocuments(ledgerId: string) {
-  return (query: { queryKey: readonly unknown[] }) => {
-    const key = query.queryKey;
-    return Array.isArray(key) && key[0] === "sourceDocuments" && key[1] === ledgerId;
-  };
+export function invalidateLedger(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.ledger(ledgerId));
 }
 
 /**
- * Helper to create a predicate for matching paginated source document queries.
- * This matches only queries with 'all' filter (PaginatedSourceDocumentsResponse),
- * not 'pending' or other filters which have different response structures.
- *
- * Usage:
- *   queryClient.setQueriesData({ predicate: matchPaginatedSourceDocuments(ledgerId) }, updater)
+ * Helper to match all ledger entries list queries for a ledger.
  */
-export function matchPaginatedSourceDocuments(ledgerId: string) {
-  return (query: { queryKey: readonly unknown[] }) => {
+export function invalidateLedgerEntries(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.ledgerEntries(ledgerId));
+}
+
+/**
+ * Helper to match all source document queries for a ledger.
+ */
+export function invalidateSourceDocuments(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocuments(ledgerId));
+}
+
+/**
+ * Helper to match stats and summary queries for a ledger.
+ */
+export function invalidateLedgerStats(ledgerId: string): QueryPredicate {
+  return (query) => {
     const key = query.queryKey;
     return (
-      Array.isArray(key) && key[0] === "sourceDocuments" && key[1] === ledgerId && key[2] === "all"
+      Array.isArray(key) &&
+      ((key[0] === "summary" && key[1] === ledgerId) ||
+        (key[0] === "enhanced-stats" && key[1] === ledgerId))
     );
   };
 }
 
 /**
- * Helper to create a predicate for matching all ledger entries queries for a ledger.
- * This matches queries regardless of filters.
+ * Helper to match ledger settings queries for a ledger.
  */
-export function matchLedgerEntries(ledgerId: string) {
-  return (query: { queryKey: readonly unknown[] }) => {
+export function invalidateLedgerSettings(ledgerId: string): QueryPredicate {
+  return (query) => {
     const key = query.queryKey;
-    return Array.isArray(key) && key[0] === "ledgerEntries" && key[1] === ledgerId;
+    return (
+      Array.isArray(key) &&
+      ((key[0] === "ledgerSettings" && key[1] === ledgerId) ||
+        (key[0] === "entryCategories" && key[1] === ledgerId) ||
+        (key[0] === "uncategorizedCount" && key[1] === ledgerId) ||
+        (key[0] === "serviceCredentials" && key[1] === ledgerId))
+    );
   };
+}
+
+/**
+ * Helper to match calendar queries for a ledger.
+ */
+export function invalidateCalendar(ledgerId: string): QueryPredicate {
+  return (query) => {
+    const key = query.queryKey;
+    return Array.isArray(key) && key[0] === "calendar" && key[2] === ledgerId;
+  };
+}
+
+/**
+ * Helper to match task queue / processing task queries for a ledger.
+ */
+export function invalidateTaskQueue(ledgerId: string): QueryPredicate {
+  return (query) => {
+    const key = query.queryKey;
+    return (
+      Array.isArray(key) &&
+      ((key[0] === "taskQueue" && key[1] === ledgerId) ||
+        (key[0] === "processingTasks" && key[1] === ledgerId))
+    );
+  };
+}
+
+/**
+ * Helper to match all source document queries for a ledger.
+ * This is kept for updater use-sites that need to fan out across date ranges.
+ */
+export function matchSourceDocuments(ledgerId: string): QueryPredicate {
+  return invalidateSourceDocuments(ledgerId);
+}
+
+/**
+ * Helper to match paginated source document queries with the `all` filter.
+ */
+export function matchPaginatedSourceDocuments(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocuments(ledgerId, "all"));
+}
+
+/**
+ * Helper to match all ledger entries queries for a ledger.
+ */
+export function matchLedgerEntries(ledgerId: string): QueryPredicate {
+  return invalidateLedgerEntries(ledgerId);
 }

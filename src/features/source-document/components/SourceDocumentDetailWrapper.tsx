@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery, type useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
 import {
@@ -31,6 +37,28 @@ import type { EntryCategory, LedgerEntry, SourceDocument, SourceDocumentLight } 
 import type { EntryEditData } from "@/components/entries";
 import type { SourceDocumentWithEntries as ServerSourceDocumentWithEntries } from "@/features/source-document/server/actions/get-document";
 
+function updatePaginatedSourceDocumentLists(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ledgerId: string,
+  updater: (doc: SourceDocumentWithEntries) => SourceDocumentWithEntries | null
+) {
+  queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+    { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
+    (old) => {
+      if (!old) return old;
+
+      const nextItems = old.items
+        .map((doc) => updater(doc))
+        .filter((doc): doc is SourceDocumentWithEntries => doc !== null);
+
+      return {
+        ...old,
+        items: nextItems,
+      };
+    }
+  );
+}
+
 // Helper function to create snapshots for source document mutations
 // Reduces duplication across 6 mutations in this component
 function createSourceDocSnapshots(
@@ -39,6 +67,7 @@ function createSourceDocSnapshots(
   ledgerId: string | undefined
 ): MutationSnapshot {
   const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(documentId));
+  snapshots.push(...createListSnapshots(queryClient, queryKeys.sourceDocumentLight(documentId)));
 
   if (ledgerId != null && ledgerId !== "") {
     const listKey = queryKeys.sourceDocuments(ledgerId, "all");
@@ -101,6 +130,14 @@ export function SourceDocumentDetailWrapper({
         await updateSourceDocumentAction(ledgerId, id, data);
       },
       errorMessage: tCommon("saveFailed"),
+      cancelPredicates: ledgerId ? [invalidateSourceDocuments(ledgerId)] : undefined,
+      invalidatePredicates: ledgerId
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
       onOptimisticUpdate: (queryClient, data) => {
         const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -124,27 +161,9 @@ export function SourceDocumentDetailWrapper({
 
         // 3. Update flat list cache (new architecture)
         if (ledgerId != null && ledgerId !== "") {
-          queryClient.setQueriesData<
-            PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]
-          >({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") }, (old) => {
-            if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.map((doc) => (doc.id === id ? { ...doc, ...data } : doc));
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.map((doc) => (doc.id === id ? { ...doc, ...data } : doc)),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
-          });
+          updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) =>
+            doc.id === id ? { ...doc, ...data } : doc
+          );
         }
 
         return { snapshots };
@@ -176,6 +195,19 @@ export function SourceDocumentDetailWrapper({
       await updateLedgerEntryAction(ledgerId, entryId, convertedData);
     },
     errorMessage: tCommon("saveFailed"),
+    cancelPredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
+        : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerEntries(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onOptimisticUpdate: (queryClient, { entryId, data }) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -195,42 +227,14 @@ export function SourceDocumentDetailWrapper({
 
       // 2. Update flat list cache (new architecture)
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
-          { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
-          (old) => {
-            if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.map((doc) => {
-                if (doc.id !== id) return doc;
-                const updatedEntries =
-                  doc.ledgerEntries?.map((entry) =>
-                    entry.id === entryId ? { ...entry, ...data } : entry
-                  ) ?? [];
-                return { ...doc, ledgerEntries: updatedEntries };
-              });
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.map((doc) => {
-                  if (doc.id !== id) return doc;
-                  const updatedEntries =
-                    doc.ledgerEntries?.map((entry) =>
-                      entry.id === entryId ? { ...entry, ...data } : entry
-                    ) ?? [];
-                  return { ...doc, ledgerEntries: updatedEntries };
-                }),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
-          }
-        );
+        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+          if (doc.id !== id) return doc;
+          const updatedEntries =
+            doc.ledgerEntries?.map((entry) =>
+              entry.id === entryId ? { ...entry, ...data } : entry
+            ) ?? [];
+          return { ...doc, ledgerEntries: updatedEntries };
+        });
       }
 
       return { snapshots };
@@ -253,6 +257,19 @@ export function SourceDocumentDetailWrapper({
       await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: tCommon("saveFailed"),
+    cancelPredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
+        : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerEntries(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onOptimisticUpdate: (queryClient, { ids, data }) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -272,46 +289,14 @@ export function SourceDocumentDetailWrapper({
 
       // 2. Update flat list cache (new architecture)
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
-          { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
-          (old) => {
-            if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.map((doc) => {
-                if (doc.id !== id) return doc;
-                const updatedEntries =
-                  doc.ledgerEntries?.map((entry) =>
-                    ids.includes(entry.id)
-                      ? { ...entry, ...(data as Partial<typeof entry>) }
-                      : entry
-                  ) ?? [];
-                return { ...doc, ledgerEntries: updatedEntries };
-              });
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.map((doc) => {
-                  if (doc.id !== id) return doc;
-                  const updatedEntries =
-                    doc.ledgerEntries?.map((entry) =>
-                      ids.includes(entry.id)
-                        ? { ...entry, ...(data as Partial<typeof entry>) }
-                        : entry
-                    ) ?? [];
-                  return { ...doc, ledgerEntries: updatedEntries };
-                }),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
-          }
-        );
+        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+          if (doc.id !== id) return doc;
+          const updatedEntries =
+            doc.ledgerEntries?.map((entry) =>
+              ids.includes(entry.id) ? { ...entry, ...(data as Partial<typeof entry>) } : entry
+            ) ?? [];
+          return { ...doc, ledgerEntries: updatedEntries };
+        });
       }
 
       return { snapshots };
@@ -332,6 +317,19 @@ export function SourceDocumentDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
+        : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerEntries(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onOptimisticUpdate: (queryClient, entryId) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -349,38 +347,12 @@ export function SourceDocumentDetailWrapper({
 
       // 2. Update flat list cache (new architecture)
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
-          { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
-          (old) => {
-            if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.map((doc) => {
-                if (doc.id !== id) return doc;
-                const filteredEntries =
-                  doc.ledgerEntries?.filter((entry) => entry.id !== entryId) ?? [];
-                return { ...doc, ledgerEntries: filteredEntries };
-              });
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.map((doc) => {
-                  if (doc.id !== id) return doc;
-                  const filteredEntries =
-                    doc.ledgerEntries?.filter((entry) => entry.id !== entryId) ?? [];
-                  return { ...doc, ledgerEntries: filteredEntries };
-                }),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
-          }
-        );
+        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+          if (doc.id !== id) return doc;
+          const filteredEntries =
+            doc.ledgerEntries?.filter((entry) => entry.id !== entryId) ?? [];
+          return { ...doc, ledgerEntries: filteredEntries };
+        });
       }
 
       return { snapshots };
@@ -401,6 +373,19 @@ export function SourceDocumentDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
+        : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerEntries(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -418,38 +403,12 @@ export function SourceDocumentDetailWrapper({
 
       // 2. Update flat list cache (new architecture)
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
-          { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
-          (old) => {
-            if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.map((doc) => {
-                if (doc.id !== id) return doc;
-                const filteredEntries =
-                  doc.ledgerEntries?.filter((entry) => !ids.includes(entry.id)) ?? [];
-                return { ...doc, ledgerEntries: filteredEntries };
-              });
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.map((doc) => {
-                  if (doc.id !== id) return doc;
-                  const filteredEntries =
-                    doc.ledgerEntries?.filter((entry) => !ids.includes(entry.id)) ?? [];
-                  return { ...doc, ledgerEntries: filteredEntries };
-                }),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
-          }
-        );
+        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+          if (doc.id !== id) return doc;
+          const filteredEntries =
+            doc.ledgerEntries?.filter((entry) => !ids.includes(entry.id)) ?? [];
+          return { ...doc, ledgerEntries: filteredEntries };
+        });
       }
 
       return { snapshots };
@@ -470,6 +429,15 @@ export function SourceDocumentDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: ledgerId ? [invalidateSourceDocuments(ledgerId)] : undefined,
+    invalidatePredicates: ledgerId
+      ? [
+          invalidateSourceDocuments(ledgerId),
+          invalidateLedgerEntries(ledgerId),
+          invalidateLedgerStats(ledgerId),
+          invalidateCalendar(ledgerId),
+        ]
+      : undefined,
     onSuccessExtra: () => {
       onClose();
     },
@@ -481,26 +449,15 @@ export function SourceDocumentDetailWrapper({
 
       // 2. Remove from flat list cache (new architecture)
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse | SourceDocumentWithEntries[]>(
+        queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
             if (!old) return old;
-
-            // Handle array format (legacy cache or different query)
-            if (Array.isArray(old)) {
-              return old.filter((doc) => doc.id !== id);
-            }
-
-            // Handle paginated format
-            if (Array.isArray(old.items)) {
-              return {
-                ...old,
-                items: old.items.filter((doc) => doc.id !== id),
-              };
-            }
-
-            console.warn("[optimistic-update] Unknown cache data structure:", old);
-            return old;
+            return {
+              ...old,
+              items: old.items.filter((doc) => doc.id !== id),
+              total: Math.max(0, old.total - 1),
+            };
           }
         );
       }

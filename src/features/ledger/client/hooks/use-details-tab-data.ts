@@ -77,14 +77,7 @@ export function useDetailsTabData({
 
   // Summary query (query key 不包含 filterKey，与预加载保持一致)
   const { data: summaryData } = useQuery({
-    queryKey: queryKeys.ledgerEntries(
-      ledgerId,
-      "summary",
-      startDateStr,
-      endDateStr,
-      mainCurrency,
-      filterKey
-    ),
+    queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, filterKey),
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
@@ -118,7 +111,6 @@ export function useDetailsTabData({
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
-    placeholderData: (previousData) => previousData,
     refetchOnMount: "always",
   });
 

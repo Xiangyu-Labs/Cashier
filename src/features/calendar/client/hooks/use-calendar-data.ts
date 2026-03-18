@@ -33,7 +33,6 @@ export function useCalendarHeatmap(
     queryKey: queryKeys.calendarHeatmap(ledgerId, viewType, anchorDate, filters),
     queryFn: () => getCalendarHeatmapData({ ledgerId, viewType, anchorDate, filters }),
     staleTime: CALENDAR_STALE_TIME,
-    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -64,6 +63,5 @@ export function useCalendarHeatmapForRange(
     queryKey: queryKeys.calendarHeatmapForRange(ledgerId, startDate, endDate, filters),
     queryFn: () => getCalendarHeatmapForRange({ ledgerId, startDate, endDate, filters }),
     staleTime: CALENDAR_STALE_TIME,
-    placeholderData: (previousData) => previousData,
   });
 }

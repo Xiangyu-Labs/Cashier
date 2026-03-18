@@ -1,10 +1,42 @@
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { invalidateLedgerCache } from "@/lib/query-keys";
-import { useMutationStore } from "@/lib/store/mutation-state";
+import {
+  invalidateCalendar,
+  invalidateLedger,
+  invalidateLedgerEntries,
+  invalidateLedgerSettings,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  invalidateTaskQueue,
+} from "@/lib/query-keys";
 import { toast } from "sonner";
 
 // Type for snapshot data returned by onOptimisticUpdate
 export type MutationSnapshot = [QueryKey, unknown][];
+type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
+
+function getDefaultLedgerPredicates(ledgerId: string): QueryPredicate[] {
+  return [
+    invalidateLedger(ledgerId),
+    invalidateLedgerEntries(ledgerId),
+    invalidateSourceDocuments(ledgerId),
+    invalidateLedgerStats(ledgerId),
+    invalidateLedgerSettings(ledgerId),
+    invalidateCalendar(ledgerId),
+    invalidateTaskQueue(ledgerId),
+  ];
+}
+
+async function runPredicates(
+  queryClient: ReturnType<typeof useQueryClient>,
+  method: "cancelQueries" | "invalidateQueries",
+  predicates: QueryPredicate[]
+) {
+  await Promise.all(
+    predicates.map(async (predicate) => {
+      await queryClient[method]({ predicate });
+    })
+  );
+}
 
 export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown> {
   /**
@@ -65,14 +97,23 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
   ) => void;
 
   /**
-   * Override default invalidation behavior.
-   * By default, invalidates all queries related to the ledger.
+   * Query predicates to cancel in onMutate.
    */
-  customInvalidation?: (queryClient: ReturnType<typeof useQueryClient>) => void;
+  cancelPredicates?: QueryPredicate[];
 
   /**
-   * Whether to skip default ledger cache invalidation.
-   * Set to true if using customInvalidation or onSettledExtra for invalidation.
+   * Query predicates to invalidate after a successful mutation.
+   * Defaults to all known ledger-scoped modules for the provided ledger.
+   */
+  invalidatePredicates?: QueryPredicate[];
+
+  /**
+   * Optional function to run custom invalidation work after the default predicates.
+   */
+  customInvalidation?: (queryClient: ReturnType<typeof useQueryClient>) => void | Promise<void>;
+
+  /**
+   * Whether to skip default predicate invalidation.
    */
   skipInvalidation?: boolean;
 }
@@ -114,7 +155,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
   options: UseLedgerMutationOptions<TData, TVariables, TContext>
 ) {
   const queryClient = useQueryClient();
-  const { incrementLedgerMutation, decrementLedgerMutation } = useMutationStore();
 
   const {
     mutationFn,
@@ -123,6 +163,8 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     successMessage,
     errorMessage,
     skipInvalidation = false,
+    cancelPredicates,
+    invalidatePredicates,
     customInvalidation,
     onSuccessExtra,
     onErrorExtra,
@@ -133,12 +175,10 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     mutationFn,
 
     onMutate: async (variables) => {
-      // Increment mutation counter to pause polling for this ledger
-      if (ledgerId != null) incrementLedgerMutation(ledgerId);
-
       // Cancel outgoing queries to prevent race conditions
       if (ledgerId != null) {
-        await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+        const predicates = cancelPredicates ?? getDefaultLedgerPredicates(ledgerId);
+        await runPredicates(queryClient, "cancelQueries", predicates);
       }
 
       // Perform optimistic update if provided
@@ -190,24 +230,21 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     },
 
     onSettled: async (data, error, variables) => {
-      try {
-        // Default to invalidating all ledger-scoped queries after successful mutations.
-        // Mutations that want to fully own cache updates can opt out via skipInvalidation.
-        if (!skipInvalidation && !error) {
-          if (customInvalidation != null) {
-            customInvalidation(queryClient);
-          } else if (ledgerId != null) {
-            await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
-          }
+      // Default to invalidating all ledger-scoped queries after successful mutations.
+      // Mutations that want to fully own cache updates can opt out via skipInvalidation.
+      if (!skipInvalidation && !error) {
+        if (ledgerId != null) {
+          const predicates = invalidatePredicates ?? getDefaultLedgerPredicates(ledgerId);
+          await runPredicates(queryClient, "invalidateQueries", predicates);
         }
+        if (customInvalidation != null) {
+          await customInvalidation(queryClient);
+        }
+      }
 
-        // Run additional settled callback
-        if (onSettledExtra) {
-          onSettledExtra(queryClient, variables, data, error);
-        }
-      } finally {
-        // Always decrement, even if there was an error
-        if (ledgerId != null) decrementLedgerMutation(ledgerId);
+      // Run additional settled callback
+      if (onSettledExtra) {
+        onSettledExtra(queryClient, variables, data, error);
       }
     },
   });

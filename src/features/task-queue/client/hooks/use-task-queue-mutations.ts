@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   deleteSourceDocumentAction,
@@ -66,6 +66,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (sourceDocumentId) => deleteSourceDocumentAction(ledgerId, sourceDocumentId),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId), invalidateSourceDocuments(ledgerId)],
     onOptimisticUpdate: (queryClient, sourceDocumentId) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 
@@ -81,6 +83,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId), invalidateSourceDocuments(ledgerId)],
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 
@@ -96,6 +100,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
     successMessage: tEntries("retrySubmitted"),
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId), invalidateSourceDocuments(ledgerId)],
     // Optimistic update: mark items as pending immediately
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = queryClient.getQueriesData<TaskQueueResult>({
@@ -125,6 +131,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (taskId) => cancelTaskAction(ledgerId, taskId),
     successMessage: t("cancelled"),
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId)],
     onOptimisticUpdate: (queryClient, taskId) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 
@@ -140,6 +148,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (taskIds) => batchCancelTasksAction(ledgerId, taskIds),
     successMessage: t("cancelled"),
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId)],
     onOptimisticUpdate: (queryClient, taskIds) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 
@@ -155,6 +165,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (taskId) => dismissTaskAction(ledgerId, taskId),
     successMessage: t("dismissed"),
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId)],
     onOptimisticUpdate: (queryClient, taskId) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 
@@ -170,6 +182,8 @@ export function useTaskQueueMutations(ledgerId: string) {
     mutationFn: (taskIds) => batchDismissTasksAction(ledgerId, taskIds),
     successMessage: t("dismissed"),
     errorMessage: tCommon("error"),
+    cancelPredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateTaskQueue(ledgerId)],
     onOptimisticUpdate: (queryClient, taskIds) => {
       const snapshots = createListSnapshots<TaskQueueResult>(queryClient, taskQueueKey);
 

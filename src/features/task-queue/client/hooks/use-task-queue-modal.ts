@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { invalidateLedgerCache } from "@/lib/query-keys";
+import { invalidateTaskQueue } from "@/lib/query-keys";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useTaskQueue } from "./use-task-queue";
 import { useTaskQueueMutations } from "./use-task-queue-mutations";
@@ -253,7 +253,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   }, [failedWithoutSourceDoc, batchDismiss]);
 
   const handleRetrySuccess = useCallback(async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) });
+    await queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) });
   }, [queryClient, ledgerId]);
 
   return {

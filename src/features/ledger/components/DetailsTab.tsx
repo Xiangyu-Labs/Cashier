@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { invalidateLedgerCache } from "@/lib/query-keys";
+import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
@@ -125,9 +125,10 @@ export function DetailsTab({
 
   // Handlers
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({
-      predicate: invalidateLedgerCache(ledgerId),
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+    ]);
   };
 
   const handleLocalFiltersChange = handleFiltersChange(onPeriodChange, onAdvancedFiltersChange);

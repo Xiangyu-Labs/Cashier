@@ -1,9 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedger,
+  invalidateLedgerEntries,
+  invalidateLedgerSettings,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 
-describe("invalidateLedgerCache - calendar keys", () => {
+describe("calendar and module invalidation helpers", () => {
   const ledgerId = "ledger-123";
-  const predicate = invalidateLedgerCache(ledgerId);
+  const predicate = invalidateCalendar(ledgerId);
 
   it("应该匹配calendarHeatmap查询", () => {
     const key = queryKeys.calendarHeatmap(ledgerId, "month", "2024-03-01", undefined);
@@ -26,9 +33,9 @@ describe("invalidateLedgerCache - calendar keys", () => {
   });
 
   it("应该继续匹配标准ledger查询", () => {
-    expect(predicate({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
-    expect(predicate({ queryKey: queryKeys.ledgerEntries(ledgerId, "all") })).toBe(true);
-    expect(predicate({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })).toBe(true);
-    expect(predicate({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(true);
+    expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
+    expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId, "all") })).toBe(true);
+    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })).toBe(true);
+    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(true);
   });
 });

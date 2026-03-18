@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateLedgerSettings, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   createEntryCategoryAction,
@@ -27,6 +27,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
+    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
     onSuccessExtra: () => {
       setCategoryCreatedTrigger(() => () => {});
     },
@@ -56,11 +58,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
     onSettledExtra: (queryClient) => {
       fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.processingTasks(ledgerId) }),
-        { context: "use-category-mutations" }
-      );
-      fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
         { context: "use-category-mutations" }
       );
     },
@@ -77,6 +75,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
         }),
       successMessage: t("categoryUpdated"),
       errorMessage: t("updateCategoryFailed"),
+      cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+      invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
       onOptimisticUpdate: (queryClient, { id, data }) => {
         const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
@@ -93,6 +93,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
+    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
     onOptimisticUpdate: (queryClient, id) => {
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
@@ -110,7 +112,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       );
       // Invalidate task queue to immediately reflect cancelled tasks
       fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
         { context: "use-category-mutations" }
       );
     },
@@ -120,6 +122,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
+    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
+    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
     onOptimisticUpdate: (queryClient, categoryIds) => {
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 

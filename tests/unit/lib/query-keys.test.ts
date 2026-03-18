@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedger,
+  invalidateLedgerEntries,
+  invalidateLedgerSettings,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  invalidateTaskQueue,
+  queryKeys,
+} from "@/lib/query-keys";
 
 describe("queryKeys", () => {
   const ledgerId = "test-ledger-123";
@@ -236,38 +245,77 @@ describe("queryKeys", () => {
   });
 });
 
-describe("invalidateLedgerCache", () => {
+describe("query invalidation helpers", () => {
   const ledgerId = "test-ledger-123";
-  const predicate = invalidateLedgerCache(ledgerId);
-
-  it("应该匹配ledgerId在位置0的queryKey", () => {
-    expect(predicate({ queryKey: [ledgerId, "something"] })).toBe(true);
+  it("matches ledger resource keys narrowly", () => {
+    expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
+    expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledgers() })).toBe(false);
   });
 
-  it("应该匹配ledgerId在位置1的queryKey", () => {
-    expect(predicate({ queryKey: ["ledgerEntries", ledgerId, "pending"] })).toBe(true);
-    expect(predicate({ queryKey: ["sourceDocuments", ledgerId] })).toBe(true);
-    expect(predicate({ queryKey: ["summary", ledgerId, "2024-01"] })).toBe(true);
+  it("matches ledger entries queries only", () => {
+    expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
+      false
+    );
   });
 
-  it("不应该匹配不同ledgerId的queryKey", () => {
-    expect(predicate({ queryKey: ["other-ledger", "something"] })).toBe(false);
-    expect(predicate({ queryKey: ["ledgerEntries", "other-ledger"] })).toBe(false);
+  it("matches source document queries only", () => {
+    expect(
+      invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })
+    ).toBe(true);
+    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.taskQueue(ledgerId) })).toBe(
+      false
+    );
   });
 
-  it("不应该匹配不包含ledgerId的queryKey", () => {
-    expect(predicate({ queryKey: ["other"] })).toBe(false);
-    expect(predicate({ queryKey: ["ledgers"] })).toBe(false);
-    expect(predicate({ queryKey: ["defaultLedgerId"] })).toBe(false);
+  it("matches summary and enhanced stats queries", () => {
+    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(true);
+    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.enhancedStats(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateLedgerStats(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
+      false
+    );
   });
 
-  it("不应该匹配非数组的queryKey", () => {
-    expect(predicate({ queryKey: "not-an-array" as unknown as readonly unknown[] })).toBe(false);
-    expect(predicate({ queryKey: null as unknown as readonly unknown[] })).toBe(false);
-    expect(predicate({ queryKey: undefined as unknown as readonly unknown[] })).toBe(false);
+  it("matches settings queries only", () => {
+    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
+      false
+    );
   });
 
-  it("应该正确匹配空数组", () => {
-    expect(predicate({ queryKey: [] })).toBe(false);
+  it("matches task queue queries only", () => {
+    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.taskQueue(ledgerId) })).toBe(true);
+    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.processingTasks(ledgerId) })).toBe(
+      true
+    );
+    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId) })).toBe(
+      false
+    );
+  });
+
+  it("matches calendar queries only", () => {
+    expect(
+      invalidateCalendar(ledgerId)({ queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01") })
+    ).toBe(true);
+    expect(
+      invalidateCalendar(ledgerId)({
+        queryKey: queryKeys.calendarHeatmapForRange(ledgerId, "2024-01-01", "2024-01-31"),
+      })
+    ).toBe(true);
+    expect(invalidateCalendar(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId) })).toBe(
+      false
+    );
   });
 });

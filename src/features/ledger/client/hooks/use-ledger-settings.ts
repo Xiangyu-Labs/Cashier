@@ -1,9 +1,12 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { useTranslations } from "next-intl";
-import { queryKeys } from "@/lib/query-keys";
+import {
+  invalidateLedger,
+  invalidateLedgerSettings,
+  queryKeys,
+} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
@@ -43,15 +46,19 @@ export function useLedgerSettings({
   // Separate query for categories (same key as useCategoryMutations)
   // This ensures optimistic updates from useCategoryMutations are reflected immediately
   // Use smart polling to automatically refresh when AI generates metadata
-  const { data: categories = initialCategories } = useSmartPolling<EntryCategoryWithCount[]>({
+  const { data: categories = initialCategories } = useQuery<EntryCategoryWithCount[]>({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
     initialData: initialCategories,
-    // Polling is active when any category needs metadata generation (icon/description)
-    isActive: (data) => data?.some((c) => c.icon == null || c.icon === "" || c.description == null || c.description === "") ?? false,
-    interval: 3000,
-    cooldownInterval: 5000, // Shorter cooldown for faster updates when AI completes
-    ledgerId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const hasPendingMetadata =
+        data?.some(
+          (c) =>
+            c.icon == null || c.icon === "" || c.description == null || c.description === ""
+        ) ?? false;
+      return hasPendingMetadata ? 3000 : false;
+    },
   });
 
   // Use standard query for settings data - it only needs to refresh
@@ -102,6 +109,8 @@ export function useLedgerSettings({
     },
     successMessage: t("updateSuccess"),
     errorMessage: t("updateFailed"),
+    cancelPredicates: [invalidateLedger(ledgerId)],
+    invalidatePredicates: [invalidateLedger(ledgerId)],
     onSuccessExtra: (data) => {
       // Use server-returned data to update cache, ensuring consistency
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
@@ -148,7 +157,7 @@ export function useLedgerSettings({
     },
     onSettledExtra: (qc) => {
       fireAndForget(
-        qc.invalidateQueries({ queryKey: queryKeys.ledgerSettings(ledgerId) }),
+        qc.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) }),
         { context: "use-ledger-settings" }
       );
     },

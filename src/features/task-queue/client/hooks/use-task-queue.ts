@@ -1,4 +1,4 @@
-import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
   getTaskQueueAction,
@@ -26,15 +26,16 @@ const defaultStats: TaskQueueStats = {
  * Uses smart polling - polls every 3 seconds while there are pending or running tasks.
  */
 export function useTaskQueue(ledgerId: string) {
-  const { data, isLoading, refetch } = useSmartPolling<TaskQueueResult>({
+  const { data, isLoading, refetch } = useQuery<TaskQueueResult>({
     queryKey: queryKeys.taskQueue(ledgerId),
     queryFn: () => getTaskQueueAction(ledgerId),
-    isActive: (data) =>
-      (data?.stats?.pendingCount ?? 0) > 0 || (data?.stats?.runningCount ?? 0) > 0,
-    interval: 3000,
-    idleInterval: 60000, // Check every 60s when idle to detect new tasks from API/other sources
+    refetchInterval: (query) => {
+      const current = query.state.data;
+      const hasActiveTasks =
+        (current?.stats?.pendingCount ?? 0) > 0 || (current?.stats?.runningCount ?? 0) > 0;
+      return hasActiveTasks ? 3000 : 60000;
+    },
     enabled: ledgerId.length === 0 ? false : true,
-    ledgerId,
   });
 
   return {

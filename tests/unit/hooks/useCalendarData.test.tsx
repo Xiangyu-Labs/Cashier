@@ -118,34 +118,6 @@ describe("useCalendarData hooks", () => {
         filters,
       });
     });
-
-    it("should use placeholder data for smooth transitions", async () => {
-      const initialData = {
-        days: [{ date: "2024-02-01", totalAmount: 100, entryCount: 1, currencies: ["CNY"] }],
-        range: { startDate: "2024-02-01", endDate: "2024-02-29" },
-        stats: { minAmount: 100, maxAmount: 100, avgAmount: 100, p80Amount: 100 },
-      };
-
-      vi.mocked(heatmapActions.getCalendarHeatmapData).mockResolvedValue(initialData);
-
-      const { result, rerender } = renderHook(
-        ({ anchorDate }: { anchorDate: string }) =>
-          useCalendarHeatmap(mockLedgerId, "month", anchorDate),
-        {
-          wrapper: createWrapper(),
-          initialProps: { anchorDate: "2024-02-01" },
-        }
-      );
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-      // Change to March - should keep February data as placeholder initially
-      rerender({ anchorDate: "2024-03-01" });
-
-      // Should show placeholder data while fetching new data
-      expect(result.current.isPlaceholderData).toBe(true);
-      expect(result.current.data).toEqual(initialData);
-    });
   });
 
   describe("useCalendarDayDetail", () => {
@@ -271,33 +243,6 @@ describe("useCalendarData hooks", () => {
         endDate: "2024-03-31",
         filters,
       });
-    });
-
-    it("should use placeholder data for smooth transitions", async () => {
-      const initialData = {
-        days: [{ date: "2024-01-01", totalAmount: 100, entryCount: 1, currencies: ["CNY"] }],
-        range: { startDate: "2024-01-01", endDate: "2024-01-31" },
-        stats: { minAmount: 100, maxAmount: 100, avgAmount: 100, p80Amount: 100 },
-      };
-
-      vi.mocked(heatmapActions.getCalendarHeatmapForRange).mockResolvedValue(initialData);
-
-      const { result, rerender } = renderHook(
-        ({ endDate }: { endDate: string }) =>
-          useCalendarHeatmapForRange(mockLedgerId, "2024-01-01", endDate),
-        {
-          wrapper: createWrapper(),
-          initialProps: { endDate: "2024-01-31" },
-        }
-      );
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-      // Change end date
-      rerender({ endDate: "2024-02-29" });
-
-      // Should show placeholder data while fetching
-      expect(result.current.isPlaceholderData).toBe(true);
     });
   });
 });

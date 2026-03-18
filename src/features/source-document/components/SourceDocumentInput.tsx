@@ -7,7 +7,12 @@ import { ImageEditorDialog } from "@/components/ui/image-editor-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import {
+  invalidateLedger,
+  invalidateSourceDocuments,
+  invalidateTaskQueue,
+  queryKeys,
+} from "@/lib/query-keys";
 import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
@@ -129,7 +134,7 @@ export function SourceDocumentInput({
     },
     onSettled: () => {
       fireAndForget(
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateLedger(ledgerId) }),
         { context: "SourceDocumentInput" }
       );
     },
@@ -182,12 +187,12 @@ export function SourceDocumentInput({
     onSettled: () => {
       // Always refetch to ensure server state is in sync
       fireAndForget(
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
         { context: "SourceDocumentInput" }
       );
       // Also invalidate task queue to trigger smart polling for the new parse task
       fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
         { context: "SourceDocumentInput" }
       );
     },
@@ -199,7 +204,10 @@ export function SourceDocumentInput({
     },
     onMutate: async (data) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ predicate: invalidateLedgerCache(ledgerId) });
+      await Promise.all([
+        queryClient.cancelQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+        queryClient.cancelQueries({ predicate: invalidateTaskQueue(ledgerId) }),
+      ]);
 
       // Snapshot previous data
       const previousDocument = sourceDocumentId !== undefined
@@ -240,12 +248,12 @@ export function SourceDocumentInput({
     },
     onSettled: () => {
       fireAndForget(
-        queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
         { context: "SourceDocumentInput" }
       );
       // Also invalidate task queue to trigger smart polling for the retry task
       fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) }),
+        queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
         { context: "SourceDocumentInput" }
       );
     },

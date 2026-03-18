@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query";
 import React from "react";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { invalidateLedgerEntries } from "@/lib/query-keys";
 
 // Mock sonner toast
 vi.mock("sonner", () => ({
@@ -203,6 +204,8 @@ describe("useLedgerMutation", () => {
       () =>
         useLedgerMutation("ledger-123", {
           mutationFn,
+          cancelPredicates: [invalidateLedgerEntries("ledger-123")],
+          invalidatePredicates: [invalidateLedgerEntries("ledger-123")],
         }),
       { wrapper: CustomWrapper }
     );

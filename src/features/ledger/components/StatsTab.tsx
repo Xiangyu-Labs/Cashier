@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/features/stats/server/actions";
-import { queryKeys, invalidateLedgerCache } from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { type DateRangeType, getDateRange, formatDateTimeForApi } from "@/lib/date-utils";
@@ -84,9 +84,8 @@ export function StatsTab({
           from: formatDateTimeForApi(prevDateStart),
           to: formatDateTimeForApi(prevDateEnd),
         },
-      }),
+    }),
     enabled: ledgerId !== undefined && ledgerId !== "",
-    placeholderData: (previousData) => previousData,
     refetchOnMount: "always",
   });
 
@@ -97,7 +96,11 @@ export function StatsTab({
   const trend = stats?.summary.trend;
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerCache(ledgerId ?? "") });
+    const activeLedgerId = ledgerId ?? "";
+    await Promise.all([
+      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(activeLedgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateCalendar(activeLedgerId) }),
+    ]);
   };
 
   const handleCategoryClick = (categoryId: string) => {

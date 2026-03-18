@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
 import {
   updateLedgerEntryAction,
@@ -54,6 +60,15 @@ export function LedgerEntryDetailWrapper({
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: tCommon("saveFailed"),
+    cancelPredicates: ledgerId ? [invalidateLedgerEntries(ledgerId)] : undefined,
+    invalidatePredicates: ledgerId
+      ? [
+          invalidateLedgerEntries(ledgerId),
+          invalidateSourceDocuments(ledgerId),
+          invalidateLedgerStats(ledgerId),
+          invalidateCalendar(ledgerId),
+        ]
+      : undefined,
     onOptimisticUpdate: (queryClient, data) => {
       const snapshotKey = queryKeys.ledgerEntry(id);
       const snapshots = createListSnapshots(queryClient, snapshotKey);
@@ -74,6 +89,15 @@ export function LedgerEntryDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    cancelPredicates: ledgerId ? [invalidateLedgerEntries(ledgerId)] : undefined,
+    invalidatePredicates: ledgerId
+      ? [
+          invalidateLedgerEntries(ledgerId),
+          invalidateSourceDocuments(ledgerId),
+          invalidateLedgerStats(ledgerId),
+          invalidateCalendar(ledgerId),
+        ]
+      : undefined,
     onSuccessExtra: () => {
       onClose();
     },
