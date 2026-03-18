@@ -195,10 +195,9 @@
     "draw": "涂鸦",
     "brushSize": "画笔大小",
     "reset": "重置",
-    "applyCrop": "应用裁剪",
     "cancel": "取消",
     "save": "保存",
-    "cropHint": "拖动选择要保留的区域",
+    "cropHint": "拖动或调整裁剪框，保存后生效",
     "drawHint": "在图片上涂抹以遮盖或标注"
   },
   "SourceDocumentInput": {

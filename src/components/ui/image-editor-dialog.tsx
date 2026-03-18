@@ -26,9 +26,10 @@ export function ImageEditorDialog({
 }: ImageEditorDialogProps) {
   const t = useTranslations("ImageEditor");
   const [editedImage, setEditedImage] = useState<{ data: string; mimeType: string } | null>(null);
+  const hasEdits = editedImage !== null && editedImage.data !== image;
 
   const handleSave = () => {
-    if (editedImage) {
+    if (editedImage && hasEdits) {
       onSave(editedImage);
       onOpenChange(false);
     }
@@ -36,13 +37,17 @@ export function ImageEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0"
+      >
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
           <ImageEditor
+            key={image}
             image={image}
             onChange={setEditedImage}
           />
@@ -52,7 +57,7 @@ export function ImageEditorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t("cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={!editedImage}>
+          <Button onClick={handleSave} disabled={!hasEdits}>
             {t("save")}
           </Button>
         </div>

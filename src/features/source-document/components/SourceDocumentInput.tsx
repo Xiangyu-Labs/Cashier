@@ -5,8 +5,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { ImageEditorDialog } from "@/components/ui/image-editor-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLedgerAction } from "@/features/ledger/server/actions/update";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
+import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server";
 import {
   invalidateLedger,
   invalidateSourceDocuments,
@@ -331,6 +330,9 @@ export function SourceDocumentInput({
     }
   };
 
+  const imageActionButtonClassName =
+    "absolute z-10 flex h-6 w-6 items-center justify-center rounded-full text-white transition-opacity opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
+
   return (
     <div className="space-y-4">
       {images.length > 0 && (
@@ -344,10 +346,13 @@ export function SourceDocumentInput({
                 <Image src={img.data} alt={`Uploaded ${idx + 1}`} fill className="object-cover" />
               </div>
 
-              {/* Delete button - always visible on hover */}
+              {/* Action buttons stay visible on touch devices and collapse to hover on desktops */}
               <button
                 onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                type="button"
+                aria-label={tCommon("delete")}
+                title={tCommon("delete")}
+                className={`${imageActionButtonClassName} right-1 top-1 bg-danger text-xs`}
               >
                 ×
               </button>
@@ -356,8 +361,10 @@ export function SourceDocumentInput({
               {mode === "retry" && (
                 <button
                   onClick={() => setEditingImageIndex(idx)}
-                  className="absolute top-1 right-1 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  type="button"
+                  aria-label={t("editImage")}
                   title={t("editImage")}
+                  className={`${imageActionButtonClassName} left-1 top-1 bg-primary`}
                 >
                   <Pencil className="h-3 w-3" />
                 </button>

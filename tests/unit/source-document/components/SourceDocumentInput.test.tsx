@@ -32,12 +32,18 @@ import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
 } from "@/features/source-document/server/actions";
+import { getLedgerAction } from "@/features/ledger/server/actions/get";
 
 describe("SourceDocumentInput - Optimistic Close", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getLedgerAction).mockResolvedValue({
+      id: "ledger-123",
+      name: "Test Ledger",
+      metadata: {},
+    } as never);
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -117,5 +123,31 @@ describe("SourceDocumentInput - Optimistic Close", () => {
     await waitFor(() => {
       expect(retrySourceDocumentAction).toHaveBeenCalled();
     });
+  });
+
+  it("shows the retry edit button in the top-left and delete in the top-right", () => {
+    render(
+      <SourceDocumentInput
+        ledgerId="ledger-123"
+        mode="retry"
+        initialData={{
+          images: [
+            {
+              data: "data:image/png;base64,test-image",
+              mimeType: "image/png",
+            },
+          ],
+        }}
+      />,
+      { wrapper }
+    );
+
+    const editButton = screen.getByRole("button", { name: "editImage" });
+    const deleteButton = screen.getByRole("button", { name: "delete" });
+
+    expect(editButton.className).toContain("left-1");
+    expect(editButton.className).toContain("top-1");
+    expect(deleteButton.className).toContain("right-1");
+    expect(deleteButton.className).toContain("top-1");
   });
 });
