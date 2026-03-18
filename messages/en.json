@@ -197,8 +197,15 @@
     "reset": "Reset",
     "cancel": "Cancel",
     "save": "Save",
-    "cropHint": "Drag or adjust the crop box, then save to apply",
-    "drawHint": "Draw on the image to mask or annotate"
+    "cropHint": "Adjust the crop box, then use the top Save button to confirm this crop",
+    "drawHint": "Draw on the image, then use the top Save button to confirm this edit",
+    "idleHint": "Choose Crop or Draw to start editing",
+    "selectToolHint": "Pick a tool above to start editing",
+    "pendingChangesTitle": "This edit is not saved yet",
+    "pendingChangesSwitchDescription": "Save or discard the current edit before switching tools.",
+    "pendingChangesCloseDescription": "Save or discard the current edit before closing the editor.",
+    "continueEditing": "Continue editing",
+    "closeEditor": "Close editor"
   },
   "SourceDocumentInput": {
     "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",

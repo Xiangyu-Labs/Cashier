@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ImageEditor } from "./image-editor";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ImageEditor, type ImageEditorHandle } from "./image-editor";
 
 interface ImageEditorDialogProps {
   image: string; // base64 data URL
@@ -26,42 +28,84 @@ export function ImageEditorDialog({
 }: ImageEditorDialogProps) {
   const t = useTranslations("ImageEditor");
   const [editedImage, setEditedImage] = useState<{ data: string; mimeType: string } | null>(null);
-  const hasEdits = editedImage !== null && editedImage.data !== image;
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const editorRef = useRef<ImageEditorHandle>(null);
 
-  const handleSave = () => {
-    if (editedImage && hasEdits) {
-      onSave(editedImage);
-      onOpenChange(false);
+  const closeDialog = (finalImage?: { data: string; mimeType: string } | null) => {
+    const nextImage = finalImage ?? editedImage ?? editorRef.current?.getConfirmedImage();
+
+    if (nextImage != null && nextImage.data !== image) {
+      onSave(nextImage);
     }
+
+    onOpenChange(false);
+  };
+
+  const handleAttemptClose = () => {
+    if (editorRef.current?.hasPendingToolChanges()) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+
+    closeDialog();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        aria-describedby={undefined}
-        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0"
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            onOpenChange(true);
+          }
+        }}
       >
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>{t("title")}</DialogTitle>
-        </DialogHeader>
+        <DialogContent
+          aria-describedby={undefined}
+          className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 [&>button]:hidden"
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
+            <DialogTitle>{t("title")}</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleAttemptClose}
+              aria-label={t("closeEditor")}
+              title={t("closeEditor")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          <ImageEditor
-            key={image}
-            image={image}
-            onChange={setEditedImage}
-          />
-        </div>
+          <div className="flex-1 overflow-hidden">
+            <ImageEditor
+              ref={editorRef}
+              key={image}
+              image={image}
+              onChange={setEditedImage}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <div className="px-6 py-4 border-t flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={!hasEdits}>
-            {t("save")}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <ConfirmDialog
+        open={closeConfirmOpen}
+        onOpenChange={setCloseConfirmOpen}
+        title={t("pendingChangesTitle")}
+        description={t("pendingChangesCloseDescription")}
+        cancelLabel={t("continueEditing")}
+        onConfirm={() => {}}
+        onSave={() => {
+          const nextImage = editorRef.current?.commitCurrentTool() ?? editorRef.current?.getConfirmedImage();
+          closeDialog(nextImage);
+        }}
+        onDiscard={() => {
+          editorRef.current?.discardCurrentTool();
+          closeDialog(editorRef.current?.getConfirmedImage());
+        }}
+      />
+    </>
   );
 }
