@@ -7,4 +7,9 @@ export {
   batchDismissTasksAction,
 } from "@/features/task-queue/server/actions/dismiss-task";
 
+export {
+  getTaskQueueForLedger,
+  getTaskQueueAction,
+} from "@/features/task-queue/server/actions/task-queue";
+
 export type { TaskQueueResult } from "@/features/task-queue/server/actions/task-queue";

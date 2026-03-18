@@ -18,7 +18,7 @@ import { flowEngine } from "@/lib/flow";
 import {
   cancelTaskAction,
   batchCancelTasksAction,
-} from "@/features/task-queue/server/actions/cancel-task";
+} from "@/modules/task-queue/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
