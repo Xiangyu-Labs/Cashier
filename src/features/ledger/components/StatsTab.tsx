@@ -18,7 +18,7 @@ import { QUERY } from "@/lib/constants";
 import {
   DEFAULT_STATS_RANGE_TYPE,
   getStatsInitialQueryState,
-} from "@/features/ledger/lib/initial-query-state";
+} from "@/modules/workspace/initial-query-state";
 
 interface StatsTabProps {
   ledgerId?: string;

@@ -13,7 +13,10 @@ import {
   getPendingSourceDocumentsAction,
   getAllSourceDocumentsAction,
 } from "@/modules/source-document";
-import { getDetailsInitialQueryState, getStatsInitialQueryState } from "@/features/ledger/lib/initial-query-state";
+import {
+  getDetailsInitialQueryState,
+  getStatsInitialQueryState,
+} from "@/modules/workspace/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import type { LedgerPageBootstrapDto } from "@/modules/workspace/contracts";

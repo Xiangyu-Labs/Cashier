@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 import { useTaskQueue } from "@/modules/task-queue/ui";
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
-import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
-import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
+import { updateLedgerSearchParams } from "@/modules/workspace/ledger-url-params";
+import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 
@@ -59,7 +59,7 @@ import { usePeriodFilter } from "@/features/ledger/client/hooks/use-period-filte
 import { useLedgerTabs } from "./useLedgerTabs";
 import { useDrilldownNavigation } from "./useDrilldownNavigation";
 import { Header } from "./Header";
-import type { LedgerTab } from "@/features/ledger/lib/tabs";
+import type { LedgerTab } from "@/modules/workspace/tabs";
 import {
   EntriesTabSkeleton,
   DetailsTabSkeleton,
