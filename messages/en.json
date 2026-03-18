@@ -284,7 +284,20 @@
     "batchDeleteSuccess": "Deleted {count} {count, plural, one {entry} other {entries}}",
     "batchDeleteError": "Failed to delete entries",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "saveAllError": "Failed to save changes"
+    "saveAllError": "Failed to save changes",
+    "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing."
+  },
+  "SourceDocumentImageModal": {
+    "title": "View Image",
+    "titleWithIndex": "Image {current}/{total}",
+    "imageAlt": "Image {index}",
+    "edit": "Edit Current Image",
+    "backToPreview": "Back to Preview",
+    "close": "Close",
+    "pendingChangesTitle": "This edit is not saved yet",
+    "pendingChangesCloseDescription": "Save or discard the current edit before closing.",
+    "pendingChangesLeaveDescription": "Save or discard the current edit before returning to preview.",
+    "continueEditing": "Continue editing"
   },
   "ImageViewer": {
     "clickToZoom": "Click to Zoom",

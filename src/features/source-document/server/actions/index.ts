@@ -1,7 +1,11 @@
 // Actions - CRUD
 export { createSourceDocumentAction } from "./create";
 export { retrySourceDocumentAction } from "./retry";
-export { updateSourceDocumentAction, batchUpdateSourceDocumentsAction } from "./update";
+export {
+  updateSourceDocumentAction,
+  updateSourceDocumentImagesAction,
+  batchUpdateSourceDocumentsAction,
+} from "./update";
 export { deleteSourceDocumentAction, batchDeleteSourceDocumentsAction } from "./delete";
 
 // Actions - Batch Operations

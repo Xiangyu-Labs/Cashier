@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   updateSourceDocumentAction,
+  updateSourceDocumentImagesAction,
   batchUpdateSourceDocumentsAction,
 } from "@/features/source-document/server/actions/update";
 import { getTestDb } from "../../setup";
@@ -84,6 +85,60 @@ describe("Source Document Update Actions", () => {
           title: "Updated Title",
         })
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe("updateSourceDocumentImagesAction", () => {
+    it("should replace current imageUrls and preserve original image urls in metadata", async () => {
+      const db = getTestDb();
+      const ledgerData = createLedgerData({ userId: testUserId });
+      await db.insert(ledgers).values(ledgerData);
+
+      const docData = createSourceDocumentData(ledgerData.id, {
+        imageUrls: ["https://example.com/original.jpg"],
+        metadata: {},
+      });
+      await db.insert(sourceDocuments).values(docData);
+
+      await updateSourceDocumentImagesAction(ledgerData.id, docData.id, [
+        { data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" },
+      ]);
+
+      const updated = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, docData.id),
+      });
+
+      expect(updated?.imageUrls ?? []).toHaveLength(1);
+      expect(updated?.imageUrls?.[0]).toMatch(/^\/api\/uploads\//);
+      expect(updated?.metadata).toEqual({
+        originalImageUrls: ["https://example.com/original.jpg"],
+      });
+    });
+
+    it("should keep the earliest original image backup when editing again", async () => {
+      const db = getTestDb();
+      const ledgerData = createLedgerData({ userId: testUserId });
+      await db.insert(ledgers).values(ledgerData);
+
+      const docData = createSourceDocumentData(ledgerData.id, {
+        imageUrls: ["/api/uploads/current-edited.jpg"],
+        metadata: {
+          originalImageUrls: ["https://example.com/first-original.jpg"],
+        },
+      });
+      await db.insert(sourceDocuments).values(docData);
+
+      await updateSourceDocumentImagesAction(ledgerData.id, docData.id, [
+        { data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" },
+      ]);
+
+      const updated = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, docData.id),
+      });
+
+      expect(updated?.metadata).toEqual({
+        originalImageUrls: ["https://example.com/first-original.jpg"],
+      });
     });
   });
 

@@ -334,7 +334,11 @@ export async function listLedgerEntries(
 
     // Strip large metadata fields from sourceDocument to reduce payload size
     if (serialized.sourceDocument) {
-      const { visionDescription: _visionDescription, ...lightMetadata } =
+      const {
+        visionDescription: _visionDescription,
+        originalImageUrls: _originalImageUrls,
+        ...lightMetadata
+      } =
         serialized.sourceDocument.metadata || {};
       serialized.sourceDocument = {
         ...serialized.sourceDocument,

@@ -1,7 +1,11 @@
 // Server Actions - CRUD
 export { createSourceDocumentAction } from "./actions/create";
 
-export { updateSourceDocumentAction, batchUpdateSourceDocumentsAction } from "./actions/update";
+export {
+  updateSourceDocumentAction,
+  updateSourceDocumentImagesAction,
+  batchUpdateSourceDocumentsAction,
+} from "./actions/update";
 
 export { deleteSourceDocumentAction, batchDeleteSourceDocumentsAction } from "./actions/delete";
 

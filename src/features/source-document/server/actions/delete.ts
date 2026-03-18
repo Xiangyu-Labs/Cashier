@@ -6,49 +6,11 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { getLocalStorage } from "@/lib/storage/local";
-import { isLocalUploadUrl } from "@/lib/storage";
-import { logger } from "@/lib/logger";
 
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schemaModule from "@/lib/db/schema";
 
 type DbSchema = typeof schemaModule;
-
-/**
- * Delete images from local storage
- * @returns Results of delete operations (success and failures)
- */
-async function deleteLocalImages(imageUrls: string[]): Promise<{
-  success: string[];
-  failed: { url: string; key: string; error: Error }[];
-}> {
-  const storage = getLocalStorage();
-  const success: string[] = [];
-  const failed: { url: string; key: string; error: Error }[] = [];
-
-  for (const url of imageUrls) {
-    // Only delete local upload URLs
-    if (!isLocalUploadUrl(url)) {
-      continue;
-    }
-
-    const key = storage.extractKeyFromUrl(url);
-    if (key == null || key === "") {
-      logger.warn({ url }, "Could not extract key from URL during deletion");
-      continue;
-    }
-
-    const deleteResult = await storage.delete(key);
-    if (deleteResult.success) {
-      success.push(url);
-    } else {
-      failed.push({ url, key, error: deleteResult.error! });
-    }
-  }
-
-  return { success, failed };
-}
 
 /**
  * Cancel running/pending tasks
@@ -160,10 +122,6 @@ export const deleteSourceDocumentAction = withLedgerAccess(
       softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
 
-    // Delete images from local storage after successful soft delete
-    if (sourceDoc.imageUrls != null && sourceDoc.imageUrls.length > 0) {
-      await deleteLocalImages(sourceDoc.imageUrls);
-    }
   }
 );
 
@@ -173,15 +131,6 @@ export const deleteSourceDocumentAction = withLedgerAccess(
 export const batchDeleteSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string, sourceDocumentIds: string[]): Promise<void> => {
     if (sourceDocumentIds.length === 0) return;
-
-    const q = forLedger(sourceDocuments, ledgerId);
-
-    // Get source documents to retrieve image URLs before deletion
-    const sourceDocs = await db.query.sourceDocuments.findMany({
-      where: and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)),
-    });
-
-    const allImageUrls = sourceDocs.flatMap((doc) => doc.imageUrls || []);
 
     // Find and cancel related tasks
     const relatedTaskRuns = await getRelatedTaskRuns(ledgerId, sourceDocumentIds);
@@ -194,10 +143,5 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
     });
-
-    // Delete images from local storage after successful soft delete
-    if (allImageUrls.length > 0 && ledgerId !== "") {
-      await deleteLocalImages(allImageUrls);
-    }
   }
 );

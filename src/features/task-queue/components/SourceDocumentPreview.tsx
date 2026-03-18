@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { getSourceDocumentFullAction } from "@/features/source-document/server-actions";
 import { ImageIcon, FileText, Loader2 } from "lucide-react";
-import { ImageViewer } from "@/components/ui/image-viewer";
 import Image from "next/image";
+import { SourceDocumentImageModal } from "@/features/source-document/components";
 
 interface SourceDocumentPreviewProps {
   ledgerId: string;
@@ -121,12 +121,13 @@ export function SourceDocumentPreview({ ledgerId, sourceDocumentId }: SourceDocu
         )}
       </div>
 
-      {/* Image Viewer Dialog */}
+      {/* Source document image modal (read-only) */}
       {hasImages && (
-        <ImageViewer
-          images={state.data.imageUrls!}
+        <SourceDocumentImageModal
+          images={state.data.imageUrls!.map((url) => ({ data: url, mimeType: "image/jpeg" }))}
           initialIndex={viewerIndex}
           open={viewerOpen}
+          editable={false}
           onOpenChange={setViewerOpen}
         />
       )}

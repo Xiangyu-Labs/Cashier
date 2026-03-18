@@ -41,6 +41,7 @@ export function SourceDocumentDetailWrapper({
 
   const {
     updateSourceDoc,
+    updateImages,
     updateEntry,
     batchUpdate,
     deleteEntry,
@@ -76,6 +77,7 @@ export function SourceDocumentDetailWrapper({
       open={open}
       onClose={onClose}
       onUpdateSourceDoc={updateSourceDoc}
+      onUpdateImages={updateImages}
       onUpdateEntry={updateEntry}
       onBatchUpdate={batchUpdate}
       onDeleteEntry={deleteEntry}

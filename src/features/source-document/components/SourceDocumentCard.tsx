@@ -10,7 +10,6 @@ import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/processing-status";
-import { ImageViewer } from "@/components/ui/image-viewer";
 import { parseDateString } from "@/lib/date-utils";
 import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
 import {
@@ -222,7 +221,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   const locale = useLocale();
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
   const { sortedEntries } = useMemo(() => {
     const sorted = [...ledgerEntries].sort((a, b) => {
@@ -402,7 +400,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                         <div
                           key={idx}
                           className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => setSelectedImageIndex(idx)}
+                          onClick={() => _onViewDetails?.()}
                         >
                           <Image
                             src={getSafeImageSrc(img)}
@@ -443,12 +441,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         )}
       </AnimatePresence>
 
-      <ImageViewer
-        images={images}
-        initialIndex={selectedImageIndex !== null ? selectedImageIndex : 0}
-        open={selectedImageIndex !== null}
-        onOpenChange={(open) => !open && setSelectedImageIndex(null)}
-      />
     </div>
   );
 });

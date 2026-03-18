@@ -2,8 +2,6 @@
 
 import Image from "next/image";
 import { useState, useRef, useEffect, useTransition } from "react";
-import { ImageViewer } from "@/components/ui/image-viewer";
-import { ImageEditorDialog } from "@/components/ui/image-editor-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server-actions";
 import {
@@ -18,7 +16,7 @@ import {
 } from "@/features/source-document/server/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Send, RefreshCw, Pencil } from "lucide-react";
+import { Camera, Send, RefreshCw } from "lucide-react";
 import { type Ledger, type SourceDocument } from "@/types/api";
 import { toast } from "sonner";
 
@@ -26,6 +24,16 @@ import { useTranslations } from "next-intl";
 import { compressImage } from "@/lib/image-utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { fireAndForget } from "@/lib/safe-async";
+import {
+  SourceDocumentImageModal,
+  type SourceDocumentModalImage,
+} from "./SourceDocumentImageModal";
+
+interface EditableInputImage extends SourceDocumentModalImage {
+  originalData: string;
+  originalMimeType: string;
+  isEdited: boolean;
+}
 
 interface SourceDocumentInputProps {
   ledgerId: string;
@@ -49,12 +57,16 @@ export function SourceDocumentInput({
   const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const [text, setText] = useState(initialData?.text ?? "");
-  const [images, setImages] = useState<{ data: string; mimeType: string }[]>(
-    initialData?.images ?? []
+  const [images, setImages] = useState<EditableInputImage[]>(
+    (initialData?.images ?? []).map((image) => ({
+      ...image,
+      originalData: image.data,
+      originalMimeType: image.mimeType,
+      isEdited: false,
+    }))
   );
   const [_isAdvancedOpen, _setIsAdvancedOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
   const [isTransitionPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasInitializedRef = useRef(false);
@@ -76,7 +88,14 @@ export function SourceDocumentInput({
       hasInitializedRef.current = true;
       startTransition(() => {
         setText(initialData.text ?? "");
-        setImages(initialData.images ?? []);
+        setImages(
+          (initialData.images ?? []).map((image) => ({
+            ...image,
+            originalData: image.data,
+            originalMimeType: image.mimeType,
+            isEdited: false,
+          }))
+        );
       });
     }
   }, [initialData]);
@@ -140,7 +159,11 @@ export function SourceDocumentInput({
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (data: { text?: string; images?: { data: string; mimeType: string }[] }) => {
+    mutationFn: async (data: {
+      text?: string;
+      images?: { data: string; mimeType: string }[];
+      originalImages?: { data: string; mimeType: string }[];
+    }) => {
       return await createSourceDocumentAction(ledgerId, data);
     },
     onMutate: async (_newData) => {
@@ -162,7 +185,17 @@ export function SourceDocumentInput({
 
       return { previousPending, previousText, previousImages };
     },
-    onError: (_err, _newData, context: { previousPending?: unknown; previousText?: string; previousImages?: { data: string; mimeType: string }[] } | undefined) => {
+    onError: (
+      _err,
+      _newData,
+      context:
+        | {
+            previousPending?: unknown;
+            previousText?: string;
+            previousImages?: EditableInputImage[];
+          }
+        | undefined
+    ) => {
       // Rollback: restore the pending documents cache
       if (context !== undefined && context.previousPending !== undefined) {
         queryClient.setQueryData(
@@ -198,7 +231,11 @@ export function SourceDocumentInput({
   });
 
   const retryMutation = useMutation({
-    mutationFn: async (data: { text?: string; images?: { data: string; mimeType: string }[] }) => {
+    mutationFn: async (data: {
+      text?: string;
+      images?: { data: string; mimeType: string }[];
+      originalImages?: { data: string; mimeType: string }[];
+    }) => {
       await retrySourceDocumentAction(ledgerId, sourceDocumentId!, data);
     },
     onMutate: async (data) => {
@@ -263,9 +300,15 @@ export function SourceDocumentInput({
     const textValue = text;
     const hasText = textValue.length > 0;
     const textPayload: string | undefined = hasText ? textValue : undefined;
+    const nextCurrentImages = images.map(({ data, mimeType }) => ({ data, mimeType }));
+    const nextOriginalImages = images.map(({ originalData, originalMimeType }) => ({
+      data: originalData,
+      mimeType: originalMimeType,
+    }));
     const payload = {
       text: textPayload,
-      images: images.length > 0 ? images : undefined,
+      images: nextCurrentImages.length > 0 ? nextCurrentImages : undefined,
+      originalImages: images.some((image) => image.isEdited) ? nextOriginalImages : undefined,
       entryDate: formatDateTimeForApi(new Date()),
     };
     // Optimistic update: close dialog immediately, then start mutation
@@ -308,7 +351,15 @@ export function SourceDocumentInput({
     for (const file of files) {
       try {
         const compressed = await compressImage(file);
-        setImages((prev) => [...prev, compressed]);
+        setImages((prev) => [
+          ...prev,
+          {
+            ...compressed,
+            originalData: compressed.data,
+            originalMimeType: compressed.mimeType,
+            isEdited: false,
+          },
+        ]);
       } catch (error) {
         console.error("Failed to compress image:", error);
 
@@ -320,7 +371,16 @@ export function SourceDocumentInput({
             // Extract correct mime type from the data URL (browser determines this from file content)
             const mimeMatch = base64.match(/^data:([^;]+);base64,/);
             const mimeType = mimeMatch ? mimeMatch[1] : file.type;
-            setImages((prev) => [...prev, { data: base64, mimeType }]);
+            setImages((prev) => [
+              ...prev,
+              {
+                data: base64,
+                mimeType,
+                originalData: base64,
+                originalMimeType: mimeType,
+                isEdited: false,
+              },
+            ]);
           };
           reader.readAsDataURL(file);
         } else {
@@ -329,6 +389,8 @@ export function SourceDocumentInput({
       }
     }
   };
+
+  const currentImages = images.map(({ data, mimeType }) => ({ data, mimeType }));
 
   const imageActionButtonClassName =
     "absolute z-10 flex h-6 w-6 items-center justify-center rounded-full text-white transition-opacity opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
@@ -356,19 +418,6 @@ export function SourceDocumentInput({
               >
                 ×
               </button>
-
-              {/* Edit button - only in retry mode */}
-              {mode === "retry" && (
-                <button
-                  onClick={() => setEditingImageIndex(idx)}
-                  type="button"
-                  aria-label={t("editImage")}
-                  title={t("editImage")}
-                  className={`${imageActionButtonClassName} left-1 top-1 bg-primary`}
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -422,27 +471,30 @@ export function SourceDocumentInput({
         </Button>
       </div>
 
-      <ImageViewer
-        images={images.map((img) => img.data)}
+      <SourceDocumentImageModal
+        images={currentImages}
         initialIndex={selectedImageIndex ?? 0}
         open={selectedImageIndex !== null}
+        editable
         onOpenChange={(open) => !open && setSelectedImageIndex(null)}
-      />
+        onSave={(updatedImages) => {
+          setImages((prev) =>
+            prev.map((image, index) => {
+              const updatedImage = updatedImages[index];
+              if (updatedImage == null) return image;
 
-      {/* Image Editor Dialog */}
-      {editingImageIndex !== null && (
-        <ImageEditorDialog
-          image={images[editingImageIndex]?.data}
-          open={editingImageIndex !== null}
-          onOpenChange={(open) => !open && setEditingImageIndex(null)}
-          onSave={(editedImage) => {
-            setImages((prev) =>
-              prev.map((img, i) => (i === editingImageIndex ? editedImage : img))
-            );
-            setEditingImageIndex(null);
-          }}
-        />
-      )}
+              return {
+                ...image,
+                data: updatedImage.data,
+                mimeType: updatedImage.mimeType,
+                isEdited:
+                  updatedImage.data !== image.originalData ||
+                  updatedImage.mimeType !== image.originalMimeType,
+              };
+            })
+          );
+        }}
+      />
     </div>
   );
 }

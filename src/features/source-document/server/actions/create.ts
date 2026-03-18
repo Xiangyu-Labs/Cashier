@@ -5,7 +5,7 @@ import { sourceDocuments } from "@/lib/db/schema";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { forLedger } from "@/lib/db/scoped-query";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { prepareSourceDocumentTask } from "./helpers";
+import { prepareSourceDocumentTask, processImages } from "./helpers";
 import type { SourceDocumentActionInput } from "./types";
 import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
 
@@ -16,7 +16,7 @@ export async function createSourceDocumentAction(
   ledgerId: string,
   input: SourceDocumentActionInput
 ) {
-  const { text, images, entryDate } = input;
+  const { text, images, originalImages, entryDate } = input;
   if ((text == null || text === "") && (images == null || images.length === 0)) {
     throw new ValidationError("At least one input (text or images) is required");
   }
@@ -47,10 +47,20 @@ export async function createSourceDocumentAction(
     .returning();
 
   const imageUrls = await prepareSourceDocumentTask(ledgerId, ledger, text, images, savedDoc.id);
+  const originalImageUrls =
+    originalImages != null && originalImages.length > 0
+      ? await processImages(originalImages, ledgerId, savedDoc.id)
+      : [];
 
   // Update with normalized image URLs if any
-  if (imageUrls.length > 0) {
-    await db.update(sourceDocuments).set({ imageUrls }).where(q.whereId(savedDoc.id));
+  if (imageUrls.length > 0 || originalImageUrls.length > 0) {
+    await db
+      .update(sourceDocuments)
+      .set({
+        ...(imageUrls.length > 0 ? { imageUrls } : {}),
+        ...(originalImageUrls.length > 0 ? { metadata: { originalImageUrls } } : {}),
+      })
+      .where(q.whereId(savedDoc.id));
   }
 
   return {

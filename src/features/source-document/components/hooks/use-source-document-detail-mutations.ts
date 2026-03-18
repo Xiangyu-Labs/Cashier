@@ -10,6 +10,7 @@ import {
 } from "@/lib/query-keys";
 import {
   updateSourceDocumentAction,
+  updateSourceDocumentImagesAction,
   deleteSourceDocumentAction,
   type PaginatedSourceDocumentsResponse,
   type SourceDocumentWithEntries as ServerSourceDocumentWithEntries,
@@ -139,6 +140,65 @@ export function useSourceDocumentDetailMutations({
       },
     }
   );
+
+  const updateSourceDocImagesMutation = useLedgerMutation<
+    void,
+    { images: { data: string; mimeType: string }[] }
+  >(ledgerId, {
+    mutationFn: async ({ images }) => {
+      if (ledgerId == null || ledgerId === "") return;
+      await updateSourceDocumentImagesAction(ledgerId, id, images);
+    },
+    successMessage: tCommon("saveSuccess"),
+    errorMessage: tCommon("saveFailed"),
+    cancelPredicates:
+      ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
+    invalidatePredicates:
+      ledgerId != null && ledgerId !== ""
+        ? [
+            invalidateSourceDocuments(ledgerId),
+            invalidateLedgerStats(ledgerId),
+            invalidateCalendar(ledgerId),
+          ]
+        : undefined,
+    onOptimisticUpdate: (queryClient, { images }) => {
+      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
+      const nextImageUrls = images.map((image) => image.data);
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.sourceDocument(id) },
+        (old: SourceDocumentQueryData | undefined) => {
+          if (!old) return old;
+          return { ...old, imageUrls: nextImageUrls };
+        }
+      );
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.sourceDocumentLight(id) },
+        (old: SourceDocumentQueryData | undefined) => {
+          if (!old) return old;
+          return { ...old, imageUrls: nextImageUrls };
+        }
+      );
+
+      if (ledgerId != null && ledgerId !== "") {
+        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) =>
+          doc.id === id ? { ...doc, imageUrls: nextImageUrls } : doc
+        );
+      }
+
+      return { snapshots };
+    },
+    onSettledExtra: (queryClient) => {
+      fireAndForget(queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }), {
+        context: "SourceDocumentDetailWrapper",
+      });
+      fireAndForget(
+        queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) }),
+        { context: "SourceDocumentDetailWrapper" }
+      );
+    },
+  });
 
   const updateEntryMutation = useLedgerMutation<
     void,
@@ -417,6 +477,8 @@ export function useSourceDocumentDetailMutations({
   return {
     updateSourceDoc: async (data: { title?: string; entryDate?: string }) =>
       updateSourceDocMutation.mutateAsync(data),
+    updateImages: async (images: { data: string; mimeType: string }[]) =>
+      updateSourceDocImagesMutation.mutateAsync({ images }),
     updateEntry: async (entryId: string, data: Partial<EntryEditData>) =>
       updateEntryMutation.mutateAsync({ entryId, data }),
     batchUpdate: async (

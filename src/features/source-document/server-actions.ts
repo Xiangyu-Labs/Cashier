@@ -7,7 +7,7 @@ export {
 export { getSourceDocumentByIdAction } from "./server/actions/get-document";
 export { getSourceDocumentLightAction } from "./server/actions/get-document-light";
 export { createSourceDocumentAction } from "./server/actions/create";
-export { updateSourceDocumentAction } from "./server/actions/update";
+export { updateSourceDocumentAction, updateSourceDocumentImagesAction } from "./server/actions/update";
 export {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,

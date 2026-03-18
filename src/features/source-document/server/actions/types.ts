@@ -4,6 +4,7 @@ import type { SourceDocumentStatusType } from "@/features/source-document/server
 export interface SourceDocumentActionInput {
   text?: string;
   images?: { data: string; mimeType: string }[];
+  originalImages?: { data: string; mimeType: string }[];
   entryDate?: string; // yyyy-MM-dd, provided by client
 }
 

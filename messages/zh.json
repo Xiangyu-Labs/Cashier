@@ -284,7 +284,20 @@
     "batchDeleteSuccess": "已删除 {count} 条记录",
     "batchDeleteError": "删除失败",
     "saveAllSuccess": "已保存 {count} 处修改",
-    "saveAllError": "保存失败"
+    "saveAllError": "保存失败",
+    "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。"
+  },
+  "SourceDocumentImageModal": {
+    "title": "查看图片",
+    "titleWithIndex": "图片 {current}/{total}",
+    "imageAlt": "图片 {index}",
+    "edit": "编辑当前图片",
+    "backToPreview": "返回查看",
+    "close": "关闭",
+    "pendingChangesTitle": "当前编辑尚未保存",
+    "pendingChangesCloseDescription": "关闭前，请先保存或放弃当前这次编辑。",
+    "pendingChangesLeaveDescription": "返回查看前，请先保存或放弃当前这次编辑。",
+    "continueEditing": "继续编辑"
   },
   "ImageViewer": {
     "clickToZoom": "点击放大",

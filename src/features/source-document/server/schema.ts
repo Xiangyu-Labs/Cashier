@@ -68,6 +68,7 @@ export const sourceDocuments = sqliteTable(
 
 export interface SourceDocMetadata {
   visionDescription?: string;
+  originalImageUrls?: Array<string | null>;
 }
 
 export type SourceDocument = InferSelectModel<typeof sourceDocuments>;

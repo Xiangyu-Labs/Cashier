@@ -25,9 +25,9 @@ import {
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { EditableLedgerEntryItem, type EntryEditData } from "@/components/entries";
 import { Card } from "@/components/ui/card";
-import { ImageViewer } from "@/components/ui/image-viewer";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
+import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
@@ -100,6 +100,7 @@ interface SourceDocumentViewDetailsProps {
   isSelectionMode: boolean;
   isLoadingImages?: boolean;
   onSourceDocChange: (changes: SourceDocPendingChanges) => void;
+  onUpdateImages: (images: { data: string; mimeType: string }[]) => Promise<void>;
   onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
   onSelectEntry: (entryId: string, selected: boolean) => void;
   onSelectAllEntries: (selected: boolean) => void;
@@ -117,6 +118,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   isSelectionMode,
   isLoadingImages = false,
   onSourceDocChange,
+  onUpdateImages,
   onEntryChange,
   onSelectEntry,
   onSelectAllEntries: _onSelectAllEntries,
@@ -342,6 +344,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     <ImagePlay className="h-2.5 w-2.5 text-primary/60" />
                     {tCard("image")}
                   </h5>
+                  <p className="mb-2 text-[11px] text-muted-foreground">
+                    {t("imageEditHint")}
+                  </p>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                     {isLoadingImages ? (
                       // Skeleton loading for images
@@ -397,12 +402,15 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         </div>
       )}
 
-      {/* Image Viewer */}
-      <ImageViewer
-        images={imageUrls || []}
+      <SourceDocumentImageModal
+        images={(imageUrls || []).map((url) => ({ data: url, mimeType: "image/jpeg" }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}
+        editable
         onOpenChange={(open: boolean) => !open && setViewerIndex(null)}
+        onSave={async (images) => {
+          await onUpdateImages(images);
+        }}
       />
     </div>
   );

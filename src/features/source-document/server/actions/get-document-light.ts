@@ -79,7 +79,7 @@ export async function getSourceDocumentLightAction(
 
   // Use unified serialization
   const serializedDoc = serializeSourceDocument(doc, {
-    stripMetadataFields: ["visionDescription"],
+    stripMetadataFields: ["visionDescription", "originalImageUrls"],
     imageUrlsOverride: [],
     includeHasImages: true,
     ledgerEntries: doc.ledgerEntries.map((entry) =>

@@ -127,7 +127,7 @@ describe("SourceDocumentInput - Optimistic Close", () => {
     });
   });
 
-  it("shows the retry edit button in the top-left and delete in the top-right", () => {
+  it("opens the unified image modal on image click and keeps only the delete action", () => {
     render(
       <SourceDocumentInput
         ledgerId="ledger-123"
@@ -144,12 +144,15 @@ describe("SourceDocumentInput - Optimistic Close", () => {
       { wrapper }
     );
 
-    const editButton = screen.getByRole("button", { name: "editImage" });
-    const deleteButton = screen.getByRole("button", { name: "delete" });
+    expect(screen.queryByRole("button", { name: "editImage" })).toBeNull();
 
-    expect(editButton.className).toContain("left-1");
-    expect(editButton.className).toContain("top-1");
+    const deleteButton = screen.getByRole("button", { name: "delete" });
     expect(deleteButton.className).toContain("right-1");
     expect(deleteButton.className).toContain("top-1");
+
+    fireEvent.click(screen.getByAltText("Uploaded 1"));
+
+    expect(screen.getByRole("button", { name: "edit" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "close" })).toBeTruthy();
   });
 });

@@ -38,11 +38,22 @@ export async function retrySourceDocumentAction(
   const newDocId = crypto.randomUUID();
   const text = input?.text ?? existingDoc.text ?? undefined;
   const images = input?.images;
+  const originalImages = input?.originalImages;
+  const existingOriginalImageUrls = Array.isArray(existingDoc.metadata?.originalImageUrls)
+    ? existingDoc.metadata.originalImageUrls
+    : [];
 
   // Process new images if provided
   let processedImageUrls: string[] | undefined;
   if (images) {
     processedImageUrls = await processImages(images, ledgerId, newDocId);
+  }
+
+  let processedOriginalImageUrls: Array<string | null> | undefined;
+  if (existingOriginalImageUrls.length > 0) {
+    processedOriginalImageUrls = existingOriginalImageUrls;
+  } else if (originalImages != null && originalImages.length > 0) {
+    processedOriginalImageUrls = await processImages(originalImages, ledgerId, newDocId);
   }
 
   // Prepare final image URLs: use processed images if provided, otherwise use existing
@@ -61,7 +72,10 @@ export async function retrySourceDocumentAction(
     status: "queued",
     type: "ai_parsed",
     title: null, // Let AI regenerate title
-    metadata: {}, // Empty metadata for fresh parse
+    metadata:
+      processedOriginalImageUrls != null && processedOriginalImageUrls.length > 0
+        ? { originalImageUrls: processedOriginalImageUrls }
+        : {},
   });
 
   logger.debug(
