@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getLedgerEntriesAction } from "@/features/ledger/server";
+import { listLedgerEntries } from "@/features/ledger/server/actions/entries";
 import { z } from "zod";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         limit: searchParams.get("limit") ?? undefined,
       });
 
-      const result = await getLedgerEntriesAction(credential.ledgerId, {
+      const result = await listLedgerEntries(credential.ledgerId, {
         startDate: params.startDate ?? null,
         endDate: params.endDate ?? null,
         categoryId: params.categoryId ?? null,

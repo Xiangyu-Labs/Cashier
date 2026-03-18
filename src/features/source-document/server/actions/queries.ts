@@ -67,7 +67,8 @@ function buildDateConditions(
   }
   if (endDate != null && endDate !== "") {
     const parsedEnd = parseDateRangeEnd(endDate);
-    if (parsedEnd != null) conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, "yyyy-MM-dd")));
+    if (parsedEnd != null)
+      conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, "yyyy-MM-dd")));
   }
 
   return conditions;
@@ -160,7 +161,7 @@ function serializeSourceDocumentByStatus(
   includeEntries: boolean,
   entriesByDocId: Map<string, SerializedLedgerEntry[]>
 ): SerializedSourceDocument {
-  const entries = includeEntries ? entriesByDocId.get(item.id) ?? [] : undefined;
+  const entries = includeEntries ? (entriesByDocId.get(item.id) ?? []) : undefined;
   const isActiveDocument =
     item.status === "queued" ||
     item.status === "processing" ||
@@ -242,54 +243,54 @@ function serializeSourceDocumentFlat(
 /**
  * Get paginated source documents with cursor-based pagination
  */
-export const getSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string, params: GetSourceDocumentsParams) => {
-    const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
-    const q = forLedger(sourceDocuments, ledgerId);
+export async function listSourceDocuments(ledgerId: string, params: GetSourceDocumentsParams) {
+  const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
+  const q = forLedger(sourceDocuments, ledgerId);
 
-    // Build conditions
-    const conditions = [
-      q.whereActive,
-      buildStatusCondition(status),
-      ...buildDateConditions(startDate, endDate),
-      buildCursorCondition(cursor),
-    ].filter((c): c is SQL<unknown> => c !== null);
+  // Build conditions
+  const conditions = [
+    q.whereActive,
+    buildStatusCondition(status),
+    ...buildDateConditions(startDate, endDate),
+    buildCursorCondition(cursor),
+  ].filter((c): c is SQL<unknown> => c !== null);
 
-    const items = await db.query.sourceDocuments.findMany({
-      where: and(...conditions),
-      orderBy: [
-        desc(sourceDocuments.entryDate),
-        desc(sourceDocuments.createdAt),
-        desc(sourceDocuments.id),
-      ],
-      limit: limit + 1,
-    });
+  const items = await db.query.sourceDocuments.findMany({
+    where: and(...conditions),
+    orderBy: [
+      desc(sourceDocuments.entryDate),
+      desc(sourceDocuments.createdAt),
+      desc(sourceDocuments.id),
+    ],
+    limit: limit + 1,
+  });
 
-    let nextCursor: string | null = null;
-    const hasMore = items.length > limit;
-    const resultItems = hasMore ? items.slice(0, limit) : items;
+  let nextCursor: string | null = null;
+  const hasMore = items.length > limit;
+  const resultItems = hasMore ? items.slice(0, limit) : items;
 
-    if (hasMore) {
-      nextCursor = generateNextCursor(items[limit]);
-    }
-
-    // Fetch ledger entries if requested
-    const entriesByDocId =
-      includeLedgerEntries && resultItems.length > 0
-        ? await fetchEntriesByDocumentId(
-            resultItems.map((d) => d.id),
-            ledgerId
-          )
-        : new Map<string, SerializedLedgerEntry[]>();
-
-    return {
-      items: resultItems.map((item) =>
-        serializeSourceDocumentByStatus(item, !!includeLedgerEntries, entriesByDocId)
-      ),
-      nextCursor,
-    };
+  if (hasMore) {
+    nextCursor = generateNextCursor(items[limit]);
   }
-);
+
+  // Fetch ledger entries if requested
+  const entriesByDocId =
+    includeLedgerEntries && resultItems.length > 0
+      ? await fetchEntriesByDocumentId(
+          resultItems.map((d) => d.id),
+          ledgerId
+        )
+      : new Map<string, SerializedLedgerEntry[]>();
+
+  return {
+    items: resultItems.map((item) =>
+      serializeSourceDocumentByStatus(item, !!includeLedgerEntries, entriesByDocId)
+    ),
+    nextCursor,
+  };
+}
+
+export const getSourceDocumentsAction = withLedgerAccess(listSourceDocuments);
 
 // Pagination constants
 const MAX_PAGE_SIZE = 100;
@@ -319,9 +320,10 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
 
       // Calculate pagination parameters
       const page = Math.max(1, params.page ?? 1);
-      const pageSize = params.page != null
-        ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize ?? DEFAULT_PAGE_SIZE))
-        : DEFAULT_PAGE_LIMIT;
+      const pageSize =
+        params.page != null
+          ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize ?? DEFAULT_PAGE_SIZE))
+          : DEFAULT_PAGE_LIMIT;
       const offset = (page - 1) * pageSize;
 
       const q = forLedger(sourceDocuments, ledgerId);

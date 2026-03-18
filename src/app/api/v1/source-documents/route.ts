@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getSourceDocumentsAction } from "@/features/source-document/server";
+import { listSourceDocuments } from "@/features/source-document/server/actions/queries";
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server";
 import { z } from "zod";
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
         includeEntries: searchParams.get("includeEntries") ?? "false",
       });
 
-      const result = await getSourceDocumentsAction(credential.ledgerId, {
+      const result = await listSourceDocuments(credential.ledgerId, {
         status: params.status ?? null,
         startDate: params.startDate ?? null,
         endDate: params.endDate ?? null,

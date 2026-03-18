@@ -37,7 +37,8 @@ export const createEntryCategoryAction = withLedgerAccess(
       limit: 1,
     });
 
-    const maxSortOrder = existingCategories.length > 0 ? existingCategories[0].sortOrder ?? -1 : -1;
+    const maxSortOrder =
+      existingCategories.length > 0 ? (existingCategories[0].sortOrder ?? -1) : -1;
     const newSortOrder = validated.sortOrder ?? maxSortOrder + 1;
 
     const [category] = await db
@@ -51,7 +52,12 @@ export const createEntryCategoryAction = withLedgerAccess(
 
     // Trigger AI to generate metadata (async)
     // Only if icon or description is missing
-    if (validated.icon == null || validated.icon === "" || validated.description == null || validated.description === "") {
+    if (
+      validated.icon == null ||
+      validated.icon === "" ||
+      validated.description == null ||
+      validated.description === ""
+    ) {
       try {
         // Fetch existing categories for context
         const existing = await db.query.entryCategories.findMany({
@@ -158,7 +164,7 @@ export const reorderEntryCategoriesAction = withLedgerAccess(
   }
 );
 
-export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string) => {
+export async function listEntryCategories(ledgerId: string) {
   const q = forLedger(entryCategories, ledgerId);
 
   // Note: Use db.query for findMany to match return type structure if needed, or normal select
@@ -190,7 +196,9 @@ export const getEntryCategoriesAction = withLedgerAccess(async (ledgerId: string
   }));
 
   return categoriesWithCount;
-});
+}
+
+export const getEntryCategoriesAction = withLedgerAccess(listEntryCategories);
 
 /**
  * Get count of uncategorized entries (entries without a category)

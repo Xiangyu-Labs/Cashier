@@ -18,15 +18,19 @@ import {
   taskRuns,
 } from "@/lib/db/schema";
 import { vi, afterEach } from "vitest";
+import * as authModule from "@/auth";
 
 // Helper to create a mock NextRequest
-function createMockRequest(url: string, options: { headers?: Record<string, string> } = {}): NextRequest {
+function createMockRequest(
+  url: string,
+  options: { headers?: Record<string, string> } = {}
+): NextRequest {
   const request = new Request(url, {
     headers: options.headers,
   }) as unknown as NextRequest;
 
   // Add the headers.get method that NextRequest expects
-  Object.defineProperty(request, 'headers', {
+  Object.defineProperty(request, "headers", {
     value: {
       get: (name: string) => options.headers?.[name] ?? null,
     },
@@ -54,12 +58,7 @@ describe("API v1 Query Endpoints", () => {
     await db.delete(ledgers);
 
     // 创建测试账本 - 使用 TEST_USER_ID 确保与 auth mock 一致
-    const result = await createTestUserWithLedger(
-      db,
-      undefined,
-      undefined,
-      TEST_USER_ID
-    );
+    const result = await createTestUserWithLedger(db, undefined, undefined, TEST_USER_ID);
     ledgerId = result.ledgerId;
 
     // 创建 API 凭证 - 直接插入数据库避免 withLedgerAccess 权限检查
@@ -166,11 +165,21 @@ describe("API v1 Query Endpoints", () => {
   });
 
   describe("GET /api/v1/entries", () => {
+    it("should work with a valid API key even without a user session", async () => {
+      vi.spyOn(authModule, "auth").mockResolvedValue(null as never);
+
+      const request = createMockRequest(`http://localhost:3000/api/v1/entries?limit=10`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await entriesGET(request);
+      expect(response.status).toBe(200);
+    });
+
     it("should return entries with valid credentials", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/entries?limit=10`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/entries?limit=10`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await entriesGET(request);
       expect(response.status).toBe(200);
@@ -200,20 +209,18 @@ describe("API v1 Query Endpoints", () => {
     });
 
     it("should return 401 with invalid key", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/entries`,
-        { headers: { Authorization: "Bearer invalid_key" } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/entries`, {
+        headers: { Authorization: "Bearer invalid_key" },
+      });
 
       const response = await entriesGET(request);
       expect(response.status).toBe(401);
     });
 
     it("should return 400 for invalid query params", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/entries?limit=0`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/entries?limit=0`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await entriesGET(request);
       expect(response.status).toBe(500);
@@ -230,10 +237,9 @@ describe("API v1 Query Endpoints", () => {
         reset: Date.now(),
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/entries`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/entries`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await entriesGET(request);
       expect(response.status).toBe(429);
@@ -245,10 +251,9 @@ describe("API v1 Query Endpoints", () => {
 
   describe("GET /api/v1/source-documents", () => {
     it("should return source documents list", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/source-documents?limit=10`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/source-documents?limit=10`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await sourceDocumentsGET(request);
       expect(response.status).toBe(200);
@@ -277,10 +282,9 @@ describe("API v1 Query Endpoints", () => {
 
   describe("GET /api/v1/stats", () => {
     it("should return stats summary", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/stats`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/stats`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await statsGET(request);
       expect(response.status).toBe(200);
@@ -312,10 +316,9 @@ describe("API v1 Query Endpoints", () => {
 
   describe("GET /api/v1/categories", () => {
     it("should return categories list", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/categories`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/categories`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await categoriesGET(request);
       expect(response.status).toBe(200);
@@ -334,10 +337,9 @@ describe("API v1 Query Endpoints", () => {
     });
 
     it("should return 401 with invalid key", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/categories`,
-        { headers: { Authorization: "Bearer invalid_key" } }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/categories`, {
+        headers: { Authorization: "Bearer invalid_key" },
+      });
 
       const response = await categoriesGET(request);
       expect(response.status).toBe(401);
@@ -469,6 +471,6 @@ describe("API v1 Query Endpoints", () => {
     });
   });
 });
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+afterEach(() => {
+  vi.restoreAllMocks();
+});

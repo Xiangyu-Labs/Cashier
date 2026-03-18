@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getLedgerStatsAction } from "@/features/ledger/server";
+import { calculateLedgerStats } from "@/features/ledger/server/actions/stats";
 import { z } from "zod";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         currency: searchParams.get("currency") ?? undefined,
       });
 
-      const result = await getLedgerStatsAction(
+      const result = await calculateLedgerStats(
         credential.ledgerId,
         params.startDate,
         params.endDate,

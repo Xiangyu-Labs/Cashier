@@ -117,6 +117,7 @@ npm run test:coverage  # With coverage
 - [CLAUDE.md](./CLAUDE.md) - Development guide and architecture overview
 - [HTTP API Guide](./docs/guides/HTTP_API.md) - Current HTTP routes, auth model, query params, and test coverage
 - [Error Handling Guide](./docs/guides/ERROR_HANDLING.md) - Standardized error patterns
+- [Performance Testing Guide](./docs/guides/PERFORMANCE_TESTING.md) - Single-node load testing workflow and k6 usage
 - [Task Handler Guide](./docs/guides/TASK_HANDLERS.md) - Creating background task handlers
 - [Future Plan](./future_plan.md) - Roadmap and upcoming features.
 
