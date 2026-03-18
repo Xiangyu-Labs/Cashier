@@ -2,7 +2,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { requireLedgerAccess } from "@/features/auth/server";
 import { serializeLedgerEntry, type SerializedLedgerEntry } from "@/lib/serialization";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 

@@ -12,6 +12,7 @@ export {
   createDefaultLedgerForUser,
   setUserDefaultLedger,
   getUserDefaultLedgerId,
+  clearUserDefaultLedger,
 } from "./services/user-setup";
 
 // Utils

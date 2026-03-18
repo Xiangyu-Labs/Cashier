@@ -1,14 +1,14 @@
 "use server";
 
-import { db } from "@/lib/db";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
-import type { Ledger } from "@/lib/db/schema";
+import type { CategoryInfo } from "@/features/ai/types";
 import { getLocalStorage } from "@/lib/storage/local";
 import { logger } from "@/lib/logger";
 import { ValidationError } from "@/lib/errors";
 import { processImage, isSupportedImageFormat } from "@/lib/storage/image-processing";
 import crypto from "crypto";
+export { getSourceDocumentTaskContext } from "./create-task-context";
 
 // Maximum file size: 10MB (before compression)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -121,39 +121,43 @@ export async function processImages(
   return imageUrls;
 }
 
+interface PrepareSourceDocumentTaskInput {
+  ledgerId: string;
+  sourceDocumentId: string;
+  text?: string;
+  imageUrls: string[];
+  categories: CategoryInfo[];
+  settings: {
+    aiLanguage: string;
+    preferredCurrencies?: string[];
+    settings: {
+      aiCustomPrompt?: string;
+    };
+  };
+}
+
 /**
- * Common logic to normalize images and prepare task data
+ * Submit a parse task for an already-created source document.
  */
-export async function prepareSourceDocumentTask(
-  ledgerId: string,
-  ledger: Ledger,
-  text: string | undefined,
-  images: { data: string; mimeType: string }[] | undefined,
-  sourceDocumentId: string
-): Promise<string[]> {
-  const imageUrls = await processImages(images, ledgerId, sourceDocumentId);
-
-  const categories = await db.query.entryCategories.findMany({
-    where: (table, { eq, or, isNull, and }) =>
-      and(or(eq(table.ledgerId, ledgerId), isNull(table.ledgerId)), isNull(table.deletedAt)),
-    orderBy: (table, { asc }) => [asc(table.sortOrder), asc(table.id)],
-  });
-
-  const settings = ledger.metadata?.settings ?? {};
-
+export async function prepareSourceDocumentTask({
+  ledgerId,
+  sourceDocumentId,
+  text,
+  imageUrls,
+  categories,
+  settings,
+}: PrepareSourceDocumentTaskInput): Promise<void> {
   await flowEngine.submit(
     TASK_TYPE_PARSE_SOURCE_DOCUMENT,
     {
-      ledgerId: ledgerId,
-      sourceDocumentId: sourceDocumentId,
-      text: text,
-      imageUrls: imageUrls,
-      aiLanguage: settings.aiLanguage ?? "zh-CN",
-      preferredCurrencies: settings.currencies ?? undefined,
-      categories: categories,
-      settings: {
-        aiCustomPrompt: settings.aiCustomPrompt,
-      },
+      ledgerId,
+      sourceDocumentId,
+      text,
+      imageUrls,
+      aiLanguage: settings.aiLanguage,
+      preferredCurrencies: settings.preferredCurrencies,
+      categories,
+      settings: settings.settings,
     },
     {
       title: "Parse source document",
@@ -162,6 +166,4 @@ export async function prepareSourceDocumentTask(
       entityId: sourceDocumentId,
     }
   );
-
-  return imageUrls;
 }

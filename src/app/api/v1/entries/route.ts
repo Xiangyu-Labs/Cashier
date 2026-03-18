@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listLedgerEntries } from "@/features/ledger/server/actions/entries";
+import { listLedgerEntries } from "@/features/ledger/server";
 import { z } from "zod";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
+import { parseApiInput } from "@/app/api/v1/_shared/validation";
 
 const querySchema = z.object({
   startDate: optionalDateStringSchema,
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     logContext: "api/v1/entries",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const params = querySchema.parse({
+      const params = parseApiInput(querySchema, {
         startDate: searchParams.get("startDate") ?? undefined,
         endDate: searchParams.get("endDate") ?? undefined,
         categoryId: searchParams.get("categoryId") ?? undefined,

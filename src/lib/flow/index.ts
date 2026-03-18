@@ -23,6 +23,7 @@ export * from "./types";
 export { createFlowEngine } from "./engine";
 export { createAIContext } from "./ai-context";
 export { createDrizzleStorage } from "./adapters/drizzle-storage";
+export { TaskCancelledError, throwIfCancelled } from "./cancellation";
 
 // ===== Default Cashier Instance =====
 

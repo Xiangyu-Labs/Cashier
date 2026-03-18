@@ -1,5 +1,6 @@
 // Server Actions - CRUD
 export { createSourceDocumentAction } from "./actions/create";
+export { createAndQueueSourceDocument } from "./actions/create-and-queue";
 
 export {
   updateSourceDocumentAction,
@@ -11,6 +12,7 @@ export { deleteSourceDocumentAction, batchDeleteSourceDocumentsAction } from "./
 
 // Server Actions - Queries
 export {
+  listSourceDocuments,
   getSourceDocumentsAction,
   getAllSourceDocumentsAction,
   getPendingSourceDocumentsAction,

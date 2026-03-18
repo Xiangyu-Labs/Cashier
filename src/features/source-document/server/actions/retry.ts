@@ -2,11 +2,11 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { requireLedgerAccess } from "@/features/auth/server";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { prepareSourceDocumentTask, processImages } from "./helpers";
+import { getSourceDocumentTaskContext, prepareSourceDocumentTask, processImages } from "./helpers";
 import { logger } from "@/lib/logger";
 import { NotFoundError } from "@/lib/errors";
 import type { SourceDocumentActionInput } from "./types";
@@ -124,8 +124,15 @@ export async function retrySourceDocumentAction(
     );
 
   // 6. Submit new task for the NEW document
-  const finalImages = finalImageUrls.map((url) => ({ data: url, mimeType: "image/jpeg" }));
-  await prepareSourceDocumentTask(ledgerId, ledger, text, finalImages, newDocId);
+  const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
+  await prepareSourceDocumentTask({
+    ledgerId,
+    sourceDocumentId: newDocId,
+    text,
+    imageUrls: finalImageUrls,
+    categories,
+    settings,
+  });
 
   logger.debug({ newDocId, ledgerId }, "Submitted new parse task for retried document");
 

@@ -149,7 +149,8 @@ describe("API v1 Query Endpoints", () => {
         status: "completed",
         scopeId: ledgerId,
         completedAt: new Date(),
-        input: { sourceDocumentId: doc.id },
+        entityType: "source_document",
+        entityId: doc.id,
         tokenUsage: { total: { input: 100, output: 50 } },
       },
       {
@@ -158,7 +159,8 @@ describe("API v1 Query Endpoints", () => {
         status: "completed",
         scopeId: ledgerId,
         completedAt: new Date(Date.now() - 1000),
-        input: { sourceDocumentId: anomalyDoc.id },
+        entityType: "source_document",
+        entityId: anomalyDoc.id,
         tokenUsage: { total: { input: 200, output: 100 } },
       },
     ]);
@@ -223,10 +225,11 @@ describe("API v1 Query Endpoints", () => {
       });
 
       const response = await entriesGET(request);
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(400);
 
       const data = await response.json();
-      expect(data.error.code).toBe("INTERNAL_ERROR");
+      expect(data.error.code).toBe("VALIDATION_ERROR");
+      expect(Array.isArray(data.error.details.issues)).toBe(true);
     });
 
     it("should return 429 when rate limit is exceeded", async () => {
@@ -277,6 +280,22 @@ describe("API v1 Query Endpoints", () => {
       const response = await sourceDocumentsGET(request);
       expect(response.status).toBe(401);
     });
+
+    it("should return 400 for invalid query params", async () => {
+      const request = createMockRequest(
+        `http://localhost:3000/api/v1/source-documents?limit=101`,
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        }
+      );
+
+      const response = await sourceDocumentsGET(request);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("VALIDATION_ERROR");
+      expect(Array.isArray(data.error.details.issues)).toBe(true);
+    });
   });
 
   describe("GET /api/v1/stats", () => {
@@ -310,6 +329,19 @@ describe("API v1 Query Endpoints", () => {
 
       const response = await statsGET(request);
       expect(response.status).toBe(401);
+    });
+
+    it("should return 400 for invalid query params", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/stats?currency=TOOLONG`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await statsGET(request);
+      expect(response.status).toBe(400);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("VALIDATION_ERROR");
+      expect(Array.isArray(data.error.details.issues)).toBe(true);
     });
   });
 

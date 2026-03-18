@@ -14,10 +14,10 @@ const featureNames = [
 
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
-    `@/features/${featureName}/server/*`,
-    `@/features/${featureName}/client/*`,
-    `@/features/${featureName}/components/*`,
-    `@/features/${featureName}/lib/*`,
+    `@/features/${featureName}/server/*/**`,
+    `@/features/${featureName}/client/**`,
+    `@/features/${featureName}/components/**`,
+    `@/features/${featureName}/lib/**`,
   ]);
 }
 
@@ -33,6 +33,28 @@ function createCrossFeatureBoundaryRule(currentFeature) {
             "Cross-feature imports must go through the target feature's public entrypoint.",
         },
       ],
+    },
+  ];
+}
+
+function createFeatureBoundaryConfigs(currentFeature) {
+  return [
+    {
+      files: [
+        `src/features/${currentFeature}/components/**/*.ts`,
+        `src/features/${currentFeature}/components/**/*.tsx`,
+        `src/features/${currentFeature}/client/**/*.ts`,
+        `src/features/${currentFeature}/client/**/*.tsx`,
+      ],
+      rules: {
+        "no-restricted-imports": createCrossFeatureBoundaryRule(currentFeature),
+      },
+    },
+    {
+      files: [`src/features/${currentFeature}/server/**/*.ts`],
+      rules: {
+        "no-restricted-imports": createCrossFeatureBoundaryRule(currentFeature),
+      },
     },
   ];
 }
@@ -111,24 +133,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  {
-    files: ["src/features/ledger/components/**/*.ts", "src/features/ledger/components/**/*.tsx", "src/features/ledger/client/**/*.ts", "src/features/ledger/client/**/*.tsx"],
-    rules: {
-      "no-restricted-imports": createCrossFeatureBoundaryRule("ledger"),
-    },
-  },
-  {
-    files: ["src/features/source-document/components/**/*.ts", "src/features/source-document/components/**/*.tsx", "src/features/source-document/client/**/*.ts", "src/features/source-document/client/**/*.tsx"],
-    rules: {
-      "no-restricted-imports": createCrossFeatureBoundaryRule("source-document"),
-    },
-  },
-  {
-    files: ["src/features/task-queue/components/**/*.ts", "src/features/task-queue/components/**/*.tsx", "src/features/task-queue/client/**/*.ts", "src/features/task-queue/client/**/*.tsx"],
-    rules: {
-      "no-restricted-imports": createCrossFeatureBoundaryRule("task-queue"),
-    },
-  },
+  ...featureNames.flatMap((featureName) => createFeatureBoundaryConfigs(featureName)),
 ]);
 
 export default eslintConfig;

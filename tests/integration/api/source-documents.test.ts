@@ -190,6 +190,27 @@ describe("SourceDocument Actions", () => {
     await processAllPendingTasks();
   });
 
+  it("should persist originalImages as metadata.originalImageUrls", async () => {
+    const result = await createSourceDocumentAction(testLedgerId, {
+      text: "带原图的单据",
+      originalImages: [
+        {
+          data: "data:image/jpeg;base64,/9j/4AAQ",
+          mimeType: "image/jpeg",
+        },
+      ],
+    });
+
+    const db = getTestDb();
+    const savedDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, result.sourceDocumentId),
+    });
+
+    expect(Array.isArray(savedDoc?.metadata?.originalImageUrls)).toBe(true);
+    expect(savedDoc?.metadata?.originalImageUrls).toHaveLength(1);
+    expect(savedDoc?.metadata?.originalImageUrls?.[0]).toMatch(/^\/api\/uploads\//);
+  });
+
   it("should delete source document and associated ledger entries", async () => {
     // 1. Create a message first
     const createRes = await createSourceDocumentAction(testLedgerId, {

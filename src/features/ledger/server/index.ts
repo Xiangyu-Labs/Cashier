@@ -12,6 +12,7 @@ export {
   createLedgerEntryAction,
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
+  listLedgerEntries,
   getLedgerEntriesAction,
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
@@ -22,6 +23,7 @@ export { getLedgerEntryAction } from "./actions/get-entry";
 
 // Server Actions - Categories
 export {
+  listEntryCategories,
   getEntryCategoriesAction,
   createEntryCategoryAction,
   updateEntryCategoryAction,
@@ -45,7 +47,7 @@ export {
 } from "./actions/credentials";
 
 // Server Actions - Stats
-export { getLedgerStatsAction } from "./actions/stats";
+export { calculateLedgerStats, getLedgerStatsAction } from "./actions/stats";
 
 // Server Actions - Export
 export { exportLedgerEntriesAction } from "./actions/export";

@@ -6,7 +6,7 @@ import { withAuth } from "@/lib/auth-actions";
 import { eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
-import { clearUserDefaultLedger } from "@/features/auth/server/services/user-setup";
+import { clearUserDefaultLedger } from "@/features/auth/server";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**

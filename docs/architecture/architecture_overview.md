@@ -97,6 +97,8 @@ We use **Drizzle ORM** for data access.
 - Task modules export explicit task definitions `{ type, handler }`.
 - Only `lib/flow/task-registry.ts` is allowed to register tasks with the engine.
 - Task metadata such as `deduplicationKey` must be first-class engine fields, not hidden inside task input payloads.
+- Source-document task queue behavior must use `entityType` + `entityId` as the source of truth. `task.input` remains an audit payload only.
+- Source-document creation is funneled through one shared server-side create-and-queue path before `parse_source_document` is submitted.
 ## 6. Key Technologies
 
 - **Framework**: Next.js 16 (App Router)

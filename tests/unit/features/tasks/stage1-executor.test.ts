@@ -3,7 +3,9 @@ import {
   executeStage1,
   type Stage1Input,
 } from "@/features/source-document/server/tasks/stage1-executor";
+import { ArbitrationFailedError } from "@/lib/ai/dual-gpt-runner";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow/types";
+import { TaskCancelledError } from "@/lib/flow/cancellation";
 
 // Helper to create mock AI context
 function createMockAI(responses: string[]): AIContext {
@@ -225,7 +227,7 @@ describe("Stage 1 Executor", () => {
         }),
       };
 
-      await expect(executeStage1(baseInput, mockAI)).rejects.toThrow("ARBITRATION_FAILED");
+      await expect(executeStage1(baseInput, mockAI)).rejects.toThrow(ArbitrationFailedError);
     });
   });
 
@@ -310,7 +312,7 @@ describe("Stage 1 Executor", () => {
       });
 
       await expect(executeStage1(baseInput, mockAI, controller.signal)).rejects.toThrow(
-        "Task cancelled"
+        TaskCancelledError
       );
     });
   });

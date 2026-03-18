@@ -11,6 +11,7 @@ import {
   getServiceCredentialsAction,
 } from "@/features/ledger/server/actions/credentials";
 import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
+import { getDateInTimezone } from "@/lib/date-utils";
 
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
@@ -148,6 +149,36 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     const data = await res.json();
     expect(data.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("should derive entryDate from timezone when entryDate is omitted", async () => {
+    const db = getTestDb();
+    const [credential] = await db
+      .insert(serviceCredentials)
+      .values({
+        ledgerId: testLedgerId,
+        name: "Timezone Credential",
+        key: "sk_timezone",
+      })
+      .returning();
+
+    const req = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${credential.key}`,
+      },
+      body: JSON.stringify({ text: "Timezone Entry", timezone: "UTC" }),
+    });
+
+    const res = await ledgerEntryPOST(req);
+    expect(res.status).toBe(201);
+
+    const data = await res.json();
+    const doc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, data.sourceDocumentId),
+    });
+
+    expect(doc?.entryDate).toBe(getDateInTimezone("UTC"));
   });
 
   it("should delete service credential via Action", async () => {

@@ -112,6 +112,16 @@ export interface Stage2Output {
   wasArbitrated: boolean;
 }
 
+export type Stage2ExecutionResult =
+  | {
+      kind: "success";
+      output: Stage2Output;
+    }
+  | {
+      kind: "anomaly";
+      reason: string;
+    };
+
 // ===== Helper: Run Dual GPT Calls =====
 
 async function runDualParsingCalls(
@@ -154,7 +164,16 @@ async function runStage2Arbitration(
   messageContent: ReturnType<typeof buildMessageContent>,
   result1: { ledger_entries: ParsedEntry[]; reasoning: string },
   result2: { ledger_entries: ParsedEntry[]; reasoning: string }
-): Promise<{ ledger_entries: ParsedEntry[]; reasoning: string }> {
+): Promise<
+  | {
+      kind: "chosen";
+      result: { ledger_entries: ParsedEntry[]; reasoning: string };
+    }
+  | {
+      kind: "anomaly";
+      reason: string;
+    }
+> {
   const arbitrationPrompt = buildStage2ArbitrationPrompt(result1, result2);
 
   const arbitrationResponse = await ai.generate({
@@ -167,17 +186,24 @@ async function runStage2Arbitration(
   const arbitrationResult = parseJsonResponse(arbitrationResponse.content, arbitrationSchema);
 
   if (arbitrationResult.choice === 0) {
-    throw new Error(
-      `STAGE2_ARBITRATION_FAILED: ${arbitrationResult.reason ?? "Both parsing results invalid"}`
-    );
+    return {
+      kind: "anomaly",
+      reason: arbitrationResult.reason ?? "Both parsing results invalid",
+    };
   }
 
-  return arbitrationResult.choice === 1 ? result1 : result2;
+  return {
+    kind: "chosen",
+    result: arbitrationResult.choice === 1 ? result1 : result2,
+  };
 }
 
 // ===== Main Stage 2 Executor =====
 
-export async function executeStage2(input: Stage2Input, ai: AIContext): Promise<Stage2Output> {
+export async function executeStage2(
+  input: Stage2Input,
+  ai: AIContext
+): Promise<Stage2ExecutionResult> {
   const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
 
   const prompt = buildDetailedParsePrompt(
@@ -192,20 +218,33 @@ export async function executeStage2(input: Stage2Input, ai: AIContext): Promise<
   // Compare results
   if (compareEntries(result1.ledger_entries, result2.ledger_entries)) {
     return {
-      entries: result1.ledger_entries,
-      title: input.validationSummary.summary?.title ?? "Untitled",
-      reasoning: result1.reasoning,
-      wasArbitrated: false,
+      kind: "success",
+      output: {
+        entries: result1.ledger_entries,
+        title: input.validationSummary.summary?.title ?? "Untitled",
+        reasoning: result1.reasoning,
+        wasArbitrated: false,
+      },
     };
   }
 
   // Arbitration needed
   const chosenResult = await runStage2Arbitration(ai, messageContent, result1, result2);
 
+  if (chosenResult.kind === "anomaly") {
+    return {
+      kind: "anomaly",
+      reason: chosenResult.reason,
+    };
+  }
+
   return {
-    entries: chosenResult.ledger_entries,
-    title: input.validationSummary.summary?.title ?? "Untitled",
-    reasoning: chosenResult.reasoning,
-    wasArbitrated: true,
+    kind: "success",
+    output: {
+      entries: chosenResult.result.ledger_entries,
+      title: input.validationSummary.summary?.title ?? "Untitled",
+      reasoning: chosenResult.result.reasoning,
+      wasArbitrated: true,
+    },
   };
 }

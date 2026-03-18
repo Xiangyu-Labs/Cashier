@@ -1,14 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listSourceDocuments } from "@/features/source-document/server/actions/queries";
+import { createAndQueueSourceDocument, listSourceDocuments } from "@/features/source-document/server";
 import { db } from "@/lib/db";
 import { serviceCredentials } from "@/features/ledger/server";
 import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
-import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
+import { parseApiInput } from "@/app/api/v1/_shared/validation";
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -53,40 +53,11 @@ export async function POST(request: NextRequest) {
         throw new ValidationError("Invalid JSON body");
       }
 
-      const result = sourceDocumentInputSchema.safeParse(body);
-      if (!result.success) {
-        throw new ValidationError("Validation failed", { issues: result.error.issues });
-      }
-
-      const { text, images, entryDate, timezone } = result.data;
+      const { text, images, entryDate, timezone } = parseApiInput(sourceDocumentInputSchema, body);
 
       if ((text == null || text === "") && (images == null || images.length === 0)) {
         throw new ValidationError("Content (text or images) is required");
       }
-
-      const imageUrls: string[] = [];
-      if (images && images.length > 0) {
-        images.forEach((img) => {
-          let data = img.data;
-          if (!data.startsWith("data:") && !data.startsWith("http")) {
-            data = `data:image/jpeg;base64,${data}`;
-          }
-          imageUrls.push(data);
-        });
-      }
-
-      const { sourceDocuments } = await import("@/lib/db/schema");
-      const today = entryDate ?? getDateInTimezone(timezone) ?? formatDateTimeForApi(new Date());
-      const [savedDoc] = await db
-        .insert(sourceDocuments)
-        .values({
-          ledgerId: credential.ledgerId,
-          text: text ?? null,
-          imageUrls: imageUrls,
-          status: "queued",
-          entryDate: today,
-        })
-        .returning();
 
       try {
         await db
@@ -97,48 +68,29 @@ export async function POST(request: NextRequest) {
         logError("api/v1/source-documents:update-credential", error);
       }
 
-      const { flowEngine } = await import("@/lib/flow");
-      const { TASK_TYPE_PARSE_SOURCE_DOCUMENT } =
-        await import("@/features/source-document/server/tasks/parse-source-document");
       const { ledgers: ledgerTable } = await import("@/lib/db/schema");
 
       const ledger = await db.query.ledgers.findFirst({
         where: and(eq(ledgerTable.id, credential.ledgerId), isNull(ledgerTable.deletedAt)),
       });
 
-      if (ledger) {
-        const allCategories = await db.query.entryCategories.findMany({
-          where: (c, { eq, or, isNull, and }) =>
-            and(or(eq(c.ledgerId, credential.ledgerId), isNull(c.ledgerId)), isNull(c.deletedAt)),
-        });
-
-        await flowEngine.submit(
-          TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-          {
-            ledgerId: credential.ledgerId,
-            sourceDocumentId: savedDoc.id,
-            text: text ?? undefined,
-            imageUrls: imageUrls,
-            aiLanguage: ledger.metadata?.settings?.aiLanguage,
-            preferredCurrencies: ledger.metadata?.settings?.currencies || undefined,
-            categories: allCategories,
-            settings: {
-              aiCustomPrompt: ledger.metadata?.settings?.aiCustomPrompt,
-            },
-          },
-          {
-            title: "parse_source_document",
-            scopeId: credential.ledgerId,
-            entityType: "source_document",
-            entityId: savedDoc.id,
-          }
-        );
+      if (ledger == null) {
+        throw new ValidationError("Ledger not found for service credential");
       }
+
+      const createResult = await createAndQueueSourceDocument({
+        ledgerId: credential.ledgerId,
+        ledger,
+        text,
+        images,
+        entryDate,
+        timezone,
+      });
 
       return NextResponse.json(
         {
-          sourceDocumentId: savedDoc.id,
-          status: "queued",
+          sourceDocumentId: createResult.sourceDocumentId,
+          status: createResult.status,
           message: "Source document queued for processing",
         },
         { status: 201 }
@@ -161,7 +113,7 @@ export async function GET(request: NextRequest) {
     logContext: "api/v1/source-documents:GET",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const params = listQuerySchema.parse({
+      const params = parseApiInput(listQuerySchema, {
         status: searchParams.get("status") ?? undefined,
         startDate: searchParams.get("startDate") ?? undefined,
         endDate: searchParams.get("endDate") ?? undefined,

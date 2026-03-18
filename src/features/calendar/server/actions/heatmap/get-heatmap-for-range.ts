@@ -7,9 +7,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/features/ledger/server/schema";
-import { sourceDocuments } from "@/features/source-document/server/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { requireLedgerAccess } from "@/features/auth/server";
+import { ledgerEntries } from "@/features/ledger/server";
+import { sourceDocuments } from "@/features/source-document/server";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { GetCalendarHeatmapForRangeSchema } from "./schemas";
 import { normalizeDate, calculateStats } from "./utils";

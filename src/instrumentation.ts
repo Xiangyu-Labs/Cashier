@@ -28,5 +28,6 @@ export async function register() {
     logger.info("Task handlers registered successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
+    throw error;
   }
 }

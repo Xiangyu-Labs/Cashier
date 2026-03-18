@@ -54,11 +54,14 @@ describe("Stage 2 Executor", () => {
 
       const result = await executeStage2(baseInput, mockAI);
 
-      expect(result.entries).toHaveLength(1);
-      expect(result.entries[0].item_name).toBe("午餐");
-      expect(result.entries[0].amount).toBe(45);
-      expect(result.title).toBe("午餐消费");
-      expect(result.wasArbitrated).toBe(false);
+      expect(result.kind).toBe("success");
+      if (result.kind === "success") {
+        expect(result.output.entries).toHaveLength(1);
+        expect(result.output.entries[0].item_name).toBe("午餐");
+        expect(result.output.entries[0].amount).toBe(45);
+        expect(result.output.title).toBe("午餐消费");
+        expect(result.output.wasArbitrated).toBe(false);
+      }
     });
   });
 
@@ -89,8 +92,10 @@ describe("Stage 2 Executor", () => {
 
       const result = await executeStage2(baseInput, mockAI);
 
-      // Date should be preserved from AI result (not overridden to today)
-      expect(result.entries[0].entry_date).toBe("2026-01-15");
+      expect(result.kind).toBe("success");
+      if (result.kind === "success") {
+        expect(result.output.entries[0].entry_date).toBe("2026-01-15");
+      }
     });
   });
 
@@ -152,11 +157,14 @@ describe("Stage 2 Executor", () => {
 
       const result = await executeStage2(baseInput, mockAI);
 
-      expect(result.wasArbitrated).toBe(true);
-      expect(result.entries[0].amount).toBe(45);
+      expect(result.kind).toBe("success");
+      if (result.kind === "success") {
+        expect(result.output.wasArbitrated).toBe(true);
+        expect(result.output.entries[0].amount).toBe(45);
+      }
     });
 
-    it("should throw when arbitration returns choice 0", async () => {
+    it("should return anomaly when arbitration returns choice 0", async () => {
       let callCount = 0;
       const mockAI: AIContext = {
         generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
@@ -209,7 +217,11 @@ describe("Stage 2 Executor", () => {
         }),
       };
 
-      await expect(executeStage2(baseInput, mockAI)).rejects.toThrow("STAGE2_ARBITRATION_FAILED");
+      const result = await executeStage2(baseInput, mockAI);
+      expect(result).toEqual({
+        kind: "anomaly",
+        reason: "Both wrong",
+      });
     });
   });
 

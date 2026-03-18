@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers } from "@/features/ledger/server/schema";
-import { currencyRates } from "@/features/currency/server/schema";
+import { currencyRates } from "@/features/currency/server";
+import { ledgerEntries, ledgers } from "@/features/ledger/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { convertAmount, calculateGrowth } from "../utils";
 import { parseDateString } from "@/lib/date-utils";

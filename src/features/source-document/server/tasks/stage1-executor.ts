@@ -18,6 +18,7 @@
 import { parseJsonResponse } from "@/lib/ai/response-parser";
 import { runDualGptWithArbitration } from "@/lib/ai/dual-gpt-runner";
 import type { AIContext } from "@/lib/flow/types";
+import { throwIfCancelled } from "@/lib/flow/cancellation";
 import type {
   ValidityCheckOutput,
   CompletenessCheckOutput,
@@ -234,9 +235,7 @@ export async function executeStage1(
   }
 
   // Check for cancellation
-  if (signal?.aborted) {
-    throw new Error("Task cancelled");
-  }
+  throwIfCancelled(signal);
 
   // Step 2: Run completeness check and other tasks in parallel (excluding title)
   const [completenessResult, currencyResult, categoryResult, userReqResult] = await Promise.all([

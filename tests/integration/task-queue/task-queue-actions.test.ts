@@ -274,7 +274,8 @@ describe("getTaskQueueAction", () => {
       title: "Parse Task",
       status: "completed",
       scopeId: ledgerId,
-      input: { sourceDocumentId: sourceDocId, imageUrl: "test.jpg" },
+      entityType: "source_document",
+      entityId: sourceDocId,
     });
 
     const result = await getTaskQueueAction(ledgerId);
@@ -314,7 +315,8 @@ describe("getTaskQueueAction", () => {
       title: "Parse Task",
       status: "completed",
       scopeId: ledgerId,
-      input: { sourceDocumentId: sourceDocId, imageUrl: "test.jpg" },
+      entityType: "source_document",
+      entityId: sourceDocId,
     });
 
     const result = await getTaskQueueAction(ledgerId);
@@ -322,6 +324,9 @@ describe("getTaskQueueAction", () => {
     // The completed task should appear
     const completedItems = result.items.filter((i) => i.status === "completed");
     expect(completedItems).toHaveLength(1);
+    expect(completedItems[0].sourceDocumentId).toBe(sourceDocId);
+    expect(completedItems[0].entityType).toBe("source_document");
+    expect(completedItems[0].entityId).toBe(sourceDocId);
 
     // No anomaly items
     expect(result.stats.anomalyCount).toBe(0);

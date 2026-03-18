@@ -7,7 +7,14 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { TASK_TYPE_I18N } from "./constants";
-import type { QueueItem } from "../../types";
+import {
+  canCancel as canCancelItem,
+  canDelete as canDeleteItem,
+  canDismiss as canDismissItem,
+  canRetry as canRetryItem,
+  hasSourceDocument,
+  type QueueItem,
+} from "../../types";
 
 interface UseQueueItemActionsOptions {
   item: QueueItem;
@@ -66,36 +73,16 @@ export function useQueueItemActions({
   }, [item.status, item.taskType, item.title, t]);
 
   // Determine available actions
-  const canCancel =
-    item.kind === "task" && (item.status === "pending" || item.status === "running") && onCancel != null;
-
-  const canRetry =
-    item.sourceDocumentId != null &&
-    item.sourceDocumentId !== "" &&
-    onRetry != null &&
-    (item.status === "failed" ||
-      item.status === "anomaly" ||
-      item.status === "pending" ||
-      item.status === "completed" ||
-      item.status === "running");
-
-  const canDelete =
-    item.sourceDocumentId != null &&
-    item.sourceDocumentId !== "" &&
-    onDelete != null &&
-    (item.status === "failed" ||
-      item.status === "anomaly" ||
-      item.status === "pending" ||
-      item.status === "running");
-
-  const canDismiss =
-    item.kind === "task" && item.status === "failed" && (item.sourceDocumentId == null || item.sourceDocumentId === "") && onDismiss != null;
+  const canCancel = canCancelItem(item) && onCancel != null;
+  const canRetry = canRetryItem(item) && onRetry != null;
+  const canDelete = canDeleteItem(item) && onDelete != null;
+  const canDismiss = canDismissItem(item) && onDismiss != null;
 
   // UI flags
-  const showDirectCancel = item.status === "running" && canCancel && (item.sourceDocumentId == null || item.sourceDocumentId === "");
-  const showCancelInDropdown = canCancel && (item.sourceDocumentId == null || item.sourceDocumentId === "");
+  const showDirectCancel = item.status === "running" && canCancel;
+  const showCancelInDropdown = canCancel;
   const showDropdown = canRetry || canDelete || canDismiss || showCancelInDropdown;
-  const canExpand = item.sourceDocumentId != null && item.sourceDocumentId !== "";
+  const canExpand = hasSourceDocument(item);
   const useSpecialInteraction =
     item.status === "completed" && item.taskType === "parse_source_document" && onViewDetails != null;
 

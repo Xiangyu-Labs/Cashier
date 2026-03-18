@@ -2,11 +2,11 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/lib/db/schema";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { requireLedgerAccess } from "@/features/auth/server";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { prepareSourceDocumentTask } from "./helpers";
+import { getSourceDocumentTaskContext, prepareSourceDocumentTask } from "./helpers";
 import { logger } from "@/lib/logger";
 
 /**
@@ -117,10 +117,18 @@ export async function batchRetrySourceDocumentsAction(
   }
 
   // 7. Submit new tasks for each new document using Promise.allSettled to handle partial failures
+  const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
+
   const results = await Promise.allSettled(
     newDocMappings.map(async (mapping) => {
-      const images = mapping.imageUrls.map((url) => ({ data: url, mimeType: "image/jpeg" }));
-      await prepareSourceDocumentTask(ledgerId, ledger, mapping.text, images, mapping.newDocId);
+      await prepareSourceDocumentTask({
+        ledgerId,
+        sourceDocumentId: mapping.newDocId,
+        text: mapping.text,
+        imageUrls: mapping.imageUrls,
+        categories,
+        settings,
+      });
     })
   );
 

@@ -45,6 +45,12 @@ export interface QueueItem {
   /** ISO timestamp of creation */
   createdAt: string;
 
+  /** Entity type from task metadata for behavior gating */
+  entityType?: string;
+
+  /** Entity ID from task metadata for behavior gating */
+  entityId?: string;
+
   // --- Action-related fields ---
 
   /**
@@ -68,40 +74,56 @@ export interface QueueItem {
   taskType?: string;
 }
 
+function isSourceDocumentEntity(item: QueueItem): boolean {
+  return item.entityType === "source_document" && item.entityId != null && item.entityId !== "";
+}
+
 /**
  * Helper to check if an item supports source document operations
  * (edit-retry, view original input)
  */
 export function hasSourceDocument(item: QueueItem): boolean {
-  return item.sourceDocumentId !== undefined;
+  return item.kind === "anomaly" || isSourceDocumentEntity(item);
 }
 
 /**
  * Helper to check if an item supports retry operations
  */
 export function canRetry(item: QueueItem): boolean {
-  // Tasks with source documents can be retried
-  // Anomalies can be retried
-  return item.sourceDocumentId !== undefined;
+  if (!hasSourceDocument(item)) {
+    return false;
+  }
+
+  if (item.kind === "task" && item.taskType !== "parse_source_document") {
+    return false;
+  }
+
+  return (
+    item.status === "failed" ||
+    item.status === "anomaly" ||
+    item.status === "pending" ||
+    item.status === "completed" ||
+    item.status === "running"
+  );
 }
 
 /**
  * Helper to check if an item supports cancel operation
  */
 export function canCancel(item: QueueItem): boolean {
-  // Only pending/running tasks can be cancelled
-  // Anomalies have no running task to cancel
-  return item.kind === "task" && (item.status === "pending" || item.status === "running");
+  return (
+    item.kind === "task" &&
+    !hasSourceDocument(item) &&
+    (item.status === "pending" || item.status === "running")
+  );
 }
 
 /**
  * Helper to check if an item supports delete operation
  */
 export function canDelete(item: QueueItem): boolean {
-  // Failed/running tasks with source docs, anomalies can be deleted
-  // Pending tasks with source docs can also be deleted
   return (
-    item.sourceDocumentId !== undefined &&
+    hasSourceDocument(item) &&
     (item.status === "failed" ||
       item.status === "anomaly" ||
       item.status === "pending" ||
@@ -114,6 +136,5 @@ export function canDelete(item: QueueItem): boolean {
  * (for non-source-document tasks like category generation)
  */
 export function canDismiss(item: QueueItem): boolean {
-  // Only failed tasks without source document can be dismissed
-  return item.kind === "task" && item.status === "failed" && item.sourceDocumentId === undefined;
+  return item.kind === "task" && item.status === "failed" && !hasSourceDocument(item);
 }

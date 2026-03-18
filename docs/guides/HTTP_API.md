@@ -31,6 +31,7 @@ Shared behavior:
 - Validates the `Authorization` header
 - Validates the service credential
 - Applies API rate limiting
+- Converts request validation failures into `400 VALIDATION_ERROR`
 - Returns a standardized JSON error payload
 
 Shared handler:
@@ -44,6 +45,20 @@ Standard error shape:
   "error": {
     "message": "Missing or invalid Authorization header",
     "code": "UNAUTHORIZED"
+  }
+}
+```
+
+Validation errors use the same envelope:
+
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "details": {
+      "issues": []
+    }
   }
 }
 ```
@@ -216,6 +231,7 @@ Rules:
 
 - At least one of `text` or `images` is required
 - Per-image max size is `10MB`
+- If `entryDate` is omitted, the server resolves it from `timezone` first and falls back to the server date
 
 Response:
 

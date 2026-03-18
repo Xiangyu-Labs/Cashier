@@ -35,20 +35,12 @@ export interface TaskQueueResult {
   stats: TaskQueueStats;
 }
 
-/**
- * Extract sourceDocumentId from task input
- * Uses type guard pattern for safe property access
- */
-function getSourceDocumentIdFromInput(input: unknown): string | undefined {
-  if (typeof input !== "object" || input === null) {
+function getSourceDocumentId(task: Pick<TaskRun, "entityType" | "entityId">): string | undefined {
+  if (task.entityType !== "source_document" || task.entityId == null || task.entityId === "") {
     return undefined;
   }
-  // Safe cast to Record for property access with type guard
-  const obj = input as Record<string, unknown>;
-  if ("sourceDocumentId" in obj && typeof obj.sourceDocumentId === "string") {
-    return obj.sourceDocumentId;
-  }
-  return undefined;
+
+  return task.entityId;
 }
 
 /**
@@ -56,7 +48,7 @@ function getSourceDocumentIdFromInput(input: unknown): string | undefined {
  * Validates status with Zod schema for runtime type safety
  */
 function taskRunToQueueItem(task: TaskRun, sourceDocTitle?: string | null): QueueItem {
-  const sourceDocumentId = getSourceDocumentIdFromInput(task.input);
+  const sourceDocumentId = getSourceDocumentId(task);
 
   // Validate status with Zod (replaces type assertion)
   const parsedStatus = QueueItemStatusSchema.safeParse(task.status);
@@ -80,6 +72,8 @@ function taskRunToQueueItem(task: TaskRun, sourceDocTitle?: string | null): Queu
     subtitle: task.error ?? undefined,
     progress: task.progress ?? undefined,
     createdAt: task.createdAt.toISOString(),
+    entityType: task.entityType ?? undefined,
+    entityId: task.entityId ?? undefined,
     sourceDocumentId,
     taskId: task.id,
     taskType: task.type,
@@ -97,6 +91,8 @@ function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
     title: doc.title ?? "Untitled Source Document",
     subtitle: doc.anomalyReason ?? undefined,
     createdAt: doc.createdAt.toISOString(),
+    entityType: "source_document",
+    entityId: doc.id,
     sourceDocumentId: doc.id,
     taskId: undefined,
     taskType: undefined,
@@ -150,8 +146,10 @@ export async function getTaskQueueForLedger(ledgerId: string): Promise<TaskQueue
 
   // Collect source document IDs from completed parse_source_document tasks
   const completedSourceDocIds = completedTasks
-    .filter((task) => task.type === "parse_source_document")
-    .map((task) => getSourceDocumentIdFromInput(task.input))
+    .filter(
+      (task) => task.type === "parse_source_document" && task.entityType === "source_document"
+    )
+    .map((task) => getSourceDocumentId(task))
     .filter((id): id is string => id != null && id !== "");
 
   // Fetch source document titles and statuses for completed tasks
@@ -178,7 +176,7 @@ export async function getTaskQueueForLedger(ledgerId: string): Promise<TaskQueue
 
   // Add completed tasks (exclude those whose source document is in anomaly state)
   for (const task of completedTasks) {
-    const sourceDocId = getSourceDocumentIdFromInput(task.input);
+    const sourceDocId = getSourceDocumentId(task);
     // Skip completed tasks whose source document is in anomaly state
     // (anomaly documents are shown separately in the anomaly section)
     if (sourceDocId != null && sourceDocId !== "" && anomalySourceDocIds.has(sourceDocId)) {

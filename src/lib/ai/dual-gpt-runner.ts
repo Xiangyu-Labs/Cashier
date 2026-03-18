@@ -10,6 +10,18 @@ import { logger } from "@/lib/logger";
 import { parseJsonResponse } from "./response-parser";
 import type { AIContext, AIModelTier } from "@/lib/flow/types";
 
+export class ArbitrationFailedError extends Error {
+  constructor(
+    public taskName: string,
+    public reason?: string
+  ) {
+    super(
+      `Arbitration failed for ${taskName}${reason != null && reason !== "" ? `: ${reason}` : ""}`
+    );
+    this.name = "ArbitrationFailedError";
+  }
+}
+
 export interface DualGptResult<T> {
   result: T;
   reasoning: string;
@@ -112,9 +124,7 @@ async function runArbitration<T>(
   const arbitrationResult = parseJsonResponse(arbitrationResponse.content, arbitrationSchema);
 
   if (arbitrationResult.choice === 0) {
-    throw new Error(
-      `ARBITRATION_FAILED: ${taskName} - ${arbitrationResult.reason ?? "Both results invalid"}`
-    );
+    throw new ArbitrationFailedError(taskName, arbitrationResult.reason ?? "Both results invalid");
   }
 
   const chosenResult = arbitrationResult.choice === 1 ? result1 : result2;
