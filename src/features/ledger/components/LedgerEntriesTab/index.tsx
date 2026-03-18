@@ -28,7 +28,7 @@ import { useSelection } from "@/hooks/use-selection";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
-import { useGroupedEntries } from "./useGroupedEntries";
+import { useGroupedEntries } from "@/modules/ledger/ui/useGroupedEntries";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
