@@ -82,10 +82,6 @@ vi.mock("@/features/ledger/server/actions/credentials", () => ({
   deleteServiceCredentialAction: vi.fn(),
 }));
 
-vi.mock("@/features/auth/server/actions/sign-out", () => ({
-  signOutAction: () => mockSignOut(),
-}));
-
 vi.mock("@/features/ledger/client/hooks/use-ledger-events", () => ({
   useLedgerEvents: () => ({}),
 }));

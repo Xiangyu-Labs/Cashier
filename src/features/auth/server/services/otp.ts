@@ -4,16 +4,16 @@ import crypto from "crypto";
 export const OTP_LENGTH = 6;
 
 /** Default OTP expiration time in seconds (5 minutes) */
-export const DEFAULT_OTP_EXPIRES_SECONDS = 300;
+const DEFAULT_OTP_EXPIRES_SECONDS = 300;
 
 /** Default account lockout duration in minutes (15 minutes) */
-export const DEFAULT_LOCKOUT_MINUTES = 15;
+const DEFAULT_LOCKOUT_MINUTES = 15;
 
 /** Default maximum allowed OTP attempts before lockout */
-export const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_MAX_ATTEMPTS = 5;
 
 /** Default resend cooldown period in seconds (60 seconds) */
-export const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * Generate a 6-digit random OTP code
