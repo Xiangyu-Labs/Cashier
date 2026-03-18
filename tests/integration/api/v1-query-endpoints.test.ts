@@ -4,10 +4,19 @@ import { GET as entriesGET } from "@/app/api/v1/entries/route";
 import { GET as sourceDocumentsGET } from "@/app/api/v1/source-documents/route";
 import { GET as statsGET } from "@/app/api/v1/stats/route";
 import { GET as categoriesGET } from "@/app/api/v1/categories/route";
+import { GET as taskItemsGET } from "@/app/api/v1/task/items/route";
+import { GET as taskStatsGET } from "@/app/api/v1/task/stats/route";
 import * as rateLimitModule from "@/lib/ratelimit";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { serviceCredentials, ledgerEntries, sourceDocuments, ledgers, entryCategories } from "@/lib/db/schema";
+import {
+  serviceCredentials,
+  ledgerEntries,
+  sourceDocuments,
+  ledgers,
+  entryCategories,
+  taskRuns,
+} from "@/lib/db/schema";
 import { vi, afterEach } from "vitest";
 
 // Helper to create a mock NextRequest
@@ -38,6 +47,7 @@ describe("API v1 Query Endpoints", () => {
 
     // Clean up first - delete in reverse order to avoid FK constraints
     await db.delete(ledgerEntries);
+    await db.delete(taskRuns);
     await db.delete(sourceDocuments);
     await db.delete(entryCategories);
     await db.delete(serviceCredentials);
@@ -100,6 +110,59 @@ describe("API v1 Query Endpoints", () => {
       convertedAmount: "100.00",
       exchangeRate: "1.00",
     });
+
+    const [anomalyDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        title: "异常单据",
+        text: "识别失败",
+        status: "anomaly",
+        type: "ai_parsed",
+        anomalyReason: "Could not parse",
+        imageUrls: [],
+      })
+      .returning();
+
+    await db.insert(taskRuns).values([
+      {
+        type: "parse_source_document",
+        title: "Pending Task",
+        status: "pending",
+        scopeId: ledgerId,
+      },
+      {
+        type: "parse_source_document",
+        title: "Running Task",
+        status: "running",
+        scopeId: ledgerId,
+      },
+      {
+        type: "parse_source_document",
+        title: "Failed Task",
+        status: "failed",
+        error: "Something went wrong",
+        scopeId: ledgerId,
+      },
+      {
+        type: "parse_source_document",
+        title: "Completed Visible Task",
+        status: "completed",
+        scopeId: ledgerId,
+        completedAt: new Date(),
+        input: { sourceDocumentId: doc.id },
+        tokenUsage: { total: { input: 100, output: 50 } },
+      },
+      {
+        type: "parse_source_document",
+        title: "Completed Hidden Task",
+        status: "completed",
+        scopeId: ledgerId,
+        completedAt: new Date(Date.now() - 1000),
+        input: { sourceDocumentId: anomalyDoc.id },
+        tokenUsage: { total: { input: 200, output: 100 } },
+      },
+    ]);
   });
 
   describe("GET /api/v1/entries", () => {
@@ -278,6 +341,131 @@ describe("API v1 Query Endpoints", () => {
 
       const response = await categoriesGET(request);
       expect(response.status).toBe(401);
+    });
+  });
+
+  describe("GET /api/v1/task/items", () => {
+    it("should return task items with valid credentials", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await taskItemsGET(request);
+      expect(response.status).toBe(200);
+
+      const data = await response.json();
+      expect(Array.isArray(data.items)).toBe(true);
+      expect(data.items.some((item: { status: string }) => item.status === "pending")).toBe(true);
+      expect(data.items.some((item: { status: string }) => item.status === "running")).toBe(true);
+      expect(data.items.some((item: { status: string }) => item.status === "failed")).toBe(true);
+      expect(data.items.some((item: { kind: string }) => item.kind === "anomaly")).toBe(true);
+      expect(data.items.some((item: { status: string }) => item.status === "completed")).toBe(true);
+    });
+
+    it("should not include completed tasks for anomaly source documents", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await taskItemsGET(request);
+      expect(response.status).toBe(200);
+
+      const data = await response.json();
+      expect(
+        data.items.some((item: { title: string }) => item.title === "Completed Hidden Task")
+      ).toBe(false);
+    });
+
+    it("should return 401 without auth header", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`);
+
+      const response = await taskItemsGET(request);
+      expect(response.status).toBe(401);
+    });
+
+    it("should return 401 with invalid key", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
+        headers: { Authorization: "Bearer invalid_key" },
+      });
+
+      const response = await taskItemsGET(request);
+      expect(response.status).toBe(401);
+    });
+
+    it("should return 429 when rate limit is exceeded", async () => {
+      vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
+        success: false,
+        limit: 0,
+        remaining: 0,
+        reset: Date.now(),
+      });
+
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await taskItemsGET(request);
+      expect(response.status).toBe(429);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("RATE_LIMIT");
+    });
+  });
+
+  describe("GET /api/v1/task/stats", () => {
+    it("should return task stats with valid credentials", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await taskStatsGET(request);
+      expect(response.status).toBe(200);
+
+      const data = await response.json();
+      expect(data.stats.pendingCount).toBe(1);
+      expect(data.stats.runningCount).toBe(1);
+      expect(data.stats.failedCount).toBe(1);
+      expect(data.stats.completedCount).toBe(2);
+      expect(data.stats.anomalyCount).toBe(1);
+      expect(data.stats.total).toBe(4);
+      expect(data.stats.totalInputTokens).toBe(300);
+      expect(data.stats.totalOutputTokens).toBe(150);
+      expect(data.stats.avgTokensPerTask).toBe(225);
+    });
+
+    it("should return 401 without auth header", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`);
+
+      const response = await taskStatsGET(request);
+      expect(response.status).toBe(401);
+    });
+
+    it("should return 401 with invalid key", async () => {
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
+        headers: { Authorization: "Bearer invalid_key" },
+      });
+
+      const response = await taskStatsGET(request);
+      expect(response.status).toBe(401);
+    });
+
+    it("should return 429 when rate limit is exceeded", async () => {
+      vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
+        success: false,
+        limit: 0,
+        remaining: 0,
+        reset: Date.now(),
+      });
+
+      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      const response = await taskStatsGET(request);
+      expect(response.status).toBe(429);
+
+      const data = await response.json();
+      expect(data.error.code).toBe("RATE_LIMIT");
     });
   });
 });
