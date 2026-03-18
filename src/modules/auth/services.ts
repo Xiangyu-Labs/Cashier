@@ -10,5 +10,15 @@ export {
   assertRegistrationAllowed,
   RegistrationDisabledError,
 } from "@/features/auth/server/services/registration";
-export { generateOTP, verifyOTP, hashOTP, isValidOTPFormat, OTP_LENGTH } from "@/features/auth/server/services/otp";
+export {
+  generateOTP,
+  verifyOTP,
+  hashOTP,
+  isValidOTPFormat,
+  getOTPExpiration,
+  getLockoutExpiration,
+  getMaxAttempts,
+  getResendCooldown,
+  OTP_LENGTH,
+} from "@/features/auth/server/services/otp";
 export { createDefaultLedgerForUser } from "@/features/auth/server/services/user-setup";

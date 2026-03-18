@@ -10,7 +10,7 @@ import {
   verifyOTPWithPolicy,
   isAccountLocked,
 } from "@/features/auth/server/services/otp-verification";
-import { generateOTP, verifyOTP } from "@/features/auth/server/services/otp";
+import { generateOTP, verifyOTP } from "@/modules/auth/services";
 import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 
