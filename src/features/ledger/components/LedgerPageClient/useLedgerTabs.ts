@@ -5,10 +5,8 @@
  */
 
 import { useCallback, useMemo } from "react";
-import {
-  replaceLedgerUrl,
-  updateLedgerSearchParams,
-} from "@/features/ledger/client/ledger-url-params";
+import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
+import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
 
 interface UseLedgerTabsOptions {
   initialTab?: string;

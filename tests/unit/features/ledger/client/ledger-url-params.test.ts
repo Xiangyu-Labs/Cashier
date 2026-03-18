@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildLedgerUrl,
   readLedgerFilterParams,
-  replaceAndNavigateLedgerUrl,
-  replaceLedgerUrl,
   updateLedgerSearchParams,
 } from "@/features/ledger/client/ledger-url-params";
+import {
+  replaceAndNavigateLedgerUrl,
+  replaceLedgerUrl,
+} from "@/features/ledger/client/ledger-url-navigation";
 
 describe("ledger-url-params", () => {
   beforeEach(() => {
@@ -64,6 +66,12 @@ describe("ledger-url-params", () => {
     });
   });
 
+  it("builds URLs without introducing navigation side effects", () => {
+    const params = new URLSearchParams("tab=details&period=custom");
+
+    expect(buildLedgerUrl("/ledger/test-id", params)).toBe("/ledger/test-id?tab=details&period=custom");
+  });
+
   it("replaces browser URL and optionally navigates through router", () => {
     const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
     const router = { replace: vi.fn() };
@@ -72,7 +80,6 @@ describe("ledger-url-params", () => {
     const replacedUrl = replaceLedgerUrl("/ledger/test-id", params);
     const navigatedUrl = replaceAndNavigateLedgerUrl("/ledger/test-id", params, router);
 
-    expect(buildLedgerUrl("/ledger/test-id", params)).toBe("/ledger/test-id?tab=details&period=custom");
     expect(replacedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(navigatedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(replaceState).toHaveBeenCalled();

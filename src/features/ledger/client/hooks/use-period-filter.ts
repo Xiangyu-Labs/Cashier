@@ -10,9 +10,9 @@ import { parseDateString } from "@/lib/date-utils";
 import type { EntryFilters } from "@/features/ledger/components/EntryFilterPanel";
 import {
   readLedgerFilterParams,
-  replaceLedgerUrl,
   updateLedgerSearchParams,
 } from "@/features/ledger/client/ledger-url-params";
+import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
 
 export interface FilterParams {
   categoryId: string | null;

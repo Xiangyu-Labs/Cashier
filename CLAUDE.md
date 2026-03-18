@@ -202,6 +202,13 @@ const {
 
 Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
 
+### Layering Rules
+
+- Keep `src/app` thin: pages and route handlers should glue together routing, validation, auth, and feature calls without owning business logic.
+- Put cross-feature pure helpers, shared schemas, and formatting/parsing utilities in `src/lib`.
+- Keep feature-private state helpers and URL coordination inside the owning feature rather than `src/lib` or `src/hooks`.
+- Separate pure URL/search-param utilities from navigation side effects (`router.replace`, `window.history`, transitions) instead of mixing them in one helper module.
+
 ### Environment Variables
 
 Configuration is organized into three tiers:

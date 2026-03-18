@@ -36,6 +36,7 @@ src/features/ledger/
 
 1.  **Colocation**: Everything related to a feature should stay within that feature's folder.
 2.  **Public API**: Features should ideally export a clear API for other features to use, rather than deep linking into internal implementation details (e.g., import from `features/ledger/server` not `.../server/internal_helper`).
+3.  **Feature-private helpers stay colocated**: If logic only serves one feature, keep it inside that feature's `client/`, `server/`, or local helper modules rather than promoting it to `src/lib` or `src/hooks`.
 
 ## 2. Shared Kernel (`src/lib/*`)
 
@@ -47,6 +48,12 @@ The `src/lib/` directory contains code that is truly generic or infrastructural,
 - **`lib/flow`**: Workflow orchestration for processing tasks.
 
 Avoid putting business logic in `src/lib`. If logic belongs to "Users", put it in `src/features/users`, not `lib/user-utils.ts`.
+
+Community-aligned rule of thumb:
+
+- Put cross-feature pure utilities, parsing, formatting, and shared schemas in `src/lib`.
+- Keep feature-specific URL state, filter state, and UI coordination inside the owning feature.
+- Separate pure state helpers from navigation or browser side effects whenever possible.
 
 ## 3. The Application Layer (`src/app`)
 
@@ -62,6 +69,16 @@ export default function LedgerPage() {
   return <LedgerPageClient />;
 }
 ```
+
+For route handlers, keep `src/app/api/*` limited to boundary concerns:
+
+- Authentication / authorization
+- Rate limiting
+- Input parsing and validation
+- Calling feature actions/services
+- Returning HTTP responses
+
+Do not let `src/app` become a second business-logic layer.
 
 ## 4. Data Access
 

@@ -1,7 +1,3 @@
-"use client";
-
-import { startTransition } from "react";
-
 export interface LedgerFilterParams {
   categoryId: string | null;
   currency: string | null;
@@ -20,10 +16,6 @@ interface LedgerUrlUpdate {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
-}
-
-interface LedgerRouterLike {
-  replace: (url: string, options: { scroll: false }) => void;
 }
 
 function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchParams {
@@ -105,22 +97,4 @@ export function updateLedgerSearchParams(
 export function buildLedgerUrl(pathname: string, searchParams: SearchParamsLike | URLSearchParams): string {
   const query = searchParams.toString();
   return query === "" ? pathname : `${pathname}?${query}`;
-}
-
-export function replaceLedgerUrl(pathname: string, searchParams: SearchParamsLike | URLSearchParams): string {
-  const url = buildLedgerUrl(pathname, searchParams);
-  window.history.replaceState(null, "", url);
-  return url;
-}
-
-export function replaceAndNavigateLedgerUrl(
-  pathname: string,
-  searchParams: SearchParamsLike | URLSearchParams,
-  router: LedgerRouterLike
-): string {
-  const url = replaceLedgerUrl(pathname, searchParams);
-  startTransition(() => {
-    router.replace(url, { scroll: false });
-  });
-  return url;
 }

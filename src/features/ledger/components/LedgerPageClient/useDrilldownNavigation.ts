@@ -7,10 +7,8 @@
 
 import { useCallback } from "react";
 import { useRouter } from "@/i18n/routing";
-import {
-  replaceAndNavigateLedgerUrl,
-  updateLedgerSearchParams,
-} from "@/features/ledger/client/ledger-url-params";
+import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
+import { replaceAndNavigateLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
 
 interface UseDrilldownNavigationOptions {
   searchParams: URLSearchParams;

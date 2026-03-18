@@ -15,10 +15,8 @@ import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue"
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
 import { fireAndForget } from "@/lib/safe-async";
-import {
-  replaceLedgerUrl,
-  updateLedgerSearchParams,
-} from "@/features/ledger/client/ledger-url-params";
+import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
+import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
