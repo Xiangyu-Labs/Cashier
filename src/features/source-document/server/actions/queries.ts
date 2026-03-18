@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -10,7 +10,7 @@ import { desc, lte, gte, inArray, and, eq, or, lt, sql, type SQL } from "drizzle
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
-import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
 import {
   type SerializedSourceDocument,
   type SerializedLedgerEntry,

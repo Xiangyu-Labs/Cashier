@@ -7,9 +7,3 @@ export { getLedgerSettingsAction } from "./actions/settings";
 export { calculateLedgerStats, getLedgerStatsAction } from "./actions/stats";
 export { validateServiceCredential } from "./actions/credentials";
 export { recalculateEntriesConvertedAmount } from "./actions/helpers";
-
-export {
-  ledgers,
-  ledgerEntries,
-  serviceCredentials,
-} from "./schema";

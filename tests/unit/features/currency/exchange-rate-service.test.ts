@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
 import { db } from "@/lib/db";
-import { currencyRates } from "@/features/currency/server/schema";
+import { currencyRates } from "@/persistence/schema/currency";
 
 describe("ExchangeRateService", () => {
   beforeEach(async () => {

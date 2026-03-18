@@ -2,7 +2,7 @@ import { CredentialsSignin } from "@auth/core/errors";
 import { and, eq, isNull } from "drizzle-orm";
 import type { User } from "next-auth";
 import { db } from "@/lib/db";
-import { users } from "@/features/auth/server/schema";
+import { users } from "@/persistence/schema/auth";
 import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { isValidOTPFormat } from "@/features/auth/server/services/otp";
@@ -15,6 +15,7 @@ import { assertRegistrationAllowed } from "@/features/auth/server/services/regis
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
+import { provisionUserWorkspace } from "@/modules/auth";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -67,7 +68,7 @@ function validateCredentials(email: string, otp: string): string {
   return normalizedEmail;
 }
 
-async function findOrCreateUser(normalizedEmail: string, locale: string): Promise<{
+async function findOrCreateUser(normalizedEmail: string, _locale: string): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof db.query.users.findFirst>>>;
   isExistingUser: boolean;
 }> {
@@ -86,19 +87,9 @@ async function findOrCreateUser(normalizedEmail: string, locale: string): Promis
       })
       .returning();
     user = newUser;
-
-    const { createDefaultLedgerForUser } = await import(
-      "@/features/auth/server/services/user-setup"
-    );
-    await createDefaultLedgerForUser(user.id, user.email ?? "New User", locale);
   }
 
   return { user, isExistingUser };
-}
-
-async function sendExistingUserNotification(userEmail: string): Promise<void> {
-  const { sendLoginNotification } = await import("@/features/auth/server/services/notifications");
-  await sendLoginNotification(userEmail);
 }
 
 export async function authenticateWithOTP(params: {
@@ -155,11 +146,16 @@ export async function authenticateWithOTP(params: {
 
   const { user, isExistingUser } = await findOrCreateUser(normalizedEmail, locale);
 
-  await deleteOTPToken(normalizedEmail);
-
-  if (isExistingUser && user.email != null && user.email !== "") {
-    await sendExistingUserNotification(user.email);
+  if (!isExistingUser) {
+    await provisionUserWorkspace({
+      userId: user.id,
+      email: user.email ?? normalizedEmail,
+      locale,
+      trigger: "otp-sign-in",
+    });
   }
+
+  await deleteOTPToken(normalizedEmail);
 
   return {
     id: user.id,

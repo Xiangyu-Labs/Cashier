@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type Database from "better-sqlite3";
-import * as schema from "@/lib/db/schema";
+import * as schema from "@/persistence";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
 import { getTestDb } from "../setup";
-import { ledgers, sourceDocuments, users, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { ledgers, sourceDocuments, users, ledgerEntries, entryCategories } from "@/persistence";
 import {
   createLedgerData,
   createSourceDocumentData,

@@ -5,7 +5,7 @@
  * Used by both server actions and client hooks.
  */
 
-import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
 
 export interface SourceDocumentGroup<T> {
   sourceDocument: T;

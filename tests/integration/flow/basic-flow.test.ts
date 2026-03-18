@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
+import { taskRuns } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 

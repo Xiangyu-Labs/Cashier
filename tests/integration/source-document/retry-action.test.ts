@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { retrySourceDocumentAction } from "@/features/source-document/server/actions/retry";
 import { getTestDb } from "../../setup";
-import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/lib/db/schema";
+import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { flowEngine } from "@/lib/flow";

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { taskRuns, sourceDocuments } from "@/lib/db/schema";
+import { taskRuns, sourceDocuments } from "@/persistence";
 import { eq, or } from "drizzle-orm";
 
 /**

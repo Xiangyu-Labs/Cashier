@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createDefaultLedgerForUser } from "@/features/auth/server/services/user-setup";
 import { getTestDb } from "../../setup";
-import { ledgers, users, entryCategories } from "@/lib/db/schema";
+import { ledgers, users, entryCategories } from "@/persistence";
 import { eq } from "drizzle-orm";
 // Note: getDefaultLedger is used indirectly through createDefaultLedgerForUser
 

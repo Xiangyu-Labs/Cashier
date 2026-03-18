@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories, sourceDocuments, ledgerEntries } from "@/lib/db/schema";
+import { ledgers, entryCategories, sourceDocuments, ledgerEntries } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { auth } from "@/auth";

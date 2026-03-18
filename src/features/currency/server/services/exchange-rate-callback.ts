@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { recalculateEntriesConvertedAmount } from "@/features/ledger/server";
 import { logger } from "@/lib/logger";
 import { isNull } from "drizzle-orm";

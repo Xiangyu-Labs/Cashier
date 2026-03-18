@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as ledgerEntryPOST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
-import { serviceCredentials, sourceDocuments, ledgers } from "@/lib/db/schema";
+import { serviceCredentials, sourceDocuments, ledgers } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import {

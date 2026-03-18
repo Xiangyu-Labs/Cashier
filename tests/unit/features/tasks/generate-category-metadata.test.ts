@@ -5,7 +5,7 @@ import {
   type GenerateCategoryMetadataOutput,
 } from "@/features/ledger/server/tasks/generate-category-metadata";
 import { getTestDb } from "../../../setup";
-import { entryCategories } from "@/lib/db/schema";
+import { entryCategories } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { type FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";

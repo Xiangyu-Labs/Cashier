@@ -12,7 +12,7 @@ import {
   ledgerEntries,
   sourceDocuments,
   ledgers,
-} from "@/lib/db/schema";
+} from "@/persistence";
 import { eq, inArray, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";

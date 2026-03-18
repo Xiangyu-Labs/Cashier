@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { entryCategories, taskRuns, ledgerEntries } from "@/lib/db/schema";
+import { entryCategories, taskRuns, ledgerEntries } from "@/persistence";
 import { z } from "zod";
 import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";

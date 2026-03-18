@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { otpTokens } from "@/lib/db/schema";
+import { otpTokens } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { memoryStore } from "@/lib/memory-store";
 

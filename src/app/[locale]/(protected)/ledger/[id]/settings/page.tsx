@@ -3,8 +3,8 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
   getLedgerSettingsAction,
-} from "@/features/ledger/server";
-import { SettingsPageClient } from "@/features/ledger/components";
+} from "@/modules/ledger";
+import { SettingsPageClient } from "@/modules/ledger/ui";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
 

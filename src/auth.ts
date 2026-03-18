@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import type { OAuthConfig } from "next-auth/providers/index";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { users, accounts } from "@/features/auth/server/schema";
+import { users, accounts } from "@/persistence/schema/auth";
 import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
@@ -13,6 +13,7 @@ import {
 } from "@/features/auth/server/services/registration";
 import { TIME_SECONDS } from "@/lib/constants";
 import { UnauthorizedError } from "@/lib/errors";
+import { provisionUserWorkspace } from "@/modules/auth";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -121,19 +122,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      // When a new user is created, auto-create their default ledger
       if (user.id != null && user.id !== "") {
-        const { createDefaultLedgerForUser } =
-          await import("@/features/auth/server/services/user-setup");
-        await createDefaultLedgerForUser(user.id, user.email ?? "New User");
+        await provisionUserWorkspace({
+          userId: user.id,
+          email: user.email ?? "New User",
+          trigger: "auth-create-user",
+        });
       }
     },
     async signIn({ user, isNewUser }) {
-      // Send login notification for existing users (not on first sign up)
       if (isNewUser !== true && user.email != null && user.email !== "") {
-        const { sendLoginNotification } =
-          await import("@/features/auth/server/services/notifications");
-        await sendLoginNotification(user.email);
+        await provisionUserWorkspace({
+          userId: user.id!,
+          email: user.email,
+          trigger: "existing-login",
+        });
       }
     },
   },

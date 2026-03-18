@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
+import { taskRuns } from "@/persistence";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { StorageAdapter, TaskInput, TaskRecord, TaskFilter } from "../types";

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { otpTokens } from "@/features/auth/server/schema";
+import { otpTokens } from "@/persistence/schema/auth";
 import { eq, lt } from "drizzle-orm";
 import { hashOTP, getOTPExpiration } from "../services/otp";
 import { logger } from "@/lib/logger";

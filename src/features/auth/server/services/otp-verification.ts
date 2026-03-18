@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { otpTokens } from "@/features/auth/server/schema";
+import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 import { verifyOTP, getMaxAttempts, getLockoutExpiration } from "./otp";
 import { logger } from "@/lib/logger";

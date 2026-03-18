@@ -1,6 +1,6 @@
 "use server";
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server";
 import { serializeLedgerEntry, type SerializedLedgerEntry } from "@/lib/serialization";
@@ -36,22 +36,17 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
   const serializedEntry = serializeLedgerEntry({
     ...entry,
     category: entry.category,
-    sourceDocument: entry.sourceDocument
-      ? {
-          id: entry.sourceDocument.id,
-          title: entry.sourceDocument.title,
-        }
-      : undefined,
+    sourceDocument: entry.sourceDocument,
   });
 
   // Strip large metadata fields from sourceDocument to reduce payload size
-  if (serializedEntry.sourceDocument) {
+  if (serializedEntry.sourceDocument != null) {
     const {
       visionDescription: _visionDescription,
       originalImageUrls: _originalImageUrls,
       ...lightMetadata
     } =
-      serializedEntry.sourceDocument.metadata || {};
+      serializedEntry.sourceDocument.metadata ?? {};
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
       metadata: lightMetadata,

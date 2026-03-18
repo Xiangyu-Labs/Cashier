@@ -11,7 +11,7 @@ import {
   isAccountLocked,
 } from "@/features/auth/server/services/otp-verification";
 import { generateOTP, verifyOTP } from "@/features/auth/server/services/otp";
-import { otpTokens } from "@/features/auth/server/schema";
+import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 
 // Helper function for tests - combines data access and business logic

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, ledgers } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, ledgers } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/features/ai/types";

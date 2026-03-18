@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 
 // Mock auth module

@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { auth } from "@/auth";
-import { LedgerPageClient } from "@/features/ledger/components";
+import { LedgerPageClient } from "@/modules/workspace/ui";
+import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
 import { LedgerPageSkeleton } from "@/components/skeletons";
 import { parseLedgerTab, type LedgerTab } from "@/features/ledger";
-import { prepareLedgerPageData } from "@/features/ledger/server";
 
 interface LedgerPageProps {
   params: Promise<{ id: string }>;
@@ -26,7 +26,7 @@ async function LedgerPageContent({
   periodParams,
 }: LedgerPageContentProps) {
   const t = await getTranslations("LedgerPage");
-  const pageData = await prepareLedgerPageData({
+  const pageData = await getLedgerPageBootstrap({
     ledgerId,
     initialTab,
     periodParams,

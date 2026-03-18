@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { db } from "@/lib/db";
-import { ledgers, users } from "@/lib/db/schema";
+import { ledgers, users } from "@/persistence";
 import { eq } from "drizzle-orm";
 
 async function createTestUser(email?: string) {

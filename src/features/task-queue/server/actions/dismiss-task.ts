@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { taskRuns } from "@/lib/db/schema";
+import { taskRuns } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { eq, and, inArray, isNull } from "drizzle-orm";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";

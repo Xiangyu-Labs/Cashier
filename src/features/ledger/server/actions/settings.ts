@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { serviceCredentials } from "@/lib/db/schema";
+import { serviceCredentials } from "@/persistence";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 
@@ -16,7 +16,7 @@ export const getLedgerSettingsAction = withLedgerAccess(async (ledgerId: string)
   const [uncategorizedResult, credentials] = await Promise.all([
     // 1. Get uncategorized count
     (async () => {
-      const { ledgerEntries } = await import("@/lib/db/schema");
+      const { ledgerEntries } = await import("@/persistence");
       return db
         .select({
           count: sql<number>`count(*)`.as("count"),

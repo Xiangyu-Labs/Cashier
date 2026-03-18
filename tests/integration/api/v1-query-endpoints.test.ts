@@ -16,7 +16,7 @@ import {
   ledgers,
   entryCategories,
   taskRuns,
-} from "@/lib/db/schema";
+} from "@/persistence";
 import { vi, afterEach } from "vitest";
 import * as authModule from "@/auth";
 

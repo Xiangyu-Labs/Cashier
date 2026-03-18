@@ -1,14 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, taskRuns } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, taskRuns } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schemaModule from "@/lib/db/schema";
+import type * as schemaModule from "@/persistence";
 
 type DbSchema = typeof schemaModule;
 

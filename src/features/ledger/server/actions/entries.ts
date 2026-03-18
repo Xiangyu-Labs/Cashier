@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
@@ -39,7 +39,7 @@ const batchUpdateLedgerEntriesSchema = z
   .strict(); // Reject unknown keys
 
 import { forLedger } from "@/lib/db/scoped-query";
-import type { LedgerEntry } from "@/lib/db/schema";
+import type { LedgerEntry } from "@/persistence";
 // Date string comparison - no need for date parsing utilities
 
 export const createLedgerEntryAction = withLedgerAccess(
@@ -324,22 +324,17 @@ export async function listLedgerEntries(
     const serialized = serializeLedgerEntry({
       ...item,
       category: item.category,
-      sourceDocument: item.sourceDocument
-        ? {
-            id: item.sourceDocument.id,
-            title: item.sourceDocument.title,
-          }
-        : undefined,
+      sourceDocument: item.sourceDocument,
     });
 
     // Strip large metadata fields from sourceDocument to reduce payload size
-    if (serialized.sourceDocument) {
+    if (serialized.sourceDocument != null) {
       const {
         visionDescription: _visionDescription,
         originalImageUrls: _originalImageUrls,
         ...lightMetadata
       } =
-        serialized.sourceDocument.metadata || {};
+        serialized.sourceDocument.metadata ?? {};
       serialized.sourceDocument = {
         ...serialized.sourceDocument,
         metadata: lightMetadata,

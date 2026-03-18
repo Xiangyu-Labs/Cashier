@@ -5,7 +5,7 @@ import {
   reorderEntryCategoriesAction,
 } from "@/features/ledger/server/actions/categories";
 import { getTestDb } from "../../setup";
-import { entryCategories as categories, ledgers } from "@/lib/db/schema";
+import { entryCategories as categories, ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 

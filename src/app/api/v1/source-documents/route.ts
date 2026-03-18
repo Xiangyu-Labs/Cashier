@@ -1,14 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createAndQueueSourceDocument, listSourceDocuments } from "@/features/source-document/server";
-import { db } from "@/lib/db";
-import { serviceCredentials } from "@/features/ledger/server";
+import { listSourceDocuments } from "@/modules/source-document";
 import { z } from "zod";
-import { eq, and, isNull } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
-import { logError } from "@/lib/error-handlers";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
+import { createSourceDocumentFromCredential } from "@/modules/source-document";
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -59,32 +56,14 @@ export async function POST(request: NextRequest) {
         throw new ValidationError("Content (text or images) is required");
       }
 
-      try {
-        await db
-          .update(serviceCredentials)
-          .set({ lastUsedAt: new Date() })
-          .where(eq(serviceCredentials.id, credential.id));
-      } catch (error) {
-        logError("api/v1/source-documents:update-credential", error);
-      }
-
-      const { ledgers: ledgerTable } = await import("@/lib/db/schema");
-
-      const ledger = await db.query.ledgers.findFirst({
-        where: and(eq(ledgerTable.id, credential.ledgerId), isNull(ledgerTable.deletedAt)),
-      });
-
-      if (ledger == null) {
-        throw new ValidationError("Ledger not found for service credential");
-      }
-
-      const createResult = await createAndQueueSourceDocument({
-        ledgerId: credential.ledgerId,
-        ledger,
-        text,
-        images,
-        entryDate,
-        timezone,
+      const createResult = await createSourceDocumentFromCredential({
+        credentialId: credential.id,
+        payload: {
+          text,
+          images,
+          entryDate,
+          timezone,
+        },
       });
 
       return NextResponse.json(

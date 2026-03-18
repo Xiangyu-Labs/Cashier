@@ -1,6 +1,6 @@
 import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/lib/db/schema";
+import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/features/ai/types";
 import type { AIContext } from "@/lib/flow/types";

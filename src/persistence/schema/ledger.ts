@@ -1,8 +1,7 @@
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
-import { users } from "@/features/auth/server/schema";
 import { type InferSelectModel, sql } from "drizzle-orm";
+import { users } from "./auth";
 
-// Ledger（账本）
 export const ledgers = sqliteTable(
   "ledgers",
   {
@@ -41,7 +40,6 @@ export interface LedgerMetadata {
 
 export type Ledger = InferSelectModel<typeof ledgers>;
 
-// EntryCategory（分录分类）
 export const entryCategories = sqliteTable(
   "entry_categories",
   {
@@ -73,13 +71,6 @@ export const entryCategories = sqliteTable(
 
 export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
-// 延迟导入以避免循环依赖：
-// - ledgerEntries.sourceDocumentId 需要引用 sourceDocuments.id
-// - sourceDocuments.ledgerId 需要引用 ledgers.id
-// 这是 Drizzle ORM 中处理跨模块外键的标准做法
-import { sourceDocuments } from "@/features/source-document/server/schema";
-
-// LedgerEntry（账目分录）
 export const ledgerEntries = sqliteTable(
   "ledger_entries",
   {
@@ -92,15 +83,13 @@ export const ledgerEntries = sqliteTable(
     categoryId: text("category_id").references(() => entryCategories.id, {
       onDelete: "set null",
     }),
-    sourceDocumentId: text("source_document_id").references(() => sourceDocuments.id, {
-      onDelete: "cascade",
-    }),
-    amount: text("amount").notNull(), // SQLite has no decimal, use text
+    sourceDocumentId: text("source_document_id"),
+    amount: text("amount").notNull(),
     currency: text("currency"),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    convertedAmount: text("converted_amount"), // Amount in ledger's main currency
-    exchangeRate: text("exchange_rate"), // Audit only: Exchange rate used for conversion. Not read by app queries.
+    convertedAmount: text("converted_amount"),
+    exchangeRate: text("exchange_rate"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -110,28 +99,23 @@ export const ledgerEntries = sqliteTable(
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
   },
   (table) => [
-    // For looking up entries by source document (cascade delete)
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
-    // Optimized for listing entries with soft-delete filtering and sorting
     index("idx_ledger_entries_ledger_active_created").on(
       table.ledgerId,
       table.deletedAt,
       table.createdAt
     ),
-    // Optimized for category filtering with soft-delete
     index("idx_ledger_entries_ledger_category_active").on(
       table.ledgerId,
       table.categoryId,
       table.deletedAt
     ),
-    // Optimized for currency filtering with soft-delete
     index("idx_ledger_entries_ledger_currency").on(table.ledgerId, table.currency, table.deletedAt),
   ]
 );
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 
-// ServiceCredentials (服务凭据)
 export const serviceCredentials = sqliteTable(
   "service_credentials",
   {

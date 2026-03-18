@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { otpTokens } from "@/features/auth/server/schema";
+import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { hashOTP } from "@/features/auth/server/services/otp";
 import {

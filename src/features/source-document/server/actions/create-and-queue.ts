@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, type Ledger } from "@/lib/db/schema";
+import { sourceDocuments, type Ledger } from "@/persistence";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
 import { forLedger } from "@/lib/db/scoped-query";

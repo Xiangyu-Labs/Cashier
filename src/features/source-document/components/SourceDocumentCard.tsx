@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/processing-status";
 import { parseDateString } from "@/lib/date-utils";
-import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import { type SourceDocumentStatusType } from "@/persistence/schema/source-document";
 import {
   DropdownMenu,
   DropdownMenuContent,

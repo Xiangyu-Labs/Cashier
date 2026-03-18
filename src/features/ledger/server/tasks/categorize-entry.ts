@@ -7,7 +7,7 @@
 
 import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/lib/db/schema";
+import { ledgerEntries } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
 import { logger } from "@/lib/logger";
 import { z } from "zod";

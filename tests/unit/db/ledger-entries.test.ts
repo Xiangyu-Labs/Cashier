@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories as categories, ledgerEntries } from "@/lib/db/schema";
+import { ledgers, entryCategories as categories, ledgerEntries } from "@/persistence";
 import { createTestUserWithLedger, createTestSourceDocument } from "../../helpers/schema-setup";
 
 /**

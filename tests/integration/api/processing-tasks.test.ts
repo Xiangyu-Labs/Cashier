@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getProcessingTasksAction } from "@/features/source-document/server/actions/processing";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "@/lib/db";
-import { ledgers, users } from "@/lib/db/schema";
+import { ledgers, users } from "@/persistence";
 import { createLedgerAction } from "@/features/ledger/server/actions/create";
 import { ConflictError } from "@/lib/errors";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { currencyRates } from "@/features/currency/server/schema";
+import { currencyRates } from "@/persistence/schema/currency";
 import {
   convertCurrencyAction,
   batchConvertCurrencyAction,

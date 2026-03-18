@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { withAuth } from "@/lib/auth-actions";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";

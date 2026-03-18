@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { currencyRates } from "./schema";
+import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
 import { logger } from "@/lib/logger";

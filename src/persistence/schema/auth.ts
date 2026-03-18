@@ -1,11 +1,6 @@
 import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 
-// ==========================================
-// Auth.js Tables
-// ==========================================
-
-// Users - 用户表
 export const users = sqliteTable(
   "users",
   {
@@ -16,7 +11,7 @@ export const users = sqliteTable(
     email: text("email").notNull().unique(),
     emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
     image: text("image"),
-    // Default ledger will be set after ledger is created (no FK to avoid circular type dependency)
+    // Default ledger is managed at the application layer to avoid schema cycles.
     defaultLedgerId: text("default_ledger_id"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -31,7 +26,6 @@ export const users = sqliteTable(
 
 export type User = InferSelectModel<typeof users>;
 
-// Accounts - OAuth 账户关联
 export const accounts = sqliteTable(
   "accounts",
   {
@@ -57,7 +51,6 @@ export const accounts = sqliteTable(
 
 export type Account = InferSelectModel<typeof accounts>;
 
-// OTP Tokens - 验证码登录令牌
 export const otpTokens = sqliteTable(
   "otp_tokens",
   {
@@ -65,14 +58,10 @@ export const otpTokens = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     email: text("email").notNull(),
-    tokenHash: text("token_hash").notNull().unique(), // SHA-256 哈希
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(), // 5 分钟 TTL
-
-    // 安全控制
+    tokenHash: text("token_hash").notNull().unique(),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
     attempts: integer("attempts").notNull().default(0),
-    lockedUntil: integer("locked_until", { mode: "timestamp_ms" }), // 锁定至某时刻
-
-    // 审计字段
+    lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -83,7 +72,8 @@ export const otpTokens = sqliteTable(
   (table) => [
     index("idx_otp_tokens_email").on(table.email),
     index("idx_otp_tokens_expires").on(table.expires),
-    // For cleaning up verified tokens efficiently
     index("idx_otp_tokens_verified").on(table.email, table.verifiedAt),
   ]
 );
+
+export type OTPToken = InferSelectModel<typeof otpTokens>;

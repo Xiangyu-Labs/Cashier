@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, taskRuns, users } from "@/lib/db/schema";
-import { sourceDocuments } from "@/features/source-document/server/schema";
+import { ledgers, taskRuns, users } from "@/persistence";
+import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { getTaskQueueAction } from "@/features/task-queue/server/actions/task-queue";
 

@@ -1,6 +1,6 @@
 import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
-import { entryCategories } from "@/lib/db/schema";
+import { entryCategories } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
 import { buildCategoryMetadataPrompt } from "./category-metadata-prompts";
 import { COMMON_LUCIDE_ICONS } from "@/config/icons";

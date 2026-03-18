@@ -1,19 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers, entryCategories } from "@/lib/db/schema";
-import { getDefaultLedger } from "@/config/default-ledger";
+import { ledgers } from "@/persistence";
 import { withAuth } from "@/lib/auth-actions";
 import { createLedgerSchema } from "./schemas";
 import type { CreateLedgerInput } from "./schemas";
 import { eq, isNull, and } from "drizzle-orm";
 import { ConflictError } from "@/lib/errors";
-import type { Ledger } from "@/lib/db/schema";
+import type { Ledger } from "@/persistence";
+import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
 
 export const createLedgerAction = withAuth(
   async (userId: string, data: CreateLedgerInput): Promise<Ledger> => {
     const validated = createLedgerSchema.parse(data);
-    const defaultLedger = getDefaultLedger("zh");
 
     // Check if user already has a ledger
     const existingLedger = await db.query.ledgers.findFirst({
@@ -26,51 +25,12 @@ export const createLedgerAction = withAuth(
 
     let newLedger: Ledger;
 
-    // Atomically create ledger and seed categories in a transaction
     try {
-      newLedger = db.transaction((tx) => {
-        // 1. Create ledger
-        const result = tx
-          .insert(ledgers)
-          .values({
-            userId: userId,
-            metadata: {
-              settings: {
-                aiLanguage: validated.aiLanguage != null && validated.aiLanguage !== ""
-                  ? validated.aiLanguage
-                  : defaultLedger.settings.aiLanguage,
-                currencies: defaultLedger.settings.currencies,
-                mainCurrency: defaultLedger.settings.mainCurrency,
-                collapseEntriesDefault: defaultLedger.settings.collapseEntriesDefault,
-                aiCustomPrompt: defaultLedger.settings.aiCustomPrompt,
-              },
-            },
-          })
-          .returning()
-          .all();
-
-        if (result.length === 0) {
-          throw new Error("Failed to create ledger: no result returned");
-        }
-
-        const createdLedger = result[0];
-
-        // 2. Seed categories for the new ledger
-        if (defaultLedger.categories.length > 0) {
-          tx.insert(entryCategories)
-            .values(
-              defaultLedger.categories.map((cat) => ({
-                ...cat,
-                ledgerId: createdLedger.id,
-              }))
-            )
-            .run();
-        }
-
-        return createdLedger;
+      newLedger = await createDefaultLedger({
+        userId,
+        locale: validated.aiLanguage,
       });
     } catch (error) {
-      // Handle database-level unique constraint violation
       if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
         throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");
       }

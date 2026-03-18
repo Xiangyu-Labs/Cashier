@@ -111,8 +111,8 @@ export function QuickEntryForm({
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
-        metadata: null,
-        imageUrls: null,
+        metadata: {},
+        imageUrls: [],
         anomalyReason: null,
         ledgerEntries: [
           {

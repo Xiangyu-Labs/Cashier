@@ -4,8 +4,8 @@ import {
   type CategorizeEntryInput,
 } from "@/features/ledger/server/tasks/categorize-entry";
 import { getTestDb } from "../../../setup";
-import { ledgerEntries, entryCategories } from "@/lib/db/schema";
-import { sourceDocuments } from "@/features/source-document/server/schema";
+import { ledgerEntries, entryCategories } from "@/persistence";
+import { sourceDocuments } from "@/persistence/schema/source-document";
 import { eq } from "drizzle-orm";
 import {
   type FlowContext,

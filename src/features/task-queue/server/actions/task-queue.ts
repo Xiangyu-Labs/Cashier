@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/lib/db/schema";
+import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";

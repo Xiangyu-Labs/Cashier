@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
-import { ledgerEntries, ledgers, currencyRates, sourceDocuments } from "@/lib/db/schema";
+import { ledgerEntries, ledgers, currencyRates, sourceDocuments } from "@/persistence";
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { eq } from "drizzle-orm";
 

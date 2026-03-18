@@ -3,7 +3,7 @@
 import { signOut } from "@/auth";
 import { withAuth } from "@/lib/auth-actions";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 

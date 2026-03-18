@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/export";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, users, sourceDocuments, entryCategories } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, users, sourceDocuments, entryCategories } from "@/persistence";
 import {
   createLedgerData,
   createLedgerEntryData,

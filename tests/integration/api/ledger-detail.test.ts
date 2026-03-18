@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { getLedgerAction } from "@/features/ledger/server/actions/get";
 import { updateLedgerAction } from "@/features/ledger/server/actions/update";
 import { getTestDb } from "../../setup";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 

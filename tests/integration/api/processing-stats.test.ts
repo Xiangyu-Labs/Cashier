@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getProcessingStatsAction } from "@/features/source-document/server/actions/processing";
 import { getTestDb } from "../../setup";
-import { taskRuns, ledgers } from "@/lib/db/schema";
+import { taskRuns, ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 

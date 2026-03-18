@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import { getTestDb } from "../setup";
-import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/lib/db/schema";
+import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/persistence";
 import {
   createLedgerData,
   createCategoryData,

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, taskRuns } from "@/lib/db/schema";
+import { sourceDocuments, taskRuns } from "@/persistence";
 import { requireLedgerAccess } from "@/features/auth/server";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";

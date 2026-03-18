@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import type {
+  SourceDocumentDto,
+  SourceDocumentGroupDto,
+} from "@/modules/source-document/contracts";
+import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
 export interface SourceDocumentActionInput {
   text?: string;
@@ -10,10 +15,10 @@ export interface SourceDocumentActionInput {
 
 export interface PendingSourceDocumentsResponse {
   groups: {
-    queued: SourceDocumentGroup[];
-    processing: SourceDocumentGroup[];
-    anomaly: SourceDocumentGroup[];
-    failed: SourceDocumentGroup[];
+    queued: SourceDocumentGroupDto[];
+    processing: SourceDocumentGroupDto[];
+    anomaly: SourceDocumentGroupDto[];
+    failed: SourceDocumentGroupDto[];
   };
   stats: {
     queuedCount: number;
@@ -24,59 +29,10 @@ export interface PendingSourceDocumentsResponse {
   };
 }
 
-// Serialized source document with entries for client consumption
-// All Date objects are converted to ISO strings for JSON serialization
-export type SourceDocumentWithEntries = {
-  id: string;
-  text: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  type: string;
-  title: string | null;
-  status: SourceDocumentStatusType;
-  metadata: Record<string, unknown> | null;
-  ledgerId: string;
-  imageUrls: string[] | null;
-  anomalyReason: string | null;
-  entryDate: string | null;
-  ledgerEntries: {
-    id: string;
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string | null;
-    ledgerId: string;
-    description: string | null;
-    categoryId: string | null;
-    sourceDocumentId: string | null;
-    amount: string;
-    currency: string | null;
-    itemName: string;
-    convertedAmount: string | null;
-    exchangeRate: string | null;
-    category: {
-      id: string;
-      name: string;
-      createdAt: string;
-      updatedAt: string;
-      deletedAt: string | null;
-      ledgerId: string;
-      description: string | null;
-      icon: string | null;
-      sortOrder: number;
-      isEditable: boolean;
-    } | null;
-  }[];
-};
-
-// Import types needed from serialization
-import type {
-  SerializedSourceDocument,
-  SerializedLedgerEntry,
-  SourceDocumentGroup,
-} from "@/lib/serialization";
-
-export type { SerializedSourceDocument, SerializedLedgerEntry, SourceDocumentGroup };
+export type SourceDocumentWithEntries = SourceDocumentDto;
+export type SerializedSourceDocument = SourceDocumentDto;
+export type SerializedLedgerEntry = LedgerEntryDto;
+export type SourceDocumentGroup = SourceDocumentGroupDto;
 
 // Paginated response for source documents
 export interface PaginatedSourceDocumentsResponse {

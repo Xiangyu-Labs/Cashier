@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getEnhancedStats } from "@/features/stats/server/actions";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 
 describe("Enhanced Stats Actions", () => {
   let testLedgerId: string;

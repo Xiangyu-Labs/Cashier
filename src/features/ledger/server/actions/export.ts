@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers, sourceDocuments } from "@/lib/db/schema";
+import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { eq, and, isNull, asc, gte, lte } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { NotFoundError } from "@/lib/errors";

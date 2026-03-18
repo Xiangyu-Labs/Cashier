@@ -1,13 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { withAuth } from "@/lib/auth-actions";
 import { eq, and, isNull, desc } from "drizzle-orm";
-import type { Ledger } from "@/types/api";
+import type { LedgerDto } from "@/modules/ledger/contracts";
+import { mapLedgerDto } from "@/modules/ledger/application/mappers";
 
 export const getLedgerAction = withAuth(
-  async (userId: string, id: string): Promise<Ledger | null> => {
+  async (userId: string, id: string): Promise<LedgerDto | null> => {
     const existing = await db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
     });
@@ -16,29 +17,15 @@ export const getLedgerAction = withAuth(
       return null;
     }
 
-    return {
-      id: existing.id,
-      userId: existing.userId,
-      metadata: existing.metadata,
-      createdAt: existing.createdAt.toISOString(),
-      updatedAt: existing.updatedAt.toISOString(),
-      deletedAt: existing.deletedAt ? existing.deletedAt.toISOString() : null,
-    };
+    return mapLedgerDto(existing);
   }
 );
 
-export const getLedgersAction = withAuth(async (userId: string): Promise<Ledger[]> => {
+export const getLedgersAction = withAuth(async (userId: string): Promise<LedgerDto[]> => {
   const rows = await db.query.ledgers.findMany({
     where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
     orderBy: [desc(ledgers.createdAt)],
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    userId: row.userId,
-    metadata: row.metadata,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
-  }));
+  return rows.map(mapLedgerDto);
 });

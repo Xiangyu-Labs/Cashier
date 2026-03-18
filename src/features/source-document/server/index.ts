@@ -6,4 +6,4 @@ export {
 } from "./actions/queries";
 export {
   type SourceDocumentStatusType,
-} from "./schema";
+} from "@/persistence/schema/source-document";

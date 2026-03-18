@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { ledgers } from "@/lib/db/schema";
+import { ledgers } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { isValidUuid } from "@/lib/validation";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb } from "../../setup";
-import { users } from "@/lib/db/schema";
+import { users } from "@/persistence";
 import { hashOTP } from "@/features/auth/server/services/otp";
-import { otpTokens } from "@/features/auth/server/schema";
+import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { authenticateWithOTP } from "@/features/auth/server/services/otp-sign-in";
 import { RegistrationDisabledError } from "@/features/auth/server/services/registration";

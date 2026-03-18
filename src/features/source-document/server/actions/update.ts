@@ -1,12 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/lib/db/schema";
+import { sourceDocuments } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, inArray } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
-import { type SourceDocMetadata, type SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import { type SourceDocMetadata, type SourceDocumentStatusType } from "@/persistence/schema/source-document";
 import { processImages } from "./helpers";
 
 const VALID_STATUSES: SourceDocumentStatusType[] = [

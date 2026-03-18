@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { validateServiceCredential } from "@/features/ledger/server";
+import { validateServiceCredential } from "@/modules/ledger";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, RateLimitError } from "@/lib/errors";
 import { getErrorStatusCode, logError, toErrorResponse } from "@/lib/error-handlers";

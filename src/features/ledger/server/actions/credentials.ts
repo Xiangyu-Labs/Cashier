@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { serviceCredentials } from "@/features/ledger/server/schema";
+import { serviceCredentials } from "@/persistence/schema/ledger";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { withLedgerAccess } from "@/lib/auth-actions";

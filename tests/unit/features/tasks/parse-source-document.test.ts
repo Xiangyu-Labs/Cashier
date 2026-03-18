@@ -5,7 +5,7 @@ import {
   type ParseSourceDocumentOutput,
 } from "@/features/source-document/server/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
-import { sourceDocuments, ledgerEntries, entryCategories } from "@/lib/db/schema";
+import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import {
   type FlowContext,

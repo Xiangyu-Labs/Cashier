@@ -4,7 +4,7 @@ import { beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import React from "react";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import * as schema from "@/lib/db/schema";
+import * as schema from "@/persistence";
 import { cleanup } from "@testing-library/react";
 import type { Mock } from "vitest";
 import { createTestSchema } from "./helpers/schema-setup";

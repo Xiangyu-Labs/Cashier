@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories, sourceDocuments, ledgerEntries, users } from "@/lib/db/schema";
+import { ledgers, entryCategories, sourceDocuments, ledgerEntries, users } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 

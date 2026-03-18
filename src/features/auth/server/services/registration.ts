@@ -2,7 +2,7 @@ import { CredentialsSignin } from "@auth/core/errors";
 import { eq } from "drizzle-orm";
 import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { db } from "@/lib/db";
-import { users } from "@/features/auth/server/schema";
+import { users } from "@/persistence/schema/auth";
 import { logger } from "@/lib/logger";
 
 export class RegistrationDisabledError extends CredentialsSignin {

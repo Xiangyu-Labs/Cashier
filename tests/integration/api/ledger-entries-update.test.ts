@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { updateLedgerEntryAction } from "@/features/ledger/server/actions/entries";
 import { getTestDb } from "../../setup";
-import { ledgerEntries, entryCategories, ledgers } from "@/lib/db/schema";
+import { ledgerEntries, entryCategories, ledgers } from "@/persistence";
 import { eq } from "drizzle-orm";
 import {
   createTestUserWithLedger,
