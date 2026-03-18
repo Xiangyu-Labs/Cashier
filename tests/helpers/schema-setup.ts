@@ -64,9 +64,7 @@ export async function createTestUserWithLedger(
   _ledgerName?: string, // 已废弃，账本名称不再使用
   userId?: string
 ): Promise<{ userId: string; ledgerId: string }> {
-  // Generate unique userId if not provided to avoid unique constraint violations
-  // 使用随机email避免唯一约束冲突
-  const finalUserId = await createTestUser(db, email, userId ?? crypto.randomUUID());
+  const finalUserId = await createTestUser(db, email, userId ?? TEST_USER_ID);
 
   const ledgerId = crypto.randomUUID();
   await db.insert(schema.ledgers).values({

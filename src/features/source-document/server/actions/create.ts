@@ -7,7 +7,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { prepareSourceDocumentTask } from "./helpers";
 import type { SourceDocumentActionInput } from "./types";
-import { ValidationError, UnauthorizedError } from "@/lib/errors";
+import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
 
 /**
  * Create a new source document and trigger processing
@@ -21,8 +21,15 @@ export async function createSourceDocumentAction(
     throw new ValidationError("At least one input (text or images) is required");
   }
 
-  const { ledger, error } = await requireLedgerAccess(ledgerId);
-  if (error) throw new UnauthorizedError("Unauthorized or Ledger not found");
+  let ledger: Awaited<ReturnType<typeof requireLedgerAccess>>["ledger"];
+  try {
+    ({ ledger } = await requireLedgerAccess(ledgerId));
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new UnauthorizedError("Unauthorized or Ledger not found");
+    }
+    throw error;
+  }
 
   const q = forLedger(sourceDocuments, ledgerId);
 

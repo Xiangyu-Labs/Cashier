@@ -21,6 +21,7 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
         status: 'pending',
         progress: null,
         input: task.input,
+        deduplicationKey: task.deduplicationKey ?? null,
         error: null,
         tokenUsage: null,
         scopeId: task.scopeId ?? null,
@@ -88,6 +89,7 @@ describe('Flow Engine Deduplication', () => {
 
     expect(taskId1).toBe(taskId2)
     expect(storage.tasks.size).toBe(1)
+    expect(storage.tasks.get(taskId1)?.deduplicationKey).toBe('dup-key-1')
   })
 
   it('should create separate tasks for different deduplicationKeys', async () => {

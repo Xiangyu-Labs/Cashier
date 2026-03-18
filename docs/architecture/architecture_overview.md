@@ -35,8 +35,9 @@ src/features/ledger/
 ### Rules for Features
 
 1.  **Colocation**: Everything related to a feature should stay within that feature's folder.
-2.  **Public API**: Features should ideally export a clear API for other features to use, rather than deep linking into internal implementation details (e.g., import from `features/ledger/server` not `.../server/internal_helper`).
+2.  **Public API**: Cross-feature imports must go through explicit entrypoints such as `features/ledger`, `features/ledger/server`, `features/ledger/client`, or `features/ledger/components`. Do not deep link into another feature's internal files.
 3.  **Feature-private helpers stay colocated**: If logic only serves one feature, keep it inside that feature's `client/`, `server/`, or local helper modules rather than promoting it to `src/lib` or `src/hooks`.
+4.  **Feature internals are not contracts**: `actions/*`, `hooks/*`, local component files, and `lib/*` under a feature may change freely. If another feature needs them, promote them through the owning feature's public entrypoint first.
 
 ## 2. Shared Kernel (`src/lib/*`)
 
@@ -54,6 +55,7 @@ Community-aligned rule of thumb:
 - Put cross-feature pure utilities, parsing, formatting, and shared schemas in `src/lib`.
 - Keep feature-specific URL state, filter state, and UI coordination inside the owning feature.
 - Separate pure state helpers from navigation or browser side effects whenever possible.
+- Keep `src/lib` infrastructure-focused. If a helper needs `NextResponse`, route params, or feature-specific business rules, it likely belongs in `src/app` boundary code or the owning feature instead.
 
 ## 3. The Application Layer (`src/app`)
 
@@ -80,6 +82,8 @@ For route handlers, keep `src/app/api/*` limited to boundary concerns:
 
 Do not let `src/app` become a second business-logic layer.
 
+`src/app` and shared UI code should import features only through public entrypoints. If a page needs feature-specific prefetching or orchestration, move that logic into the feature and call it from the page.
+
 ## 4. Data Access
 
 We use **Drizzle ORM** for data access.
@@ -88,7 +92,12 @@ We use **Drizzle ORM** for data access.
 - **Schema Aggregation**: `drizzle.config.ts` imports all these schemas to generate migrations.
 - **Queries**: Queries live directly in **Server Actions**. We use a helper (`forLedger` / `scoped-query`) to ensure tenant isolation and handle soft deletes consistently without a heavy Repository layer.
 
-## 5. Key Technologies
+## 5. Background Tasks
+
+- Task modules export explicit task definitions `{ type, handler }`.
+- Only `lib/flow/task-registry.ts` is allowed to register tasks with the engine.
+- Task metadata such as `deduplicationKey` must be first-class engine fields, not hidden inside task input payloads.
+## 6. Key Technologies
 
 - **Framework**: Next.js 16 (App Router)
 - **Database**: SQLite

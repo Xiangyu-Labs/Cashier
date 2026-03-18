@@ -1,4 +1,4 @@
-import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
+import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -462,5 +462,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
   },
 };
 
-// Register the task handler
-flowEngine.register(TASK_TYPE_PARSE_SOURCE_DOCUMENT, parseSourceDocumentHandler);
+export const parseSourceDocumentTaskDefinition: FlowTaskDefinition<
+  ParseSourceDocumentInput,
+  ParseSourceDocumentOutput
+> = {
+  type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
+  handler: parseSourceDocumentHandler,
+};

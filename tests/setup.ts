@@ -70,6 +70,8 @@ beforeAll(async () => {
 
   // Run migrations
   await createTestSchema(db, client);
+  const { registerAllTasks } = await import("@/lib/flow/task-registry");
+  await registerAllTasks();
 });
 
 afterAll(async () => {

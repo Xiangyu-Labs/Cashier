@@ -9,7 +9,7 @@ import { CurrencyService } from "@/features/currency/server/service";
 import { SourceDocumentType } from "@/features/source-document/server/schema";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
-import { UnauthorizedError } from "@/lib/errors";
+import { AppError, UnauthorizedError } from "@/lib/errors";
 
 // ============ Helper Functions ============
 
@@ -115,8 +115,15 @@ export async function createQuickEntryAction(
   ledgerId: string,
   data: z.infer<typeof createQuickEntrySchema>
 ) {
-  const { ledger, error } = await requireLedgerAccess(ledgerId);
-  if (error) throw new UnauthorizedError("Unauthorized or Ledger not found");
+  let ledger: Awaited<ReturnType<typeof requireLedgerAccess>>["ledger"];
+  try {
+    ({ ledger } = await requireLedgerAccess(ledgerId));
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new UnauthorizedError("Unauthorized or Ledger not found");
+    }
+    throw error;
+  }
 
   const validated = createQuickEntrySchema.parse(data);
   const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";

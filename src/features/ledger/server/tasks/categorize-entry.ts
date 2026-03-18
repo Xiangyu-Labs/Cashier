@@ -5,7 +5,7 @@
  * Uses index-based category matching for disambiguation.
  */
 
-import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
+import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -216,5 +216,10 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
     },
   };
 
-// Register the task
-flowEngine.register(TASK_TYPE_CATEGORIZE_ENTRY, categorizeEntryHandler);
+export const categorizeEntryTaskDefinition: FlowTaskDefinition<
+  CategorizeEntryInput,
+  CategorizeEntryOutput
+> = {
+  type: TASK_TYPE_CATEGORIZE_ENTRY,
+  handler: categorizeEntryHandler,
+};

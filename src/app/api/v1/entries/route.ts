@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
+import { getLedgerEntriesAction } from "@/features/ledger/server";
 import { z } from "zod";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";

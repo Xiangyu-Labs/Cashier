@@ -166,6 +166,9 @@ Phase 4a-4d 专门把 600+ 行的组件拆到 350-430 行，提取自定义 hook
 | **Feature-based 模块化**        | 专门 8 个提交做目录重构                              | ★★★★   |
 | **直接 ORM > Repository 抽象**  | 移除 BaseRepository，用 Drizzle 直接查询             | ★★★★   |
 | **进程内 > 外部依赖**           | 移除 Redis，用内存 store；移除 BullMQ，用 Promise    | ★★★★   |
+| **显式边界 > 深层导入**         | 跨 feature 统一走 `index.ts` / `server` / `client` / `components` 入口 | ★★★★★  |
+| **显式协议 > 隐式副作用**       | 任务注册集中在 registry，去重键升格为一等字段        | ★★★★★  |
+| **领域错误 > HTTP 返回值泄漏**  | 鉴权 helper 只抛领域错误，HTTP 响应在 route 边界处理 | ★★★★   |
 
 ### 5.2 前端模式
 
@@ -242,6 +245,13 @@ PostgreSQL → SQLite, Redis+BullMQ → 内存 store, SSE → 轮询。对于个
 ### 6.4 "标准化模式"追求
 
 当发现重复模式时（乐观更新、mutation 生命周期），投入时间创建统一的 factory/hook，而不是容忍 copy-paste。
+
+### 6.6 "协议显式化"原则
+
+- 禁止通过 import side effect 完成系统注册。
+- 去重键、作用域、实体关联这类系统元数据必须是显式字段，不能藏在 JSON payload 中。
+- Server Action / feature helper 不返回 `NextResponse` 这类 HTTP 对象；HTTP 语义只留在 route handler 边界。
+- `src/app`、共享组件、跨 feature 调用默认只依赖公开入口，不把内部文件路径当契约。
 
 ### 6.5 "渐进式重构"
 

@@ -22,10 +22,16 @@ import { getClientIP } from "@/lib/utils/ip";
 import { normalizeEmail } from "@/lib/utils/email";
 import { ValidationError, RateLimitError, UnauthorizedError } from "@/lib/errors";
 
-const resend = new Resend(process.env.AUTH_RESEND_KEY);
-
 // RFC 5321: Maximum email length is 254 characters (local part max 64 + @ + domain max 189)
 const MAX_EMAIL_LENGTH = 254;
+
+function getResendClient(): Resend | null {
+  const apiKey = process.env.AUTH_RESEND_KEY;
+  if (apiKey == null || apiKey === "") {
+    return null;
+  }
+  return new Resend(apiKey);
+}
 
 export async function sendOTPAction(email: string, _locale: string = "en") {
   try {
@@ -89,7 +95,8 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
     const { expiresAt } = await createOTPToken(normalizedEmail, otp, ip);
 
     // Send email
-    if (process.env.AUTH_RESEND_KEY == null || process.env.AUTH_RESEND_KEY === "") {
+    const resend = getResendClient();
+    if (resend == null) {
       logger.warn("AUTH_RESEND_KEY not configured, skipping email send");
       // In development, log the OTP
       logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");

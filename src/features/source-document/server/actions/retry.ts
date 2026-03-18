@@ -8,7 +8,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { prepareSourceDocumentTask, processImages } from "./helpers";
 import { logger } from "@/lib/logger";
-import { NotFoundError, UnauthorizedError } from "@/lib/errors";
+import { NotFoundError } from "@/lib/errors";
 import type { SourceDocumentActionInput } from "./types";
 
 /**
@@ -24,8 +24,7 @@ export async function retrySourceDocumentAction(
   sourceDocumentId: string,
   input?: SourceDocumentActionInput
 ) {
-  const { ledger, error } = await requireLedgerAccess(ledgerId);
-  if (error) throw new UnauthorizedError();
+  const { ledger } = await requireLedgerAccess(ledgerId);
 
   const q = forLedger(sourceDocuments, ledgerId);
 

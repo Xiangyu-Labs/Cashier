@@ -250,6 +250,9 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
   return {
     register<TInput, TOutput>(name: string, handler: FlowTaskHandler<TInput, TOutput>): void {
+      if (handlers.has(name)) {
+        throw new Error(`Task handler already registered: ${name}`);
+      }
       handlers.set(name, handler as FlowTaskHandler<unknown, unknown>);
       logger.debug({ taskName: name }, "Task handler registered");
     },
@@ -280,11 +283,10 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         const existingTasks = [...pendingTasks, ...runningTasks];
 
         for (const task of existingTasks) {
-          const taskInput = task.input as { deduplicationKey?: string } | undefined;
           if (
-            taskInput?.deduplicationKey != null &&
+            task.deduplicationKey != null &&
             meta?.deduplicationKey != null &&
-            taskInput.deduplicationKey === meta.deduplicationKey
+            task.deduplicationKey === meta.deduplicationKey
           ) {
             logger.info({
               taskId: task.id,
@@ -300,12 +302,8 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       const taskId = await config.storage.create({
         type: name,
         title: meta?.title,
-        input: {
-          ...(input as object),
-          ...(meta?.deduplicationKey != null && meta.deduplicationKey !== ""
-            ? { deduplicationKey: meta.deduplicationKey }
-            : {}),
-        },
+        input,
+        deduplicationKey: meta?.deduplicationKey,
         scopeId: meta?.scopeId,
         entityType: meta?.entityType,
         entityId: meta?.entityId,

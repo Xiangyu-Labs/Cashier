@@ -27,6 +27,7 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
         status: "pending",
         progress: null,
         input: task.input ?? null,
+        deduplicationKey: task.deduplicationKey ?? null,
         error: null,
         tokenUsage: null,
         scopeId: task.scopeId ?? null,
@@ -108,6 +109,19 @@ describe("FlowEngine", () => {
       const taskId = await engine.submit("test_task", { data: "input" });
       expect(taskId).toBeDefined();
       expect(taskId).toMatch(/^test-task-/);
+    });
+
+    it("throws error for duplicate handler registration", async () => {
+      const engine = createFlowEngine({ storage });
+      const handler = {
+        execute: async () => ({ result: "success" }),
+      };
+
+      engine.register("test_task", handler);
+
+      expect(() => engine.register("test_task", handler)).toThrow(
+        "Task handler already registered: test_task"
+      );
     });
 
     it("throws error for unregistered handler", async () => {

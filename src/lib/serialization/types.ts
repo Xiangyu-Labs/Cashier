@@ -74,6 +74,7 @@ export interface SerializedTask {
   title: string;
   status: TaskStatus;
   input: unknown | null;
+  deduplicationKey: string | null;
   scopeId: string | null;
   entityType: string | null;
   entityId: string | null;

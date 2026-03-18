@@ -1,8 +1,10 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
-import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
-import { SettingsPageClient } from "@/features/ledger/components/SettingsPageClient";
+import {
+  getLedgerAction,
+  getEntryCategoriesAction,
+  getLedgerSettingsAction,
+} from "@/features/ledger/server";
+import { SettingsPageClient } from "@/features/ledger/components";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
 

@@ -1,2 +1,9 @@
 export * from "./server";
-export * from "./client";
+export {
+  useSourceDocuments,
+  usePendingChanges,
+  useSelection,
+  useBatchSourceDocumentActions,
+} from "./client";
+export type { UseSourceDocumentsOptions } from "./client";
+export * from "./components";

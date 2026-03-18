@@ -50,6 +50,7 @@ export interface TaskRecord {
   status: TaskStatus;                        // pending / running / completed / failed / cancelled
   progress: string | null;                   // "Processing image..."
   input: unknown | null;                     // Complete task input (framework-enforced)
+  deduplicationKey: string | null;           // Explicit key for preventing duplicate tasks
   error: string | null;                      // Error message on failure
   tokenUsage: TokenUsageRecord | null;       // Token statistics by model
   scopeId: string | null;                    // Scope ID (e.g., ledgerId)
@@ -142,6 +143,15 @@ export interface FlowTaskHandler<TInput, TOutput> {
    * Use for cleanup when task is cancelled
    */
   onCancel?(input: TInput, context: FlowContext): Promise<void>;
+}
+
+/**
+ * Explicit task definition used by the centralized task registry.
+ * Task modules export this structure; only the registry performs registration.
+ */
+export interface FlowTaskDefinition<TInput, TOutput> {
+  type: string;
+  handler: FlowTaskHandler<TInput, TOutput>;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
+import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { entryCategories } from "@/lib/db/schema";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -162,5 +162,10 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   },
 };
 
-// Register the task
-flowEngine.register(TASK_TYPE_GENERATE_CATEGORY_METADATA, generateCategoryMetadataHandler);
+export const generateCategoryMetadataTaskDefinition: FlowTaskDefinition<
+  GenerateCategoryMetadataInput,
+  GenerateCategoryMetadataOutput
+> = {
+  type: TASK_TYPE_GENERATE_CATEGORY_METADATA,
+  handler: generateCategoryMetadataHandler,
+};

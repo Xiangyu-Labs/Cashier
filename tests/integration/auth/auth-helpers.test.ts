@@ -12,9 +12,9 @@ vi.mock("@/auth", () => ({
 import { auth } from "@/auth";
 import {
   getCurrentUser,
-  requireAuth,
   requireLedgerAccess,
 } from "@/features/auth/server/utils/helpers";
+import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -45,25 +45,6 @@ describe("getCurrentUser", () => {
   });
 });
 
-describe("requireAuth", () => {
-  it("returns user when authenticated", async () => {
-    mockSession();
-    const result = await requireAuth();
-    expect(result.user).toBeDefined();
-    expect(result.user?.id).toBe(TEST_USER_ID);
-    expect(result.error).toBeUndefined();
-  });
-
-  it("returns 401 error response when not authenticated", async () => {
-    mockNoSession();
-    const result = await requireAuth();
-    expect(result.error).toBeDefined();
-    expect(result.user).toBeUndefined();
-    const response = result.error!;
-    expect(response.status).toBe(401);
-  });
-});
-
 describe("requireLedgerAccess", () => {
   let ledgerId: string;
 
@@ -84,9 +65,8 @@ describe("requireLedgerAccess", () => {
 
   it("returns userId and ledger when user owns the ledger", async () => {
     const result = await requireLedgerAccess(ledgerId);
-    expect(result.error).toBeUndefined();
     expect(result.userId).toBe(TEST_USER_ID);
-    expect(result.ledger?.id).toBe(ledgerId);
+    expect(result.ledger.id).toBe(ledgerId);
   });
 
   it("returns 404 error when ledger belongs to another user", async () => {
@@ -110,16 +90,11 @@ describe("requireLedgerAccess", () => {
       metadata: {},
     });
 
-    const result = await requireLedgerAccess(otherLedgerId);
-    expect(result.error).toBeDefined();
-    expect(result.userId).toBeUndefined();
-    expect(result.error?.status).toBe(404);
+    await expect(requireLedgerAccess(otherLedgerId)).rejects.toThrow(NotFoundError);
   });
 
   it("returns 404 error for invalid UUID", async () => {
-    const result = await requireLedgerAccess("not-a-valid-uuid");
-    expect(result.error).toBeDefined();
-    expect(result.error?.status).toBe(404);
+    await expect(requireLedgerAccess("not-a-valid-uuid")).rejects.toThrow(NotFoundError);
   });
 
   it("returns 404 error for soft-deleted ledger", async () => {
@@ -149,15 +124,11 @@ describe("requireLedgerAccess", () => {
     // Mock session as the another user to test access to their deleted ledger
     mockSession(anotherUserId, `deleted-ledger-${uuidv4()}@example.com`);
 
-    const result = await requireLedgerAccess(deletedLedgerId);
-    expect(result.error).toBeDefined();
-    expect(result.error?.status).toBe(404);
+    await expect(requireLedgerAccess(deletedLedgerId)).rejects.toThrow(NotFoundError);
   });
 
   it("returns 401 error when not authenticated", async () => {
     mockNoSession();
-    const result = await requireLedgerAccess(ledgerId);
-    expect(result.error).toBeDefined();
-    expect(result.error?.status).toBe(401);
+    await expect(requireLedgerAccess(ledgerId)).rejects.toThrow(UnauthorizedError);
   });
 });

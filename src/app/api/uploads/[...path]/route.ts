@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getLocalStorage } from "@/lib/storage/local";
 import { logger } from "@/lib/logger";
-import { requireAuth } from "@/features/auth/server/utils/helpers";
+import { requireAuth } from "@/lib/auth-actions";
+import { UnauthorizedError } from "@/lib/errors";
 import path from "path";
 
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -61,10 +62,7 @@ export async function GET(
 ) {
   try {
     // 1. Authenticate the user
-    const authResult = await requireAuth();
-    if (authResult.error) {
-      return authResult.error;
-    }
+    await requireAuth();
 
     // 2. Extract and validate path segments
     const { path: pathSegments } = await params;
@@ -107,6 +105,10 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
     // Handle file not found error
     if (error instanceof Error && error.message.includes("File not found")) {
       logger.warn({ error: error.message }, "File not found in storage");

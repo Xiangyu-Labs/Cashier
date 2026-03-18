@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import { getEntryCategoriesAction } from "@/features/ledger/server";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 
 export async function GET(request: NextRequest) {

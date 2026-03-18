@@ -6,7 +6,7 @@ export { signOutAction } from "./actions/sign-out";
 export { deleteAccount } from "./actions/account";
 
 // Services
-export { generateOTP, verifyOTP, hashOTP } from "./services/otp";
+export { OTP_LENGTH, generateOTP, verifyOTP, hashOTP, isValidOTPFormat } from "./services/otp";
 
 export {
   createDefaultLedgerForUser,

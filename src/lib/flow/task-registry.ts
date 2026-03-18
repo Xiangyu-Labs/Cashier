@@ -1,35 +1,36 @@
-/**
- * Task Registry - Centralized task handler registration
- *
- * This module maintains the explicit list of task handlers to register.
- * Each task module registers itself via side effect when imported.
- */
+import { flowEngine } from "@/lib/flow";
+import { categorizeEntryTaskDefinition } from "@/features/ledger/server/tasks/categorize-entry";
+import { generateCategoryMetadataTaskDefinition } from "@/features/ledger/server/tasks/generate-category-metadata";
+import { parseSourceDocumentTaskDefinition } from "@/features/source-document/server/tasks/parse-source-document";
 
-const taskModules = [
-    () => import("@/features/source-document/server/tasks/parse-source-document"),
-    () => import("@/features/ledger/server/tasks/generate-category-metadata"),
-    () => import("@/features/ledger/server/tasks/categorize-entry"),
-] as const;
+let hasRegisteredTasks = false;
 
 /**
  * Register all task handlers with the flow engine.
  * Called once during application startup.
  */
 export async function registerAllTasks(): Promise<void> {
-    for (const importFn of taskModules) {
-        await importFn();
-    }
+  if (hasRegisteredTasks) {
+    return;
+  }
+
+  flowEngine.register(parseSourceDocumentTaskDefinition.type, parseSourceDocumentTaskDefinition.handler);
+  flowEngine.register(
+    generateCategoryMetadataTaskDefinition.type,
+    generateCategoryMetadataTaskDefinition.handler
+  );
+  flowEngine.register(categorizeEntryTaskDefinition.type, categorizeEntryTaskDefinition.handler);
+
+  hasRegisteredTasks = true;
 }
 
 /**
  * Get list of registered task types for debugging/monitoring.
- * Note: This returns the list of modules, actual registration happens
- * via side effect when modules are imported.
  */
-export function getRegisteredTaskModules(): string[] {
-    return [
-        "parse-source-document",
-        "generate-category-metadata",
-        "categorize-entry",
-    ];
+export function getRegisteredTaskTypes(): string[] {
+  return [
+    parseSourceDocumentTaskDefinition.type,
+    generateCategoryMetadataTaskDefinition.type,
+    categorizeEntryTaskDefinition.type,
+  ];
 }

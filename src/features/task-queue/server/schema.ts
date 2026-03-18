@@ -15,6 +15,7 @@ export const taskRuns = sqliteTable(
 
     // Input (framework-enforced complete storage)
     input: text("input", { mode: "json" }).$type<unknown>(),
+    deduplicationKey: text("deduplication_key"),
 
     // Generic reference columns (domain-agnostic for task engine portability)
     scopeId: text("scope_id"), // Scope ID (e.g., ledgerId in Cashier)
@@ -48,6 +49,7 @@ export const taskRuns = sqliteTable(
   (table) => [
     index("idx_task_runs_status").on(table.status),
     index("idx_task_runs_scope_status").on(table.scopeId, table.status),
+    index("idx_task_runs_type_dedup_status").on(table.type, table.deduplicationKey, table.status),
 
     index("idx_task_runs_entity").on(table.entityType, table.entityId),
     index("idx_task_runs_scope_entity").on(table.scopeId, table.entityType, table.entityId),

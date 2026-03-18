@@ -1,0 +1,1 @@
+export { DeviceIcon } from "./DeviceIcon";

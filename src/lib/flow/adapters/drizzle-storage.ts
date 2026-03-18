@@ -35,6 +35,7 @@ export function createDrizzleStorage(): StorageAdapter {
           title: task.title ?? task.type,
           status: "pending",
           input: task.input, // Framework-enforced complete storage
+          deduplicationKey: task.deduplicationKey ?? null,
           scopeId: task.scopeId ?? null,
           entityType: task.entityType ?? null,
           entityId: task.entityId ?? null,
@@ -63,6 +64,9 @@ export function createDrizzleStorage(): StorageAdapter {
       }
       if (data.title !== undefined) {
         updateData.title = data.title;
+      }
+      if (data.deduplicationKey !== undefined) {
+        updateData.deduplicationKey = data.deduplicationKey;
       }
 
       // Set completedAt for terminal states
@@ -158,6 +162,7 @@ function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
     status: validatedStatus,
     progress: record.progress ?? null,
     input: record.input,
+    deduplicationKey: record.deduplicationKey ?? null,
     error: record.error,
     tokenUsage: validatedTokenUsage,
     scopeId: record.scopeId ?? null,

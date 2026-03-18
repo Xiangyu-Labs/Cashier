@@ -4,6 +4,7 @@ import { ledgerEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { serializeLedgerEntry, type SerializedLedgerEntry } from "@/lib/serialization";
+import { AppError, UnauthorizedError } from "@/lib/errors";
 
 export async function getLedgerEntryAction(id: string): Promise<SerializedLedgerEntry | null> {
   const entry = await db.query.ledgerEntries.findFirst({
@@ -22,8 +23,14 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
   // We do this AFTER fetching because we need the ledgerId
   // Note: This action doesn't use withLedgerAccess because the ledgerId
   // is not known until after we fetch the entry
-  const { error } = await requireLedgerAccess(entry.ledgerId);
-  if (error) throw new Error("Unauthorized: Access to ledger entry denied");
+  try {
+    await requireLedgerAccess(entry.ledgerId);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+    throw error;
+  }
 
   // Use unified serialization
   const serializedEntry = serializeLedgerEntry({

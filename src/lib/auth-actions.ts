@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
-import { UnauthorizedError, NotFoundError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { UnauthorizedError } from "@/lib/errors";
+import { requireLedgerAccess } from "@/features/auth/server";
 
 /**
  * Wraps a server action to automatically handle authentication.
@@ -54,17 +54,7 @@ export function withLedgerAccess<TArgs extends unknown[], TReturn>(
   action: (ledgerId: string, ...args: TArgs) => Promise<TReturn>
 ): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
   return async (ledgerId: string, ...args: TArgs) => {
-    const result = await requireLedgerAccess(ledgerId);
-
-    if (result.error) {
-      // Throw appropriate error type (still abstracted for security)
-      const status = result.error.status;
-      if (status === 404) {
-        throw new NotFoundError("Ledger");
-      }
-      throw new UnauthorizedError("Unauthorized");
-    }
-
+    await requireLedgerAccess(ledgerId);
     return action(ledgerId, ...args);
   };
 }

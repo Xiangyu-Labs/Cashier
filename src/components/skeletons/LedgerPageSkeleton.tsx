@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LedgerTab } from "@/features/ledger/lib/tabs";
+import type { LedgerTab } from "@/features/ledger";
 import {
   DetailsTabSkeleton,
   EntriesTabSkeleton,

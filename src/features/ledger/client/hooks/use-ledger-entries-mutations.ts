@@ -12,14 +12,14 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/features/ledger/server/actions/entries";
+} from "@/features/ledger/server-actions";
 import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+  type PaginatedSourceDocumentsResponse,
+} from "@/features/source-document/server-actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
-import type { SourceDocumentWithEntries } from "@/features/source-document/client/hooks/use-source-documents";
-import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
+import type { SourceDocumentWithEntries } from "@/features/source-document/client";
 
 // Type alias for query data to avoid inline type assertions
 type SourceDocumentsQueryData = PaginatedSourceDocumentsResponse | undefined;

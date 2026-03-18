@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { ImageEditorDialog } from "@/components/ui/image-editor-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server";
+import { updateLedgerAction, getLedgerAction } from "@/features/ledger/server-actions";
 import {
   invalidateLedger,
   invalidateSourceDocuments,

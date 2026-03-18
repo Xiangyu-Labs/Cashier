@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { usePathname } from "@/i18n/routing";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerAction, getLedgersAction } from "@/features/ledger/server/actions/get";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import {
+  getLedgerAction,
+  getLedgersAction,
+  getEntryCategoriesAction,
+} from "@/features/ledger/server-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useTaskQueue } from "@/features/task-queue/client/hooks/use-task-queue";
+import { useTaskQueue } from "@/features/task-queue/client";
 import { useTranslations } from "next-intl";
 import { LEDGER } from "@/lib/constants";
-import { fireAndForget } from "@/lib/safe-async";
 import { updateLedgerSearchParams } from "@/features/ledger/client/ledger-url-params";
 import { replaceLedgerUrl } from "@/features/ledger/client/ledger-url-navigation";
+import { useLedgerDialogState } from "./useLedgerDialogState";
+import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
   () =>
-    import("@/features/source-document/components/SourceDocumentInput").then((m) => ({
+    import("@/features/source-document/components").then((m) => ({
       default: m.SourceDocumentInput,
     })),
   { ssr: false }
@@ -29,7 +33,7 @@ const SourceDocumentInput = dynamic(
 
 const QuickEntryForm = dynamic(
   () =>
-    import("@/features/source-document/components/QuickEntryForm").then((m) => ({
+    import("@/features/source-document/components").then((m) => ({
       default: m.QuickEntryForm,
     })),
   { ssr: false }
@@ -37,7 +41,7 @@ const QuickEntryForm = dynamic(
 
 const TaskQueueModal = dynamic(
   () =>
-    import("@/features/task-queue/components/TaskQueueModal").then((m) => ({
+    import("@/features/task-queue/components").then((m) => ({
       default: m.TaskQueueModal,
     })),
   { ssr: false }
@@ -94,8 +98,6 @@ interface LedgerPageClientProps {
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
-const INPUT_PREFETCH_DELAY = 2000; // Prefetch input modal data after 2 seconds
-
 export function LedgerPageClient({
   ledgerId,
   initialTab,
@@ -162,57 +164,24 @@ export function LedgerPageClient({
     [pathname, searchParams]
   );
 
-  const [isInputOpen, setIsInputOpen] = useState(false);
-  const [inputMode, setInputMode] = useState<"ai" | "quick">("ai");
-  const [isPendingOpen, setIsPendingOpen] = useState(false);
+  const {
+    isInputOpen,
+    setIsInputOpen,
+    inputMode,
+    setInputMode,
+    isPendingOpen,
+    setIsPendingOpen,
+    handleInputDialogChange,
+  } = useLedgerDialogState();
 
   const { stats: pendingStats } = useTaskQueue(ledgerId);
 
-  // 预加载记一笔弹窗数据（当弹窗关闭时）
-  useEffect(() => {
-    if (isInputOpen === false && ledgerId !== "") {
-      const timer = setTimeout(() => {
-        // 预加载 ledger 数据（SourceDocumentInput 需要）
-        const cached = queryClient.getQueryData(queryKeys.ledger(ledgerId));
-        if (cached === undefined) {
-          fireAndForget(
-            queryClient.prefetchQuery({
-              queryKey: queryKeys.ledger(ledgerId),
-              queryFn: () => getLedgerAction(ledgerId),
-              staleTime: STALE_TIME,
-            }),
-            { context: "LedgerPageClient.prefetch" }
-          );
-        }
-      }, INPUT_PREFETCH_DELAY);
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-  }, [isInputOpen, ledgerId, queryClient]);
-
-  // 预加载其他 Tab 组件代码（在活动 Tab 加载完成后）
-  useEffect(() => {
-    const preloadTabs = () => {
-      // 根据当前活动 Tab 预加载其他 Tab
-      if (activeTab !== "details") {
-        fireAndForget(import("../DetailsTab"), { context: "LedgerPageClient.preload" });
-      }
-      if (activeTab !== "stats") {
-        fireAndForget(import("../StatsTab"), { context: "LedgerPageClient.preload" });
-      }
-      if (activeTab !== "settings") {
-        fireAndForget(import("../SettingsTab"), { context: "LedgerPageClient.preload" });
-      }
-      if (activeTab !== "stream") {
-        fireAndForget(import("../LedgerEntriesTab"), { context: "LedgerPageClient.preload" });
-      }
-    };
-
-    // 延迟预加载，优先保证当前 Tab 的响应速度
-    const timer = setTimeout(preloadTabs, 500);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
+  useLedgerPagePrefetching({
+    activeTab,
+    isInputOpen,
+    ledgerId,
+    queryClient,
+  });
 
   if (ledger === undefined || ledger === null) {
     return (
@@ -296,10 +265,7 @@ export function LedgerPageClient({
 
       <Dialog
         open={isInputOpen}
-        onOpenChange={(open) => {
-          setIsInputOpen(open);
-          if (!open) setInputMode("ai");
-        }}
+        onOpenChange={handleInputDialogChange}
       >
         <DialogContent
           className="sm:max-w-md top-[15%] sm:top-[20%] translate-y-0 w-[calc(100%-1rem)] sm:w-full mx-auto rounded-xl"

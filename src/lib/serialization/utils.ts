@@ -239,6 +239,7 @@ export function serializeTask(task: TaskRun): SerializedTask {
     type: task.type,
     title: task.title,
     input: task.input,
+    deduplicationKey: task.deduplicationKey ?? null,
     scopeId: task.scopeId,
     entityType: task.entityType,
     entityId: task.entityId,

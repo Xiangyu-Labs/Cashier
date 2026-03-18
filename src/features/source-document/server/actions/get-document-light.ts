@@ -10,6 +10,7 @@ import {
   type SerializedSourceDocument,
   type SerializedLedgerEntry,
 } from "@/lib/serialization";
+import { AppError } from "@/lib/errors";
 
 /**
  * Light version of SourceDocument for prefetching.
@@ -37,9 +38,13 @@ export async function getSourceDocumentLightAction(
   }
 
   // Verify access
-  const { error } = await requireLedgerAccess(docMeta.ledgerId);
-  if (error) {
-    return null;
+  try {
+    await requireLedgerAccess(docMeta.ledgerId);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return null;
+    }
+    throw error;
   }
 
   // Fetch document (include imageUrls for serialization, will be stripped later)

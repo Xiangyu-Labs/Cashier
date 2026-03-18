@@ -6,16 +6,16 @@ import {
   type SourceDocument,
   type Ledger,
 } from "@/types/api";
-import { SourceDocumentCard } from "@/features/source-document/components/SourceDocumentCard";
+import { SourceDocumentCard } from "@/features/source-document/components";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "@/features/source-document/components/SourceDocumentEditRetryDialog";
+import { SourceDocumentEditRetryDialog } from "@/features/source-document/components";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";
 import { useTranslations, useLocale } from "next-intl";
-import { useSourceDocuments } from "@/features/source-document/client/hooks/use-source-documents";
+import { useSourceDocuments, useBatchSourceDocumentActions } from "@/features/source-document/client";
 import type { SourceDocumentGroup } from "@/lib/serialization";
-import { type SourceDocumentStatusType } from "@/features/source-document/server/schema";
+import { type SourceDocumentStatusType } from "@/features/source-document/server";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -24,7 +24,6 @@ import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-le
 import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useSelection } from "@/hooks/use-selection";
-import { useBatchSourceDocumentActions } from "@/features/source-document/client/hooks/use-batch-source-document-actions";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";

@@ -1,5 +1,6 @@
 // Server Actions
 export { getTaskQueueAction } from "./actions/task-queue";
+export type { TaskQueueResult, TaskQueueStats } from "./actions/task-queue";
 
 export { cancelTaskAction, batchCancelTasksAction } from "./actions/cancel-task";
 

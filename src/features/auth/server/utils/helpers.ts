@@ -2,33 +2,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ledgers } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { NextResponse } from "next/server";
 import { isValidUuid } from "@/lib/validation";
-
-// ============================================================================
-// Error Response Helpers
-// ============================================================================
-
-/**
- * Create a standardized error response
- */
-function createErrorResponse(message: string, status: number): NextResponse {
-  return NextResponse.json({ error: message }, { status });
-}
-
-/**
- * Create an unauthorized (401) error response
- */
-function unauthorized(): NextResponse {
-  return createErrorResponse("Unauthorized", 401);
-}
-
-/**
- * Create a not found (404) error response
- */
-function notFound(message = "Not found"): NextResponse {
-  return createErrorResponse(message, 404);
-}
+import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
 /**
  * Get the current authenticated user from the session.
@@ -49,39 +24,18 @@ export async function getCurrentUserId(): Promise<string | null> {
 }
 
 /**
- * Require authentication for an API route.
- * Returns the user if authenticated, or a 401 response if not.
- */
-export async function requireAuth(): Promise<
-  | { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>; error?: never }
-  | { user?: never; error: NextResponse }
-> {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return { error: unauthorized() };
-  }
-
-  return { user };
-}
-
-/**
  * Verify that a ledger belongs to the current user.
- * Returns the ledger if found and owned, or an error response.
+ * Returns the ledger if found and owned, or throws a domain error.
  */
-export async function verifyLedgerOwnership(
-  ledgerId: string
-): Promise<
-  { ledger: typeof ledgers.$inferSelect; error?: never } | { ledger?: never; error: NextResponse }
-> {
+export async function verifyLedgerOwnership(ledgerId: string): Promise<typeof ledgers.$inferSelect> {
   const userId = await getCurrentUserId();
 
   if (userId == null || userId === "") {
-    return { error: unauthorized() };
+    throw new UnauthorizedError();
   }
 
   if (!isValidUuid(ledgerId)) {
-    return { error: notFound("Invalid ledger ID") };
+    throw new NotFoundError("Ledger");
   }
 
   const ledger = await db.query.ledgers.findFirst({
@@ -89,10 +43,10 @@ export async function verifyLedgerOwnership(
   });
 
   if (!ledger) {
-    return { error: notFound("Ledger not found") };
+    throw new NotFoundError("Ledger");
   }
 
-  return { ledger };
+  return ledger;
 }
 
 /**
@@ -101,18 +55,10 @@ export async function verifyLedgerOwnership(
  */
 export async function requireLedgerAccess(
   ledgerId: string
-): Promise<
-  | { userId: string; ledger: typeof ledgers.$inferSelect; error?: never }
-  | { userId?: never; ledger?: never; error: NextResponse }
-> {
-  const result = await verifyLedgerOwnership(ledgerId);
-
-  if (result.error) {
-    return result;
-  }
-
+): Promise<{ userId: string; ledger: typeof ledgers.$inferSelect }> {
+  const ledger = await verifyLedgerOwnership(ledgerId);
   return {
-    userId: result.ledger.userId,
-    ledger: result.ledger,
+    userId: ledger.userId,
+    ledger,
   };
 }

@@ -14,6 +14,7 @@ export {
 } from "./actions/queries";
 
 export { getSourceDocumentByIdAction } from "./actions/get-document";
+export type { SourceDocumentWithEntries } from "./actions/get-document";
 
 export { getSourceDocumentLightAction } from "./actions/get-document-light";
 
@@ -27,6 +28,12 @@ export { getProcessingTasksAction, getProcessingStatsAction } from "./actions/pr
 
 // Server Actions - Quick Entry
 export { createQuickEntryAction } from "./actions/quick-entry";
+export type {
+  SourceDocumentActionInput,
+  PendingSourceDocumentsResponse,
+  SourceDocumentWithEntries as SourceDocumentListItem,
+  PaginatedSourceDocumentsResponse,
+} from "./actions/types";
 
 // Schema
 export {

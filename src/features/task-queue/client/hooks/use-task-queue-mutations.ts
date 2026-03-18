@@ -7,16 +7,14 @@ import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+} from "@/features/source-document/server-actions";
 import {
   dismissTaskAction,
   batchDismissTasksAction,
-} from "@/features/task-queue/server/actions/dismiss-task";
-import {
   cancelTaskAction,
   batchCancelTasksAction,
-} from "@/features/task-queue/server/actions/cancel-task";
-import type { TaskQueueResult } from "@/features/task-queue/server/actions/task-queue";
+  type TaskQueueResult,
+} from "@/features/task-queue/server-actions";
 
 function removeItemsById(
   old: TaskQueueResult | undefined,

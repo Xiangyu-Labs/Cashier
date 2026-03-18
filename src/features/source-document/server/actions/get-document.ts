@@ -5,6 +5,7 @@ import { sourceDocuments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
 import { type SerializedSourceDocument, serializeSourceDocument } from "@/lib/serialization";
+import { AppError } from "@/lib/errors";
 
 // Return type for getSourceDocumentByIdAction - uses standardized API types
 export type SourceDocumentWithEntries = SerializedSourceDocument;
@@ -32,10 +33,14 @@ export async function getSourceDocumentByIdAction(
   }
 
   // Verify access before fetching full document
-  const { error } = await requireLedgerAccess(docMeta.ledgerId);
-  if (error) {
-    // Return null instead of throwing to avoid leaking document existence
-    return null;
+  try {
+    await requireLedgerAccess(docMeta.ledgerId);
+  } catch (error) {
+    if (error instanceof AppError) {
+      // Return null instead of throwing to avoid leaking document existence
+      return null;
+    }
+    throw error;
   }
 
   // Now fetch full document with relations

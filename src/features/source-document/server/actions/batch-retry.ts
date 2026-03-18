@@ -7,7 +7,6 @@ import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { prepareSourceDocumentTask } from "./helpers";
-import { UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
@@ -21,8 +20,7 @@ export async function batchRetrySourceDocumentsAction(
   ledgerId: string,
   sourceDocumentIds: string[]
 ): Promise<void> {
-  const { ledger, error } = await requireLedgerAccess(ledgerId);
-  if (error) throw new UnauthorizedError();
+  const { ledger } = await requireLedgerAccess(ledgerId);
 
   if (sourceDocumentIds.length === 0) {
     logger.debug({ ledgerId }, "Batch retry called with empty document list");
