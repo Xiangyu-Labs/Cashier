@@ -13,7 +13,7 @@ import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledg
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/features/ledger/server/actions/entries";
+} from "@/modules/ledger/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 
 interface UseEntryMutationsParams {

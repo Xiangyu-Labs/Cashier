@@ -7,12 +7,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { TEST_USER_ID, createTestUserWithLedger } from "../../helpers/schema-setup";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
-import { updateLedgerAction } from "@/features/ledger/server/actions/update";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getSourceDocumentsAction } from "@/features/source-document/server/actions";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
-import { getServiceCredentialsAction } from "@/features/ledger/server/actions/credentials";
+import { getLedgerAction } from "@/modules/ledger/actions";
+import { updateLedgerAction } from "@/modules/ledger/actions";
+import { getLedgerEntriesAction } from "@/modules/ledger/actions";
+import { getSourceDocumentsAction } from "@/modules/source-document/actions";
+import { getEntryCategoriesAction } from "@/modules/ledger/actions";
+import { getServiceCredentialsAction } from "@/modules/ledger/actions";
 
 // Mock auth
 import { auth } from "@/auth";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { exportLedgerEntriesAction } from "@/features/ledger/server/actions/export";
+import { exportLedgerEntriesAction } from "@/modules/ledger/actions";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";

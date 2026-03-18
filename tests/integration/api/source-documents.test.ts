@@ -5,7 +5,7 @@ import {
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
   getSourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+} from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import {
   entryCategories as categories,

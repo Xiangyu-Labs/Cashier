@@ -9,8 +9,8 @@ import {
   createServiceCredentialAction,
   deleteServiceCredentialAction,
   getServiceCredentialsAction,
-} from "@/features/ledger/server/actions/credentials";
-import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
+  getLedgerSettingsAction,
+} from "@/modules/ledger/actions";
 import { getDateInTimezone } from "@/lib/date-utils";
 
 // Mock Processing

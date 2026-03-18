@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
-} from "@/features/source-document/server/actions";
+} from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import {
   sourceDocuments,

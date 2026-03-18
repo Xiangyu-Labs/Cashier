@@ -20,7 +20,7 @@ import {
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
   getEntryCategoriesAction,
-} from "@/features/ledger/server/actions/categories";
+} from "@/modules/ledger/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 

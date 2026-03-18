@@ -3,7 +3,7 @@ import {
   getEntryCategoriesAction,
   createEntryCategoryAction,
   reorderEntryCategoriesAction,
-} from "@/features/ledger/server/actions/categories";
+} from "@/modules/ledger/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";

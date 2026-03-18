@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getLedgerEntryAction } from "@/features/ledger/server/actions/get-entry";
+import { getLedgerEntryAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, users, sourceDocuments } from "@/persistence";
 import {

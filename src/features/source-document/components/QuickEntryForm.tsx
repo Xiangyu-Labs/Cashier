@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
-import { createQuickEntryAction } from "@/features/source-document/server/actions";
+import { createQuickEntryAction } from "@/modules/source-document/actions";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";
@@ -24,7 +24,7 @@ import type { InfiniteData } from "@tanstack/react-query";
 import type {
   SourceDocumentWithEntries,
   PaginatedSourceDocumentsResponse,
-} from "@/features/source-document/server/actions/types";
+} from "@/modules/source-document/actions";
 import type { LedgerEntry } from "@/types/api";
 
 interface QuickEntryFormProps {

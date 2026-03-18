@@ -6,16 +6,13 @@ import { useDetailsTabData } from "@/features/ledger/client/hooks/use-details-ta
 import type { Ledger } from "@/types/api";
 import type { SerializedLedgerEntry } from "@/lib/serialization";
 
-vi.mock("@/features/ledger/server/actions/entries", () => ({
+vi.mock("@/modules/ledger/actions", () => ({
   getLedgerEntriesAction: vi.fn(),
-}));
-
-vi.mock("@/features/ledger/server/actions/stats", () => ({
   getLedgerStatsAction: vi.fn(),
 }));
 
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { getLedgerEntriesAction } from "@/modules/ledger/actions";
+import { getLedgerStatsAction } from "@/modules/ledger/actions";
 
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {

@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getAllSourceDocumentsAction } from "@/features/source-document/server/actions";
-import type { SourceDocumentWithEntries } from "@/features/source-document/server/actions/types";
+import { getAllSourceDocumentsAction, type SourceDocumentWithEntries } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {

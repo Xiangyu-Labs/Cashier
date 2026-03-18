@@ -21,7 +21,7 @@ import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/l
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import { useLedgerEntriesMutations } from "@/features/ledger/client/hooks/use-ledger-entries-mutations";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useSelection } from "@/hooks/use-selection";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";

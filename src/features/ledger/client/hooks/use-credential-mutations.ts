@@ -7,7 +7,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createServiceCredentialAction,
   deleteServiceCredentialAction,
-} from "@/features/ledger/server/actions/credentials";
+} from "@/modules/ledger/actions";
 import type { ServiceCredential } from "@/types/api";
 
 interface CreateCredentialContext {

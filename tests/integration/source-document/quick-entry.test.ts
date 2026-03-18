@@ -10,7 +10,7 @@ vi.mock("@/auth", () => ({
 }));
 
 import { auth } from "@/auth";
-import { createQuickEntryAction } from "@/features/source-document/server/actions/quick-entry";
+import { createQuickEntryAction } from "@/modules/source-document/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 

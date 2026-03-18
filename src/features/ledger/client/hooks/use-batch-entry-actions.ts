@@ -13,8 +13,8 @@ import { useLedgerMutation } from "@/lib/mutations";
 import {
   batchUpdateLedgerEntriesAction,
   batchDeleteLedgerEntriesAction,
-} from "@/features/ledger/server/actions/entries";
-import { submitBatchCategorizeAction } from "@/features/ledger/server/actions/categorize";
+  submitBatchCategorizeAction,
+} from "@/modules/ledger/actions";
 
 export function useBatchEntryActions(ledgerId: string, clearSelection: () => void) {
   const tCommon = useTranslations("Common");

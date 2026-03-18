@@ -2,8 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { getLedgerEntriesAction } from "@/features/ledger/server/actions/entries";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { getLedgerEntriesAction, getLedgerStatsAction } from "@/modules/ledger/actions";
 import { queryKeys } from "@/lib/query-keys";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger, LedgerEntry } from "@/types/api";

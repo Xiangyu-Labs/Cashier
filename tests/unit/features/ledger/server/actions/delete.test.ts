@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../../../../setup";
 import { users, ledgers, entryCategories } from "@/persistence";
-import { deleteLedgerAction } from "@/features/ledger/server/actions/delete";
+import { deleteLedgerAction } from "@/modules/ledger/actions";
 import { eq } from "drizzle-orm";
 
 // Mock next/cache

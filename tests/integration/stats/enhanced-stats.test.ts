@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getEnhancedStats } from "@/features/stats/server/actions";
+import { getEnhancedStats } from "@/modules/stats/actions";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";

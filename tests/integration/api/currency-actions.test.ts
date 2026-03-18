@@ -4,7 +4,7 @@ import { currencyRates } from "@/persistence/schema/currency";
 import {
   convertCurrencyAction,
   batchConvertCurrencyAction,
-} from "@/features/currency/server/actions";
+} from "@/modules/currency/actions";
 
 /**
  * Helper to insert test exchange rates into the database

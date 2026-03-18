@@ -3,7 +3,7 @@ import { getTestDb } from "../../setup";
 import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
-import { getLedgerStatsAction } from "@/features/ledger/server/actions/stats";
+import { getLedgerStatsAction } from "@/modules/ledger/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";

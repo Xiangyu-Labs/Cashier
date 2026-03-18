@@ -8,10 +8,12 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { updateLedgerAction } from "@/features/ledger/server/actions/update";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
-import { getLedgerSettingsAction } from "@/features/ledger/server/actions/settings";
-import { getEntryCategoriesAction } from "@/features/ledger/server/actions/categories";
+import {
+  updateLedgerAction,
+  getLedgerAction,
+  getLedgerSettingsAction,
+  getEntryCategoriesAction,
+} from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
 import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
 

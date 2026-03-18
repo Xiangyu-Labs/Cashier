@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
-import { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";
+import { getSourceDocumentByIdAction } from "@/modules/source-document/actions";
+import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../setup";
 import { ledgers, sourceDocuments, users, ledgerEntries, entryCategories } from "@/persistence";
 import {

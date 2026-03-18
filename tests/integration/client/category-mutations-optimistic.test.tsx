@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/query-keys";
 import React from "react";
 
 // Mock the server actions
-vi.mock("@/features/ledger/server/actions/categories", () => ({
+vi.mock("@/modules/ledger/actions", () => ({
   createEntryCategoryAction: vi.fn().mockResolvedValue({ id: "new-cat", name: "New Category" }),
   updateEntryCategoryAction: vi.fn().mockResolvedValue(undefined),
   deleteEntryCategoryAction: vi.fn().mockResolvedValue(undefined),

@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { submitAutoCategorizeAction } from "@/features/ledger/server/actions/categorize";
+import { submitAutoCategorizeAction } from "@/modules/ledger/actions";
 import { CurrencySection } from "./settings/CurrencySection";
 import { CategorySection } from "./settings/CategorySection";
 import { ServiceCredentialSection } from "./settings/ServiceCredentialSection";

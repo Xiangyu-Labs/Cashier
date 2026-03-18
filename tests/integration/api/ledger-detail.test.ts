@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
-import { updateLedgerAction } from "@/features/ledger/server/actions/update";
+import { getLedgerAction } from "@/modules/ledger/actions";
+import { updateLedgerAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../../setup";
 import { ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";

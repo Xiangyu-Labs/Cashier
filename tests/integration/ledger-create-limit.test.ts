@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ledgers, users } from "@/persistence";
-import { createLedgerAction } from "@/features/ledger/server/actions/create";
+import { createLedgerAction } from "@/modules/ledger/actions";
 import { ConflictError } from "@/lib/errors";
 
 // Mock auth module

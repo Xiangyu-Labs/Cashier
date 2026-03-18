@@ -24,14 +24,14 @@ import {
   deleteEntryCategoryAction,
   getEntryCategoriesAction,
   getUncategorizedCountAction,
-} from "@/features/ledger/server/actions/categories";
+} from "@/modules/ledger/actions";
 import {
   deleteLedgerEntryAction,
   createLedgerEntryAction,
   updateLedgerEntryAction,
-} from "@/features/ledger/server/actions/entries";
-import { createLedgerAction } from "@/features/ledger/server/actions/create";
-import { deleteSourceDocumentAction } from "@/features/source-document/server/actions";
+} from "@/modules/ledger/actions";
+import { createLedgerAction } from "@/modules/ledger/actions";
+import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
 
 /**
  * Helper function to create a complete test ledger with categories and entries

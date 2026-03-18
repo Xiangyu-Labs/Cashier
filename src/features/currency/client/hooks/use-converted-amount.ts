@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/features/currency/server/actions";
+import { convertCurrencyAction } from "@/modules/currency/actions";
 import { queryKeys } from "@/lib/query-keys";
 
 interface ConversionData {

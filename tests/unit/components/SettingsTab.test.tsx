@@ -67,17 +67,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("@/features/ledger/server/actions/update", () => ({
+vi.mock("@/modules/ledger/actions", () => ({
   updateLedgerAction: (id: string, data: Partial<Ledger>) => mockUpdateLedgerAction(id, data),
-}));
-
-vi.mock("@/features/ledger/server/actions/categories", () => ({
   createEntryCategoryAction: vi.fn(),
   updateEntryCategoryAction: vi.fn(),
   deleteEntryCategoryAction: vi.fn(),
-}));
-
-vi.mock("@/features/ledger/server/actions/credentials", () => ({
   createServiceCredentialAction: vi.fn(),
   deleteServiceCredentialAction: vi.fn(),
 }));

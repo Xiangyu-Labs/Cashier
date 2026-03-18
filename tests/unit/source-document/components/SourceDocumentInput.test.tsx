@@ -15,24 +15,21 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("@/features/source-document/server/actions", () => ({
+vi.mock("@/modules/source-document/actions", () => ({
   createSourceDocumentAction: vi.fn(),
   retrySourceDocumentAction: vi.fn(),
 }));
 
-vi.mock("@/features/ledger/server/actions/get", () => ({
+vi.mock("@/modules/ledger/actions", () => ({
   getLedgerAction: vi.fn(),
-}));
-
-vi.mock("@/features/ledger/server/actions/update", () => ({
   updateLedgerAction: vi.fn(),
 }));
 
 import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
-} from "@/features/source-document/server/actions";
-import { getLedgerAction } from "@/features/ledger/server/actions/get";
+} from "@/modules/source-document/actions";
+import { getLedgerAction } from "@/modules/ledger/actions";
 
 describe("SourceDocumentInput - Optimistic Close", () => {
   let queryClient: QueryClient;

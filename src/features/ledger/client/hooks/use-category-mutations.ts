@@ -9,7 +9,7 @@ import {
   updateEntryCategoryAction,
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
-} from "@/features/ledger/server/actions/categories";
+} from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
 import type { EntryCategory, EntryCategoryWithCount } from "@/types/api";
 

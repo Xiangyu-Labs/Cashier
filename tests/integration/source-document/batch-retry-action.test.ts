@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { batchRetrySourceDocumentsAction } from "@/features/source-document/server/actions/batch-retry";
+import { batchRetrySourceDocumentsAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";

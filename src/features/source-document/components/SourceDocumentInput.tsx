@@ -13,7 +13,7 @@ import {
 import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
-} from "@/features/source-document/server/actions";
+} from "@/modules/source-document/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Send, RefreshCw } from "lucide-react";

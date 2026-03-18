@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { deleteSourceDocumentAction } from "@/features/source-document/server/actions";
+import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import {
   entryCategories as categories,

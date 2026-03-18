@@ -3,7 +3,7 @@ import {
   updateSourceDocumentAction,
   updateSourceDocumentImagesAction,
   batchUpdateSourceDocumentsAction,
-} from "@/features/source-document/server/actions/update";
+} from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import { sourceDocuments, ledgers } from "@/persistence";
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";

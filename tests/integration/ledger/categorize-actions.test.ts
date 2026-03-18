@@ -20,7 +20,7 @@ import { flowEngine } from "@/lib/flow";
 import {
   submitAutoCategorizeAction,
   submitBatchCategorizeAction,
-} from "@/features/ledger/server/actions/categorize";
+} from "@/modules/ledger/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 

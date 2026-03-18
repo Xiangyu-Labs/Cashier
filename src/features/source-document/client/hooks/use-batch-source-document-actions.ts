@@ -14,9 +14,9 @@ import {
   batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-} from "@/features/source-document/server/actions";
+} from "@/modules/source-document/actions";
 
-import type { PaginatedSourceDocumentsResponse } from "@/features/source-document/server/actions/types";
+import type { PaginatedSourceDocumentsResponse } from "@/modules/source-document/actions";
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
   const tCommon = useTranslations("Common");
