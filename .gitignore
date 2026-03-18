@@ -72,7 +72,3 @@ public/swe-worker-*.js
 
 # execute script
 chant.sh
-
-# perf artifacts
-/perf/.seed.json
-/perf/results/
