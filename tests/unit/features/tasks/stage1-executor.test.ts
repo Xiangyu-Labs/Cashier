@@ -44,7 +44,7 @@ describe("Stage 1 Executor", () => {
       const result = await executeStage1(baseInput, mockAI);
 
       expect(result.isValid).toBe(false);
-      expect(result.title).toBe("无效文档");
+      expect("title" in result ? result.title : undefined).toBe("无效文档");
       // 2 calls for validity check (dual GPT) + 1 call for title
       expect(mockAI.generate).toHaveBeenCalledTimes(3);
     });

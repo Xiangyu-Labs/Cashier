@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 
+export type HeadersLike = Pick<Headers, "get">;
+
 /**
  * Get client IP address from request headers with secure fallback chain.
  *
@@ -11,9 +13,7 @@ import { headers } from "next/headers";
  * Security: Only trusts X-Real-IP when TRUSTED_PROXY environment variable is set.
  * This prevents IP spoofing when the app is directly exposed to the internet.
  */
-export async function getClientIP(): Promise<string> {
-  const headersList = await headers();
-
+export function getClientIPFromHeaders(headersList: HeadersLike): string {
   // If configured with trusted proxies, prefer X-Real-IP (set by nginx, etc.)
   if (process.env.TRUSTED_PROXY != null && process.env.TRUSTED_PROXY !== "") {
     const realIP = headersList.get("x-real-ip");
@@ -35,6 +35,11 @@ export async function getClientIP(): Promise<string> {
   }
 
   return "unknown";
+}
+
+export async function getClientIP(): Promise<string> {
+  const headersList = await headers();
+  return getClientIPFromHeaders(headersList);
 }
 
 /**

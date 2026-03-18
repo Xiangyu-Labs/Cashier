@@ -1,0 +1,170 @@
+import { CredentialsSignin } from "@auth/core/errors";
+import { and, eq, isNull } from "drizzle-orm";
+import type { User } from "next-auth";
+import { db } from "@/lib/db";
+import { users } from "@/features/auth/server/schema";
+import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
+import { isValidOTPFormat } from "@/features/auth/server/services/otp";
+import { checkVerifyRateLimit } from "@/features/auth/server/services/otp-rate-limit";
+import {
+  findOTPRecord,
+  verifyOTPWithPolicy,
+} from "@/features/auth/server/services/otp-verification";
+import { assertRegistrationAllowed } from "@/features/auth/server/services/registration";
+import { logger } from "@/lib/logger";
+import { normalizeEmail } from "@/lib/utils/email";
+import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
+
+const MAX_EMAIL_LENGTH = 254;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+class OTPCredentialsSigninError extends CredentialsSignin {
+  constructor(code: string) {
+    super();
+    this.code = code;
+  }
+}
+
+export class OTPInvalidSignInError extends OTPCredentialsSigninError {
+  constructor() {
+    super(AUTH_ERROR_CODES.OTP_INVALID);
+  }
+}
+
+export class OTPExpiredSignInError extends OTPCredentialsSigninError {
+  constructor() {
+    super(AUTH_ERROR_CODES.OTP_EXPIRED);
+  }
+}
+
+export class OTPLockedSignInError extends OTPCredentialsSigninError {
+  constructor() {
+    super(AUTH_ERROR_CODES.OTP_LOCKED);
+  }
+}
+
+export class OTPRateLimitedSignInError extends OTPCredentialsSigninError {
+  constructor() {
+    super(AUTH_ERROR_CODES.OTP_RATE_LIMITED);
+  }
+}
+
+function validateCredentials(email: string, otp: string): string {
+  if (email === "" || email.length > MAX_EMAIL_LENGTH) {
+    throw new OTPInvalidSignInError();
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new OTPInvalidSignInError();
+  }
+
+  if (!isValidOTPFormat(otp)) {
+    throw new OTPInvalidSignInError();
+  }
+
+  return normalizedEmail;
+}
+
+async function findOrCreateUser(normalizedEmail: string, locale: string): Promise<{
+  user: NonNullable<Awaited<ReturnType<typeof db.query.users.findFirst>>>;
+  isExistingUser: boolean;
+}> {
+  let user = await db.query.users.findFirst({
+    where: and(eq(users.email, normalizedEmail), isNull(users.deletedAt)),
+  });
+
+  const isExistingUser = user != null;
+
+  if (user == null) {
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        emailVerified: new Date(),
+      })
+      .returning();
+    user = newUser;
+
+    const { createDefaultLedgerForUser } = await import(
+      "@/features/auth/server/services/user-setup"
+    );
+    await createDefaultLedgerForUser(user.id, user.email ?? "New User", locale);
+  }
+
+  return { user, isExistingUser };
+}
+
+async function sendExistingUserNotification(userEmail: string): Promise<void> {
+  const { sendLoginNotification } = await import("@/features/auth/server/services/notifications");
+  await sendLoginNotification(userEmail);
+}
+
+export async function authenticateWithOTP(params: {
+  email: string;
+  otp: string;
+  locale?: string;
+  requestHeaders: HeadersLike;
+}): Promise<User> {
+  const normalizedEmail = validateCredentials(params.email, params.otp);
+  const locale = params.locale ?? "zh";
+
+  const record = await findOTPRecord(normalizedEmail);
+  if (record == null) {
+    logger.warn({ email: normalizedEmail }, "OTP token not found during sign-in");
+    throw new OTPInvalidSignInError();
+  }
+
+  if (record.lockedUntil != null && record.lockedUntil > new Date()) {
+    logger.warn({ email: normalizedEmail, lockedUntil: record.lockedUntil }, "OTP account locked");
+    throw new OTPLockedSignInError();
+  }
+
+  const ip = getClientIPFromHeaders(params.requestHeaders);
+  const isAllowed = await checkVerifyRateLimit(ip);
+  if (!isAllowed) {
+    logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded during sign-in");
+    throw new OTPRateLimitedSignInError();
+  }
+
+  const result = await verifyOTPWithPolicy(normalizedEmail, params.otp, record);
+
+  if (!result.success) {
+    logger.warn(
+      {
+        email: normalizedEmail,
+        reason: result.reason,
+        attemptsRemaining: result.attemptsRemaining,
+      },
+      "OTP verification failed during sign-in"
+    );
+
+    switch (result.reason) {
+      case "expired":
+        throw new OTPExpiredSignInError();
+      case "locked":
+      case "max_attempts":
+        throw new OTPLockedSignInError();
+      default:
+        throw new OTPInvalidSignInError();
+    }
+  }
+
+  await assertRegistrationAllowed(normalizedEmail);
+
+  const { user, isExistingUser } = await findOrCreateUser(normalizedEmail, locale);
+
+  await deleteOTPToken(normalizedEmail);
+
+  if (isExistingUser && user.email != null && user.email !== "") {
+    await sendExistingUserNotification(user.email);
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    image: user.image,
+  };
+}

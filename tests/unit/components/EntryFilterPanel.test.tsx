@@ -50,6 +50,18 @@ vi.mock("@/components/CategoryIcon", () => ({
 
 describe("EntryFilterPanel", () => {
   const mockOnFiltersChange = vi.fn();
+  const category = {
+    id: "cat1",
+    ledgerId: "ledger-1",
+    name: "餐饮",
+    description: null,
+    icon: "🍔",
+    sortOrder: 1,
+    isEditable: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    deletedAt: null,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,12 +81,12 @@ describe("EntryFilterPanel", () => {
     };
 
     render(
-      <EntryFilterPanel
-        filters={filters}
-        onFiltersChange={mockOnFiltersChange}
-        categories={[{ id: "cat1", name: "餐饮", icon: "🍔", sortOrder: 1 }]}
-        preferredCurrencies={["CNY", "USD"]}
-      />
+        <EntryFilterPanel
+          filters={filters}
+          onFiltersChange={mockOnFiltersChange}
+          categories={[category]}
+          preferredCurrencies={["CNY", "USD"]}
+        />
     );
 
     // Should show badge with count (3 active filters)
@@ -99,7 +111,7 @@ describe("EntryFilterPanel", () => {
       <EntryFilterPanel
         filters={{}}
         onFiltersChange={mockOnFiltersChange}
-        categories={[{ id: "cat1", name: "餐饮", icon: "🍔", sortOrder: 1 }]}
+        categories={[category]}
         showCategory={false}
         showCurrency={false}
       />

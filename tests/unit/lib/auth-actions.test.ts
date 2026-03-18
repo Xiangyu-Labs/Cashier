@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { withAuth, requireAuth } from "@/lib/auth-actions";
 import { UnauthorizedError } from "@/lib/errors";
 
@@ -9,9 +9,11 @@ vi.mock("@/auth", () => ({
 
 import { auth } from "@/auth";
 
+const mockAuth = auth as unknown as Mock;
+
 describe("withAuth", () => {
   it("should throw UnauthorizedError when no session", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockAuth.mockResolvedValue(null);
 
     const action = withAuth(async (userId) => userId);
 
@@ -19,7 +21,7 @@ describe("withAuth", () => {
   });
 
   it("should throw UnauthorizedError when no user id", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: {} } as { user: Record<string, never> });
+    mockAuth.mockResolvedValue({ user: {} } as { user: Record<string, never> });
 
     const action = withAuth(async (userId) => userId);
 
@@ -27,7 +29,7 @@ describe("withAuth", () => {
   });
 
   it("should pass userId to action when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({
+    mockAuth.mockResolvedValue({
       user: { id: "user-123" },
     } as { user: { id: string } });
 
@@ -41,7 +43,7 @@ describe("withAuth", () => {
   });
 
   it("should handle multiple arguments", async () => {
-    vi.mocked(auth).mockResolvedValue({
+    mockAuth.mockResolvedValue({
       user: { id: "user-456" },
     } as { user: { id: string } });
 
@@ -57,7 +59,7 @@ describe("withAuth", () => {
 
 describe("requireAuth", () => {
   it("should return userId when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({
+    mockAuth.mockResolvedValue({
       user: { id: "user-789" },
     } as { user: { id: string } });
 
@@ -67,13 +69,13 @@ describe("requireAuth", () => {
   });
 
   it("should throw UnauthorizedError when no session", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockAuth.mockResolvedValue(null);
 
     await expect(requireAuth()).rejects.toThrow(UnauthorizedError);
   });
 
   it("should throw UnauthorizedError when no user id", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: {} } as { user: Record<string, never> });
+    mockAuth.mockResolvedValue({ user: {} } as { user: Record<string, never> });
 
     await expect(requireAuth()).rejects.toThrow(UnauthorizedError);
   });

@@ -22,6 +22,7 @@ function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord
         status: 'pending',
         progress: null,
         input: task.input,
+        deduplicationKey: task.deduplicationKey ?? null,
         error: null,
         tokenUsage: null,
         scopeId: task.scopeId ?? null,

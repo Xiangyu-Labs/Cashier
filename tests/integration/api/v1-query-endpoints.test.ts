@@ -232,9 +232,8 @@ describe("API v1 Query Endpoints", () => {
     it("should return 429 when rate limit is exceeded", async () => {
       vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
         success: false,
-        limit: 0,
         remaining: 0,
-        reset: Date.now(),
+        resetTime: Date.now(),
       });
 
       const request = createMockRequest(`http://localhost:3000/api/v1/entries`, {
@@ -397,9 +396,8 @@ describe("API v1 Query Endpoints", () => {
     it("should return 429 when rate limit is exceeded", async () => {
       vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
         success: false,
-        limit: 0,
         remaining: 0,
-        reset: Date.now(),
+        resetTime: Date.now(),
       });
 
       const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
@@ -454,9 +452,8 @@ describe("API v1 Query Endpoints", () => {
     it("should return 429 when rate limit is exceeded", async () => {
       vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
         success: false,
-        limit: 0,
         remaining: 0,
-        reset: Date.now(),
+        resetTime: Date.now(),
       });
 
       const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {

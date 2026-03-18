@@ -2,25 +2,20 @@
 
 import { headers } from "next/headers";
 import { Resend } from "resend";
-import { generateOTP, isValidOTPFormat } from "@/features/auth/server/services/otp";
+import { generateOTP } from "@/features/auth/server/services/otp";
 import { createOTPToken } from "@/features/auth/server/repositories/otp-repository";
-import {
-  findOTPRecord,
-  verifyOTPWithPolicy,
-} from "@/features/auth/server/services/otp-verification";
 import {
   checkSendRateLimit,
   checkSendRateLimitByIP,
   checkResendCooldown,
   setResendCooldown,
   getCanResendAt,
-  checkVerifyRateLimit,
 } from "@/features/auth/server/services/otp-rate-limit";
 import { logger } from "@/lib/logger";
 import OTPEmail from "@/emails/otp-email";
 import { getClientIP } from "@/lib/utils/ip";
 import { normalizeEmail } from "@/lib/utils/email";
-import { ValidationError, RateLimitError, UnauthorizedError } from "@/lib/errors";
+import { ValidationError, RateLimitError } from "@/lib/errors";
 
 // RFC 5321: Maximum email length is 254 characters (local part max 64 + @ + domain max 189)
 const MAX_EMAIL_LENGTH = 254;
@@ -136,105 +131,6 @@ export async function sendOTPAction(email: string, _locale: string = "en") {
     };
   } catch (err) {
     logger.error({ error: err }, "Send OTP Action error");
-    throw err;
-  }
-}
-
-export async function verifyOTPAction(email: string, otp: string) {
-  try {
-    // Validate inputs
-    if (email === "" || typeof email !== "string") {
-      throw new ValidationError("Invalid email address");
-    }
-
-    if (otp === "" || typeof otp !== "string") {
-      throw new ValidationError("Invalid verification code");
-    }
-
-    // Validate OTP format
-    if (!isValidOTPFormat(otp)) {
-      throw new ValidationError("Verification code must be 6 digits");
-    }
-
-    const normalizedEmail = normalizeEmail(email);
-
-    // Find OTP record first (data access layer)
-    const record = await findOTPRecord(normalizedEmail);
-    if (!record) {
-      logger.warn({ email: normalizedEmail }, "OTP token not found");
-      throw new UnauthorizedError(
-        "Invalid or expired verification code. Please try again or request a new code."
-      );
-    }
-
-    // Check if account is already locked BEFORE checking IP rate limit
-    // This ensures locked users get proper error message instead of generic rate limit
-    if (record.lockedUntil && record.lockedUntil > new Date()) {
-      const error = new RateLimitError(
-        "Account temporarily locked due to too many failed attempts. Please try again later."
-      );
-      (error as Error & { lockedUntil?: number }).lockedUntil = Math.floor(
-        record.lockedUntil.getTime() / 1000
-      );
-      throw error;
-    }
-
-    // Get IP address for rate limiting (only check if account not already locked)
-    const ip = await getClientIP();
-
-    // Check verify rate limit
-    const isAllowed = await checkVerifyRateLimit(ip);
-    if (!isAllowed) {
-      logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded");
-      throw new RateLimitError("Too many verification attempts. Please try again later.");
-    }
-
-    // Verify the OTP with business logic (service layer)
-    const result = await verifyOTPWithPolicy(normalizedEmail, otp, record);
-
-    if (!result.success) {
-      // Internal logging with detailed reason for debugging/auditing
-      // Do not expose detailed error reason to client to prevent user enumeration attacks
-      logger.warn(
-        {
-          email: normalizedEmail,
-          reason: result.reason,
-          attemptsRemaining: result.attemptsRemaining,
-        },
-        "OTP verification failed"
-      );
-
-      // Return unified error message to prevent information leakage
-      // Only expose: attemptsRemaining (for UI guidance) and lockedUntil (when locked)
-      switch (result.reason) {
-        case "locked":
-        case "max_attempts": {
-          // Account is locked - must inform user but with generic message
-          const error = new RateLimitError(
-            "Account temporarily locked due to too many failed attempts. Please try again later."
-          );
-          (error as Error & { lockedUntil?: number }).lockedUntil = result.lockedUntil
-            ? Math.floor(result.lockedUntil.getTime() / 1000)
-            : undefined;
-          throw error;
-        }
-        default: {
-          // This prevents attackers from determining if an email is registered
-          // Unified error for: not_found, expired, invalid
-          const error = new UnauthorizedError(
-            "Invalid or expired verification code. Please try again or request a new code."
-          );
-          (error as Error & { attemptsRemaining?: number }).attemptsRemaining =
-            result.attemptsRemaining;
-          throw error;
-        }
-      }
-    }
-
-    logger.info({ email: normalizedEmail }, "OTP verified successfully");
-    return { email: normalizedEmail };
-  } catch (err) {
-    logger.error({ error: err }, "Verify OTP Action error");
     throw err;
   }
 }

@@ -3,7 +3,8 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useDetailsTabData } from "@/features/ledger/client/hooks/use-details-tab-data";
-import type { Ledger, LedgerEntry } from "@/types/api";
+import type { Ledger } from "@/types/api";
+import type { SerializedLedgerEntry } from "@/lib/serialization";
 
 vi.mock("@/features/ledger/server/actions/entries", () => ({
   getLedgerEntriesAction: vi.fn(),
@@ -22,7 +23,7 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-function createLedgerEntry(id: string): LedgerEntry {
+function createLedgerEntry(id: string): SerializedLedgerEntry {
   return {
     id,
     ledgerId: "ledger-1",
@@ -43,22 +44,23 @@ function createLedgerEntry(id: string): LedgerEntry {
       ledgerId: "ledger-1",
       title: "Doc 1",
       text: null,
-      imageUrls: [],
+      type: "ai_parsed",
       status: "completed",
       entryDate: "2026-03-18",
       createdAt: "2026-03-18T10:00:00.000Z",
       updatedAt: "2026-03-18T10:00:00.000Z",
       deletedAt: null,
+      imageUrls: [],
       hasImages: false,
       metadata: null,
+      anomalyReason: null,
     },
   };
 }
 
 const ledger: Ledger = {
   id: "ledger-1",
-  name: "Test Ledger",
-  isDefault: true,
+  userId: "user-1",
   createdAt: "2026-03-18T00:00:00.000Z",
   updatedAt: "2026-03-18T00:00:00.000Z",
   deletedAt: null,

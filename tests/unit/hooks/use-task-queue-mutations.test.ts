@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
+type TaskQueueItemLike = { id?: string; sourceDocumentId?: string; status?: string };
+type TaskQueueLike = { items: TaskQueueItemLike[]; stats: { total: number } };
+
 describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
   it("should handle removeItemsById when cache data has no items property", () => {
     const queryClient = new QueryClient();
@@ -14,12 +17,11 @@ describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
     const buggyRemoveItemsById = (old: unknown, ids: string[]) => {
       if (old === undefined) return old;
       const idsSet = new Set(ids);
-      const removedItems = (old as { items: unknown[] }).items.filter((item: { id?: string }) =>
-        idsSet.has(item.id ?? "")
-      );
+      const items = (old as TaskQueueLike).items;
+      const removedItems = items.filter((item) => idsSet.has(item.id ?? ""));
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.filter((item: { id?: string }) => !idsSet.has(item.id ?? "")),
+        items: items.filter((item) => !idsSet.has(item.id ?? "")),
         stats: {
           ...(old as { stats: object }).stats,
           total: (old as { stats: { total: number } }).stats.total - removedItems.length,
@@ -46,11 +48,11 @@ describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
     const buggyRemoveItemsBySourceDocId = (old: unknown, sourceDocIds: string[]) => {
       if (old === undefined) return old;
       const idsSet = new Set(sourceDocIds);
-      const newItems = (old as { items: unknown[] }).items.filter(
-        (item: { sourceDocumentId?: string }) =>
-          item.sourceDocumentId === undefined || !idsSet.has(item.sourceDocumentId)
+      const items = (old as TaskQueueLike).items;
+      const newItems = items.filter(
+        (item) => item.sourceDocumentId === undefined || !idsSet.has(item.sourceDocumentId)
       );
-      const removedCount = (old as { items: unknown[] }).items.length - newItems.length;
+      const removedCount = items.length - newItems.length;
       return {
         ...(old as object),
         items: newItems,
@@ -79,9 +81,10 @@ describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
 
     const buggyBatchRetry = (old: unknown, ids: string[]) => {
       if (old === undefined) return old;
+      const items = (old as TaskQueueLike).items;
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.map((item: { id?: string; sourceDocumentId?: string }) =>
+        items: items.map((item) =>
           ids.includes(item.id ?? "") && item.sourceDocumentId !== undefined && item.sourceDocumentId !== ""
             ? { ...item, status: "pending" }
             : item
@@ -110,12 +113,11 @@ describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
     const buggyRemoveItemsById = (old: unknown, ids: string[]) => {
       if (old === undefined) return old;
       const idsSet = new Set(ids);
-      const removedItems = (old as { items: unknown[] }).items.filter((item: { id?: string }) =>
-        idsSet.has(item.id ?? "")
-      );
+      const items = (old as TaskQueueLike).items;
+      const removedItems = items.filter((item) => idsSet.has(item.id ?? ""));
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.filter((item: { id?: string }) => !idsSet.has(item.id ?? "")),
+        items: items.filter((item) => !idsSet.has(item.id ?? "")),
         stats: {
           ...(old as { stats: object }).stats,
           total: (old as { stats: { total: number } }).stats.total - removedItems.length,

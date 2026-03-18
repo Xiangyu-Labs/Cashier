@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
+type SourceDocumentListItem = { id?: string; text?: string };
+type PaginatedItems = { items: SourceDocumentListItem[]; total: number };
+
 describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
   it("should FAIL when cache data is an array (no items property) - reproducing the bug", () => {
     // This test reproduces the actual bug:
@@ -23,10 +26,11 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
     //            old.items.filter(...)   // old.items is undefined -> THROWS
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       // This is the buggy code that exists in the codebase
       return {
         ...old as object,
-        items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => d.id !== "doc-1"),
+        items: items.filter((d) => d.id !== "doc-1"),
         total: (old as { total: number }).total - 1,
       };
     };
@@ -61,9 +65,10 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       return {
         ...old as object,
-        items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => d.id !== "doc-1"),
+        items: items.filter((d) => d.id !== "doc-1"),
         total: (old as { total: number }).total - 1,
       };
     };

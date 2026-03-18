@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
@@ -19,6 +20,29 @@ const ERROR_MESSAGES: Record<string, { title: string; desc: string }> = {
   Default: { title: "error", desc: "errorDesc" },
 };
 
+const CREDENTIALS_ERROR_MESSAGES: Record<string, { title: string; desc: string }> = {
+  [AUTH_ERROR_CODES.REGISTRATION_DISABLED]: {
+    title: "registrationDisabled",
+    desc: "registrationDisabledDesc",
+  },
+  [AUTH_ERROR_CODES.OTP_INVALID]: {
+    title: "error",
+    desc: "verifyFailed",
+  },
+  [AUTH_ERROR_CODES.OTP_EXPIRED]: {
+    title: "error",
+    desc: "codeExpiredMessage",
+  },
+  [AUTH_ERROR_CODES.OTP_LOCKED]: {
+    title: "rateLimited",
+    desc: "otpLockedDesc",
+  },
+  [AUTH_ERROR_CODES.OTP_RATE_LIMITED]: {
+    title: "rateLimited",
+    desc: "rateLimitedDesc",
+  },
+};
+
 export default function LoginErrorPage() {
   const t = useTranslations("Auth");
   const searchParams = useSearchParams();
@@ -26,8 +50,8 @@ export default function LoginErrorPage() {
   const code = searchParams.get("code");
 
   const errorConfig =
-    error === "CredentialsSignin" && code === "registration_disabled"
-      ? { title: "registrationDisabled", desc: "registrationDisabledDesc" }
+    error === "CredentialsSignin"
+      ? (code != null ? (CREDENTIALS_ERROR_MESSAGES[code] ?? ERROR_MESSAGES.Default) : ERROR_MESSAGES.Default)
       : error != null
         ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default)
         : ERROR_MESSAGES.Default;

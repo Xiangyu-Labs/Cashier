@@ -1,11 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLoginFlow } from "@/app/[locale]/login/hooks/use-login-flow";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 
 const mockPush = vi.fn();
 const mockRefresh = vi.fn();
 const mockSignIn = vi.fn();
-const mockVerifyOTPAction = vi.fn();
+const mockSendOTPAction = vi.fn();
 
 vi.mock("next-auth/react", () => ({
   signIn: (...args: unknown[]) => mockSignIn(...args),
@@ -22,8 +23,7 @@ vi.mock("@/i18n/routing", () => ({
 }));
 
 vi.mock("@/features/auth/server-actions", () => ({
-  sendOTPAction: vi.fn(),
-  verifyOTPAction: (...args: unknown[]) => mockVerifyOTPAction(...args),
+  sendOTPAction: (...args: unknown[]) => mockSendOTPAction(...args),
   OTP_LENGTH: 6,
 }));
 
@@ -33,6 +33,10 @@ describe("useLoginFlow", () => {
       registrationDisabledDesc: "当前系统不允许新用户注册，请联系管理员获取账号。",
       errorDesc: "登录过程中发生错误，请重试。",
       unexpectedError: "发生意外错误",
+      verifyFailed: "验证码无效",
+      codeExpiredMessage: "验证码已过期，请重新获取。",
+      otpLockedDesc: "验证码尝试次数过多，请稍后再试。",
+      rateLimitedDesc: "请等待一分钟后再试。",
     };
 
     return messages[key] ?? key;
@@ -40,13 +44,13 @@ describe("useLoginFlow", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockVerifyOTPAction.mockResolvedValue({ email: "new-user@example.com" });
+    mockSendOTPAction.mockResolvedValue({ expiresAt: 123, canResendAt: 456 });
   });
 
   it("shows the registration-disabled message for the custom credentials error code", async () => {
     mockSignIn.mockResolvedValue({
       error: "CredentialsSignin",
-      code: "registration_disabled",
+      code: AUTH_ERROR_CODES.REGISTRATION_DISABLED,
       ok: false,
       status: 401,
       url: null,
@@ -68,7 +72,39 @@ describe("useLoginFlow", () => {
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  it("shows a generic message for other credentials sign-in failures", async () => {
+  it("maps OTP-specific error codes to localized messages", async () => {
+    const cases = [
+      [AUTH_ERROR_CODES.OTP_INVALID, "验证码无效"],
+      [AUTH_ERROR_CODES.OTP_EXPIRED, "验证码已过期，请重新获取。"],
+      [AUTH_ERROR_CODES.OTP_LOCKED, "验证码尝试次数过多，请稍后再试。"],
+      [AUTH_ERROR_CODES.OTP_RATE_LIMITED, "请等待一分钟后再试。"],
+    ] as const;
+
+    for (const [code, message] of cases) {
+      mockSignIn.mockResolvedValueOnce({
+        error: "CredentialsSignin",
+        code,
+        ok: false,
+        status: 401,
+        url: null,
+      });
+
+      const { result } = renderHook(() => useLoginFlow(t));
+
+      act(() => {
+        result.current.setEmail("existing@example.com");
+        result.current.setOtp("123456");
+      });
+
+      await act(async () => {
+        await result.current.handleVerifyOTP();
+      });
+
+      expect(result.current.error).toBe(message);
+    }
+  });
+
+  it("shows a generic message for unknown credentials sign-in failures", async () => {
     mockSignIn.mockResolvedValue({
       error: "CredentialsSignin",
       code: "credentials",
@@ -90,5 +126,36 @@ describe("useLoginFlow", () => {
 
     expect(result.current.error).toBe("登录过程中发生错误，请重试。");
     expect(result.current.error).not.toBe("CredentialsSignin");
+  });
+
+  it("submits sign-in directly and redirects on success", async () => {
+    mockSignIn.mockResolvedValue({
+      error: undefined,
+      code: undefined,
+      ok: true,
+      status: 200,
+      url: "/",
+    });
+
+    const { result } = renderHook(() => useLoginFlow(t));
+
+    act(() => {
+      result.current.setEmail("existing@example.com");
+      result.current.setOtp("123456");
+    });
+
+    await act(async () => {
+      await result.current.handleVerifyOTP();
+    });
+
+    expect(mockSignIn).toHaveBeenCalledWith("otp", {
+      email: "existing@example.com",
+      otp: "123456",
+      locale: "zh",
+      redirect: false,
+      callbackUrl: "/",
+    });
+    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(mockRefresh).toHaveBeenCalled();
   });
 });

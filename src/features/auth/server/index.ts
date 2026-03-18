@@ -1,5 +1,5 @@
 // Server Actions
-export { sendOTPAction, verifyOTPAction } from "./actions/auth";
+export { sendOTPAction } from "./actions/auth";
 
 export { signOutAction } from "./actions/sign-out";
 

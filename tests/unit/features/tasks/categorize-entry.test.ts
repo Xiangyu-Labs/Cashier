@@ -207,7 +207,8 @@ describe("categorizeEntryHandler.onComplete", () => {
     const output = { categoryIndex: 1, confidence: 0.9, reasoning: "Food" };
     const ctx = createMockContext(createMockAI(1));
 
-    await categorizeEntryHandler.onComplete(output, input, ctx);
+    expect(categorizeEntryHandler.onComplete).toBeDefined();
+    await categorizeEntryHandler.onComplete!(output, input, ctx);
 
     const updated = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entryId),
@@ -226,7 +227,8 @@ describe("categorizeEntryHandler.onComplete", () => {
     const output = { categoryIndex: 0, confidence: 0.1, reasoning: "No match" };
     const ctx = createMockContext(createMockAI(0));
 
-    await categorizeEntryHandler.onComplete(output, input, ctx);
+    expect(categorizeEntryHandler.onComplete).toBeDefined();
+    await categorizeEntryHandler.onComplete!(output, input, ctx);
 
     const entry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entryId),
@@ -245,7 +247,8 @@ describe("categorizeEntryHandler.onComplete", () => {
     const output = { categoryIndex: 99, confidence: 0.5, reasoning: "Out of range" };
     const ctx = createMockContext(createMockAI(99));
 
-    await categorizeEntryHandler.onComplete(output, input, ctx);
+    expect(categorizeEntryHandler.onComplete).toBeDefined();
+    await categorizeEntryHandler.onComplete!(output, input, ctx);
 
     const entry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entryId),
@@ -291,9 +294,8 @@ describe("categorizeEntryHandler.onError", () => {
     };
     const ctx = createMockContext(createMockAI(0));
 
-    await expect(
-      categorizeEntryHandler.onError(new Error("AI failed"), input, ctx)
-    ).resolves.not.toThrow();
+    expect(categorizeEntryHandler.onError).toBeDefined();
+    await expect(categorizeEntryHandler.onError!(new Error("AI failed"), input, ctx)).resolves.not.toThrow();
 
     const unchanged = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entry.id),

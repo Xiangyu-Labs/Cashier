@@ -62,7 +62,9 @@ describe("SourceDocumentInput - Optimistic Close", () => {
     // Mock create action to delay resolution
     vi.mocked(createSourceDocumentAction).mockImplementation(
       () =>
-        new Promise((resolve) => setTimeout(() => resolve({ sourceDocumentId: "test-id" }), 100))
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ sourceDocumentId: "test-id", status: "queued" }), 100)
+        )
     );
 
     render(<SourceDocumentInput ledgerId="ledger-123" mode="create" onSuccess={onSuccess} />, {

@@ -1,16 +1,41 @@
-import { beforeEach, afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb } from "../../setup";
 import { users } from "@/lib/db/schema";
-import {
-  assertRegistrationAllowed,
-  RegistrationDisabledError,
-} from "@/features/auth/server/services/registration";
+import { hashOTP } from "@/features/auth/server/services/otp";
+import { otpTokens } from "@/features/auth/server/schema";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
+import { authenticateWithOTP } from "@/features/auth/server/services/otp-sign-in";
+import { RegistrationDisabledError } from "@/features/auth/server/services/registration";
+import { memoryStore } from "@/lib/memory-store";
+
+vi.mock("resend", () => ({
+  Resend: class MockResend {
+    emails = {
+      send: vi.fn().mockResolvedValue({ id: "test-email-id" }),
+    };
+  },
+}));
+
+const REQUEST_HEADERS = new Headers({ "x-forwarded-for": "127.0.0.1" });
+
+async function createTestOTP(email: string, otp: string) {
+  const db = getTestDb();
+  const tokenHash = hashOTP(otp);
+
+  await db.insert(otpTokens).values({
+    email: email.toLowerCase(),
+    tokenHash,
+    expires: new Date(Date.now() + 5 * 60 * 1000),
+    attempts: 0,
+  });
+}
 
 describe("Registration Policy", () => {
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.DISABLE_REGISTRATION = "true";
+    await memoryStore.flushall();
   });
 
   afterEach(() => {
@@ -22,15 +47,22 @@ describe("Registration Policy", () => {
   });
 
   it("throws a registration-disabled credentials error for new users", async () => {
+    await createTestOTP("new-user@example.com", "123456");
+
     let error: unknown;
 
     try {
-      await assertRegistrationAllowed("new-user@example.com");
+      await authenticateWithOTP({
+        email: "new-user@example.com",
+        otp: "123456",
+        locale: "zh",
+        requestHeaders: REQUEST_HEADERS,
+      });
     } catch (caughtError) {
       error = caughtError;
     }
 
-    expect(error).toMatchObject({ code: "registration_disabled" });
+    expect(error).toMatchObject({ code: AUTH_ERROR_CODES.REGISTRATION_DISABLED });
     expect(error).toBeInstanceOf(RegistrationDisabledError);
   });
 
@@ -44,6 +76,18 @@ describe("Registration Policy", () => {
       emailVerified: new Date(),
     });
 
-    await expect(assertRegistrationAllowed("existing@example.com")).resolves.toBeUndefined();
+    await createTestOTP("existing@example.com", "123456");
+
+    await expect(
+      authenticateWithOTP({
+        email: "existing@example.com",
+        otp: "123456",
+        locale: "zh",
+        requestHeaders: REQUEST_HEADERS,
+      })
+    ).resolves.toMatchObject({
+      email: "existing@example.com",
+      id: "00000000-0000-0000-0000-000000000099",
+    });
   });
 });

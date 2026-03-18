@@ -22,6 +22,12 @@ vi.mock("@/lib/flow", async () => {
 describe("batchRetrySourceDocumentsAction", () => {
   let testLedgerId: string;
 
+  type SubmitInput = {
+    sourceDocumentId: string;
+    ledgerId: string;
+    text?: string;
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -223,7 +229,8 @@ describe("batchRetrySourceDocumentsAction", () => {
     const submitCalls = vi.mocked(flowEngine.submit).mock.calls;
     const newDocIds = activeDocs.map((d) => d.id);
     for (const call of submitCalls) {
-      expect(newDocIds).toContain(call[1].sourceDocumentId);
+      const input = call[1] as SubmitInput;
+      expect(newDocIds).toContain(input.sourceDocumentId);
     }
   });
 
@@ -323,11 +330,15 @@ describe("batchRetrySourceDocumentsAction", () => {
       .returning();
 
     // Mock flowEngine.submit to fail for one document
-    vi.mocked(flowEngine.submit).mockImplementation(async (type, data) => {
-      if (data.sourceDocumentId !== doc1.id) {
-        throw new Error("Simulated failure");
+    vi.mocked(flowEngine.submit).mockImplementation(
+      async (_type: string, data: unknown): Promise<string> => {
+        const input = data as SubmitInput;
+        if (input.sourceDocumentId !== doc1.id) {
+          throw new Error("Simulated failure");
+        }
+        return "task-id";
       }
-    });
+    );
 
     // Call batch retry with one valid and one invalid ID
     await batchRetrySourceDocumentsAction(testLedgerId, [

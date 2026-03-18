@@ -131,6 +131,7 @@ describe("useCalendarData hooks", () => {
             amount: 50,
             currency: "CNY",
             categoryName: "餐饮",
+            sourceDocumentId: "doc-1",
           },
         ],
         totalAmount: 50,

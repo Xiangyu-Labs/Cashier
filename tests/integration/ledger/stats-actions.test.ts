@@ -63,8 +63,9 @@ describe("getLedgerStatsAction", () => {
     const result = await getLedgerStatsAction(ledgerId);
     expect(result.totals).toHaveLength(0);
     expect(result.trend).toHaveLength(0);
-    expect(result.convertedTotal.total).toBe(0);
-    expect(result.convertedTotal.currency).toBe("CNY");
+    expect(result.convertedTotal).not.toBeNull();
+    expect(result.convertedTotal?.total).toBe(0);
+    expect(result.convertedTotal?.currency).toBe("CNY");
   });
 
   it("groups totals by currency", async () => {
@@ -194,8 +195,9 @@ describe("getLedgerStatsAction", () => {
     });
 
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
-    expect(result.convertedTotal.currency).toBe("CNY");
-    expect(result.convertedTotal.total).toBeCloseTo(720);
+    expect(result.convertedTotal).not.toBeNull();
+    expect(result.convertedTotal?.currency).toBe("CNY");
+    expect(result.convertedTotal?.total).toBeCloseTo(720);
   });
 
   it("single currency ledger: convertedTotal equals sum of amounts", async () => {
@@ -204,8 +206,9 @@ describe("getLedgerStatsAction", () => {
     await seedEntry(db, ledgerId, { amount: "50.00", currency: "CNY" });
 
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
-    expect(result.convertedTotal.total).toBeCloseTo(150);
-    expect(result.convertedTotal.currency).toBe("CNY");
+    expect(result.convertedTotal).not.toBeNull();
+    expect(result.convertedTotal?.total).toBeCloseTo(150);
+    expect(result.convertedTotal?.currency).toBe("CNY");
   });
 
   it("throws 'Unauthorized' when ledger belongs to another user", async () => {

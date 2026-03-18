@@ -7,13 +7,8 @@ import { users, accounts } from "@/features/auth/server/schema";
 import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
-import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { authenticateWithOTP } from "@/features/auth/server/services/otp-sign-in";
 import {
-  findOTPRecord,
-  verifyOTPWithPolicy,
-} from "@/features/auth/server/services/otp-verification";
-import {
-  assertRegistrationAllowed,
   isRegistrationAllowed,
 } from "@/features/auth/server/services/registration";
 import { TIME_SECONDS } from "@/lib/constants";
@@ -92,7 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         otp: { type: "text" },
         locale: { type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (credentials?.email == null || credentials?.email === "" || credentials?.otp == null || credentials?.otp === "") {
           return null;
         }
@@ -106,59 +101,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const otp = credentials.otp;
         const locale = typeof credentials.locale === "string" ? credentials.locale : "zh";
 
-        // Verify OTP (defense in depth - already verified in API)
-        const record = await findOTPRecord(email);
-        if (record == null) {
-          return null;
-        }
-        const result = await verifyOTPWithPolicy(email, otp, record);
-        if (result.success !== true) {
-          return null;
-        }
-
-        // Check registration whitelist
-        await assertRegistrationAllowed(email);
-
-        // Get or create user
-        let user = await db.query.users.findFirst({
-          where: and(eq(users.email, email.toLowerCase()), isNull(users.deletedAt)),
+        return authenticateWithOTP({
+          email,
+          otp,
+          locale,
+          requestHeaders: request.headers,
         });
-
-        // Track if this is an existing user (for login notification)
-        const isExistingUser = user != null;
-
-        if (user == null) {
-          const [newUser] = await db
-            .insert(users)
-            .values({
-              email: email.toLowerCase(),
-              emailVerified: new Date(),
-            })
-            .returning();
-          user = newUser;
-
-          // Create default ledger for new user
-          const { createDefaultLedgerForUser } =
-            await import("@/features/auth/server/services/user-setup");
-          await createDefaultLedgerForUser(user.id, user.email ?? "New User", locale);
-        }
-
-        // Delete the used OTP (one-time use)
-        await deleteOTPToken(email);
-
-        // Send login notification for existing users
-        if (isExistingUser && user.email != null && user.email !== "") {
-          const { sendLoginNotification } =
-            await import("@/features/auth/server/services/notifications");
-          await sendLoginNotification(user.email);
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       },
     }),
   ],

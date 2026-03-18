@@ -4,7 +4,7 @@ import { loadPerfSeedConfigFromEnv, resolveSqlitePath } from "@/lib/perf/seed";
 
 describe("perf seed config", () => {
   it("uses defaults when env is not provided", () => {
-    const config = loadPerfSeedConfigFromEnv({});
+    const config = loadPerfSeedConfigFromEnv({ NODE_ENV: "test" } as NodeJS.ProcessEnv);
 
     expect(config.databaseUrl).toBe("file:./data/perf.sqlite.db");
     expect(config.manifestPath).toBe("perf/.seed.json");
@@ -18,6 +18,7 @@ describe("perf seed config", () => {
 
   it("reads explicit overrides from env", () => {
     const config = loadPerfSeedConfigFromEnv({
+      NODE_ENV: "test",
       DATABASE_URL: "file:./data/custom-perf.db",
       PERF_SEED_MANIFEST: "perf/custom-seed.json",
       PERF_CATEGORY_COUNT: "12",
@@ -26,7 +27,7 @@ describe("perf seed config", () => {
       PERF_TASK_RUN_COUNT: "80",
       PERF_DAYS_BACK: "30",
       PERF_INSERT_CHUNK_SIZE: "50",
-    });
+    } as NodeJS.ProcessEnv);
 
     expect(config.databaseUrl).toBe("file:./data/custom-perf.db");
     expect(config.manifestPath).toBe("perf/custom-seed.json");
@@ -41,8 +42,9 @@ describe("perf seed config", () => {
   it("rejects invalid positive integer env values", () => {
     expect(() =>
       loadPerfSeedConfigFromEnv({
+        NODE_ENV: "test",
         PERF_ENTRY_COUNT: "0",
-      })
+      } as NodeJS.ProcessEnv)
     ).toThrow("PERF_ENTRY_COUNT must be a positive integer");
   });
 

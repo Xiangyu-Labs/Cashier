@@ -5,7 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
-import { sendOTPAction, verifyOTPAction, OTP_LENGTH } from "@/features/auth/server-actions";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
+import { sendOTPAction, OTP_LENGTH } from "@/features/auth/server-actions";
 
 type LoginStep = "email" | "otp";
 
@@ -30,8 +31,19 @@ function getSignInErrorMessage(
   signInResult: { error?: string; code?: string } | undefined,
   t: (key: string, values?: Record<string, string | number>) => string
 ): string {
-  if (signInResult?.code === "registration_disabled") {
-    return t("registrationDisabledDesc");
+  switch (signInResult?.code) {
+    case AUTH_ERROR_CODES.REGISTRATION_DISABLED:
+      return t("registrationDisabledDesc");
+    case AUTH_ERROR_CODES.OTP_INVALID:
+      return t("verifyFailed");
+    case AUTH_ERROR_CODES.OTP_EXPIRED:
+      return t("codeExpiredMessage");
+    case AUTH_ERROR_CODES.OTP_LOCKED:
+      return t("otpLockedDesc");
+    case AUTH_ERROR_CODES.OTP_RATE_LIMITED:
+      return t("rateLimitedDesc");
+    default:
+      break;
   }
 
   if (signInResult?.error != null) {
@@ -90,8 +102,6 @@ export function useLoginFlow(
     setError(null);
 
     try {
-      await verifyOTPAction(email, otp);
-
       const signInResult = await signIn("otp", {
         email,
         otp,

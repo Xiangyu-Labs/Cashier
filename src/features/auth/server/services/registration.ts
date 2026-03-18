@@ -1,11 +1,12 @@
 import { CredentialsSignin } from "@auth/core/errors";
 import { eq } from "drizzle-orm";
+import { AUTH_ERROR_CODES } from "@/features/auth/error-codes";
 import { db } from "@/lib/db";
 import { users } from "@/features/auth/server/schema";
 import { logger } from "@/lib/logger";
 
 export class RegistrationDisabledError extends CredentialsSignin {
-  code = "registration_disabled";
+  code = AUTH_ERROR_CODES.REGISTRATION_DISABLED;
 }
 
 export async function isRegistrationAllowed(email: string): Promise<boolean> {

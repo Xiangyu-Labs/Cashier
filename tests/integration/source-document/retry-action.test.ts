@@ -154,8 +154,8 @@ describe("retrySourceDocumentAction", () => {
       where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
     // Verify new document has new images stored as local URLs
-    expect(newDoc?.imageUrls).toHaveLength(1);
-    expect(newDoc?.imageUrls[0]).toMatch(/^\/api\/uploads\//);
+    expect(newDoc?.imageUrls ?? []).toHaveLength(1);
+    expect(newDoc?.imageUrls?.[0]).toMatch(/^\/api\/uploads\//);
   });
 
   it("should cancel old tasks and create new task", async () => {
@@ -198,10 +198,15 @@ describe("retrySourceDocumentAction", () => {
     // Verify new task was submitted
     expect(flowEngine.submit).toHaveBeenCalled();
     const submitCall = vi.mocked(flowEngine.submit).mock.calls[0];
+    const submitInput = submitCall[1] as {
+      sourceDocumentId: string;
+      ledgerId: string;
+      text?: string;
+    };
     expect(submitCall[0]).toBe("parse_source_document");
-    expect(submitCall[1].sourceDocumentId).toBe(result.sourceDocumentId);
-    expect(submitCall[1].ledgerId).toBe(testLedgerId);
-    expect(submitCall[1].text).toBe("Retry this");
+    expect(submitInput.sourceDocumentId).toBe(result.sourceDocumentId);
+    expect(submitInput.ledgerId).toBe(testLedgerId);
+    expect(submitInput.text).toBe("Retry this");
   });
 
   it("should soft delete old task_runs after retry", async () => {
@@ -235,7 +240,7 @@ describe("retrySourceDocumentAction", () => {
         entityType: "source_document",
         entityId: oldDocId,
         type: "parse_source_document",
-        status: "anomaly",
+        status: "failed",
         title: "Retry parse",
       },
     ]);

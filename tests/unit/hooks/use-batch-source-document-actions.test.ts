@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
+type SourceDocumentListItem = { id?: string; text?: string; entryDate?: string; status?: string };
+type PaginatedItems = { items: SourceDocumentListItem[]; total?: number };
+
 describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
   it("should handle batchDelete when cache data has no items property", () => {
     const queryClient = new QueryClient();
@@ -16,9 +19,10 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => !["doc-1"].includes(d.id ?? "")),
+        items: items.filter((d) => !["doc-1"].includes(d.id ?? "")),
         total: (old as { total: number }).total - 1,
       };
     };
@@ -48,9 +52,10 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.map((d: { id?: string }) =>
+        items: items.map((d) =>
           d.id === "doc-1" ? { ...d, entryDate: "2024-03-17" } : d
         ),
       };
@@ -81,9 +86,10 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.map((d: { id?: string }) =>
+        items: items.map((d) =>
           d.id === "doc-1" ? { ...d, status: "queued" } : d
         ),
       };
@@ -117,9 +123,10 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
+      const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: (old as { items: unknown[] }).items.filter((d: { id?: string }) => d.id !== "doc-1"),
+        items: items.filter((d) => d.id !== "doc-1"),
         total: (old as { total: number }).total - 1,
       };
     };

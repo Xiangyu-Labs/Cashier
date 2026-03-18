@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { ledgers, taskRuns } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -63,7 +63,7 @@ describe("Task status query", () => {
     });
 
     // Act: Query active tasks (simulating getProcessingTasksAction behavior)
-    const activeStatuses = ["running", "pending"];
+    const activeStatuses = ["running", "pending"] as const;
     const activeTasks = await db.query.taskRuns.findMany({
       where: and(eq(taskRuns.scopeId, ledgerId), inArray(taskRuns.status, activeStatuses)),
     });
@@ -86,11 +86,3 @@ describe("Task status query", () => {
     expect(validStatuses).toContain("pending");
   });
 });
-
-// Helper for combining conditions
-function and(...conditions: (ReturnType<typeof eq> | ReturnType<typeof inArray>)[]) {
-  return conditions.reduce((acc, condition) => {
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    return acc && condition;
-  }, true as unknown as ReturnType<typeof eq>);
-}
