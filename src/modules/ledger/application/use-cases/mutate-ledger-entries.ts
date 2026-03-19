@@ -80,7 +80,7 @@ export async function createLedgerEntryWithConversion(input: {
     amount: input.amount,
     fromCurrency: entryCurrency,
     toCurrency: mainCurrency,
-    date: entryDate,
+    ...(entryDate !== undefined ? { date: entryDate } : {}),
   });
 
   const [entry] = await db
@@ -97,6 +97,10 @@ export async function createLedgerEntryWithConversion(input: {
       exchangeRate: conversion?.exchangeRate ?? null,
     })
     .returning();
+
+  if (entry == null) {
+    throw new Error("Failed to create ledger entry");
+  }
 
   return mapLedgerEntryDto(entry);
 }
@@ -127,11 +131,12 @@ export async function updateLedgerEntryWithConversion(input: {
     ]);
 
     if (currentEntry != null) {
+      const sourceEntryDate = currentEntry.sourceDocument?.entryDate ?? undefined;
       const conversion = await convertEntryAmount({
         amount: input.amount ?? Number(currentEntry.amount),
         fromCurrency: normalizeCurrency(input.currency ?? currentEntry.currency),
         toCurrency: mainCurrency,
-        date: currentEntry.sourceDocument?.entryDate ?? undefined,
+        ...(sourceEntryDate !== undefined ? { date: sourceEntryDate } : {}),
       });
 
       if (conversion != null) {

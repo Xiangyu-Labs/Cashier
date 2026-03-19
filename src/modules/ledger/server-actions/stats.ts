@@ -16,18 +16,18 @@ export async function calculateLedgerStats(
     maxAmount?: number | null;
   }
 ): Promise<LedgerSummaryDto> {
-  return calculateLedgerEntryStats({
+  const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
     ledgerId,
-    mainCurrency,
-    filters: {
-      startDate,
-      endDate,
-      categoryId: filters?.categoryId,
-      currency: filters?.currency,
-      minAmount: filters?.minAmount,
-      maxAmount: filters?.maxAmount,
-    },
-  });
+    filters: {},
+  };
+  if (mainCurrency !== undefined) payload.mainCurrency = mainCurrency;
+  if (startDate !== undefined) payload.filters.startDate = startDate;
+  if (endDate !== undefined) payload.filters.endDate = endDate;
+  if (filters?.categoryId !== undefined) payload.filters.categoryId = filters.categoryId;
+  if (filters?.currency !== undefined) payload.filters.currency = filters.currency;
+  if (filters?.minAmount !== undefined) payload.filters.minAmount = filters.minAmount;
+  if (filters?.maxAmount !== undefined) payload.filters.maxAmount = filters.maxAmount;
+  return calculateLedgerEntryStats(payload);
 }
 
 export const getLedgerStatsAction = withLedgerAccess(calculateLedgerStats);

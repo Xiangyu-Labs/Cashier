@@ -58,6 +58,10 @@ export const createServiceCredentialAction = withLedgerAccess(
       })
       .returning();
 
+    if (credential == null) {
+      throw new Error("Failed to create credential");
+    }
+
     return {
       ...credential,
       createdAt: credential.createdAt.toISOString(),

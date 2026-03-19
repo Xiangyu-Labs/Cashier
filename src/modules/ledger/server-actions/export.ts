@@ -124,6 +124,9 @@ export const exportLedgerEntriesAction = withLedgerAccess(
 
     // Header row (localized)
     const headers = CSV_HEADERS[locale] ?? CSV_HEADERS.en;
+    if (headers == null) {
+      throw new Error("Missing CSV headers");
+    }
     lines.push(headers.join(","));
 
     // Data rows

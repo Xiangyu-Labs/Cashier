@@ -33,15 +33,16 @@ import {
 export const createLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
     const validated = createLedgerEntryInputSchema.parse(data);
-    return createLedgerEntryWithConversion({
+    const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
       amount: validated.amount,
-      currency: validated.currency,
       itemName: validated.itemName,
-      categoryId: validated.categoryId,
-      description: validated.description,
       sourceDocumentId: validated.sourceDocumentId,
-    });
+    };
+    if (validated.currency !== undefined) payload.currency = validated.currency;
+    if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
+    if (validated.description !== undefined) payload.description = validated.description;
+    return createLedgerEntryWithConversion(payload);
   }
 );
 
@@ -53,15 +54,16 @@ export const updateLedgerEntryAction = withLedgerAccess(
   ): Promise<LedgerEntryDto> => {
     const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
     const validated = updateLedgerEntryInputSchema.parse(data);
-    return updateLedgerEntryWithConversion({
+    const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
       ledgerId,
       ledgerEntryId: validatedLedgerEntryId,
-      categoryId: validated.categoryId,
-      amount: validated.amount,
-      currency: validated.currency,
-      itemName: validated.itemName,
-      description: validated.description,
-    });
+    };
+    if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
+    if (validated.amount !== undefined) payload.amount = validated.amount;
+    if (validated.currency !== undefined) payload.currency = validated.currency;
+    if (validated.itemName !== undefined) payload.itemName = validated.itemName;
+    if (validated.description !== undefined) payload.description = validated.description;
+    return updateLedgerEntryWithConversion(payload);
   }
 );
 
@@ -111,15 +113,16 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
   ): Promise<BatchLedgerEntriesMutationResultDto> => {
     const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
     const validated = batchUpdateLedgerEntriesInputSchema.parse(data);
-    const affectedCount = await batchUpdateLedgerEntries({
+    const payload: Parameters<typeof batchUpdateLedgerEntries>[0] = {
       ledgerId,
       ledgerEntryIds: validatedLedgerEntryIds,
-      categoryId: validated.categoryId,
-      currency: validated.currency,
-      amount: validated.amount,
-      description: validated.description,
-      itemName: validated.itemName,
-    });
+    };
+    if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
+    if (validated.currency !== undefined) payload.currency = validated.currency;
+    if (validated.amount !== undefined) payload.amount = validated.amount;
+    if (validated.description !== undefined) payload.description = validated.description;
+    if (validated.itemName !== undefined) payload.itemName = validated.itemName;
+    const affectedCount = await batchUpdateLedgerEntries(payload);
 
     return {
       ledgerEntryIds: validatedLedgerEntryIds,
@@ -133,18 +136,19 @@ export async function listLedgerEntries(
   params: ListLedgerEntriesInput
 ): Promise<LedgerEntryPageDto> {
   const validated = listLedgerEntriesInputSchema.parse(params);
+  const filters: Parameters<typeof listLedgerEntryPage>[0]["filters"] = {};
+  if (validated.startDate !== undefined) filters.startDate = validated.startDate;
+  if (validated.endDate !== undefined) filters.endDate = validated.endDate;
+  if (validated.categoryId !== undefined) filters.categoryId = validated.categoryId;
+  if (validated.currency !== undefined) filters.currency = validated.currency;
+  if (validated.minAmount !== undefined) filters.minAmount = validated.minAmount;
+  if (validated.maxAmount !== undefined) filters.maxAmount = validated.maxAmount;
+
   const result = await listLedgerEntryPage({
     ledgerId,
     limit: validated.limit,
     cursor: validated.cursor ?? null,
-    filters: {
-      startDate: validated.startDate ?? null,
-      endDate: validated.endDate ?? null,
-      categoryId: validated.categoryId ?? null,
-      currency: validated.currency ?? null,
-      minAmount: validated.minAmount ?? null,
-      maxAmount: validated.maxAmount ?? null,
-    },
+    filters,
   });
 
   return {

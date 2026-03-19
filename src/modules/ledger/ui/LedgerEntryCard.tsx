@@ -85,7 +85,12 @@ export function LedgerEntryCard({
                 </div>
               )}
               <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg text-text shrink-0">
-                <CategoryIcon iconName={ledgerEntry.category?.icon} className="w-4 h-4" />
+                <CategoryIcon
+                  {...(ledgerEntry.category?.icon !== undefined
+                    ? { iconName: ledgerEntry.category.icon }
+                    : {})}
+                  className="w-4 h-4"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">

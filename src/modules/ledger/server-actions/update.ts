@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { recalculateEntriesConvertedAmount } from "./helpers";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
+import { omitUndefinedProperties } from "@/lib/validation";
 import { mapLedgerDto } from "@/modules/ledger/mappers";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import { updateLedgerInputSchema, type UpdateLedgerInput } from "@/modules/ledger/contract-schemas";
@@ -34,10 +35,10 @@ export const updateLedgerAction = withAuth(
     const oldMainCurrency = currentSettings.mainCurrency ?? "CNY";
     const newMainCurrency = validated.settings?.mainCurrency;
 
-    const newSettings = {
+    const newSettings = omitUndefinedProperties({
       ...currentSettings,
       ...(validated.settings || {}),
-    };
+    });
 
     const [updatedLedger] = await db
       .update(ledgers)
@@ -49,6 +50,10 @@ export const updateLedgerAction = withAuth(
       })
       .where(eq(ledgers.id, id))
       .returning();
+
+    if (updatedLedger == null) {
+      throw new NotFoundError("Ledger");
+    }
 
     // Invalidate cache to ensure fresh data on next request
     updateTag("ledger");

@@ -28,7 +28,13 @@ import {
 export const createEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateEntryCategoryInput): Promise<EntryCategoryDto> => {
     const validated = createEntryCategoryInputSchema.parse(data);
-    return createEntryCategory(ledgerId, validated);
+    const payload: Parameters<typeof createEntryCategory>[1] = {
+      name: validated.name,
+    };
+    if (validated.description !== undefined) payload.description = validated.description;
+    if (validated.icon !== undefined) payload.icon = validated.icon;
+    if (validated.sortOrder !== undefined) payload.sortOrder = validated.sortOrder;
+    return createEntryCategory(ledgerId, payload);
   }
 );
 

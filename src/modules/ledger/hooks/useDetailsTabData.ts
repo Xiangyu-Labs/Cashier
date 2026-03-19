@@ -60,10 +60,16 @@ export function useDetailsTabData({
         endDateStr ?? undefined,
         mainCurrency,
         {
-          categoryId: advancedFilters.categoryId,
-          currency: advancedFilters.currency,
-          minAmount: advancedFilters.minAmount,
-          maxAmount: advancedFilters.maxAmount,
+          ...(advancedFilters.categoryId !== undefined
+            ? { categoryId: advancedFilters.categoryId }
+            : {}),
+          ...(advancedFilters.currency !== undefined ? { currency: advancedFilters.currency } : {}),
+          ...(advancedFilters.minAmount !== undefined
+            ? { minAmount: advancedFilters.minAmount }
+            : {}),
+          ...(advancedFilters.maxAmount !== undefined
+            ? { maxAmount: advancedFilters.maxAmount }
+            : {}),
         }
       ),
     enabled: true,
@@ -74,14 +80,14 @@ export function useDetailsTabData({
     queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {
-        startDate: startDateStr ?? undefined,
-        endDate: endDateStr ?? undefined,
-        categoryId: advancedFilters.categoryId ?? undefined,
-        currency: advancedFilters.currency ?? undefined,
-        minAmount: advancedFilters.minAmount ?? undefined,
-        maxAmount: advancedFilters.maxAmount ?? undefined,
-        cursor: pageParam,
         limit: 50,
+        ...(startDateStr !== null ? { startDate: startDateStr } : {}),
+        ...(endDateStr !== null ? { endDate: endDateStr } : {}),
+        ...(advancedFilters.categoryId != null ? { categoryId: advancedFilters.categoryId } : {}),
+        ...(advancedFilters.currency != null ? { currency: advancedFilters.currency } : {}),
+        ...(advancedFilters.minAmount != null ? { minAmount: advancedFilters.minAmount } : {}),
+        ...(advancedFilters.maxAmount != null ? { maxAmount: advancedFilters.maxAmount } : {}),
+        ...(pageParam !== undefined ? { cursor: pageParam } : {}),
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,

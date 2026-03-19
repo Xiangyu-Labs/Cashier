@@ -37,6 +37,36 @@ type SourceDocumentsQueryData =
     }
   | undefined;
 
+function getUpdatedCacheCategory(
+  entry: SourceDocumentCacheEntry,
+  categoryId: string | null | undefined,
+  categories: EntryCategory[]
+) {
+  if (categoryId == null || categoryId === "") {
+    return entry.category;
+  }
+
+  return categories.find((category) => category.id === categoryId) ?? entry.category;
+}
+
+function buildOptimisticCacheEntry(
+  entry: SourceDocumentCacheEntry,
+  data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number },
+  categories: EntryCategory[]
+): SourceDocumentCacheEntry {
+  const nextCategory = getUpdatedCacheCategory(entry, data.categoryId, categories);
+  const updatedEntry: SourceDocumentCacheEntry = {
+    ...entry,
+    ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.amount !== undefined ? { amount: String(data.amount) } : {}),
+    ...(data.currency !== undefined ? { currency: data.currency } : {}),
+    ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+  };
+
+  return nextCategory !== undefined ? { ...updatedEntry, category: nextCategory } : updatedEntry;
+}
+
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
   const tCommon = useTranslations("Common");
 
@@ -64,29 +94,23 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
 
       queryClient.setQueriesData<SourceDocumentsQueryData>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
-        (old) => {
+        (old): SourceDocumentsQueryData => {
           if (old === undefined || old.items === undefined) return old;
           return {
             ...old,
             items: old.items.map((doc) => {
-              const updatedEntries =
-                doc.ledgerEntries?.map((e) => {
-                  if (e.id !== ledgerEntryId) return e;
-                  const updated = {
-                    ...e,
-                    itemName: data.itemName ?? e.itemName,
-                    description: data.description ?? e.description,
-                    amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                    currency: data.currency ?? e.currency,
-                    categoryId: data.categoryId ?? e.categoryId,
-                    category:
-                      data.categoryId != null && data.categoryId !== ""
-                        ? (categories.find((c) => c.id === data.categoryId) ?? e.category)
-                        : e.category,
-                  };
-                  return updated;
-                }) ?? [];
-              return { ...doc, ledgerEntries: updatedEntries };
+              if (doc.ledgerEntries === undefined) {
+                return doc;
+              }
+
+              return {
+                ...doc,
+                ledgerEntries: doc.ledgerEntries.map((entry) =>
+                  entry.id === ledgerEntryId
+                    ? buildOptimisticCacheEntry(entry, data, categories)
+                    : entry
+                ),
+              };
             }),
           };
         }
@@ -119,9 +143,14 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
           return {
             ...old,
             items: old.items.map((doc) => {
-              const filteredEntries =
-                doc.ledgerEntries?.filter((e) => e.id !== ledgerEntryId) ?? [];
-              return { ...doc, ledgerEntries: filteredEntries };
+              if (doc.ledgerEntries === undefined) {
+                return doc;
+              }
+
+              return {
+                ...doc,
+                ledgerEntries: doc.ledgerEntries.filter((entry) => entry.id !== ledgerEntryId),
+              };
             }),
           };
         }

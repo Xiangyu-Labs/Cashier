@@ -26,10 +26,11 @@ export const createLedgerAction = withAuth(
     let newLedger: Awaited<ReturnType<typeof createDefaultLedger>>;
 
     try {
-      newLedger = await createDefaultLedger({
+      const payload: Parameters<typeof createDefaultLedger>[0] = {
         userId,
-        locale: validated.aiLanguage,
-      });
+      };
+      if (validated.aiLanguage !== undefined) payload.locale = validated.aiLanguage;
+      newLedger = await createDefaultLedger(payload);
     } catch (error) {
       if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
         throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");

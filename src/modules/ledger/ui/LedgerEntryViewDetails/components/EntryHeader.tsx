@@ -41,7 +41,10 @@ export function EntryHeader({
   return (
     <div className="flex items-start gap-3 sm:gap-4">
       <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl sm:rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-        <CategoryIcon iconName={category?.icon} className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+        <CategoryIcon
+          {...(category?.icon !== undefined ? { iconName: category.icon } : {})}
+          className="h-6 w-6 sm:h-8 sm:w-8 text-primary"
+        />
       </div>
 
       <div className="flex-1 space-y-1 sm:space-y-2 min-w-0 pr-8">

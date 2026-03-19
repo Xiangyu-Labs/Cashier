@@ -28,6 +28,9 @@ export async function createDefaultLedger(input: {
     }
 
     const createdLedger = result[0];
+    if (createdLedger == null) {
+      throw new Error("Failed to create default ledger");
+    }
 
     if (defaultLedger.categories.length > 0) {
       tx.insert(entryCategories)

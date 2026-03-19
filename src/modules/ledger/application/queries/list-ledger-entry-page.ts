@@ -40,6 +40,9 @@ export async function listLedgerEntryPage({
   let pagedRows = rows;
   if (rows.length > limit) {
     const nextItem = rows[limit];
+    if (nextItem == null) {
+      throw new Error("Expected next ledger entry page cursor row");
+    }
     nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
     pagedRows = rows.slice(0, limit);
   }

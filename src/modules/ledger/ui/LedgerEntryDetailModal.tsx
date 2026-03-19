@@ -25,7 +25,7 @@ interface LedgerEntryDetailModalProps {
     description?: string | null;
   }) => void;
   onDelete: () => void;
-  onViewSourceDocument?: (sourceDocumentId: string) => void;
+  onViewSourceDocument?: () => void;
 }
 
 export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
@@ -203,20 +203,18 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
             <LedgerEntryViewDetails
               ledgerEntry={ledgerEntry}
               categories={categories}
-              preferredCurrencies={preferredCurrencies}
               mainCurrency={mainCurrency}
               pendingChanges={pendingChanges}
               onFieldChange={handleFieldChange}
               onSave={handleSave}
               onDiscard={handleDiscard}
               onDelete={() => setShowDeleteConfirm(true)}
-              onViewSourceDocument={
-                onViewSourceDocument != null &&
-                ledgerEntry.sourceDocumentId != null &&
-                ledgerEntry.sourceDocumentId !== ""
-                  ? () => onViewSourceDocument(ledgerEntry.sourceDocumentId!)
-                  : undefined
-              }
+              {...(preferredCurrencies !== undefined ? { preferredCurrencies } : {})}
+              {...(onViewSourceDocument != null &&
+              ledgerEntry.sourceDocumentId != null &&
+              ledgerEntry.sourceDocumentId !== ""
+                ? { onViewSourceDocument }
+                : {})}
             />
           )}
         </DialogContent>

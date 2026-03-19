@@ -118,12 +118,12 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           itemName={displayData.itemName}
           amount={displayData.amount}
           currency={displayData.currency}
-          category={category}
           preferredCurrencies={preferredCurrencies}
           mainCurrency={mainCurrency}
           convertedAmount={converted}
           isDifferentCurrency={isDifferentCurrency}
           onFieldChange={handleFieldChange}
+          {...(category !== undefined ? { category } : {})}
         />
 
         <div className="rounded-lg border border-border bg-surface2/30 p-3 sm:p-4 space-y-3 sm:space-y-4">
@@ -214,10 +214,10 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
       <EntryActions
         hasPendingChanges={hasPendingChanges}
-        onViewSourceDocument={onViewSourceDocument}
         onDelete={onDelete}
         onSave={onSave}
         onDiscard={onDiscard}
+        {...(onViewSourceDocument !== undefined ? { onViewSourceDocument } : {})}
       />
     </div>
   );

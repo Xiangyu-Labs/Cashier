@@ -1,5 +1,6 @@
 import { submitFlowTask } from "@/lib/flow";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { omitUndefinedProperties } from "@/lib/validation";
 import {
   TASK_TYPE_CATEGORIZE_ENTRY,
   type CategorizeEntryInput,
@@ -29,6 +30,12 @@ function buildCategorizeTaskInput(
   categories: IndexedCategory[],
   aiLanguage: string
 ): CategorizeEntryInput {
+  const sourceDocumentText = entry.sourceDocument?.text ?? undefined;
+  const sourceDocumentImageUrls =
+    entry.sourceDocument?.imageUrls != null && entry.sourceDocument.imageUrls.length > 0
+      ? entry.sourceDocument.imageUrls
+      : undefined;
+
   return {
     ledgerId,
     entryId: entry.id,
@@ -40,8 +47,10 @@ function buildCategorizeTaskInput(
       entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== ""
         ? entry.sourceDocument.entryDate
         : formatDateTimeForApi(new Date()),
-    sourceDocumentText: entry.sourceDocument?.text ?? undefined,
-    sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
+    ...omitUndefinedProperties({
+      sourceDocumentText,
+      sourceDocumentImageUrls,
+    }),
     categories,
     aiLanguage,
   };

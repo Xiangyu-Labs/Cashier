@@ -23,7 +23,8 @@ export async function createEntryCategory(
     limit: 1,
   });
 
-  const maxSortOrder = existingCategories.length > 0 ? (existingCategories[0].sortOrder ?? -1) : -1;
+  const firstCategory = existingCategories[0];
+  const maxSortOrder = firstCategory?.sortOrder ?? -1;
   const newSortOrder = data.sortOrder ?? maxSortOrder + 1;
 
   const [createdCategory] = await db
@@ -35,12 +36,16 @@ export async function createEntryCategory(
     })
     .returning();
 
+  if (createdCategory == null) {
+    throw new Error("Failed to create entry category");
+  }
+
   await submitCategoryMetadataTaskIfNeeded({
     ledgerId,
     categoryId: createdCategory.id,
     categoryName: createdCategory.name,
-    icon: data.icon,
-    description: data.description,
+    ...(data.icon !== undefined ? { icon: data.icon } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
   });
 
   return mapEntryCategoryDto(createdCategory);

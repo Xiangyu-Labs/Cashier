@@ -23,7 +23,38 @@ interface UseEntryMutationsParams {
 }
 
 interface InfiniteData {
-  pages?: { items?: LedgerEntry[] }[];
+  pages: { items?: LedgerEntry[] }[];
+  pageParams?: unknown[];
+}
+
+function getUpdatedCategory(
+  entry: LedgerEntry,
+  categoryId: string | null | undefined,
+  categories: EntryCategory[]
+) {
+  if (categoryId == null || categoryId === "") {
+    return entry.category;
+  }
+
+  return categories.find((category) => category.id === categoryId) ?? entry.category;
+}
+
+function buildOptimisticLedgerEntry(
+  entry: LedgerEntry,
+  data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number },
+  categories: EntryCategory[]
+): LedgerEntry {
+  const nextCategory = getUpdatedCategory(entry, data.categoryId, categories);
+  const updatedEntry: LedgerEntry = {
+    ...entry,
+    ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
+    ...(data.description !== undefined ? { description: data.description } : {}),
+    ...(data.amount !== undefined ? { amount: String(data.amount) } : {}),
+    ...(data.currency !== undefined ? { currency: data.currency } : {}),
+    ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+  };
+
+  return nextCategory !== undefined ? { ...updatedEntry, category: nextCategory } : updatedEntry;
 }
 
 export function useEntryMutations({
@@ -60,41 +91,31 @@ export function useEntryMutations({
 
       queryClient.setQueriesData<InfiniteData>(
         { predicate: matchLedgerEntries(ledgerId) },
-        (old) => {
-          if (!old?.pages) return old;
+        (old): InfiniteData | undefined => {
+          if (old == null) return old;
           return {
             ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              items: page.items?.map((e) =>
-                e.id === ledgerEntryId
-                  ? ({
-                      ...e,
-                      ...data,
-                      amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                      category:
-                        data.categoryId != null && data.categoryId !== ""
-                          ? (categories.find((c) => c.id === data.categoryId) ?? e.category)
-                          : e.category,
-                    } satisfies LedgerEntry)
-                  : e
-              ),
-            })),
+            pages: old.pages.map((page) => {
+              if (page.items === undefined) {
+                return page;
+              }
+
+              return {
+                ...page,
+                items: page.items.map((entry) =>
+                  entry.id === ledgerEntryId
+                    ? buildOptimisticLedgerEntry(entry, data, categories)
+                    : entry
+                ),
+              };
+            }),
           };
         }
       );
 
       // Also update selected entry immediately for modal
       if (selectedLedgerEntry && selectedLedgerEntry.id === ledgerEntryId) {
-        setSelectedLedgerEntry({
-          ...selectedLedgerEntry,
-          ...data,
-          amount: data.amount !== undefined ? String(data.amount) : selectedLedgerEntry.amount,
-          category:
-            data.categoryId != null && data.categoryId !== ""
-              ? (categories.find((c) => c.id === data.categoryId) ?? selectedLedgerEntry.category)
-              : selectedLedgerEntry.category,
-        } satisfies LedgerEntry);
+        setSelectedLedgerEntry(buildOptimisticLedgerEntry(selectedLedgerEntry, data, categories));
       }
 
       return { snapshots };
@@ -124,14 +145,20 @@ export function useEntryMutations({
 
       queryClient.setQueriesData<InfiniteData>(
         { predicate: matchLedgerEntries(ledgerId) },
-        (old) => {
-          if (!old?.pages) return old;
+        (old): InfiniteData | undefined => {
+          if (old == null) return old;
           return {
             ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              items: page.items?.filter((e) => e.id !== ledgerEntryId),
-            })),
+            pages: old.pages.map((page) => {
+              if (page.items === undefined) {
+                return page;
+              }
+
+              return {
+                ...page,
+                items: page.items.filter((entry) => entry.id !== ledgerEntryId),
+              };
+            }),
           };
         }
       );

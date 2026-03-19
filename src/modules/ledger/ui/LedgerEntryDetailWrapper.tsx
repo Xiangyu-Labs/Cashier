@@ -49,6 +49,7 @@ export function LedgerEntryDetailWrapper({
   });
 
   const ledgerId = ledgerEntry?.ledgerId;
+  const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
   const updateMutation = useLedgerMutation<
     void,
@@ -59,17 +60,17 @@ export function LedgerEntryDetailWrapper({
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: tCommon("saveFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== "" ? [invalidateLedgerEntries(ledgerId)] : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
+    ...(ledgerId != null && ledgerId !== ""
+      ? {
+          cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+          invalidatePredicates: [
             invalidateLedgerEntries(ledgerId),
             invalidateSourceDocuments(ledgerId),
             invalidateLedgerStats(ledgerId),
             invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+          ],
+        }
+      : {}),
     onOptimisticUpdate: (queryClient, data) => {
       const snapshotKey = queryKeys.ledgerEntry(id);
       const snapshots = createListSnapshots(queryClient, snapshotKey);
@@ -90,17 +91,17 @@ export function LedgerEntryDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== "" ? [invalidateLedgerEntries(ledgerId)] : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
+    ...(ledgerId != null && ledgerId !== ""
+      ? {
+          cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+          invalidatePredicates: [
             invalidateLedgerEntries(ledgerId),
             invalidateSourceDocuments(ledgerId),
             invalidateLedgerStats(ledgerId),
             invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+          ],
+        }
+      : {}),
     onSuccessExtra: () => {
       onClose();
     },
@@ -140,15 +141,15 @@ export function LedgerEntryDetailWrapper({
       onClose={onClose}
       onUpdate={async (data) => await updateMutation.mutateAsync(data)}
       onDelete={async () => await deleteMutation.mutateAsync()}
-      onViewSourceDocument={
-        ledgerEntry?.sourceDocumentId != null && ledgerEntry.sourceDocumentId !== ""
-          ? () =>
+      {...(sourceDocumentId != null && sourceDocumentId !== ""
+        ? {
+            onViewSourceDocument: () =>
               push({
                 type: "source-document",
-                id: ledgerEntry.sourceDocumentId!,
-              })
-          : undefined
-      }
+                id: sourceDocumentId,
+              }),
+          }
+        : {})}
     />
   );
 }
