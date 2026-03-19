@@ -20,9 +20,7 @@ export default async function HomePage(): Promise<ReactNode> {
   try {
     result = await resolveHome({
       userId: session.user.id,
-      email: session.user.email,
       locale,
-      defaultLedgerId: session.user.defaultLedgerId,
     });
   } catch (error) {
     console.error("Failed to auto-create ledger:", error);

@@ -10,10 +10,11 @@ import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/services";
 import {
   isRegistrationAllowed,
+  sendLoginNotification,
 } from "@/modules/auth/services";
 import { TIME_SECONDS } from "@/lib/constants";
 import { UnauthorizedError } from "@/lib/errors";
-import { provisionUserWorkspace } from "@/modules/auth/use-cases";
+import { ensureUserLedger } from "@/modules/workspace/use-cases";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -123,20 +124,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       if (user.id != null && user.id !== "") {
-        await provisionUserWorkspace({
+        await ensureUserLedger({
           userId: user.id,
-          email: user.email ?? "New User",
-          trigger: "auth-create-user",
         });
       }
     },
     async signIn({ user, isNewUser }) {
       if (isNewUser !== true && user.email != null && user.email !== "") {
-        await provisionUserWorkspace({
+        await ensureUserLedger({
           userId: user.id!,
-          email: user.email,
-          trigger: "existing-login",
         });
+
+        await sendLoginNotification(user.email);
       }
     },
   },

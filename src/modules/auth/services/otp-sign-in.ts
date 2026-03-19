@@ -12,7 +12,7 @@ import { assertRegistrationAllowed } from "./registration";
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
-import { provisionUserWorkspace } from "@/modules/auth/use-cases";
+import { ensureUserLedger } from "@/modules/workspace/use-cases";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -144,11 +144,9 @@ export async function authenticateWithOTP(params: {
   const { user, isExistingUser } = await findOrCreateUser(normalizedEmail, locale);
 
   if (!isExistingUser) {
-    await provisionUserWorkspace({
+    await ensureUserLedger({
       userId: user.id,
-      email: user.email ?? normalizedEmail,
       locale,
-      trigger: "otp-sign-in",
     });
   }
 
