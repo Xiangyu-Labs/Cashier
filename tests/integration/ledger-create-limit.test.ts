@@ -22,6 +22,10 @@ async function createTestUser(email?: string) {
       emailVerified: new Date(),
     })
     .returning();
+  expect(user).toBeDefined();
+  if (user === undefined) {
+    throw new Error("Expected user insert to return a row");
+  }
   return user;
 }
 

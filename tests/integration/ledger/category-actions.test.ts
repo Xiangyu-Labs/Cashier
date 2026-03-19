@@ -202,6 +202,10 @@ describe("deleteEntryCategoryAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     const [entry] = await db
       .insert(ledgerEntries)
@@ -215,6 +219,10 @@ describe("deleteEntryCategoryAction", () => {
         categoryId: catId,
       })
       .returning();
+    expect(entry).toBeDefined();
+    if (entry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
 
     await deleteEntryCategoryAction(ledgerId, catId);
 
@@ -297,7 +305,9 @@ describe("getEntryCategoriesAction", () => {
 
     const result = await getEntryCategoriesAction(ledgerId);
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Active");
+    const firstCategory = result[0];
+    expect(firstCategory).toBeDefined();
+    expect(firstCategory?.name).toBe("Active");
   });
 
   it("includes entry count per category", async () => {
@@ -321,6 +331,10 @@ describe("getEntryCategoriesAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values([
       {
@@ -344,6 +358,8 @@ describe("getEntryCategoriesAction", () => {
     ]);
 
     const result = await getEntryCategoriesAction(ledgerId);
-    expect(result[0].entryCount).toBe(2);
+    const firstCategory = result[0];
+    expect(firstCategory).toBeDefined();
+    expect(firstCategory?.entryCount).toBe(2);
   });
 });

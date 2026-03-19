@@ -31,6 +31,10 @@ async function seedEntry(
       entryDate: opts.entryDate ?? null,
     })
     .returning();
+  expect(doc).toBeDefined();
+  if (doc === undefined) {
+    throw new Error("Expected source document insert to return a row");
+  }
 
   await db.insert(ledgerEntries).values({
     id: uuidv4(),
@@ -94,9 +98,15 @@ describe("getLedgerStatsAction", () => {
 
     const result = await getLedgerStatsAction(ledgerId);
     expect(result.trend).toHaveLength(3);
-    expect(result.trend[0].date).toBe("2024-01-01");
-    expect(result.trend[1].date).toBe("2024-01-02");
-    expect(result.trend[2].date).toBe("2024-01-03");
+    const firstTrend = result.trend[0];
+    const secondTrend = result.trend[1];
+    const thirdTrend = result.trend[2];
+    expect(firstTrend).toBeDefined();
+    expect(secondTrend).toBeDefined();
+    expect(thirdTrend).toBeDefined();
+    expect(firstTrend?.date).toBe("2024-01-01");
+    expect(secondTrend?.date).toBe("2024-01-02");
+    expect(thirdTrend?.date).toBe("2024-01-03");
   });
 
   it("filters by startDate using sourceDocument.entryDate", async () => {
@@ -153,7 +163,9 @@ describe("getLedgerStatsAction", () => {
       currency: "USD",
     });
     expect(result.totals).toHaveLength(1);
-    expect(result.totals[0].currency).toBe("USD");
+    const firstTotal = result.totals[0];
+    expect(firstTotal).toBeDefined();
+    expect(firstTotal?.currency).toBe("USD");
   });
 
   it("filters by minAmount using convertedAmount", async () => {

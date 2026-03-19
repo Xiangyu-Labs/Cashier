@@ -14,6 +14,10 @@ async function createTestUser(email?: string) {
       emailVerified: new Date(),
     })
     .returning();
+  expect(user).toBeDefined();
+  if (user === undefined) {
+    throw new Error("Expected user insert to return a row");
+  }
   return user;
 }
 
@@ -39,7 +43,7 @@ describe("Ledger single limit constraint", () => {
       .returning();
 
     expect(ledger).toBeDefined();
-    expect(ledger.userId).toBe(user.id);
+    expect(ledger?.userId).toBe(user.id);
   });
 
   it("should prevent creating second ledger for same user", async () => {
@@ -92,7 +96,7 @@ describe("Ledger single limit constraint", () => {
 
     expect(ledger1).toBeDefined();
     expect(ledger2).toBeDefined();
-    expect(ledger1.userId).toBe(user1.id);
-    expect(ledger2.userId).toBe(user2.id);
+    expect(ledger1?.userId).toBe(user1.id);
+    expect(ledger2?.userId).toBe(user2.id);
   });
 });

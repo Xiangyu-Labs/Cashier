@@ -37,6 +37,10 @@ describe("Ledger Entry Update Action", () => {
       .insert(entryCategories)
       .values({ ledgerId: testLedgerId, name: "Dining", sortOrder: 1 })
       .returning();
+    expect(category).toBeDefined();
+    if (category === undefined) {
+      throw new Error("Expected category insert to return a row");
+    }
     testCategoryId = category.id;
 
     // Create a test source document for entries
@@ -53,6 +57,10 @@ describe("Ledger Entry Update Action", () => {
         categoryId: testCategoryId,
       })
       .returning();
+    expect(entry).toBeDefined();
+    if (entry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
     testEntryId = entry.id;
   });
 
@@ -73,7 +81,8 @@ describe("Ledger Entry Update Action", () => {
       .from(ledgerEntries)
       .where(eq(ledgerEntries.id, testEntryId));
 
-    expect(updatedEntry.description).toBe(newDescription);
+    expect(updatedEntry).toBeDefined();
+    expect(updatedEntry?.description).toBe(newDescription);
   });
 
   it("should update other fields correctly", async () => {

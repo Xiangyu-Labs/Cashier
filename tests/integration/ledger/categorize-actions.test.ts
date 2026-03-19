@@ -65,6 +65,10 @@ describe("submitAutoCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values({
       id: uuidv4(),
@@ -99,6 +103,10 @@ describe("submitAutoCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values([
       {
@@ -147,6 +155,10 @@ describe("submitAutoCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     // One categorized, one not
     await db.insert(ledgerEntries).values([
@@ -196,6 +208,10 @@ describe("submitAutoCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     const entryId = uuidv4();
     await db.insert(ledgerEntries).values({
@@ -253,6 +269,10 @@ describe("submitAutoCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values({
       id: uuidv4(),
@@ -335,6 +355,10 @@ describe("submitBatchCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     const entry1Id = uuidv4();
     const entry2Id = uuidv4();
@@ -414,6 +438,10 @@ describe("submitBatchCategorizeAction", () => {
         imageUrls: [],
       })
       .returning();
+    expect(doc).toBeDefined();
+    if (doc === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     const entryId = uuidv4();
     await db.insert(ledgerEntries).values({

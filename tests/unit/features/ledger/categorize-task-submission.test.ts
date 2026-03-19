@@ -28,22 +28,39 @@ describe("submitCategorizeTasksForEntries omission semantics", () => {
         },
       ],
       aiLanguage: "en",
-      entries: [
-        {
-          id: "entry-1",
-          itemName: "Lunch",
-          amount: "12.50",
-          currency: "USD",
-          description: null,
-          sourceDocument: {
-            type: "receipt",
-            entryDate: "",
-            text: null,
-            imageUrls: [],
-          },
-        },
-      ],
-    });
+	      entries: [
+	        {
+	          id: "entry-1",
+	          ledgerId: "ledger-1",
+	          categoryId: null,
+	          sourceDocumentId: "doc-1",
+	          itemName: "Lunch",
+	          amount: "12.50",
+	          currency: "USD",
+	          description: null,
+	          convertedAmount: null,
+	          exchangeRate: null,
+	          createdAt: new Date(),
+	          updatedAt: new Date(),
+	          deletedAt: null,
+	          sourceDocument: {
+	            id: "doc-1",
+	            ledgerId: "ledger-1",
+	            title: null,
+	            type: "manual",
+	            status: "completed",
+	            anomalyReason: null,
+	            entryDate: "",
+	            text: null,
+	            imageUrls: [],
+	            metadata: {},
+	            createdAt: new Date(),
+	            updatedAt: new Date(),
+	            deletedAt: null,
+	          },
+	        },
+	      ],
+	    });
 
     const taskInput = submitFlowTaskMock.mock.calls[0]?.[1] as Record<string, unknown>;
 

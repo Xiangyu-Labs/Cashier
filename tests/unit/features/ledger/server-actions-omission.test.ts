@@ -24,7 +24,7 @@ vi.mock("@/lib/auth-actions", () => ({
   ) => handler,
   withAuth: <TArgs extends unknown[], TResult>(
     handler: (userId: string, ...args: TArgs) => TResult
-  ) => handler,
+  ) => (...args: TArgs) => handler("user-1", ...args),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -161,7 +161,7 @@ describe("ledger server action omission semantics", () => {
   });
 
   it("omits locale when creating a ledger without aiLanguage", async () => {
-    await createLedgerAction("user-1", {});
+    await createLedgerAction({});
 
     const payload = createDefaultLedgerMock.mock.calls[0]?.[0] as Record<string, unknown>;
 

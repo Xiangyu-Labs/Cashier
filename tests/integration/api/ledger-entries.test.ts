@@ -30,6 +30,10 @@ describe("getLedgerEntriesAction", () => {
         sortOrder: 1,
       })
       .returning();
+    expect(category).toBeDefined();
+    if (category === undefined) {
+      throw new Error("Expected category insert to return a row");
+    }
     testCategoryId = category.id;
 
     // Create a test source document for entries
@@ -56,9 +60,11 @@ describe("getLedgerEntriesAction", () => {
     const data = await getLedgerEntriesAction(testLedgerId, {});
 
     expect(data.items).toHaveLength(1);
-    expect(data.items[0].itemName).toBe("午餐");
-    expect(data.items[0].category).toBeDefined();
-    expect(data.items[0].category!.name).toBe("餐饮");
+    const firstItem = data.items[0];
+    expect(firstItem).toBeDefined();
+    expect(firstItem?.itemName).toBe("午餐");
+    expect(firstItem?.category).toBeDefined();
+    expect(firstItem?.category?.name).toBe("餐饮");
   });
 
   it("should filter by categoryId", async () => {
@@ -67,6 +73,10 @@ describe("getLedgerEntriesAction", () => {
       .insert(entryCategories)
       .values({ ledgerId: testLedgerId, name: "交通", sortOrder: 2 })
       .returning();
+    expect(otherCategory).toBeDefined();
+    if (otherCategory === undefined) {
+      throw new Error("Expected category insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values([
       {
@@ -88,6 +98,8 @@ describe("getLedgerEntriesAction", () => {
     const data = await getLedgerEntriesAction(testLedgerId, { categoryId: testCategoryId });
 
     expect(data.items).toHaveLength(1);
-    expect(data.items[0].itemName).toBe("餐饮交易");
+    const firstItem = data.items[0];
+    expect(firstItem).toBeDefined();
+    expect(firstItem?.itemName).toBe("餐饮交易");
   });
 });

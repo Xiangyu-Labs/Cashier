@@ -37,6 +37,10 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
       entryDate: entryDate ?? null,
     })
     .returning();
+  expect(doc).toBeDefined();
+  if (doc === undefined) {
+    throw new Error("Expected source document insert to return a row");
+  }
   return doc;
 }
 
@@ -128,6 +132,10 @@ describe("updateLedgerEntryAction", () => {
         convertedAmount: "50.00",
       })
       .returning();
+    expect(entry).toBeDefined();
+    if (entry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
     entryId = entry.id;
   });
 
@@ -200,6 +208,10 @@ describe("deleteLedgerEntryAction", () => {
         currency: "CNY",
       })
       .returning();
+    expect(entry).toBeDefined();
+    if (entry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
 
     await deleteLedgerEntryAction(ledgerId, entry.id);
 
@@ -241,6 +253,10 @@ describe("batchDeleteLedgerEntriesAction", () => {
           currency: "CNY",
         })
         .returning();
+      expect(e).toBeDefined();
+      if (e === undefined) {
+        throw new Error("Expected ledger entry insert to return a row");
+      }
       ids.push(e.id);
     }
 
@@ -294,6 +310,10 @@ describe("batchUpdateLedgerEntriesAction", () => {
           currency: "CNY",
         })
         .returning();
+      expect(e).toBeDefined();
+      if (e === undefined) {
+        throw new Error("Expected ledger entry insert to return a row");
+      }
       ids.push(e.id);
     }
 
@@ -375,7 +395,9 @@ describe("getLedgerEntriesAction", () => {
 
     const result = await getLedgerEntriesAction(ledgerId, { categoryId: catId });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].itemName).toBe("Categorized");
+    const categorizedEntry = result.items[0];
+    expect(categorizedEntry).toBeDefined();
+    expect(categorizedEntry?.itemName).toBe("Categorized");
   });
 
   it("filters by currency", async () => {
@@ -402,7 +424,9 @@ describe("getLedgerEntriesAction", () => {
 
     const result = await getLedgerEntriesAction(ledgerId, { currency: "USD" });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].itemName).toBe("USD item");
+    const usdEntry = result.items[0];
+    expect(usdEntry).toBeDefined();
+    expect(usdEntry?.itemName).toBe("USD item");
   });
 
   it("filters by date range via sourceDocument.entryDate", async () => {
@@ -431,7 +455,9 @@ describe("getLedgerEntriesAction", () => {
       endDate: "2024-11-01",
     });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].itemName).toBe("Jun");
+    const juneEntry = result.items[0];
+    expect(juneEntry).toBeDefined();
+    expect(juneEntry?.itemName).toBe("Jun");
   });
 
   it("filters by entryDate not createdAt", async () => {
@@ -451,6 +477,10 @@ describe("getLedgerEntriesAction", () => {
         createdAt: new Date("2024-03-01"),
       })
       .returning();
+    expect(docA).toBeDefined();
+    if (docA === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     // Create doc with entryDate in March but created in January
     const [docB] = await db
@@ -466,6 +496,10 @@ describe("getLedgerEntriesAction", () => {
         createdAt: new Date("2024-01-01"),
       })
       .returning();
+    expect(docB).toBeDefined();
+    if (docB === undefined) {
+      throw new Error("Expected source document insert to return a row");
+    }
 
     await db.insert(ledgerEntries).values({
       id: uuidv4(),
@@ -493,7 +527,9 @@ describe("getLedgerEntriesAction", () => {
 
     // Should only return entry from docA (entryDate in January)
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].itemName).toBe("Jan Item");
+    const januaryEntry = result.items[0];
+    expect(januaryEntry).toBeDefined();
+    expect(januaryEntry?.itemName).toBe("Jan Item");
   });
 
   it("filters by minAmount and maxAmount", async () => {
@@ -534,7 +570,9 @@ describe("getLedgerEntriesAction", () => {
       maxAmount: 100,
     });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].itemName).toBe("Mid");
+    const midEntry = result.items[0];
+    expect(midEntry).toBeDefined();
+    expect(midEntry?.itemName).toBe("Mid");
   });
 
   it("excludes soft-deleted entries", async () => {
