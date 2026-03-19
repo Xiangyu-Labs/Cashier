@@ -126,7 +126,18 @@ export async function executeStage1_5Validation(
 
   return {
     is_reasonable: result.is_reasonable,
-    summary: result.summary,
-    rejection_reason: result.rejection_reason,
+    ...(result.summary !== undefined
+      ? {
+          summary: {
+            title: result.summary.title,
+            currencies: result.summary.currencies,
+            categories: result.summary.categories,
+            ...(result.summary.rules !== undefined ? { rules: result.summary.rules } : {}),
+          },
+        }
+      : {}),
+    ...(result.rejection_reason !== undefined
+      ? { rejection_reason: result.rejection_reason }
+      : {}),
   };
 }

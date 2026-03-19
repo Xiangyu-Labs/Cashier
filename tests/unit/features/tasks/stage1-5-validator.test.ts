@@ -50,6 +50,8 @@ describe("Stage 1.5 Validator", () => {
       expect(result.summary?.title).toBe("午餐消费");
       expect(result.summary?.currencies[0].code).toBe("CNY");
       expect(result.summary?.categories[0].name).toBe("餐饮");
+      expect("rejection_reason" in result).toBe(false);
+      expect("rules" in result.summary!).toBe(false);
     });
 
     it("should include user rules in summary when present", async () => {
@@ -95,6 +97,7 @@ describe("Stage 1.5 Validator", () => {
         "Currency identified as CNY but document shows $ symbol"
       );
       expect(result.summary).toBeUndefined();
+      expect("summary" in result).toBe(false);
     });
   });
 

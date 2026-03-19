@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { submitMock, loggerMock } = vi.hoisted(() => ({
+const { submitMock, listEntryCategoryInfosMock, loggerMock } = vi.hoisted(() => ({
   submitMock: vi.fn(),
+  listEntryCategoryInfosMock: vi.fn(),
   loggerMock: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -15,6 +16,10 @@ vi.mock("@/lib/flow", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {},
+}));
+
+vi.mock("@/modules/ledger/queries", () => ({
+  listEntryCategoryInfos: listEntryCategoryInfosMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -34,6 +39,7 @@ describe("prepareSourceDocumentTask", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     submitMock.mockResolvedValue("task-id");
+    listEntryCategoryInfosMock.mockResolvedValue([]);
   });
 
   it("submits parse_source_document with the assembled flow capability", async () => {
@@ -76,5 +82,24 @@ describe("prepareSourceDocumentTask", () => {
         entityId: "doc-1",
       }
     );
+  });
+
+  it("omits optional settings fields when ledger metadata does not provide them", async () => {
+    const { getSourceDocumentTaskContext } =
+      await import("@/modules/source-document/application/services/processing");
+
+    const context = await getSourceDocumentTaskContext("ledger-1", {
+      id: "ledger-1",
+      name: "Main ledger",
+      ownerId: "user-1",
+      isDefault: false,
+      metadata: { settings: {} },
+      createdAt: new Date("2026-03-19T12:00:00.000Z"),
+      updatedAt: new Date("2026-03-19T12:00:00.000Z"),
+      deletedAt: null,
+    });
+
+    expect("preferredCurrencies" in context.settings).toBe(false);
+    expect("aiCustomPrompt" in context.settings.settings).toBe(false);
   });
 });

@@ -102,8 +102,14 @@ export function mapSourceDocumentLedgerEntryDto(
     createdAt: entry.createdAt,
     updatedAt: entry.updatedAt,
     deletedAt: entry.deletedAt,
-    category:
-      entry.category != null ? mapSourceDocumentEntryCategoryDto(entry.category) : entry.category,
+    ...(entry.category !== undefined
+      ? {
+          category:
+            entry.category != null
+              ? mapSourceDocumentEntryCategoryDto(entry.category)
+              : entry.category,
+        }
+      : {}),
   };
 }
 

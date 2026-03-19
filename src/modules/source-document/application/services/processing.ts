@@ -43,14 +43,16 @@ export async function getSourceDocumentTaskContext(
   const categories = await listEntryCategoryInfos(ledgerId);
 
   const ledgerSettings = ledger.metadata?.settings ?? {};
+  const preferredCurrencies = ledgerSettings.currencies;
+  const aiCustomPrompt = ledgerSettings.aiCustomPrompt;
 
   return {
     categories,
     settings: {
       aiLanguage: ledgerSettings.aiLanguage ?? "zh-CN",
-      preferredCurrencies: ledgerSettings.currencies ?? undefined,
+      ...(preferredCurrencies !== undefined ? { preferredCurrencies } : {}),
       settings: {
-        aiCustomPrompt: ledgerSettings.aiCustomPrompt,
+        ...(aiCustomPrompt !== undefined ? { aiCustomPrompt } : {}),
       },
     },
   };
