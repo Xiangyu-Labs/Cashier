@@ -196,6 +196,12 @@ describe("parseSourceDocumentHandler.execute", () => {
       })
       .returning();
 
+    expect(sourceDoc).toBeDefined();
+    expect(category).toBeDefined();
+    if (sourceDoc == null || category == null) {
+      throw new Error("Expected source document and category to be created");
+    }
+
     sourceDocId = sourceDoc.id;
     categoryId = category.id;
   });
@@ -235,7 +241,12 @@ describe("parseSourceDocumentHandler.execute", () => {
     const result = await parseSourceDocumentHandler.execute(input, context);
 
     expect(result.ledgerEntries).toHaveLength(1);
-    expect(result.ledgerEntries[0].itemName).toBe("Lunch");
+    const firstEntry = result.ledgerEntries[0];
+    expect(firstEntry).toBeDefined();
+    if (firstEntry == null) {
+      throw new Error("Expected parsed ledger entry");
+    }
+    expect(firstEntry.itemName).toBe("Lunch");
     expect(result.title).toBe("Test Title");
     expect(result.verificationStatus).toBe("passed");
   });
@@ -272,7 +283,12 @@ describe("parseSourceDocumentHandler.execute", () => {
     const result = await parseSourceDocumentHandler.execute(input, context);
 
     // entryDate is null in execute result - it will be set from source document in onComplete
-    expect(result.ledgerEntries[0].entryDate).toBeNull();
+    const firstEntry = result.ledgerEntries[0];
+    expect(firstEntry).toBeDefined();
+    if (firstEntry == null) {
+      throw new Error("Expected parsed ledger entry");
+    }
+    expect(firstEntry.entryDate).toBeNull();
   });
 
   it("should return invalid status if Stage 1 validity check fails", async () => {
@@ -378,6 +394,12 @@ describe("parseSourceDocumentHandler.onComplete", () => {
       })
       .returning();
 
+    expect(sourceDoc).toBeDefined();
+    expect(category).toBeDefined();
+    if (sourceDoc == null || category == null) {
+      throw new Error("Expected source document and category to be created");
+    }
+
     sourceDocId = sourceDoc.id;
     categoryId = category.id;
   });
@@ -426,7 +448,12 @@ describe("parseSourceDocumentHandler.onComplete", () => {
       .from(ledgerEntries)
       .where(and(eq(ledgerEntries.sourceDocumentId, sourceDocId), isNull(ledgerEntries.deletedAt)));
     expect(entries).toHaveLength(1);
-    expect(entries[0].itemName).toBe("Lunch");
+    const firstEntry = entries[0];
+    expect(firstEntry).toBeDefined();
+    if (firstEntry == null) {
+      throw new Error("Expected saved ledger entry");
+    }
+    expect(firstEntry.itemName).toBe("Lunch");
   });
 
   it("should set anomaly status when verificationStatus is anomaly", async () => {
