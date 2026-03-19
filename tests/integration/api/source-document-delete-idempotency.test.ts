@@ -15,6 +15,14 @@ import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-set
 describe("SourceDocument Delete Idempotency", () => {
   let testLedgerId: string;
 
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
+
   beforeEach(async () => {
     const db = getTestDb();
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
@@ -33,16 +41,19 @@ describe("SourceDocument Delete Idempotency", () => {
     const db = getTestDb();
 
     // 1. 创建流水记录
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "待删除的流水记录",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "待删除的流水记录",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document to be created"
+    );
 
     // 2. 第一次删除 - 应该成功
     await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.not.toThrow();
@@ -63,16 +74,19 @@ describe("SourceDocument Delete Idempotency", () => {
     const db = getTestDb();
 
     // 1. 创建并软删除记录（模拟后台进程或之前的删除操作）
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "已被后台软删除的流水",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "已被后台软删除的流水",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document for soft-delete simulation"
+    );
 
     // 2. 【模拟竞态条件】后台进程软删除了记录
     await db
@@ -99,16 +113,19 @@ describe("SourceDocument Delete Idempotency", () => {
     const db = getTestDb();
 
     // 1. 创建流水记录
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "并发删除测试",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "并发删除测试",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document for concurrent delete test"
+    );
 
     // 2. 模拟两个并发的删除请求
     // 请求1：先删除成功
@@ -137,16 +154,19 @@ describe("SourceDocument Delete Idempotency", () => {
     const db = getTestDb();
 
     // 1. 创建流水记录
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "数据一致性测试",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "数据一致性测试",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document for consistency test"
+    );
 
     // 2. 【模拟竞态条件】记录被其他进程软删除
     await db

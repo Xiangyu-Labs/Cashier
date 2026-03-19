@@ -70,15 +70,18 @@ describe("SourceDocument Actions", () => {
     const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
     testLedgerId = ledgerId;
 
-    const [newCat] = await db
-      .insert(categories)
-      .values({
-        name: "餐饮",
-        description: "外卖、堂食",
-        sortOrder: 1,
-        ledgerId: testLedgerId,
-      })
-      .returning();
+    const newCat = firstItem(
+      await db
+        .insert(categories)
+        .values({
+          name: "餐饮",
+          description: "外卖、堂食",
+          sortOrder: 1,
+          ledgerId: testLedgerId,
+        })
+        .returning(),
+      "Expected category to be created in setup"
+    );
     testCategoryId = newCat.id;
 
     // Ensure '水果' category exists for the notes test
@@ -324,25 +327,31 @@ describe("SourceDocument Actions", () => {
     const db = getTestDb();
 
     // 1. Manually create docs in anomaly/completed state to avoid initial background processing
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Retry 1",
-        status: "anomaly",
-        imageUrls: [],
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Retry 1",
+          status: "anomaly",
+          imageUrls: [],
+        })
+        .returning(),
+      "Expected first source document for batch retry test"
+    );
 
-    const [doc2] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Retry 2",
-        status: "anomaly",
-        imageUrls: [],
-      })
-      .returning();
+    const doc2 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Retry 2",
+          status: "anomaly",
+          imageUrls: [],
+        })
+        .returning(),
+      "Expected second source document for batch retry test"
+    );
 
     // 2. Batch Retry
     // Note: New approach = soft delete old docs + create new docs with new IDs
@@ -377,15 +386,18 @@ describe("SourceDocument Actions", () => {
   it("should fetch ledger entries with relations when requested", async () => {
     // 1. Create a doc manually to avoid background processing
     const db = getTestDb();
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Lunch",
-        status: "completed",
-        imageUrls: [],
-      })
-      .returning();
+    const doc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Lunch",
+          status: "completed",
+          imageUrls: [],
+        })
+        .returning(),
+      "Expected source document for includeEntries test"
+    );
     const docId = doc.id;
 
     // 2. Add an entry manually
@@ -425,30 +437,36 @@ describe("SourceDocument Actions", () => {
     const db = getTestDb();
 
     // Create doc with entryDate in Jan but created now (March)
-    const [docA] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "January expense",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-01-15", // Entry date in January
-        createdAt: new Date("2024-03-01"), // Created in March
-      })
-      .returning();
+    const docA = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "January expense",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-01-15", // Entry date in January
+          createdAt: new Date("2024-03-01"), // Created in March
+        })
+        .returning(),
+      "Expected January source document to be created"
+    );
 
     // Create doc with entryDate in March but created in January
-    const [docB] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "March expense",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-15", // Entry date in March
-        createdAt: new Date("2024-01-01"), // Created in January
-      })
-      .returning();
+    const docB = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "March expense",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-15", // Entry date in March
+          createdAt: new Date("2024-01-01"), // Created in January
+        })
+        .returning(),
+      "Expected March source document to be created"
+    );
 
     // Filter for January 2024
     const result = await getSourceDocumentsAction(testLedgerId, {

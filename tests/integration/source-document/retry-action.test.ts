@@ -53,6 +53,14 @@ describe("retrySourceDocumentAction", () => {
       : { sourceDocumentId, ledgerId, text };
   }
 
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -80,18 +88,21 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Old receipt text",
-        imageUrls: ["https://example.com/old-image.jpg"],
-        status: "anomaly",
-        entryDate: "2025-01-15",
-        title: "Old Title",
-        metadata: { visionDescription: "Old description" },
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Old receipt text",
+          imageUrls: ["https://example.com/old-image.jpg"],
+          status: "anomaly",
+          entryDate: "2025-01-15",
+          title: "Old Title",
+          metadata: { visionDescription: "Old description" },
+        })
+        .returning(),
+      "Expected source document to be created for retry"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -129,16 +140,19 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document with images
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Receipt with images",
-        imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
-        status: "failed",
-        entryDate: "2025-02-20",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Receipt with images",
+          imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
+          status: "failed",
+          entryDate: "2025-02-20",
+        })
+        .returning(),
+      "Expected source document with images to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -161,16 +175,19 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Old receipt",
-        imageUrls: ["https://example.com/old.jpg"],
-        status: "anomaly",
-        entryDate: "2025-03-10",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Old receipt",
+          imageUrls: ["https://example.com/old.jpg"],
+          status: "anomaly",
+          entryDate: "2025-03-10",
+        })
+        .returning(),
+      "Expected source document for image retry to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -193,30 +210,36 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Processing document",
-        status: "processing",
-        entryDate: "2025-04-01",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Processing document",
+          status: "processing",
+          entryDate: "2025-04-01",
+        })
+        .returning(),
+      "Expected processing source document to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
     // Create a running task for the old document
-    const [oldTask] = await db
-      .insert(taskRuns)
-      .values({
-        scopeId: testLedgerId,
-        entityType: "source_document",
-        entityId: oldDocId,
-        type: "parse_source_document",
-        status: "running",
-        title: "Parse old document",
-      })
-      .returning();
+    const oldTask = firstItem(
+      await db
+        .insert(taskRuns)
+        .values({
+          scopeId: testLedgerId,
+          entityType: "source_document",
+          entityId: oldDocId,
+          type: "parse_source_document",
+          status: "running",
+          title: "Parse old document",
+        })
+        .returning(),
+      "Expected running task to be created"
+    );
 
     // Call retry
     const result = await retrySourceDocumentAction(testLedgerId, oldDocId, {
@@ -244,15 +267,18 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Document with tasks",
-        status: "completed",
-        entryDate: "2025-05-01",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Document with tasks",
+          status: "completed",
+          entryDate: "2025-05-01",
+        })
+        .returning(),
+      "Expected source document with tasks to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -292,14 +318,17 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document without entryDate
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "No date document",
-        status: "anomaly",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "No date document",
+          status: "anomaly",
+        })
+        .returning(),
+      "Expected source document without entryDate to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -327,15 +356,18 @@ describe("retrySourceDocumentAction", () => {
     const db = getTestDb();
 
     // Create an old document
-    const [oldDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Original text to keep",
-        status: "failed",
-        entryDate: "2025-06-01",
-      })
-      .returning();
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Original text to keep",
+          status: "failed",
+          entryDate: "2025-06-01",
+        })
+        .returning(),
+      "Expected source document with original text to be created"
+    );
 
     const oldDocId = oldDoc.id;
 
@@ -352,21 +384,18 @@ describe("retrySourceDocumentAction", () => {
   it("should omit text in task payload when both retry input and source document text are absent", async () => {
     const db = getTestDb();
 
-    const oldDoc = (
+    const oldDoc = firstItem(
       await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: null,
-        status: "failed",
-        entryDate: "2025-06-10",
-      })
-      .returning()
-    )[0];
-    expect(oldDoc).toBeDefined();
-    if (oldDoc == null) {
-      throw new Error("Expected old source document to be created");
-    }
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: null,
+          status: "failed",
+          entryDate: "2025-06-10",
+        })
+        .returning(),
+      "Expected old source document to be created"
+    );
 
     await retrySourceDocumentAction(testLedgerId, oldDoc.id);
 

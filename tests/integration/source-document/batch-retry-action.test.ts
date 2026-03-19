@@ -55,6 +55,14 @@ describe("batchRetrySourceDocumentsAction", () => {
       : { sourceDocumentId, ledgerId, text };
   }
 
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -82,29 +90,35 @@ describe("batchRetrySourceDocumentsAction", () => {
     const db = getTestDb();
 
     // Create multiple old documents
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Receipt 1",
-        imageUrls: ["https://example.com/img1.jpg"],
-        status: "anomaly",
-        entryDate: "2025-01-15",
-        title: "Title 1",
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Receipt 1",
+          imageUrls: ["https://example.com/img1.jpg"],
+          status: "anomaly",
+          entryDate: "2025-01-15",
+          title: "Title 1",
+        })
+        .returning(),
+      "Expected first source document to be created"
+    );
 
-    const [doc2] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Receipt 2",
-        imageUrls: ["https://example.com/img2.jpg"],
-        status: "failed",
-        entryDate: "2025-02-20",
-        title: "Title 2",
-      })
-      .returning();
+    const doc2 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Receipt 2",
+          imageUrls: ["https://example.com/img2.jpg"],
+          status: "failed",
+          entryDate: "2025-02-20",
+          title: "Title 2",
+        })
+        .returning(),
+      "Expected second source document to be created"
+    );
 
     const oldDocIds = [doc1.id, doc2.id];
 
@@ -142,27 +156,33 @@ describe("batchRetrySourceDocumentsAction", () => {
     const db = getTestDb();
 
     // Create old documents with specific text and images
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Specific text 1",
-        imageUrls: ["https://example.com/specific1.jpg"],
-        status: "anomaly",
-        entryDate: "2025-03-01",
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Specific text 1",
+          imageUrls: ["https://example.com/specific1.jpg"],
+          status: "anomaly",
+          entryDate: "2025-03-01",
+        })
+        .returning(),
+      "Expected first specific source document to be created"
+    );
 
-    const [doc2] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Specific text 2",
-        imageUrls: ["https://example.com/specific2.jpg", "https://example.com/specific3.jpg"],
-        status: "failed",
-        entryDate: "2025-03-02",
-      })
-      .returning();
+    const doc2 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Specific text 2",
+          imageUrls: ["https://example.com/specific2.jpg", "https://example.com/specific3.jpg"],
+          status: "failed",
+          entryDate: "2025-03-02",
+        })
+        .returning(),
+      "Expected second specific source document to be created"
+    );
 
     const oldDocIds = [doc1.id, doc2.id];
 
@@ -190,52 +210,64 @@ describe("batchRetrySourceDocumentsAction", () => {
     const db = getTestDb();
 
     // Create old documents with running tasks
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Processing 1",
-        status: "processing",
-        entryDate: "2025-04-01",
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Processing 1",
+          status: "processing",
+          entryDate: "2025-04-01",
+        })
+        .returning(),
+      "Expected first processing source document to be created"
+    );
 
-    const [doc2] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Pending 2",
-        status: "queued",
-        entryDate: "2025-04-02",
-      })
-      .returning();
+    const doc2 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Pending 2",
+          status: "queued",
+          entryDate: "2025-04-02",
+        })
+        .returning(),
+      "Expected second processing source document to be created"
+    );
 
     const oldDocIds = [doc1.id, doc2.id];
 
     // Create running tasks for the old documents
-    const [task1] = await db
-      .insert(taskRuns)
-      .values({
-        scopeId: testLedgerId,
-        entityType: "source_document",
-        entityId: doc1.id,
-        type: "parse_source_document",
-        status: "running",
-        title: "Parse doc1",
-      })
-      .returning();
+    const task1 = firstItem(
+      await db
+        .insert(taskRuns)
+        .values({
+          scopeId: testLedgerId,
+          entityType: "source_document",
+          entityId: doc1.id,
+          type: "parse_source_document",
+          status: "running",
+          title: "Parse doc1",
+        })
+        .returning(),
+      "Expected first task run to be created"
+    );
 
-    const [task2] = await db
-      .insert(taskRuns)
-      .values({
-        scopeId: testLedgerId,
-        entityType: "source_document",
-        entityId: doc2.id,
-        type: "parse_source_document",
-        status: "pending",
-        title: "Parse doc2",
-      })
-      .returning();
+    const task2 = firstItem(
+      await db
+        .insert(taskRuns)
+        .values({
+          scopeId: testLedgerId,
+          entityType: "source_document",
+          entityId: doc2.id,
+          type: "parse_source_document",
+          status: "pending",
+          title: "Parse doc2",
+        })
+        .returning(),
+      "Expected second task run to be created"
+    );
 
     // Call batch retry
     await batchRetrySourceDocumentsAction(testLedgerId, oldDocIds);
@@ -265,25 +297,31 @@ describe("batchRetrySourceDocumentsAction", () => {
     const db = getTestDb();
 
     // Create old documents with completed tasks
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Completed doc",
-        status: "completed",
-        entryDate: "2025-05-01",
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Completed doc",
+          status: "completed",
+          entryDate: "2025-05-01",
+        })
+        .returning(),
+      "Expected completed source document to be created"
+    );
 
-    const [doc2] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Failed doc",
-        status: "failed",
-        entryDate: "2025-05-02",
-      })
-      .returning();
+    const doc2 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Failed doc",
+          status: "failed",
+          entryDate: "2025-05-02",
+        })
+        .returning(),
+      "Expected failed source document to be created"
+    );
 
     const oldDocIds = [doc1.id, doc2.id];
 
@@ -346,15 +384,18 @@ describe("batchRetrySourceDocumentsAction", () => {
     const db = getTestDb();
 
     // Create one valid document
-    const [doc1] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Valid doc",
-        status: "anomaly",
-        entryDate: "2025-06-01",
-      })
-      .returning();
+    const doc1 = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Valid doc",
+          status: "anomaly",
+          entryDate: "2025-06-01",
+        })
+        .returning(),
+      "Expected valid source document to be created"
+    );
 
     // Mock submitFlowTask to fail for one document
     vi.mocked(submitFlowTask).mockImplementation(
@@ -378,34 +419,41 @@ describe("batchRetrySourceDocumentsAction", () => {
       where: and(eq(sourceDocuments.ledgerId, testLedgerId), isNull(sourceDocuments.deletedAt)),
     });
     expect(activeDocs.length).toBe(1);
-    expect(activeDocs[0].text).toBe("Valid doc");
+    const activeDoc = firstItem(activeDocs, "Expected one active document after partial failure");
+    expect(activeDoc.text).toBe("Valid doc");
   });
 
   it("should only process active documents (not already deleted)", async () => {
     const db = getTestDb();
 
     // Create an active document
-    const [activeDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Active doc",
-        status: "anomaly",
-        entryDate: "2025-07-01",
-      })
-      .returning();
+    const activeDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Active doc",
+          status: "anomaly",
+          entryDate: "2025-07-01",
+        })
+        .returning(),
+      "Expected active source document to be created"
+    );
 
     // Create a soft-deleted document
-    const [deletedDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "Deleted doc",
-        status: "completed",
-        entryDate: "2025-07-02",
-        deletedAt: new Date(),
-      })
-      .returning();
+    const deletedDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "Deleted doc",
+          status: "completed",
+          entryDate: "2025-07-02",
+          deletedAt: new Date(),
+        })
+        .returning(),
+      "Expected soft-deleted source document to be created"
+    );
 
     // Call batch retry with both IDs
     await batchRetrySourceDocumentsAction(testLedgerId, [activeDoc.id, deletedDoc.id]);
@@ -415,13 +463,14 @@ describe("batchRetrySourceDocumentsAction", () => {
       where: and(eq(sourceDocuments.ledgerId, testLedgerId), isNull(sourceDocuments.deletedAt)),
     });
     expect(newDocs.length).toBe(1);
-    expect(newDocs[0].text).toBe("Active doc");
+    const newDoc = firstItem(newDocs, "Expected one retried active document");
+    expect(newDoc.text).toBe("Active doc");
   });
 
   it("should omit text in task payload when retried document text is null", async () => {
     const db = getTestDb();
 
-    const oldDoc = (
+    const oldDoc = firstItem(
       await db
         .insert(sourceDocuments)
         .values({
@@ -430,12 +479,9 @@ describe("batchRetrySourceDocumentsAction", () => {
           status: "failed",
           entryDate: "2025-08-01",
         })
-        .returning()
-    )[0];
-    expect(oldDoc).toBeDefined();
-    if (oldDoc == null) {
-      throw new Error("Expected source document to be created");
-    }
+        .returning(),
+      "Expected source document with null text to be created"
+    );
 
     await batchRetrySourceDocumentsAction(testLedgerId, [oldDoc.id]);
 

@@ -134,15 +134,18 @@ describe("SourceDocument Retry Action", () => {
   it("should retry an anomaly document", async () => {
     // 1. Simulate an anomaly
     const db = getTestDb();
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        status: "anomaly",
-        text: "Invalid data",
-        anomalyReason: "无效内容",
-      })
-      .returning();
+    const doc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          status: "anomaly",
+          text: "Invalid data",
+          anomalyReason: "无效内容",
+        })
+        .returning(),
+      "Expected anomaly source document to be created"
+    );
     const docId = doc.id;
 
     // 2. Retry it

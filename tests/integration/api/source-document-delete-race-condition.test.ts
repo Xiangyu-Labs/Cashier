@@ -20,6 +20,14 @@ import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-set
 describe("SourceDocument Delete Race Condition", () => {
   let testLedgerId: string;
 
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
+
   beforeEach(async () => {
     const db = getTestDb();
 
@@ -41,16 +49,19 @@ describe("SourceDocument Delete Race Condition", () => {
     const db = getTestDb();
 
     // 1. Create a source document
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "待删除的流水记录",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "待删除的流水记录",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document to be created for race-condition test"
+    );
 
     expect(sourceDoc.id).toBeDefined();
     expect(sourceDoc.deletedAt).toBeNull();
@@ -94,16 +105,19 @@ describe("SourceDocument Delete Race Condition", () => {
     const db = getTestDb();
 
     // T0: Create source document
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "鸡蛋 16元",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "鸡蛋 16元",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected source document for timeline demonstration"
+    );
 
     console.log("T0: 创建流水记录", { id: sourceDoc.id, deletedAt: sourceDoc.deletedAt });
 
@@ -150,16 +164,19 @@ describe("SourceDocument Delete Race Condition", () => {
     const db = getTestDb();
 
     // Create a normal source document
-    const [sourceDoc] = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId: testLedgerId,
-        text: "正常删除的流水",
-        status: "completed",
-        imageUrls: [],
-        entryDate: "2024-03-17",
-      })
-      .returning();
+    const sourceDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "正常删除的流水",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-17",
+        })
+        .returning(),
+      "Expected active source document to be created"
+    );
 
     // Normal delete should succeed
     await deleteSourceDocumentAction(testLedgerId, sourceDoc.id);
