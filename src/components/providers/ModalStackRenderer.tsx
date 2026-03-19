@@ -1,5 +1,5 @@
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
+import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui/SourceDocumentDetailWrapper";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui";
 import type { EntryCategory } from "@/types/api";
 

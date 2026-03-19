@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SourceDocumentInput } from "@/modules/source-document/ui";
+import { SourceDocumentInput } from "./SourceDocumentInput";
 import { type SourceDocument, type SourceDocumentLight } from "@/types/api";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";

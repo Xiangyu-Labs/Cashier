@@ -25,7 +25,7 @@ import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 // Lazy load modal components to reduce initial bundle
 const SourceDocumentInput = dynamic(
   () =>
-    import("@/modules/source-document/ui").then((m) => ({
+    import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({
       default: m.SourceDocumentInput,
     })),
   { ssr: false }
@@ -33,7 +33,7 @@ const SourceDocumentInput = dynamic(
 
 const QuickEntryForm = dynamic(
   () =>
-    import("@/modules/source-document/ui").then((m) => ({
+    import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({
       default: m.QuickEntryForm,
     })),
   { ssr: false }

@@ -6,9 +6,9 @@ import {
   type SourceDocument,
   type Ledger,
 } from "@/types/api";
-import { SourceDocumentCard } from "@/modules/source-document/ui";
+import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
+import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { EntryFilterPanel, type EntryFilters } from "../EntryFilterPanel";
