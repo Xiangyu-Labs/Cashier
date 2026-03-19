@@ -1,7 +1,7 @@
 "use server";
 
 import { parseDateString } from "@/lib/date-utils";
-import { ExchangeRateService } from "./ExchangeRateService";
+import { ExchangeRateService, type ExchangeRates } from "./ExchangeRateService";
 
 export interface ConvertCurrencyResult {
   converted: number;
@@ -44,11 +44,14 @@ export async function batchConvertCurrencyAction(
   const byDate = new Map<string, { indices: number[]; items: BatchConversionItem[] }>();
   items.forEach((item, index) => {
     const dateKey = item.date?.split("T")[0] ?? "today";
-    if (!byDate.has(dateKey)) {
-      byDate.set(dateKey, { indices: [], items: [] });
+    const grouped = byDate.get(dateKey);
+    if (grouped === undefined) {
+      byDate.set(dateKey, { indices: [index], items: [item] });
+      return;
     }
-    byDate.get(dateKey)!.indices.push(index);
-    byDate.get(dateKey)!.items.push(item);
+
+    grouped.indices.push(index);
+    grouped.items.push(item);
   });
 
   const dateKeys = Array.from(byDate.keys());
@@ -58,20 +61,35 @@ export async function batchConvertCurrencyAction(
     return { dateKey, rates };
   });
 
-  const ratesResults = await Promise.all(ratesPromises);
-  const ratesMap = new Map(ratesResults.map((r) => [r.dateKey, r.rates]));
+  const ratesResults = await Promise.allSettled(ratesPromises);
+  const ratesMap = new Map<string, ExchangeRates>();
+  ratesResults.forEach((result, index) => {
+    const dateKey = dateKeys[index];
+    if (dateKey === undefined || result.status !== "fulfilled") {
+      return;
+    }
 
-  const results: number[] = new Array(items.length);
+    ratesMap.set(dateKey, result.value.rates);
+  });
+
+  const results = items.map((item) => item.amount);
 
   for (const [dateKey, group] of byDate) {
-    const ratesData = ratesMap.get(dateKey)!;
-    const rates = { ...ratesData.rates, [ratesData.base]: 1.0 };
+    const ratesData = ratesMap.get(dateKey);
+    const rates = ratesData != null ? { ...ratesData.rates, [ratesData.base]: 1.0 } : null;
 
-    for (let i = 0; i < group.items.length; i++) {
-      const item = group.items[i];
-      const originalIndex = group.indices[i];
+    for (const [index, item] of group.items.entries()) {
+      const originalIndex = group.indices[index];
+      if (originalIndex === undefined) {
+        continue;
+      }
 
       if (item.currency === targetCurrency || item.currency === "") {
+        results[originalIndex] = item.amount;
+        continue;
+      }
+
+      if (rates == null) {
         results[originalIndex] = item.amount;
         continue;
       }

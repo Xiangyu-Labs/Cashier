@@ -1,14 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { convertCurrencyAction } from "@/modules/currency/actions";
+import { convertCurrencyAction, type ConvertCurrencyResult } from "@/modules/currency/actions";
 import { queryKeys } from "@/lib/query-keys";
-
-interface ConversionData {
-  amount: number;
-  from: string;
-  to: string;
-  date?: string;
-  converted: number;
-}
 
 export function useConvertedAmount(
   amount: number,
@@ -16,27 +8,34 @@ export function useConvertedAmount(
   to: string | null | undefined,
   date?: string | null
 ) {
-  // If same currency or missing info, return amount immediately
-  const isSameCurrency = from === to;
-  const isMissingInfo = amount === 0 || from == null || from === "" || to == null || to === "" || from === "unknown" || to === "unknown";
+  const normalizedFrom =
+    from == null || from === "" || from === "unknown" ? null : from;
+  const normalizedTo = to == null || to === "" || to === "unknown" ? null : to;
+  const normalizedDate = date == null || date === "" ? undefined : date;
 
-  const { data, isLoading, error } = useQuery<ConversionData>({
-    queryKey: queryKeys.convert(amount, from!, to!, date ?? undefined),
+  // If same currency or missing info, return amount immediately
+  const isSameCurrency = normalizedFrom != null && normalizedFrom === normalizedTo;
+  const isMissingInfo = amount === 0 || normalizedFrom == null || normalizedTo == null;
+  const canConvert = !isSameCurrency && !isMissingInfo;
+
+  const { data, isLoading, error } = useQuery<ConvertCurrencyResult>({
+    queryKey: queryKeys.convert(
+      amount,
+      normalizedFrom ?? "__missing_from__",
+      normalizedTo ?? "__missing_to__",
+      normalizedDate
+    ),
     queryFn: async () => {
-      const result = await convertCurrencyAction(amount, from!, to!, date ?? undefined);
-      return {
-        amount,
-        from: from!,
-        to: to!,
-        date: date ?? undefined,
-        converted: result.converted,
-      };
+      if (normalizedFrom == null || normalizedTo == null) {
+        return { converted: amount };
+      }
+      return convertCurrencyAction(amount, normalizedFrom, normalizedTo, normalizedDate);
     },
-    enabled: !isSameCurrency && !isMissingInfo, // isMissingInfo is already boolean
+    enabled: canConvert,
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
   });
 
-  if (isSameCurrency || isMissingInfo) {
+  if (!canConvert) {
     return {
       converted: amount,
       isLoading: false,

@@ -70,4 +70,29 @@ describe("LoginErrorPage", () => {
     expect(screen.getByText("登录出错")).toBeTruthy();
     expect(screen.getByText("登录过程中发生错误，请重试。")).toBeTruthy();
   });
+
+  it("falls back to default copy when error key is not an own mapping key", () => {
+    mockGet.mockImplementation((key: string) => {
+      if (key === "error") return "__proto__";
+      return null;
+    });
+
+    render(<LoginErrorPage />);
+
+    expect(screen.getByText("登录出错")).toBeTruthy();
+    expect(screen.getByText("登录过程中发生错误，请重试。")).toBeTruthy();
+  });
+
+  it("falls back to default copy when credentials code is not an own mapping key", () => {
+    mockGet.mockImplementation((key: string) => {
+      if (key === "error") return "CredentialsSignin";
+      if (key === "code") return "__proto__";
+      return null;
+    });
+
+    render(<LoginErrorPage />);
+
+    expect(screen.getByText("登录出错")).toBeTruthy();
+    expect(screen.getByText("登录过程中发生错误，请重试。")).toBeTruthy();
+  });
 });

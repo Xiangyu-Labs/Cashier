@@ -7,8 +7,30 @@ import { AlertCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 
+interface ErrorMessage {
+  title: string;
+  desc: string;
+}
+
+function getOwnMessage<T extends Record<string, ErrorMessage>>(
+  messages: T,
+  key: string | null,
+  fallback: ErrorMessage
+): ErrorMessage {
+  if (key == null) {
+    return fallback;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(messages, key)) {
+    return fallback;
+  }
+
+  const message = messages[key as keyof T];
+  return message ?? fallback;
+}
+
 // Auth.js error type mapping to translation keys
-const ERROR_MESSAGES: Record<string, { title: string; desc: string }> = {
+const ERROR_MESSAGES = {
   OAuthCallback: { title: "errorOAuthCallback", desc: "errorOAuthCallbackDesc" },
   OAuthAccountNotLinked: {
     title: "errorOAuthAccountNotLinked",
@@ -18,9 +40,9 @@ const ERROR_MESSAGES: Record<string, { title: string; desc: string }> = {
   Configuration: { title: "errorConfiguration", desc: "errorConfigurationDesc" },
   // Default error
   Default: { title: "error", desc: "errorDesc" },
-};
+} satisfies Record<string, ErrorMessage>;
 
-const CREDENTIALS_ERROR_MESSAGES: Record<string, { title: string; desc: string }> = {
+const CREDENTIALS_ERROR_MESSAGES = {
   [AUTH_ERROR_CODES.REGISTRATION_DISABLED]: {
     title: "registrationDisabled",
     desc: "registrationDisabledDesc",
@@ -41,20 +63,19 @@ const CREDENTIALS_ERROR_MESSAGES: Record<string, { title: string; desc: string }
     title: "rateLimited",
     desc: "rateLimitedDesc",
   },
-};
+} satisfies Record<string, ErrorMessage>;
 
 export default function LoginErrorPage() {
   const t = useTranslations("Auth");
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const code = searchParams.get("code");
+  const defaultErrorMessage = ERROR_MESSAGES.Default;
 
   const errorConfig =
     error === "CredentialsSignin"
-      ? (code != null ? (CREDENTIALS_ERROR_MESSAGES[code] ?? ERROR_MESSAGES.Default) : ERROR_MESSAGES.Default)
-      : error != null
-        ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default)
-        : ERROR_MESSAGES.Default;
+      ? getOwnMessage(CREDENTIALS_ERROR_MESSAGES, code, defaultErrorMessage)
+      : getOwnMessage(ERROR_MESSAGES, error, defaultErrorMessage);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">

@@ -22,11 +22,13 @@ export function AmountDisplay({
   size = "md",
   showOriginal = true,
 }: AmountDisplayProps) {
+  const amountDisplayInput =
+    date == null
+      ? { amount, currency, mainCurrency }
+      : { amount, currency, mainCurrency, date };
+
   const { displayAmount, isDifferentCurrency, originalCurrency } = useAmountDisplay({
-    amount,
-    currency,
-    mainCurrency,
-    date,
+    ...amountDisplayInput,
   });
 
   const sizeClasses = {

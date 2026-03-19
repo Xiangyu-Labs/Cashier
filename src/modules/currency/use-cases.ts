@@ -17,7 +17,7 @@ export interface BatchCurrencyConversionItem {
   amount: number;
   from: string;
   to: string;
-  date: string | undefined;
+  date?: string;
 }
 
 export async function convertEntryAmount(

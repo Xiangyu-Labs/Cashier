@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, type SignInResponse } from "next-auth/react";
 import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
@@ -29,7 +29,7 @@ interface UseLoginFlowReturn {
 }
 
 function getSignInErrorMessage(
-  signInResult: { error?: string; code?: string } | undefined,
+  signInResult: SignInResponse | undefined,
   t: (key: string, values?: Record<string, string | number>) => string
 ): string {
   switch (signInResult?.code) {
