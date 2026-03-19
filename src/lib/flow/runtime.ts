@@ -22,7 +22,9 @@ async function ensureFlowRuntime(): Promise<FlowRuntime> {
 export function createFlowRuntime(config: FlowRuntimeConfig): FlowRuntime {
   const engine = createFlowEngine({
     storage: config.storage,
-    maxConcurrentTasks: config.maxConcurrentTasks,
+    ...(config.maxConcurrentTasks !== undefined
+      ? { maxConcurrentTasks: config.maxConcurrentTasks }
+      : {}),
     aiContextFactory: (signal, reportTokens) =>
       createAIContext({
         signal,

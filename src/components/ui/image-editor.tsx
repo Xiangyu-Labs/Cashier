@@ -398,7 +398,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
         <div className="flex flex-1 items-center justify-center overflow-auto bg-muted/50 p-4">
           {activeTool === "crop" ? (
             <ReactCrop
-              crop={crop}
+              {...(crop != null ? { crop } : {})}
               onChange={handleCropChange}
               keepSelection
               className="max-h-full max-w-full"

@@ -140,6 +140,16 @@ export function parseDateRangeEnd(dateStr: string | null | undefined): Date | nu
  */
 export function parseDateString(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
+  if (
+    year == null ||
+    month == null ||
+    day == null ||
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day)
+  ) {
+    return new Date(Number.NaN);
+  }
   return new Date(year, month - 1, day);
 }
 

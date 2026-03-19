@@ -87,8 +87,9 @@ export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]
       return result.value;
     } else {
       // This should rarely happen since we catch errors in the mapper
+      const sourceUrl = urls[index] ?? "";
       return {
-        url: urls[index],
+        url: sourceUrl,
         success: false,
         error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)),
       };
@@ -122,7 +123,7 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
  */
 export function inferImageMimeType(url: string): string {
   // Remove query parameters
-  const urlWithoutQuery = url.split("?")[0];
+  const [urlWithoutQuery = ""] = url.split("?");
   const ext = urlWithoutQuery.split(".").pop()?.toLowerCase();
 
   const mimeTypes: Record<string, string> = {

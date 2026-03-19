@@ -11,10 +11,16 @@ interface ExpiryTimerProps {
 }
 
 export function ExpiryTimer({ expiresAt, onExpired, className }: ExpiryTimerProps) {
-  const { remaining, isExpired } = useCountdown({
-    targetTime: expiresAt,
-    onExpired,
-  });
+  const { remaining, isExpired } = useCountdown(
+    onExpired != null
+      ? {
+          targetTime: expiresAt,
+          onExpired,
+        }
+      : {
+          targetTime: expiresAt,
+        }
+  );
 
   const t = useTranslations("Auth");
 

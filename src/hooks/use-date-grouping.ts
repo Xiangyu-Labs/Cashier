@@ -76,17 +76,16 @@ export function useDateGrouping<T>({
         });
       }
 
-      if (groups[dateKey] == null) {
-        groups[dateKey] = {
+      const group = groups[dateKey] ?? {
           title: dateKey,
           timestamp: sortTimestamp,
           items: [],
           total: 0,
         };
-      }
+      groups[dateKey] = group;
 
-      groups[dateKey].items.push(item);
-      groups[dateKey].total += getAmount(item);
+      group.items.push(item);
+      group.total += getAmount(item);
     });
 
     return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);

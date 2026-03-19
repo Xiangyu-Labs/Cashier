@@ -24,7 +24,7 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
   if (disabled) {
     return (
       <div className={cn("w-6 h-6", className)}>
-        <CategoryIcon iconName={value} className="w-6 h-6" />
+        <CategoryIcon iconName={value ?? null} className="w-6 h-6" />
       </div>
     );
   }
@@ -42,7 +42,7 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
             className
           )}
         >
-          <CategoryIcon iconName={value} className="w-6 h-6" />
+          <CategoryIcon iconName={value ?? null} className="w-6 h-6" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="start" sideOffset={4}>

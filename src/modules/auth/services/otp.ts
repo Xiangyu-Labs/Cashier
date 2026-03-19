@@ -22,7 +22,7 @@ export function hashOTP(otp: string): string {
 export function verifyOTP(otp: string, storedHash: string): boolean {
   const [hash, salt] = storedHash.split(":");
 
-  if (hash === "" || salt === "") {
+  if (hash == null || hash === "" || salt == null || salt === "") {
     return false;
   }
 

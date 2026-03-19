@@ -126,15 +126,16 @@ export class LocalStorageProvider implements StorageProvider {
 
   extractKeyFromUrl(url: string): string | null {
     // Remove query parameters and hash fragments for security
-    const urlWithoutQuery = url.split("?")[0].split("#")[0];
+    const [urlWithoutQuery = ""] = url.split("?");
+    const [urlWithoutQueryAndHash = ""] = urlWithoutQuery.split("#");
 
     // Check if this is a local uploads URL
     const prefix = "/api/uploads/";
-    if (!urlWithoutQuery.startsWith(prefix)) {
+    if (!urlWithoutQueryAndHash.startsWith(prefix)) {
       return null;
     }
 
-    const key = urlWithoutQuery.slice(prefix.length);
+    const key = urlWithoutQueryAndHash.slice(prefix.length);
 
     // Prevent path traversal attacks
     if (key.includes("..") || key.includes("\\")) {

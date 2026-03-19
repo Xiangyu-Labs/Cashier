@@ -83,6 +83,9 @@ async function findOrCreateUser(normalizedEmail: string, _locale: string): Promi
         emailVerified: new Date(),
       })
       .returning();
+    if (newUser == null) {
+      throw new Error("Failed to create user");
+    }
     user = newUser;
   }
 

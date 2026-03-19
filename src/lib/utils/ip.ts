@@ -28,7 +28,8 @@ export function getClientIPFromHeaders(headersList: HeadersLike): string {
   // Fallback to X-Forwarded-For (take the first hop)
   const forwarded = headersList.get("x-forwarded-for");
   if (forwarded != null && forwarded !== "") {
-    const firstHop = forwarded.split(",")[0].trim();
+    const [firstHopRaw = ""] = forwarded.split(",");
+    const firstHop = firstHopRaw.trim();
     if (isValidIP(firstHop)) {
       return firstHop;
     }

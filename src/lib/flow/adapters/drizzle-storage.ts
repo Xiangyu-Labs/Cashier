@@ -42,6 +42,10 @@ export function createDrizzleStorage(): StorageAdapter {
         })
         .returning({ id: taskRuns.id });
 
+      if (record == null) {
+        throw new Error("Failed to create task record");
+      }
+
       return record.id;
     },
 

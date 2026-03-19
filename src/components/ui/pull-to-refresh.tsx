@@ -47,7 +47,9 @@ export function PullToRefresh({
       const bodyScrollTop = window.scrollY ?? document.documentElement.scrollTop;
 
       if (scrollTop === 0 && bodyScrollTop === 0 && isRefreshing === false) {
-        startYRef.current = e.touches[0].clientY;
+        const firstTouch = e.touches[0];
+        if (firstTouch == null) return;
+        startYRef.current = firstTouch.clientY;
         isPullingRef.current = true;
       }
     };
@@ -55,7 +57,10 @@ export function PullToRefresh({
     const handleTouchMove = (e: TouchEvent) => {
       if (!isPullingRef.current || isRefreshing === true) return;
 
-      const currentY = e.touches[0].clientY;
+      const firstTouch = e.touches[0];
+      if (firstTouch == null) return;
+
+      const currentY = firstTouch.clientY;
       const distance = currentY - startYRef.current;
       const containerScrollTop = container.scrollTop;
       const bodyScrollTop = window.scrollY ?? document.documentElement.scrollTop;

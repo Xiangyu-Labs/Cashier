@@ -146,11 +146,10 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
 
     // Token reporter function (shared between context and AI context)
     const reportTokens = (usage: TokenUsage) => {
-      if (tokenUsage[usage.model] == null) {
-        tokenUsage[usage.model] = { input: 0, output: 0 };
-      }
-      tokenUsage[usage.model].input += usage.input;
-      tokenUsage[usage.model].output += usage.output;
+      const modelUsage = tokenUsage[usage.model] ?? { input: 0, output: 0 };
+      modelUsage.input += usage.input;
+      modelUsage.output += usage.output;
+      tokenUsage[usage.model] = modelUsage;
     };
 
     // Update status to running
@@ -313,12 +312,14 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       // Create task record
       const taskId = await config.storage.create({
         type: name,
-        title: meta?.title,
+        ...(meta?.title !== undefined ? { title: meta.title } : {}),
         input,
-        deduplicationKey: meta?.deduplicationKey,
-        scopeId: meta?.scopeId,
-        entityType: meta?.entityType,
-        entityId: meta?.entityId,
+        ...(meta?.deduplicationKey !== undefined
+          ? { deduplicationKey: meta.deduplicationKey }
+          : {}),
+        ...(meta?.scopeId !== undefined ? { scopeId: meta.scopeId } : {}),
+        ...(meta?.entityType !== undefined ? { entityType: meta.entityType } : {}),
+        ...(meta?.entityId !== undefined ? { entityId: meta.entityId } : {}),
       });
 
       // Create abort controller for cancellation

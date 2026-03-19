@@ -66,7 +66,7 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
       return {
         id: profile.sub,
         name: profile.name ?? profile.preferred_username ?? null,
-        email: profile.email,
+        email: profile.email ?? null,
         image: profile.picture ?? null,
       };
     },
@@ -150,7 +150,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
-      if (user != null) {
+      if (user != null && user.id != null && user.id !== "") {
         token.id = user.id;
         token.sub = user.id;
       }

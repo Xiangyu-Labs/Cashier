@@ -9,7 +9,10 @@ function loadEnvLocal() {
       const envLocal = fs.readFileSync(envLocalPath, "utf8");
       const dbUrlMatch = envLocal.match(/^DATABASE_URL=(.+)$/m);
       if (dbUrlMatch) {
-        process.env.DATABASE_URL = dbUrlMatch[1].trim();
+        const databaseUrl = dbUrlMatch[1];
+        if (databaseUrl != null) {
+          process.env.DATABASE_URL = databaseUrl.trim();
+        }
       }
     }
   } catch (error) {

@@ -8,17 +8,18 @@ const isDev = process.env.NODE_ENV === "development";
  */
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? (isDev ? "debug" : "info"),
-  transport:
-    isDev && process.env.NEXT_RUNTIME === "nodejs"
-      ? {
+  ...(isDev && process.env.NEXT_RUNTIME === "nodejs"
+    ? {
+        transport: {
           target: "pino-pretty",
           options: {
             colorize: true,
             translateTime: "HH:MM:ss Z",
             ignore: "pid,hostname",
           },
-        }
-      : undefined,
+        },
+      }
+    : {}),
 });
 
 export default logger;

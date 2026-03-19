@@ -12,7 +12,7 @@ export const authConfig = {
       return true;
     },
     async jwt({ token, user }) {
-      if (user != null) {
+      if (user != null && user.id != null && user.id !== "") {
         token.id = user.id;
         token.sub = user.id;
       }

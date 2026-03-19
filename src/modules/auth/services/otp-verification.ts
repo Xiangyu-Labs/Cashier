@@ -98,10 +98,17 @@ export async function verifyOTPWithPolicy(
 ): Promise<VerificationResult> {
   if (checkAccountLocked(record)) {
     logger.warn({ email, lockedUntil: record.lockedUntil }, "Account is locked");
+    if (record.lockedUntil != null) {
+      return {
+        success: false,
+        reason: "locked",
+        lockedUntil: record.lockedUntil,
+      };
+    }
+
     return {
       success: false,
       reason: "locked",
-      lockedUntil: record.lockedUntil ?? undefined,
     };
   }
 
