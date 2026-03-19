@@ -28,5 +28,14 @@ export async function createQuickEntryAction(
   }
 
   const validated = createQuickEntryInputSchema.parse(data);
-  return createQuickEntry(ledgerId, ledger, validated);
+  const payload = {
+    categoryId: validated.categoryId,
+    amount: validated.amount,
+    ...(validated.currency !== undefined ? { currency: validated.currency } : {}),
+    ...(validated.itemName !== undefined ? { itemName: validated.itemName } : {}),
+    ...(validated.description !== undefined ? { description: validated.description } : {}),
+    ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
+  };
+
+  return createQuickEntry(ledgerId, ledger, payload);
 }

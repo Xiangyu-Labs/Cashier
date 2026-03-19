@@ -3,12 +3,13 @@
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import { requireLedgerAccess } from "@/modules/auth/access";
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { getSourceDocumentTaskContext, prepareSourceDocumentTask } from "./helpers";
+import { getSourceDocumentTaskContext } from "./helpers";
 import { logger } from "@/lib/logger";
 import type { BatchRetrySourceDocumentsResultDto } from "@/modules/source-document/contracts";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../application/tasks/parse-source-document";
 
 /**
  * Batch retry multiple source documents
@@ -62,7 +63,8 @@ export async function batchRetrySourceDocumentsAction(
   const newDocMappings: Array<{
     oldDocId: string;
     newDocId: string;
-    text: string | undefined;
+    text: string | null;
+    entryDate: string | null;
     imageUrls: string[];
   }> = [];
 
@@ -71,7 +73,8 @@ export async function batchRetrySourceDocumentsAction(
     newDocMappings.push({
       oldDocId: oldDoc.id,
       newDocId,
-      text: oldDoc.text ?? undefined,
+      text: oldDoc.text,
+      entryDate: oldDoc.entryDate,
       imageUrls: oldDoc.imageUrls ?? [],
     });
   }
@@ -81,7 +84,7 @@ export async function batchRetrySourceDocumentsAction(
     newDocMappings.map((mapping) => ({
       id: mapping.newDocId,
       ledgerId: ledgerId,
-      entryDate: oldDocs.find((d) => d.id === mapping.oldDocId)?.entryDate,
+      entryDate: mapping.entryDate,
       text: mapping.text,
       imageUrls: mapping.imageUrls,
       status: "queued" as const,
@@ -130,13 +133,28 @@ export async function batchRetrySourceDocumentsAction(
 
   const taskSubmissionResults = await Promise.allSettled(
     newDocMappings.map(async (mapping) => {
-      await prepareSourceDocumentTask({
+      const taskInput = {
         ledgerId,
         sourceDocumentId: mapping.newDocId,
-        text: mapping.text,
         imageUrls: mapping.imageUrls,
+        aiLanguage: settings.aiLanguage,
         categories,
-        settings,
+        settings: {
+          ...(settings.settings.aiCustomPrompt !== undefined
+            ? { aiCustomPrompt: settings.settings.aiCustomPrompt }
+            : {}),
+        },
+        ...(mapping.text !== null ? { text: mapping.text } : {}),
+        ...(settings.preferredCurrencies !== undefined
+          ? { preferredCurrencies: settings.preferredCurrencies }
+          : {}),
+      };
+
+      await submitFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, taskInput, {
+        title: "Parse source document",
+        scopeId: ledgerId,
+        entityType: "source_document",
+        entityId: mapping.newDocId,
       });
     })
   );

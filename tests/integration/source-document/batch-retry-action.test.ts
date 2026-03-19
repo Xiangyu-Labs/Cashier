@@ -392,4 +392,32 @@ describe("batchRetrySourceDocumentsAction", () => {
     expect(newDocs.length).toBe(1);
     expect(newDocs[0].text).toBe("Active doc");
   });
+
+  it("should omit text in task payload when retried document text is null", async () => {
+    const db = getTestDb();
+
+    const oldDoc = (
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: null,
+          status: "failed",
+          entryDate: "2025-08-01",
+        })
+        .returning()
+    )[0];
+    expect(oldDoc).toBeDefined();
+    if (oldDoc == null) {
+      throw new Error("Expected source document to be created");
+    }
+
+    await batchRetrySourceDocumentsAction(testLedgerId, [oldDoc.id]);
+
+    expect(submitFlowTask).toHaveBeenCalledTimes(1);
+    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
+    const submitInput = submitCall?.[1] as Record<string, unknown>;
+    expect(submitInput).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
+  });
 });
