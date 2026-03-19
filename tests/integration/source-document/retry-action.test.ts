@@ -323,7 +323,8 @@ describe("retrySourceDocumentAction", () => {
   it("should omit text in task payload when both retry input and source document text are absent", async () => {
     const db = getTestDb();
 
-    const [oldDoc] = await db
+    const oldDoc = (
+      await db
       .insert(sourceDocuments)
       .values({
         ledgerId: testLedgerId,
@@ -331,7 +332,12 @@ describe("retrySourceDocumentAction", () => {
         status: "failed",
         entryDate: "2025-06-10",
       })
-      .returning();
+      .returning()
+    )[0];
+    expect(oldDoc).toBeDefined();
+    if (oldDoc == null) {
+      throw new Error("Expected old source document to be created");
+    }
 
     await retrySourceDocumentAction(testLedgerId, oldDoc.id);
 
