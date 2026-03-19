@@ -19,7 +19,7 @@ import { usePendingChanges } from "@/modules/source-document/hooks/usePendingCha
 import { type EntryEditData } from "@/components/entries";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
-import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
+import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 
 interface SourceDocumentDetailModalProps {
