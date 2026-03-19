@@ -290,7 +290,7 @@ export interface AIClient {
           json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean };
         },
     signal?: AbortSignal
-  ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }>;
+  ): Promise<AIResponse>;
 }
 
 export type AIClientFactory = () => AIClient;

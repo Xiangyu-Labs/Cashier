@@ -63,7 +63,7 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
   onOptimisticUpdate?: (
     queryClient: ReturnType<typeof useQueryClient>,
     variables: TVariables
-  ) => TContext | Promise<TContext>;
+  ) => TContext | undefined | Promise<TContext | undefined>;
 
   /**
    * Optional function for custom rollback logic.
@@ -72,7 +72,7 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
    */
   onRollback?: (
     queryClient: ReturnType<typeof useQueryClient>,
-    context: TContext | undefined
+    context: TContext
   ) => void;
 
   /**
@@ -171,7 +171,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     onSettledExtra,
   } = options;
 
-  return useMutation<TData, Error, TVariables, TContext>({
+  return useMutation<TData, Error, TVariables, TContext | undefined>({
     mutationFn,
 
     onMutate: async (variables) => {
@@ -186,9 +186,8 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         return await onOptimisticUpdate(queryClient, variables);
       }
 
-      // When onOptimisticUpdate is not provided, return undefined.
-      // The generic TContext will be unknown in this case, so the cast is safe.
-      return undefined as unknown as TContext;
+      // When no optimistic context is produced, omit it explicitly.
+      return undefined;
     },
 
     onSuccess: (data, variables, context) => {

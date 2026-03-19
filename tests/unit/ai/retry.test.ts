@@ -15,7 +15,7 @@ const { mockCreate, mockOpenAI } = vi.hoisted(() => {
 
   // Mock APIError class attached to the default export
   class MockAPIError extends Error {
-    status?: number;
+    status: number | undefined;
     constructor(status: number | undefined, message: string) {
       super(message);
       this.status = status;
@@ -61,6 +61,16 @@ describe("OpenAIClient Retry Logic", () => {
     const result = await client.generateContent("prompt", [], "test-model");
     expect(result.content).toBe("Success");
     expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits usage when OpenAI does not return token usage", async () => {
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: "Success" } }],
+    });
+
+    const result = await client.generateContent("prompt", [], "test-model");
+
+    expect(Object.hasOwn(result, "usage")).toBe(false);
   });
 
   it("should retry on retryable error and succeed", async () => {

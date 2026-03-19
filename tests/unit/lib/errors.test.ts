@@ -32,6 +32,12 @@ describe("errors", () => {
       expect(response.error.message).toBe("User not found");
     });
 
+    it("omits details when AppError has no details payload", () => {
+      const response = toErrorResponse(new UnauthorizedError());
+
+      expect(Object.hasOwn(response.error, "details")).toBe(false);
+    });
+
     it("should convert generic Error", () => {
       const error = new Error("Something broke");
       const response = toErrorResponse(error);

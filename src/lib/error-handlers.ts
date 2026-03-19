@@ -17,12 +17,14 @@ export interface ErrorResponse {
  */
 export function toErrorResponse(error: unknown): ErrorResponse {
   if (error instanceof AppError) {
+    const errorBody = {
+      message: error.message,
+      code: error.code,
+      ...(error.details !== undefined ? { details: error.details } : {}),
+    };
+
     return {
-      error: {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-      },
+      error: errorBody,
     };
   }
 

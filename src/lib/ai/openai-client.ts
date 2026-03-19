@@ -15,8 +15,8 @@ export class OpenAIClient {
 
     this.client = new OpenAI({
       apiKey,
-      baseURL,
       dangerouslyAllowBrowser: process.env.NODE_ENV === "test", // Only enable in test environment
+      ...(baseURL != null && baseURL !== "" ? { baseURL } : {}),
     });
   }
 
@@ -49,20 +49,31 @@ export class OpenAIClient {
       }
 
       try {
+        const requestMessages: ChatCompletionMessageParam[] = [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ];
+        const requestBase = {
+          model,
+          messages: requestMessages,
+          max_tokens: effectiveMaxTokens,
+          temperature: effectiveTemperature,
+        };
+        let request: OpenAI.ChatCompletionCreateParamsNonStreaming = requestBase;
+        if (responseFormat != null) {
+          request = {
+            ...requestBase,
+            response_format:
+              responseFormat as Exclude<
+                OpenAI.ChatCompletionCreateParams["response_format"],
+                undefined
+              >,
+          };
+        }
+        const requestOptions = signal !== undefined ? { signal } : {};
         const response = await this.client.chat.completions.create(
-          {
-            model: model,
-            messages: [{ role: "system", content: systemPrompt }, ...messages],
-            max_tokens: effectiveMaxTokens,
-            temperature: effectiveTemperature,
-            ...(responseFormat && {
-              response_format:
-                responseFormat as OpenAI.ChatCompletionCreateParams["response_format"],
-            }),
-          },
-          {
-            signal, // Pass abort signal to OpenAI SDK
-          }
+          request,
+          requestOptions
         );
 
         if (
@@ -91,14 +102,17 @@ export class OpenAIClient {
         }
 
         // Extract token usage from OpenAI response
-        const usage = response.usage
-          ? {
-              promptTokens: response.usage.prompt_tokens,
-              completionTokens: response.usage.completion_tokens,
-            }
-          : undefined;
+        if (response.usage == null) {
+          return { content };
+        }
 
-        return { content, usage };
+        return {
+          content,
+          usage: {
+            promptTokens: response.usage.prompt_tokens,
+            completionTokens: response.usage.completion_tokens,
+          },
+        };
       } catch (error) {
         lastError = error;
 

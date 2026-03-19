@@ -53,18 +53,23 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 
   // Check if we're using the three-button layout (for unsaved changes dialog)
   const hasThreeButtonLayout = onSave != null || onDiscard != null;
+  const dialogProps = {
+    ...(open !== undefined ? { open } : {}),
+    ...(onOpenChange !== undefined ? { onOpenChange } : {}),
+  };
+  const footerProps = hasThreeButtonLayout
+    ? { className: "justify-between sm:justify-between" }
+    : {};
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog {...dialogProps}>
       {trigger != null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter
-          className={hasThreeButtonLayout ? "justify-between sm:justify-between" : undefined}
-        >
+        <DialogFooter {...footerProps}>
           {hasThreeButtonLayout && onDiscard && (
             <Button
               variant="destructive"

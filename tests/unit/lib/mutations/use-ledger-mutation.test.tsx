@@ -221,7 +221,13 @@ describe("useLedgerMutation", () => {
       predicate: expect.any(Function),
     });
 
-    const predicate = invalidateQueries.mock.calls[0][0].predicate as (query: {
+    const firstInvalidateCall = invalidateQueries.mock.calls[0];
+    expect(firstInvalidateCall).toBeDefined();
+    if (firstInvalidateCall == null) {
+      throw new Error("Expected invalidateQueries to be called");
+    }
+
+    const predicate = firstInvalidateCall[0].predicate as (query: {
       queryKey: readonly unknown[];
     }) => boolean;
     expect(predicate({ queryKey: ["ledgerEntries", "ledger-123"] })).toBe(true);
