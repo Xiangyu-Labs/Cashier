@@ -45,6 +45,11 @@ function createModuleSpecificPathRestrictions(currentModule) {
         message:
           'Source-document module must not depend on ledger mappers. Use "@/modules/ledger/queries" or embedded view types instead.',
       },
+      {
+        name: "@/modules/ledger/use-cases",
+        message:
+          'Source-document module must not depend on ledger write use-cases. Keep only narrow ledger queries as the cross-module boundary.',
+      },
     ];
   }
 

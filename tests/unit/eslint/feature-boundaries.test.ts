@@ -215,6 +215,18 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("rejects ledger use-case imports from source-document module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { replaceLedgerEntriesForSourceDocument } from "@/modules/ledger/use-cases";
+        export const leak = replaceLedgerEntriesForSourceDocument;
+      `,
+      "src/modules/source-document/application/tasks/parse-result-handler.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects source-document action imports from ledger module files", async () => {
     const messages = await lintRestrictedImports(
       `

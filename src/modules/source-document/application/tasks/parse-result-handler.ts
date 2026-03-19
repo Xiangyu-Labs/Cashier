@@ -5,7 +5,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 import { buildEntriesForInsert, validateEntries, getEntryFallbackDate } from "./entry-builder";
 import { getLedgerMainCurrency } from "@/modules/ledger/queries";
-import { replaceLedgerEntriesForSourceDocument } from "@/modules/ledger/use-cases";
+import { replaceSourceDocumentLedgerEntries } from "@/modules/source-document/application/services/source-document-ledger-entries";
 
 export interface HandleParseResultParams {
   ledgerId: string;
@@ -88,7 +88,7 @@ export async function handleParseResult({
 
   // Atomically update entries and document status in a transaction
   db.transaction((tx) => {
-    replaceLedgerEntriesForSourceDocument(tx, ledgerId, sourceDocumentId, entriesToInsert);
+    replaceSourceDocumentLedgerEntries(tx, ledgerId, sourceDocumentId, entriesToInsert);
 
     tx.update(sourceDocuments)
       .set({

@@ -7,9 +7,9 @@ import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
-  softDeleteLedgerEntriesForSourceDocuments,
-  type LedgerTransaction,
-} from "@/modules/ledger/use-cases";
+  softDeleteSourceDocumentLedgerEntries,
+  type SourceDocumentTransaction,
+} from "@/modules/source-document/application/services/source-document-ledger-entries";
 
 /**
  * Cancel running/pending tasks
@@ -48,7 +48,7 @@ async function getRelatedTaskRuns(
 /**
  * Soft delete task runs
  */
-function softDeleteTaskRuns(tx: LedgerTransaction, taskIds: string[]): void {
+function softDeleteTaskRuns(tx: SourceDocumentTransaction, taskIds: string[]): void {
   if (taskIds.length === 0) return;
 
   tx.update(taskRuns).set({ deletedAt: new Date() }).where(inArray(taskRuns.id, taskIds)).run();
@@ -58,7 +58,7 @@ function softDeleteTaskRuns(tx: LedgerTransaction, taskIds: string[]): void {
  * Soft delete source documents
  */
 function softDeleteSourceDocuments(
-  tx: LedgerTransaction,
+  tx: SourceDocumentTransaction,
   ledgerId: string,
   sourceDocumentIds: string[]
 ): void {
@@ -100,7 +100,7 @@ export const deleteSourceDocumentAction = withLedgerAccess(
 
     // Execute soft delete transaction
     db.transaction((tx) => {
-      softDeleteLedgerEntriesForSourceDocuments(tx, ledgerId, [sourceId]);
+      softDeleteSourceDocumentLedgerEntries(tx, ledgerId, [sourceId]);
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
@@ -122,7 +122,7 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(
 
     // Execute soft delete transaction
     db.transaction((tx) => {
-      softDeleteLedgerEntriesForSourceDocuments(tx, ledgerId, sourceDocumentIds);
+      softDeleteSourceDocumentLedgerEntries(tx, ledgerId, sourceDocumentIds);
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
     });

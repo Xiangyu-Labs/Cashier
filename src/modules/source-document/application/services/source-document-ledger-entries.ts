@@ -1,13 +1,12 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
-import { entryCategories, ledgerEntries } from "@/persistence";
+import { ledgerEntries } from "@/persistence";
 import type * as schemaModule from "@/persistence";
 
 type DbSchema = typeof schemaModule;
 
-export type LedgerTransaction = BetterSQLite3Database<DbSchema>;
+export type SourceDocumentTransaction = BetterSQLite3Database<DbSchema>;
 
 export interface SourceDocumentLedgerEntryInsert {
   id?: string;
@@ -22,21 +21,8 @@ export interface SourceDocumentLedgerEntryInsert {
   exchangeRate: string | null;
 }
 
-export async function getEntryCategoryName(categoryId: string | null): Promise<string> {
-  if (categoryId == null || categoryId === "") {
-    return "";
-  }
-
-  const category = await db.query.entryCategories.findFirst({
-    where: and(eq(entryCategories.id, categoryId), isNull(entryCategories.deletedAt)),
-    columns: { name: true },
-  });
-
-  return category?.name ?? "";
-}
-
-export function softDeleteLedgerEntriesForSourceDocuments(
-  tx: LedgerTransaction,
+export function softDeleteSourceDocumentLedgerEntries(
+  tx: SourceDocumentTransaction,
   ledgerId: string,
   sourceDocumentIds: string[]
 ): void {
@@ -52,21 +38,21 @@ export function softDeleteLedgerEntriesForSourceDocuments(
     .run();
 }
 
-export function replaceLedgerEntriesForSourceDocument(
-  tx: LedgerTransaction,
+export function replaceSourceDocumentLedgerEntries(
+  tx: SourceDocumentTransaction,
   ledgerId: string,
   sourceDocumentId: string,
   entriesToInsert: SourceDocumentLedgerEntryInsert[]
 ): void {
-  softDeleteLedgerEntriesForSourceDocuments(tx, ledgerId, [sourceDocumentId]);
+  softDeleteSourceDocumentLedgerEntries(tx, ledgerId, [sourceDocumentId]);
 
   if (entriesToInsert.length > 0) {
     tx.insert(ledgerEntries).values(entriesToInsert).run();
   }
 }
 
-export function insertLedgerEntryForSourceDocument(
-  tx: LedgerTransaction,
+export function insertSourceDocumentLedgerEntry(
+  tx: SourceDocumentTransaction,
   entry: SourceDocumentLedgerEntryInsert
 ): void {
   tx.insert(ledgerEntries).values(entry).run();

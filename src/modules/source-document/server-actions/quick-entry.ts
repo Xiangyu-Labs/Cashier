@@ -10,9 +10,9 @@ import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 import {
-  getEntryCategoryName,
-  insertLedgerEntryForSourceDocument,
-} from "@/modules/ledger/use-cases";
+  insertSourceDocumentLedgerEntry,
+} from "@/modules/source-document/application/services/source-document-ledger-entries";
+import { getEntryCategoryName } from "@/modules/ledger/queries";
 
 // ============ Helper Functions ============
 
@@ -83,7 +83,7 @@ function atomicInsertSourceAndEntry(
       })
       .run();
 
-    insertLedgerEntryForSourceDocument(tx, {
+    insertSourceDocumentLedgerEntry(tx, {
       id: entryId,
       ledgerId,
       sourceDocumentId: sourceDocId,
