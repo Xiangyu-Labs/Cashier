@@ -1,7 +1,7 @@
 export {
   SourceDocumentCard,
 } from "@/features/source-document/components/SourceDocumentCard";
-export { SourceDocumentDetailWrapper } from "@/features/source-document/components/SourceDocumentDetailWrapper";
+export { SourceDocumentDetailWrapper } from "./SourceDocumentDetailWrapper";
 export { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 export { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 export { SourceDocumentInput } from "./SourceDocumentInput";
