@@ -37,6 +37,15 @@ const SHARED_FACADE_IMPORT_RESTRICTIONS = [
   },
 ];
 
+const FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS = [
+  {
+    name: "@/lib/flow",
+    importNames: ["flowEngine"],
+    message:
+      'Import explicit flow capabilities such as "getFlowEngine", "submitFlowTask", or "cancelFlowTask" instead of the removed flowEngine compatibility proxy.',
+  },
+];
+
 function createModuleSpecificPathRestrictions(currentModule) {
   if (currentModule === "source-document") {
     return [
@@ -48,7 +57,7 @@ function createModuleSpecificPathRestrictions(currentModule) {
       {
         name: "@/modules/ledger/use-cases",
         message:
-          'Source-document module must not depend on ledger write use-cases. Keep only narrow ledger queries as the cross-module boundary.',
+          "Source-document module must not depend on ledger write use-cases. Keep only narrow ledger queries as the cross-module boundary.",
       },
     ];
   }
@@ -102,8 +111,7 @@ function createCrossFeatureBoundaryRule(currentFeature) {
       patterns: [
         {
           group: createDeepFeatureImportPatterns(disallowedFeatures),
-          message:
-            "Cross-feature imports must go through the target feature's public entrypoint.",
+          message: "Cross-feature imports must go through the target feature's public entrypoint.",
         },
       ],
     },
@@ -143,6 +151,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
     paths: [
       ...createModuleRootImportRestrictions(disallowedModules),
       ...SHARED_FACADE_IMPORT_RESTRICTIONS,
+      ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
       ...createModuleSpecificPathRestrictions(currentModule),
     ],
   };
@@ -207,7 +216,14 @@ function createFeatureBoundaryConfigs(currentFeature) {
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", ".worktrees/**", "out/**", "build/**", "next-env.d.ts", "coverage/**"]),
+  globalIgnores([
+    ".next/**",
+    ".worktrees/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "coverage/**",
+  ]),
   {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
@@ -262,12 +278,20 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["src/app/**/*.ts", "src/app/**/*.tsx", "src/components/**/*.ts", "src/components/**/*.tsx"],
+    files: [
+      "src/app/**/*.ts",
+      "src/app/**/*.tsx",
+      "src/components/**/*.ts",
+      "src/components/**/*.tsx",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          paths: createModuleRootImportRestrictions(moduleNames),
+          paths: [
+            ...createModuleRootImportRestrictions(moduleNames),
+            ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
+          ],
           patterns: [
             {
               group: LEGACY_FEATURE_IMPORT_PATTERNS,
@@ -299,20 +323,21 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
             {
               name: "@/modules/auth/helpers",
               message:
-                'Shared library/types code must not depend on auth module helpers. Use lib-level auth primitives instead.',
+                "Shared library/types code must not depend on auth module helpers. Use lib-level auth primitives instead.",
             },
             {
               name: "@/modules/ledger/mappers",
               message:
-                'Shared library/types code must not depend on ledger module mappers. Keep domain mapping inside the owning module.',
+                "Shared library/types code must not depend on ledger module mappers. Keep domain mapping inside the owning module.",
             },
             {
               name: "@/modules/source-document/mappers",
               message:
-                'Shared library/types code must not depend on source-document module mappers. Keep domain mapping inside the owning module.',
+                "Shared library/types code must not depend on source-document module mappers. Keep domain mapping inside the owning module.",
             },
           ],
           patterns: [
@@ -379,6 +404,7 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
           patterns: [
             {
               group: LEGACY_FEATURE_IMPORT_PATTERNS,

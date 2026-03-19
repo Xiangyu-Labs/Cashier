@@ -5,23 +5,14 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
-const { submitMock, cancelMock, registerMock, getStatusMock } = vi.hoisted(() => ({
+const { submitMock, cancelMock } = vi.hoisted(() => ({
   submitMock: vi.fn().mockResolvedValue("mock-task-id"),
   cancelMock: vi.fn(),
-  registerMock: vi.fn(),
-  getStatusMock: vi.fn(),
 }));
 
-// Mock flowEngine before importing actions
 vi.mock("@/lib/flow", () => ({
   submitFlowTask: submitMock,
   cancelFlowTask: cancelMock,
-  flowEngine: {
-    submit: submitMock,
-    cancel: cancelMock,
-    register: registerMock,
-    getStatus: getStatusMock,
-  },
 }));
 
 import { submitFlowTask } from "@/lib/flow";

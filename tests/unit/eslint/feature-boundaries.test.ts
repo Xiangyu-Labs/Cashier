@@ -538,4 +538,28 @@ describe("boundary lint", () => {
 
     expect(messages).toHaveLength(0);
   });
+
+  it("rejects flowEngine compatibility imports from module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { flowEngine } from "@/lib/flow";
+        export const leak = flowEngine;
+      `,
+      "src/modules/ledger/application/services/categorize-task-submission.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows explicit flow engine access from module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getFlowEngine } from "@/lib/flow";
+        export const value = getFlowEngine;
+      `,
+      "src/modules/ledger/application/services/categorize-task-submission.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
 });

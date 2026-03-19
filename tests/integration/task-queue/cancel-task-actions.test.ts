@@ -11,12 +11,6 @@ const { cancelMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/flow", () => ({
   cancelFlowTask: cancelMock,
-  flowEngine: {
-    submit: vi.fn().mockResolvedValue("mock-task-id"),
-    cancel: cancelMock,
-    register: vi.fn(),
-    getStatus: vi.fn(),
-  },
 }));
 
 import { cancelFlowTask } from "@/lib/flow";
