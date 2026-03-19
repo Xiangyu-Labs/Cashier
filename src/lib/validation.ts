@@ -53,3 +53,47 @@ export const dateStringSchema = z
  * Optional YYYY-MM-DD validation schema.
  */
 export const optionalDateStringSchema = dateStringSchema.optional();
+
+export function omitUndefinedObjectFields(input: unknown): unknown {
+  if (input == null || Array.isArray(input) || typeof input !== "object") {
+    return input;
+  }
+
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
+}
+
+type WithoutUndefinedValues<T extends object> = {
+  [K in keyof T]?: Exclude<T[K], undefined>;
+};
+
+type WithoutNullishValues<T extends object> = {
+  [K in keyof T]?: Exclude<T[K], null | undefined>;
+};
+
+export function omitUndefinedProperties<T extends object>(
+  input: T
+): WithoutUndefinedValues<T> {
+  const result: WithoutUndefinedValues<T> = {};
+
+  for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {
+    if (value !== undefined) {
+      result[key] = value as Exclude<T[keyof T], undefined>;
+    }
+  }
+
+  return result;
+}
+
+export function omitNullishProperties<T extends object>(
+  input: T
+): WithoutNullishValues<T> {
+  const result: WithoutNullishValues<T> = {};
+
+  for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {
+    if (value !== undefined && value !== null) {
+      result[key] = value as Exclude<T[keyof T], null | undefined>;
+    }
+  }
+
+  return result;
+}

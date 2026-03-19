@@ -3,18 +3,20 @@ import { calculateLedgerStats } from "@/modules/ledger/actions";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
 import { ledgerStatsQuerySchema } from "@/modules/ledger/contract-schemas";
+import { omitNullishProperties } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {
     logContext: "api/v1/stats",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const params = parseApiInput(ledgerStatsQuerySchema, {
-        startDate: searchParams.get("startDate") ?? undefined,
-        endDate: searchParams.get("endDate") ?? undefined,
-        categoryId: searchParams.get("categoryId") ?? undefined,
-        currency: searchParams.get("currency") ?? undefined,
+      const rawParams = omitNullishProperties({
+        startDate: searchParams.get("startDate"),
+        endDate: searchParams.get("endDate"),
+        categoryId: searchParams.get("categoryId"),
+        currency: searchParams.get("currency"),
       });
+      const params = parseApiInput(ledgerStatsQuerySchema, rawParams);
 
       const result = await calculateLedgerStats(
         credential.ledgerId,

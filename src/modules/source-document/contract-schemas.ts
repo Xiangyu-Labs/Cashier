@@ -1,8 +1,14 @@
 import { z } from "zod";
-import { optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import {
+  omitUndefinedObjectFields,
+  optionalDateStringSchema,
+  UUID_REGEX,
+} from "@/lib/validation";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
+const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
+  z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
 const sourceDocumentStatusSchema = z.enum([
   "queued",
   "processing",
@@ -10,12 +16,10 @@ const sourceDocumentStatusSchema = z.enum([
   "anomaly",
   "failed",
 ]);
-const imagePayloadSchema = z
-  .object({
+const imagePayloadSchema = strictObjectSchema({
     data: z.string(),
     mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
   })
-  .strict();
 
 const imagesSchema = z
   .array(imagePayloadSchema)
@@ -40,15 +44,13 @@ const imagesSchema = z
 export const sourceDocumentImagesInputSchema = imagesSchema;
 export const sourceDocumentIdSchema = uuidSchema;
 
-const sourceDocumentPayloadSchema = z
-  .object({
+const sourceDocumentPayloadSchema = strictObjectSchema({
     text: z.string().max(10000, "Text too long").optional(),
     images: imagesSchema.optional(),
     originalImages: imagesSchema.optional(),
     entryDate: optionalDateStringSchema,
     timezone: z.string().max(50).optional(),
   })
-  .strict();
 
 export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.superRefine(
   (value, ctx) => {
@@ -66,49 +68,39 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
 
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 
-export const listSourceDocumentsInputSchema = z
-  .object({
+export const listSourceDocumentsInputSchema = strictObjectSchema({
     status: sourceDocumentStatusSchema.optional(),
     startDate: optionalDateStringSchema,
     endDate: optionalDateStringSchema,
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     includeEntries: z.coerce.boolean().default(false),
-  })
-  .strict();
+  });
 
-export const updateSourceDocumentInputSchema = z
-  .object({
+export const updateSourceDocumentInputSchema = strictObjectSchema({
     title: z.string().max(200).optional(),
     entryDate: optionalDateStringSchema,
-  })
-  .strict();
+  });
 
-export const batchUpdateSourceDocumentsInputSchema = z
-  .object({
+export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
     status: sourceDocumentStatusSchema.optional(),
     title: z.string().max(200).optional(),
     entryDate: optionalDateStringSchema,
-  })
-  .strict();
+  });
 
-export const createQuickEntryInputSchema = z
-  .object({
+export const createQuickEntryInputSchema = strictObjectSchema({
     categoryId: uuidSchema,
     amount: z.number().positive(),
     currency: z.string().length(3).optional(),
     itemName: z.string().trim().min(1).max(200).optional(),
     description: z.string().max(500).nullable().optional(),
     entryDate: optionalDateStringSchema,
-  })
-  .strict();
+  });
 
-export const processingTasksQuerySchema = z
-  .object({
+export const processingTasksQuerySchema = strictObjectSchema({
     activeOnly: z.boolean().optional(),
     limit: z.number().int().min(1).max(100).optional(),
-  })
-  .strict();
+  });
 
 export const sourceDocumentIdsSchema = z.array(uuidSchema);
 

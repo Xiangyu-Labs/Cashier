@@ -7,6 +7,7 @@ import {
   retrySourceDocumentInputSchema,
   type RetrySourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
+import { omitUndefinedProperties } from "@/lib/validation";
 
 /**
  * Retry an existing source document with optional new data
@@ -22,11 +23,12 @@ export async function retrySourceDocumentAction(
   input?: RetrySourceDocumentInputContract
 ): Promise<RetrySourceDocumentResponseDto> {
   const { ledger } = await requireLedgerAccess(ledgerId);
-  const validatedInput = input == null ? undefined : retrySourceDocumentInputSchema.parse(input);
+  const validatedInput =
+    input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
   return retrySourceDocument({
     ledgerId,
     ledger,
     sourceDocumentId,
-    input: validatedInput,
+    ...(validatedInput == null ? {} : { input: validatedInput }),
   });
 }

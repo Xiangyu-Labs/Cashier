@@ -4,6 +4,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import { getLedgerForServiceCredential } from "@/modules/ledger/queries";
 import { ValidationError } from "@/lib/errors";
+import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
 
 export async function createSourceDocumentFromCredential(input: {
@@ -16,13 +17,11 @@ export async function createSourceDocumentFromCredential(input: {
     throw new ValidationError("Service credential or ledger not found");
   }
 
+  const payload = omitUndefinedProperties(input.payload);
+
   return createAndQueueSourceDocument({
     ledgerId: ledger.id,
     ledger,
-    text: input.payload.text,
-    images: input.payload.images,
-    originalImages: input.payload.originalImages,
-    entryDate: input.payload.entryDate,
-    timezone: input.payload.timezone,
+    ...payload,
   });
 }

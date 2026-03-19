@@ -8,6 +8,7 @@ import {
   createSourceDocumentInputSchema,
   type CreateSourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
+import { omitUndefinedProperties } from "@/lib/validation";
 
 /**
  * Create a new source document and trigger processing
@@ -17,7 +18,7 @@ export async function createSourceDocumentAction(
   input: CreateSourceDocumentInputContract
 ): Promise<CreateSourceDocumentResponseDto> {
   const validated = createSourceDocumentInputSchema.parse(input);
-  const { text, images, originalImages, entryDate, timezone } = validated;
+  const payload = omitUndefinedProperties(validated);
 
   let ledger: Awaited<ReturnType<typeof requireLedgerAccess>>["ledger"];
   try {
@@ -32,10 +33,6 @@ export async function createSourceDocumentAction(
   return createAndQueueSourceDocument({
     ledgerId,
     ledger,
-    text,
-    images,
-    originalImages,
-    entryDate,
-    timezone,
+    ...payload,
   });
 }

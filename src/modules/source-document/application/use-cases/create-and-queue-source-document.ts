@@ -2,6 +2,7 @@ import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ValidationError } from "@/lib/errors";
+import { omitUndefinedProperties } from "@/lib/validation";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
@@ -34,13 +35,15 @@ export async function createAndQueueSourceDocument(
 ): Promise<CreateSourceDocumentResponseDto> {
   const { ledgerId, ledger, text, images, originalImages, entryDate, timezone } = input;
 
-  const parseResult = createSourceDocumentInputSchema.safeParse({
-    text,
-    images,
-    originalImages,
-    entryDate,
-    timezone,
-  });
+  const parseResult = createSourceDocumentInputSchema.safeParse(
+    omitUndefinedProperties({
+      text,
+      images,
+      originalImages,
+      entryDate,
+      timezone,
+    })
+  );
 
   if (!parseResult.success) {
     throw new ValidationError(
@@ -60,6 +63,10 @@ export async function createAndQueueSourceDocument(
     })
     .returning();
 
+  if (savedDoc == null) {
+    throw new ValidationError("Failed to create source document");
+  }
+
   const imageUrls = await processImages(images, ledgerId, savedDoc.id);
   const originalImageUrls = await processImages(originalImages, ledgerId, savedDoc.id);
   const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
@@ -67,10 +74,10 @@ export async function createAndQueueSourceDocument(
   await prepareSourceDocumentTask({
     ledgerId,
     sourceDocumentId: savedDoc.id,
-    text,
     imageUrls,
     categories,
     settings,
+    ...(text === undefined ? {} : { text }),
   });
 
   if (imageUrls.length > 0 || originalImageUrls.length > 0) {
