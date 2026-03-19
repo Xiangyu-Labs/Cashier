@@ -84,7 +84,7 @@ const StatsTab = dynamic(() => import("../StatsTab").then((m) => ({ default: m.S
 });
 
 const SettingsTab = dynamic(
-  () => import("../SettingsTab").then((m) => ({ default: m.SettingsTab })),
+  () => import("@/modules/ledger/ui/SettingsTab").then((m) => ({ default: m.SettingsTab })),
   {
     loading: () => <SettingsTabSkeleton />,
   }

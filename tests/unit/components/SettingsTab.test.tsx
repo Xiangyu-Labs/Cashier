@@ -85,23 +85,23 @@ vi.mock("@/features/notifications/components/PushNotificationManager", () => ({
 }));
 
 // Mock components
-vi.mock("./settings/CurrencySection", () => ({
+vi.mock("@/features/ledger/components/settings/CurrencySection", () => ({
   CurrencySection: () => <div>CurrencySection</div>,
 }));
 
-vi.mock("./settings/CategorySection", () => ({
+vi.mock("@/features/ledger/components/settings/CategorySection", () => ({
   CategorySection: () => <div>CategorySection</div>,
 }));
 
-vi.mock("./settings/ServiceCredentialSection", () => ({
+vi.mock("@/features/ledger/components/settings/ServiceCredentialSection", () => ({
   ServiceCredentialSection: () => <div>ServiceCredentialSection</div>,
 }));
 
-vi.mock("./settings/ProcessingSystemSection", () => ({
+vi.mock("@/features/ledger/components/settings/ProcessingSystemSection", () => ({
   ProcessingSystemSection: () => <div>ProcessingSystemSection</div>,
 }));
 
-vi.mock("./settings/LedgerManagementSection", () => ({
+vi.mock("@/features/ledger/components/settings/LedgerManagementSection", () => ({
   LedgerManagementSection: () => <div>LedgerManagementSection</div>,
 }));
 
