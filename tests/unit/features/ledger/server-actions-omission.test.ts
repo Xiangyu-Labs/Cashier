@@ -163,7 +163,12 @@ describe("ledger server action omission semantics", () => {
   it("omits locale when creating a ledger without aiLanguage", async () => {
     await createLedgerAction({});
 
-    const payload = createDefaultLedgerMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const firstCall = createDefaultLedgerMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    if (firstCall == null) {
+      throw new Error("Expected createDefaultLedger to be called");
+    }
+    const payload = firstCall[0] as Record<string, unknown>;
 
     expect(payload.userId).toBe("user-1");
     expect(Object.prototype.hasOwnProperty.call(payload, "locale")).toBe(false);

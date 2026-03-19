@@ -47,7 +47,7 @@ describe("submitCategorizeTasksForEntries omission semantics", () => {
 	            id: "doc-1",
 	            ledgerId: "ledger-1",
 	            title: null,
-	            type: "manual",
+	            type: "ai_parsed",
 	            status: "completed",
 	            anomalyReason: null,
 	            entryDate: "",
@@ -58,11 +58,16 @@ describe("submitCategorizeTasksForEntries omission semantics", () => {
 	            updatedAt: new Date(),
 	            deletedAt: null,
 	          },
-	        },
-	      ],
-	    });
+        },
+      ],
+    });
 
-    const taskInput = submitFlowTaskMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    const firstCall = submitFlowTaskMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    if (firstCall == null) {
+      throw new Error("Expected submitFlowTask to be called");
+    }
+    const taskInput = firstCall[1] as Record<string, unknown>;
 
     expect(taskInput.ledgerId).toBe("ledger-1");
     expect(taskInput.entryId).toBe("entry-1");
