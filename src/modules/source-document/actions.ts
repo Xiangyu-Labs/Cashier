@@ -1,7 +1,9 @@
 export {
+  listSourceDocuments,
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
   getAllSourceDocumentsAction,
+  getPendingSourceDocumentsAction,
 } from "@/features/source-document/server/actions/queries";
 export { getSourceDocumentByIdAction } from "@/features/source-document/server/actions/get-document";
 export { getSourceDocumentLightAction } from "@/features/source-document/server/actions/get-document-light";

@@ -10,5 +10,5 @@ export {
   getAllSourceDocumentsAction,
   getPendingSourceDocumentsAction,
   getSourceDocumentFullAction,
-} from "@/features/source-document/server/actions/queries";
+} from "./actions";
 export { type SourceDocumentStatusType } from "@/persistence/schema/source-document";
