@@ -24,6 +24,48 @@ const moduleNames = [
 
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
 
+const SHARED_FACADE_IMPORT_RESTRICTIONS = [
+  {
+    name: "@/modules/auth/helpers",
+    message:
+      'Import auth capabilities from "@/modules/auth/access" instead of reaching into auth helpers.',
+  },
+  {
+    name: "@/modules/currency/services",
+    message:
+      'Import currency capabilities from "@/modules/currency/use-cases" instead of reaching into service internals.',
+  },
+];
+
+function createModuleSpecificPathRestrictions(currentModule) {
+  if (currentModule === "source-document") {
+    return [
+      {
+        name: "@/modules/ledger/mappers",
+        message:
+          'Source-document module must not depend on ledger mappers. Use "@/modules/ledger/queries" or embedded view types instead.',
+      },
+    ];
+  }
+
+  if (currentModule === "ledger") {
+    return [
+      {
+        name: "@/modules/source-document/contracts",
+        message:
+          "Ledger module must not depend on source-document contracts. Use local reference DTOs or source-document public APIs instead.",
+      },
+      {
+        name: "@/modules/source-document/types",
+        message:
+          "Ledger module must not depend on source-document internal types. Keep reference literals local to ledger.",
+      },
+    ];
+  }
+
+  return [];
+}
+
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
     `@/features/${featureName}/server/*/**`,
@@ -78,7 +120,11 @@ function createCrossModuleBoundaryOptions(currentModule) {
         message: "Cross-module imports must go through the target module's public entrypoint.",
       },
     ],
-    paths: createModuleRootImportRestrictions(disallowedModules),
+    paths: [
+      ...createModuleRootImportRestrictions(disallowedModules),
+      ...SHARED_FACADE_IMPORT_RESTRICTIONS,
+      ...createModuleSpecificPathRestrictions(currentModule),
+    ],
   };
 }
 

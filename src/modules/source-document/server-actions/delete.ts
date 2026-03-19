@@ -1,16 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, taskRuns } from "@/persistence";
+import { sourceDocuments, taskRuns } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schemaModule from "@/persistence";
-
-type DbSchema = typeof schemaModule;
+import {
+  softDeleteLedgerEntriesForSourceDocuments,
+  type LedgerTransaction,
+} from "@/modules/ledger/use-cases";
 
 /**
  * Cancel running/pending tasks
@@ -47,25 +46,9 @@ async function getRelatedTaskRuns(
 }
 
 /**
- * Soft delete ledger entries (cascade)
- */
-function softDeleteLedgerEntries(
-  tx: BetterSQLite3Database<DbSchema>,
-  ledgerId: string,
-  sourceDocumentIds: string[]
-): void {
-  const qEntries = forLedger(ledgerEntries, ledgerId);
-
-  tx.update(ledgerEntries)
-    .set(qEntries.softDelete)
-    .where(and(qEntries.whereActive, inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)))
-    .run();
-}
-
-/**
  * Soft delete task runs
  */
-function softDeleteTaskRuns(tx: BetterSQLite3Database<DbSchema>, taskIds: string[]): void {
+function softDeleteTaskRuns(tx: LedgerTransaction, taskIds: string[]): void {
   if (taskIds.length === 0) return;
 
   tx.update(taskRuns).set({ deletedAt: new Date() }).where(inArray(taskRuns.id, taskIds)).run();
@@ -75,7 +58,7 @@ function softDeleteTaskRuns(tx: BetterSQLite3Database<DbSchema>, taskIds: string
  * Soft delete source documents
  */
 function softDeleteSourceDocuments(
-  tx: BetterSQLite3Database<DbSchema>,
+  tx: LedgerTransaction,
   ledgerId: string,
   sourceDocumentIds: string[]
 ): void {
@@ -117,7 +100,7 @@ export const deleteSourceDocumentAction = withLedgerAccess(
 
     // Execute soft delete transaction
     db.transaction((tx) => {
-      softDeleteLedgerEntries(tx, ledgerId, [sourceId]);
+      softDeleteLedgerEntriesForSourceDocuments(tx, ledgerId, [sourceId]);
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
@@ -139,7 +122,7 @@ export const batchDeleteSourceDocumentsAction = withLedgerAccess(
 
     // Execute soft delete transaction
     db.transaction((tx) => {
-      softDeleteLedgerEntries(tx, ledgerId, sourceDocumentIds);
+      softDeleteLedgerEntriesForSourceDocuments(tx, ledgerId, sourceDocumentIds);
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
     });

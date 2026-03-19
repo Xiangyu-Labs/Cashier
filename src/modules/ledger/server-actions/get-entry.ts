@@ -2,7 +2,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { requireLedgerAccess } from "@/modules/auth/helpers";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";

@@ -5,7 +5,7 @@ import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { CurrencyService } from "@/modules/currency/services";
+import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { NotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
@@ -67,7 +67,7 @@ export const createLedgerEntryAction = withLedgerAccess(
       sourceDoc?.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
 
     // Calculate converted amount using CurrencyService
-    const conversionResult = await CurrencyService.convertEntryAmount({
+    const conversionResult = await convertEntryAmount({
       amount: validated.amount,
       fromCurrency: entryCurrency,
       toCurrency: mainCurrency,
@@ -150,7 +150,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
         const entryDate = currentEntry.sourceDocument?.entryDate ?? undefined;
 
         // Calculate converted amount using CurrencyService
-        const conversionResult = await CurrencyService.convertEntryAmount({
+        const conversionResult = await convertEntryAmount({
           amount: newAmount,
           fromCurrency: newCurrency,
           toCurrency: mainCurrency,

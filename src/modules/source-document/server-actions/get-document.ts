@@ -3,9 +3,10 @@
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { requireLedgerAccess } from "@/modules/auth/helpers";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import { AppError } from "@/lib/errors";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 
 // Return type for getSourceDocumentByIdAction - uses standardized API types
@@ -47,18 +48,18 @@ export async function getSourceDocumentByIdAction(
   // Now fetch full document with relations
   const doc = await db.query.sourceDocuments.findFirst({
     where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),
-    with: {
-      ledgerEntries: {
-        where: (entries, { isNull }) => isNull(entries.deletedAt),
-        with: { category: true },
-      },
-    },
   });
 
   if (!doc) {
     return null;
   }
 
-  // Serialize to JSON-compatible format with string dates
-  return serializeSourceDocument(doc);
+  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds({
+    ledgerId: doc.ledgerId,
+    sourceDocumentIds: [doc.id],
+  });
+
+  return serializeSourceDocument(doc, {
+    ledgerEntries: entriesByDocId.get(doc.id) ?? [],
+  });
 }

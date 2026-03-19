@@ -1,5 +1,5 @@
-import type { SourceDocument, LedgerEntry } from "@/persistence";
-import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import type { SourceDocument } from "@/persistence";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
@@ -12,7 +12,7 @@ function toIso(date: Date | null | undefined): string | null {
 }
 
 export function mapSourceDocumentDto(
-  doc: SourceDocument & { ledgerEntries?: Array<LedgerEntry & { category?: never }> },
+  doc: SourceDocument,
   options: {
     imageUrls?: string[];
     text?: string | null;
@@ -33,14 +33,13 @@ export function mapSourceDocumentDto(
     createdAt: toIso(doc.createdAt)!,
     updatedAt: toIso(doc.updatedAt)!,
     deletedAt: toIso(doc.deletedAt),
-    ledgerEntries: doc.ledgerEntries?.map((entry) => mapLedgerEntryDto(entry)),
     hasImages: (doc.imageUrls?.length ?? 0) > 0,
   };
 }
 
 export function mapSourceDocumentListItemDto(
   doc: SourceDocument,
-  ledgerEntries: ReturnType<typeof mapLedgerEntryDto>[] = []
+  ledgerEntries: LedgerEntryEmbeddedViewDto[] = []
 ): SourceDocumentListItemDto {
   return {
     ...mapSourceDocumentDto(doc, {
@@ -54,7 +53,7 @@ export function mapSourceDocumentListItemDto(
 
 export function mapSourceDocumentGroupDto(
   sourceDocument: SourceDocumentDto,
-  ledgerEntries: ReturnType<typeof mapLedgerEntryDto>[]
+  ledgerEntries: LedgerEntryEmbeddedViewDto[]
 ): SourceDocumentGroupDto {
   return {
     sourceDocument,

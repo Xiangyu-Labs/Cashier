@@ -191,13 +191,25 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("allows ledger mapper imports from dedicated public entrypoints in cross-module application files", async () => {
+  it("rejects ledger mapper imports from dedicated public entrypoints in cross-module application files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
         export const value = mapLedgerEntryDto;
       `,
       "src/modules/source-document/application/mappers.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows ledger query imports from dedicated public entrypoints in cross-module application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
+        export const value = listLedgerEntryViewsBySourceDocumentIds;
+      `,
+      "src/modules/source-document/server-actions/queries.ts"
     );
 
     expect(messages).toHaveLength(0);

@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
-import { ExchangeRateService } from "@/modules/currency/services";
+import { convertAmountsBatch } from "@/modules/currency/use-cases";
 import { ledgerEntries } from "@/persistence";
 
 export interface ConversionItem {
@@ -42,7 +42,7 @@ export async function convertEntriesBatch(
   ledgerId: string
 ): Promise<ConversionResult[] | null> {
   try {
-    return await ExchangeRateService.convertBatch(items, mainCurrency);
+    return await convertAmountsBatch(items, mainCurrency);
   } catch (err) {
     logger.error({ err, ledgerId }, "Failed to batch convert entries");
     return null;

@@ -1,5 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { ExchangeRateService } from "@/modules/currency/services";
+import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 
@@ -55,14 +55,17 @@ export async function buildEntriesForInsert({
         exchangeRate = "1";
       } else {
         try {
-          const converted = await ExchangeRateService.convert(
-            entry.amount,
-            entryCurrency,
-            mainCurrency,
-            fallbackDate
-          );
-          convertedAmount = converted.toFixed(2);
-          exchangeRate = (converted / entry.amount).toFixed(6);
+          const conversion = await convertEntryAmount({
+            amount: entry.amount,
+            fromCurrency: entryCurrency,
+            toCurrency: mainCurrency,
+            date: fallbackDate,
+          });
+
+          if (conversion != null) {
+            convertedAmount = conversion.convertedAmount;
+            exchangeRate = conversion.exchangeRate;
+          }
         } catch (err) {
           logger.warn(
             { err, entryCurrency, mainCurrency },

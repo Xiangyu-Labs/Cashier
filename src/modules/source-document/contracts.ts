@@ -1,5 +1,5 @@
 import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
-import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 
 export type SourceDocumentDto = {
   id: string;
@@ -15,21 +15,23 @@ export type SourceDocumentDto = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-  ledgerEntries?: LedgerEntryDto[];
+  ledgerEntries?: LedgerEntryEmbeddedViewDto[];
   hasImages?: boolean;
 };
 
 export type SourceDocumentListItemDto = Omit<SourceDocumentDto, "text" | "imageUrls" | "ledgerEntries"> & {
   text: string | null;
   imageUrls: string[];
-  ledgerEntries?: LedgerEntryDto[];
+  ledgerEntries?: LedgerEntryEmbeddedViewDto[];
 };
 
-export type SourceDocumentLightDto = Omit<SourceDocumentDto, "ledgerEntries">;
+export type SourceDocumentLightDto = Omit<SourceDocumentDto, "ledgerEntries" | "imageUrls"> & {
+  imageUrls?: string[];
+};
 
 export interface SourceDocumentGroupDto {
   sourceDocument: SourceDocumentDto;
-  ledgerEntries: LedgerEntryDto[];
+  ledgerEntries: LedgerEntryEmbeddedViewDto[];
 }
 
 export interface CreateSourceDocumentInput {

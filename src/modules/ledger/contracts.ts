@@ -1,8 +1,3 @@
-import type {
-  SourceDocumentStatusType,
-  SourceDocumentTypeValue,
-} from "@/modules/source-document/types";
-
 export interface LedgerSettings {
   aiLanguage?: string;
   currencies?: string[];
@@ -49,14 +44,23 @@ export type EntryCategoryDto = {
 
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
 
+export type SourceDocumentReferenceStatus =
+  | "queued"
+  | "processing"
+  | "completed"
+  | "anomaly"
+  | "failed";
+
+export type SourceDocumentReferenceType = "ai_parsed" | "manual";
+
 export type SourceDocumentReferenceDto = {
   id: string;
   ledgerId: string;
   title: string | null;
   text: string | null;
   imageUrls: string[];
-  status: SourceDocumentStatusType;
-  type: SourceDocumentTypeValue;
+  status: SourceDocumentReferenceStatus;
+  type: SourceDocumentReferenceType;
   anomalyReason: string | null;
   entryDate: string | null;
   metadata: Record<string, unknown>;
@@ -83,6 +87,8 @@ export type LedgerEntryDto = {
   category?: EntryCategoryDto | null;
   sourceDocument?: SourceDocumentReferenceDto | null;
 };
+
+export type LedgerEntryEmbeddedViewDto = Omit<LedgerEntryDto, "sourceDocument">;
 
 export type LedgerSettingsDto = {
   id?: string;

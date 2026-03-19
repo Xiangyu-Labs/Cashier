@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, ledgers } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 import { buildEntriesForInsert, validateEntries, getEntryFallbackDate } from "./entry-builder";
+import { getLedgerMainCurrency } from "@/modules/ledger/queries";
+import { replaceLedgerEntriesForSourceDocument } from "@/modules/ledger/use-cases";
 
 export interface HandleParseResultParams {
   ledgerId: string;
@@ -29,7 +31,6 @@ export async function handleParseResult({
   categories,
 }: HandleParseResultParams): Promise<void> {
   const q = forLedger(sourceDocuments, ledgerId);
-  const qEntries = forLedger(ledgerEntries, ledgerId);
 
   // Query source document to get its entryDate for fallback
   const doc = await db.query.sourceDocuments.findFirst({
@@ -70,10 +71,7 @@ export async function handleParseResult({
   const validEntries = parsedEntries.filter((entry) => entry.amount > 0);
 
   // Get ledger's main currency for conversion
-  const ledger = await db.query.ledgers.findFirst({
-    where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-  });
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = await getLedgerMainCurrency(ledgerId);
 
   // Get fallback date
   const { fallbackDate } = getEntryFallbackDate(doc?.entryDate ?? null);
@@ -90,18 +88,8 @@ export async function handleParseResult({
 
   // Atomically update entries and document status in a transaction
   db.transaction((tx) => {
-    // 1. Delete existing entries for this source document (enables retry)
-    tx.update(ledgerEntries)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(ledgerEntries.sourceDocumentId, sourceDocumentId), qEntries.whereActive))
-      .run();
+    replaceLedgerEntriesForSourceDocument(tx, ledgerId, sourceDocumentId, entriesToInsert);
 
-    // 2. Insert new entries
-    if (entriesToInsert.length > 0) {
-      tx.insert(ledgerEntries).values(entriesToInsert).run();
-    }
-
-    // 3. Update document status to completed and title
     tx.update(sourceDocuments)
       .set({
         status: "completed",

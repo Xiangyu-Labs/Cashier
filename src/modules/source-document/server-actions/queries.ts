@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeStart, parseDateRangeEnd } from "@/lib/date-utils";
@@ -11,7 +11,7 @@ import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
-import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import {
   type SerializedSourceDocument,
@@ -128,26 +128,10 @@ async function fetchEntriesByDocumentId(
   docIds: string[],
   ledgerId: string
 ): Promise<Map<string, SerializedLedgerEntry[]>> {
-  const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
-
-  if (docIds.length === 0) return entriesByDocId;
-
-  const qEntries = forLedger(ledgerEntries, ledgerId);
-  const entries = await db.query.ledgerEntries.findMany({
-    where: and(qEntries.whereActive, inArray(ledgerEntries.sourceDocumentId, docIds)),
-    with: { category: true },
+  return listLedgerEntryViewsBySourceDocumentIds({
+    ledgerId,
+    sourceDocumentIds: docIds,
   });
-
-  entries.forEach((entry) => {
-    const docId = entry.sourceDocumentId;
-    if (docId != null && docId !== "") {
-      const existing = entriesByDocId.get(docId) ?? [];
-      existing.push(mapLedgerEntryDto({ ...entry, sourceDocument: null }));
-      entriesByDocId.set(docId, existing);
-    }
-  });
-
-  return entriesByDocId;
 }
 
 // ============ Serialization Helpers ============
@@ -186,29 +170,10 @@ async function fetchEntriesWithCategories(
   docIds: string[],
   ledgerId: string
 ): Promise<Map<string, SerializedLedgerEntry[]>> {
-  const entriesByDocId = new Map<string, SerializedLedgerEntry[]>();
-
-  if (docIds.length === 0) return entriesByDocId;
-
-  const qEntries = forLedger(ledgerEntries, ledgerId);
-  const entries = await db.query.ledgerEntries.findMany({
-    where: and(qEntries.whereActive, inArray(ledgerEntries.sourceDocumentId, docIds)),
-    with: { category: true },
+  return listLedgerEntryViewsBySourceDocumentIds({
+    ledgerId,
+    sourceDocumentIds: docIds,
   });
-
-  entries.forEach((entry) => {
-    if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") return;
-    const list = entriesByDocId.get(entry.sourceDocumentId) ?? [];
-    list.push(
-      mapLedgerEntryDto({
-        ...entry,
-        category: entry.category,
-      })
-    );
-    entriesByDocId.set(entry.sourceDocumentId, list);
-  });
-
-  return entriesByDocId;
 }
 
 /**

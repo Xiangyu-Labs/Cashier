@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import type { CategoryInfo } from "@/lib/ai/types";
-import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { flowEngine } from "@/lib/flow";
 import { registerAllTasks } from "@/lib/flow/task-registry";
 import { logger } from "@/lib/logger";
 import { processImage, isSupportedImageFormat } from "@/lib/storage/image-processing";
 import { getLocalStorage } from "@/lib/storage/local";
+import { listEntryCategoryInfos } from "@/modules/ledger/queries";
 import type { Ledger } from "@/persistence";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 
@@ -41,11 +41,7 @@ export async function getSourceDocumentTaskContext(
   ledgerId: string,
   ledger: Ledger
 ): Promise<SourceDocumentTaskContext> {
-  const categories = await db.query.entryCategories.findMany({
-    where: (table, { eq, or, isNull, and }) =>
-      and(or(eq(table.ledgerId, ledgerId), isNull(table.ledgerId)), isNull(table.deletedAt)),
-    orderBy: (table, { asc }) => [asc(table.sortOrder), asc(table.id)],
-  });
+  const categories = await listEntryCategoryInfos(ledgerId);
 
   const ledgerSettings = ledger.metadata?.settings ?? {};
 

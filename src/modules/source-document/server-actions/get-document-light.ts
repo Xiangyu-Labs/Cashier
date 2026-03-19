@@ -1,21 +1,21 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { requireLedgerAccess } from "@/modules/auth/helpers";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { AppError } from "@/lib/errors";
-import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
-import type { SourceDocumentDto } from "@/modules/source-document/contracts";
-import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
+import type { SourceDocumentLightDto } from "@/modules/source-document/contracts";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 
 /**
  * Light version of SourceDocument for prefetching.
  * Contains all data except imageUrls.
  */
-export interface SourceDocumentLight extends SourceDocumentDto {
-  ledgerEntries: LedgerEntryDto[];
+export interface SourceDocumentLight extends SourceDocumentLightDto {
+  ledgerEntries: LedgerEntryEmbeddedViewDto[];
 }
 
 /**
@@ -63,37 +63,30 @@ export async function getSourceDocumentLightAction(
       deletedAt: true,
       imageUrls: true,
     },
-    with: {
-      ledgerEntries: {
-        where: isNull(ledgerEntries.deletedAt),
-        with: { category: true },
-      },
-    },
   });
 
   if (!doc) {
     return null;
   }
 
+  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds({
+    ledgerId: doc.ledgerId,
+    sourceDocumentIds: [doc.id],
+  });
+
   // Use unified serialization
   const serializedDoc = serializeSourceDocument(doc, {
     stripMetadataFields: ["visionDescription", "originalImageUrls"],
     imageUrlsOverride: [],
     includeHasImages: true,
-    ledgerEntries: doc.ledgerEntries.map((entry) =>
-      mapLedgerEntryDto({
-        ...entry,
-        category: entry.category,
-      })
-    ),
+    ledgerEntries: entriesByDocId.get(doc.id) ?? [],
   });
 
-  // Override hasImages using docMeta which has the actual imageUrls
-  const result = serializedDoc as SourceDocumentLight;
-  result.hasImages = (docMeta.imageUrls?.length ?? 0) > 0;
+  const { imageUrls: _imageUrls, ...lightDoc } = serializedDoc;
 
-  // Delete imageUrls to match expected light response format
-  delete (result as { imageUrls?: string[] }).imageUrls;
-
-  return result;
+  return {
+    ...lightDoc,
+    ledgerEntries: lightDoc.ledgerEntries ?? [],
+    hasImages: (docMeta.imageUrls?.length ?? 0) > 0,
+  };
 }

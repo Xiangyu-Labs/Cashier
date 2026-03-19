@@ -8,6 +8,7 @@ import type {
 import type {
   EntryCategoryDto,
   LedgerDto,
+  LedgerEntryEmbeddedViewDto,
   LedgerEntryDto,
   ServiceCredentialDto,
   SourceDocumentReferenceDto,
@@ -92,12 +93,11 @@ export function mapSourceDocumentReferenceDto(
   };
 }
 
-export function mapLedgerEntryDto(
+export function mapLedgerEntryEmbeddedViewDto(
   entry: LedgerEntry & {
     category?: EntryCategory | null;
-    sourceDocument?: SourceDocument | null;
   }
-): LedgerEntryDto {
+): LedgerEntryEmbeddedViewDto {
   return {
     id: entry.id,
     ledgerId: entry.ledgerId,
@@ -113,6 +113,17 @@ export function mapLedgerEntryDto(
     updatedAt: toIso(entry.updatedAt)!,
     deletedAt: toIso(entry.deletedAt),
     category: entry.category ? mapEntryCategoryDto(entry.category) : undefined,
+  };
+}
+
+export function mapLedgerEntryDto(
+  entry: LedgerEntry & {
+    category?: EntryCategory | null;
+    sourceDocument?: SourceDocument | null;
+  }
+): LedgerEntryDto {
+  return {
+    ...mapLedgerEntryEmbeddedViewDto(entry),
     sourceDocument: entry.sourceDocument
       ? mapSourceDocumentReferenceDto(entry.sourceDocument)
       : undefined,

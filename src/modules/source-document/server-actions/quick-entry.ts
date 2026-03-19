@@ -1,15 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
-import { requireLedgerAccess } from "@/modules/auth/helpers";
-import { and, eq, isNull } from "drizzle-orm";
+import { sourceDocuments } from "@/persistence";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { CurrencyService } from "@/modules/currency/services";
+import { convertEntryAmount as convertEntryAmountViaCurrency } from "@/modules/currency/use-cases";
 import { SourceDocumentType } from "@/persistence/schema/source-document";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
 import { AppError, UnauthorizedError } from "@/lib/errors";
+import {
+  getEntryCategoryName,
+  insertLedgerEntryForSourceDocument,
+} from "@/modules/ledger/use-cases";
 
 // ============ Helper Functions ============
 
@@ -17,13 +20,7 @@ import { AppError, UnauthorizedError } from "@/lib/errors";
  * Fetch category name for entry title generation
  */
 async function fetchCategoryName(categoryId: string | null): Promise<string> {
-  if (categoryId == null || categoryId === "") return "";
-
-  const category = await db.query.entryCategories.findFirst({
-    where: and(eq(entryCategories.id, categoryId), isNull(entryCategories.deletedAt)),
-  });
-
-  return category?.name ?? "";
+  return getEntryCategoryName(categoryId);
 }
 
 interface ConversionResult {
@@ -32,7 +29,7 @@ interface ConversionResult {
 }
 
 /**
- * Convert amount between currencies using CurrencyService
+ * Convert amount between currencies through the currency module facade
  */
 async function convertEntryAmount(
   amount: number,
@@ -40,7 +37,7 @@ async function convertEntryAmount(
   toCurrency: string,
   date: string
 ): Promise<ConversionResult> {
-  const result = await CurrencyService.convertEntryAmount({
+  const result = await convertEntryAmountViaCurrency({
     amount,
     fromCurrency,
     toCurrency,
@@ -86,20 +83,18 @@ function atomicInsertSourceAndEntry(
       })
       .run();
 
-    tx.insert(ledgerEntries)
-      .values({
-        id: entryId,
-        ledgerId,
-        sourceDocumentId: sourceDocId,
-        categoryId: data.categoryId,
-        amount: data.amount.toFixed(2),
-        currency,
-        itemName,
-        description: data.description,
-        convertedAmount: conversion.convertedAmount,
-        exchangeRate: conversion.exchangeRate,
-      })
-      .run();
+    insertLedgerEntryForSourceDocument(tx, {
+      id: entryId,
+      ledgerId,
+      sourceDocumentId: sourceDocId,
+      categoryId: data.categoryId,
+      amount: data.amount.toFixed(2),
+      currency,
+      itemName,
+      description: data.description,
+      convertedAmount: conversion.convertedAmount,
+      exchangeRate: conversion.exchangeRate,
+    });
   });
 
   return { sourceDocId, entryId };

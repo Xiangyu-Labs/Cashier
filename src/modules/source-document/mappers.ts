@@ -1,23 +1,22 @@
-import type { LedgerEntry, SourceDocument } from "@/persistence";
-import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import type { SourceDocument } from "@/persistence";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 export {
   mapSourceDocumentDto,
   mapSourceDocumentListItemDto,
   mapSourceDocumentGroupDto,
 } from "./application/mappers";
 import { mapSourceDocumentDto } from "./application/mappers";
-import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
 import type { SourceDocumentDto, SourceDocumentLightDto } from "./contracts";
 
 export interface SerializeSourceDocumentOptions {
   stripMetadataFields?: string[];
   imageUrlsOverride?: string[];
   includeHasImages?: boolean;
-  ledgerEntries?: LedgerEntryDto[];
+  ledgerEntries?: LedgerEntryEmbeddedViewDto[];
 }
 
 export function serializeSourceDocument(
-  doc: SourceDocument & { ledgerEntries?: LedgerEntry[] },
+  doc: SourceDocument,
   options: SerializeSourceDocumentOptions = {}
 ): SourceDocumentDto {
   const {
@@ -36,18 +35,18 @@ export function serializeSourceDocument(
       : rawMetadata;
 
   const imageUrls = imageUrlsOverride !== undefined ? imageUrlsOverride : (doc.imageUrls ?? []);
-  const ledgerEntries = entriesOverride ?? doc.ledgerEntries?.map((entry) => mapLedgerEntryDto(entry));
 
   return {
     ...mapSourceDocumentDto(doc, {
       imageUrls,
       metadata: metadata as Record<string, unknown>,
     }),
-    ledgerEntries,
+    ledgerEntries: entriesOverride,
     ...(includeHasImages ? { hasImages: (doc.imageUrls?.length ?? 0) > 0 } : {}),
   };
 }
 
 export function serializeSourceDocumentLight(doc: SourceDocument): SourceDocumentLightDto {
-  return mapSourceDocumentDto(doc);
+  const { imageUrls: _imageUrls, ...lightDoc } = mapSourceDocumentDto(doc);
+  return lightDoc;
 }

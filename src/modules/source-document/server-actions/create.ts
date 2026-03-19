@@ -1,6 +1,6 @@
 "use server";
 
-import { requireLedgerAccess } from "@/modules/auth/helpers";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import type { SourceDocumentActionInput } from "./types";
 import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";

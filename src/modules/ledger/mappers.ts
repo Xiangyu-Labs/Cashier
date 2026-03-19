@@ -1,6 +1,7 @@
 export {
   mapLedgerDto,
   mapEntryCategoryDto,
+  mapLedgerEntryEmbeddedViewDto,
   mapLedgerEntryDto,
   mapServiceCredentialDto,
   mapSourceDocumentReferenceDto,

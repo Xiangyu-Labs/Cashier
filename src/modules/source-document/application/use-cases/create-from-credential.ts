@@ -1,45 +1,23 @@
-import { db } from "@/lib/db";
-import { ledgers, serviceCredentials } from "@/persistence";
-import { and, eq, isNull } from "drizzle-orm";
 import type {
   CreateSourceDocumentInput,
   CreateSourceDocumentResponseDto,
 } from "@/modules/source-document/contracts";
+import { getLedgerForServiceCredential } from "@/modules/ledger/queries";
 import { ValidationError } from "@/lib/errors";
-import { logError } from "@/lib/error-handlers";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
 
 export async function createSourceDocumentFromCredential(input: {
   credentialId: string;
   payload: CreateSourceDocumentInput;
 }): Promise<CreateSourceDocumentResponseDto> {
-  const credential = await db.query.serviceCredentials.findFirst({
-    where: and(eq(serviceCredentials.id, input.credentialId), isNull(serviceCredentials.deletedAt)),
-  });
-
-  if (credential == null) {
-    throw new ValidationError("Service credential not found");
-  }
-
-  try {
-    await db
-      .update(serviceCredentials)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(serviceCredentials.id, credential.id));
-  } catch (error) {
-    logError("modules/source-document:create-from-credential:update-credential", error);
-  }
-
-  const ledger = await db.query.ledgers.findFirst({
-    where: and(eq(ledgers.id, credential.ledgerId), isNull(ledgers.deletedAt)),
-  });
+  const ledger = await getLedgerForServiceCredential(input.credentialId);
 
   if (ledger == null) {
-    throw new ValidationError("Ledger not found for service credential");
+    throw new ValidationError("Service credential or ledger not found");
   }
 
   return createAndQueueSourceDocument({
-    ledgerId: credential.ledgerId,
+    ledgerId: ledger.id,
     ledger,
     text: input.payload.text,
     images: input.payload.images,

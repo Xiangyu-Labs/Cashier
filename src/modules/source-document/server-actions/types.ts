@@ -3,7 +3,7 @@ import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
 } from "@/modules/source-document/contracts";
-import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 
 export interface SourceDocumentActionInput {
   text?: string;
@@ -30,7 +30,7 @@ export interface PendingSourceDocumentsResponse {
 
 export type SourceDocumentWithEntries = SourceDocumentDto;
 export type SerializedSourceDocument = SourceDocumentDto;
-export type SerializedLedgerEntry = LedgerEntryDto;
+export type SerializedLedgerEntry = LedgerEntryEmbeddedViewDto;
 export type SourceDocumentGroup = SourceDocumentGroupDto;
 
 // Paginated response for source documents

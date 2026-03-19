@@ -3,7 +3,7 @@
 import { getLocalStorage } from "@/lib/storage/local";
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
-import { requireLedgerAccess } from "@/modules/auth/helpers";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import { AppError } from "@/lib/errors";
 import { and, eq, isNull } from "drizzle-orm";
 import type { SourceDocMetadata } from "@/modules/source-document/types";
