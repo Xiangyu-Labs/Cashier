@@ -44,7 +44,7 @@ npm run docker:down      # Stop containers
 
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
-- `src/features/` - Domain modules: `ai`, `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `tasks`. Each self-contained with `server/` (actions, services, schema), `components/`, and `client/` (hooks)
+- `src/modules/` - Domain modules: `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `workspace`. Each module owns its contracts, application logic, public entrypoints, and module-specific UI/hooks
 - `src/lib/` - Core infrastructure: `db/` (Drizzle), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
 - `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
@@ -53,19 +53,18 @@ npm run docker:down      # Stop containers
 - `messages/` - Translation files (en.json, zh.json) for next-intl
 - `tests/` - Unit tests in `unit/`, integration tests in `integration/`, shared fixtures in `fixtures/`
 
-### Feature Module Structure
+### Module Structure
 
-Each feature under `src/features/` follows this layout:
+Each module under `src/modules/` typically follows this layout:
 
 ```
-src/features/{domain}/
-├── server/
-│   ├── actions/     # Server Actions (primary API surface)
-│   ├── services/    # Business logic
-│   ├── tasks/       # Background task handlers (registered in instrumentation.ts)
-│   └── schema.ts    # Drizzle ORM table definitions
-├── components/      # Feature-specific UI
-└── client/hooks/    # Client-side hooks
+src/modules/{domain}/
+├── actions.ts       # Public server entrypoint
+├── contracts.ts     # Public DTOs/contracts
+├── application/     # Use cases, queries, task handlers
+├── server-actions/  # Auth/input boundary wrappers
+├── ui/              # Module-owned UI
+└── hooks/           # Module-owned client hooks
 ```
 
 ### Key Architectural Decisions
@@ -74,7 +73,7 @@ src/features/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are auto-discovered from `**/server/tasks/*.task.ts` files via `autoRegisterTasks()` in `src/instrumentation.ts`.
+**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are registered centrally in `src/lib/flow/task-registry.ts` and initialized from `src/instrumentation.ts`.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
 
@@ -87,7 +86,7 @@ src/features/{domain}/
 
 - `usePendingChanges()` - Track pending form changes with dirty checking
 - `useSelection()` - Manage batch selection state (selection mode, selected IDs, select all)
-- Place feature-specific hooks in `src/features/{domain}/client/hooks/`
+- Place module-specific hooks in `src/modules/{domain}/hooks/`
 - Keep hooks under 200 lines; compose smaller hooks for complex logic
 
 **AI pipeline**: Source document parsing uses a "Dual GPT + Arbitration" strategy — two parallel LLM calls compared for consistency, with a third arbitrator call if they disagree. Multi-stage: Stage 1 (pre-analysis) → Stage 1.5 (validation) → Stage 2 (detailed parsing).
@@ -153,10 +152,10 @@ export async function POST(request: Request) {
 
 ## Task Handlers
 
-Task handlers are auto-discovered from `**/server/tasks/*.task.ts` files. No manual registration needed.
+Task handlers live in `src/modules/*/application/tasks/` and must be registered in `src/lib/flow/task-registry.ts`.
 
 ```typescript
-// src/features/my-feature/server/tasks/my-task.task.ts
+// src/modules/my-feature/application/tasks/my-task.ts
 import { flowEngine } from "@/lib/flow";
 
 export default function register(engine: typeof flowEngine) {
@@ -174,9 +173,9 @@ export default function register(engine: typeof flowEngine) {
 Extract complex component logic into focused hooks:
 
 ```typescript
-// src/features/my-feature/client/hooks/useMyFeature.ts
-import { usePendingChanges } from "@/features/source-document/client/hooks/usePendingChanges";
-import { useSelection } from "@/features/source-document/client/hooks/useSelection";
+// src/modules/my-feature/hooks/useMyFeature.ts
+import { usePendingChanges } from "@/modules/source-document/hooks";
+import { useSelection } from "@/hooks/use-selection";
 
 // usePendingChanges - Track pending form changes
 const {
@@ -200,7 +199,7 @@ const {
 } = useSelection({ allIds: entries.map((e) => e.id) });
 ```
 
-Place feature-specific hooks in `src/features/{domain}/client/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
+Place module-specific hooks in `src/modules/{domain}/hooks/`. Keep hooks under 200 lines; compose smaller hooks for complex logic.
 
 ### Layering Rules
 

@@ -4,20 +4,18 @@ import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/modules/auth/helpers";
-import {
-  serializeSourceDocument,
-  serializeLedgerEntry,
-  type SerializedSourceDocument,
-  type SerializedLedgerEntry,
-} from "@/lib/serialization";
+import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { AppError } from "@/lib/errors";
+import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import type { SourceDocumentDto } from "@/modules/source-document/contracts";
+import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
 /**
  * Light version of SourceDocument for prefetching.
  * Contains all data except imageUrls.
  */
-export interface SourceDocumentLight extends SerializedSourceDocument {
-  ledgerEntries: SerializedLedgerEntry[];
+export interface SourceDocumentLight extends SourceDocumentDto {
+  ledgerEntries: LedgerEntryDto[];
 }
 
 /**
@@ -83,7 +81,7 @@ export async function getSourceDocumentLightAction(
     imageUrlsOverride: [],
     includeHasImages: true,
     ledgerEntries: doc.ledgerEntries.map((entry) =>
-      serializeLedgerEntry({
+      mapLedgerEntryDto({
         ...entry,
         category: entry.category,
       })

@@ -1,29 +1,18 @@
 "use client";
 
-import { useAmountDisplay } from "@/modules/currency/client";
 import { formatAmountStandard } from "@/lib/formatters";
+import { useAmountDisplay } from "@/modules/currency/client";
 
 interface AmountDisplayProps {
-  /** The amount value */
   amount: number;
-  /** The currency code */
   currency: string | null | undefined;
-  /** The main currency to convert to */
   mainCurrency: string;
-  /** Optional date for historical conversion rates */
   date?: string | null;
-  /** Additional CSS classes */
   className?: string;
-  /** Size variant */
   size?: "sm" | "md" | "lg";
-  /** Whether to show the original amount when different currency */
   showOriginal?: boolean;
 }
 
-/**
- * A component for displaying amounts with automatic currency conversion.
- * Shows converted amount in main currency and optionally the original amount.
- */
 export function AmountDisplay({
   amount,
   currency,

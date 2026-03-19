@@ -5,11 +5,12 @@ import { entryCategories, taskRuns, ledgerEntries } from "@/persistence";
 import { z } from "zod";
 import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
 import { TASK_TYPE_GENERATE_CATEGORY_METADATA } from "@/modules/ledger/application/tasks/generate-category-metadata";
 import { forLedger } from "@/lib/db/scoped-query";
+import { mapEntryCategoryDto } from "@/modules/ledger/mappers";
+import type { EntryCategoryDto } from "@/modules/ledger/contracts";
 
 const createCategorySchema = z.object({
   name: z.string().min(1),
@@ -26,7 +27,7 @@ export const createEntryCategoryAction = withLedgerAccess(
   async (
     ledgerId: string,
     data: z.infer<typeof createCategorySchema>
-  ): Promise<SerializedEntryCategory> => {
+  ): Promise<EntryCategoryDto> => {
     const validated = createCategorySchema.parse(data);
 
     // Get current max sortOrder to append new category at the end
@@ -87,7 +88,7 @@ export const createEntryCategoryAction = withLedgerAccess(
       }
     }
 
-    return serializeEntryCategory(category);
+    return mapEntryCategoryDto(category);
   }
 );
 

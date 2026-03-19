@@ -42,7 +42,7 @@ Server Actions should throw errors directly:
 
 ```typescript
 import { ValidationError, NotFoundError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/features/auth/server/utils/helpers";
+import { requireLedgerAccess } from "@/modules/auth/helpers";
 
 export async function updateLedgerEntryAction(
   ledgerId: string,

@@ -3,4 +3,5 @@ export {
   mapEntryCategoryDto,
   mapLedgerEntryDto,
   mapServiceCredentialDto,
+  mapSourceDocumentReferenceDto,
 } from "./application/mappers";

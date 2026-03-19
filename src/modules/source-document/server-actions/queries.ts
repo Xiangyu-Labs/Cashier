@@ -11,11 +11,11 @@ import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
 import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import {
   type SerializedSourceDocument,
   type SerializedLedgerEntry,
-  serializeLedgerEntry,
-  serializeSourceDocument,
 } from "@/lib/serialization";
 import type {
   SourceDocumentWithEntries,
@@ -142,7 +142,7 @@ async function fetchEntriesByDocumentId(
     const docId = entry.sourceDocumentId;
     if (docId != null && docId !== "") {
       const existing = entriesByDocId.get(docId) ?? [];
-      existing.push(serializeLedgerEntry({ ...entry, sourceDocument: null }));
+      existing.push(mapLedgerEntryDto({ ...entry, sourceDocument: null }));
       entriesByDocId.set(docId, existing);
     }
   });
@@ -200,7 +200,7 @@ async function fetchEntriesWithCategories(
     if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") return;
     const list = entriesByDocId.get(entry.sourceDocumentId) ?? [];
     list.push(
-      serializeLedgerEntry({
+      mapLedgerEntryDto({
         ...entry,
         category: entry.category,
       })

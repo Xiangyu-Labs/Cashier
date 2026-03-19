@@ -56,7 +56,7 @@ Tasks are executed using a lightweight **FlowEngine** (`src/lib/flow/engine.ts`)
 
 ## 3. The Parsing Task: "Dual GPT + Arbitration"
 
-The core logic resides in `src/features/source-document/server/tasks/parse-source-document.ts`. We use a sophisticated **"Consensus & Arbitration"** strategy to ensure accuracy.
+The core logic resides in `src/modules/source-document/application/tasks/parse-source-document.ts`. We use a sophisticated **"Consensus & Arbitration"** strategy to ensure accuracy.
 
 ### Step 3.1: Dual Execution
 

@@ -4,11 +4,12 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/modules/auth/helpers";
-import { type SerializedSourceDocument, serializeSourceDocument } from "@/lib/serialization";
 import { AppError } from "@/lib/errors";
+import { serializeSourceDocument } from "@/modules/source-document/mappers";
+import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 
 // Return type for getSourceDocumentByIdAction - uses standardized API types
-export type SourceDocumentWithEntries = SerializedSourceDocument;
+export type SourceDocumentWithEntries = SourceDocumentDto;
 
 /**
  * Fetch a source document by its global ID.

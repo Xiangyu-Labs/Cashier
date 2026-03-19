@@ -24,6 +24,7 @@ export {
   getProcessingTasksAction,
   getProcessingStatsAction,
 } from "./server-actions/processing";
+export { canAccessSourceDocumentUpload } from "./server-actions/uploads";
 
 export type {
   SourceDocumentWithEntries,

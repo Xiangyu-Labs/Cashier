@@ -39,6 +39,24 @@ describe("Enhanced Stats Actions", () => {
   });
 
   describe("getEnhancedStats", () => {
+    it("rejects access to a ledger owned by another user", async () => {
+      const db = getTestDb();
+      const { ledgerId } = await createTestUserWithLedger(
+        db,
+        undefined,
+        undefined,
+        "11111111-1111-4111-8111-111111111111"
+      );
+
+      await expect(
+        getEnhancedStats({
+          ledgerId,
+          queryRange: { from: "2024-01-01", to: "2024-01-31" },
+          compareRange: { from: "2023-12-01", to: "2023-12-31" },
+        })
+      ).rejects.toThrow("Ledger");
+    });
+
     it("should filter by entryDate not createdAt", async () => {
       const db = getTestDb();
 

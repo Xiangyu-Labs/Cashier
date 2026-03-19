@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { requireLedgerAccess } from "@/modules/auth/helpers";
-import { serializeLedgerEntry, type SerializedLedgerEntry } from "@/lib/serialization";
 import { AppError, UnauthorizedError } from "@/lib/errors";
+import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
-export async function getLedgerEntryAction(id: string): Promise<SerializedLedgerEntry | null> {
+export async function getLedgerEntryAction(id: string): Promise<LedgerEntryDto | null> {
   const entry = await db.query.ledgerEntries.findFirst({
     where: eq(ledgerEntries.id, id),
     with: {
@@ -33,7 +34,7 @@ export async function getLedgerEntryAction(id: string): Promise<SerializedLedger
   }
 
   // Use unified serialization
-  const serializedEntry = serializeLedgerEntry({
+  const serializedEntry = mapLedgerEntryDto({
     ...entry,
     category: entry.category,
     sourceDocument: entry.sourceDocument,

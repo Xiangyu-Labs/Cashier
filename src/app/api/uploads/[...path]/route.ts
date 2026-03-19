@@ -3,6 +3,7 @@ import { getLocalStorage } from "@/lib/storage/local";
 import { logger } from "@/lib/logger";
 import { requireAuth } from "@/lib/auth-actions";
 import { UnauthorizedError } from "@/lib/errors";
+import { canAccessSourceDocumentUpload } from "@/modules/source-document/actions";
 import path from "path";
 
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -57,7 +58,7 @@ function getMimeType(filename: string): string {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
@@ -87,14 +88,20 @@ export async function GET(
       return new NextResponse("Not Found", { status: 404 });
     }
 
-    // 3. Construct the storage key
+    // 3. Ensure the current user owns the ledger and the document belongs to it.
+    // 4. Construct and validate the storage key against the document references.
     const storageKey = `${ledgerId}/${docId}/${filename}`;
+    const allowed = await canAccessSourceDocumentUpload(ledgerId, docId, storageKey);
+    if (!allowed) {
+      logger.warn({ ledgerId, docId, storageKey }, "Upload access denied for unreferenced file");
+      return new NextResponse("Not Found", { status: 404 });
+    }
 
-    // 4. Get the file from local storage
+    // 5. Get the file from local storage
     const storage = getLocalStorage();
     const fileBuffer = await storage.download(storageKey);
 
-    // 5. Determine MIME type and serve the file
+    // 6. Determine MIME type and serve the file
     const contentType = getMimeType(filename);
 
     return new NextResponse(new Uint8Array(fileBuffer), {

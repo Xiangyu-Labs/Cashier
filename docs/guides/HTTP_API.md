@@ -69,7 +69,7 @@ These endpoints use the logged-in user session and are intended for browser acce
 
 Auth helper:
 
-- [`src/features/auth/server/utils/helpers.ts`](/root/workspace/Cashier/src/features/auth/server/utils/helpers.ts)
+- [`src/modules/auth/helpers.ts`](/root/workspace/Cashier/src/modules/auth/helpers.ts)
 
 ### `/api/auth/*`
 

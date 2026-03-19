@@ -202,7 +202,7 @@ function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
   };
 }
 
-export async function getTaskQueueForLedger(ledgerId: string): Promise<TaskQueueResult> {
+async function getTaskQueueForLedgerQuery(ledgerId: string): Promise<TaskQueueResult> {
   const activeTasks = await db.query.taskRuns.findMany({
     where: and(
       isNull(taskRuns.deletedAt),
@@ -318,6 +318,12 @@ export async function getTaskQueueForLedger(ledgerId: string): Promise<TaskQueue
   return { items, stats };
 }
 
-export const getTaskQueueAction = withLedgerAccess(getTaskQueueForLedger);
+export async function getTaskQueueForAuthorizedLedger(
+  ledgerId: string
+): Promise<TaskQueueResult> {
+  return getTaskQueueForLedgerQuery(ledgerId);
+}
+
+export const getTaskQueueAction = withLedgerAccess(getTaskQueueForLedgerQuery);
 
 export type { TaskQueueResult, TaskQueueStats } from "./types";

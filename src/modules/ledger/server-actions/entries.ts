@@ -6,9 +6,10 @@ import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { CurrencyService } from "@/modules/currency";
-import { type SerializedLedgerEntry, serializeLedgerEntry } from "@/lib/serialization";
 import { NotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
 const createLedgerEntrySchema = z.object({
   amount: z.number(),
@@ -100,7 +101,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
     ledgerId: string,
     ledgerEntryId: string,
     data: z.infer<typeof updateLedgerEntrySchema>
-  ): Promise<SerializedLedgerEntry> => {
+  ): Promise<LedgerEntryDto> => {
     const validated = updateLedgerEntrySchema.parse(data);
     const q = forLedger(ledgerEntries, ledgerId);
 
@@ -171,7 +172,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
 
     if (updatedEntry == null) throw new NotFoundError("Entry");
 
-    return serializeLedgerEntry(updatedEntry);
+    return mapLedgerEntryDto(updatedEntry);
   }
 );
 
@@ -321,7 +322,7 @@ export async function listLedgerEntries(
 
   // Use unified serialization
   const serializedItems = resultItems.map((item) => {
-    const serialized = serializeLedgerEntry({
+    const serialized = mapLedgerEntryDto({
       ...item,
       category: item.category,
       sourceDocument: item.sourceDocument,

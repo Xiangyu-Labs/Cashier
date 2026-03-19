@@ -152,7 +152,7 @@ const moduleRootRestrictedImports = {
         "batchCancelTasksAction",
         "dismissTaskAction",
         "batchDismissTasksAction",
-        "getTaskQueueForLedger",
+        "getTaskQueueForAuthorizedLedger",
         "getTaskQueueAction",
       ],
       message:
@@ -374,7 +374,24 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          paths: createModuleRootImportRestrictions(moduleNames),
+          paths: [
+            ...createModuleRootImportRestrictions(moduleNames),
+            {
+              name: "@/modules/auth/helpers",
+              message:
+                'Shared library/types code must not depend on auth module helpers. Use lib-level auth primitives instead.',
+            },
+            {
+              name: "@/modules/ledger/mappers",
+              message:
+                'Shared library/types code must not depend on ledger module mappers. Keep domain mapping inside the owning module.',
+            },
+            {
+              name: "@/modules/source-document/mappers",
+              message:
+                'Shared library/types code must not depend on source-document module mappers. Keep domain mapping inside the owning module.',
+            },
+          ],
           patterns: [
             {
               group: LEGACY_FEATURE_IMPORT_PATTERNS,
@@ -387,6 +404,23 @@ const eslintConfig = defineConfig([
             {
               group: createDeepModuleImportPatterns(moduleNames),
               message: "Shared library/types code must not deep-import module internals.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/components/ui/**/*.ts", "src/components/ui/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/modules/**"],
+              message:
+                "Shared UI primitives must not depend on domain modules. Move domain-aware UI into the owning module.",
             },
           ],
         },

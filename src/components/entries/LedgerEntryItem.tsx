@@ -3,8 +3,8 @@ import { type LedgerEntry } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { AmountDisplay } from "@/components/ui/amount-display";
 import { parseAmount } from "@/lib/formatters";
+import { AmountDisplay } from "@/modules/currency/ui";
 
 /**
  * Variant styles for different source document states.

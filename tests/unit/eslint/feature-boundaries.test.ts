@@ -302,8 +302,8 @@ describe("boundary lint", () => {
   it("rejects task queue action imports from module root in app files", async () => {
     const messages = await lintRestrictedImports(
       `
-        import { getTaskQueueForLedger } from "@/modules/task-queue";
-        export const leak = getTaskQueueForLedger;
+        import { getTaskQueueForAuthorizedLedger } from "@/modules/task-queue";
+        export const leak = getTaskQueueForAuthorizedLedger;
       `,
       "src/app/api/v1/task/items/route.ts"
     );
@@ -314,13 +314,49 @@ describe("boundary lint", () => {
   it("allows task queue action imports from dedicated public entrypoints in app files", async () => {
     const messages = await lintRestrictedImports(
       `
-        import { getTaskQueueForLedger } from "@/modules/task-queue/actions";
-        export const value = getTaskQueueForLedger;
+        import { getTaskQueueForAuthorizedLedger } from "@/modules/task-queue/actions";
+        export const value = getTaskQueueForAuthorizedLedger;
       `,
       "src/app/api/v1/task/items/route.ts"
     );
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("rejects module imports from shared ui primitives", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { useAmountDisplay } from "@/modules/currency/client";
+        export const leak = useAmountDisplay;
+      `,
+      "src/components/ui/button.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects auth helper imports from shared library files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { requireLedgerAccess } from "@/modules/auth/helpers";
+        export const leak = requireLedgerAccess;
+      `,
+      "src/lib/auth-actions.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects module mapper imports from shared library files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
+        export const leak = mapLedgerEntryDto;
+      `,
+      "src/lib/serialization/utils.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects single-file ledger ui imports from app files", async () => {

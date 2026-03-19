@@ -22,10 +22,10 @@ The following tasks are registered by the task registry:
 
 ### 1. Create Task File
 
-Create a file in your feature's `server/tasks/` directory:
+Create a file in your module's `application/tasks/` directory:
 
 ```typescript
-// src/features/my-feature/server/tasks/process-document.ts
+// src/modules/my-feature/application/tasks/process-document.ts
 import type { FlowTaskDefinition } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { throwIfCancelled } from "@/lib/flow/cancellation";
@@ -117,7 +117,7 @@ async execute(
 Define types for your task inputs and outputs:
 
 ```typescript
-// src/features/my-feature/server/tasks/types.ts
+// src/modules/my-feature/application/tasks/types.ts
 export interface ProcessDocumentInput {
   documentId: string;
   options?: {
@@ -269,7 +269,7 @@ Write unit tests against the exported handler or task definition:
 ```typescript
 // tests/unit/my-feature/tasks/process-document.test.ts
 import { describe, it, expect, vi } from "vitest";
-import { processDocumentTaskDefinition } from "@/features/my-feature/server/tasks/process-document";
+import { processDocumentTaskDefinition } from "@/modules/my-feature/application/tasks/process-document";
 
 describe("process-document task", () => {
   it("should process document successfully", async () => {
