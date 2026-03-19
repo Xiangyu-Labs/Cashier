@@ -97,21 +97,21 @@ function toParseSourceDocumentOutput(result: ParsePipelineResult): ParseSourceDo
     case "success":
       return {
         ledgerEntries: result.ledgerEntries,
-        title: result.title,
         verificationStatus: "passed",
+        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "invalid":
       return {
         ledgerEntries: [],
-        title: result.title,
         verificationStatus: "invalid",
+        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "anomaly":
       return {
         ledgerEntries: [],
-        title: result.title,
         anomalyReason: result.anomalyReason,
         verificationStatus: "anomaly",
+        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "cancelled":
       throw new TaskCancelledError();
@@ -134,7 +134,7 @@ async function runStage0(
   const stage0Result = await executeStage0(
     {
       imageUrls: input.imageUrls,
-      aiLanguage: input.aiLanguage,
+      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
     },
     ctx.ai
   );
@@ -166,13 +166,17 @@ function buildStage1Input(
   visionDescription: string | undefined
 ): Stage1Input {
   return {
-    text: input.text,
-    imageUrls: input.imageUrls,
-    visionDescription,
-    aiLanguage: input.aiLanguage,
-    preferredCurrencies: input.preferredCurrencies,
     categories: input.categories.map((c) => ({ name: c.name, description: c.description ?? null })),
-    aiCustomPrompt: input.settings.aiCustomPrompt,
+    ...(input.text !== undefined ? { text: input.text } : {}),
+    ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
+    ...(visionDescription !== undefined ? { visionDescription } : {}),
+    ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
+    ...(input.preferredCurrencies !== undefined
+      ? { preferredCurrencies: input.preferredCurrencies }
+      : {}),
+    ...(input.settings.aiCustomPrompt !== undefined
+      ? { aiCustomPrompt: input.settings.aiCustomPrompt }
+      : {}),
   };
 }
 
@@ -289,11 +293,11 @@ async function runStage1_5(
 
   const validationResult = await executeStage1_5Validation(
     {
-      text: input.text,
-      imageUrls: input.imageUrls,
-      visionDescription,
-      aiLanguage: input.aiLanguage,
       stage1Results,
+      ...(input.text !== undefined ? { text: input.text } : {}),
+      ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
+      ...(visionDescription !== undefined ? { visionDescription } : {}),
+      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
     },
     ctx.ai
   );
@@ -354,15 +358,15 @@ async function runStage2(
   await ctx.setProgress("正在生成账单条目...");
   const stage2Result = await executeStage2(
     {
-      text: input.text,
-      imageUrls: input.imageUrls,
-      visionDescription,
-      aiLanguage: input.aiLanguage,
       validationSummary: validationResult,
       originalCategories: input.categories.map((c) => ({
         name: c.name,
         description: c.description ?? null,
       })),
+      ...(input.text !== undefined ? { text: input.text } : {}),
+      ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
+      ...(visionDescription !== undefined ? { visionDescription } : {}),
+      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
     },
     ctx.ai
   );
@@ -470,10 +474,10 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
       parsedEntries: output.ledgerEntries,
-      title: output.title,
-      anomalyReason: output.anomalyReason,
       verificationStatus: output.verificationStatus,
       categories: input.categories,
+      ...(output.title !== undefined ? { title: output.title } : {}),
+      ...(output.anomalyReason !== undefined ? { anomalyReason: output.anomalyReason } : {}),
     });
   },
 

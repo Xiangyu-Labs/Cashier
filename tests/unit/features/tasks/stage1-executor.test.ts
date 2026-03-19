@@ -81,6 +81,33 @@ describe("Stage 1 Executor", () => {
     });
   });
 
+  describe("Completeness Result Shape", () => {
+    it("omits incompleteReason when completeness check does not provide an issue", async () => {
+      const mockAI = createMockAI([
+        // Validity check (dual GPT) - runs in parallel with title
+        '{"is_valid": true, "reasoning": "valid"}',
+        '{"is_valid": true, "reasoning": "valid"}',
+        // Title extraction (single GPT) - runs in parallel with validity
+        '{"title": "午餐消费"}',
+        // Completeness check (single GPT)
+        '{"is_complete": false}',
+        // Currency (dual GPT)
+        '{"currencies": ["CNY"], "reasoning": "r"}',
+        '{"currencies": ["CNY"], "reasoning": "r"}',
+        // Category (dual GPT)
+        '{"categories": ["餐饮"], "reasoning": "r"}',
+        '{"categories": ["餐饮"], "reasoning": "r"}',
+      ]);
+
+      const result = await executeStage1(baseInput, mockAI);
+
+      expect(result.isValid).toBe(true);
+      if (result.isValid && result.isIncomplete) {
+        expect("incompleteReason" in result).toBe(false);
+      }
+    });
+  });
+
   describe("Dual GPT Agreement", () => {
     it("should use first result when both GPTs agree", async () => {
       const mockAI = createMockAI([

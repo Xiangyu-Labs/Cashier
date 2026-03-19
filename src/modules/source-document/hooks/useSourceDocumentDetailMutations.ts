@@ -34,6 +34,8 @@ import type { SourceDocumentWithEntries } from "@/modules/source-document/action
 
 type SourceDocumentQueryData = ServerSourceDocumentWithEntries;
 
+type BatchEntryUpdateData = Partial<Omit<LedgerEntry, "amount">> & { amount?: number };
+
 function updatePaginatedSourceDocumentLists(
   queryClient: ReturnType<typeof useQueryClient>,
   ledgerId: string,
@@ -71,6 +73,24 @@ function createSourceDocSnapshots(
   return snapshots;
 }
 
+function applyBatchEntryUpdate<T extends {
+  categoryId: string | null;
+  currency: string | null;
+  itemName: string;
+  description: string | null;
+  amount: string;
+}>(entry: T, data: BatchEntryUpdateData): T {
+  const patch: Partial<T> = {};
+
+  if (data.categoryId !== undefined) patch.categoryId = data.categoryId as T["categoryId"];
+  if (data.currency !== undefined) patch.currency = data.currency as T["currency"];
+  if (data.itemName !== undefined) patch.itemName = data.itemName as T["itemName"];
+  if (data.description !== undefined) patch.description = data.description as T["description"];
+  if (data.amount !== undefined) patch.amount = data.amount.toFixed(2) as T["amount"];
+
+  return { ...entry, ...patch };
+}
+
 interface UseSourceDocumentDetailMutationsOptions {
   id: string;
   ledgerId: string | undefined;
@@ -83,6 +103,22 @@ export function useSourceDocumentDetailMutations({
   onClose,
 }: UseSourceDocumentDetailMutationsOptions) {
   const tCommon = useTranslations("Common");
+  const hasLedgerId = ledgerId != null && ledgerId !== "";
+  const sourceDocumentPredicates = hasLedgerId ? [invalidateSourceDocuments(ledgerId)] : null;
+  const sourceDocumentSummaryPredicates = hasLedgerId
+    ? [invalidateSourceDocuments(ledgerId), invalidateLedgerStats(ledgerId), invalidateCalendar(ledgerId)]
+    : null;
+  const sourceDocumentAndEntriesPredicates = hasLedgerId
+    ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
+    : null;
+  const sourceDocumentEntriesSummaryPredicates = hasLedgerId
+    ? [
+        invalidateSourceDocuments(ledgerId),
+        invalidateLedgerEntries(ledgerId),
+        invalidateLedgerStats(ledgerId),
+        invalidateCalendar(ledgerId),
+      ]
+    : null;
 
   const updateSourceDocMutation = useLedgerMutation<void, { title?: string; entryDate?: string }>(
     ledgerId,
@@ -92,16 +128,10 @@ export function useSourceDocumentDetailMutations({
         await updateSourceDocumentAction(ledgerId, id, data);
       },
       errorMessage: tCommon("saveFailed"),
-      cancelPredicates:
-        ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
-      invalidatePredicates:
-        ledgerId != null && ledgerId !== ""
-          ? [
-              invalidateSourceDocuments(ledgerId),
-              invalidateLedgerStats(ledgerId),
-              invalidateCalendar(ledgerId),
-            ]
-          : undefined,
+      ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
+      ...(sourceDocumentSummaryPredicates !== null
+        ? { invalidatePredicates: sourceDocumentSummaryPredicates }
+        : {}),
       onOptimisticUpdate: (queryClient, data) => {
         const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -151,16 +181,10 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: tCommon("saveSuccess"),
     errorMessage: tCommon("saveFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
+    ...(sourceDocumentSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentSummaryPredicates }
+      : {}),
     onOptimisticUpdate: (queryClient, { images }) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
       const nextImageUrls = images.map((image) => image.data);
@@ -206,25 +230,22 @@ export function useSourceDocumentDetailMutations({
   >(ledgerId, {
     mutationFn: async ({ entryId, data }) => {
       if (ledgerId == null || ledgerId === "") return;
-      await updateLedgerEntryAction(ledgerId, entryId, {
-        ...data,
-        amount: data.amount !== undefined ? parseFloat(data.amount) : undefined,
-      });
+      const mutationData = {
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+        ...(data.currency !== undefined ? { currency: data.currency } : {}),
+        ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.amount !== undefined ? { amount: parseFloat(data.amount) } : {}),
+      };
+      await updateLedgerEntryAction(ledgerId, entryId, mutationData);
     },
     errorMessage: tCommon("saveFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
-        : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerEntries(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentAndEntriesPredicates !== null
+      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
+      : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
     onOptimisticUpdate: (queryClient, { entryId, data }) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -263,26 +284,19 @@ export function useSourceDocumentDetailMutations({
 
   const batchUpdateMutation = useLedgerMutation<
     void,
-    { ids: string[]; data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number } }
+    { ids: string[]; data: BatchEntryUpdateData }
   >(ledgerId, {
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
       await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: tCommon("saveFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
-        : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerEntries(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentAndEntriesPredicates !== null
+      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
+      : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
     onOptimisticUpdate: (queryClient, { ids, data }) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -293,7 +307,7 @@ export function useSourceDocumentDetailMutations({
           return {
             ...old,
             ledgerEntries: old.ledgerEntries.map((entry) =>
-              ids.includes(entry.id) ? { ...entry, ...data } : entry
+              ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry
             ),
           };
         }
@@ -304,7 +318,7 @@ export function useSourceDocumentDetailMutations({
           if (doc.id !== id) return doc;
           const updatedEntries =
             doc.ledgerEntries?.map((entry) =>
-              ids.includes(entry.id) ? { ...entry, ...(data as Partial<typeof entry>) } : entry
+              ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry
             ) ?? [];
           return { ...doc, ledgerEntries: updatedEntries };
         });
@@ -326,19 +340,12 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
-        : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerEntries(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentAndEntriesPredicates !== null
+      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
+      : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
     onOptimisticUpdate: (queryClient, entryId) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -379,19 +386,12 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
-        : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerEntries(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentAndEntriesPredicates !== null
+      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
+      : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
 
@@ -432,17 +432,10 @@ export function useSourceDocumentDetailMutations({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    cancelPredicates:
-      ledgerId != null && ledgerId !== "" ? [invalidateSourceDocuments(ledgerId)] : undefined,
-    invalidatePredicates:
-      ledgerId != null && ledgerId !== ""
-        ? [
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerEntries(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ]
-        : undefined,
+    ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
     onSuccessExtra: () => {
       onClose();
     },
@@ -483,7 +476,7 @@ export function useSourceDocumentDetailMutations({
       updateEntryMutation.mutateAsync({ entryId, data }),
     batchUpdate: async (
       ids: string[],
-      data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
+      data: BatchEntryUpdateData
     ) => batchUpdateMutation.mutateAsync({ ids, data }),
     deleteEntry: async (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
     batchDelete: async (ids: string[]) => batchDeleteMutation.mutateAsync(ids),

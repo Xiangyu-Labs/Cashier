@@ -346,6 +346,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     expect(result.ledgerEntries).toHaveLength(0);
     expect(result.verificationStatus).toBe("anomaly");
+    expect("title" in result).toBe(false);
   });
 });
 

@@ -277,13 +277,13 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           onClearSelection={() => handleSelectAllEntries(false)}
           onChangeCategory={(categoryId) => handleBatchCategory(categoryId ?? "")}
           onChangeCurrency={handleBatchCurrency}
-          onDelete={onBatchDelete ? handleBatchDelete : undefined}
           categories={categories}
           preferredCurrencies={preferredCurrencies}
           isChangingCategory={isSaving}
           isChangingCurrency={isSaving}
           isDeleting={isSaving}
           variant="inline"
+          {...(onBatchDelete !== undefined ? { onDelete: handleBatchDelete } : {})}
         />
 
         <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-modal-footer">

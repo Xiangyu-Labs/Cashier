@@ -51,7 +51,7 @@ export function serializeSourceDocument(
       imageUrls,
       metadata: metadata as Record<string, unknown>,
     }),
-    ledgerEntries,
+    ...(ledgerEntries !== undefined ? { ledgerEntries } : {}),
     ...(includeHasImages ? { hasImages: (doc.imageUrls?.length ?? 0) > 0 } : {}),
   };
 }

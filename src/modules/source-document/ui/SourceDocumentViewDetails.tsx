@@ -228,7 +228,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 <CurrencyBreakdownItem
                   key={curr}
                   currency={curr}
-                  amount={subtotalsByCurrency[curr]}
+                  amount={subtotalsByCurrency[curr] ?? 0}
                   mainCurrency={mainCurrency}
                   entries={ledgerEntries}
                 />
@@ -281,12 +281,14 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                   preferredCurrencies={preferredCurrencies}
                   mainCurrency={mainCurrency}
                   selected={selectedEntryIds.includes(entry.id)}
-                  onSelect={
-                    isSelectionMode ? (selected) => onSelectEntry(entry.id, selected) : undefined
-                  }
                   onChange={(changes) => onEntryChange(entry.id, changes)}
-                  pendingChanges={pendingChanges.entries[entry.id]}
                   sourceDocumentEntryDate={displayEntryDate}
+                  {...(isSelectionMode
+                    ? { onSelect: (selected: boolean) => onSelectEntry(entry.id, selected) }
+                    : {})}
+                  {...(pendingChanges.entries[entry.id] !== undefined
+                    ? { pendingChanges: pendingChanges.entries[entry.id] }
+                    : {})}
                 />
               </Card>
             ))

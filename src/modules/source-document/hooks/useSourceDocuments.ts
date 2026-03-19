@@ -68,15 +68,12 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
 
-  const startDateForQuery = startDate ?? undefined;
-  const endDateForQuery = endDate ?? undefined;
-
   const { data: response, isLoading } = useQuery({
     queryKey: queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate),
     queryFn: () =>
       getAllSourceDocumentsAction(ledgerId, {
-        startDate: startDateForQuery,
-        endDate: endDateForQuery,
+        ...(startDate !== null ? { startDate } : {}),
+        ...(endDate !== null ? { endDate } : {}),
       }),
     refetchInterval: (query) => {
       const data = query.state.data;

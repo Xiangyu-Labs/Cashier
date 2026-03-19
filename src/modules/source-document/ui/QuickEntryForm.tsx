@@ -193,11 +193,12 @@ export function QuickEntryForm({
 
   const handleSubmit = () => {
     if (selectedCategoryId === null || amount <= 0) return;
+    const nextItemName = itemName !== "" ? itemName : undefined;
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,
-      itemName: itemName !== "" ? itemName : undefined,
       entryDate: formatDateTimeForApi(entryDate),
+      ...(nextItemName !== undefined ? { itemName: nextItemName } : {}),
     });
   };
 

@@ -92,7 +92,11 @@ async function runCompletenessTask(
     requireJson: true,
     model: "text",
   });
-  return parseJsonResponse(response.content, completenessSchema);
+  const parsed = parseJsonResponse(response.content, completenessSchema);
+  return {
+    is_complete: parsed.is_complete,
+    ...(parsed.issue != null && parsed.issue !== "" ? { issue: parsed.issue } : {}),
+  };
 }
 
 /**
@@ -194,8 +198,10 @@ function compileStage1Results(
     return {
       isValid: true,
       isIncomplete: true,
-      incompleteReason: completeness.issue,
       title: title.title,
+      ...(completeness.issue != null && completeness.issue !== ""
+        ? { incompleteReason: completeness.issue }
+        : {}),
     };
   }
 
@@ -207,7 +213,7 @@ function compileStage1Results(
       currency,
       category,
       title,
-      userRequirements,
+      ...(userRequirements != null ? { userRequirements } : {}),
     },
   };
 }

@@ -38,7 +38,7 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentDetailData({
     id,
     open,
-    initialLedgerEntries,
+    ...(initialLedgerEntries !== undefined ? { initialLedgerEntries } : {}),
   });
 
   const {

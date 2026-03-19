@@ -84,7 +84,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({
 
       return {
         currency,
-        amount: groups[currency],
+        amount: groups[currency] ?? 0,
         convertedAmount,
       };
     });
@@ -261,7 +261,11 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
         {selectionMode && (
           <div className="mr-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-5 w-5" />
+            <Checkbox
+              checked={isSelected}
+              className="h-5 w-5"
+              {...(onToggleSelect !== undefined ? { onCheckedChange: onToggleSelect } : {})}
+            />
           </div>
         )}
 
@@ -322,11 +326,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
           {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
             <ProcessingStatus
               status={status === "anomaly" || status === "failed" ? "error" : status}
-              label={
-                status === "anomaly" && anomalyReason != null && anomalyReason !== ""
-                  ? anomalyReason
-                  : undefined
-              }
+              {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
+                ? { label: anomalyReason }
+                : {})}
             />
           )}
 

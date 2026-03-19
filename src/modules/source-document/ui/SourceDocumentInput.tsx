@@ -112,7 +112,7 @@ export function SourceDocumentInput({
       const settingsUpdate: Record<string, unknown> = data.settings || {};
 
       const payload: Partial<Ledger> & { settings?: Record<string, unknown> } = {
-        settings: Object.keys(settingsUpdate).length > 0 ? settingsUpdate : undefined,
+        ...(Object.keys(settingsUpdate).length > 0 ? { settings: settingsUpdate } : {}),
       };
 
       return await updateLedgerAction(ledgerId, payload);
@@ -306,10 +306,10 @@ export function SourceDocumentInput({
       mimeType: originalMimeType,
     }));
     const payload = {
-      text: textPayload,
-      images: nextCurrentImages.length > 0 ? nextCurrentImages : undefined,
-      originalImages: images.some((image) => image.isEdited) ? nextOriginalImages : undefined,
       entryDate: formatDateTimeForApi(new Date()),
+      ...(textPayload !== undefined ? { text: textPayload } : {}),
+      ...(nextCurrentImages.length > 0 ? { images: nextCurrentImages } : {}),
+      ...(images.some((image) => image.isEdited) ? { originalImages: nextOriginalImages } : {}),
     };
     // Optimistic update: close dialog immediately, then start mutation
     onSuccess?.();
@@ -336,9 +336,9 @@ export function SourceDocumentInput({
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData.items;
     const files: File[] = [];
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith("image/")) {
-        const file = items[i].getAsFile();
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
         if (file) files.push(file);
       }
     }
@@ -370,7 +370,7 @@ export function SourceDocumentInput({
             const base64 = reader.result as string;
             // Extract correct mime type from the data URL (browser determines this from file content)
             const mimeMatch = base64.match(/^data:([^;]+);base64,/);
-            const mimeType = mimeMatch ? mimeMatch[1] : file.type;
+            const mimeType = mimeMatch?.[1] ?? (file.type !== "" ? file.type : "image/jpeg");
             setImages((prev) => [
               ...prev,
               {

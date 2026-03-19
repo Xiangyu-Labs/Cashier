@@ -57,12 +57,12 @@ export function SourceDocumentEditRetryDialog({
     // If we fetched full data, use it
     if (fullData != null) {
       return {
-        text: fullData.text ?? undefined,
         images:
           fullData.imageUrls?.map((url) => ({
             data: url,
             mimeType: "image/jpeg",
           })) ?? [],
+        ...(fullData.text != null ? { text: fullData.text } : {}),
       };
     }
 
@@ -70,12 +70,12 @@ export function SourceDocumentEditRetryDialog({
     const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
     const text = "text" in sourceDocument ? sourceDocument.text : undefined;
     return {
-      text: text ?? undefined,
       images:
         imageUrls?.map((url) => ({
           data: url,
           mimeType: "image/jpeg",
         })) ?? [],
+      ...(text != null ? { text } : {}),
     };
   }, [sourceDocument, fullData]);
 

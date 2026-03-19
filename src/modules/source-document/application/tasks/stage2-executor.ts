@@ -28,6 +28,9 @@ const parseOutputSchema = z.object({
   reasoning: z.string(),
 });
 
+type RawParsedEntry = z.infer<typeof entrySchema>;
+type RawParseOutput = z.infer<typeof parseOutputSchema>;
+
 // ===== Helper: Compare Entry Arrays =====
 
 function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boolean {
@@ -53,7 +56,9 @@ function compareEntries(entries1: ParsedEntry[], entries2: ParsedEntry[]): boole
 
   // Allow small floating point differences
   for (const key of keys1) {
-    if (Math.abs(totals1[key] - totals2[key]) > 0.01) return false;
+    const leftTotal = totals1[key] ?? 0;
+    const rightTotal = totals2[key] ?? 0;
+    if (Math.abs(leftTotal - rightTotal) > 0.01) return false;
   }
 
   return true;
@@ -151,8 +156,22 @@ async function runDualParsingCalls(
     }),
   ]);
 
-  const result1 = parseJsonResponse(response1.content, parseOutputSchema);
-  const result2 = parseJsonResponse(response2.content, parseOutputSchema);
+  const normalizeEntry = (entry: RawParsedEntry): ParsedEntry => ({
+    item_name: entry.item_name,
+    amount: entry.amount,
+    currency: entry.currency,
+    category_index: entry.category_index,
+    notes: entry.notes,
+    ...(entry.entry_date !== undefined ? { entry_date: entry.entry_date } : {}),
+  });
+
+  const normalizeOutput = (output: RawParseOutput) => ({
+    ledger_entries: output.ledger_entries.map(normalizeEntry),
+    reasoning: output.reasoning,
+  });
+
+  const result1 = normalizeOutput(parseJsonResponse(response1.content, parseOutputSchema));
+  const result2 = normalizeOutput(parseJsonResponse(response2.content, parseOutputSchema));
 
   return [result1, result2];
 }
