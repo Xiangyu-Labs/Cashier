@@ -80,10 +80,12 @@ export async function GET(
     }
 
     // Extract ledgerId from first path segment for access control
-    const [ledgerId, docId, ...filenameParts] = pathSegments;
+    const ledgerId = pathSegments[0];
+    const docId = pathSegments[1];
+    const filenameParts = pathSegments.slice(2);
     const filename = filenameParts.join("/");
 
-    if (ledgerId === "" || docId === "" || filename === "") {
+    if (ledgerId == null || docId == null || ledgerId === "" || docId === "" || filename === "") {
       logger.warn({ ledgerId, docId, filename }, "Invalid path: missing components");
       return new NextResponse("Not Found", { status: 404 });
     }

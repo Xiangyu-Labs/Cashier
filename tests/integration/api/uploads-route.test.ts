@@ -119,4 +119,22 @@ describe("GET /api/uploads/[...path]", () => {
     expect(response.status).toBe(401);
     expect(mockDownload).not.toHaveBeenCalled();
   });
+
+  it("returns 404 when required path segments are missing", async () => {
+    vi.spyOn(authModule, "auth").mockResolvedValue({
+      user: {
+        id: "00000000-0000-4000-8000-000000000000",
+        email: "test@example.com",
+      },
+    } as never);
+
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({
+        path: ["00000000-0000-4000-8000-000000000000", "00000000-0000-4000-8000-000000000001"],
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
 });
