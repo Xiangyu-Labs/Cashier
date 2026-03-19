@@ -46,12 +46,12 @@ export function useLedgerPagePrefetching({
   useEffect(() => {
     const preloadTabs = () => {
       if (activeTab !== "details") {
-        fireAndForget(import("@/features/ledger/components/DetailsTab"), {
+        fireAndForget(import("@/modules/workspace/ui/DetailsTab"), {
           context: "LedgerPageClient.preload",
         });
       }
       if (activeTab !== "stats") {
-        fireAndForget(import("@/features/ledger/components/StatsTab"), {
+        fireAndForget(import("@/modules/workspace/ui/StatsTab"), {
           context: "LedgerPageClient.preload",
         });
       }
@@ -61,7 +61,7 @@ export function useLedgerPagePrefetching({
         });
       }
       if (activeTab !== "stream") {
-        fireAndForget(import("@/features/ledger/components/LedgerEntriesTab"), {
+        fireAndForget(import("@/modules/workspace/ui/LedgerEntriesTab"), {
           context: "LedgerPageClient.preload",
         });
       }

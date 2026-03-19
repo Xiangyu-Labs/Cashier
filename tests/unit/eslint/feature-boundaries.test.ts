@@ -59,6 +59,30 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects action-style ledger imports from module root in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getLedgerAction } from "@/modules/ledger";
+        export const leak = getLedgerAction;
+      `,
+      "src/app/api/v1/entries/route.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows ledger actions imports from dedicated public entrypoints in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getLedgerAction } from "@/modules/ledger/actions";
+        export const value = getLedgerAction;
+      `,
+      "src/app/api/v1/entries/route.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects workspace application deep imports from app files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -71,6 +95,30 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects source-document query imports from module root in cross-module callers", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getPendingSourceDocumentsAction } from "@/modules/source-document";
+        export const leak = getPendingSourceDocumentsAction;
+      `,
+      "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows source-document action imports from dedicated public entrypoints in modules", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getPendingSourceDocumentsAction } from "@/modules/source-document/actions";
+        export const value = getPendingSourceDocumentsAction;
+      `,
+      "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects cross-module server-action deep imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -78,6 +126,18 @@ describe("boundary lint", () => {
         export const leak = getSourceDocumentsAction;
       `,
       "src/modules/ledger/contracts.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects auth helper imports from auth root in shared library files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { requireLedgerAccess } from "@/modules/auth";
+        export const leak = requireLedgerAccess;
+      `,
+      "src/lib/auth-actions.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);
@@ -138,6 +198,30 @@ describe("boundary lint", () => {
         export const value = parseLedgerTab;
       `,
       "src/app/[locale]/(protected)/ledger/[id]/page.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects workspace shell imports from legacy ledger feature tabs", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { LedgerEntriesTab } from "@/features/ledger/components/LedgerEntriesTab";
+        export const leak = LedgerEntriesTab;
+      `,
+      "src/modules/workspace/ui/LedgerPageClient.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows workspace shell imports from workspace module tab entrypoints", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
+        export const value = LedgerEntriesTab;
+      `,
+      "src/modules/workspace/ui/LedgerPageClient.tsx"
     );
 
     expect(messages).toHaveLength(0);

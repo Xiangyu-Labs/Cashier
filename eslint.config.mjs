@@ -22,6 +22,121 @@ const moduleNames = [
   "workspace",
 ];
 
+const moduleRootRestrictedImports = {
+  auth: {
+    importNames: [
+      "sendOTPAction",
+      "deleteAccount",
+      "AUTH_ERROR_CODES",
+      "AuthErrorCode",
+      "getCurrentUser",
+      "requireLedgerAccess",
+      "authenticateWithOTP",
+      "OTPInvalidSignInError",
+      "OTPExpiredSignInError",
+      "OTPLockedSignInError",
+      "OTPRateLimitedSignInError",
+      "isRegistrationAllowed",
+      "assertRegistrationAllowed",
+      "RegistrationDisabledError",
+      "generateOTP",
+      "verifyOTP",
+      "hashOTP",
+      "isValidOTPFormat",
+      "getOTPExpiration",
+      "getLockoutExpiration",
+      "getMaxAttempts",
+      "getResendCooldown",
+      "OTP_LENGTH",
+      "checkSendRateLimit",
+      "checkSendRateLimitByIP",
+      "checkResendCooldown",
+      "setResendCooldown",
+      "getCanResendAt",
+      "checkVerifyRateLimit",
+      "findOTPRecord",
+      "verifyOTPWithPolicy",
+      "isAccountLocked",
+      "createDefaultLedgerForUser",
+      "clearUserDefaultLedger",
+    ],
+    subEntrypoints: "actions/errors/helpers/services",
+  },
+  ledger: {
+    importNames: [
+      "getLedgerAction",
+      "getLedgersAction",
+      "createLedgerAction",
+      "updateLedgerAction",
+      "deleteLedgerAction",
+      "listEntryCategories",
+      "getEntryCategoriesAction",
+      "createEntryCategoryAction",
+      "updateEntryCategoryAction",
+      "deleteEntryCategoryAction",
+      "reorderEntryCategoriesAction",
+      "getUncategorizedCountAction",
+      "listLedgerEntries",
+      "updateLedgerEntryAction",
+      "deleteLedgerEntryAction",
+      "batchUpdateLedgerEntriesAction",
+      "batchDeleteLedgerEntriesAction",
+      "createLedgerEntryAction",
+      "getLedgerEntriesAction",
+      "getLedgerEntryAction",
+      "submitAutoCategorizeAction",
+      "submitBatchCategorizeAction",
+      "exportLedgerEntriesAction",
+      "getLedgerSettingsAction",
+      "getServiceCredentialsAction",
+      "createServiceCredentialAction",
+      "deleteServiceCredentialAction",
+      "validateServiceCredential",
+      "getLedgerStatsAction",
+      "calculateLedgerStats",
+    ],
+    subEntrypoints: "actions",
+  },
+  "source-document": {
+    importNames: [
+      "listSourceDocuments",
+      "getSourceDocumentFullAction",
+      "getSourceDocumentsAction",
+      "getAllSourceDocumentsAction",
+      "getPendingSourceDocumentsAction",
+      "getSourceDocumentByIdAction",
+      "getSourceDocumentLightAction",
+      "batchUpdateSourceDocumentsAction",
+      "updateSourceDocumentAction",
+      "updateSourceDocumentImagesAction",
+      "deleteSourceDocumentAction",
+      "batchDeleteSourceDocumentsAction",
+      "batchRetrySourceDocumentsAction",
+      "createQuickEntryAction",
+      "createSourceDocumentAction",
+      "retrySourceDocumentAction",
+      "getProcessingTasksAction",
+      "getProcessingStatsAction",
+    ],
+    subEntrypoints: "actions",
+  },
+  stats: {
+    importNames: ["getEnhancedStats", "EnhancedStats", "EnhancedCategoryStat"],
+    subEntrypoints: "actions",
+  },
+  "task-queue": {
+    importNames: [
+      "cancelTaskAction",
+      "batchCancelTasksAction",
+      "dismissTaskAction",
+      "batchDismissTasksAction",
+      "getTaskQueueForLedger",
+      "getTaskQueueAction",
+    ],
+    subEntrypoints: "actions",
+  },
+};
+
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
     `@/features/${featureName}/server/*/**`,
@@ -47,6 +162,21 @@ function createCrossFeatureBoundaryRule(currentFeature) {
   ];
 }
 
+function createModuleRootImportRestrictions(targetModules) {
+  return targetModules.flatMap((moduleName) => {
+    const restriction = moduleRootRestrictedImports[moduleName];
+    if (restriction == null) return [];
+
+    return [
+      {
+        name: `@/modules/${moduleName}`,
+        importNames: restriction.importNames,
+        message: `Import these APIs from "@/modules/${moduleName}/${restriction.subEntrypoints}" instead of the module root.`,
+      },
+    ];
+  });
+}
+
 function createDeepModuleImportPatterns(targetModules) {
   return targetModules.flatMap((moduleName) => [
     `@/modules/${moduleName}/server-actions/**`,
@@ -61,18 +191,21 @@ function createDeepModuleImportPatterns(targetModules) {
 }
 
 function createCrossModuleBoundaryRule(currentModule) {
+  const options = createCrossModuleBoundaryOptions(currentModule);
+  return ["error", options];
+}
+
+function createCrossModuleBoundaryOptions(currentModule) {
   const disallowedModules = moduleNames.filter((moduleName) => moduleName !== currentModule);
-  return [
-    "error",
-    {
-      patterns: [
-        {
-          group: createDeepModuleImportPatterns(disallowedModules),
-          message: "Cross-module imports must go through the target module's public entrypoint.",
-        },
-      ],
-    },
-  ];
+  return {
+    patterns: [
+      {
+        group: createDeepModuleImportPatterns(disallowedModules),
+        message: "Cross-module imports must go through the target module's public entrypoint.",
+      },
+    ],
+    paths: createModuleRootImportRestrictions(disallowedModules),
+  };
 }
 
 function createFeatureBoundaryConfigs(currentFeature) {
@@ -160,6 +293,7 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: createModuleRootImportRestrictions(moduleNames),
           patterns: [
             {
               group: createDeepFeatureImportPatterns(featureNames),
@@ -185,6 +319,7 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: createModuleRootImportRestrictions(moduleNames),
           patterns: [
             {
               group: createDeepFeatureImportPatterns(featureNames),
@@ -212,6 +347,28 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": createCrossModuleBoundaryRule(moduleName),
     },
   })),
+  {
+    files: [
+      "src/modules/workspace/ui/LedgerPageClient.tsx",
+      "src/modules/workspace/ui/useLedgerPagePrefetching.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...createCrossModuleBoundaryOptions("workspace"),
+          patterns: [
+            ...createCrossModuleBoundaryOptions("workspace").patterns,
+            {
+              group: ["@/features/ledger/components/**", "@/features/ledger/client/**"],
+              message:
+                "Workspace shell code must consume ledger UI through module public entrypoints.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

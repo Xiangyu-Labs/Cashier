@@ -68,7 +68,7 @@ const ModalStackRenderer = dynamic(
 
 const LedgerEntriesTab = dynamic(
   () =>
-    import("@/features/ledger/components/LedgerEntriesTab").then((module) => ({
+    import("@/modules/workspace/ui/LedgerEntriesTab").then((module) => ({
       default: module.LedgerEntriesTab,
     })),
   {
@@ -78,7 +78,7 @@ const LedgerEntriesTab = dynamic(
 
 const DetailsTab = dynamic(
   () =>
-    import("@/features/ledger/components/DetailsTab").then((module) => ({
+    import("@/modules/workspace/ui/DetailsTab").then((module) => ({
       default: module.DetailsTab,
     })),
   {
@@ -88,7 +88,7 @@ const DetailsTab = dynamic(
 
 const StatsTab = dynamic(
   () =>
-    import("@/features/ledger/components/StatsTab").then((module) => ({
+    import("@/modules/workspace/ui/StatsTab").then((module) => ({
       default: module.StatsTab,
     })),
   {
