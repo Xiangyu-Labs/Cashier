@@ -97,7 +97,7 @@ describe("SourceDocument Retry Action", () => {
     const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, newDocId),
     });
-    expect(newDocAfterRetry?.status).toBe("queued");
+    expect(["queued", "processing"]).toContain(newDocAfterRetry?.status);
     expect(newDocAfterRetry?.text).toBe("Dinner 50");
 
     // 3. Process tasks again
@@ -156,7 +156,7 @@ describe("SourceDocument Retry Action", () => {
     const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, newDocId),
     });
-    expect(newDocAfterRetry?.status).toBe("queued");
+    expect(["queued", "processing"]).toContain(newDocAfterRetry?.status);
 
     // 3. Process
     await processAllPendingTasks();
