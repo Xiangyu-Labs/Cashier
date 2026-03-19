@@ -63,16 +63,26 @@ export function buildLedgerEntryCursorCondition(cursor: string | null | undefine
     return null;
   }
 
-  const parts = cursor.split("|");
-  if (parts.length !== 2 || parts[0] === "" || parts[1] === "") {
+  const [cursorCreated, cursorId, ...rest] = cursor.split("|");
+  if (
+    rest.length > 0 ||
+    cursorCreated == null ||
+    cursorCreated === "" ||
+    cursorId == null ||
+    cursorId === ""
+  ) {
     return null;
   }
 
-  const [cursorCreated, cursorId] = parts;
+  const createdAt = new Date(cursorCreated);
+  if (Number.isNaN(createdAt.getTime())) {
+    return null;
+  }
+
   return (
     or(
-    lt(ledgerEntries.createdAt, new Date(cursorCreated)),
-    and(eq(ledgerEntries.createdAt, new Date(cursorCreated)), lt(ledgerEntries.id, cursorId))
+      lt(ledgerEntries.createdAt, createdAt),
+      and(eq(ledgerEntries.createdAt, createdAt), lt(ledgerEntries.id, cursorId))
     ) ?? null
   );
 }

@@ -58,10 +58,15 @@ export function buildCaseExpression(
   field: "convertedAmount" | "exchangeRate"
 ): SQL {
   const cases = entries.map((entry, index) => {
+    const result = results[index];
+    if (result == null) {
+      throw new Error(`Missing conversion result for ledger entry ${entry.id} at index ${index}`);
+    }
+
     const value =
       field === "convertedAmount"
-        ? results[index].convertedAmount.toFixed(2)
-        : results[index].exchangeRate.toFixed(6);
+        ? result.convertedAmount.toFixed(2)
+        : result.exchangeRate.toFixed(6);
     return sql`WHEN ${entry.id} THEN ${value}`;
   });
 

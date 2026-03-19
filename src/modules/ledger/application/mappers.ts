@@ -112,7 +112,7 @@ export function mapLedgerEntryEmbeddedViewDto(
     createdAt: toIso(entry.createdAt)!,
     updatedAt: toIso(entry.updatedAt)!,
     deletedAt: toIso(entry.deletedAt),
-    category: entry.category ? mapEntryCategoryDto(entry.category) : undefined,
+    ...(entry.category ? { category: mapEntryCategoryDto(entry.category) } : {}),
   };
 }
 
@@ -124,8 +124,8 @@ export function mapLedgerEntryDto(
 ): LedgerEntryDto {
   return {
     ...mapLedgerEntryEmbeddedViewDto(entry),
-    sourceDocument: entry.sourceDocument
-      ? mapSourceDocumentReferenceDto(entry.sourceDocument)
-      : undefined,
+    ...(entry.sourceDocument
+      ? { sourceDocument: mapSourceDocumentReferenceDto(entry.sourceDocument) }
+      : {}),
   };
 }
