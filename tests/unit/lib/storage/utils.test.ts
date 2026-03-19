@@ -12,6 +12,13 @@ vi.mock("@/lib/storage/local", () => ({
   getLocalStorage: vi.fn(),
 }));
 
+function requireDefined<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 describe("storage/utils", () => {
   const mockStorage = {
     extractKeyFromUrl: vi.fn(),
@@ -86,8 +93,10 @@ describe("storage/utils", () => {
       const results = await loadImagesForAI(["/api/uploads/key1.jpg", "/api/uploads/key2.png"]);
 
       expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(true);
+      const firstResult = requireDefined(results[0], "Expected first load result");
+      const secondResult = requireDefined(results[1], "Expected second load result");
+      expect(firstResult.success).toBe(true);
+      expect(secondResult.success).toBe(true);
     });
 
     it("should handle mixed base64 and local URLs", async () => {
@@ -100,9 +109,11 @@ describe("storage/utils", () => {
       ]);
 
       expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[0].dataUrl).toBe("data:image/jpeg;base64,abc123");
-      expect(results[1].success).toBe(true);
+      const firstResult = requireDefined(results[0], "Expected first load result");
+      const secondResult = requireDefined(results[1], "Expected second load result");
+      expect(firstResult.success).toBe(true);
+      expect(firstResult.dataUrl).toBe("data:image/jpeg;base64,abc123");
+      expect(secondResult.success).toBe(true);
     });
 
     it("should return results for all URLs even with failures", async () => {
@@ -115,9 +126,11 @@ describe("storage/utils", () => {
       const results = await loadImagesForAI(urls);
 
       expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(false);
-      expect(results[1].error).toBeDefined();
+      const firstResult = requireDefined(results[0], "Expected first load result");
+      const secondResult = requireDefined(results[1], "Expected second load result");
+      expect(firstResult.success).toBe(true);
+      expect(secondResult.success).toBe(false);
+      expect(secondResult.error).toBeDefined();
     });
   });
 
@@ -134,8 +147,10 @@ describe("storage/utils", () => {
       ]);
 
       expect(results).toHaveLength(2);
-      expect(results[0]).toMatch(/^data:image\/jpeg;/);
-      expect(results[1]).toMatch(/^data:image\/jpeg;/);
+      const firstResult = requireDefined(results[0], "Expected first data URL result");
+      const secondResult = requireDefined(results[1], "Expected second data URL result");
+      expect(firstResult).toMatch(/^data:image\/jpeg;/);
+      expect(secondResult).toMatch(/^data:image\/jpeg;/);
     });
 
     it("should handle mixed base64 and local URLs", async () => {
@@ -148,8 +163,10 @@ describe("storage/utils", () => {
       ]);
 
       expect(results).toHaveLength(2);
-      expect(results[0]).toBe("data:image/jpeg;base64,abc123");
-      expect(results[1]).toMatch(/^data:image\/jpeg;/);
+      const firstResult = requireDefined(results[0], "Expected first data URL result");
+      const secondResult = requireDefined(results[1], "Expected second data URL result");
+      expect(firstResult).toBe("data:image/jpeg;base64,abc123");
+      expect(secondResult).toMatch(/^data:image\/jpeg;/);
     });
 
     it("should throw when any image fails to load", async () => {

@@ -6,6 +6,13 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
+function requireDefined<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 export async function createTestSchema(
   db: BetterSQLite3Database<typeof schema>,
   client: Database.Database
@@ -86,7 +93,7 @@ export async function createTestSourceDocument(
     imageUrls: string[];
   }> = {}
 ): Promise<string> {
-  const [doc] = await db
+  const insertedDocs = await db
     .insert(schema.sourceDocuments)
     .values({
       ledgerId,
@@ -95,6 +102,7 @@ export async function createTestSourceDocument(
       imageUrls: overrides.imageUrls ?? [],
     })
     .returning();
+  const doc = requireDefined(insertedDocs[0], "Expected inserted source document");
 
   return doc.id;
 }

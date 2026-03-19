@@ -47,11 +47,19 @@ const DEFAULT_OPTIONS: Required<Omit<MultiStageMockOptions, "incompleteReason" |
       amount: 25.5,
       currency: "CNY",
       category_index: 1,
-      entry_date: new Date().toISOString().split("T")[0],
+      entry_date: getCurrentDateIso(),
       notes: null,
     },
   ],
 };
+
+function getCurrentDateIso(): string {
+  const isoDate = new Date().toISOString().split("T")[0];
+  if (!isoDate) {
+    throw new Error("Failed to derive current ISO date");
+  }
+  return isoDate;
+}
 
 /**
  * Create a mock OpenAI client that handles multi-stage AI calls
@@ -105,7 +113,7 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           const hasLedgerEntries = prompt.includes("ledger_entries");
           const hasPreAnalysisContext = prompt.includes("pre-analysis context");
           if (isDetailedParser || hasLedgerEntries || hasPreAnalysisContext) {
-            const currentDate = new Date().toISOString().split("T")[0];
+            const currentDate = getCurrentDateIso();
             return Promise.resolve({
               content: JSON.stringify({
                 ledger_entries: opts.entries.map((e, index) => ({
@@ -216,7 +224,7 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           }
 
           // Stage 2: Detailed Parse (default response)
-          const currentDate = new Date().toISOString().split("T")[0];
+          const currentDate = getCurrentDateIso();
           return Promise.resolve({
             content: JSON.stringify({
               ledger_entries: opts.entries.map((e, index) => ({

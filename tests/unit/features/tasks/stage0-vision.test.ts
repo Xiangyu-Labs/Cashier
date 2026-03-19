@@ -11,6 +11,13 @@ function createMockAI(responseText: string): AIContext {
   };
 }
 
+function requireDefined<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 describe("executeStage0", () => {
   let mockAI: AIContext;
 
@@ -28,14 +35,22 @@ describe("executeStage0", () => {
     await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
 
     expect(mockAI.generate).toHaveBeenCalledOnce();
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const firstCall = requireDefined(
+      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0],
+      "Expected generate call"
+    );
+    const call = requireDefined(firstCall[0], "Expected generate call args");
     expect(call.model).toBe("vision");
   });
 
   it("does not require JSON output", async () => {
     await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const firstCall = requireDefined(
+      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0],
+      "Expected generate call"
+    );
+    const call = requireDefined(firstCall[0], "Expected generate call args");
     expect(call.requireJson).toBeFalsy();
   });
 
@@ -49,12 +64,17 @@ describe("executeStage0", () => {
   it("sends image as image_url content part", async () => {
     await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const firstCall = requireDefined(
+      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0],
+      "Expected generate call"
+    );
+    const call = requireDefined(firstCall[0], "Expected generate call args");
     const messages = call.messages;
-    const content = messages[0].content;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content;
     const imagePart = content.find((p: { type: string }) => p.type === "image_url");
     expect(imagePart).toBeDefined();
-    expect(imagePart.image_url.url).toBe("data:image/jpeg;base64,abc");
+    expect(imagePart?.image_url.url).toBe("data:image/jpeg;base64,abc");
   });
 
   it("includes focus hints in prompt when provided", async () => {
@@ -66,7 +86,11 @@ describe("executeStage0", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const firstCall = requireDefined(
+      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0],
+      "Expected generate call"
+    );
+    const call = requireDefined(firstCall[0], "Expected generate call args");
     expect(call.prompt).toContain("pay attention to tax amounts");
   });
 
@@ -78,9 +102,14 @@ describe("executeStage0", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const firstCall = requireDefined(
+      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0],
+      "Expected generate call"
+    );
+    const call = requireDefined(firstCall[0], "Expected generate call args");
     const messages = call.messages;
-    const content = messages[0].content;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content;
     const textPart = content.find((p: { type: string }) => p.type === "text");
     expect(textPart?.text).toContain("2 images");
   });

@@ -58,6 +58,13 @@ const baseInput: CategorizeEntryInput = {
   aiLanguage: "zh-CN",
 };
 
+function requireDefined<T>(value: T | null | undefined, message: string): T {
+  if (value == null) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 describe("categorizeEntryHandler.execute", () => {
   it("returns correct categoryIndex when AI matches a category", async () => {
     const ai = createMockAI(1);
@@ -110,9 +117,14 @@ describe("categorizeEntryHandler.execute", () => {
 
     await categorizeEntryHandler.execute(input, ctx);
 
-    const callArgs = vi.mocked(ai.generate).mock.calls[0][0];
+    const firstCall = requireDefined(
+      vi.mocked(ai.generate).mock.calls[0],
+      "Expected AI generate to be called once"
+    );
+    const callArgs = requireDefined(firstCall[0], "Expected AI generate call args");
     const messages = callArgs.messages as Array<{ role: string; content: unknown[] }>;
-    const content = messages[0].content as Array<{ type: string; text?: string }>;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content as Array<{ type: string; text?: string }>;
     const textParts = content.filter((c) => c.type === "text");
     expect(textParts.some((p) => p.text?.includes("Receipt from restaurant"))).toBe(true);
   });
@@ -128,12 +140,18 @@ describe("categorizeEntryHandler.execute", () => {
 
     await categorizeEntryHandler.execute(input, ctx);
 
-    const callArgs = vi.mocked(ai.generate).mock.calls[0][0];
+    const firstCall = requireDefined(
+      vi.mocked(ai.generate).mock.calls[0],
+      "Expected AI generate to be called once"
+    );
+    const callArgs = requireDefined(firstCall[0], "Expected AI generate call args");
     const messages = callArgs.messages as Array<{ role: string; content: unknown[] }>;
-    const content = messages[0].content as Array<{ type: string; image_url?: { url: string } }>;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content as Array<{ type: string; image_url?: { url: string } }>;
     const imageParts = content.filter((c) => c.type === "image_url");
     expect(imageParts).toHaveLength(1);
-    expect(imageParts[0].image_url?.url).toBe("https://example.com/receipt.jpg");
+    const firstImage = requireDefined(imageParts[0], "Expected first image part");
+    expect(firstImage.image_url?.url).toBe("https://example.com/receipt.jpg");
   });
 
   it("falls back to 'No additional context' when no source doc provided", async () => {
@@ -142,11 +160,17 @@ describe("categorizeEntryHandler.execute", () => {
 
     await categorizeEntryHandler.execute(baseInput, ctx);
 
-    const callArgs = vi.mocked(ai.generate).mock.calls[0][0];
+    const firstCall = requireDefined(
+      vi.mocked(ai.generate).mock.calls[0],
+      "Expected AI generate to be called once"
+    );
+    const callArgs = requireDefined(firstCall[0], "Expected AI generate call args");
     const messages = callArgs.messages as Array<{ role: string; content: unknown[] }>;
-    const content = messages[0].content as Array<{ type: string; text?: string }>;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content as Array<{ type: string; text?: string }>;
     expect(content).toHaveLength(1);
-    expect(content[0].text).toContain("No additional context");
+    const firstPart = requireDefined(content[0], "Expected first content part");
+    expect(firstPart.text).toContain("No additional context");
   });
 });
 
@@ -168,7 +192,7 @@ describe("categorizeEntryHandler.onComplete", () => {
     });
 
     // Create source doc + entry
-    const [doc] = await db
+    const insertedDocs = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -179,8 +203,9 @@ describe("categorizeEntryHandler.onComplete", () => {
         imageUrls: [],
       })
       .returning();
+    const doc = requireDefined(insertedDocs[0], "Expected inserted source document");
 
-    const [entry] = await db
+    const insertedEntries = await db
       .insert(ledgerEntries)
       .values({
         id: uuidv4(),
@@ -192,6 +217,7 @@ describe("categorizeEntryHandler.onComplete", () => {
         categoryId: null,
       })
       .returning();
+    const entry = requireDefined(insertedEntries[0], "Expected inserted ledger entry");
 
     entryId = entry.id;
   });
@@ -262,7 +288,7 @@ describe("categorizeEntryHandler.onError", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
 
-    const [doc] = await db
+    const insertedDocs = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -273,8 +299,9 @@ describe("categorizeEntryHandler.onError", () => {
         imageUrls: [],
       })
       .returning();
+    const doc = requireDefined(insertedDocs[0], "Expected inserted source document");
 
-    const [entry] = await db
+    const insertedEntries = await db
       .insert(ledgerEntries)
       .values({
         id: uuidv4(),
@@ -286,6 +313,7 @@ describe("categorizeEntryHandler.onError", () => {
         categoryId: null,
       })
       .returning();
+    const entry = requireDefined(insertedEntries[0], "Expected inserted ledger entry");
 
     const input: CategorizeEntryInput = {
       ...baseInput,

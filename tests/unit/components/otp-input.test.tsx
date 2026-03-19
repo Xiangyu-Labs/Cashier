@@ -2,6 +2,14 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { OTPInput } from "@/components/auth/otp-input";
 
+function requireInput(inputs: HTMLElement[], index: number): HTMLElement {
+  const input = inputs[index];
+  if (!input) {
+    throw new Error(`Expected OTP input at index ${index}`);
+  }
+  return input;
+}
+
 describe("OTPInput", () => {
   it("should render correct number of input fields", () => {
     render(<OTPInput value="" onChange={() => {}} length={6} />);
@@ -12,9 +20,9 @@ describe("OTPInput", () => {
   it("should display value in input fields", () => {
     render(<OTPInput value="123456" onChange={() => {}} length={6} />);
     const inputs = screen.getAllByRole("textbox");
-    expect(inputs[0].getAttribute("value")).toBe("1");
-    expect(inputs[1].getAttribute("value")).toBe("2");
-    expect(inputs[5].getAttribute("value")).toBe("6");
+    expect(requireInput(inputs, 0).getAttribute("value")).toBe("1");
+    expect(requireInput(inputs, 1).getAttribute("value")).toBe("2");
+    expect(requireInput(inputs, 5).getAttribute("value")).toBe("6");
   });
 
   it("should call onChange when input changes", () => {
@@ -22,7 +30,7 @@ describe("OTPInput", () => {
     render(<OTPInput value="" onChange={handleChange} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.change(inputs[0], { target: { value: "5" } });
+    fireEvent.change(requireInput(inputs, 0), { target: { value: "5" } });
     expect(handleChange).toHaveBeenCalledWith("5");
   });
 
@@ -31,7 +39,7 @@ describe("OTPInput", () => {
     render(<OTPInput value="" onChange={handleChange} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.change(inputs[0], { target: { value: "a" } });
+    fireEvent.change(requireInput(inputs, 0), { target: { value: "a" } });
     expect(handleChange).not.toHaveBeenCalled();
   });
 
@@ -40,7 +48,7 @@ describe("OTPInput", () => {
     render(<OTPInput value="12" onChange={handleChange} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.keyDown(inputs[2], { key: "Backspace" });
+    fireEvent.keyDown(requireInput(inputs, 2), { key: "Backspace" });
     expect(handleChange).toHaveBeenCalledWith("1");
   });
 
@@ -48,11 +56,11 @@ describe("OTPInput", () => {
     render(<OTPInput value="123" onChange={() => {}} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.keyDown(inputs[1], { key: "ArrowLeft" });
-    expect(document.activeElement === inputs[0]).toBe(true);
+    fireEvent.keyDown(requireInput(inputs, 1), { key: "ArrowLeft" });
+    expect(document.activeElement === requireInput(inputs, 0)).toBe(true);
 
-    fireEvent.keyDown(inputs[1], { key: "ArrowRight" });
-    expect(document.activeElement === inputs[2]).toBe(true);
+    fireEvent.keyDown(requireInput(inputs, 1), { key: "ArrowRight" });
+    expect(document.activeElement === requireInput(inputs, 2)).toBe(true);
   });
 
   it("should handle paste event", () => {
@@ -60,7 +68,7 @@ describe("OTPInput", () => {
     render(<OTPInput value="" onChange={handleChange} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.paste(inputs[0], {
+    fireEvent.paste(requireInput(inputs, 0), {
       clipboardData: {
         getData: () => "123456",
       },
@@ -74,7 +82,7 @@ describe("OTPInput", () => {
     render(<OTPInput value="" onChange={handleChange} length={6} />);
     const inputs = screen.getAllByRole("textbox");
 
-    fireEvent.paste(inputs[0], {
+    fireEvent.paste(requireInput(inputs, 0), {
       clipboardData: {
         getData: () => "12abc345",
       },

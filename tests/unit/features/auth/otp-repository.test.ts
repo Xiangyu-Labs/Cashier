@@ -23,6 +23,13 @@ async function verifyOTPToken(email: string, otp: string) {
   return verifyOTPWithPolicy(email, otp, record);
 }
 
+function requireDefined<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 describe("OTP Repository", () => {
   const testEmail = "otp-test@example.com";
   let db: ReturnType<typeof getTestDb>;
@@ -44,8 +51,9 @@ describe("OTP Repository", () => {
       // Verify token exists in database
       const tokens = await db.select().from(otpTokens);
       expect(tokens).toHaveLength(1);
-      expect(tokens[0].email).toBe(testEmail.toLowerCase());
-      expect(tokens[0].ipAddress).toBe("127.0.0.1");
+      const token = requireDefined(tokens[0], "Expected created OTP token");
+      expect(token.email).toBe(testEmail.toLowerCase());
+      expect(token.ipAddress).toBe("127.0.0.1");
     });
 
     it("should delete old OTP when creating new one", async () => {
@@ -69,7 +77,8 @@ describe("OTP Repository", () => {
       await createOTPToken("Test@Example.COM", otp, "127.0.0.1");
 
       const tokens = await db.select().from(otpTokens);
-      expect(tokens[0].email).toBe("test@example.com");
+      const token = requireDefined(tokens[0], "Expected normalized OTP token");
+      expect(token.email).toBe("test@example.com");
     });
 
     it("should store hashed OTP, not plain text", async () => {
@@ -77,9 +86,10 @@ describe("OTP Repository", () => {
       await createOTPToken(testEmail, otp, "127.0.0.1");
 
       const tokens = await db.select().from(otpTokens);
-      expect(tokens[0].tokenHash).not.toBe(otp);
+      const token = requireDefined(tokens[0], "Expected stored OTP token");
+      expect(token.tokenHash).not.toBe(otp);
       // Verify the stored hash can be verified with the OTP (supports both new and legacy formats)
-      expect(verifyOTP(otp, tokens[0].tokenHash)).toBe(true);
+      expect(verifyOTP(otp, token.tokenHash)).toBe(true);
     });
   });
 
@@ -180,7 +190,8 @@ describe("OTP Repository", () => {
       await verifyOTPToken(testEmail, otp);
 
       const tokens = await db.select().from(otpTokens);
-      expect(tokens[0].verifiedAt).toBeInstanceOf(Date);
+      const token = requireDefined(tokens[0], "Expected verified OTP token");
+      expect(token.verifiedAt).toBeInstanceOf(Date);
     });
   });
 
@@ -265,7 +276,8 @@ describe("OTP Repository", () => {
 
       const tokens = await db.select().from(otpTokens);
       expect(tokens).toHaveLength(1);
-      expect(tokens[0].email).toBe("user2@example.com");
+      const token = requireDefined(tokens[0], "Expected remaining valid OTP token");
+      expect(token.email).toBe("user2@example.com");
     });
 
     it("should not delete valid tokens", async () => {
