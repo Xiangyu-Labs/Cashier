@@ -35,4 +35,4 @@ export {
   isAccountLocked,
   type VerificationResult,
 } from "./services/otp-verification";
-export { createDefaultLedgerForUser } from "./services/user-setup";
+export { createDefaultLedgerForUser, clearUserDefaultLedger } from "./services/user-setup";

@@ -6,7 +6,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { OTPInput } from "@/components/auth/otp-input";
 import { ResendCountdown } from "@/components/auth/resend-countdown";
 import { ExpiryTimer } from "@/components/auth/expiry-timer";
-import { OTP_LENGTH } from "@/modules/auth/services/otp";
+import { OTP_LENGTH } from "@/modules/auth/constants";
 
 interface OtpStepProps {
   email: string;

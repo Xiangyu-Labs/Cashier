@@ -49,10 +49,14 @@ function createCrossFeatureBoundaryRule(currentFeature) {
 
 function createDeepModuleImportPatterns(targetModules) {
   return targetModules.flatMap((moduleName) => [
+    `@/modules/${moduleName}/server-actions/**`,
     `@/modules/${moduleName}/application/**`,
     `@/modules/${moduleName}/infra/**`,
     `@/modules/${moduleName}/domain/**`,
-    `@/modules/${moduleName}/ui/**`,
+    `@/modules/${moduleName}/services/*`,
+    `@/modules/${moduleName}/helpers/*`,
+    `@/modules/${moduleName}/ui/*/*`,
+    `@/modules/${moduleName}/hooks/*/*`,
   ]);
 }
 
@@ -163,6 +167,10 @@ const eslintConfig = defineConfig([
                 "App and shared UI code must import features via public root/server/client/components entrypoints.",
             },
             {
+              group: createDeepModuleImportPatterns(moduleNames),
+              message: "App and shared UI code must import modules via public entrypoints.",
+            },
+            {
               group: ["@/persistence", "@/persistence/**"],
               message: "App and shared UI code must not depend directly on persistence.",
             },
@@ -181,6 +189,10 @@ const eslintConfig = defineConfig([
             {
               group: createDeepFeatureImportPatterns(featureNames),
               message: "Shared library/types code must not deep-import feature internals.",
+            },
+            {
+              group: createDeepModuleImportPatterns(moduleNames),
+              message: "Shared library/types code must not deep-import module internals.",
             },
           ],
         },

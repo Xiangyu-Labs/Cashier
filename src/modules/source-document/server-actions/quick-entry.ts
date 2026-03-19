@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
-import { requireLedgerAccess } from "@/modules/auth";
+import { requireLedgerAccess } from "@/modules/auth/helpers";
 import { and, eq, isNull } from "drizzle-orm";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { CurrencyService } from "@/modules/currency";

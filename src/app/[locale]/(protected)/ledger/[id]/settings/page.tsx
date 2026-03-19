@@ -3,7 +3,7 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
   getLedgerSettingsAction,
-} from "@/modules/ledger";
+} from "@/modules/ledger/actions";
 import { SettingsPageClient } from "@/modules/ledger/ui";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";

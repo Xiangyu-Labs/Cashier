@@ -28,7 +28,7 @@ import { useSelection } from "@/hooks/use-selection";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
-import { useGroupedEntries } from "@/modules/ledger/ui/useGroupedEntries";
+import { useGroupedEntries } from "@/modules/ledger/hooks/useGroupedEntries";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -438,5 +438,3 @@ export function LedgerEntriesTab({
     </LayoutGroup>
   );
 }
-
-export { useGroupedEntries } from "./useGroupedEntries";

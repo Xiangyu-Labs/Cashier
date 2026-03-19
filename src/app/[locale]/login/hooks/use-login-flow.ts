@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
-import { OTP_LENGTH } from "@/modules/auth/services/otp";
+import { OTP_LENGTH } from "@/modules/auth/constants";
 
 type LoginStep = "email" | "otp";
 

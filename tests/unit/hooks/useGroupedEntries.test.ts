@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useGroupedEntries } from "@/modules/ledger/ui/useGroupedEntries";
+import { useGroupedEntries } from "@/modules/ledger/hooks/useGroupedEntries";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 

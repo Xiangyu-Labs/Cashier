@@ -1,6 +1,7 @@
 import crypto from "crypto";
+import { OTP_LENGTH } from "../constants";
 
-export const OTP_LENGTH = 6;
+export { OTP_LENGTH };
 
 const DEFAULT_OTP_EXPIRES_SECONDS = 300;
 const DEFAULT_LOCKOUT_MINUTES = 15;

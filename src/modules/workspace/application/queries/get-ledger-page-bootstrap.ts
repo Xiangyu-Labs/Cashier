@@ -7,12 +7,12 @@ import {
   getEntryCategoriesAction,
   getLedgerStatsAction,
   getLedgerEntriesAction,
-} from "@/modules/ledger";
-import { getEnhancedStats } from "@/modules/stats";
+} from "@/modules/ledger/actions";
+import { getEnhancedStats } from "@/modules/stats/actions";
 import {
   getPendingSourceDocumentsAction,
   getAllSourceDocumentsAction,
-} from "@/modules/source-document";
+} from "@/modules/source-document/actions";
 import {
   getDetailsInitialQueryState,
   getStatsInitialQueryState,

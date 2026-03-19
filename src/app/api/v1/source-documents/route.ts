@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listSourceDocuments } from "@/modules/source-document";
+import { listSourceDocuments } from "@/modules/source-document/actions";
 import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { optionalDateStringSchema } from "@/lib/validation";
