@@ -2,8 +2,8 @@ import { z } from "zod";
 import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
+  SourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/contracts";
-import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 
 export interface SourceDocumentActionInput {
   text?: string;
@@ -30,7 +30,7 @@ export interface PendingSourceDocumentsResponse {
 
 export type SourceDocumentWithEntries = SourceDocumentDto;
 export type SerializedSourceDocument = SourceDocumentDto;
-export type SerializedLedgerEntry = LedgerEntryEmbeddedViewDto;
+export type SerializedLedgerEntry = SourceDocumentLedgerEntryDto;
 export type SourceDocumentGroup = SourceDocumentGroupDto;
 
 // Paginated response for source documents

@@ -7,15 +7,17 @@ import { requireLedgerAccess } from "@/modules/auth/access";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { AppError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
-import type { SourceDocumentLightDto } from "@/modules/source-document/contracts";
-import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
+import type {
+  SourceDocumentLedgerEntryDto,
+  SourceDocumentLightDto,
+} from "@/modules/source-document/contracts";
 
 /**
  * Light version of SourceDocument for prefetching.
  * Contains all data except imageUrls.
  */
 export interface SourceDocumentLight extends SourceDocumentLightDto {
-  ledgerEntries: LedgerEntryEmbeddedViewDto[];
+  ledgerEntries: SourceDocumentLedgerEntryDto[];
 }
 
 /**

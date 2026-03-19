@@ -10,19 +10,32 @@ import {
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
-import {
-  deleteSourceDocumentAction,
-  batchDeleteSourceDocumentsAction,
-  type PaginatedSourceDocumentsResponse,
-  type SourceDocumentWithEntries,
-} from "@/modules/source-document/actions";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 
-type SourceDocumentsQueryData = PaginatedSourceDocumentsResponse | undefined;
+type SourceDocumentCacheEntry = Pick<
+  LedgerEntry,
+  | "id"
+  | "itemName"
+  | "description"
+  | "amount"
+  | "currency"
+  | "categoryId"
+  | "convertedAmount"
+  | "exchangeRate"
+> & {
+  category?: EntryCategory | null;
+};
+
+interface SourceDocumentCacheItem {
+  ledgerEntries?: SourceDocumentCacheEntry[];
+}
+
+type SourceDocumentsQueryData = {
+  items?: SourceDocumentCacheItem[];
+} | undefined;
 
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
   const tCommon = useTranslations("Common");
-  const t = useTranslations("LedgerEntriesTab");
 
   const updateEntry = useLedgerMutation<
     LedgerEntry,
@@ -68,10 +81,10 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
                         ? categories.find((c) => c.id === data.categoryId) ?? e.category
                         : e.category,
                   };
-                  return updated as typeof e;
+                  return updated;
                 }) ?? [];
               return { ...doc, ledgerEntries: updatedEntries };
-            }) as SourceDocumentWithEntries[],
+            }),
           };
         }
       );
@@ -114,74 +127,8 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     },
   });
 
-  const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
-    mutationFn: (sourceDocumentId) => deleteSourceDocumentAction(ledgerId, sourceDocumentId),
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: t("deleteFailed"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onOptimisticUpdate: (queryClient, id) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
-      });
-
-      queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
-        (old): SourceDocumentsQueryData => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.filter((d) => d.id !== id),
-            total: old.total - 1,
-          };
-        }
-      );
-
-      return { snapshots };
-    },
-  });
-
-  const batchDeleteSourceDocuments = useLedgerMutation<void, string[]>(ledgerId, {
-    mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
-      });
-
-      queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
-        (old) => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.filter((d) => !ids.includes(d.id)),
-            total: old.total - ids.length,
-          };
-        }
-      );
-
-      return { snapshots };
-    },
-  });
-
   return {
     updateEntry,
     deleteEntry,
-    deleteSourceDocument,
-    batchDeleteSourceDocuments,
   };
 }

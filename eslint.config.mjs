@@ -66,6 +66,20 @@ function createModuleSpecificPathRestrictions(currentModule) {
   return [];
 }
 
+function createModuleSpecificImportPatterns(currentModule) {
+  if (currentModule === "ledger") {
+    return [
+      {
+        group: ["@/modules/source-document", "@/modules/source-document/*"],
+        message:
+          "Ledger module must not depend on source-document module public APIs. Move orchestration to workspace or source-document-owned hooks.",
+      },
+    ];
+  }
+
+  return [];
+}
+
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
     `@/features/${featureName}/server/*/**`,
@@ -115,6 +129,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
         group: LEGACY_FEATURE_IMPORT_PATTERNS,
         message: "Legacy feature imports are forbidden. Import from modules or lib instead.",
       },
+      ...createModuleSpecificImportPatterns(currentModule),
       {
         group: createDeepModuleImportPatterns(disallowedModules),
         message: "Cross-module imports must go through the target module's public entrypoint.",

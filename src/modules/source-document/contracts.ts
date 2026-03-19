@@ -1,5 +1,34 @@
 import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
-import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
+
+export type SourceDocumentEntryCategoryDto = {
+  id: string;
+  ledgerId: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  isEditable: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type SourceDocumentLedgerEntryDto = {
+  id: string;
+  ledgerId: string;
+  categoryId: string | null;
+  sourceDocumentId: string | null;
+  amount: string;
+  currency: string | null;
+  itemName: string;
+  description: string | null;
+  convertedAmount: string | null;
+  exchangeRate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  category?: SourceDocumentEntryCategoryDto | null;
+};
 
 export type SourceDocumentDto = {
   id: string;
@@ -15,14 +44,14 @@ export type SourceDocumentDto = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-  ledgerEntries?: LedgerEntryEmbeddedViewDto[];
+  ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
 };
 
 export type SourceDocumentListItemDto = Omit<SourceDocumentDto, "text" | "imageUrls" | "ledgerEntries"> & {
   text: string | null;
   imageUrls: string[];
-  ledgerEntries?: LedgerEntryEmbeddedViewDto[];
+  ledgerEntries?: SourceDocumentLedgerEntryDto[];
 };
 
 export type SourceDocumentLightDto = Omit<SourceDocumentDto, "ledgerEntries" | "imageUrls"> & {
@@ -31,7 +60,7 @@ export type SourceDocumentLightDto = Omit<SourceDocumentDto, "ledgerEntries" | "
 
 export interface SourceDocumentGroupDto {
   sourceDocument: SourceDocumentDto;
-  ledgerEntries: LedgerEntryEmbeddedViewDto[];
+  ledgerEntries: SourceDocumentLedgerEntryDto[];
 }
 
 export interface CreateSourceDocumentInput {

@@ -1,7 +1,8 @@
 import type { SourceDocument } from "@/persistence";
-import type { LedgerEntryEmbeddedViewDto } from "@/modules/ledger/contracts";
 import type {
+  SourceDocumentEntryCategoryDto,
   SourceDocumentDto,
+  SourceDocumentLedgerEntryDto,
   SourceDocumentGroupDto,
   SourceDocumentListItemDto,
 } from "../contracts";
@@ -37,9 +38,78 @@ export function mapSourceDocumentDto(
   };
 }
 
+type SourceDocumentEntryCategoryInput = {
+  id: string;
+  ledgerId: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  isEditable: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+type SourceDocumentLedgerEntryInput = {
+  id: string;
+  ledgerId: string;
+  categoryId: string | null;
+  sourceDocumentId: string | null;
+  amount: string;
+  currency: string | null;
+  itemName: string;
+  description: string | null;
+  convertedAmount: string | null;
+  exchangeRate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  category?: SourceDocumentEntryCategoryInput | null;
+};
+
+export function mapSourceDocumentEntryCategoryDto(
+  category: SourceDocumentEntryCategoryInput
+): SourceDocumentEntryCategoryDto {
+  return {
+    id: category.id,
+    ledgerId: category.ledgerId,
+    name: category.name,
+    description: category.description,
+    icon: category.icon,
+    sortOrder: category.sortOrder,
+    isEditable: category.isEditable,
+    createdAt: category.createdAt,
+    updatedAt: category.updatedAt,
+    deletedAt: category.deletedAt,
+  };
+}
+
+export function mapSourceDocumentLedgerEntryDto(
+  entry: SourceDocumentLedgerEntryInput
+): SourceDocumentLedgerEntryDto {
+  return {
+    id: entry.id,
+    ledgerId: entry.ledgerId,
+    categoryId: entry.categoryId,
+    sourceDocumentId: entry.sourceDocumentId,
+    amount: entry.amount,
+    currency: entry.currency,
+    itemName: entry.itemName,
+    description: entry.description,
+    convertedAmount: entry.convertedAmount,
+    exchangeRate: entry.exchangeRate,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    deletedAt: entry.deletedAt,
+    category:
+      entry.category != null ? mapSourceDocumentEntryCategoryDto(entry.category) : entry.category,
+  };
+}
+
 export function mapSourceDocumentListItemDto(
   doc: SourceDocument,
-  ledgerEntries: LedgerEntryEmbeddedViewDto[] = []
+  ledgerEntries: SourceDocumentLedgerEntryDto[] = []
 ): SourceDocumentListItemDto {
   return {
     ...mapSourceDocumentDto(doc, {
@@ -53,7 +123,7 @@ export function mapSourceDocumentListItemDto(
 
 export function mapSourceDocumentGroupDto(
   sourceDocument: SourceDocumentDto,
-  ledgerEntries: LedgerEntryEmbeddedViewDto[]
+  ledgerEntries: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentGroupDto {
   return {
     sourceDocument,

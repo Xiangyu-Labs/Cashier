@@ -215,6 +215,18 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("rejects source-document action imports from ledger module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+        export const leak = deleteSourceDocumentAction;
+      `,
+      "src/modules/ledger/hooks/useLedgerEntriesMutations.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects cross-module server-action deep imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `

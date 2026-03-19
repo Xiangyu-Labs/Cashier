@@ -99,8 +99,7 @@ export function LedgerEntriesTab({
 
   const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
 
-  const { updateEntry, deleteEntry, deleteSourceDocument, batchDeleteSourceDocuments } =
-    useLedgerEntriesMutations(ledgerId, categories);
+  const { updateEntry, deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
 
   // Modals State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -171,7 +170,7 @@ export function LedgerEntriesTab({
       setDeleteConfirm({ ...deleteConfirm, open: false });
     } else if (deleteConfirm.id === "ALL_ERRORS") {
       const ids = groups.anomaly.map((g) => g.sourceDocument.id);
-      batchDeleteSourceDocuments.mutate(ids);
+      batchDelete.mutate(ids);
       setDeleteConfirm({ ...deleteConfirm, open: false });
     } else if (deleteConfirm.type === "ledgerEntry") {
       deleteEntry.mutate(deleteConfirm.id);
@@ -206,7 +205,8 @@ export function LedgerEntriesTab({
   } = useSelection({ allIds: allSourceDocumentIds });
 
   // Batch actions
-  const { batchUpdateDates, batchDelete, batchRetry } = useBatchSourceDocumentActions(
+  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
+    useBatchSourceDocumentActions(
     ledgerId,
     clearSelection
   );

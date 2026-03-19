@@ -12,15 +12,16 @@ import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
-import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import {
-  type SerializedSourceDocument,
-  type SerializedLedgerEntry,
-} from "@/lib/serialization";
+  mapSourceDocumentLedgerEntryDto,
+  serializeSourceDocument,
+} from "@/modules/source-document/mappers";
 import type {
-  SourceDocumentWithEntries,
   PendingSourceDocumentsResponse,
   PaginatedSourceDocumentsResponse,
+  SerializedLedgerEntry,
+  SerializedSourceDocument,
+  SourceDocumentWithEntries,
 } from "./types";
 import {
   groupPendingSourceDocuments,
@@ -200,7 +201,7 @@ function serializeSourceDocumentFlat(
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
     deletedAt: doc.deletedAt ? doc.deletedAt.toISOString() : null,
-    ledgerEntries: entries,
+    ledgerEntries: entries.map((entry) => mapSourceDocumentLedgerEntryDto(entry)),
     hasImages: (doc.imageUrls?.length ?? 0) > 0,
   } as SourceDocumentWithEntries;
 }
@@ -359,7 +360,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
       // Map items to include proper types for grouping
       const typedItems = activeDocsResult.items.map((doc) => ({
         ...(doc as SerializedSourceDocument),
-        ledgerEntries: (doc.ledgerEntries ?? []) as SerializedLedgerEntry[],
+        ledgerEntries: doc.ledgerEntries ?? [],
       }));
 
       const groups = groupPendingSourceDocuments(typedItems);
