@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import type { QueueItem } from "../../types";
-import { SourceDocumentPreview } from "../SourceDocumentPreview";
+import { SourceDocumentPreview } from "@/modules/task-queue/ui/SourceDocumentPreview";
 import { StatusIcon } from "./StatusIcon";
 import { statusStyles } from "./constants";
 import { useQueueItemActions } from "./useQueueItemActions";

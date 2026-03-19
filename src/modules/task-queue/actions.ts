@@ -12,4 +12,4 @@ export {
   getTaskQueueAction,
 } from "@/features/task-queue/server/actions/task-queue";
 
-export type { TaskQueueResult } from "@/features/task-queue/server/actions/task-queue";
+export type { TaskQueueResult, TaskQueueStats } from "@/features/task-queue/server/actions/task-queue";

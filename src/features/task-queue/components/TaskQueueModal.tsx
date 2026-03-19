@@ -5,7 +5,7 @@ import { Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTaskQueueModal } from "../client/hooks/use-task-queue-modal";
 import { TaskQueueContent } from "./TaskQueueContent";
-import { TaskQueueDialogs } from "./TaskQueueDialogs";
+import { TaskQueueDialogs } from "@/modules/task-queue/ui/TaskQueueDialogs";
 
 /**
  * Format number to compact form (k, m, b)
