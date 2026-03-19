@@ -1,14 +1,7 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { sourceDocuments, taskRuns } from "@/persistence";
 import { requireLedgerAccess } from "@/modules/auth/access";
-import { cancelFlowTask } from "@/lib/flow";
-import { forLedger } from "@/lib/db/scoped-query";
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { getSourceDocumentTaskContext, prepareSourceDocumentTask, processImages } from "./helpers";
-import { logger } from "@/lib/logger";
-import { NotFoundError } from "@/lib/errors";
+import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import type { SourceDocumentActionInput } from "./types";
 
 /**
@@ -25,120 +18,10 @@ export async function retrySourceDocumentAction(
   input?: SourceDocumentActionInput
 ) {
   const { ledger } = await requireLedgerAccess(ledgerId);
-
-  const q = forLedger(sourceDocuments, ledgerId);
-
-  // 1. Get old document data
-  const existingDoc = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(sourceDocumentId),
-  });
-  if (!existingDoc) throw new NotFoundError("Source document");
-
-  // 2. Create new document with new ID, preserving only ledgerId and entryDate
-  const newDocId = crypto.randomUUID();
-  const text = input?.text ?? existingDoc.text ?? undefined;
-  const images = input?.images;
-  const originalImages = input?.originalImages;
-  const existingOriginalImageUrls = Array.isArray(existingDoc.metadata?.originalImageUrls)
-    ? existingDoc.metadata.originalImageUrls
-    : [];
-
-  // Process new images if provided
-  let processedImageUrls: string[] | undefined;
-  if (images) {
-    processedImageUrls = await processImages(images, ledgerId, newDocId);
-  }
-
-  let processedOriginalImageUrls: Array<string | null> | undefined;
-  if (existingOriginalImageUrls.length > 0) {
-    processedOriginalImageUrls = existingOriginalImageUrls;
-  } else if (originalImages != null && originalImages.length > 0) {
-    processedOriginalImageUrls = await processImages(originalImages, ledgerId, newDocId);
-  }
-
-  // Prepare final image URLs: use processed images if provided, otherwise use existing
-  const finalImageUrls =
-    processedImageUrls && processedImageUrls.length > 0
-      ? processedImageUrls
-      : existingDoc.imageUrls || [];
-
-  // Insert new document
-  await db.insert(sourceDocuments).values({
-    id: newDocId,
-    ledgerId: ledgerId,
-    entryDate: existingDoc.entryDate,
-    text: text,
-    imageUrls: finalImageUrls,
-    status: "queued",
-    type: "ai_parsed",
-    title: null, // Let AI regenerate title
-    metadata:
-      processedOriginalImageUrls != null && processedOriginalImageUrls.length > 0
-        ? { originalImageUrls: processedOriginalImageUrls }
-        : {},
-  });
-
-  logger.debug(
-    { oldDocId: sourceDocumentId, newDocId, ledgerId },
-    "Created new source document for retry"
-  );
-
-  // 3. Soft delete old document
-  await db
-    .update(sourceDocuments)
-    .set({ deletedAt: new Date() })
-    .where(q.whereId(sourceDocumentId));
-
-  logger.debug(
-    { oldDocId: sourceDocumentId, ledgerId },
-    "Soft deleted old source document for retry"
-  );
-
-  // 4. Cancel any running/pending tasks for the OLD source document
-  // Note: handleParseCancel will be triggered but the old doc is already soft deleted
-  const runningTasks = await db.query.taskRuns.findMany({
-    where: and(
-      isNull(taskRuns.deletedAt),
-      eq(taskRuns.entityType, "source_document"),
-      eq(taskRuns.entityId, sourceDocumentId),
-      eq(taskRuns.scopeId, ledgerId),
-      inArray(taskRuns.status, ["pending", "running"])
-    ),
-  });
-
-  for (const task of runningTasks) {
-    await cancelFlowTask(task.id);
-  }
-
-  // 5. Soft delete old task_runs for the old document (clean up)
-  await db
-    .update(taskRuns)
-    .set({ deletedAt: new Date() })
-    .where(
-      and(
-        isNull(taskRuns.deletedAt),
-        eq(taskRuns.entityType, "source_document"),
-        eq(taskRuns.entityId, sourceDocumentId),
-        eq(taskRuns.scopeId, ledgerId)
-      )
-    );
-
-  // 6. Submit new task for the NEW document
-  const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
-  await prepareSourceDocumentTask({
+  return retrySourceDocument({
     ledgerId,
-    sourceDocumentId: newDocId,
-    text,
-    imageUrls: finalImageUrls,
-    categories,
-    settings,
+    ledger,
+    sourceDocumentId,
+    input,
   });
-
-  logger.debug({ newDocId, ledgerId }, "Submitted new parse task for retried document");
-
-  // 7. Return new document ID (frontend needs to update reference)
-  return {
-    sourceDocumentId: newDocId,
-    status: "queued" as const,
-  };
 }
