@@ -6,8 +6,7 @@ import { z } from "zod";
 import { eq, asc, desc, and, isNull, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { flowEngine } from "@/lib/flow";
-import { registerAllTasks } from "@/lib/flow/task-registry";
+import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
 import { TASK_TYPE_GENERATE_CATEGORY_METADATA } from "@/modules/ledger/application/tasks/generate-category-metadata";
 import { forLedger } from "@/lib/db/scoped-query";
 import { mapEntryCategoryDto } from "@/modules/ledger/mappers";
@@ -61,15 +60,13 @@ export const createEntryCategoryAction = withLedgerAccess(
       validated.description === ""
     ) {
       try {
-        await registerAllTasks();
-
         // Fetch existing categories for context
         const existing = await db.query.entryCategories.findMany({
           where: and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)),
           columns: { name: true, description: true, icon: true },
         });
 
-        await flowEngine.submit(
+        await submitFlowTask(
           TASK_TYPE_GENERATE_CATEGORY_METADATA,
           {
             ledgerId: ledgerId,
@@ -125,7 +122,7 @@ export const deleteEntryCategoryAction = withLedgerAccess(
       );
 
     for (const task of pendingTasks) {
-      await flowEngine.cancel(task.id);
+      await cancelFlowTask(task.id);
     }
 
     const q = forLedger(entryCategories, ledgerId);

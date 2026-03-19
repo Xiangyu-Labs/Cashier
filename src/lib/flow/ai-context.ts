@@ -1,8 +1,22 @@
-import { getOpenAIClient } from "@/lib/ai/openai-client";
-import type { AIContext, AIGenerateOptions, AIResponse, AIModelTier, TokenUsage } from "./types";
+import type {
+  AIClientFactory,
+  AIContext,
+  AIGenerateOptions,
+  AIModelConfig,
+  AIResponse,
+  AIModelTier,
+  TokenUsage,
+} from "./types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { isValidJson, extractJson, buildRepairPrompt } from "./json-utils";
 import { logger } from "@/lib/logger";
+
+interface CreateAIContextOptions {
+  signal: AbortSignal;
+  reportTokens: (usage: TokenUsage) => void;
+  getClient: AIClientFactory;
+  modelConfig: AIModelConfig;
+}
 
 /**
  * Create AI context for task execution
@@ -10,13 +24,15 @@ import { logger } from "@/lib/logger";
  * Provides AI capabilities to tasks with automatic token reporting
  * and abort signal propagation.
  */
-export function createAIContext(
-  signal: AbortSignal,
-  reportTokens: (usage: TokenUsage) => void
-): AIContext {
+export function createAIContext({
+  signal,
+  reportTokens,
+  getClient,
+  modelConfig,
+}: CreateAIContextOptions): AIContext {
   return {
     async generate(options: AIGenerateOptions): Promise<AIResponse> {
-      const client = getOpenAIClient();
+      const client = getClient();
 
       // Convert messages to OpenAI format
       // Type assertion needed because OpenAI's ChatCompletionMessageParam is more permissive
@@ -51,14 +67,14 @@ export function createAIContext(
         }
       }
 
-      // Resolve model tier to concrete model name from environment
+      // Resolve model tier to concrete model name from startup configuration
       const modelMap: Record<AIModelTier, string | undefined> = {
-        text: process.env.AI_MODEL_TEXT,
-        vision: process.env.AI_MODEL_VISION,
+        text: modelConfig.text,
+        vision: modelConfig.vision,
       };
       const model = modelMap[options.model];
       if (model == null || model === "") {
-        throw new Error(`AI_MODEL_${options.model.toUpperCase()} environment variable is required`);
+        throw new Error(`AI model configuration for tier "${options.model}" is required`);
       }
 
       const maxTokens = options.maxTokens ?? 8192;
@@ -97,7 +113,7 @@ export function createAIContext(
           // Use text model for repair (via AIModelTier selection)
           const textModel = modelMap["text"];
           if (textModel == null || textModel === "") {
-            throw new Error("AI_MODEL_TEXT is required for JSON repair");
+            throw new Error('AI model configuration for tier "text" is required for JSON repair');
           }
 
           const repairPrompt = buildRepairPrompt(result.content);

@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
-import { createAIContext } from "./ai-context";
 import { recordTaskExecution, detectDeadTasks, calculateQueueDepth } from "./monitoring";
 import type {
+  AIContext,
   FlowContext,
   FlowEngine,
   FlowEngineConfig,
@@ -11,6 +11,14 @@ import type {
   TokenUsageRecord,
   TaskMetrics,
 } from "./types";
+
+function createUnconfiguredAIContext(): AIContext {
+  return {
+    async generate() {
+      throw new Error("Flow engine AI context is not configured");
+    },
+  };
+}
 
 /**
  * Create a Flow Engine instance
@@ -31,6 +39,7 @@ import type {
 export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   const handlers = new Map<string, FlowTaskHandler<unknown, unknown>>();
   const abortControllers = new Map<string, AbortController>();
+  const buildAIContext = config.aiContextFactory ?? (() => createUnconfiguredAIContext());
 
   // Concurrency control via semaphore pattern
   const maxConcurrent = config.maxConcurrentTasks ?? 10;
@@ -115,7 +124,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
             signal,
             reportTokens: () => {}, // No-op for cancellation
             updateProgress: async () => {},
-            ai: createAIContext(signal, () => {}),
+            ai: buildAIContext(signal, () => {}),
           };
           await handler.onCancel(input, context);
         } catch (cancelError) {
@@ -156,7 +165,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         await config.storage.update(taskId, { progress: message });
       },
       // AI capabilities with automatic token reporting
-      ai: createAIContext(signal, reportTokens),
+      ai: buildAIContext(signal, reportTokens),
     };
 
     const startTime = Date.now();
@@ -288,11 +297,14 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
             meta?.deduplicationKey != null &&
             task.deduplicationKey === meta.deduplicationKey
           ) {
-            logger.info({
-              taskId: task.id,
-              deduplicationKey: meta.deduplicationKey,
-              taskName: name,
-            }, "Duplicate task detected, returning existing taskId");
+            logger.info(
+              {
+                taskId: task.id,
+                deduplicationKey: meta.deduplicationKey,
+                taskName: name,
+              },
+              "Duplicate task detected, returning existing taskId"
+            );
             return task.id;
           }
         }
@@ -318,7 +330,10 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         logger.error({ err, taskId }, "Unhandled error in background task runner");
       });
 
-      logger.info({ taskId, type: name, title: meta?.title }, "Task submitted for background execution");
+      logger.info(
+        { taskId, type: name, title: meta?.title },
+        "Task submitted for background execution"
+      );
 
       return taskId;
     },
@@ -337,7 +352,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
                 signal: new AbortController().signal,
                 reportTokens: () => {},
                 updateProgress: async () => {},
-                ai: createAIContext(new AbortController().signal, () => {}),
+                ai: buildAIContext(new AbortController().signal, () => {}),
               };
               await handler.onCancel(task.input, context);
             } catch (cancelError) {

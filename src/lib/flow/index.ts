@@ -1,47 +1,30 @@
-// Flow Engine - A lightweight async task manager for AI workloads
-//
-// Usage:
-//   import { flowEngine } from '@/lib/flow'
-//
-//   // Register a task handler
-//   flowEngine.register('my-task', {
-//     async execute(input, context) {
-//       await context.updateProgress('Processing...')
-//       const result = await doAICall({ signal: context.signal })
-//       context.reportTokens({ model: 'gpt-4o', input: 100, output: 50 })
-//       return result
-//     }
-//   })
-//
-//   // Submit a task
-//   const taskId = await flowEngine.submit('my-task', { data: 'input' }, { title: 'My Task' })
-//
-//   // Check status
-//   const status = await flowEngine.getStatus(taskId)
-
 export * from "./types";
 export { createFlowEngine } from "./engine";
 export { createAIContext } from "./ai-context";
 export { createDrizzleStorage } from "./adapters/drizzle-storage";
 export { TaskCancelledError, throwIfCancelled } from "./cancellation";
+export { loadFlowRuntimeEnvConfig } from "./config";
+export {
+  createFlowRuntime,
+  initializeFlowRuntime,
+  initializeDefaultFlowRuntime,
+  getFlowRuntime,
+  getFlowEngine,
+  submitFlowTask,
+  cancelFlowTask,
+  resetFlowRuntime,
+} from "./runtime";
 
-// ===== Default Cashier Instance =====
+import type { FlowEngine } from "./types";
+import { getFlowEngine } from "./runtime";
 
-import { createFlowEngine } from "./engine";
-import { createDrizzleStorage } from "./adapters/drizzle-storage";
-
-/**
- * Default Flow Engine instance for Cashier
- *
- * Pre-configured with Drizzle storage adapter.
- * Import and use directly in your task handlers.
- *
- * Concurrency is controlled by MAX_TASK_WORKER env variable (default: 10).
- * Set to 0 for unlimited concurrent tasks.
- */
-const maxConcurrentTasks = parseInt(process.env.MAX_TASK_WORKER ?? "10", 10);
-
-export const flowEngine = createFlowEngine({
-  storage: createDrizzleStorage(),
-  maxConcurrentTasks,
-});
+// Backward-compatible proxy for existing tests and migration callers.
+export const flowEngine: FlowEngine = {
+  register: (...args) => getFlowEngine().register(...args),
+  submit: (...args) => getFlowEngine().submit(...args),
+  cancel: (...args) => getFlowEngine().cancel(...args),
+  getStatus: (...args) => getFlowEngine().getStatus(...args),
+  listTasks: (...args) => getFlowEngine().listTasks(...args),
+  getRunningTasks: (...args) => getFlowEngine().getRunningTasks(...args),
+  getMetrics: (...args) => getFlowEngine().getMetrics(...args),
+};

@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { submitMock, registerAllTasksMock, loggerMock } = vi.hoisted(() => ({
+const { submitMock, loggerMock } = vi.hoisted(() => ({
   submitMock: vi.fn(),
-  registerAllTasksMock: vi.fn(),
   loggerMock: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -11,13 +10,7 @@ const { submitMock, registerAllTasksMock, loggerMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/flow", () => ({
-  flowEngine: {
-    submit: submitMock,
-  },
-}));
-
-vi.mock("@/lib/flow/task-registry", () => ({
-  registerAllTasks: registerAllTasksMock,
+  submitFlowTask: submitMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -43,20 +36,11 @@ describe("prepareSourceDocumentTask", () => {
     submitMock.mockResolvedValue("task-id");
   });
 
-  it("ensures tasks are registered before submitting parse_source_document", async () => {
-    let releaseRegistration: (() => void) | undefined;
-    registerAllTasksMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          releaseRegistration = resolve;
-        })
-    );
+  it("submits parse_source_document with the assembled flow capability", async () => {
+    const { prepareSourceDocumentTask } =
+      await import("@/modules/source-document/application/services/processing");
 
-    const { prepareSourceDocumentTask } = await import(
-      "@/modules/source-document/application/services/processing"
-    );
-
-    const submitPromise = prepareSourceDocumentTask({
+    await prepareSourceDocumentTask({
       ledgerId: "ledger-1",
       sourceDocumentId: "doc-1",
       text: "Lunch 25",
@@ -70,12 +54,6 @@ describe("prepareSourceDocumentTask", () => {
         },
       },
     });
-
-    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
-    expect(submitMock).not.toHaveBeenCalled();
-
-    releaseRegistration?.();
-    await submitPromise;
 
     expect(submitMock).toHaveBeenCalledWith(
       "parse_source_document",
@@ -97,9 +75,6 @@ describe("prepareSourceDocumentTask", () => {
         entityType: "source_document",
         entityId: "doc-1",
       }
-    );
-    expect(registerAllTasksMock.mock.invocationCallOrder[0]).toBeLessThan(
-      submitMock.mock.invocationCallOrder[0]
     );
   });
 });

@@ -5,20 +5,22 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
+const { cancelMock } = vi.hoisted(() => ({
+  cancelMock: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/flow", () => ({
+  cancelFlowTask: cancelMock,
   flowEngine: {
     submit: vi.fn().mockResolvedValue("mock-task-id"),
-    cancel: vi.fn().mockResolvedValue(undefined),
+    cancel: cancelMock,
     register: vi.fn(),
     getStatus: vi.fn(),
   },
 }));
 
-import { flowEngine } from "@/lib/flow";
-import {
-  cancelTaskAction,
-  batchCancelTasksAction,
-} from "@/modules/task-queue/actions";
+import { cancelFlowTask } from "@/lib/flow";
+import { cancelTaskAction, batchCancelTasksAction } from "@/modules/task-queue/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
@@ -37,7 +39,7 @@ describe("cancelTaskAction", () => {
     });
   });
 
-  it("cancels a running task and calls flowEngine.cancel", async () => {
+  it("cancels a running task and calls cancelFlowTask", async () => {
     const db = getTestDb();
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -49,10 +51,10 @@ describe("cancelTaskAction", () => {
     });
 
     await cancelTaskAction(ledgerId, taskId);
-    expect(flowEngine.cancel).toHaveBeenCalledWith(taskId);
+    expect(cancelFlowTask).toHaveBeenCalledWith(taskId);
   });
 
-  it("cancels a pending task and calls flowEngine.cancel", async () => {
+  it("cancels a pending task and calls cancelFlowTask", async () => {
     const db = getTestDb();
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -64,7 +66,7 @@ describe("cancelTaskAction", () => {
     });
 
     await cancelTaskAction(ledgerId, taskId);
-    expect(flowEngine.cancel).toHaveBeenCalledWith(taskId);
+    expect(cancelFlowTask).toHaveBeenCalledWith(taskId);
   });
 
   it("throws 'Task not found' when task does not exist", async () => {
@@ -256,7 +258,7 @@ describe("batchCancelTasksAction", () => {
 
   it("returns immediately for empty taskIds", async () => {
     await batchCancelTasksAction(ledgerId, []);
-    expect(flowEngine.cancel).not.toHaveBeenCalled();
+    expect(cancelFlowTask).not.toHaveBeenCalled();
   });
 
   it("cancels multiple valid tasks", async () => {
@@ -281,7 +283,7 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [id1, id2]);
-    expect(flowEngine.cancel).toHaveBeenCalledTimes(2);
+    expect(cancelFlowTask).toHaveBeenCalledTimes(2);
   });
 
   it("filters out tasks from other ledgers silently", async () => {
@@ -324,8 +326,8 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [ourTaskId, otherTaskId]);
-    expect(flowEngine.cancel).toHaveBeenCalledTimes(1);
-    expect(flowEngine.cancel).toHaveBeenCalledWith(ourTaskId);
+    expect(cancelFlowTask).toHaveBeenCalledTimes(1);
+    expect(cancelFlowTask).toHaveBeenCalledWith(ourTaskId);
   });
 
   it("filters out non-cancellable tasks (completed/failed) silently", async () => {
@@ -350,8 +352,8 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [pendingId, completedId]);
-    expect(flowEngine.cancel).toHaveBeenCalledTimes(1);
-    expect(flowEngine.cancel).toHaveBeenCalledWith(pendingId);
+    expect(cancelFlowTask).toHaveBeenCalledTimes(1);
+    expect(cancelFlowTask).toHaveBeenCalledWith(pendingId);
   });
 
   it("soft-deletes processing source docs for batch cancel", async () => {

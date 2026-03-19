@@ -5,14 +5,16 @@ const logger = {
   error: vi.fn(),
 };
 
-const registerAllTasks = vi.fn();
+const initializeDefaultFlowRuntime = vi.fn();
+const resetFlowRuntime = vi.fn();
 
 vi.mock("@/lib/logger", () => ({
   logger,
 }));
 
-vi.mock("@/lib/flow/task-registry", () => ({
-  registerAllTasks,
+vi.mock("@/lib/flow/runtime", () => ({
+  initializeDefaultFlowRuntime,
+  resetFlowRuntime,
 }));
 
 describe("instrumentation.register", () => {
@@ -21,11 +23,11 @@ describe("instrumentation.register", () => {
     process.env.NEXT_RUNTIME = "nodejs";
   });
 
-  it("rethrows when task registration fails", async () => {
-    registerAllTasks.mockRejectedValueOnce(new Error("registry failed"));
+  it("rethrows when runtime initialization fails", async () => {
+    initializeDefaultFlowRuntime.mockRejectedValueOnce(new Error("runtime failed"));
     const { register } = await import("@/instrumentation");
 
-    await expect(register()).rejects.toThrow("registry failed");
+    await expect(register()).rejects.toThrow("runtime failed");
     expect(logger.error).toHaveBeenCalled();
   });
 });

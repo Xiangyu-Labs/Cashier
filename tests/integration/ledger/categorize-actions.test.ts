@@ -5,18 +5,17 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
-const { submitMock, cancelMock, registerMock, getStatusMock, registerAllTasksMock } = vi.hoisted(
-  () => ({
-    submitMock: vi.fn().mockResolvedValue("mock-task-id"),
-    cancelMock: vi.fn(),
-    registerMock: vi.fn(),
-    getStatusMock: vi.fn(),
-    registerAllTasksMock: vi.fn().mockResolvedValue(undefined),
-  })
-);
+const { submitMock, cancelMock, registerMock, getStatusMock } = vi.hoisted(() => ({
+  submitMock: vi.fn().mockResolvedValue("mock-task-id"),
+  cancelMock: vi.fn(),
+  registerMock: vi.fn(),
+  getStatusMock: vi.fn(),
+}));
 
 // Mock flowEngine before importing actions
 vi.mock("@/lib/flow", () => ({
+  submitFlowTask: submitMock,
+  cancelFlowTask: cancelMock,
   flowEngine: {
     submit: submitMock,
     cancel: cancelMock,
@@ -25,15 +24,8 @@ vi.mock("@/lib/flow", () => ({
   },
 }));
 
-vi.mock("@/lib/flow/task-registry", () => ({
-  registerAllTasks: registerAllTasksMock,
-}));
-
-import { flowEngine } from "@/lib/flow";
-import {
-  submitAutoCategorizeAction,
-  submitBatchCategorizeAction,
-} from "@/modules/ledger/actions";
+import { submitFlowTask } from "@/lib/flow";
+import { submitAutoCategorizeAction, submitBatchCategorizeAction } from "@/modules/ledger/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -65,8 +57,7 @@ describe("submitAutoCategorizeAction", () => {
 
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result).toEqual({ submittedCount: 0, skippedCount: 0 });
-    expect(registerAllTasksMock).not.toHaveBeenCalled();
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("throws 'No categories available' when ledger has no categories", async () => {
@@ -140,11 +131,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(2);
     expect(result.skippedCount).toBe(0);
-    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
-    expect(flowEngine.submit).toHaveBeenCalledTimes(2);
-    expect(registerAllTasksMock.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(flowEngine.submit).mock.invocationCallOrder[0]
-    );
+    expect(submitFlowTask).toHaveBeenCalledTimes(2);
   });
 
   it("skips entries that already have a category", async () => {
@@ -194,7 +181,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     // Only uncategorized entries are fetched by the action
     expect(result.submittedCount).toBe(1);
-    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
+    expect(submitFlowTask).toHaveBeenCalledTimes(1);
   });
 
   it("submits entries even with pending/running categorize tasks (engine handles dedup)", async () => {
@@ -243,9 +230,9 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(1);
     expect(result.skippedCount).toBe(0);
-    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
+    expect(submitFlowTask).toHaveBeenCalledTimes(1);
     // Verify deduplicationKey is passed
-    expect(flowEngine.submit).toHaveBeenCalledWith(
+    expect(submitFlowTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.any(Object),
       expect.objectContaining({
@@ -288,7 +275,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(0);
     expect(result.skippedCount).toBe(1);
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("throws 'Unauthorized' when ledger belongs to another user", async () => {
@@ -333,7 +320,7 @@ describe("submitBatchCategorizeAction", () => {
   it("returns { submittedCount: 0, skippedCount: 0 } for empty entryIds", async () => {
     const result = await submitBatchCategorizeAction(ledgerId, []);
     expect(result).toEqual({ submittedCount: 0, skippedCount: 0 });
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("only processes specified entryIds", async () => {
@@ -382,8 +369,8 @@ describe("submitBatchCategorizeAction", () => {
     // Only submit for entry1
     const result = await submitBatchCategorizeAction(ledgerId, [entry1Id]);
     expect(result.submittedCount).toBe(1);
-    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
-    expect(flowEngine.submit).toHaveBeenCalledWith(
+    expect(submitFlowTask).toHaveBeenCalledTimes(1);
+    expect(submitFlowTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.objectContaining({ entryId: entry1Id }),
       expect.any(Object)
@@ -461,9 +448,9 @@ describe("submitBatchCategorizeAction", () => {
     const result = await submitBatchCategorizeAction(ledgerId, [entryId]);
     expect(result.submittedCount).toBe(1);
     expect(result.skippedCount).toBe(0);
-    expect(flowEngine.submit).toHaveBeenCalledTimes(1);
+    expect(submitFlowTask).toHaveBeenCalledTimes(1);
     // Verify deduplicationKey is passed
-    expect(flowEngine.submit).toHaveBeenCalledWith(
+    expect(submitFlowTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.any(Object),
       expect.objectContaining({

@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { initializeDefaultFlowRuntime } from "@/lib/flow/runtime";
 
 export async function register() {
   // Only run on server-side runtime (not edge or browser)
@@ -19,13 +20,9 @@ export async function register() {
   );
 
   try {
-    // Dynamically import task registry to avoid loading Node.js modules in Edge Runtime
-    const { registerAllTasks } = await import("@/lib/flow/task-registry");
+    await initializeDefaultFlowRuntime();
 
-    // Register all task handlers via centralized registry
-    await registerAllTasks();
-
-    logger.info("Task handlers registered successfully");
+    logger.info("Flow runtime initialized successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
     throw error;

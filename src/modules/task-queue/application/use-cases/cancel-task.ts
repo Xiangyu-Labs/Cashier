@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
-import { flowEngine } from "@/lib/flow";
+import { cancelFlowTask } from "@/lib/flow";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { sourceDocuments, taskRuns } from "@/persistence";
 
@@ -40,17 +40,14 @@ export async function cancelTaskUseCase(ledgerId: string, taskId: string): Promi
     throw new ValidationError(`Cannot cancel task with status '${task.status}'`);
   }
 
-  await flowEngine.cancel(taskId);
+  await cancelFlowTask(taskId);
 
   if (task.entityType === "source_document") {
     await softDeleteQueuedOrProcessingSourceDocument(ledgerId, task.entityId);
   }
 }
 
-export async function batchCancelTasksUseCase(
-  ledgerId: string,
-  taskIds: string[]
-): Promise<void> {
+export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[]): Promise<void> {
   if (taskIds.length === 0) {
     return;
   }
@@ -60,19 +57,17 @@ export async function batchCancelTasksUseCase(
   });
 
   const validTasks = tasks.filter(
-    (task) =>
-      task.scopeId === ledgerId && (task.status === "pending" || task.status === "running")
+    (task) => task.scopeId === ledgerId && (task.status === "pending" || task.status === "running")
   );
 
   if (validTasks.length === 0) {
     return;
   }
 
-  await Promise.all(validTasks.map((task) => flowEngine.cancel(task.id)));
+  await Promise.all(validTasks.map((task) => cancelFlowTask(task.id)));
 
   const sourceDocTasks = validTasks.filter(
-    (task) =>
-      task.entityType === "source_document" && task.entityId != null && task.entityId !== ""
+    (task) => task.entityType === "source_document" && task.entityId != null && task.entityId !== ""
   );
 
   if (sourceDocTasks.length === 0) {

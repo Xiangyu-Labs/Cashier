@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vitest";
 import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
+import { initializeDefaultFlowRuntime } from "@/lib/flow/runtime";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/persistence";
 import { eq } from "drizzle-orm";
@@ -33,10 +34,13 @@ const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
   },
 };
 
-flowEngine.register(TEST_TASK_TYPE, testHandler);
-
 describe("Flow System Integration", () => {
   let ledgerId: string;
+
+  beforeAll(async () => {
+    await initializeDefaultFlowRuntime();
+    flowEngine.register(TEST_TASK_TYPE, testHandler);
+  });
 
   // Mock fetch for API calls if needed by tasks
   beforeEach(async () => {
