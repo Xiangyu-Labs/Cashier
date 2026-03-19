@@ -1,15 +1,15 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { LargeGridHeatmap } from "@/features/calendar/components/AdaptiveHeatmap/LargeGrid";
-import { SmallGridHeatmap } from "@/features/calendar/components/AdaptiveHeatmap/SmallGrid";
-import type { CalendarDayData, CalendarHeatmapStats } from "@/features/calendar/types";
+import { LargeGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/LargeGrid";
+import { SmallGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/SmallGrid";
+import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
-vi.mock("@/features/calendar/components/AdaptiveHeatmap/DayCellLarge", () => ({
+vi.mock("@/modules/stats/ui/AdaptiveHeatmap/DayCellLarge", () => ({
   DayCellLarge: ({ date }: { date: string }) => <div data-testid="large-day">{date}</div>,
 }));
 
-vi.mock("@/features/calendar/components/AdaptiveHeatmap/DayCellSmall", () => ({
+vi.mock("@/modules/stats/ui/AdaptiveHeatmap/DayCellSmall", () => ({
   DayCellSmall: ({ date }: { date: string }) => <div data-testid="small-day">{date}</div>,
 }));
 

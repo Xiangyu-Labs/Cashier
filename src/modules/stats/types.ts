@@ -1,23 +1,6 @@
-/**
- * Calendar Heatmap Types
- *
- * Type definitions for calendar heatmap feature.
- */
+import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
-// Define types locally to avoid import issues
-export interface CalendarDayData {
-  date: string; // yyyy-MM-dd
-  totalAmount: number;
-  entryCount: number;
-  currencies: string[];
-}
-
-export interface CalendarHeatmapStats {
-  minAmount: number;
-  maxAmount: number;
-  avgAmount: number;
-  p80Amount: number; // 80th percentile for color mapping
-}
+export type { CalendarDayData, CalendarHeatmapStats };
 
 export type CalendarViewType = "month" | "year";
 

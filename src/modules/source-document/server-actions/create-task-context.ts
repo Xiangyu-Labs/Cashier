@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { CategoryInfo } from "@/features/ai/types";
+import type { CategoryInfo } from "@/lib/ai/types";
 import type { Ledger } from "@/persistence";
 
 interface SourceDocumentTaskSettings {

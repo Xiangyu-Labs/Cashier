@@ -1,14 +1,21 @@
 import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 
-const resend = new Resend(process.env.AUTH_RESEND_KEY);
+function getResendClient(): Resend | null {
+  const apiKey = process.env.AUTH_RESEND_KEY;
+  if (apiKey == null || apiKey === "") {
+    return null;
+  }
+
+  return new Resend(apiKey);
+}
 
 /**
  * Send a notification email when a user logs in from a new device
  */
 export async function sendLoginNotification(email: string): Promise<void> {
-  // Skip if no API key configured (e.g., in development)
-  if (process.env.AUTH_RESEND_KEY == null || process.env.AUTH_RESEND_KEY === "") {
+  const resend = getResendClient();
+  if (resend == null) {
     logger.warn("AUTH_RESEND_KEY not configured, skipping login notification");
     return;
   }

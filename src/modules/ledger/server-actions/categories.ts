@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 import { type SerializedEntryCategory, serializeEntryCategory } from "@/lib/serialization";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { flowEngine } from "@/lib/flow";
-import { TASK_TYPE_GENERATE_CATEGORY_METADATA } from "@/features/ledger/server/tasks/generate-category-metadata";
+import { TASK_TYPE_GENERATE_CATEGORY_METADATA } from "@/modules/ledger/application/tasks/generate-category-metadata";
 import { forLedger } from "@/lib/db/scoped-query";
 
 const createCategorySchema = z.object({

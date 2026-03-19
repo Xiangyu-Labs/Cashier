@@ -7,7 +7,7 @@ import { flowEngine } from "@/lib/flow";
 import {
   TASK_TYPE_CATEGORIZE_ENTRY,
   type CategorizeEntryInput,
-} from "@/features/ledger/server/tasks/categorize-entry";
+} from "@/modules/ledger/application/tasks/categorize-entry";
 import { logger } from "@/lib/logger";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { formatDateTimeForApi } from "@/lib/date-utils";

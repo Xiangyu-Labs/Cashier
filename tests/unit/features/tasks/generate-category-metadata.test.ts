@@ -3,7 +3,7 @@ import {
   generateCategoryMetadataHandler,
   type GenerateCategoryMetadataInput,
   type GenerateCategoryMetadataOutput,
-} from "@/features/ledger/server/tasks/generate-category-metadata";
+} from "@/modules/ledger/application/tasks/generate-category-metadata";
 import { getTestDb } from "../../../setup";
 import { entryCategories } from "@/persistence";
 import { eq } from "drizzle-orm";

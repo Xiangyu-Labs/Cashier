@@ -34,7 +34,7 @@ vi.mock("@/lib/flow", async (importOriginal) => {
 });
 
 // Mock Tasks
-vi.mock("@/features/source-document/server/tasks/parse-source-document", () => ({
+vi.mock("@/modules/source-document/application/tasks/parse-source-document", () => ({
   TASK_TYPE_PARSE_SOURCE_DOCUMENT: "parse_source_document",
   parseSourceDocumentTaskDefinition: {
     type: "parse_source_document",

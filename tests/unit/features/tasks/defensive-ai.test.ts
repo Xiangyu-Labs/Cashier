@@ -3,7 +3,7 @@ import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-} from "@/features/source-document/server/tasks/parse-source-document";
+} from "@/modules/source-document/application/tasks/parse-source-document";
 import { getTestDb } from "../../../setup";
 import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";

@@ -22,6 +22,8 @@ const moduleNames = [
   "workspace",
 ];
 
+const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
+
 const moduleRootRestrictedImports = {
   auth: [
     {
@@ -220,6 +222,10 @@ function createCrossModuleBoundaryOptions(currentModule) {
   return {
     patterns: [
       {
+        group: LEGACY_FEATURE_IMPORT_PATTERNS,
+        message: "Legacy feature imports are forbidden. Import from modules or lib instead.",
+      },
+      {
         group: createDeepModuleImportPatterns(disallowedModules),
         message: "Cross-module imports must go through the target module's public entrypoint.",
       },
@@ -316,6 +322,10 @@ const eslintConfig = defineConfig([
           paths: createModuleRootImportRestrictions(moduleNames),
           patterns: [
             {
+              group: LEGACY_FEATURE_IMPORT_PATTERNS,
+              message: "App and shared UI code must not import removed feature paths.",
+            },
+            {
               group: createDeepFeatureImportPatterns(featureNames),
               message:
                 "App and shared UI code must import features via public root/server/client/components entrypoints.",
@@ -342,6 +352,10 @@ const eslintConfig = defineConfig([
           paths: createModuleRootImportRestrictions(moduleNames),
           patterns: [
             {
+              group: LEGACY_FEATURE_IMPORT_PATTERNS,
+              message: "Shared library/types code must not import removed feature paths.",
+            },
+            {
               group: createDeepFeatureImportPatterns(featureNames),
               message: "Shared library/types code must not deep-import feature internals.",
             },
@@ -358,6 +372,22 @@ const eslintConfig = defineConfig([
     files: ["src/lib/flow/**/*.ts", "src/lib/flow/**/*.tsx"],
     rules: {
       "no-restricted-imports": "off",
+    },
+  },
+  {
+    files: ["tests/**/*.ts", "tests/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: LEGACY_FEATURE_IMPORT_PATTERNS,
+              message: "Tests must import modules or lib paths, not removed feature paths.",
+            },
+          ],
+        },
+      ],
     },
   },
   ...featureNames.flatMap((featureName) => createFeatureBoundaryConfigs(featureName)),
@@ -380,9 +410,8 @@ const eslintConfig = defineConfig([
           patterns: [
             ...createCrossModuleBoundaryOptions("workspace").patterns,
             {
-              group: ["@/features/ledger/components/**", "@/features/ledger/client/**"],
-              message:
-                "Workspace shell code must consume ledger UI through module public entrypoints.",
+              group: LEGACY_FEATURE_IMPORT_PATTERNS,
+              message: "Workspace shell code must consume modules, not removed feature paths.",
             },
           ],
         },

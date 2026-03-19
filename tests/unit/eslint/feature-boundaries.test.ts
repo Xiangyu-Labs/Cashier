@@ -11,25 +11,37 @@ async function lintRestrictedImports(code: string, filePath: string) {
 }
 
 describe("boundary lint", () => {
-  it("rejects cross-feature deep imports from feature server files", async () => {
+  it("rejects legacy feature imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { getSourceDocumentsAction } from "@/features/source-document/server/actions/queries";
         export const leak = getSourceDocumentsAction;
       `,
-      "src/features/ledger/server/tasks/categorize-entry.ts"
+      "src/modules/ledger/application/tasks/categorize-entry.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("rejects deep feature imports from shared library files", async () => {
+  it("rejects legacy feature imports from shared library files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { getSourceDocumentsAction } from "@/features/source-document/server/actions/queries";
         export const leak = getSourceDocumentsAction;
       `,
       "src/lib/error-handlers.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects legacy feature imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { determineSourceType } from "@/features/ai/types";
+        export const leak = determineSourceType;
+      `,
+      "tests/unit/message-processor/types.test.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);
@@ -323,7 +335,7 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("rejects workspace shell imports from legacy ledger feature tabs", async () => {
+  it("rejects workspace shell imports from removed feature tabs", async () => {
     const messages = await lintRestrictedImports(
       `
         import { LedgerEntriesTab } from "@/features/ledger/components/LedgerEntriesTab";

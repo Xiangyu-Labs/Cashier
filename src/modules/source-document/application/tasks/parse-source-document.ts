@@ -2,7 +2,7 @@ import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flo
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { type CategoryInfo, type ParsedLedgerEntry } from "@/features/ai/types";
+import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
 import type { AIContext } from "@/lib/flow/types";
 import { logger } from "@/lib/logger";
 import { forLedger } from "@/lib/db/scoped-query";

@@ -14,7 +14,7 @@ export async function provisionUserWorkspace(
   if (existingLedger) {
     if (input.trigger === "existing-login") {
       const { sendLoginNotification } = await import(
-        "@/features/auth/server/services/notifications"
+        "@/modules/auth/services/notifications"
       );
       await sendLoginNotification(input.email);
     }

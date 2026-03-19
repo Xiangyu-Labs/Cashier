@@ -1,7 +1,7 @@
 import { flowEngine } from "@/lib/flow";
-import { categorizeEntryTaskDefinition } from "@/features/ledger/server/tasks/categorize-entry";
-import { generateCategoryMetadataTaskDefinition } from "@/features/ledger/server/tasks/generate-category-metadata";
-import { parseSourceDocumentTaskDefinition } from "@/features/source-document/server/tasks/parse-source-document";
+import { categorizeEntryTaskDefinition } from "@/modules/ledger/application/tasks/categorize-entry";
+import { generateCategoryMetadataTaskDefinition } from "@/modules/ledger/application/tasks/generate-category-metadata";
+import { parseSourceDocumentTaskDefinition } from "@/modules/source-document/application/tasks/parse-source-document";
 
 let hasRegisteredTasks = false;
 

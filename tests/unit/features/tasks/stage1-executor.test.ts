@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   executeStage1,
   type Stage1Input,
-} from "@/features/source-document/server/tasks/stage1-executor";
+} from "@/modules/source-document/application/tasks/stage1-executor";
 import { ArbitrationFailedError } from "@/lib/ai/dual-gpt-runner";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow/types";
 import { TaskCancelledError } from "@/lib/flow/cancellation";

@@ -49,7 +49,7 @@ function createLedgerEntry(id: string): SerializedLedgerEntry {
       deletedAt: null,
       imageUrls: [],
       hasImages: false,
-      metadata: null,
+      metadata: {},
       anomalyReason: null,
     },
   };
