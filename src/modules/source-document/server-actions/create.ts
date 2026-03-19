@@ -3,7 +3,7 @@
 import { requireLedgerAccess } from "@/modules/auth/helpers";
 import type { SourceDocumentActionInput } from "./types";
 import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
-import { createAndQueueSourceDocument } from "./create-and-queue";
+import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 
 /**
  * Create a new source document and trigger processing

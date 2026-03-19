@@ -10,16 +10,21 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { LedgerEntryCard } from "@/modules/ledger/ui/LedgerEntryCard";
-import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
-import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { useSelection } from "@/hooks/use-selection";
-import { useEntryMutations } from "@/modules/ledger/hooks/useEntryMutations";
-import { useBatchEntryActions } from "@/modules/ledger/hooks/useBatchEntryActions";
+import {
+  useBatchEntryActions,
+  useDetailsTabData,
+  useDetailsTabGrouping,
+  useEntryMutations,
+} from "@/modules/ledger/hooks";
+import {
+  EntryFilterPanel,
+  type EntryFilters,
+  LedgerEntryCard,
+  LedgerEntryDetailModal,
+} from "@/modules/ledger/ui";
 import { useDetailsTabState } from "./useDetailsTabState";
-import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
-import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory, Ledger } from "@/types/api";
 import type { PeriodParams } from "@/lib/period-utils";

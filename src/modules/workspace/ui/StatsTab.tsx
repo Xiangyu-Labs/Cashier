@@ -10,7 +10,7 @@ import { type DateRangeType } from "@/lib/date-utils";
 import { StatsHeader } from "@/components/stats/StatsHeader";
 import { StatsChart } from "@/components/stats/StatsChart";
 import { StatsRanking } from "@/components/stats/StatsRanking";
-import { CalendarHeatmapSection } from "@/modules/stats/ui/CalendarHeatmapSection";
+import { CalendarHeatmapSection } from "@/modules/stats/ui";
 import { useTranslations, useFormatter } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
 import type { Ledger } from "@/types/api";

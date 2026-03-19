@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { periodToDateRange, type PeriodParams } from "@/lib/period-utils";
-import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
+import type { EntryFilters } from "@/modules/ledger/ui";
 
 export interface UseDetailsTabFiltersReturn {
   filters: EntryFilters;

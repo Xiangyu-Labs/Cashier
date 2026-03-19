@@ -1,17 +1,15 @@
-"use server";
-
-import { db } from "@/lib/db";
-import { sourceDocuments, type Ledger } from "@/persistence";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { ValidationError } from "@/lib/errors";
+import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
+import { ValidationError } from "@/lib/errors";
+import { sourceDocuments, type Ledger } from "@/persistence";
 import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
   processImages,
-} from "./helpers";
+} from "../services/processing";
 
-interface CreateAndQueueSourceDocumentInput {
+export interface CreateAndQueueSourceDocumentInput {
   ledgerId: string;
   ledger: Ledger;
   text?: string;

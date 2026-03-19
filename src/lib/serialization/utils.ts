@@ -22,7 +22,7 @@ import {
   mapLedgerEntryDto,
   mapServiceCredentialDto,
 } from "@/modules/ledger/mappers";
-import { mapSourceDocumentDto } from "@/modules/source-document";
+import { mapSourceDocumentDto } from "@/modules/source-document/mappers";
 
 const TaskStatusSchema = z.enum(["pending", "running", "completed", "failed", "cancelled"]);
 

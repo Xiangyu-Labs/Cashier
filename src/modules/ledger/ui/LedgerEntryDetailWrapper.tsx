@@ -13,14 +13,13 @@ import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
 } from "@/modules/ledger/actions";
-import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
-
 import type { EntryCategory, LedgerEntry } from "@/types/api";
+import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 
 interface LedgerEntryDetailWrapperProps {
   id: string;

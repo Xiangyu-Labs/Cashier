@@ -56,7 +56,7 @@ export function useLedgerPagePrefetching({
         });
       }
       if (activeTab !== "settings") {
-        fireAndForget(import("@/modules/ledger/ui/SettingsTab"), {
+        fireAndForget(import("@/modules/ledger/ui"), {
           context: "LedgerPageClient.preload",
         });
       }

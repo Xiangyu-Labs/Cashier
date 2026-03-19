@@ -1,1 +1,1 @@
-export { recalculateEntriesConvertedAmount } from "../../server-actions/helpers";
+export { recalculateEntriesConvertedAmount } from "../services/recalculate-entries-converted-amount";

@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "@/i18n/routing";
-import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 import { type EntryCategoryWithCount, type Ledger } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { SettingsTab } from "./SettingsTab";
 
 interface SettingsPageClientProps {
   ledger: Ledger;

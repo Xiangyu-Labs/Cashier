@@ -23,11 +23,9 @@ import {
   getLedgersAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
+import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "@/modules/workspace/hooks";
 import { updateLedgerSearchParams } from "@/modules/workspace/ledger-url-params";
 import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
-import { useDrilldownNavigation } from "@/modules/workspace/hooks/useDrilldownNavigation";
-import { useLedgerTabs } from "@/modules/workspace/hooks/useLedgerTabs";
-import { usePeriodFilter } from "@/modules/workspace/hooks/usePeriodFilter";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { useTaskQueue } from "@/modules/task-queue/ui";
 import { Header } from "./Header";
@@ -36,7 +34,7 @@ import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 
 const SourceDocumentInput = dynamic(
   () =>
-    import("@/modules/source-document/ui/SourceDocumentInput").then((module) => ({
+    import("@/modules/source-document/ui").then((module) => ({
       default: module.SourceDocumentInput,
     })),
   { ssr: false }
@@ -44,7 +42,7 @@ const SourceDocumentInput = dynamic(
 
 const QuickEntryForm = dynamic(
   () =>
-    import("@/modules/source-document/ui/QuickEntryForm").then((module) => ({
+    import("@/modules/source-document/ui").then((module) => ({
       default: module.QuickEntryForm,
     })),
   { ssr: false }
@@ -52,7 +50,7 @@ const QuickEntryForm = dynamic(
 
 const TaskQueueModal = dynamic(
   () =>
-    import("@/modules/task-queue/ui/TaskQueueModal").then((module) => ({
+    import("@/modules/task-queue/ui").then((module) => ({
       default: module.TaskQueueModal,
     })),
   { ssr: false }
@@ -98,7 +96,7 @@ const StatsTab = dynamic(
 
 const SettingsTab = dynamic(
   () =>
-    import("@/modules/ledger/ui/SettingsTab").then((module) => ({
+    import("@/modules/ledger/ui").then((module) => ({
       default: module.SettingsTab,
     })),
   {

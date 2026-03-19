@@ -21,12 +21,12 @@ loadEnvLocal();
 
 export default defineConfig({
   schema: [
-    "./src/features/auth/server/schema.ts",
-    "./src/features/currency/server/schema.ts",
-    "./src/features/ledger/server/schema.ts",
-    "./src/features/source-document/server/schema.ts",
-    "./src/features/task-queue/server/schema.ts",
-    "./src/lib/db/relations.ts",
+    "./src/persistence/schema/auth.ts",
+    "./src/persistence/schema/currency.ts",
+    "./src/persistence/schema/ledger.ts",
+    "./src/persistence/schema/source-document.ts",
+    "./src/persistence/schema/task-queue.ts",
+    "./src/persistence/relations.ts",
   ],
   out: "./src/lib/db/migrations",
   dialect: "sqlite",

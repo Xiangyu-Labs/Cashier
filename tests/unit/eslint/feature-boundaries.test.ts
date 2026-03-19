@@ -191,6 +191,30 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects same-module action imports from application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { createSourceDocumentAction } from "@/modules/source-document/actions";
+        export const leak = createSourceDocumentAction;
+      `,
+      "src/modules/source-document/application/use-cases/create-from-credential.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects same-module server-action imports from application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
+        export const leak = createSourceDocumentAction;
+      `,
+      "src/modules/source-document/application/use-cases/create-from-credential.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects auth helper imports from auth root in shared library files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -299,10 +323,22 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("allows single-file ledger ui imports from app files", async () => {
+  it("rejects single-file ledger ui imports from app files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
+        export const leak = EntryFilterPanel;
+      `,
+      "src/app/[locale]/(protected)/ledger/[id]/settings/page.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows ledger ui imports from the public ui entrypoint in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { EntryFilterPanel } from "@/modules/ledger/ui";
         export const value = EntryFilterPanel;
       `,
       "src/app/[locale]/(protected)/ledger/[id]/settings/page.tsx"
@@ -321,6 +357,30 @@ describe("boundary lint", () => {
     );
 
     expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects single-file ledger hook imports from cross-module ui files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { useGroupedEntries } from "@/modules/ledger/hooks/useGroupedEntries";
+        export const leak = useGroupedEntries;
+      `,
+      "src/modules/workspace/ui/LedgerEntriesTab.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows ledger hook imports from the public hooks entrypoint in cross-module ui files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { useGroupedEntries } from "@/modules/ledger/hooks";
+        export const value = useGroupedEntries;
+      `,
+      "src/modules/workspace/ui/LedgerEntriesTab.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
   });
 
   it("allows workspace tabs imports from app files", async () => {

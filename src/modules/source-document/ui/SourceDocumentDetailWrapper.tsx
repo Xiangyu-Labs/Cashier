@@ -4,8 +4,10 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
-import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
+import {
+  useSourceDocumentDetailData,
+  useSourceDocumentDetailMutations,
+} from "@/modules/source-document/hooks";
 import type { EntryCategory, LedgerEntry } from "@/types/api";
 
 interface SourceDocumentDetailWrapperProps {

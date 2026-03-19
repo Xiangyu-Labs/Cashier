@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
-import { usePendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
+import { usePendingChanges } from "@/modules/source-document/hooks";
 import { type EntryEditData } from "@/components/entries";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";

@@ -6,29 +6,32 @@ import {
   type SourceDocument,
   type Ledger,
 } from "@/types/api";
-import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import type { SourceDocumentGroup } from "@/lib/serialization";
-import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
 import { useTranslations, useLocale } from "next-intl";
-import { useSourceDocuments } from "@/modules/source-document/hooks/useSourceDocuments";
-import { useBatchSourceDocumentActions } from "@/modules/source-document/hooks/useBatchSourceDocumentActions";
-import { type SourceDocumentStatusType } from "@/modules/source-document";
+import {
+  useBatchSourceDocumentActions,
+  useSourceDocuments,
+} from "@/modules/source-document/hooks";
+import {
+  SourceDocumentCard,
+  SourceDocumentEditRetryDialog,
+} from "@/modules/source-document/ui";
+import { type SourceDocumentStatusType } from "@/modules/source-document/types";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
-import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
+import { useGroupedEntries, useLedgerEntriesMutations } from "@/modules/ledger/hooks";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useSelection } from "@/hooks/use-selection";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, X } from "lucide-react";
-import { useGroupedEntries } from "@/modules/ledger/hooks/useGroupedEntries";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;

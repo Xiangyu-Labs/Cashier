@@ -200,16 +200,7 @@ function createModuleRootImportRestrictions(targetModules) {
 }
 
 function createDeepModuleImportPatterns(targetModules) {
-  return targetModules.flatMap((moduleName) => [
-    `@/modules/${moduleName}/server-actions/**`,
-    `@/modules/${moduleName}/application/**`,
-    `@/modules/${moduleName}/infra/**`,
-    `@/modules/${moduleName}/domain/**`,
-    `@/modules/${moduleName}/services/*`,
-    `@/modules/${moduleName}/helpers/*`,
-    `@/modules/${moduleName}/ui/*/*`,
-    `@/modules/${moduleName}/hooks/*/*`,
-  ]);
+  return targetModules.map((moduleName) => `@/modules/${moduleName}/*/**`);
 }
 
 function createCrossModuleBoundaryRule(currentModule) {
@@ -232,6 +223,40 @@ function createCrossModuleBoundaryOptions(currentModule) {
     ],
     paths: createModuleRootImportRestrictions(disallowedModules),
   };
+}
+
+function createApplicationLayerBoundaryRule(currentModule) {
+  const baseOptions = createCrossModuleBoundaryOptions(currentModule);
+  return [
+    "error",
+    {
+      ...baseOptions,
+      patterns: [
+        ...baseOptions.patterns,
+        {
+          group: [
+            `@/modules/${currentModule}/actions`,
+            `@/modules/${currentModule}/actions/**`,
+            `@/modules/${currentModule}/server-actions/**`,
+            "../actions",
+            "../actions/**",
+            "../../actions",
+            "../../actions/**",
+            "../../../actions",
+            "../../../actions/**",
+            "../../../../actions",
+            "../../../../actions/**",
+            "../server-actions/**",
+            "../../server-actions/**",
+            "../../../server-actions/**",
+            "../../../../server-actions/**",
+          ],
+          message:
+            "Application layer must not depend on actions or server-actions. Move shared logic into application/services or use-cases instead.",
+        },
+      ],
+    },
+  ];
 }
 
 function createFeatureBoundaryConfigs(currentFeature) {
@@ -395,6 +420,15 @@ const eslintConfig = defineConfig([
     files: [`src/modules/${moduleName}/**/*.ts`, `src/modules/${moduleName}/**/*.tsx`],
     rules: {
       "no-restricted-imports": createCrossModuleBoundaryRule(moduleName),
+    },
+  })),
+  ...moduleNames.map((moduleName) => ({
+    files: [
+      `src/modules/${moduleName}/application/**/*.ts`,
+      `src/modules/${moduleName}/application/**/*.tsx`,
+    ],
+    rules: {
+      "no-restricted-imports": createApplicationLayerBoundaryRule(moduleName),
     },
   })),
   {
