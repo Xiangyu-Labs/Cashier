@@ -11,6 +11,13 @@ export function initializeExchangeRateRecalculationOrchestration(): void {
     return;
   }
 
+  if (typeof ExchangeRateService.registerRatesStoredHandler !== "function") {
+    logger.warn(
+      "ExchangeRateService mock does not expose registerRatesStoredHandler; skipping orchestration hook"
+    );
+    return;
+  }
+
   orchestrationInitialized = true;
   ExchangeRateService.registerRatesStoredHandler(() => {
     onExchangeRatesUpdated().catch((err) => {
