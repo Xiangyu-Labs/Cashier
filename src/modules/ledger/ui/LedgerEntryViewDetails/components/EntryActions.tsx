@@ -1,9 +1,3 @@
-/**
- * Entry Actions Component
- *
- * Action buttons for the entry footer.
- */
-
 import { Button } from "@/components/ui/button";
 import { Trash2, FileText, Save, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -65,7 +59,11 @@ export function EntryActions({
               <X className="h-3.5 w-3.5 mr-1.5" />
               {t("discardChanges")}
             </Button>
-            <Button size="sm" onClick={onSave} className="h-9 gap-1.5 shadow-lg shadow-primary/20">
+            <Button
+              size="sm"
+              onClick={onSave}
+              className="h-9 gap-1.5 shadow-lg shadow-primary/20"
+            >
               <Save className="h-3.5 w-3.5" />
               {tCommon("save")}
             </Button>

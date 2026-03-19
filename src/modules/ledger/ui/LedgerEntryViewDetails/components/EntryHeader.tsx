@@ -1,9 +1,3 @@
-/**
- * Entry Header Component
- *
- * Displays the entry title, category icon, and amount.
- */
-
 import { type EntryCategory } from "@/types/api";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { EditableField } from "@/components/ui/editable-field";

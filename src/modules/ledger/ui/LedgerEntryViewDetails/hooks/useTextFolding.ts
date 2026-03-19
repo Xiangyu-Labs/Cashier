@@ -1,9 +1,3 @@
-/**
- * Text Folding Hook
- *
- * Detects if text content needs folding based on height.
- */
-
 import { useState, useEffect, useRef, type RefObject } from "react";
 
 interface UseTextFoldingResult {
