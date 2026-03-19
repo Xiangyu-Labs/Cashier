@@ -4,7 +4,10 @@ import { db } from "@/lib/db";
 import { ledgerEntries, entryCategories, ledgers } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { flowEngine } from "@/lib/flow";
-import { TASK_TYPE_CATEGORIZE_ENTRY, type CategorizeEntryInput } from "../tasks/categorize-entry";
+import {
+  TASK_TYPE_CATEGORIZE_ENTRY,
+  type CategorizeEntryInput,
+} from "@/features/ledger/server/tasks/categorize-entry";
 import { logger } from "@/lib/logger";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { formatDateTimeForApi } from "@/lib/date-utils";

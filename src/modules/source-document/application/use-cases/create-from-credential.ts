@@ -7,7 +7,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import { ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
-import { createAndQueueSourceDocument } from "@/features/source-document/server/actions/create-and-queue";
+import { createAndQueueSourceDocument } from "@/modules/source-document/server-actions/create-and-queue";
 
 export async function createSourceDocumentFromCredential(input: {
   credentialId: string;

@@ -1,5 +1,5 @@
 import { flowEngine } from "@/lib/flow";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "@/features/source-document/server/tasks/parse-source-document";
 import type { CategoryInfo } from "@/features/ai/types";
 import { getLocalStorage } from "@/lib/storage/local";
 import { logger } from "@/lib/logger";

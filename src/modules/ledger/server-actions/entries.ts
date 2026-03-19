@@ -221,7 +221,7 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     // If currency was updated, recalculate converted amounts for affected entries
     if (validated.currency !== undefined && ledgerEntryIds.length > 0) {
       const { recalculateEntriesConvertedAmount } =
-        await import("@/features/ledger/server/actions/helpers");
+        await import("./helpers");
       const ledger = await db.query.ledgers.findFirst({
         where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
         columns: { metadata: true },
