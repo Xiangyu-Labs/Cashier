@@ -2,7 +2,6 @@ import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
-import { logger } from "@/lib/logger";
 
 export interface ExchangeRates {
   base: string;
@@ -10,10 +9,19 @@ export interface ExchangeRates {
   rates: Record<string, number>;
 }
 
+export interface ExchangeRatesStoredEvent {
+  date: string;
+  base: string;
+  rates: Record<string, number>;
+}
+
+type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
+
 export class ExchangeRateService {
   private static readonly API_BASE_URL = "https://api.frankfurter.app";
 
   private static pendingRequests = new Map<string, Promise<ExchangeRates>>();
+  private static ratesStoredHandlers = new Set<ExchangeRatesStoredHandler>();
 
   /**
    * Get rates for a specific date (defaults to today).
@@ -54,6 +62,17 @@ export class ExchangeRateService {
   }
 
   /**
+   * Register handler for the "new daily rates stored" event.
+   * Returns an unsubscribe function.
+   */
+  static registerRatesStoredHandler(handler: ExchangeRatesStoredHandler): () => void {
+    this.ratesStoredHandlers.add(handler);
+    return () => {
+      this.ratesStoredHandlers.delete(handler);
+    };
+  }
+
+  /**
    * Fetch rates from API and store in database.
    * Extracted to a separate method to prevent race conditions.
    */
@@ -71,20 +90,23 @@ export class ExchangeRateService {
       const data: ExchangeRates = await response.json();
 
       // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
-      await db
+      const insertedRows = await db
         .insert(currencyRates)
         .values({
           date: targetDateStr,
           base: data.base,
           rates: data.rates,
         })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ date: currencyRates.date });
 
-      // Trigger recalculation of converted amounts for all ledgers
-      const { onExchangeRatesUpdated } = await import("./services/exchange-rate-callback");
-      onExchangeRatesUpdated().catch((err) => {
-        logger.error({ err }, "Failed to trigger recalculation after exchange rate update");
-      });
+      if (insertedRows.length > 0) {
+        await this.notifyRatesStored({
+          date: data.date,
+          base: data.base,
+          rates: data.rates,
+        });
+      }
 
       return data;
     } finally {
@@ -140,6 +162,18 @@ export class ExchangeRateService {
   private static formatDate(date: Date | string): string {
     if (typeof date === "string") return date.split("T")[0];
     return format(date, "yyyy-MM-dd");
+  }
+
+  private static async notifyRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
+    if (this.ratesStoredHandlers.size === 0) {
+      return;
+    }
+
+    const pendingHandlers = [...this.ratesStoredHandlers].map(async (handler) => {
+      await handler(event);
+    });
+
+    await Promise.allSettled(pendingHandlers);
   }
 
   /**

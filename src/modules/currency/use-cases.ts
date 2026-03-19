@@ -1,5 +1,8 @@
 import { CurrencyService } from "./service";
 import { ExchangeRateService } from "./ExchangeRateService";
+import { initializeExchangeRateRecalculationOrchestration } from "./services/exchange-rate-callback";
+
+initializeExchangeRateRecalculationOrchestration();
 
 export interface ConvertEntryAmountInput {
   amount: number;

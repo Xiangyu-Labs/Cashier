@@ -65,4 +65,30 @@ describe("ExchangeRateService", () => {
     // But only one API call should be made
     expect(callCount).toBe(1);
   });
+
+  it("emits rates-stored event once for newly inserted date", async () => {
+    const onStored = vi.fn();
+    const unsubscribe = ExchangeRateService.registerRatesStoredHandler(onStored);
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        base: "EUR",
+        date: "2024-01-21",
+        rates: { USD: 1.15, CNY: 7.7 },
+      }),
+    } as Response);
+
+    await ExchangeRateService.getRates("2024-01-21");
+    await ExchangeRateService.getRates("2024-01-21");
+
+    expect(onStored).toHaveBeenCalledTimes(1);
+    expect(onStored).toHaveBeenCalledWith({
+      base: "EUR",
+      date: "2024-01-21",
+      rates: { USD: 1.15, CNY: 7.7 },
+    });
+
+    unsubscribe();
+  });
 });

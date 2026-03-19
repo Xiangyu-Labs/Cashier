@@ -1,101 +1,139 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
 import { getTestDb } from "../setup";
 import { ledgers, users } from "@/persistence";
-import { eq, isNull } from "drizzle-orm";
+import { ExchangeRateService } from "@/modules/currency/ExchangeRateService";
+import {
+  initializeExchangeRateRecalculationOrchestration,
+  onExchangeRatesUpdated,
+} from "@/modules/currency/services/exchange-rate-callback";
 
-// Mock auth module
-vi.mock("@/auth", () => ({
-  auth: vi.fn(),
+const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
+  recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { auth } from "@/auth";
+vi.mock("@/modules/ledger/use-cases", () => ({
+  recalculateEntriesConvertedAmount: recalculateEntriesConvertedAmountMock,
+}));
 
-const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
-
-describe("Exchange rate callback behavior", () => {
+describe("exchange-rate orchestration", () => {
   let counter = 0;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     counter++;
-
-    // Setup auth mock for each test
-    vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({
-      user: { id: TEST_USER_ID, email: "test@example.com" },
-      expires: new Date(Date.now() + 3600 * 1000).toISOString(),
-    });
+    recalculateEntriesConvertedAmountMock.mockReset().mockResolvedValue(undefined);
+    vi.restoreAllMocks();
   });
 
-  it("should query all non-deleted ledgers with their mainCurrency", async () => {
-    const db = getTestDb();
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    // Arrange: Create multiple ledgers with different users (userId has unique constraint)
+  it("recalculates for all active ledgers and uses CNY fallback", async () => {
+    const db = getTestDb();
     const user1Id = `user-1-${counter}`;
     const user2Id = `user-2-${counter}`;
     const user3Id = `user-3-${counter}`;
     const ledger1Id = `ledger-1-${counter}`;
     const ledger2Id = `ledger-2-${counter}`;
-    const deletedLedgerId = `ledger-del-${counter}`;
+    const deletedLedgerId = `ledger-deleted-${counter}`;
 
-    await db.insert(users).values({ id: user1Id, email: `user1-${counter}@example.com` });
-    await db.insert(users).values({ id: user2Id, email: `user2-${counter}@example.com` });
-    await db.insert(users).values({ id: user3Id, email: `user3-${counter}@example.com` });
+    await db.insert(users).values({ id: user1Id, email: `${user1Id}@example.com` });
+    await db.insert(users).values({ id: user2Id, email: `${user2Id}@example.com` });
+    await db.insert(users).values({ id: user3Id, email: `${user3Id}@example.com` });
 
     await db.insert(ledgers).values({
       id: ledger1Id,
       userId: user1Id,
       metadata: { settings: { mainCurrency: "USD" } },
     });
-
     await db.insert(ledgers).values({
       id: ledger2Id,
       userId: user2Id,
-      metadata: { settings: { mainCurrency: "EUR" } },
+      metadata: {},
     });
-
     await db.insert(ledgers).values({
       id: deletedLedgerId,
       userId: user3Id,
-      metadata: { settings: { mainCurrency: "GBP" } },
+      metadata: { settings: { mainCurrency: "EUR" } },
       deletedAt: new Date(),
     });
 
-    // Act: Query non-deleted ledgers (simulating onExchangeRatesUpdated behavior)
-    const allLedgers = await db.query.ledgers.findMany({
-      where: isNull(ledgers.deletedAt),
-    });
+    await onExchangeRatesUpdated();
 
-    // Assert
-    expect(allLedgers).toHaveLength(2);
-    expect(allLedgers.map((l) => l.id)).toContain(ledger1Id);
-    expect(allLedgers.map((l) => l.id)).toContain(ledger2Id);
-    expect(allLedgers.map((l) => l.id)).not.toContain(deletedLedgerId);
-
-    // Verify mainCurrency extraction
-    const currencies = allLedgers.map((l) => l.metadata?.settings?.mainCurrency ?? "CNY");
-    expect(currencies).toContain("USD");
-    expect(currencies).toContain("EUR");
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(2);
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger1Id, "USD");
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger2Id, "CNY");
   });
 
-  it("should default to CNY when mainCurrency is not set", async () => {
+  it("triggers recalculation only when rates are first stored", async () => {
     const db = getTestDb();
-
-    // Arrange: Create ledger without mainCurrency
+    const userId = `user-cache-${counter}`;
     const ledgerId = `ledger-${counter}`;
 
+    await db.insert(users).values({
+      id: userId,
+      email: `${userId}@example.com`,
+    });
     await db.insert(ledgers).values({
       id: ledgerId,
-      userId: TEST_USER_ID,
-      metadata: {}, // No settings
+      userId,
+      metadata: { settings: { mainCurrency: "CNY" } },
     });
 
-    // Act: Query and extract currency
-    const ledger = await db.query.ledgers.findFirst({
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        base: "EUR",
+        date: "2024-02-10",
+        rates: { USD: 1.08, CNY: 7.65 },
+      }),
+    } as Response);
+
+    initializeExchangeRateRecalculationOrchestration();
+
+    await ExchangeRateService.getRates("2024-02-10");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(1);
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "CNY");
+
+    recalculateEntriesConvertedAmountMock.mockClear();
+
+    await ExchangeRateService.getRates("2024-02-10");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(recalculateEntriesConvertedAmountMock).not.toHaveBeenCalled();
+  });
+
+  it("does not fail orchestration when a single recalculation throws", async () => {
+    const db = getTestDb();
+    const userId = `user-error-${counter}`;
+    const ledgerId = `ledger-error-${counter}`;
+
+    await db.insert(users).values({
+      id: userId,
+      email: `${userId}@example.com`,
+    });
+    await db.insert(ledgers).values({
+      id: ledgerId,
+      userId,
+      metadata: { settings: { mainCurrency: "JPY" } },
+    });
+
+    recalculateEntriesConvertedAmountMock.mockImplementation(async (id: string) => {
+      if (id === ledgerId) {
+        throw new Error("test recalculation error");
+      }
+    });
+
+    await expect(onExchangeRatesUpdated()).resolves.toBeUndefined();
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "JPY");
+
+    const persisted = await db.query.ledgers.findFirst({
       where: eq(ledgers.id, ledgerId),
     });
-
-    const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-
-    // Assert
-    expect(mainCurrency).toBe("CNY");
+    expect(persisted).toBeDefined();
   });
 });
