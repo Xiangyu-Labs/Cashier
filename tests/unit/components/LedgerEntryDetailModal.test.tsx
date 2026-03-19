@@ -35,19 +35,6 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
-// Mock child components to simplify testing parent logic
-vi.mock("@/features/ledger/components/LedgerEntryEditForm", () => ({
-  LedgerEntryEditForm: ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (
-    <div>
-      <button onClick={onSave}>Save</button>
-      <button onClick={onCancel}>Cancel</button>
-    </div>
-  ),
-}));
-
-// Track pending changes for the mock to determine edit state
-const _mockHasPendingChanges = false;
-
 vi.mock("@/modules/ledger/ui/LedgerEntryViewDetails", () => ({
   LedgerEntryViewDetails: ({
     pendingChanges,

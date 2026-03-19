@@ -76,33 +76,32 @@ vi.mock("@/modules/ledger/actions", () => ({
   deleteServiceCredentialAction: vi.fn(),
 }));
 
-vi.mock("@/features/ledger/client/hooks/use-ledger-events", () => ({
-  useLedgerEvents: () => ({}),
-}));
-
-vi.mock("@/features/notifications/components/PushNotificationManager", () => ({
-  PushNotificationManager: () => <div>PushNotificationManager</div>,
-}));
-
 // Mock components
-vi.mock("@/features/ledger/components/settings/CurrencySection", () => ({
+vi.mock("@/modules/ledger/ui/CurrencySection", () => ({
   CurrencySection: () => <div>CurrencySection</div>,
 }));
 
-vi.mock("@/features/ledger/components/settings/CategorySection", () => ({
+vi.mock("@/modules/ledger/ui/CategorySection", () => ({
   CategorySection: () => <div>CategorySection</div>,
 }));
 
-vi.mock("@/features/ledger/components/settings/ServiceCredentialSection", () => ({
+vi.mock("@/modules/ledger/ui/ServiceCredentialSection", () => ({
   ServiceCredentialSection: () => <div>ServiceCredentialSection</div>,
 }));
 
-vi.mock("@/features/ledger/components/settings/ProcessingSystemSection", () => ({
-  ProcessingSystemSection: () => <div>ProcessingSystemSection</div>,
-}));
-
-vi.mock("@/features/ledger/components/settings/LedgerManagementSection", () => ({
-  LedgerManagementSection: () => <div>LedgerManagementSection</div>,
+vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
+  CollapsibleSection: ({
+    title,
+    children,
+  }: {
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <div>
+      <button type="button">{title}</button>
+      <div>{children}</div>
+    </div>
+  ),
 }));
 
 describe("SettingsTab", () => {
