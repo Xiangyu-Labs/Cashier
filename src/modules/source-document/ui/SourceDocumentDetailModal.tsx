@@ -16,11 +16,11 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
 import { usePendingChanges } from "@/modules/source-document/hooks";
-import { type EntryEditData } from "@/components/entries";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
+import type { EntryEditData } from "./entry-edit-data";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;

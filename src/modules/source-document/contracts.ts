@@ -1,4 +1,4 @@
-import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "@/persistence";
+import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
 export type SourceDocumentDto = {

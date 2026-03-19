@@ -12,7 +12,7 @@ import { assertRegistrationAllowed } from "./registration";
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
-import { provisionUserWorkspace } from "@/modules/auth";
+import { provisionUserWorkspace } from "@/modules/auth/use-cases";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

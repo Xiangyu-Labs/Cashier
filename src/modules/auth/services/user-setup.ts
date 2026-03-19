@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { users } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { createDefaultLedger } from "@/modules/ledger";
+import { createDefaultLedger } from "@/modules/ledger/use-cases";
 
 export async function createDefaultLedgerForUser(
   userId: string,

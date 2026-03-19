@@ -6,7 +6,7 @@ import { sourceDocuments } from "@/persistence";
 import { requireLedgerAccess } from "@/modules/auth/helpers";
 import { AppError } from "@/lib/errors";
 import { and, eq, isNull } from "drizzle-orm";
-import type { SourceDocMetadata } from "@/persistence/schema/source-document";
+import type { SourceDocMetadata } from "@/modules/source-document/types";
 
 function getReferencedStorageKeys(
   doc: {

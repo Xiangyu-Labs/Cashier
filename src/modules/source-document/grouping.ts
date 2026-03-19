@@ -1,4 +1,4 @@
-import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import type { SourceDocumentStatusType } from "./types";
 
 export interface SourceDocumentGroup<T> {
   sourceDocument: T;

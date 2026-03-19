@@ -10,7 +10,7 @@ import { desc, lte, gte, inArray, and, eq, or, lt, sql, type SQL } from "drizzle
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
-import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import {

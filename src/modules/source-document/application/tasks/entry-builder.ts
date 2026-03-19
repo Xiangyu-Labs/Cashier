@@ -1,5 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { ExchangeRateService } from "@/modules/currency";
+import { ExchangeRateService } from "@/modules/currency/services";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 

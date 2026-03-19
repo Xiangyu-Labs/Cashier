@@ -24,143 +24,6 @@ const moduleNames = [
 
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
 
-const moduleRootRestrictedImports = {
-  auth: [
-    {
-      importNames: [
-        "sendOTPAction",
-        "deleteAccount",
-        "AUTH_ERROR_CODES",
-        "AuthErrorCode",
-        "getCurrentUser",
-        "requireLedgerAccess",
-        "authenticateWithOTP",
-        "OTPInvalidSignInError",
-        "OTPExpiredSignInError",
-        "OTPLockedSignInError",
-        "OTPRateLimitedSignInError",
-        "isRegistrationAllowed",
-        "assertRegistrationAllowed",
-        "RegistrationDisabledError",
-        "generateOTP",
-        "verifyOTP",
-        "hashOTP",
-        "isValidOTPFormat",
-        "getOTPExpiration",
-        "getLockoutExpiration",
-        "getMaxAttempts",
-        "getResendCooldown",
-        "OTP_LENGTH",
-        "checkSendRateLimit",
-        "checkSendRateLimitByIP",
-        "checkResendCooldown",
-        "setResendCooldown",
-        "getCanResendAt",
-        "checkVerifyRateLimit",
-        "findOTPRecord",
-        "verifyOTPWithPolicy",
-        "isAccountLocked",
-        "createDefaultLedgerForUser",
-        "clearUserDefaultLedger",
-      ],
-      message:
-        'Import these APIs from "@/modules/auth/actions", "@/modules/auth/errors", "@/modules/auth/helpers", or "@/modules/auth/services" instead of the module root.',
-    },
-  ],
-  ledger: [
-    {
-      importNames: [
-        "getLedgerAction",
-        "getLedgersAction",
-        "createLedgerAction",
-        "updateLedgerAction",
-        "deleteLedgerAction",
-        "listEntryCategories",
-        "getEntryCategoriesAction",
-        "createEntryCategoryAction",
-        "updateEntryCategoryAction",
-        "deleteEntryCategoryAction",
-        "reorderEntryCategoriesAction",
-        "getUncategorizedCountAction",
-        "listLedgerEntries",
-        "updateLedgerEntryAction",
-        "deleteLedgerEntryAction",
-        "batchUpdateLedgerEntriesAction",
-        "batchDeleteLedgerEntriesAction",
-        "createLedgerEntryAction",
-        "getLedgerEntriesAction",
-        "getLedgerEntryAction",
-        "submitAutoCategorizeAction",
-        "submitBatchCategorizeAction",
-        "exportLedgerEntriesAction",
-        "getLedgerSettingsAction",
-        "getServiceCredentialsAction",
-        "createServiceCredentialAction",
-        "deleteServiceCredentialAction",
-        "validateServiceCredential",
-        "getLedgerStatsAction",
-        "calculateLedgerStats",
-      ],
-      message: 'Import these APIs from "@/modules/ledger/actions" instead of the module root.',
-    },
-    {
-      importNames: [
-        "mapLedgerDto",
-        "mapEntryCategoryDto",
-        "mapLedgerEntryDto",
-        "mapServiceCredentialDto",
-      ],
-      message: 'Import these mappers from "@/modules/ledger/mappers" instead of the module root.',
-    },
-  ],
-  "source-document": [
-    {
-      importNames: [
-        "listSourceDocuments",
-        "getSourceDocumentFullAction",
-        "getSourceDocumentsAction",
-        "getAllSourceDocumentsAction",
-        "getPendingSourceDocumentsAction",
-        "getSourceDocumentByIdAction",
-        "getSourceDocumentLightAction",
-        "batchUpdateSourceDocumentsAction",
-        "updateSourceDocumentAction",
-        "updateSourceDocumentImagesAction",
-        "deleteSourceDocumentAction",
-        "batchDeleteSourceDocumentsAction",
-        "batchRetrySourceDocumentsAction",
-        "createQuickEntryAction",
-        "createSourceDocumentAction",
-        "retrySourceDocumentAction",
-        "getProcessingTasksAction",
-        "getProcessingStatsAction",
-      ],
-      message:
-        'Import these APIs from "@/modules/source-document/actions" instead of the module root.',
-    },
-  ],
-  stats: [
-    {
-      importNames: ["getEnhancedStats", "EnhancedStats", "EnhancedCategoryStat"],
-      message: 'Import these APIs from "@/modules/stats/actions" instead of the module root.',
-    },
-  ],
-  "task-queue": [
-    {
-      importNames: [
-        "cancelTaskAction",
-        "batchCancelTasksAction",
-        "dismissTaskAction",
-        "batchDismissTasksAction",
-        "getTaskQueueForAuthorizedLedger",
-        "getTaskQueueAction",
-      ],
-      message:
-        'Import these APIs from "@/modules/task-queue/actions" instead of the module root.',
-    },
-  ],
-};
-
 function createDeepFeatureImportPatterns(targetFeatures) {
   return targetFeatures.flatMap((featureName) => [
     `@/features/${featureName}/server/*/**`,
@@ -187,16 +50,10 @@ function createCrossFeatureBoundaryRule(currentFeature) {
 }
 
 function createModuleRootImportRestrictions(targetModules) {
-  return targetModules.flatMap((moduleName) => {
-    const restrictions = moduleRootRestrictedImports[moduleName];
-    if (restrictions == null) return [];
-
-    return restrictions.map((restriction) => ({
-      name: `@/modules/${moduleName}`,
-      importNames: restriction.importNames,
-      message: restriction.message,
-    }));
-  });
+  return targetModules.map((moduleName) => ({
+    name: `@/modules/${moduleName}`,
+    message: `Import from an explicit public subpath (for example "@/modules/${moduleName}/actions") instead of the module root.`,
+  }));
 }
 
 function createDeepModuleImportPatterns(targetModules) {
@@ -434,6 +291,23 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    files: ["src/modules/*/contracts.ts", "src/modules/*/types.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/persistence", "@/persistence/**"],
+              message:
+                "Module public contracts/types must not depend on persistence. Define public types in the owning module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["tests/**/*.ts", "tests/**/*.tsx"],
     rules: {
       "no-restricted-imports": [
@@ -463,6 +337,25 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "no-restricted-imports": createApplicationLayerBoundaryRule(moduleName),
+    },
+  })),
+  ...moduleNames.map((moduleName) => ({
+    files: [`src/modules/${moduleName}/contracts.ts`, `src/modules/${moduleName}/types.ts`],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...createCrossModuleBoundaryOptions(moduleName),
+          patterns: [
+            ...createCrossModuleBoundaryOptions(moduleName).patterns,
+            {
+              group: ["@/persistence", "@/persistence/**"],
+              message:
+                "Module public contracts/types must not depend on persistence. Define public types in the owning module instead.",
+            },
+          ],
+        },
+      ],
     },
   })),
   {

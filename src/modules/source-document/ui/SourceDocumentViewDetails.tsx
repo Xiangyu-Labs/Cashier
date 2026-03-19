@@ -23,10 +23,11 @@ import {
   X,
 } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { EditableLedgerEntryItem, type EntryEditData } from "@/components/entries";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
+import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
+import type { EntryEditData } from "./entry-edit-data";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 
 interface CurrencyBreakdownItemProps {

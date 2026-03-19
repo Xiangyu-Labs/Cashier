@@ -4,14 +4,13 @@ import {
   type LedgerEntry,
   type EntryCategory,
 } from "@/types/api";
-import { LedgerEntryItem } from "@/components/entries";
 import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/processing-status";
 import { parseDateString } from "@/lib/date-utils";
-import { type SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import { type SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { parseAmount } from "@/lib/formatters";
+import { LedgerEntryItem } from "./LedgerEntryItem";
 
 function getSafeImageSrc(data: string): string {
   if (data.startsWith("http") || data.startsWith("data:") || data.startsWith("/api/uploads/")) {

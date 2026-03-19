@@ -131,6 +131,30 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("allows workspace query imports from dedicated public entrypoints in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
+        export const value = getLedgerPageBootstrap;
+      `,
+      "src/app/[locale]/(protected)/ledger/[id]/page.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("allows workspace use-case imports from dedicated public entrypoints in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { resolveHome } from "@/modules/workspace/use-cases";
+        export const value = resolveHome;
+      `,
+      "src/app/[locale]/(protected)/page.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects source-document query imports from module root in cross-module callers", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -210,6 +234,30 @@ describe("boundary lint", () => {
         export const leak = createSourceDocumentAction;
       `,
       "src/modules/source-document/application/use-cases/create-from-credential.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects persistence imports from module contracts", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import type { ledgers } from "@/persistence";
+        export type Leak = typeof ledgers;
+      `,
+      "src/modules/ledger/contracts.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects persistence imports from module types", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import type { SourceDocumentStatusType } from "@/persistence/schema/source-document";
+        export type Leak = SourceDocumentStatusType;
+      `,
+      "src/modules/source-document/types.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);

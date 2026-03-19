@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ledgers } from "@/persistence";
-import { recalculateEntriesConvertedAmount } from "@/modules/ledger";
+import { recalculateEntriesConvertedAmount } from "@/modules/ledger/use-cases";
 import { logger } from "@/lib/logger";
 import { isNull } from "drizzle-orm";
 

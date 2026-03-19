@@ -13,7 +13,7 @@ import {
 } from "@/modules/auth/services";
 import { TIME_SECONDS } from "@/lib/constants";
 import { UnauthorizedError } from "@/lib/errors";
-import { provisionUserWorkspace } from "@/modules/auth";
+import { provisionUserWorkspace } from "@/modules/auth/use-cases";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)

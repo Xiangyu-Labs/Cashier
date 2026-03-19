@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
-import { ExchangeRateService } from "@/modules/currency";
+import { ExchangeRateService } from "@/modules/currency/services";
 import { ledgerEntries } from "@/persistence";
 
 export interface ConversionItem {

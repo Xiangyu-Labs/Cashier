@@ -1,9 +1,24 @@
-import type { LedgerMetadata, SourceDocumentTypeValue, SourceDocumentStatusType } from "@/persistence";
+import type {
+  SourceDocumentStatusType,
+  SourceDocumentTypeValue,
+} from "@/modules/source-document/types";
+
+export interface LedgerSettings {
+  aiLanguage?: string;
+  currencies?: string[];
+  mainCurrency?: string;
+  collapseEntriesDefault?: boolean;
+  aiCustomPrompt?: string;
+}
+
+export interface LedgerMetadataDto {
+  settings?: LedgerSettings;
+}
 
 export type LedgerDto = {
   id: string;
   userId: string;
-  metadata: LedgerMetadata | null;
+  metadata: LedgerMetadataDto | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -71,7 +86,7 @@ export type LedgerEntryDto = {
 
 export type LedgerSettingsDto = {
   id?: string;
-} & NonNullable<LedgerMetadata["settings"]>;
+} & LedgerSettings;
 
 export interface LedgerSummaryDto {
   convertedTotal: {

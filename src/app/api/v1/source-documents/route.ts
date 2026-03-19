@@ -5,7 +5,7 @@ import { ValidationError } from "@/lib/errors";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
-import { createSourceDocumentFromCredential } from "@/modules/source-document";
+import { createSourceDocumentFromCredential } from "@/modules/source-document/use-cases";
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;

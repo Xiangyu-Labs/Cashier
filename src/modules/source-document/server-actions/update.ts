@@ -6,7 +6,10 @@ import { withLedgerAccess } from "@/lib/auth-actions";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, inArray } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
-import { type SourceDocMetadata, type SourceDocumentStatusType } from "@/persistence/schema/source-document";
+import {
+  type SourceDocMetadata,
+  type SourceDocumentStatusType,
+} from "@/modules/source-document/types";
 import { processImages } from "./helpers";
 
 const VALID_STATUSES: SourceDocumentStatusType[] = [

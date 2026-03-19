@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { LedgerPageClient } from "@/modules/workspace/ui";
-import { getLedgerPageBootstrap } from "@/modules/workspace";
+import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";

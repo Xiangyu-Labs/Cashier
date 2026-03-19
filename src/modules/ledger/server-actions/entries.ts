@@ -5,7 +5,7 @@ import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { z } from "zod";
 import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { CurrencyService } from "@/modules/currency";
+import { CurrencyService } from "@/modules/currency/services";
 import { NotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { mapLedgerEntryDto } from "@/modules/ledger/mappers";

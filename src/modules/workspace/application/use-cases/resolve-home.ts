@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { ledgers } from "@/persistence";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { ResolveHomeResult } from "@/modules/workspace/contracts";
-import { provisionUserWorkspace } from "@/modules/auth";
+import { provisionUserWorkspace } from "@/modules/auth/use-cases";
 
 export async function resolveHome(input: {
   userId: string;

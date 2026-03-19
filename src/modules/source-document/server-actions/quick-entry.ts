@@ -5,7 +5,7 @@ import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { requireLedgerAccess } from "@/modules/auth/helpers";
 import { and, eq, isNull } from "drizzle-orm";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { CurrencyService } from "@/modules/currency";
+import { CurrencyService } from "@/modules/currency/services";
 import { SourceDocumentType } from "@/persistence/schema/source-document";
 import { createQuickEntrySchema } from "./types";
 import type { z } from "zod";
