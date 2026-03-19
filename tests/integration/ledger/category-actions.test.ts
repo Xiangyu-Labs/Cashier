@@ -5,22 +5,14 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
-const { submitMock, cancelMock, registerMock, getStatusMock } = vi.hoisted(() => ({
+const { submitMock, cancelMock } = vi.hoisted(() => ({
   submitMock: vi.fn().mockResolvedValue("mock-task-id"),
   cancelMock: vi.fn().mockResolvedValue(undefined),
-  registerMock: vi.fn(),
-  getStatusMock: vi.fn(),
 }));
 
 vi.mock("@/lib/flow", () => ({
   submitFlowTask: submitMock,
   cancelFlowTask: cancelMock,
-  flowEngine: {
-    submit: submitMock,
-    cancel: cancelMock,
-    register: registerMock,
-    getStatus: getStatusMock,
-  },
 }));
 
 import { submitFlowTask } from "@/lib/flow";

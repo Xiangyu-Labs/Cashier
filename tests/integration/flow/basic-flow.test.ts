@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vitest";
-import { flowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
+import { getFlowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
 import { initializeDefaultFlowRuntime } from "@/lib/flow/runtime";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/persistence";
@@ -39,7 +39,7 @@ describe("Flow System Integration", () => {
 
   beforeAll(async () => {
     await initializeDefaultFlowRuntime();
-    flowEngine.register(TEST_TASK_TYPE, testHandler);
+    getFlowEngine().register(TEST_TASK_TYPE, testHandler);
   });
 
   // Mock fetch for API calls if needed by tasks
@@ -56,7 +56,7 @@ describe("Flow System Integration", () => {
   });
 
   it("should execute a basic task successfully", async () => {
-    const taskRunId = await flowEngine.submit(
+    const taskRunId = await getFlowEngine().submit(
       TEST_TASK_TYPE,
       { ledgerId, value: 21 },
       { title: "Test Task" }
@@ -89,7 +89,7 @@ describe("Flow System Integration", () => {
   });
 
   it("should handle task failure", async () => {
-    const taskRunId = await flowEngine.submit(
+    const taskRunId = await getFlowEngine().submit(
       TEST_TASK_TYPE,
       { ledgerId, value: 0, shouldFail: true },
       { title: "Failing Task" }

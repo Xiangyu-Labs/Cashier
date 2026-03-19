@@ -13,17 +13,3 @@ export {
   cancelFlowTask,
   resetFlowRuntime,
 } from "./runtime";
-
-import type { FlowEngine } from "./types";
-import { getFlowEngine } from "./runtime";
-
-// Backward-compatible proxy for existing tests and migration callers.
-export const flowEngine: FlowEngine = {
-  register: (...args) => getFlowEngine().register(...args),
-  submit: (...args) => getFlowEngine().submit(...args),
-  cancel: (...args) => getFlowEngine().cancel(...args),
-  getStatus: (...args) => getFlowEngine().getStatus(...args),
-  listTasks: (...args) => getFlowEngine().listTasks(...args),
-  getRunningTasks: (...args) => getFlowEngine().getRunningTasks(...args),
-  getMetrics: (...args) => getFlowEngine().getMetrics(...args),
-};

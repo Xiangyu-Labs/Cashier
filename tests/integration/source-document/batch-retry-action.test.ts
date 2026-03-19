@@ -10,18 +10,12 @@ const { submitMock, cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn(),
 }));
 
-// Mock flowEngine to avoid registration issues
 vi.mock("@/lib/flow", async () => {
   const actual = await vi.importActual("@/lib/flow");
   return {
     ...actual,
     submitFlowTask: submitMock,
     cancelFlowTask: cancelMock,
-    flowEngine: {
-      register: vi.fn(),
-      cancel: cancelMock,
-      submit: submitMock,
-    },
   };
 });
 

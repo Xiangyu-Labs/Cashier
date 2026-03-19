@@ -30,10 +30,6 @@ vi.mock("@/lib/flow", async (importOriginal) => {
   return {
     ...original,
     submitFlowTask: submitMock,
-    flowEngine: {
-      ...original.flowEngine,
-      submit: submitMock,
-    },
   };
 });
 
