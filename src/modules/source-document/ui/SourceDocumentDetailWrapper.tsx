@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { SourceDocumentDetailModal } from "@/features/source-document/components/SourceDocumentDetailModal";
-import { useSourceDocumentDetailData } from "@/features/source-document/components/hooks/use-source-document-detail-data";
-import { useSourceDocumentDetailMutations } from "@/features/source-document/components/hooks/use-source-document-detail-mutations";
+import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
+import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
+import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import type { EntryCategory, LedgerEntry } from "@/types/api";
 
 interface SourceDocumentDetailWrapperProps {

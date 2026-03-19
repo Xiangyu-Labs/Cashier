@@ -24,7 +24,6 @@ vi.mock("@/i18n/routing", () => ({
 
 vi.mock("@/modules/auth/actions", () => ({
   sendOTPAction: (...args: unknown[]) => mockSendOTPAction(...args),
-  OTP_LENGTH: 6,
 }));
 
 describe("useLoginFlow", () => {
