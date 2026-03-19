@@ -90,9 +90,7 @@ describe("prepareSourceDocumentTask", () => {
 
     const context = await getSourceDocumentTaskContext("ledger-1", {
       id: "ledger-1",
-      name: "Main ledger",
-      ownerId: "user-1",
-      isDefault: false,
+      userId: "user-1",
       metadata: { settings: {} },
       createdAt: new Date("2026-03-19T12:00:00.000Z"),
       updatedAt: new Date("2026-03-19T12:00:00.000Z"),

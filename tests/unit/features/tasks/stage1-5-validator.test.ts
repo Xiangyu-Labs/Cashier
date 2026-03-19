@@ -47,11 +47,21 @@ describe("Stage 1.5 Validator", () => {
 
       expect(result.is_reasonable).toBe(true);
       expect(result.summary).toBeDefined();
-      expect(result.summary?.title).toBe("午餐消费");
-      expect(result.summary?.currencies[0].code).toBe("CNY");
-      expect(result.summary?.categories[0].name).toBe("餐饮");
+      if (result.summary == null) {
+        throw new Error("Expected validation summary");
+      }
+      expect(result.summary.title).toBe("午餐消费");
+      const firstCurrency = result.summary.currencies[0];
+      const firstCategory = result.summary.categories[0];
+      expect(firstCurrency).toBeDefined();
+      expect(firstCategory).toBeDefined();
+      if (firstCurrency == null || firstCategory == null) {
+        throw new Error("Expected summary currencies and categories");
+      }
+      expect(firstCurrency.code).toBe("CNY");
+      expect(firstCategory.name).toBe("餐饮");
       expect("rejection_reason" in result).toBe(false);
-      expect("rules" in result.summary!).toBe(false);
+      expect("rules" in result.summary).toBe(false);
     });
 
     it("should include user rules in summary when present", async () => {
@@ -117,7 +127,12 @@ describe("Stage 1.5 Validator", () => {
       await executeStage1_5Validation(baseInput, mockAI);
 
       expect(mockAI.generate).toHaveBeenCalledTimes(1);
-      const callArgs = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const firstCall = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(firstCall).toBeDefined();
+      if (firstCall == null) {
+        throw new Error("Expected AI generate call");
+      }
+      const callArgs = firstCall[0];
       expect(callArgs.prompt).toContain("validation AI");
       expect(callArgs.prompt).toContain("Stage 1 Results");
       expect(callArgs.requireJson).toBe(true);
