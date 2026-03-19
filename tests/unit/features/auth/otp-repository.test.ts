@@ -4,7 +4,7 @@ import {
   createOTPToken,
   deleteOTPToken,
   cleanupExpiredOTPTokens,
-} from "@/features/auth/server/repositories/otp-repository";
+} from "@/modules/auth/repositories/otp-repository";
 import {
   findOTPRecord,
   verifyOTPWithPolicy,

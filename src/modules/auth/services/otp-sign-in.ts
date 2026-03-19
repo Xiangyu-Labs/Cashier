@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { User } from "next-auth";
 import { db } from "@/lib/db";
 import { users } from "@/persistence/schema/auth";
-import { deleteOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { deleteOTPToken } from "@/modules/auth/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { isValidOTPFormat } from "./otp";
 import { checkVerifyRateLimit } from "./otp-rate-limit";

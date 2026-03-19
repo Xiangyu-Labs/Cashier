@@ -20,7 +20,7 @@ import {
   setResendCooldown,
   getCanResendAt,
 } from "./services/otp-rate-limit";
-import { createOTPToken } from "@/features/auth/server/repositories/otp-repository";
+import { createOTPToken } from "./repositories/otp-repository";
 
 const MAX_EMAIL_LENGTH = 254;
 
