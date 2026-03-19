@@ -5,35 +5,15 @@ import { taskRuns, sourceDocuments, type TaskRun, type SourceDocument } from "@/
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { QueueItem, QueueItemStatus } from "../../types";
+import type {
+  QueueItem,
+  QueueItemStatus,
+  TaskQueueResult,
+  TaskQueueStats,
+} from "@/modules/task-queue/types";
 
 // Zod schemas for runtime validation
 const QueueItemStatusSchema = z.enum(["pending", "running", "completed", "failed", "anomaly"]);
-
-/**
- * Stats for the task queue
- */
-export interface TaskQueueStats {
-  pendingCount: number;
-  runningCount: number;
-  failedCount: number;
-  completedCount: number;
-  anomalyCount: number;
-  total: number;
-  // Token stats
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  avgTokensPerTask: number;
-}
-
-/**
- * Result from getTaskQueueAction
- * Returns a flat list of QueueItems and statistics
- */
-export interface TaskQueueResult {
-  items: QueueItem[];
-  stats: TaskQueueStats;
-}
 
 function getSourceDocumentId(task: Pick<TaskRun, "entityType" | "entityId">): string | undefined {
   if (task.entityType !== "source_document" || task.entityId == null || task.entityId === "") {

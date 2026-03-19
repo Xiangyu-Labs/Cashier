@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  getTaskQueueAction,
-  type TaskQueueResult,
-  type TaskQueueStats,
-} from "@/modules/task-queue/actions";
-import type { QueueItem } from "@/features/task-queue/types";
+import { getTaskQueueAction } from "@/modules/task-queue/actions";
+import type { QueueItem, TaskQueueResult, TaskQueueStats } from "@/modules/task-queue/types";
 
 const defaultStats: TaskQueueStats = {
   pendingCount: 0,
