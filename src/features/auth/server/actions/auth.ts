@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { Resend } from "resend";
-import { generateOTP } from "@/features/auth/server/services/otp";
+import { generateOTP } from "@/modules/auth/services/otp";
 import { createOTPToken } from "@/features/auth/server/repositories/otp-repository";
 import {
   checkSendRateLimit,
@@ -10,7 +10,7 @@ import {
   checkResendCooldown,
   setResendCooldown,
   getCanResendAt,
-} from "@/features/auth/server/services/otp-rate-limit";
+} from "@/modules/auth/services/otp-rate-limit";
 import { logger } from "@/lib/logger";
 import OTPEmail from "@/emails/otp-email";
 import { getClientIP } from "@/lib/utils/ip";
