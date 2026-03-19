@@ -63,6 +63,23 @@ describe("OpenAIClient Retry Logic", () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
+  it("omits baseURL from the OpenAI constructor when it is not configured", () => {
+    process.env.OPENAI_BASE_URL = "";
+    mockOpenAI.mockClear();
+
+    new OpenAIClient();
+
+    const firstConstructorCall = mockOpenAI.mock.calls[0] as unknown[] | undefined;
+    expect(firstConstructorCall).toBeDefined();
+    if (firstConstructorCall == null) {
+      throw new Error("Expected OpenAI constructor to be called");
+    }
+
+    const constructorArgs = firstConstructorCall[0] as Record<string, unknown> | undefined;
+    expect(constructorArgs).toBeDefined();
+    expect(Object.hasOwn(constructorArgs ?? {}, "baseURL")).toBe(false);
+  });
+
   it("omits usage when OpenAI does not return token usage", async () => {
     mockCreate.mockResolvedValueOnce({
       choices: [{ message: { content: "Success" } }],
@@ -71,6 +88,22 @@ describe("OpenAIClient Retry Logic", () => {
     const result = await client.generateContent("prompt", [], "test-model");
 
     expect(Object.hasOwn(result, "usage")).toBe(false);
+  });
+
+  it("omits response_format and signal when they are not provided", async () => {
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: "Success" } }],
+    });
+
+    await client.generateContent("prompt", [], "test-model");
+
+    const request = mockCreate.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+    const requestOptions = mockCreate.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+
+    expect(request).toBeDefined();
+    expect(Object.hasOwn(request ?? {}, "response_format")).toBe(false);
+    expect(requestOptions).toBeDefined();
+    expect(Object.hasOwn(requestOptions ?? {}, "signal")).toBe(false);
   });
 
   it("should retry on retryable error and succeed", async () => {

@@ -8,6 +8,15 @@ describe("createAIContext", () => {
   let mockGenerateContent: ReturnType<typeof vi.fn>;
   let mockClient: AIClient;
 
+  const getGenerateContentCall = (index = 0) => {
+    const call = mockGenerateContent.mock.calls[index];
+    expect(call).toBeDefined();
+    if (call == null) {
+      throw new Error("Expected generateContent to be called");
+    }
+    return call;
+  };
+
   beforeEach(() => {
     mockSignal = new AbortController().signal;
     mockReportTokens = vi.fn();
@@ -126,7 +135,7 @@ describe("createAIContext", () => {
       model: "text" as const,
     });
 
-    const callArgs = mockGenerateContent.mock.calls[0];
+    const callArgs = getGenerateContentCall();
     expect(callArgs[3]).toBe(8192); // maxTokens default
     expect(callArgs[4]).toBe(1); // temperature default
   });
@@ -147,7 +156,7 @@ describe("createAIContext", () => {
       temperature: 0.5,
     });
 
-    const callArgs = mockGenerateContent.mock.calls[0];
+    const callArgs = getGenerateContentCall();
     expect(callArgs[3]).toBe(2048);
     expect(callArgs[4]).toBe(0.5);
   });
@@ -208,12 +217,34 @@ describe("createAIContext", () => {
       model: "text" as const,
     });
 
-    const callArgs = mockGenerateContent.mock.calls[0];
+    const callArgs = getGenerateContentCall();
     const messages = callArgs[1];
 
     expect(messages).toHaveLength(2);
     expect(messages[0]).toMatchObject({ role: "user", content: "Hello" });
     expect(messages[1]).toMatchObject({ role: "assistant", content: "Hi there" });
+  });
+
+  it("omits usage when the client response does not include token usage", async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      content: '{"result": "test"}',
+    });
+
+    const context = createAIContext({
+      signal: mockSignal,
+      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
+      getClient: () => mockClient,
+      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
+    });
+
+    const result = await context.generate({
+      prompt: "Test prompt",
+      messages: [{ role: "user", content: "Hello" }],
+      model: "text" as const,
+    });
+
+    expect(Object.hasOwn(result, "usage")).toBe(false);
+    expect(mockReportTokens).not.toHaveBeenCalled();
   });
 
   it("should handle requireJson option", async () => {

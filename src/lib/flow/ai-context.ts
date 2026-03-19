@@ -166,6 +166,12 @@ export function createAIContext({
         });
       }
 
+      if (result.usage == null) {
+        return {
+          content: result.content,
+        };
+      }
+
       return {
         content: result.content,
         usage: result.usage,
