@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { FlowEngine } from "@/lib/flow";
 
-function mockTaskRegistryDependencies(registerMock: ReturnType<typeof vi.fn>) {
-  vi.doMock("@/lib/flow", () => ({
-    flowEngine: {
-      register: registerMock,
-    },
-  }));
-
+function mockTaskRegistryDependencies() {
   vi.doMock("@/modules/source-document/application/tasks/parse-source-document", () => ({
     parseSourceDocumentTaskDefinition: {
       type: "parse_source_document",
@@ -37,19 +32,16 @@ describe("registerAllTasks", () => {
 
   it("registers each task only once across concurrent and repeated calls", async () => {
     const registerMock = vi.fn();
-    mockTaskRegistryDependencies(registerMock);
+    mockTaskRegistryDependencies();
 
     const { registerAllTasks } = await import("@/lib/flow/task-registry");
+    const engine = { register: registerMock } as unknown as FlowEngine;
 
-    await Promise.all([registerAllTasks(), registerAllTasks()]);
-    await registerAllTasks();
+    await Promise.all([registerAllTasks(engine), registerAllTasks(engine)]);
+    await registerAllTasks(engine);
 
     expect(registerMock).toHaveBeenCalledTimes(3);
-    expect(registerMock).toHaveBeenNthCalledWith(
-      1,
-      "parse_source_document",
-      expect.any(Object)
-    );
+    expect(registerMock).toHaveBeenNthCalledWith(1, "parse_source_document", expect.any(Object));
     expect(registerMock).toHaveBeenNthCalledWith(
       2,
       "generate_category_metadata",
@@ -62,12 +54,13 @@ describe("registerAllTasks", () => {
     const registerMock = vi.fn(() => {
       throw new Error("Task handler already registered: parse_source_document");
     });
-    mockTaskRegistryDependencies(registerMock);
+    mockTaskRegistryDependencies();
 
     const { registerAllTasks } = await import("@/lib/flow/task-registry");
+    const engine = { register: registerMock } as unknown as FlowEngine;
 
-    await expect(registerAllTasks()).resolves.toBeUndefined();
-    await expect(registerAllTasks()).resolves.toBeUndefined();
+    await expect(registerAllTasks(engine)).resolves.toBeUndefined();
+    await expect(registerAllTasks(engine)).resolves.toBeUndefined();
 
     expect(registerMock).toHaveBeenCalledTimes(3);
   });

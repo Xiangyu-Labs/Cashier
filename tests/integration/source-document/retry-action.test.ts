@@ -4,20 +4,28 @@ import { getTestDb } from "../../setup";
 import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { flowEngine } from "@/lib/flow";
+
+const { submitMock, cancelMock } = vi.hoisted(() => ({
+  submitMock: vi.fn(),
+  cancelMock: vi.fn(),
+}));
 
 // Mock flowEngine to avoid registration issues
 vi.mock("@/lib/flow", async () => {
   const actual = await vi.importActual("@/lib/flow");
   return {
     ...actual,
+    submitFlowTask: submitMock,
+    cancelFlowTask: cancelMock,
     flowEngine: {
       register: vi.fn(),
-      cancel: vi.fn(),
-      submit: vi.fn(),
+      cancel: cancelMock,
+      submit: submitMock,
     },
   };
 });
+
+import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
 
 describe("retrySourceDocumentAction", () => {
   let testLedgerId: string;
@@ -193,11 +201,11 @@ describe("retrySourceDocumentAction", () => {
     });
 
     // Verify old task was cancelled
-    expect(flowEngine.cancel).toHaveBeenCalledWith(oldTask.id);
+    expect(cancelFlowTask).toHaveBeenCalledWith(oldTask.id);
 
     // Verify new task was submitted
-    expect(flowEngine.submit).toHaveBeenCalled();
-    const submitCall = vi.mocked(flowEngine.submit).mock.calls[0];
+    expect(submitFlowTask).toHaveBeenCalled();
+    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
     const submitInput = submitCall[1] as {
       sourceDocumentId: string;
       ledgerId: string;

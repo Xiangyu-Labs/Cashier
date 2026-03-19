@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import { requireLedgerAccess } from "@/modules/auth/access";
-import { flowEngine } from "@/lib/flow";
+import { cancelFlowTask } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getSourceDocumentTaskContext, prepareSourceDocumentTask, processImages } from "./helpers";
@@ -107,7 +107,7 @@ export async function retrySourceDocumentAction(
   });
 
   for (const task of runningTasks) {
-    await flowEngine.cancel(task.id);
+    await cancelFlowTask(task.id);
   }
 
   // 5. Soft delete old task_runs for the old document (clean up)

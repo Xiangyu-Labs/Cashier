@@ -70,8 +70,9 @@ beforeAll(async () => {
 
   // Run migrations
   await createTestSchema(db, client);
-  const { registerAllTasks } = await import("@/lib/flow/task-registry");
-  await registerAllTasks();
+  const { initializeDefaultFlowRuntime, resetFlowRuntime } = await import("@/lib/flow/runtime");
+  resetFlowRuntime();
+  await initializeDefaultFlowRuntime();
 });
 
 afterAll(async () => {
@@ -179,7 +180,8 @@ vi.mock("next-intl", async () => {
 
   return {
     useTranslations: (namespace?: string) => {
-      const nsMessages = namespace != null ? messagesRecord[namespace] as Record<string, unknown> : messagesRecord;
+      const nsMessages =
+        namespace != null ? (messagesRecord[namespace] as Record<string, unknown>) : messagesRecord;
       return (key: string, values?: Record<string, unknown>) => {
         let msg = nsMessages?.[key];
         if (msg == null) {

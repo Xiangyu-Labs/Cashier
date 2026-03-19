@@ -4,20 +4,28 @@ import { getTestDb } from "../../setup";
 import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { flowEngine } from "@/lib/flow";
+
+const { submitMock, cancelMock } = vi.hoisted(() => ({
+  submitMock: vi.fn(),
+  cancelMock: vi.fn(),
+}));
 
 // Mock flowEngine to avoid registration issues
 vi.mock("@/lib/flow", async () => {
   const actual = await vi.importActual("@/lib/flow");
   return {
     ...actual,
+    submitFlowTask: submitMock,
+    cancelFlowTask: cancelMock,
     flowEngine: {
       register: vi.fn(),
-      cancel: vi.fn(),
-      submit: vi.fn(),
+      cancel: cancelMock,
+      submit: submitMock,
     },
   };
 });
+
+import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
 
 describe("batchRetrySourceDocumentsAction", () => {
   let testLedgerId: string;
@@ -214,11 +222,11 @@ describe("batchRetrySourceDocumentsAction", () => {
     await batchRetrySourceDocumentsAction(testLedgerId, oldDocIds);
 
     // Verify old tasks were cancelled
-    expect(flowEngine.cancel).toHaveBeenCalledWith(task1.id);
-    expect(flowEngine.cancel).toHaveBeenCalledWith(task2.id);
+    expect(cancelFlowTask).toHaveBeenCalledWith(task1.id);
+    expect(cancelFlowTask).toHaveBeenCalledWith(task2.id);
 
     // Verify new tasks were submitted for new documents
-    expect(flowEngine.submit).toHaveBeenCalledTimes(2);
+    expect(submitFlowTask).toHaveBeenCalledTimes(2);
 
     // Get all non-deleted documents
     const activeDocs = await db.query.sourceDocuments.findMany({
@@ -226,7 +234,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     });
 
     // Verify new task IDs match new document IDs
-    const submitCalls = vi.mocked(flowEngine.submit).mock.calls;
+    const submitCalls = vi.mocked(submitFlowTask).mock.calls;
     const newDocIds = activeDocs.map((d) => d.id);
     for (const call of submitCalls) {
       const input = call[1] as SubmitInput;
@@ -295,7 +303,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     await batchRetrySourceDocumentsAction(testLedgerId, []);
 
     // Verify no tasks were submitted
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("should handle non-existent document IDs gracefully", async () => {
@@ -312,7 +320,7 @@ describe("batchRetrySourceDocumentsAction", () => {
       where: eq(sourceDocuments.ledgerId, testLedgerId),
     });
     expect(docs.length).toBe(0);
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("should handle partial failures in batch", async () => {
@@ -329,8 +337,8 @@ describe("batchRetrySourceDocumentsAction", () => {
       })
       .returning();
 
-    // Mock flowEngine.submit to fail for one document
-    vi.mocked(flowEngine.submit).mockImplementation(
+    // Mock submitFlowTask to fail for one document
+    vi.mocked(submitFlowTask).mockImplementation(
       async (_type: string, data: unknown): Promise<string> => {
         const input = data as SubmitInput;
         if (input.sourceDocumentId !== doc1.id) {

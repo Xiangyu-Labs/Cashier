@@ -1,3 +1,5 @@
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+
 /**
  * Flow Engine - A lightweight async task manager for AI workloads
  *
@@ -24,10 +26,10 @@ export interface TaskInput {
   type: string;
   title?: string | null;
   input?: unknown;
-  scopeId?: string | null;     // Scope ID (e.g., ledgerId in Cashier)
-  entityType?: string | null;  // Entity type (e.g., "source_document", "category")
-  entityId?: string | null;    // Entity ID (e.g., sourceDocumentId, categoryId)
-  deduplicationKey?: string | null;  // Key for preventing duplicate tasks
+  scopeId?: string | null; // Scope ID (e.g., ledgerId in Cashier)
+  entityType?: string | null; // Entity type (e.g., "source_document", "category")
+  entityId?: string | null; // Entity ID (e.g., sourceDocumentId, categoryId)
+  deduplicationKey?: string | null; // Key for preventing duplicate tasks
 }
 
 /**
@@ -45,21 +47,21 @@ export interface TaskFilter {
  */
 export interface TaskRecord {
   id: string;
-  type: string;                              // Task type, e.g., 'parse-document'
-  title: string | null;                      // Task title (optional)
-  status: TaskStatus;                        // pending / running / completed / failed / cancelled
-  progress: string | null;                   // "Processing image..."
-  input: unknown | null;                     // Complete task input (framework-enforced)
-  deduplicationKey: string | null;           // Explicit key for preventing duplicate tasks
-  error: string | null;                      // Error message on failure
-  tokenUsage: TokenUsageRecord | null;       // Token statistics by model
-  scopeId: string | null;                    // Scope ID (e.g., ledgerId)
-  entityType: string | null;                 // Entity type (e.g., "source_document")
-  entityId: string | null;                   // Entity ID (e.g., sourceDocumentId)
+  type: string; // Task type, e.g., 'parse-document'
+  title: string | null; // Task title (optional)
+  status: TaskStatus; // pending / running / completed / failed / cancelled
+  progress: string | null; // "Processing image..."
+  input: unknown | null; // Complete task input (framework-enforced)
+  deduplicationKey: string | null; // Explicit key for preventing duplicate tasks
+  error: string | null; // Error message on failure
+  tokenUsage: TokenUsageRecord | null; // Token statistics by model
+  scopeId: string | null; // Scope ID (e.g., ledgerId)
+  entityType: string | null; // Entity type (e.g., "source_document")
+  entityId: string | null; // Entity ID (e.g., sourceDocumentId)
   createdAt: Date;
   updatedAt: Date;
-  startedAt: Date | null;                    // When task transitioned to running
-  completedAt: Date | null;                  // When task reached terminal state
+  startedAt: Date | null; // When task transitioned to running
+  completedAt: Date | null; // When task reached terminal state
 }
 
 /**
@@ -86,6 +88,7 @@ export interface FlowEngineConfig {
    * Set to 0 or Infinity for unlimited concurrent tasks.
    */
   maxConcurrentTasks?: number;
+  aiContextFactory?: AIContextFactory;
 }
 
 // ===== Task Layer Interfaces =====
@@ -167,17 +170,7 @@ export interface FlowEngine {
    * Submit a task for background execution
    * Returns taskId immediately, task runs in background
    */
-  submit<TInput>(
-    name: string,
-    input: TInput,
-    meta?: {
-      title?: string;
-      scopeId?: string;
-      entityType?: string;
-      entityId?: string;
-      deduplicationKey?: string;
-    }
-  ): Promise<string>;
+  submit<TInput>(name: string, input: TInput, meta?: FlowTaskMetadata): Promise<string>;
 
   /**
    * Cancel a running task
@@ -214,6 +207,14 @@ export interface TaskMetrics {
   deadTasks: string[];
 }
 
+export interface FlowTaskMetadata {
+  title?: string;
+  scopeId?: string;
+  entityType?: string;
+  entityId?: string;
+  deduplicationKey?: string;
+}
+
 // ===== AI Integration Types =====
 
 /**
@@ -222,6 +223,11 @@ export interface TaskMetrics {
  * - vision: multimodal (vision+text), used only for Stage 0 image description
  */
 export type AIModelTier = "text" | "vision";
+
+export interface AIModelConfig {
+  text: string;
+  vision: string;
+}
 
 /**
  * Options for AI generation
@@ -267,4 +273,43 @@ export interface AIResponse {
  */
 export interface AIContext {
   generate(options: AIGenerateOptions): Promise<AIResponse>;
+}
+
+export interface AIClient {
+  generateContent(
+    systemPrompt: string,
+    messages: ChatCompletionMessageParam[],
+    model: string,
+    maxTokens?: number,
+    temperature?: number,
+    responseFormat?:
+      | { type: "text" }
+      | { type: "json_object" }
+      | {
+          type: "json_schema";
+          json_schema: { name: string; schema: Record<string, unknown>; strict?: boolean };
+        },
+    signal?: AbortSignal
+  ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }>;
+}
+
+export type AIClientFactory = () => AIClient;
+
+export type AIContextFactory = (
+  signal: AbortSignal,
+  reportTokens: (usage: TokenUsage) => void
+) => AIContext;
+
+export interface FlowRuntimeConfig {
+  storage: StorageAdapter;
+  maxConcurrentTasks?: number;
+  ai: {
+    getClient: AIClientFactory;
+    models: AIModelConfig;
+  };
+}
+
+export interface FlowRuntime {
+  engine: FlowEngine;
+  ai: FlowRuntimeConfig["ai"];
 }

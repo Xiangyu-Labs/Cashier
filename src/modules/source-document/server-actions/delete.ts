@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { flowEngine } from "@/lib/flow";
+import { cancelFlowTask } from "@/lib/flow";
 import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
@@ -24,7 +24,7 @@ async function cancelRunningTasks(taskIds: string[]): Promise<void> {
   });
 
   for (const task of tasks) {
-    await flowEngine.cancel(task.id);
+    await cancelFlowTask(task.id);
   }
 }
 
@@ -104,7 +104,6 @@ export const deleteSourceDocumentAction = withLedgerAccess(
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
-
   }
 );
 

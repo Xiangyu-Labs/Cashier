@@ -5,17 +5,16 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
-const { submitMock, cancelMock, registerMock, getStatusMock, registerAllTasksMock } = vi.hoisted(
-  () => ({
-    submitMock: vi.fn().mockResolvedValue("mock-task-id"),
-    cancelMock: vi.fn().mockResolvedValue(undefined),
-    registerMock: vi.fn(),
-    getStatusMock: vi.fn(),
-    registerAllTasksMock: vi.fn().mockResolvedValue(undefined),
-  })
-);
+const { submitMock, cancelMock, registerMock, getStatusMock } = vi.hoisted(() => ({
+  submitMock: vi.fn().mockResolvedValue("mock-task-id"),
+  cancelMock: vi.fn().mockResolvedValue(undefined),
+  registerMock: vi.fn(),
+  getStatusMock: vi.fn(),
+}));
 
 vi.mock("@/lib/flow", () => ({
+  submitFlowTask: submitMock,
+  cancelFlowTask: cancelMock,
   flowEngine: {
     submit: submitMock,
     cancel: cancelMock,
@@ -24,11 +23,7 @@ vi.mock("@/lib/flow", () => ({
   },
 }));
 
-vi.mock("@/lib/flow/task-registry", () => ({
-  registerAllTasks: registerAllTasksMock,
-}));
-
-import { flowEngine } from "@/lib/flow";
+import { submitFlowTask } from "@/lib/flow";
 import {
   createEntryCategoryAction,
   deleteEntryCategoryAction,
@@ -71,14 +66,10 @@ describe("createEntryCategoryAction", () => {
       // no icon
     });
 
-    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
-    expect(flowEngine.submit).toHaveBeenCalledWith(
+    expect(submitFlowTask).toHaveBeenCalledWith(
       "generate_category_metadata",
       expect.objectContaining({ categoryName: "餐饮", ledgerId }),
       expect.any(Object)
-    );
-    expect(registerAllTasksMock.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(flowEngine.submit).mock.invocationCallOrder[0]
     );
   });
 
@@ -89,7 +80,7 @@ describe("createEntryCategoryAction", () => {
       // no description
     });
 
-    expect(flowEngine.submit).toHaveBeenCalled();
+    expect(submitFlowTask).toHaveBeenCalled();
   });
 
   it("does not trigger AI when both icon and description are provided", async () => {
@@ -99,8 +90,7 @@ describe("createEntryCategoryAction", () => {
       icon: "🍽️",
     });
 
-    expect(registerAllTasksMock).not.toHaveBeenCalled();
-    expect(flowEngine.submit).not.toHaveBeenCalled();
+    expect(submitFlowTask).not.toHaveBeenCalled();
   });
 
   it("different ledgers can have same category name (tenant isolation)", async () => {

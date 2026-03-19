@@ -3,8 +3,7 @@
 import { db } from "@/lib/db";
 import { ledgerEntries, entryCategories, ledgers } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";
-import { flowEngine } from "@/lib/flow";
-import { registerAllTasks } from "@/lib/flow/task-registry";
+import { submitFlowTask } from "@/lib/flow";
 import {
   TASK_TYPE_CATEGORIZE_ENTRY,
   type CategorizeEntryInput,
@@ -79,16 +78,17 @@ async function submitSingleCategorizeTask(
     amount: entry.amount,
     currency: entry.currency ?? "CNY",
     description: entry.description,
-    entryDate: entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== ""
-      ? entry.sourceDocument.entryDate
-      : formatDateTimeForApi(new Date()),
+    entryDate:
+      entry.sourceDocument?.entryDate != null && entry.sourceDocument.entryDate !== ""
+        ? entry.sourceDocument.entryDate
+        : formatDateTimeForApi(new Date()),
     sourceDocumentText: entry.sourceDocument?.text ?? undefined,
     sourceDocumentImageUrls: entry.sourceDocument?.imageUrls || undefined,
     categories,
     aiLanguage,
   };
 
-  await flowEngine.submit(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
+  await submitFlowTask(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
     title: `Categorize: ${entry.itemName}`,
     scopeId: ledgerId,
     entityType: "entry",
@@ -100,12 +100,10 @@ async function submitSingleCategorizeTask(
 /**
  * Check if entry should be skipped for categorization
  */
-function shouldSkipEntry(
-  entry: {
-    id: string;
-    sourceDocument?: { type?: string | null } | null;
-  }
-): boolean {
+function shouldSkipEntry(entry: {
+  id: string;
+  sourceDocument?: { type?: string | null } | null;
+}): boolean {
   // Skip quick entries (manual type source documents) - user's explicit choice
   if (entry.sourceDocument?.type === "manual") {
     return true;
@@ -138,8 +136,6 @@ async function submitCategorizeTasksForEntries(
   if (entries.length === 0) {
     return { submittedCount: 0, skippedCount: 0 };
   }
-
-  await registerAllTasks();
 
   const [indexedCategories, aiLanguage] = await Promise.all([
     buildIndexedCategories(ledgerId),
