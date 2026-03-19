@@ -40,10 +40,15 @@ export const updateSourceDocumentAction = withLedgerAccess(
   ): Promise<UpdateSourceDocumentResultDto> => {
     const validated = updateSourceDocumentInputSchema.parse(data);
     const q = forLedger(sourceDocuments, ledgerId);
+    const updatePatch = {
+      updatedAt: new Date(),
+      ...(validated.title !== undefined ? { title: validated.title } : {}),
+      ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
+    };
 
     const updatedDocuments = await db
       .update(sourceDocuments)
-      .set({ ...validated, updatedAt: new Date() })
+      .set(updatePatch)
       .where(q.whereId(sourceId))
       .returning({ id: sourceDocuments.id });
 
@@ -156,10 +161,16 @@ export const batchUpdateSourceDocumentsAction = withLedgerAccess(
 
     const validated = batchUpdateSourceDocumentsInputSchema.parse(data);
     const q = forLedger(sourceDocuments, ledgerId);
+    const updatePatch = {
+      updatedAt: new Date(),
+      ...(validated.status !== undefined ? { status: validated.status } : {}),
+      ...(validated.title !== undefined ? { title: validated.title } : {}),
+      ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
+    };
 
     const updatedDocuments = await db
       .update(sourceDocuments)
-      .set({ ...validated, updatedAt: new Date() })
+      .set(updatePatch)
       .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)))
       .returning({ id: sourceDocuments.id });
 

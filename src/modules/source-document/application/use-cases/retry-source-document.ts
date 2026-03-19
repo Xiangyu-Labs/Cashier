@@ -1,16 +1,16 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   getSourceDocumentTaskContext,
-  prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
+import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -42,7 +42,7 @@ export async function retrySourceDocument({
   }
 
   const newDocumentId = crypto.randomUUID();
-  const text = input?.text ?? existingDocument.text ?? undefined;
+  const text = input?.text ?? existingDocument.text;
   const images = input?.images;
   const originalImages = input?.originalImages;
   const existingOriginalImageUrls = Array.isArray(existingDocument.metadata?.originalImageUrls)
@@ -121,13 +121,27 @@ export async function retrySourceDocument({
     );
 
   const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
-  await prepareSourceDocumentTask({
+  const taskInput = {
     ledgerId,
     sourceDocumentId: newDocumentId,
-    text,
     imageUrls: finalImageUrls,
+    aiLanguage: settings.aiLanguage,
     categories,
-    settings,
+    settings: {
+      ...(settings.settings.aiCustomPrompt !== undefined
+        ? { aiCustomPrompt: settings.settings.aiCustomPrompt }
+        : {}),
+    },
+    ...(text !== null && text !== undefined ? { text } : {}),
+    ...(settings.preferredCurrencies !== undefined
+      ? { preferredCurrencies: settings.preferredCurrencies }
+      : {}),
+  };
+  await submitFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, taskInput, {
+    title: "Parse source document",
+    scopeId: ledgerId,
+    entityType: "source_document",
+    entityId: newDocumentId,
   });
 
   logger.debug(

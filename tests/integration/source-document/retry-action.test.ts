@@ -319,4 +319,26 @@ describe("retrySourceDocumentAction", () => {
     });
     expect(newDoc?.text).toBe("Original text to keep");
   });
+
+  it("should omit text in task payload when both retry input and source document text are absent", async () => {
+    const db = getTestDb();
+
+    const [oldDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId: testLedgerId,
+        text: null,
+        status: "failed",
+        entryDate: "2025-06-10",
+      })
+      .returning();
+
+    await retrySourceDocumentAction(testLedgerId, oldDoc.id);
+
+    expect(submitFlowTask).toHaveBeenCalled();
+    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
+    const submitInput = submitCall?.[1] as Record<string, unknown>;
+    expect(submitInput).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
+  });
 });

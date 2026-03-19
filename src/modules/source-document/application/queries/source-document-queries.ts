@@ -83,28 +83,64 @@ function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> |
 
   const parts = cursor.split("|");
 
-  if (parts.length === 3 && parts[0] !== "" && parts[1] !== "" && parts[2] !== "") {
-    const [cursorDate, cursorCreated, cursorId] = parts;
-    return or(
-      lt(sourceDocuments.entryDate, cursorDate),
-      and(
-        eq(sourceDocuments.entryDate, cursorDate),
-        lt(sourceDocuments.createdAt, new Date(cursorCreated))
-      ),
-      and(
-        eq(sourceDocuments.entryDate, cursorDate),
-        eq(sourceDocuments.createdAt, new Date(cursorCreated)),
-        lt(sourceDocuments.id, cursorId)
-      )
-    )!;
+  if (parts.length === 3) {
+    const cursorDate = parts[0];
+    const cursorCreatedRaw = parts[1];
+    const cursorId = parts[2];
+
+    if (
+      cursorDate == null ||
+      cursorDate === "" ||
+      cursorCreatedRaw == null ||
+      cursorCreatedRaw === "" ||
+      cursorId == null ||
+      cursorId === ""
+    ) {
+      return null;
+    }
+
+    const cursorCreated = new Date(cursorCreatedRaw);
+    if (Number.isNaN(cursorCreated.getTime())) {
+      return null;
+    }
+
+    return (
+      or(
+        lt(sourceDocuments.entryDate, cursorDate),
+        and(eq(sourceDocuments.entryDate, cursorDate), lt(sourceDocuments.createdAt, cursorCreated)),
+        and(
+          eq(sourceDocuments.entryDate, cursorDate),
+          eq(sourceDocuments.createdAt, cursorCreated),
+          lt(sourceDocuments.id, cursorId)
+        )
+      ) ?? null
+    );
   }
 
-  if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") {
-    const [cursorCreated, cursorId] = parts;
-    return or(
-      lt(sourceDocuments.createdAt, new Date(cursorCreated)),
-      and(eq(sourceDocuments.createdAt, new Date(cursorCreated)), lt(sourceDocuments.id, cursorId))
-    )!;
+  if (parts.length === 2) {
+    const cursorCreatedRaw = parts[0];
+    const cursorId = parts[1];
+
+    if (
+      cursorCreatedRaw == null ||
+      cursorCreatedRaw === "" ||
+      cursorId == null ||
+      cursorId === ""
+    ) {
+      return null;
+    }
+
+    const cursorCreated = new Date(cursorCreatedRaw);
+    if (Number.isNaN(cursorCreated.getTime())) {
+      return null;
+    }
+
+    return (
+      or(
+        lt(sourceDocuments.createdAt, cursorCreated),
+        and(eq(sourceDocuments.createdAt, cursorCreated), lt(sourceDocuments.id, cursorId))
+      ) ?? null
+    );
   }
 
   return null;
@@ -144,19 +180,20 @@ function serializeSourceDocumentByStatus(
   includeEntries: boolean,
   entriesByDocId: Map<string, SourceDocumentLedgerEntryDto[]>
 ): SourceDocumentDto {
-  const ledgerEntries = includeEntries ? (entriesByDocId.get(document.id) ?? []) : undefined;
   const isActiveDocument =
     document.status === "queued" ||
     document.status === "processing" ||
     document.status === "anomaly" ||
     document.status === "failed";
 
-  return serializeSourceDocument(document, {
+  const serializeOptions = {
     stripMetadataFields: ["visionDescription", "originalImageUrls"],
-    imageUrlsOverride: isActiveDocument ? undefined : [],
     includeHasImages: !isActiveDocument,
-    ledgerEntries,
-  });
+    ...(isActiveDocument ? {} : { imageUrlsOverride: [] }),
+    ...(includeEntries ? { ledgerEntries: entriesByDocId.get(document.id) ?? [] } : {}),
+  };
+
+  return serializeSourceDocument(document, serializeOptions);
 }
 
 function serializeSourceDocumentFlat(
@@ -208,7 +245,8 @@ export async function listSourceDocumentsQuery(
 
   const hasMore = items.length > limit;
   const resultItems = hasMore ? items.slice(0, limit) : items;
-  const nextCursor = hasMore ? generateNextCursor(items[limit]) : null;
+  const nextCursorItem = hasMore ? items[limit] : undefined;
+  const nextCursor = nextCursorItem != null ? generateNextCursor(nextCursorItem) : null;
 
   const entriesByDocId =
     includeLedgerEntries === true
