@@ -35,29 +35,18 @@ export function AdaptiveHeatmap({
   queryRange,
 }: AdaptiveHeatmapProps) {
   const dayCount = days.length;
+  const optionalProps = {
+    ...(onDayClick !== undefined ? { onDayClick } : {}),
+    ...(className !== undefined ? { className } : {}),
+    ...(queryRange !== undefined ? { queryRange } : {}),
+  };
 
   // Use large grid for small ranges (<= 35 days), small grid for large ranges
   if (dayCount <= 35) {
-    return (
-      <LargeGridHeatmap
-        days={days}
-        stats={stats}
-        onDayClick={onDayClick}
-        className={className}
-        queryRange={queryRange}
-      />
-    );
+    return <LargeGridHeatmap days={days} stats={stats} {...optionalProps} />;
   }
 
-  return (
-    <SmallGridHeatmap
-      days={days}
-      stats={stats}
-      onDayClick={onDayClick}
-      className={className}
-      queryRange={queryRange}
-    />
-  );
+  return <SmallGridHeatmap days={days} stats={stats} {...optionalProps} />;
 }
 
 // Re-export sub-components for direct usage

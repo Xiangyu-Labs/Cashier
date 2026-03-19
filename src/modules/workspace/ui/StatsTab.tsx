@@ -125,7 +125,7 @@ export function StatsTab({
           totalExpense={totalExpense}
           averageDaily={averageDaily}
           currencySymbol={currencySymbol}
-          trend={trend}
+          {...(trend !== undefined ? { trend } : {})}
         />
 
         <div className="space-y-2">
@@ -168,7 +168,7 @@ export function StatsTab({
               stats={
                 stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }
               }
-              onDateDrilldown={onDateDrilldown}
+              {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
               queryRange={{
                 startDate: startDateStr,
                 endDate: endDateStr,

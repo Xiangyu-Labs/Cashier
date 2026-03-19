@@ -79,14 +79,15 @@ export function DetailsTab({
     handleViewEntry,
     handleCloseDetail,
   } = useDetailsTabState();
+  const selectedSourceDocumentId = selectedLedgerEntry?.sourceDocumentId;
 
   // Data fetching
   const { entries, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, monthStats } =
     useDetailsTabData({
       ledgerId,
-      ledger,
       periodParams,
       advancedFilters,
+      ...(ledger !== undefined ? { ledger } : {}),
     });
 
   // Grouping
@@ -210,7 +211,9 @@ export function DetailsTab({
                       <LedgerEntryCard
                         ledgerEntry={entry}
                         categories={categories}
-                        mainCurrency={ledger?.metadata?.settings?.mainCurrency}
+                        {...(ledger?.metadata?.settings?.mainCurrency !== undefined
+                          ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+                          : {})}
                         onView={() => {
                           if (!isSelectionMode) {
                             handleViewEntry(entry);
@@ -302,15 +305,16 @@ export function DetailsTab({
               })
             }
             onDelete={() => setDeleteConfirm({ open: true, id: selectedLedgerEntry.id })}
-            onViewSourceDocument={
-              selectedLedgerEntry.sourceDocumentId != null && selectedLedgerEntry.sourceDocumentId !== ""
-                ? () =>
+            {...(selectedSourceDocumentId != null &&
+            selectedSourceDocumentId !== ""
+              ? {
+                  onViewSourceDocument: () =>
                     push({
                       type: "source-document",
-                      id: selectedLedgerEntry.sourceDocumentId!,
-                    })
-                : undefined
-            }
+                      id: selectedSourceDocumentId,
+                    }),
+                }
+              : {})}
           />
         )}
 

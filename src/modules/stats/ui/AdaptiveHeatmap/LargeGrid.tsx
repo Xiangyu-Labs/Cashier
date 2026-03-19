@@ -41,15 +41,20 @@ export function LargeGridHeatmap({
     if (days.length === 0) return [];
 
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+    const firstDay = sortedDays[0];
+    const lastDay = sortedDays[sortedDays.length - 1];
+    if (firstDay == null || lastDay == null) {
+      return [];
+    }
 
     // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate ?? sortedDays[0].date;
+    const startDate = queryRange?.startDate ?? firstDay.date;
 
     // End is the later of: today or latest data date (capped by query end)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const latestDataDate = parseDate(sortedDays[sortedDays.length - 1].date);
+    const latestDataDate = parseDate(lastDay.date);
     const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
 
     // Cap by query end if provided
@@ -62,10 +67,8 @@ export function LargeGridHeatmap({
 
     while (current <= end) {
       const dateStr = formatDate(current);
-      result.push({
-        date: dateStr,
-        dayData: dayMap.get(dateStr),
-      });
+      const dayData = dayMap.get(dateStr);
+      result.push(dayData != null ? { date: dateStr, dayData } : { date: dateStr });
       current.setDate(current.getDate() + 1);
     }
 
@@ -79,7 +82,8 @@ export function LargeGridHeatmap({
         {gridDays.map(({ date, dayData }) => {
           const amount = dayData?.totalAmount ?? 0;
           const level = getHeatmapLevel(amount, stats);
-          const dayNumber = parseInt(date.split("-")[2], 10);
+          const [, , dayPart] = date.split("-");
+          const dayNumber = Number.parseInt(dayPart ?? "1", 10);
 
           return (
             <DayCellLarge

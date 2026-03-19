@@ -108,16 +108,12 @@ export function TaskQueueContent({
               item={item}
               ledgerId={ledgerId}
               onCancel={() => onCancel(item)}
-              onRetry={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onRetry(item)
-                  : undefined
-              }
-              onDelete={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onDeleteSingle(item)
-                  : undefined
-              }
+              {...(typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
+                ? {
+                    onRetry: () => onRetry(item),
+                    onDelete: () => onDeleteSingle(item),
+                  }
+                : {})}
             />
           ))}
         </TaskGroupSection>
@@ -137,16 +133,12 @@ export function TaskQueueContent({
               item={item}
               ledgerId={ledgerId}
               onCancel={() => onCancel(item)}
-              onRetry={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onRetry(item)
-                  : undefined
-              }
-              onDelete={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onDeleteSingle(item)
-                  : undefined
-              }
+              {...(typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
+                ? {
+                    onRetry: () => onRetry(item),
+                    onDelete: () => onDeleteSingle(item),
+                  }
+                : {})}
             />
           ))}
         </TaskGroupSection>
@@ -201,21 +193,12 @@ export function TaskQueueContent({
               key={item.id}
               item={item}
               ledgerId={ledgerId}
-              onRetry={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onRetry(item)
-                  : undefined
-              }
-              onDelete={
-                typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
-                  ? () => onDeleteSingle(item)
-                  : undefined
-              }
-              onDismiss={
-                typeof item.sourceDocumentId !== "string" || item.sourceDocumentId.length === 0
-                  ? () => onDismiss(item)
-                  : undefined
-              }
+              {...(typeof item.sourceDocumentId === "string" && item.sourceDocumentId.length > 0
+                ? {
+                    onRetry: () => onRetry(item),
+                    onDelete: () => onDeleteSingle(item),
+                  }
+                : { onDismiss: () => onDismiss(item) })}
             />
           ))}
         </TaskGroupSection>
@@ -282,12 +265,12 @@ export function TaskQueueContent({
               key={item.id}
               item={item}
               ledgerId={ledgerId}
-              onRetry={typeof item.sourceDocumentId === "string" ? () => onRetry(item) : undefined}
-              onViewDetails={
-                typeof item.sourceDocumentId === "string"
-                  ? () => onViewDetails(item)
-                  : undefined
-              }
+              {...(typeof item.sourceDocumentId === "string"
+                ? {
+                    onRetry: () => onRetry(item),
+                    onViewDetails: () => onViewDetails(item),
+                  }
+                : {})}
             />
           ))}
         </TaskGroupSection>

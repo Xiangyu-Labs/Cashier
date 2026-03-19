@@ -41,15 +41,20 @@ export function SmallGridHeatmap({
     if (days.length === 0) return [];
 
     const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+    const firstDay = sortedDays[0];
+    const lastDay = sortedDays[sortedDays.length - 1];
+    if (firstDay == null || lastDay == null) {
+      return [];
+    }
 
     // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate ?? sortedDays[0].date;
+    const startDate = queryRange?.startDate ?? firstDay.date;
 
     // End is the later of: today or latest data date (capped by query end)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const latestDataDate = parseDate(sortedDays[sortedDays.length - 1].date);
+    const latestDataDate = parseDate(lastDay.date);
     const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
 
     // Cap by query end if provided
@@ -79,10 +84,8 @@ export function SmallGridHeatmap({
 
       for (let i = 0; i < 7; i++) {
         const dateStr = formatDate(current);
-        weekDays.push({
-          date: dateStr,
-          dayData: dayMap.get(dateStr),
-        });
+        const dayData = dayMap.get(dateStr);
+        weekDays.push(dayData != null ? { date: dateStr, dayData } : { date: dateStr });
         current.setDate(current.getDate() + 1);
       }
 

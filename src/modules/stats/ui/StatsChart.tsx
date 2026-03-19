@@ -27,7 +27,7 @@ export function StatsChart({
   const latestDataDate = useMemo(() => {
     if (data.length === 0) return null;
     const sortedDates = [...data].sort((a, b) => a.date.localeCompare(b.date));
-    return sortedDates[sortedDates.length - 1].date;
+    return sortedDates[sortedDates.length - 1]?.date ?? null;
   }, [data]);
 
   // Process Data based on Range Type
@@ -48,7 +48,13 @@ export function StatsChart({
       // Find month with latest data
       let dataMaxMonth = currentMonth;
       if (latestDataDate != null && latestDataDate.startsWith(String(year))) {
-        dataMaxMonth = parseInt(latestDataDate.split("-")[1], 10);
+        const [, monthPart] = latestDataDate.split("-");
+        if (monthPart != null) {
+          const parsedMonth = Number.parseInt(monthPart, 10);
+          if (!Number.isNaN(parsedMonth)) {
+            dataMaxMonth = parsedMonth;
+          }
+        }
       }
 
       // Show up to the later of: current month or month with latest data

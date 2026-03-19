@@ -63,11 +63,11 @@ export const QueueItemCard = memo(function QueueItemCard({
     handleDismiss,
   } = useQueueItemActions({
     item,
-    onCancel,
-    onRetry,
-    onDelete,
-    onDismiss,
-    onViewDetails,
+    ...(onCancel !== undefined ? { onCancel } : {}),
+    ...(onRetry !== undefined ? { onRetry } : {}),
+    ...(onDelete !== undefined ? { onDelete } : {}),
+    ...(onDismiss !== undefined ? { onDismiss } : {}),
+    ...(onViewDetails !== undefined ? { onViewDetails } : {}),
   });
 
   return (

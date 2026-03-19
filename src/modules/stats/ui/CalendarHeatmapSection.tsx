@@ -76,7 +76,7 @@ export function CalendarHeatmapSection({
         days={days}
         stats={stats}
         onDayClick={handleDayClick}
-        queryRange={queryRange}
+        {...(queryRange !== undefined ? { queryRange } : {})}
       />
 
       {/* Legend */}

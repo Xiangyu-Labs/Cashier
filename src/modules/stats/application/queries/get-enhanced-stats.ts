@@ -23,8 +23,8 @@ function calculateStats(amounts: number[]): CalendarHeatmapStats {
   }
 
   const sorted = [...amounts].sort((a, b) => a - b);
-  const min = sorted[0];
-  const max = sorted[sorted.length - 1];
+  const min = sorted[0] ?? 0;
+  const max = sorted[sorted.length - 1] ?? min;
   const avg = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
   const p80Index = Math.floor(sorted.length * 0.8);
 

@@ -38,8 +38,12 @@ export async function ensureUserLedger(
   }
 
   if (existingLedgers.length > 0) {
+    const firstLedger = existingLedgers[0];
+    if (firstLedger == null) {
+      throw new Error("Invariant violation: existing ledger list is unexpectedly empty");
+    }
     return {
-      ledgerId: existingLedgers[0].id,
+      ledgerId: firstLedger.id,
       created: false,
     };
   }
@@ -47,7 +51,7 @@ export async function ensureUserLedger(
   try {
     const createdLedger = await createDefaultLedger({
       userId: input.userId,
-      locale: input.locale,
+      ...(input.locale !== undefined ? { locale: input.locale } : {}),
     });
 
     return {

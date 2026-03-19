@@ -66,14 +66,12 @@ export function LedgerEntriesTab({
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
   const filters: EntryFilters = useMemo(
     () => ({
-      startDate:
-        dateRange.startDate != null && dateRange.startDate !== ""
-          ? parseDateString(dateRange.startDate)
-          : undefined,
-      endDate:
-        dateRange.endDate != null && dateRange.endDate !== ""
-          ? parseDateString(dateRange.endDate)
-          : undefined,
+      ...(dateRange.startDate != null && dateRange.startDate !== ""
+        ? { startDate: parseDateString(dateRange.startDate) }
+        : {}),
+      ...(dateRange.endDate != null && dateRange.endDate !== ""
+        ? { endDate: parseDateString(dateRange.endDate) }
+        : {}),
     }),
     [dateRange]
   );
@@ -91,8 +89,8 @@ export function LedgerEntriesTab({
         endDateStr !== "" ? endDateStr : undefined,
         mainCurrency,
         {
-          minAmount: filters.minAmount,
-          maxAmount: filters.maxAmount,
+          ...(filters.minAmount !== undefined ? { minAmount: filters.minAmount } : {}),
+          ...(filters.maxAmount !== undefined ? { maxAmount: filters.maxAmount } : {}),
         }
       ),
   });
@@ -117,9 +115,12 @@ export function LedgerEntriesTab({
 
   // Unified Data Hook
   const { groups, isLoading } = useSourceDocuments(ledgerId, {
-    dateRange: { start: filters.startDate, end: filters.endDate },
-    minAmount: filters.minAmount ?? undefined,
-    maxAmount: filters.maxAmount ?? undefined,
+    dateRange: {
+      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
+      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
+    },
+    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
+    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
   });
 
   // Handlers

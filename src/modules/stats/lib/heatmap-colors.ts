@@ -70,7 +70,7 @@ export function getHeatmapLevel(amount: number, stats: CalendarHeatmapStats): He
  */
 export function getHeatmapColor(level: HeatmapLevel, isDark = false): string {
   const colors = isDark ? HEATMAP_COLORS.dark : HEATMAP_COLORS.light;
-  return colors[level];
+  return colors[level] ?? (isDark ? SURFACE2_DARK : SURFACE2_LIGHT);
 }
 
 function getHeatmapLabel(level: HeatmapLevel): string {

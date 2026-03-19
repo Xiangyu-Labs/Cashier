@@ -255,7 +255,7 @@ export function LedgerPageClient({
                 ledger={ledger}
                 onCategoryDrilldown={handleCategoryDrilldown}
                 onDateDrilldown={handleDateDrilldown}
-                initialDate={initialStatsDate}
+                {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
               />
             </Suspense>
           </TabsContent>

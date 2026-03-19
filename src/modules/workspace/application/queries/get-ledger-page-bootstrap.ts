@@ -69,8 +69,10 @@ export async function getLedgerPageBootstrap(input: {
             ),
             queryFn: () =>
               getAllSourceDocumentsAction(input.ledgerId, {
-                startDate: detailsState.startDateStr ?? undefined,
-                endDate: detailsState.endDateStr ?? undefined,
+                ...(detailsState.startDateStr !== null
+                  ? { startDate: detailsState.startDateStr }
+                  : {}),
+                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
               }),
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
@@ -123,8 +125,10 @@ export async function getLedgerPageBootstrap(input: {
             ),
             queryFn: ({ pageParam }) =>
               getLedgerEntriesAction(input.ledgerId, {
-                startDate: detailsState.startDateStr ?? undefined,
-                endDate: detailsState.endDateStr ?? undefined,
+                ...(detailsState.startDateStr !== null
+                  ? { startDate: detailsState.startDateStr }
+                  : {}),
+                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
                 cursor: pageParam,
                 limit: 50,
               }),

@@ -33,14 +33,14 @@ export function taskRunToQueueItem(task: TaskRun, sourceDocTitle?: string | null
     kind: "task",
     status,
     title,
-    subtitle: task.error ?? undefined,
-    progress: task.progress ?? undefined,
     createdAt: task.createdAt.toISOString(),
-    entityType: task.entityType ?? undefined,
-    entityId: task.entityId ?? undefined,
-    sourceDocumentId,
     taskId: task.id,
     taskType: task.type,
+    ...(task.error !== null ? { subtitle: task.error } : {}),
+    ...(task.progress !== null ? { progress: task.progress } : {}),
+    ...(task.entityType !== null ? { entityType: task.entityType } : {}),
+    ...(task.entityId !== null ? { entityId: task.entityId } : {}),
+    ...(sourceDocumentId !== undefined ? { sourceDocumentId } : {}),
   };
 }
 
@@ -50,12 +50,10 @@ export function anomalyDocToQueueItem(doc: SourceDocument): QueueItem {
     kind: "anomaly",
     status: "anomaly",
     title: doc.title ?? "Untitled Source Document",
-    subtitle: doc.anomalyReason ?? undefined,
     createdAt: doc.createdAt.toISOString(),
     entityType: "source_document",
     entityId: doc.id,
     sourceDocumentId: doc.id,
-    taskId: undefined,
-    taskType: undefined,
+    ...(doc.anomalyReason !== null ? { subtitle: doc.anomalyReason } : {}),
   };
 }
