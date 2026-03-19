@@ -156,6 +156,25 @@ export function EntryFilterPanel({
     setTempPeriod(preset);
   };
 
+  const setTempFilterDate = (field: "startDate" | "endDate", date: Date | null) => {
+    setTempFilters((prev) => {
+      const next: EntryFilters = { ...prev };
+      if (field === "startDate") {
+        if (date == null) {
+          delete next.startDate;
+        } else {
+          next.startDate = date;
+        }
+      } else if (date == null) {
+        delete next.endDate;
+      } else {
+        next.endDate = date;
+      }
+      return next;
+    });
+    setTempPeriod("custom");
+  };
+
   const handleApply = () => {
     const normalizedFilters = normalizeAmountRange(tempFilters);
     onFiltersChange(normalizedFilters);
@@ -240,28 +259,16 @@ export function EntryFilterPanel({
               </div>
               <div className="flex gap-2 items-center">
                 <DateFilter
-                  value={tempFilters.startDate}
-                  onChange={(date) => {
-                    setTempFilters((prev) => ({
-                      ...prev,
-                      startDate: date || undefined,
-                    }));
-                    setTempPeriod("custom");
-                  }}
+                  {...(tempFilters.startDate != null ? { value: tempFilters.startDate } : {})}
+                  onChange={(date) => setTempFilterDate("startDate", date)}
                   size="sm"
                   className="flex-1 h-8"
                   showClear={false}
                 />
                 <span className="text-muted-foreground text-sm">-</span>
                 <DateFilter
-                  value={tempFilters.endDate}
-                  onChange={(date) => {
-                    setTempFilters((prev) => ({
-                      ...prev,
-                      endDate: date || undefined,
-                    }));
-                    setTempPeriod("custom");
-                  }}
+                  {...(tempFilters.endDate != null ? { value: tempFilters.endDate } : {})}
+                  onChange={(date) => setTempFilterDate("endDate", date)}
                   size="sm"
                   className="flex-1 h-8"
                   showClear={false}

@@ -139,8 +139,8 @@ export function parsePeriodFromSearchParams(
     | { get: (key: string) => string | null }
 ): PeriodParams {
   let period: string | null = null;
-  let startDate: string | undefined;
-  let endDate: string | undefined;
+  let startDate: string | null = null;
+  let endDate: string | null = null;
 
   if (
     searchParams instanceof URLSearchParams ||
@@ -149,17 +149,21 @@ export function parsePeriodFromSearchParams(
     // URLSearchParams or similar interface
     const sp = searchParams as { get: (key: string) => string | null };
     period = sp.get("period");
-    startDate = sp.get("startDate") ?? undefined;
-    endDate = sp.get("endDate") ?? undefined;
+    startDate = sp.get("startDate");
+    endDate = sp.get("endDate");
   } else {
     // Plain object from Next.js server searchParams
     const sp = searchParams as { [key: string]: string | string[] | undefined };
-    const periodValue = sp.period;
-    period = Array.isArray(periodValue) ? periodValue[0] : (periodValue ?? null);
-    const startValue = sp.startDate;
-    startDate = Array.isArray(startValue) ? startValue[0] : startValue;
-    const endValue = sp.endDate;
-    endDate = Array.isArray(endValue) ? endValue[0] : endValue;
+    const readFirst = (value: string | string[] | undefined): string | null => {
+      if (Array.isArray(value)) {
+        return value[0] ?? null;
+      }
+      return value ?? null;
+    };
+
+    period = readFirst(sp.period);
+    startDate = readFirst(sp.startDate);
+    endDate = readFirst(sp.endDate);
   }
 
   // Validate period value
@@ -177,11 +181,19 @@ export function parsePeriodFromSearchParams(
     ? (period as PeriodPreset)
     : "thisMonth"; // Default to thisMonth
 
-  return {
+  const parsedParams: PeriodParams = {
     period: validatedPeriod,
-    startDate,
-    endDate,
   };
+
+  if (validatedPeriod === "custom" && startDate != null && startDate !== "") {
+    parsedParams.startDate = startDate;
+  }
+
+  if (validatedPeriod === "custom" && endDate != null && endDate !== "") {
+    parsedParams.endDate = endDate;
+  }
+
+  return parsedParams;
 }
 
 /**

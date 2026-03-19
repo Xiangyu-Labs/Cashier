@@ -5,6 +5,13 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 
 describe("usePeriodFilter", () => {
   const mockPathname = "/ledger/test-id";
+  const getFirstReplacedUrl = (): string => {
+    const firstCall = vi.mocked(window.history.replaceState).mock.calls[0];
+    if (firstCall == null) throw new Error("replaceState was not called");
+    const url = firstCall[2];
+    if (typeof url !== "string") throw new Error("replaceState URL argument missing");
+    return url;
+  };
 
   beforeEach(() => {
     // Mock window.history.replaceState
@@ -197,7 +204,7 @@ describe("usePeriodFilter", () => {
       result.current.handlePeriodChange({ period: "month" });
     });
 
-    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    const callUrl = getFirstReplacedUrl();
     expect(callUrl).toContain("period=month");
     expect(callUrl).not.toContain("startDate=");
     expect(callUrl).not.toContain("endDate=");
@@ -255,7 +262,7 @@ describe("usePeriodFilter", () => {
     );
   });
 
-  it("should update URL when only amount filters change", () => {
+  it("should preserve preset period when only amount filters change", () => {
     const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
@@ -267,15 +274,19 @@ describe("usePeriodFilter", () => {
 
     act(() => {
       result.current.handleFiltersChange({
-        startDate: result.current.filters.startDate,
-        endDate: result.current.filters.endDate,
+        ...(result.current.filters.startDate != null
+          ? { startDate: result.current.filters.startDate }
+          : {}),
+        ...(result.current.filters.endDate != null ? { endDate: result.current.filters.endDate } : {}),
         minAmount: 100,
         maxAmount: 500,
       });
     });
 
-    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
-    expect(callUrl).toContain("period=custom");
+    const callUrl = getFirstReplacedUrl();
+    expect(callUrl).toContain("period=thisMonth");
+    expect(callUrl).not.toContain("startDate=");
+    expect(callUrl).not.toContain("endDate=");
     expect(callUrl).toContain("minAmount=100");
     expect(callUrl).toContain("maxAmount=500");
   });
@@ -292,14 +303,16 @@ describe("usePeriodFilter", () => {
 
     act(() => {
       result.current.handleFiltersChange({
-        startDate: result.current.filters.startDate,
-        endDate: result.current.filters.endDate,
+        ...(result.current.filters.startDate != null
+          ? { startDate: result.current.filters.startDate }
+          : {}),
+        ...(result.current.filters.endDate != null ? { endDate: result.current.filters.endDate } : {}),
         minAmount: null,
         maxAmount: null,
       });
     });
 
-    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    const callUrl = getFirstReplacedUrl();
     expect(callUrl).not.toContain("minAmount=");
     expect(callUrl).not.toContain("maxAmount=");
   });
@@ -323,7 +336,7 @@ describe("usePeriodFilter", () => {
       });
     });
 
-    const callUrl = vi.mocked(window.history.replaceState).mock.calls[0][2] as string;
+    const callUrl = getFirstReplacedUrl();
     expect(callUrl).toContain("period=custom");
     expect(callUrl).toContain("startDate=2024-06-01");
     expect(callUrl).toContain("endDate=2024-06-30");

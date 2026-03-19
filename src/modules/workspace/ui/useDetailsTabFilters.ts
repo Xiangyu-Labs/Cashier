@@ -38,11 +38,16 @@ export function useDetailsTabFilters({
 
   // Combine period-based dates with advanced filters
   const filters: EntryFilters = useMemo(
-    () => ({
-      startDate: dateRange.startDate != null ? parseDateString(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate != null ? parseDateString(dateRange.endDate) : undefined,
-      ...advancedFilters,
-    }),
+    () => {
+      const nextFilters: EntryFilters = {};
+      if (dateRange.startDate != null) nextFilters.startDate = parseDateString(dateRange.startDate);
+      if (dateRange.endDate != null) nextFilters.endDate = parseDateString(dateRange.endDate);
+      if (advancedFilters.categoryId !== undefined) nextFilters.categoryId = advancedFilters.categoryId;
+      if (advancedFilters.currency !== undefined) nextFilters.currency = advancedFilters.currency;
+      if (advancedFilters.minAmount !== undefined) nextFilters.minAmount = advancedFilters.minAmount;
+      if (advancedFilters.maxAmount !== undefined) nextFilters.maxAmount = advancedFilters.maxAmount;
+      return nextFilters;
+    },
     [dateRange, advancedFilters]
   );
 
@@ -77,20 +82,24 @@ export function useDetailsTabFilters({
         const currentEndStr = formatDateTimeForApi(filters.endDate);
 
         if (newStartStr !== currentStartStr || newEndStr !== currentEndStr) {
-          onPeriodChange({
-            period: "custom",
-            startDate: newStartStr,
-            endDate: newEndStr,
-          });
+          const periodUpdate: PeriodParams = { period: "custom" };
+          if (newStartStr != null) periodUpdate.startDate = newStartStr;
+          if (newEndStr != null) periodUpdate.endDate = newEndStr;
+          onPeriodChange(periodUpdate);
         }
 
         // Update advanced filters (category, currency, amount)
-        onAdvancedFiltersChange({
-          categoryId: newFilters.categoryId,
-          currency: newFilters.currency,
-          minAmount: newFilters.minAmount,
-          maxAmount: newFilters.maxAmount,
-        });
+        const advancedFilterUpdate: {
+          categoryId?: string | null;
+          currency?: string | null;
+          minAmount?: number | null;
+          maxAmount?: number | null;
+        } = {};
+        if (newFilters.categoryId !== undefined) advancedFilterUpdate.categoryId = newFilters.categoryId;
+        if (newFilters.currency !== undefined) advancedFilterUpdate.currency = newFilters.currency;
+        if (newFilters.minAmount !== undefined) advancedFilterUpdate.minAmount = newFilters.minAmount;
+        if (newFilters.maxAmount !== undefined) advancedFilterUpdate.maxAmount = newFilters.maxAmount;
+        onAdvancedFiltersChange(advancedFilterUpdate);
       },
     [filters.startDate, filters.endDate]
   );

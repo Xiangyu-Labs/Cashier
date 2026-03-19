@@ -133,6 +133,26 @@ describe("period-utils", () => {
       expect(result.endDate).toBe("2024-01-31");
     });
 
+    it("should ignore startDate and endDate when period is not custom", () => {
+      const searchParams = new URLSearchParams(
+        "period=week&startDate=2024-01-01&endDate=2024-01-31"
+      );
+      const result = parsePeriodFromSearchParams(searchParams);
+
+      expect(result).toEqual({ period: "week" });
+      expect("startDate" in result).toBe(false);
+      expect("endDate" in result).toBe(false);
+    });
+
+    it("should omit absent custom dates instead of returning undefined fields", () => {
+      const searchParams = new URLSearchParams("period=custom");
+      const result = parsePeriodFromSearchParams(searchParams);
+
+      expect(result).toEqual({ period: "custom" });
+      expect("startDate" in result).toBe(false);
+      expect("endDate" in result).toBe(false);
+    });
+
     it("should default to thisMonth for invalid period", () => {
       const searchParams = new URLSearchParams("period=invalid");
       const result = parsePeriodFromSearchParams(searchParams);

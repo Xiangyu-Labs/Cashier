@@ -54,14 +54,23 @@ export function usePeriodFilter({
   );
 
   const filters: EntryFilters = useMemo(
-    () => ({
-      startDate: dateRange.startDate !== null ? parseDateString(dateRange.startDate) : undefined,
-      endDate: dateRange.endDate !== null ? parseDateString(dateRange.endDate) : undefined,
-      categoryId: filterParams.categoryId ?? null,
-      currency: filterParams.currency ?? null,
-      minAmount: filterParams.minAmount,
-      maxAmount: filterParams.maxAmount,
-    }),
+    () => {
+      const nextFilters: EntryFilters = {
+        categoryId: filterParams.categoryId ?? null,
+        currency: filterParams.currency ?? null,
+        minAmount: filterParams.minAmount,
+        maxAmount: filterParams.maxAmount,
+      };
+
+      if (dateRange.startDate !== null) {
+        nextFilters.startDate = parseDateString(dateRange.startDate);
+      }
+      if (dateRange.endDate !== null) {
+        nextFilters.endDate = parseDateString(dateRange.endDate);
+      }
+
+      return nextFilters;
+    },
     [dateRange, filterParams]
   );
 
@@ -69,11 +78,19 @@ export function usePeriodFilter({
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
       if (options?.skipUrlUpdate) return;
 
-      const params = updateLedgerSearchParams(searchParams, {
+      const periodUpdate: {
+        period: PeriodParams["period"];
+        startDate?: string | null;
+        endDate?: string | null;
+      } = {
         period: newPeriod.period,
-        startDate: newPeriod.startDate ?? null,
-        endDate: newPeriod.endDate ?? null,
-      });
+      };
+      if (newPeriod.period === "custom") {
+        if ("startDate" in newPeriod) periodUpdate.startDate = newPeriod.startDate ?? null;
+        if ("endDate" in newPeriod) periodUpdate.endDate = newPeriod.endDate ?? null;
+      }
+
+      const params = updateLedgerSearchParams(searchParams, periodUpdate);
       replaceLedgerUrl(pathname, params);
     },
     [pathname, searchParams]
@@ -89,20 +106,40 @@ export function usePeriodFilter({
         return `${y}-${m}-${day}`;
       };
 
-      const hasCustomDates = newFilters.startDate !== undefined || newFilters.endDate !== undefined;
-      const params = updateLedgerSearchParams(searchParams, {
-        period: hasCustomDates ? "custom" : "thisMonth",
-        startDate: hasCustomDates ? formatDate(newFilters.startDate) : null,
-        endDate: hasCustomDates ? formatDate(newFilters.endDate) : null,
+      const nextStartDate = formatDate(newFilters.startDate);
+      const nextEndDate = formatDate(newFilters.endDate);
+      const datesChanged = nextStartDate !== dateRange.startDate || nextEndDate !== dateRange.endDate;
+      const nextPeriod: PeriodParams["period"] = datesChanged
+        ? nextStartDate != null || nextEndDate != null
+          ? "custom"
+          : "thisMonth"
+        : periodParams.period;
+
+      const filterUpdate: {
+        period: PeriodParams["period"];
+        startDate?: string | null;
+        endDate?: string | null;
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+      } = {
+        period: nextPeriod,
         categoryId: newFilters.categoryId ?? null,
         currency: newFilters.currency ?? null,
         minAmount: newFilters.minAmount ?? null,
         maxAmount: newFilters.maxAmount ?? null,
-      });
+      };
+      if (nextPeriod === "custom" && datesChanged) {
+        filterUpdate.startDate = nextStartDate;
+        filterUpdate.endDate = nextEndDate;
+      }
+
+      const params = updateLedgerSearchParams(searchParams, filterUpdate);
 
       replaceLedgerUrl(pathname, params);
     },
-    [pathname, searchParams]
+    [dateRange.endDate, dateRange.startDate, pathname, periodParams.period, searchParams]
   );
 
   return {
