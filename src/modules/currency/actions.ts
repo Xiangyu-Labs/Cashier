@@ -1,7 +1,7 @@
 "use server";
 
 import { parseDateString } from "@/lib/date-utils";
-import { ExchangeRateService, type ExchangeRates } from "./ExchangeRateService";
+import { ExchangeRateService } from "./ExchangeRateService";
 
 export interface ConvertCurrencyResult {
   converted: number;
@@ -61,22 +61,17 @@ export async function batchConvertCurrencyAction(
     return { dateKey, rates };
   });
 
-  const ratesResults = await Promise.allSettled(ratesPromises);
-  const ratesMap = new Map<string, ExchangeRates>();
-  ratesResults.forEach((result, index) => {
-    const dateKey = dateKeys[index];
-    if (dateKey === undefined || result.status !== "fulfilled") {
-      return;
-    }
-
-    ratesMap.set(dateKey, result.value.rates);
-  });
-
-  const results = items.map((item) => item.amount);
+  const ratesResults = await Promise.all(ratesPromises);
+  const ratesMap = new Map(ratesResults.map((result) => [result.dateKey, result.rates]));
+  const results: number[] = new Array(items.length);
 
   for (const [dateKey, group] of byDate) {
     const ratesData = ratesMap.get(dateKey);
-    const rates = ratesData != null ? { ...ratesData.rates, [ratesData.base]: 1.0 } : null;
+    if (ratesData == null) {
+      throw new Error(`Missing exchange rates for grouped date: ${dateKey}`);
+    }
+
+    const rates = { ...ratesData.rates, [ratesData.base]: 1.0 };
 
     for (const [index, item] of group.items.entries()) {
       const originalIndex = group.indices[index];
@@ -85,11 +80,6 @@ export async function batchConvertCurrencyAction(
       }
 
       if (item.currency === targetCurrency || item.currency === "") {
-        results[originalIndex] = item.amount;
-        continue;
-      }
-
-      if (rates == null) {
         results[originalIndex] = item.amount;
         continue;
       }
