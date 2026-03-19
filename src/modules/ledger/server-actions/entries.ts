@@ -1,15 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import { forLedger } from "@/lib/db/scoped-query";
+import { ledgerEntries } from "@/persistence";
 import { z } from "zod";
-import { eq, inArray, and, or, lt, isNull, sql } from "drizzle-orm";
+import { inArray, and } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { convertEntryAmount } from "@/modules/currency/use-cases";
-import { NotFoundError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
-import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import {
+  batchUpdateLedgerEntries,
+  createLedgerEntryWithConversion,
+  updateLedgerEntryWithConversion,
+} from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
+import { listLedgerEntryPage } from "@/modules/ledger/application/queries/list-ledger-entry-page";
 
 const createLedgerEntrySchema = z.object({
   amount: z.number(),
@@ -39,60 +42,20 @@ const batchUpdateLedgerEntriesSchema = z
   })
   .strict(); // Reject unknown keys
 
-import { forLedger } from "@/lib/db/scoped-query";
 import type { LedgerEntry } from "@/persistence";
-// Date string comparison - no need for date parsing utilities
 
 export const createLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<LedgerEntry> => {
     const validated = createLedgerEntrySchema.parse(data);
-
-    // Get ledger's main currency and source document's entryDate
-    const ledger = await db.query.ledgers.findFirst({
-      where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-    });
-    const mainCurrency =
-      ledger?.metadata?.settings?.mainCurrency != null &&
-      ledger.metadata.settings.mainCurrency !== ""
-        ? ledger.metadata.settings.mainCurrency
-        : "CNY";
-    const entryCurrency =
-      validated.currency != null && validated.currency !== "" ? validated.currency : "CNY";
-
-    // Get entryDate from source document for currency conversion
-    const sourceDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, validated.sourceDocumentId),
-    });
-    const entryDate =
-      sourceDoc?.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
-
-    // Calculate converted amount using CurrencyService
-    const conversionResult = await convertEntryAmount({
+    return createLedgerEntryWithConversion({
+      ledgerId,
       amount: validated.amount,
-      fromCurrency: entryCurrency,
-      toCurrency: mainCurrency,
-      date: entryDate,
+      currency: validated.currency,
+      itemName: validated.itemName,
+      categoryId: validated.categoryId,
+      description: validated.description,
+      sourceDocumentId: validated.sourceDocumentId,
     });
-
-    const convertedAmount = conversionResult?.convertedAmount ?? null;
-    const exchangeRate = conversionResult?.exchangeRate ?? null;
-
-    const [entry] = await db
-      .insert(ledgerEntries)
-      .values({
-        amount: validated.amount.toFixed(2),
-        ledgerId: ledgerId,
-        sourceDocumentId: validated.sourceDocumentId,
-        itemName: validated.itemName,
-        currency: entryCurrency,
-        categoryId: validated.categoryId,
-        description: validated.description,
-        convertedAmount,
-        exchangeRate,
-      })
-      .returning();
-
-    return entry;
   }
 );
 
@@ -103,76 +66,15 @@ export const updateLedgerEntryAction = withLedgerAccess(
     data: z.infer<typeof updateLedgerEntrySchema>
   ): Promise<LedgerEntryDto> => {
     const validated = updateLedgerEntrySchema.parse(data);
-    const q = forLedger(ledgerEntries, ledgerId);
-
-    // Use precise type for update data instead of Record<string, unknown>
-    // This ensures type safety for database update operations
-    const updateData: Partial<{
-      categoryId: string | null;
-      amount: string;
-      currency: string | null;
-      itemName: string;
-      description: string | null;
-      updatedAt: Date;
-      convertedAmount: string;
-      exchangeRate: string;
-    }> = {};
-    if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
-    if (validated.amount !== undefined) updateData.amount = validated.amount.toFixed(2);
-    if (validated.currency !== undefined) updateData.currency = validated.currency;
-    if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
-    if (validated.description !== undefined) updateData.description = validated.description;
-    updateData.updatedAt = new Date();
-
-    // If amount or currency changed, recalculate convertedAmount
-    if (validated.amount !== undefined || validated.currency !== undefined) {
-      // Get current entry and ledger for calculation
-      // Include ledgerId in query to prevent IDOR
-      const [currentEntry, ledger] = await Promise.all([
-        db.query.ledgerEntries.findFirst({
-          where: and(
-            eq(ledgerEntries.id, ledgerEntryId),
-            eq(ledgerEntries.ledgerId, ledgerId),
-            isNull(ledgerEntries.deletedAt)
-          ),
-          with: { sourceDocument: true },
-        }),
-        db.query.ledgers.findFirst({
-          where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-        }),
-      ]);
-
-      if (currentEntry) {
-        const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-        const newAmount = validated.amount ?? Number(currentEntry.amount);
-        const newCurrency = validated.currency ?? currentEntry.currency ?? "CNY";
-        // Get entryDate from source document
-        const entryDate = currentEntry.sourceDocument?.entryDate ?? undefined;
-
-        // Calculate converted amount using CurrencyService
-        const conversionResult = await convertEntryAmount({
-          amount: newAmount,
-          fromCurrency: newCurrency,
-          toCurrency: mainCurrency,
-          date: entryDate,
-        });
-
-        if (conversionResult != null) {
-          updateData.convertedAmount = conversionResult.convertedAmount;
-          updateData.exchangeRate = conversionResult.exchangeRate;
-        }
-      }
-    }
-
-    const [updatedEntry] = await db
-      .update(ledgerEntries)
-      .set(updateData)
-      .where(q.whereId(ledgerEntryId))
-      .returning();
-
-    if (updatedEntry == null) throw new NotFoundError("Entry");
-
-    return mapLedgerEntryDto(updatedEntry);
+    return updateLedgerEntryWithConversion({
+      ledgerId,
+      ledgerEntryId,
+      categoryId: validated.categoryId,
+      amount: validated.amount,
+      currency: validated.currency,
+      itemName: validated.itemName,
+      description: validated.description,
+    });
   }
 );
 
@@ -200,38 +102,16 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     ledgerEntryIds: string[],
     data: z.infer<typeof batchUpdateLedgerEntriesSchema>
   ): Promise<void> => {
-    // Validate input with Zod
     const validated = batchUpdateLedgerEntriesSchema.parse(data);
-
-    // Build update data from validated input
-    const updateData: Partial<typeof ledgerEntries.$inferSelect> = {};
-    if (validated.categoryId !== undefined) updateData.categoryId = validated.categoryId;
-    if (validated.currency !== undefined) updateData.currency = validated.currency;
-    if (validated.amount !== undefined) updateData.amount = String(validated.amount);
-    if (validated.description !== undefined) updateData.description = validated.description;
-    if (validated.itemName !== undefined) updateData.itemName = validated.itemName;
-    updateData.updatedAt = new Date();
-
-    const q = forLedger(ledgerEntries, ledgerId);
-
-    await db
-      .update(ledgerEntries)
-      .set(updateData)
-      .where(and(q.whereActive, inArray(ledgerEntries.id, ledgerEntryIds)));
-
-    // If currency was updated, recalculate converted amounts for affected entries
-    if (validated.currency !== undefined && ledgerEntryIds.length > 0) {
-      const { recalculateEntriesConvertedAmount } =
-        await import("./helpers");
-      const ledger = await db.query.ledgers.findFirst({
-        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-        columns: { metadata: true },
-      });
-      const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-      recalculateEntriesConvertedAmount(ledgerId, mainCurrency).catch((err) => {
-        logger.error({ err, ledgerId }, "Failed to recalculate after batch currency update");
-      });
-    }
+    return batchUpdateLedgerEntries({
+      ledgerId,
+      ledgerEntryIds,
+      categoryId: validated.categoryId,
+      currency: validated.currency,
+      amount: validated.amount,
+      description: validated.description,
+      itemName: validated.itemName,
+    });
   }
 );
 
@@ -248,109 +128,19 @@ export async function listLedgerEntries(
     maxAmount?: number | null;
   }
 ) {
-  const q = forLedger(ledgerEntries, ledgerId);
-  const limit = params.limit ?? 20;
-
-  // Build conditions
-  const conditions = [q.whereActive];
-  // Date filtering now uses sourceDocument.entryDate via subquery
-  if (params.startDate != null && params.startDate !== "") {
-    conditions.push(
-      sql`${ledgerEntries.sourceDocumentId} IN (
-                SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND entry_date >= ${params.startDate} AND deleted_at IS NULL
-            )`
-    );
-  }
-  if (params.endDate != null && params.endDate !== "") {
-    conditions.push(
-      sql`${ledgerEntries.sourceDocumentId} IN (
-                SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND entry_date <= ${params.endDate} AND deleted_at IS NULL
-            )`
-    );
-  }
-  if (params.categoryId != null && params.categoryId !== "")
-    conditions.push(eq(ledgerEntries.categoryId, params.categoryId));
-  if (params.currency != null && params.currency !== "")
-    conditions.push(eq(ledgerEntries.currency, params.currency));
-  // Filter by convertedAmount (main currency) for price range filtering
-  // Use CAST to compare as numbers, not strings
-  if (params.minAmount !== undefined && params.minAmount !== null) {
-    conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) >= ${params.minAmount}`);
-  }
-  if (params.maxAmount !== undefined && params.maxAmount !== null) {
-    conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) <= ${params.maxAmount}`);
-  }
-
-  // Handle cursor with precise composite condition
-  // Cursor format: "createdAt|id" (simplified since entryDate is now on sourceDocument)
-  // Order: (createdAt DESC, id DESC)
-  if (params.cursor != null && params.cursor !== "") {
-    const parts = params.cursor.split("|");
-    if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") {
-      const [cursorCreated, cursorId] = parts;
-      conditions.push(
-        or(
-          lt(ledgerEntries.createdAt, new Date(cursorCreated)),
-          and(eq(ledgerEntries.createdAt, new Date(cursorCreated)), lt(ledgerEntries.id, cursorId))
-        )!
-      );
-    }
-  }
-
-  // Single query with precise conditions
-  const items = await db.query.ledgerEntries.findMany({
-    where: and(...conditions),
-    orderBy: (entries, { desc }) => [desc(entries.createdAt), desc(entries.id)],
-    limit: limit + 1,
-    with: {
-      category: true,
-      sourceDocument: true,
+  return listLedgerEntryPage({
+    ledgerId,
+    limit: params.limit ?? 20,
+    cursor: params.cursor,
+    filters: {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      categoryId: params.categoryId,
+      currency: params.currency,
+      minAmount: params.minAmount,
+      maxAmount: params.maxAmount,
     },
   });
-
-  // Determine next cursor
-  let nextCursor: string | undefined = undefined;
-  let resultItems = items;
-
-  if (items.length > limit) {
-    const nextItem = items[limit];
-    nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
-    resultItems = items.slice(0, limit);
-  }
-
-  // Use unified serialization
-  const serializedItems = resultItems.map((item) => {
-    const serialized = mapLedgerEntryDto({
-      ...item,
-      category: item.category,
-      sourceDocument: item.sourceDocument,
-    });
-
-    // Strip large metadata fields from sourceDocument to reduce payload size
-    if (serialized.sourceDocument != null) {
-      const {
-        visionDescription: _visionDescription,
-        originalImageUrls: _originalImageUrls,
-        ...lightMetadata
-      } =
-        serialized.sourceDocument.metadata ?? {};
-      serialized.sourceDocument = {
-        ...serialized.sourceDocument,
-        metadata: lightMetadata,
-        imageUrls: [],
-        hasImages: (item.sourceDocument?.imageUrls?.length ?? 0) > 0,
-      };
-    }
-
-    return serialized;
-  });
-
-  return {
-    items: serializedItems,
-    nextCursor,
-  };
 }
 
 export const getLedgerEntriesAction = withLedgerAccess(listLedgerEntries);
