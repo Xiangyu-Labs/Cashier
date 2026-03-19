@@ -33,6 +33,10 @@ describe("Ledger Entry Delete Action", () => {
         itemName: "Delete Me",
       })
       .returning();
+    expect(entry).toBeDefined();
+    if (entry == null) {
+      throw new Error("Expected ledger entry to be created");
+    }
     testEntryId = entry.id;
   });
 

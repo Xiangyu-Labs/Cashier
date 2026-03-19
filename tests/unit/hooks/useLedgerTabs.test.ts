@@ -84,7 +84,12 @@ describe("useLedgerTabs", () => {
       result.current.handleTabChange("details");
     });
 
-    const callUrl = mockReplaceState.mock.calls[0][2];
+    const firstCall = mockReplaceState.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    if (firstCall == null) {
+      throw new Error("Expected replaceState to be called");
+    }
+    const callUrl = firstCall[2];
     expect(callUrl).toContain("tab=details");
     expect(callUrl).toContain("categoryId=cat_123");
     expect(callUrl).toContain("period=month");

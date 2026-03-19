@@ -109,6 +109,11 @@ describe("generateCategoryMetadataHandler", () => {
         success: true,
       };
 
+      expect(category).toBeDefined();
+      if (category == null) {
+        throw new Error("Expected category to be created");
+      }
+
       const input: GenerateCategoryMetadataInput = {
         ledgerId,
         categoryId: category.id,
@@ -126,8 +131,13 @@ describe("generateCategoryMetadataHandler", () => {
         where: eq(entryCategories.id, category.id),
       });
 
-      expect(updated?.icon).toBe("Rocket");
-      expect(updated?.description).toBe("AI Generated Description");
+      expect(category).toBeDefined();
+      expect(updated).toBeDefined();
+      if (category == null || updated == null) {
+        throw new Error("Expected category and updated row");
+      }
+      expect(updated.icon).toBe("Rocket");
+      expect(updated.description).toBe("AI Generated Description");
     });
   });
 });

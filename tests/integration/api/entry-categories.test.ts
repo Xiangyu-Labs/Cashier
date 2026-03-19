@@ -133,6 +133,13 @@ describe("reorderEntryCategoriesAction", () => {
       .values({ ledgerId: testLedgerId, name: "Cat 3", sortOrder: 2 })
       .returning();
 
+    expect(c1).toBeDefined();
+    expect(c2).toBeDefined();
+    expect(c3).toBeDefined();
+    if (c1 == null || c2 == null || c3 == null) {
+      throw new Error("Expected three categories to be created");
+    }
+
     category1Id = c1.id;
     category2Id = c2.id;
     category3Id = c3.id;

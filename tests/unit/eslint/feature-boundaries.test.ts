@@ -7,6 +7,10 @@ async function lintRestrictedImports(code: string, filePath: string) {
   });
 
   const [result] = await eslint.lintText(code, { filePath });
+  expect(result).toBeDefined();
+  if (result == null) {
+    throw new Error("Expected ESLint result");
+  }
   return result.messages.filter((message) => message.ruleId === "no-restricted-imports");
 }
 

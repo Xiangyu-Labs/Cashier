@@ -33,7 +33,7 @@ describe("determineSourceType", () => {
   });
 
   it('should return "text" for undefined text', () => {
-    const input: SourceDocumentInput = { text: undefined };
+    const input: SourceDocumentInput = {};
     expect(determineSourceType(input)).toBe("text");
   });
 

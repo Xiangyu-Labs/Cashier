@@ -26,6 +26,10 @@ describe("Batch Update Ledger Entries Action", () => {
       .insert(entryCategories)
       .values({ ledgerId: testLedgerId, name: "Dining", sortOrder: 1 })
       .returning();
+    expect(category).toBeDefined();
+    if (category == null) {
+      throw new Error("Expected category to be created");
+    }
     testCategoryId = category.id;
 
     // Create a test source document for entries

@@ -66,7 +66,12 @@ describe("usePendingChanges", () => {
       result.current.handleEntryChange("entry-1", { itemName: "Updated Item" });
     });
 
-    expect(result.current.pendingChanges.entries["entry-1"].itemName).toBe("Updated Item");
+    const changedEntry = result.current.pendingChanges.entries["entry-1"];
+    expect(changedEntry).toBeDefined();
+    if (changedEntry == null) {
+      throw new Error("Expected pending change entry");
+    }
+    expect(changedEntry.itemName).toBe("Updated Item");
     expect(result.current.hasPendingChanges).toBe(true);
   });
 

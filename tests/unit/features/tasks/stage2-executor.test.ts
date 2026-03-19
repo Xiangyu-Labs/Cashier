@@ -57,8 +57,13 @@ describe("Stage 2 Executor", () => {
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
         expect(result.output.entries).toHaveLength(1);
-        expect(result.output.entries[0].item_name).toBe("午餐");
-        expect(result.output.entries[0].amount).toBe(45);
+        const firstEntry = result.output.entries[0];
+        expect(firstEntry).toBeDefined();
+        if (firstEntry == null) {
+          throw new Error("Expected parsed entry");
+        }
+        expect(firstEntry.item_name).toBe("午餐");
+        expect(firstEntry.amount).toBe(45);
         expect(result.output.title).toBe("午餐消费");
         expect(result.output.wasArbitrated).toBe(false);
       }
@@ -94,7 +99,12 @@ describe("Stage 2 Executor", () => {
 
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
-        expect(result.output.entries[0].entry_date).toBe("2026-01-15");
+        const firstEntry = result.output.entries[0];
+        expect(firstEntry).toBeDefined();
+        if (firstEntry == null) {
+          throw new Error("Expected parsed entry");
+        }
+        expect(firstEntry.entry_date).toBe("2026-01-15");
       }
     });
   });
@@ -160,7 +170,12 @@ describe("Stage 2 Executor", () => {
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
         expect(result.output.wasArbitrated).toBe(true);
-        expect(result.output.entries[0].amount).toBe(45);
+        const firstEntry = result.output.entries[0];
+        expect(firstEntry).toBeDefined();
+        if (firstEntry == null) {
+          throw new Error("Expected parsed entry");
+        }
+        expect(firstEntry.amount).toBe(45);
       }
     });
 

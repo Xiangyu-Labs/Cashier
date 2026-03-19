@@ -208,8 +208,12 @@ describe("SettingsTab", () => {
     const accountButton = screen.getByText("account");
     await user.click(accountButton);
 
-    const signOutButton = screen.getAllByText("signOut")[1]; // Get the button text, not the section header
+    const signOutButtons = screen.getAllByText("signOut");
+    const signOutButton = signOutButtons[1]; // Get the button text, not the section header
     expect(signOutButton).toBeDefined();
+    if (signOutButton == null) {
+      throw new Error("Expected sign-out button");
+    }
 
     await user.click(signOutButton);
 

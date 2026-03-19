@@ -72,13 +72,21 @@ describe("exportLedgerEntriesAction", () => {
 
     // Check headers (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, "");
-    expect(headerLine).toBe(
+    const headerLine = lines[0];
+    expect(headerLine).toBeDefined();
+    if (headerLine == null) {
+      throw new Error("Expected CSV header line");
+    }
+    expect(headerLine.replace(/^\uFEFF/, "")).toBe(
       "Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At"
     );
 
     // Check data row
     const dataRow = lines[1];
+    expect(dataRow).toBeDefined();
+    if (dataRow == null) {
+      throw new Error("Expected CSV data row");
+    }
     expect(dataRow).toContain("2024-03-15");
     expect(dataRow).toContain("午餐");
     expect(dataRow).toContain("25.50");
@@ -179,8 +187,14 @@ describe("exportLedgerEntriesAction", () => {
 
     // 5. Assertions (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, "");
-    expect(headerLine).toBe("日期,项目名称,金额,币种,分类,描述,转换金额,汇率,来源文档,创建时间");
+    const headerLine = lines[0];
+    expect(headerLine).toBeDefined();
+    if (headerLine == null) {
+      throw new Error("Expected CSV header line");
+    }
+    expect(headerLine.replace(/^\uFEFF/, "")).toBe(
+      "日期,项目名称,金额,币种,分类,描述,转换金额,汇率,来源文档,创建时间"
+    );
   });
 
   it("should use English headers for unsupported locale", async () => {
@@ -203,8 +217,12 @@ describe("exportLedgerEntriesAction", () => {
 
     // 5. Assertions - should fallback to English (skip UTF-8 BOM character)
     const lines = result.csvContent.split("\r\n");
-    const headerLine = lines[0].replace(/^\uFEFF/, "");
-    expect(headerLine).toBe(
+    const headerLine = lines[0];
+    expect(headerLine).toBeDefined();
+    if (headerLine == null) {
+      throw new Error("Expected CSV header line");
+    }
+    expect(headerLine.replace(/^\uFEFF/, "")).toBe(
       "Date,Item Name,Amount,Currency,Category,Description,Converted Amount,Exchange Rate,Source Document,Created At"
     );
   });
@@ -295,6 +313,10 @@ describe("exportLedgerEntriesAction", () => {
     // 5. Assertions
     const lines = result.csvContent.split("\r\n");
     const dataRow = lines[1];
+    expect(dataRow).toBeDefined();
+    if (dataRow == null) {
+      throw new Error("Expected CSV data row");
+    }
     const fields = dataRow.split(",");
 
     // First field should be entryDate in yyyy-MM-dd format

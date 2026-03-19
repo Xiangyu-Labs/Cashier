@@ -51,6 +51,11 @@ describe("LedgerEntries FK Constraints", () => {
 
     const sourceDocId = await createTestSourceDocument(db, ledger.id);
 
+    expect(category).toBeDefined();
+    if (category == null) {
+      throw new Error("Expected category to be created");
+    }
+
     const [tx] = await db
       .insert(ledgerEntries)
       .values({
@@ -61,6 +66,10 @@ describe("LedgerEntries FK Constraints", () => {
         itemName: "午餐",
       })
       .returning();
+    expect(tx).toBeDefined();
+    if (tx == null) {
+      throw new Error("Expected ledger entry");
+    }
 
     await db.delete(categories).where(eq(categories.id, category.id));
 

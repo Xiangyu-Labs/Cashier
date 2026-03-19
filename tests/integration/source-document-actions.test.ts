@@ -195,9 +195,17 @@ describe("getSourceDocumentLightAction", () => {
     const result = await getSourceDocumentLightAction(docData.id);
 
     expect(result).not.toBeNull();
-    expect(result!.ledgerEntries).toHaveLength(1);
-    expect(result!.ledgerEntries[0].itemName).toBe("Test Entry");
-    expect(result!.ledgerEntries[0].category?.name).toBe(categoryData.name);
+    if (result == null) {
+      throw new Error("Expected source document light result");
+    }
+    expect(result.ledgerEntries).toHaveLength(1);
+    const firstEntry = result.ledgerEntries[0];
+    expect(firstEntry).toBeDefined();
+    if (firstEntry == null) {
+      throw new Error("Expected source document ledger entry");
+    }
+    expect(firstEntry.itemName).toBe("Test Entry");
+    expect(firstEntry.category?.name).toBe(categoryData.name);
   });
 
   it("should return null when document does not exist", async () => {

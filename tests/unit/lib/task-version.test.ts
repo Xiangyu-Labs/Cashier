@@ -174,9 +174,19 @@ describe("TaskVersionManager", () => {
 
       // Only the last version should be valid
       for (let i = 0; i < versions.length - 1; i++) {
-        expect(taskVersionManager.isValid(key, versions[i])).toBe(false);
+        const version = versions[i];
+        expect(version).toBeDefined();
+        if (version == null) {
+          throw new Error("Expected task version");
+        }
+        expect(taskVersionManager.isValid(key, version)).toBe(false);
       }
-      expect(taskVersionManager.isValid(key, versions[versions.length - 1])).toBe(true);
+      const latestVersion = versions[versions.length - 1];
+      expect(latestVersion).toBeDefined();
+      if (latestVersion == null) {
+        throw new Error("Expected latest task version");
+      }
+      expect(taskVersionManager.isValid(key, latestVersion)).toBe(true);
     });
 
     it("should isolate different resources", () => {

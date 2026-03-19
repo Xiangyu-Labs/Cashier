@@ -191,7 +191,12 @@ describe("LedgerEntryViewDetails", () => {
     renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
 
     const inputs = screen.getAllByTestId("editable-field");
-    fireEvent.change(inputs[0], { target: { value: "New Item Name" } });
+    const firstInput = inputs[0];
+    expect(firstInput).toBeDefined();
+    if (firstInput == null) {
+      throw new Error("Expected editable field input");
+    }
+    fireEvent.change(firstInput, { target: { value: "New Item Name" } });
 
     expect(defaultProps.onFieldChange).toHaveBeenCalled();
   });

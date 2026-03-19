@@ -63,6 +63,10 @@ describe("Stats Currency Conversion", () => {
         status: "completed",
       })
       .returning();
+    expect(sourceDoc).toBeDefined();
+    if (sourceDoc == null) {
+      throw new Error("Expected source document to be created");
+    }
 
     // 2. Insert an entry in MYR associated with source document
     // Using pre-calculated convertedAmount (156 CNY)
@@ -97,6 +101,10 @@ describe("Stats Currency Conversion", () => {
         status: "completed",
       })
       .returning();
+    expect(sourceDoc).toBeDefined();
+    if (sourceDoc == null) {
+      throw new Error("Expected source document to be created");
+    }
 
     // 2. Insert entries with pre-calculated convertedAmount
     // 100 MYR = 156 CNY

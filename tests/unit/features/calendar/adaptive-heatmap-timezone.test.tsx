@@ -34,6 +34,9 @@ function installDateOnlyShiftMock() {
     constructor(...args: ConstructorParameters<DateConstructor>) {
       if (args.length === 1 && typeof args[0] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(args[0])) {
         const [year, month, day] = args[0].split("-").map(Number);
+        if (year == null || month == null || day == null) {
+          throw new Error("Expected date parts");
+        }
         super(RealDate.UTC(year, month - 1, day, -8, 0, 0, 0));
         return;
       }

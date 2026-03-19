@@ -33,6 +33,10 @@ describe("Stats Soft Delete Filtering Regression", () => {
         status: "completed",
       })
       .returning();
+    expect(sourceDoc).toBeDefined();
+    if (sourceDoc == null) {
+      throw new Error("Expected source document to be created");
+    }
 
     // 2. Insert an active entry
     await db.insert(ledgerEntries).values({
@@ -75,6 +79,10 @@ describe("Stats Soft Delete Filtering Regression", () => {
         status: "completed",
       })
       .returning();
+    expect(sourceDoc).toBeDefined();
+    if (sourceDoc == null) {
+      throw new Error("Expected source document to be created");
+    }
 
     // 2. Insert an active entry
     await db.insert(ledgerEntries).values({

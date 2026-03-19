@@ -108,7 +108,12 @@ describe("EditableField", () => {
 
     fireEvent.change(input, { target: { value: "New Value" } });
     const buttons = screen.getAllByRole("button");
-    if (buttons.length > 0) fireEvent.click(buttons[0]);
+    const firstButton = buttons[0];
+    expect(firstButton).toBeDefined();
+    if (firstButton == null) {
+      throw new Error("Expected action button");
+    }
+    fireEvent.click(firstButton);
 
     expect(handleChange).toHaveBeenCalledWith("New Value");
   });
