@@ -10,7 +10,7 @@ import {
 } from "../../helpers/schema-setup";
 
 // Mock the exchange rate service
-vi.mock("@/features/currency/server/exchange-rate-service", () => ({
+vi.mock("@/modules/currency/ExchangeRateService", () => ({
   ExchangeRateService: {
     convert: vi.fn().mockImplementation((amount: number) => {
       // Mock: 1 USD = 7 CNY

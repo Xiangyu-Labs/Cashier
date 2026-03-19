@@ -6,13 +6,13 @@ import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
 // Mock ExchangeRateService to avoid external API calls
-vi.mock("@/features/currency/server/exchange-rate-service", () => ({
+vi.mock("@/modules/currency/ExchangeRateService", () => ({
   ExchangeRateService: {
     convert: vi.fn().mockResolvedValue(100),
   },
 }));
 
-import { ExchangeRateService } from "@/features/currency/server/exchange-rate-service";
+import { ExchangeRateService } from "@/modules/currency/ExchangeRateService";
 import {
   createLedgerEntryAction,
   updateLedgerEntryAction,

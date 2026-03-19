@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { convertAmount, calculateGrowth } from "@/features/stats/server/utils";
+import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 
 describe("Stats Utils", () => {
   describe("convertAmount", () => {
