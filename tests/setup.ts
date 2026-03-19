@@ -13,6 +13,7 @@ import { memoryStore } from "@/lib/memory-store";
 // Set required AI model environment variables for tests
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
 
 // Map to store database instances per test file
 const dbInstances = new Map<

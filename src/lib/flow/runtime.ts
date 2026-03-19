@@ -1,6 +1,4 @@
-import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { createAIContext } from "./ai-context";
-import { createDrizzleStorage } from "./adapters/drizzle-storage";
 import { loadFlowRuntimeEnvConfig } from "./config";
 import { createFlowEngine } from "./engine";
 import { registerAllTasks, resetTaskRegistry } from "./task-registry";
@@ -8,6 +6,18 @@ import type { FlowEngine, FlowRuntime, FlowRuntimeConfig, FlowTaskMetadata } fro
 
 let runtime: FlowRuntime | null = null;
 let initializationPromise: Promise<FlowRuntime> | null = null;
+
+async function ensureFlowRuntime(): Promise<FlowRuntime> {
+  if (runtime != null) {
+    return runtime;
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    throw new Error("Flow runtime is not supported in the Edge Runtime.");
+  }
+
+  return initializeDefaultFlowRuntime();
+}
 
 export function createFlowRuntime(config: FlowRuntimeConfig): FlowRuntime {
   const engine = createFlowEngine({
@@ -56,12 +66,17 @@ export async function initializeFlowRuntime(config: FlowRuntimeConfig): Promise<
 
 export async function initializeDefaultFlowRuntime(): Promise<FlowRuntime> {
   const envConfig = loadFlowRuntimeEnvConfig();
+  const [{ createDrizzleStorage }, { getOpenAIClient }] = await Promise.all([
+    import("./adapters/drizzle-storage"),
+    import("@/lib/ai/openai-client"),
+  ]);
+  const client = getOpenAIClient();
 
   return initializeFlowRuntime({
     storage: createDrizzleStorage(),
     maxConcurrentTasks: envConfig.maxConcurrentTasks,
     ai: {
-      getClient: getOpenAIClient,
+      getClient: () => client,
       models: envConfig.aiModelConfig,
     },
   });
@@ -86,11 +101,13 @@ export async function submitFlowTask<TInput>(
   input: TInput,
   meta?: FlowTaskMetadata
 ): Promise<string> {
-  return getFlowEngine().submit(name, input, meta);
+  const ensuredRuntime = await ensureFlowRuntime();
+  return ensuredRuntime.engine.submit(name, input, meta);
 }
 
 export async function cancelFlowTask(taskId: string): Promise<void> {
-  return getFlowEngine().cancel(taskId);
+  const ensuredRuntime = await ensureFlowRuntime();
+  return ensuredRuntime.engine.cancel(taskId);
 }
 
 export function resetFlowRuntime(): void {

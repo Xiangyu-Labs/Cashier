@@ -24,6 +24,8 @@ vi.mock("@/lib/ai/openai-client", () => ({
 }));
 
 import { getOpenAIClient } from "@/lib/ai/openai-client";
+import { createDrizzleStorage } from "@/lib/flow/adapters/drizzle-storage";
+import { initializeFlowRuntime, resetFlowRuntime } from "@/lib/flow/runtime";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("SourceDocument Actions", () => {
@@ -35,6 +37,19 @@ describe("SourceDocument Actions", () => {
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
+
+    resetFlowRuntime();
+    await initializeFlowRuntime({
+      storage: createDrizzleStorage(),
+      maxConcurrentTasks: 10,
+      ai: {
+        getClient: () => vi.mocked(getOpenAIClient)(),
+        models: {
+          text: process.env.AI_MODEL_TEXT!,
+          vision: process.env.AI_MODEL_VISION!,
+        },
+      },
+    });
 
     const db = getTestDb();
 

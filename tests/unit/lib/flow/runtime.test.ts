@@ -62,4 +62,36 @@ describe("flow runtime", () => {
       "Flow runtime has not been initialized. Call initializeDefaultFlowRuntime() during startup."
     );
   });
+
+  it("lazily initializes the default runtime on first task submission", async () => {
+    process.env.NEXT_RUNTIME = "nodejs";
+
+    const storage = createStorage();
+    const handlerExecute = vi.fn().mockResolvedValue(undefined);
+
+    vi.doMock("@/lib/flow/adapters/drizzle-storage", () => ({
+      createDrizzleStorage: () => storage,
+    }));
+
+    vi.doMock("@/lib/ai/openai-client", () => ({
+      getOpenAIClient: () => ({
+        generateContent: vi.fn(),
+      }),
+    }));
+
+    registerAllTasksMock.mockImplementationOnce(async (engine) => {
+      engine.register("lazy-task", {
+        execute: handlerExecute,
+      });
+    });
+
+    const { submitFlowTask, getFlowRuntime } = await import("@/lib/flow/runtime");
+    const taskId = await submitFlowTask("lazy-task", { value: 1 });
+
+    expect(taskId).toBe("task-1");
+    expect(getFlowRuntime().engine).toBeDefined();
+    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
+    expect(storage.create).toHaveBeenCalledTimes(1);
+    expect(handlerExecute).toHaveBeenCalledTimes(1);
+  });
 });

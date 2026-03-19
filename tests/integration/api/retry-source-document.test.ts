@@ -14,6 +14,8 @@ import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 import { getOpenAIClient } from "@/lib/ai/openai-client";
+import { createDrizzleStorage } from "@/lib/flow/adapters/drizzle-storage";
+import { initializeFlowRuntime, resetFlowRuntime } from "@/lib/flow/runtime";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 // Mock OpenAI
@@ -31,6 +33,19 @@ describe("SourceDocument Retry Action", () => {
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
+
+    resetFlowRuntime();
+    await initializeFlowRuntime({
+      storage: createDrizzleStorage(),
+      maxConcurrentTasks: 10,
+      ai: {
+        getClient: () => vi.mocked(getOpenAIClient)(),
+        models: {
+          text: process.env.AI_MODEL_TEXT!,
+          vision: process.env.AI_MODEL_VISION!,
+        },
+      },
+    });
 
     const db = getTestDb();
     // Clean up existing ledger for TEST_USER_ID to avoid unique constraint

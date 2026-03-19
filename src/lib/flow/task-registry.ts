@@ -1,6 +1,3 @@
-import { categorizeEntryTaskDefinition } from "@/modules/ledger/application/tasks/categorize-entry";
-import { generateCategoryMetadataTaskDefinition } from "@/modules/ledger/application/tasks/generate-category-metadata";
-import { parseSourceDocumentTaskDefinition } from "@/modules/source-document/application/tasks/parse-source-document";
 import type { FlowEngine, FlowTaskHandler } from "./types";
 
 let registeredEngines = new WeakSet<FlowEngine>();
@@ -37,10 +34,20 @@ export async function registerAllTasks(engine: FlowEngine): Promise<void> {
     return;
   }
 
-  const registrationPromise = Promise.resolve().then(() => {
+  const registrationPromise = Promise.resolve().then(async () => {
     if (registeredEngines.has(engine)) {
       return;
     }
+
+    const [
+      { parseSourceDocumentTaskDefinition },
+      { generateCategoryMetadataTaskDefinition },
+      { categorizeEntryTaskDefinition },
+    ] = await Promise.all([
+      import("@/modules/source-document/application/tasks/parse-source-document"),
+      import("@/modules/ledger/application/tasks/generate-category-metadata"),
+      import("@/modules/ledger/application/tasks/categorize-entry"),
+    ]);
 
     registerTaskIfNeeded(
       engine,

@@ -1,5 +1,4 @@
 import { logger } from "@/lib/logger";
-import { initializeDefaultFlowRuntime } from "@/lib/flow/runtime";
 
 export async function register() {
   // Only run on server-side runtime (not edge or browser)
@@ -20,6 +19,7 @@ export async function register() {
   );
 
   try {
+    const { initializeDefaultFlowRuntime } = await import("@/lib/flow/runtime");
     await initializeDefaultFlowRuntime();
 
     logger.info("Flow runtime initialized successfully");
