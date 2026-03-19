@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
+import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
 import { NotFoundError } from "@/lib/errors";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
@@ -9,6 +10,8 @@ import { getLedgerMainCurrency } from "../queries/get-ledger-main-currency";
 import { recalculateEntriesConvertedAmount } from "../services/recalculate-entries-converted-amount";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { LedgerEntryDto } from "../../contracts";
+
+initializeExchangeRateLedgerRecalculationOrchestration();
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";

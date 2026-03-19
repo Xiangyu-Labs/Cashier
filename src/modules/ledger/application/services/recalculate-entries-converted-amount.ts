@@ -1,9 +1,12 @@
 import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
 import { convertAmountsBatch } from "@/modules/currency/use-cases";
 import { ledgerEntries } from "@/persistence";
+
+initializeExchangeRateLedgerRecalculationOrchestration();
 
 export interface ConversionItem {
   amount: number;

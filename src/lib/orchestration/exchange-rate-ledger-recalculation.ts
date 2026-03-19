@@ -1,32 +1,30 @@
-import { db } from "@/lib/db";
-import { ledgers } from "@/persistence";
-import { logger } from "@/lib/logger";
 import { isNull } from "drizzle-orm";
-import { ExchangeRateService } from "../ExchangeRateService";
+import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
+import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
+import { ledgers } from "@/persistence";
 
 let orchestrationInitialized = false;
 
-export function initializeExchangeRateRecalculationOrchestration(): void {
+export function initializeExchangeRateLedgerRecalculationOrchestration(): void {
   if (orchestrationInitialized) {
     return;
   }
 
-  if (typeof ExchangeRateService.registerRatesStoredHandler !== "function") {
-    logger.warn(
-      "ExchangeRateService mock does not expose registerRatesStoredHandler; skipping orchestration hook"
-    );
+  const unsubscribe = registerExchangeRatesStoredHandler(() => {
+    onExchangeRatesStored().catch((err) => {
+      logger.error({ err }, "Failed to trigger ledger recalculation after exchange rate update");
+    });
+  });
+
+  if (unsubscribe == null) {
     return;
   }
 
   orchestrationInitialized = true;
-  ExchangeRateService.registerRatesStoredHandler(() => {
-    onExchangeRatesUpdated().catch((err) => {
-      logger.error({ err }, "Failed to trigger recalculation after exchange rate update");
-    });
-  });
 }
 
-export async function onExchangeRatesUpdated(): Promise<void> {
+export async function onExchangeRatesStored(): Promise<void> {
   try {
     const { recalculateEntriesConvertedAmount } = await import("@/modules/ledger/use-cases");
 
@@ -45,6 +43,6 @@ export async function onExchangeRatesUpdated(): Promise<void> {
       });
     }
   } catch (err) {
-    logger.error({ err }, "Failed to trigger recalculation after exchange rate update");
+    logger.error({ err }, "Failed to trigger ledger recalculation after exchange rate update");
   }
 }

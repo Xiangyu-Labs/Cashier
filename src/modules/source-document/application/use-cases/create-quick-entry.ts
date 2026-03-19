@@ -1,11 +1,14 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { db } from "@/lib/db";
+import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { getEntryCategoryName } from "@/modules/ledger/queries";
 import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import { SourceDocumentType } from "@/persistence/schema/source-document";
+
+initializeExchangeRateLedgerRecalculationOrchestration();
 
 export interface CreateQuickEntryPayload {
   categoryId: string;

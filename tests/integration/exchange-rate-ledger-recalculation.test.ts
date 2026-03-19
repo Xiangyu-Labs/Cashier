@@ -4,9 +4,9 @@ import { getTestDb } from "../setup";
 import { ledgers, users } from "@/persistence";
 import { ExchangeRateService } from "@/modules/currency/ExchangeRateService";
 import {
-  initializeExchangeRateRecalculationOrchestration,
-  onExchangeRatesUpdated,
-} from "@/modules/currency/services/exchange-rate-callback";
+  initializeExchangeRateLedgerRecalculationOrchestration,
+  onExchangeRatesStored,
+} from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 
 const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
   recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),
@@ -16,7 +16,7 @@ vi.mock("@/modules/ledger/use-cases", () => ({
   recalculateEntriesConvertedAmount: recalculateEntriesConvertedAmountMock,
 }));
 
-describe("exchange-rate orchestration", () => {
+describe("exchange-rate ledger recalculation orchestration", () => {
   let counter = 0;
 
   beforeEach(async () => {
@@ -59,14 +59,14 @@ describe("exchange-rate orchestration", () => {
       deletedAt: new Date(),
     });
 
-    await onExchangeRatesUpdated();
+    await onExchangeRatesStored();
 
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(2);
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger1Id, "USD");
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger2Id, "CNY");
   });
 
-  it("triggers recalculation only when rates are first stored", async () => {
+  it("triggers recalculation only when rates are first stored after orchestration is initialized", async () => {
     const db = getTestDb();
     const userId = `user-cache-${counter}`;
     const ledgerId = `ledger-${counter}`;
@@ -90,7 +90,7 @@ describe("exchange-rate orchestration", () => {
       }),
     } as Response);
 
-    initializeExchangeRateRecalculationOrchestration();
+    initializeExchangeRateLedgerRecalculationOrchestration();
 
     await ExchangeRateService.getRates("2024-02-10");
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -128,7 +128,7 @@ describe("exchange-rate orchestration", () => {
       }
     });
 
-    await expect(onExchangeRatesUpdated()).resolves.toBeUndefined();
+    await expect(onExchangeRatesStored()).resolves.toBeUndefined();
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "JPY");
 
     const persisted = await db.query.ledgers.findFirst({

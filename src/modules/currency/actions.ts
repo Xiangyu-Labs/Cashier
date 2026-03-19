@@ -2,9 +2,6 @@
 
 import { parseDateString } from "@/lib/date-utils";
 import { ExchangeRateService } from "./ExchangeRateService";
-import { initializeExchangeRateRecalculationOrchestration } from "./services/exchange-rate-callback";
-
-initializeExchangeRateRecalculationOrchestration();
 
 export interface ConvertCurrencyResult {
   converted: number;
