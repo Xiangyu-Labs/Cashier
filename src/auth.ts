@@ -163,7 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Fetch User Data from DB to ensure it's up to date and user still exists
         const dbUser = await db.query.users.findFirst({
           where: and(eq(users.id, userId), isNull(users.deletedAt)),
-          columns: { id: true, email: true, name: true, image: true, defaultLedgerId: true },
+          columns: { id: true, email: true, name: true, image: true },
         });
 
         if (dbUser == null) {
@@ -178,7 +178,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: dbUser.email,
             name: dbUser.name,
             image: dbUser.image,
-            defaultLedgerId: dbUser.defaultLedgerId ?? undefined,
           },
         };
       }
@@ -195,7 +194,6 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      defaultLedgerId?: string | null;
     };
   }
 }

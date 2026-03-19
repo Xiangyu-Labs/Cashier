@@ -6,7 +6,6 @@ import { withAuth } from "@/lib/auth-actions";
 import { eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
-import { clearUserDefaultLedger } from "@/modules/auth/services";
 import { forLedger } from "@/lib/db/scoped-query";
 
 /**
@@ -53,9 +52,6 @@ export const deleteLedgerAction = withAuth(
       // 4. Soft delete the ledger itself
       tx.update(ledgers).set({ deletedAt: new Date() }).where(eq(ledgers.id, ledgerId)).run();
     });
-
-    // Clear defaultLedgerId for users who had this ledger as default
-    await clearUserDefaultLedger(ledgerId);
 
     // Invalidate cache
     updateTag("ledger");

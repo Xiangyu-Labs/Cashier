@@ -21,10 +21,6 @@ describe("queryKeys", () => {
     it("应该生成正确的ledgers query key", () => {
       expect(queryKeys.ledgers()).toEqual(["ledgers"]);
     });
-
-    it("应该生成正确的defaultLedgerId query key", () => {
-      expect(queryKeys.defaultLedgerId()).toEqual(["defaultLedgerId"]);
-    });
   });
 
   describe("ledgerEntries keys", () => {

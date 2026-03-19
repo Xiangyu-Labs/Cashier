@@ -3,5 +3,4 @@ export interface AuthenticatedUserDto {
   email: string | null;
   name: string | null;
   image: string | null;
-  defaultLedgerId?: string | null;
 }
