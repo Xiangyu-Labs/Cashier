@@ -8,7 +8,11 @@ Cashier uses an in-process task engine (`src/lib/flow/`) for background processi
 
 ## Task Registration
 
-Tasks are registered centrally via `src/lib/flow/task-registry.ts`, and `src/instrumentation.ts` calls that registry during startup.
+Tasks are registered centrally via `src/lib/flow/task-registry.ts`.
+
+- `src/instrumentation.ts` calls `registerAllTasks()` during startup to prewarm the registry.
+- Each task submission path should also call `registerAllTasks()` before `flowEngine.submit(...)` so the current request does not depend on startup timing.
+- `registerAllTasks()` must remain safe to call repeatedly.
 
 ### Current Registered Tasks
 
@@ -69,6 +73,8 @@ Add your task definition to `src/lib/flow/task-registry.ts`:
 ```typescript
 flowEngine.register(processDocumentTaskDefinition.type, processDocumentTaskDefinition.handler);
 ```
+
+Then ensure the submitter calls `registerAllTasks()` before `flowEngine.submit(...)`.
 
 ### 3. Submit Tasks
 

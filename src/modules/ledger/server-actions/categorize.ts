@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries, entryCategories, ledgers } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { flowEngine } from "@/lib/flow";
+import { registerAllTasks } from "@/lib/flow/task-registry";
 import {
   TASK_TYPE_CATEGORIZE_ENTRY,
   type CategorizeEntryInput,
@@ -137,6 +138,8 @@ async function submitCategorizeTasksForEntries(
   if (entries.length === 0) {
     return { submittedCount: 0, skippedCount: 0 };
   }
+
+  await registerAllTasks();
 
   const [indexedCategories, aiLanguage] = await Promise.all([
     buildIndexedCategories(ledgerId),

@@ -5,15 +5,28 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
+const { submitMock, cancelMock, registerMock, getStatusMock, registerAllTasksMock } = vi.hoisted(
+  () => ({
+    submitMock: vi.fn().mockResolvedValue("mock-task-id"),
+    cancelMock: vi.fn(),
+    registerMock: vi.fn(),
+    getStatusMock: vi.fn(),
+    registerAllTasksMock: vi.fn().mockResolvedValue(undefined),
+  })
+);
 
 // Mock flowEngine before importing actions
 vi.mock("@/lib/flow", () => ({
   flowEngine: {
-    submit: vi.fn().mockResolvedValue("mock-task-id"),
-    cancel: vi.fn(),
-    register: vi.fn(),
-    getStatus: vi.fn(),
+    submit: submitMock,
+    cancel: cancelMock,
+    register: registerMock,
+    getStatus: getStatusMock,
   },
+}));
+
+vi.mock("@/lib/flow/task-registry", () => ({
+  registerAllTasks: registerAllTasksMock,
 }));
 
 import { flowEngine } from "@/lib/flow";
@@ -52,6 +65,7 @@ describe("submitAutoCategorizeAction", () => {
 
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result).toEqual({ submittedCount: 0, skippedCount: 0 });
+    expect(registerAllTasksMock).not.toHaveBeenCalled();
     expect(flowEngine.submit).not.toHaveBeenCalled();
   });
 
@@ -126,7 +140,11 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(2);
     expect(result.skippedCount).toBe(0);
+    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
     expect(flowEngine.submit).toHaveBeenCalledTimes(2);
+    expect(registerAllTasksMock.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(flowEngine.submit).mock.invocationCallOrder[0]
+    );
   });
 
   it("skips entries that already have a category", async () => {

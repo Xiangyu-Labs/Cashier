@@ -5,13 +5,27 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
+const { submitMock, cancelMock, registerMock, getStatusMock, registerAllTasksMock } = vi.hoisted(
+  () => ({
+    submitMock: vi.fn().mockResolvedValue("mock-task-id"),
+    cancelMock: vi.fn().mockResolvedValue(undefined),
+    registerMock: vi.fn(),
+    getStatusMock: vi.fn(),
+    registerAllTasksMock: vi.fn().mockResolvedValue(undefined),
+  })
+);
+
 vi.mock("@/lib/flow", () => ({
   flowEngine: {
-    submit: vi.fn().mockResolvedValue("mock-task-id"),
-    cancel: vi.fn().mockResolvedValue(undefined),
-    register: vi.fn(),
-    getStatus: vi.fn(),
+    submit: submitMock,
+    cancel: cancelMock,
+    register: registerMock,
+    getStatus: getStatusMock,
   },
+}));
+
+vi.mock("@/lib/flow/task-registry", () => ({
+  registerAllTasks: registerAllTasksMock,
 }));
 
 import { flowEngine } from "@/lib/flow";
@@ -57,10 +71,14 @@ describe("createEntryCategoryAction", () => {
       // no icon
     });
 
+    expect(registerAllTasksMock).toHaveBeenCalledTimes(1);
     expect(flowEngine.submit).toHaveBeenCalledWith(
       "generate_category_metadata",
       expect.objectContaining({ categoryName: "餐饮", ledgerId }),
       expect.any(Object)
+    );
+    expect(registerAllTasksMock.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(flowEngine.submit).mock.invocationCallOrder[0]
     );
   });
 
@@ -81,6 +99,7 @@ describe("createEntryCategoryAction", () => {
       icon: "🍽️",
     });
 
+    expect(registerAllTasksMock).not.toHaveBeenCalled();
     expect(flowEngine.submit).not.toHaveBeenCalled();
   });
 
