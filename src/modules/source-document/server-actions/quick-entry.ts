@@ -2,9 +2,12 @@
 
 import { requireLedgerAccess } from "@/modules/auth/access";
 import { createQuickEntry } from "@/modules/source-document/application/use-cases/create-quick-entry";
-import { createQuickEntrySchema } from "./types";
-import type { z } from "zod";
 import { AppError, UnauthorizedError } from "@/lib/errors";
+import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
+import {
+  createQuickEntryInputSchema,
+  type CreateQuickEntryInput,
+} from "@/modules/source-document/contract-schemas";
 
 /**
  * Create a quick entry (manual entry without AI parsing).
@@ -12,8 +15,8 @@ import { AppError, UnauthorizedError } from "@/lib/errors";
  */
 export async function createQuickEntryAction(
   ledgerId: string,
-  data: z.infer<typeof createQuickEntrySchema>
-) {
+  data: CreateQuickEntryInput
+): Promise<QuickEntryResponseDto> {
   let ledger: Awaited<ReturnType<typeof requireLedgerAccess>>["ledger"];
   try {
     ({ ledger } = await requireLedgerAccess(ledgerId));
@@ -24,6 +27,6 @@ export async function createQuickEntryAction(
     throw error;
   }
 
-  const validated = createQuickEntrySchema.parse(data);
+  const validated = createQuickEntryInputSchema.parse(data);
   return createQuickEntry(ledgerId, ledger, validated);
 }

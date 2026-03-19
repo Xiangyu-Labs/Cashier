@@ -172,7 +172,7 @@ describe("SourceDocument Actions", () => {
 
   it("should return error when no input provided", async () => {
     await expect(createSourceDocumentAction(testLedgerId, {})).rejects.toThrow(
-      "At least one input"
+      "Content (text or images) is required"
     );
   });
 
@@ -364,9 +364,9 @@ describe("SourceDocument Actions", () => {
       categoryId: testCategoryId, // Fixed: Added categoryId
     });
 
-    // 3. Fetch with includeLedgerEntries
+    // 3. Fetch with includeEntries
     const result = await getSourceDocumentsAction(testLedgerId, {
-      includeLedgerEntries: true,
+      includeEntries: true,
     });
 
     const foundDoc = result.items.find((d) => d.id === docId) as unknown as {

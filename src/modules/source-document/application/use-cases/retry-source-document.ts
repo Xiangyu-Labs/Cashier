@@ -4,6 +4,7 @@ import { NotFoundError } from "@/lib/errors";
 import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
+import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
@@ -30,7 +31,7 @@ export async function retrySourceDocument({
   ledger,
   sourceDocumentId,
   input,
-}: RetrySourceDocumentInput): Promise<{ sourceDocumentId: string; status: "queued" }> {
+}: RetrySourceDocumentInput): Promise<RetrySourceDocumentResponseDto> {
   const q = forLedger(sourceDocuments, ledgerId);
   const existingDocument = await db.query.sourceDocuments.findFirst({
     where: q.whereId(sourceDocumentId),
@@ -83,7 +84,10 @@ export async function retrySourceDocument({
     "Created new source document for retry"
   );
 
-  await db.update(sourceDocuments).set({ deletedAt: new Date() }).where(q.whereId(sourceDocumentId));
+  await db
+    .update(sourceDocuments)
+    .set({ deletedAt: new Date() })
+    .where(q.whereId(sourceDocumentId));
 
   logger.debug(
     { oldDocId: sourceDocumentId, ledgerId },
@@ -126,10 +130,14 @@ export async function retrySourceDocument({
     settings,
   });
 
-  logger.debug({ newDocId: newDocumentId, ledgerId }, "Submitted new parse task for retried document");
+  logger.debug(
+    { newDocId: newDocumentId, ledgerId },
+    "Submitted new parse task for retried document"
+  );
 
   return {
     sourceDocumentId: newDocumentId,
+    previousSourceDocumentId: sourceDocumentId,
     status: "queued",
   };
 }

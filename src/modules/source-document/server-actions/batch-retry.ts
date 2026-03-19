@@ -8,6 +8,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getSourceDocumentTaskContext, prepareSourceDocumentTask } from "./helpers";
 import { logger } from "@/lib/logger";
+import type { BatchRetrySourceDocumentsResultDto } from "@/modules/source-document/contracts";
 
 /**
  * Batch retry multiple source documents
@@ -19,12 +20,16 @@ import { logger } from "@/lib/logger";
 export async function batchRetrySourceDocumentsAction(
   ledgerId: string,
   sourceDocumentIds: string[]
-): Promise<void> {
+): Promise<BatchRetrySourceDocumentsResultDto> {
   const { ledger } = await requireLedgerAccess(ledgerId);
 
   if (sourceDocumentIds.length === 0) {
     logger.debug({ ledgerId }, "Batch retry called with empty document list");
-    return;
+    return {
+      results: [],
+      retriedCount: 0,
+      failedCount: 0,
+    };
   }
 
   const q = forLedger(sourceDocuments, ledgerId);
@@ -36,7 +41,11 @@ export async function batchRetrySourceDocumentsAction(
 
   if (oldDocs.length === 0) {
     logger.debug({ ledgerId, sourceDocumentIds }, "No active documents found for batch retry");
-    return;
+    return {
+      results: [],
+      retriedCount: 0,
+      failedCount: 0,
+    };
   }
 
   // 2. Find all related task_runs before creating new documents
@@ -119,7 +128,7 @@ export async function batchRetrySourceDocumentsAction(
   // 7. Submit new tasks for each new document using Promise.allSettled to handle partial failures
   const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
 
-  const results = await Promise.allSettled(
+  const taskSubmissionResults = await Promise.allSettled(
     newDocMappings.map(async (mapping) => {
       await prepareSourceDocumentTask({
         ledgerId,
@@ -133,11 +142,22 @@ export async function batchRetrySourceDocumentsAction(
   );
 
   // Log any failures but don't fail the entire batch
-  const failures = results.filter((r) => r.status === "rejected");
+  const failures = taskSubmissionResults.filter((r) => r.status === "rejected");
   if (failures.length > 0) {
     logger.warn(
       { ledgerId, failedCount: failures.length, totalCount: newDocMappings.length },
       "Some documents failed to retry in batch operation"
     );
   }
+
+  return {
+    results: newDocMappings.map((mapping, index) => ({
+      previousSourceDocumentId: mapping.oldDocId,
+      sourceDocumentId: mapping.newDocId,
+      status: "queued" as const,
+      taskSubmitted: taskSubmissionResults[index]?.status === "fulfilled",
+    })),
+    retriedCount: newDocMappings.length,
+    failedCount: failures.length,
+  };
 }

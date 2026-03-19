@@ -3,16 +3,16 @@
 import { db } from "@/lib/db";
 import { ledgers } from "@/persistence";
 import { withAuth } from "@/lib/auth-actions";
-import { createLedgerSchema } from "./schemas";
-import type { CreateLedgerInput } from "./schemas";
 import { eq, isNull, and } from "drizzle-orm";
 import { ConflictError } from "@/lib/errors";
-import type { Ledger } from "@/persistence";
 import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { mapLedgerDto } from "@/modules/ledger/mappers";
+import type { LedgerDto } from "@/modules/ledger/contracts";
+import { createLedgerInputSchema, type CreateLedgerInput } from "@/modules/ledger/contract-schemas";
 
 export const createLedgerAction = withAuth(
-  async (userId: string, data: CreateLedgerInput): Promise<Ledger> => {
-    const validated = createLedgerSchema.parse(data);
+  async (userId: string, data: CreateLedgerInput): Promise<LedgerDto> => {
+    const validated = createLedgerInputSchema.parse(data);
 
     // Check if user already has a ledger
     const existingLedger = await db.query.ledgers.findFirst({
@@ -23,7 +23,7 @@ export const createLedgerAction = withAuth(
       throw new ConflictError("User already has a ledger. Only one ledger per user is allowed.");
     }
 
-    let newLedger: Ledger;
+    let newLedger: Awaited<ReturnType<typeof createDefaultLedger>>;
 
     try {
       newLedger = await createDefaultLedger({
@@ -41,6 +41,6 @@ export const createLedgerAction = withAuth(
       throw new Error("Failed to create ledger: transaction returned no result");
     }
 
-    return newLedger;
+    return mapLedgerDto(newLedger);
   }
 );

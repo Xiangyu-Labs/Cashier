@@ -92,7 +92,15 @@ describe("SourceDocumentInput - Optimistic Close", () => {
     vi.mocked(retrySourceDocumentAction).mockImplementation(
       () =>
         new Promise((resolve) =>
-          setTimeout(() => resolve({ sourceDocumentId: "new-id", status: "queued" }), 100)
+          setTimeout(
+            () =>
+              resolve({
+                sourceDocumentId: "new-id",
+                previousSourceDocumentId: "doc-123",
+                status: "queued",
+              }),
+            100
+          )
         )
     );
 

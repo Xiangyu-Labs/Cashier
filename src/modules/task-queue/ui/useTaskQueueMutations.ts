@@ -8,6 +8,11 @@ import {
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
+import type {
+  BatchDeleteSourceDocumentsResultDto,
+  BatchRetrySourceDocumentsResultDto,
+  DeleteSourceDocumentResultDto,
+} from "@/modules/source-document/contracts";
 import {
   dismissTaskAction,
   batchDismissTasksAction,
@@ -63,7 +68,7 @@ export function useTaskQueueMutations(ledgerId: string) {
   const tEntries = useTranslations("LedgerEntriesTab");
   const taskQueueKey = queryKeys.taskQueue(ledgerId);
 
-  const deleteSourceDocument = useLedgerMutation<void, string>(ledgerId, {
+  const deleteSourceDocument = useLedgerMutation<DeleteSourceDocumentResultDto, string>(ledgerId, {
     mutationFn: (sourceDocumentId) => deleteSourceDocumentAction(ledgerId, sourceDocumentId),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
@@ -80,7 +85,7 @@ export function useTaskQueueMutations(ledgerId: string) {
     },
   });
 
-  const batchDelete = useLedgerMutation<void, string[]>(ledgerId, {
+  const batchDelete = useLedgerMutation<BatchDeleteSourceDocumentsResultDto, string[]>(ledgerId, {
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
@@ -97,7 +102,7 @@ export function useTaskQueueMutations(ledgerId: string) {
     },
   });
 
-  const batchRetry = useLedgerMutation<void, string[]>(ledgerId, {
+  const batchRetry = useLedgerMutation<BatchRetrySourceDocumentsResultDto, string[]>(ledgerId, {
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
     successMessage: tEntries("retrySubmitted"),
     errorMessage: tCommon("error"),

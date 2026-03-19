@@ -2,7 +2,11 @@
 
 import { requireLedgerAccess } from "@/modules/auth/access";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
-import type { SourceDocumentActionInput } from "./types";
+import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import {
+  retrySourceDocumentInputSchema,
+  type RetrySourceDocumentInputContract,
+} from "@/modules/source-document/contract-schemas";
 
 /**
  * Retry an existing source document with optional new data
@@ -15,13 +19,14 @@ import type { SourceDocumentActionInput } from "./types";
 export async function retrySourceDocumentAction(
   ledgerId: string,
   sourceDocumentId: string,
-  input?: SourceDocumentActionInput
-) {
+  input?: RetrySourceDocumentInputContract
+): Promise<RetrySourceDocumentResponseDto> {
   const { ledger } = await requireLedgerAccess(ledgerId);
+  const validatedInput = input == null ? undefined : retrySourceDocumentInputSchema.parse(input);
   return retrySourceDocument({
     ledgerId,
     ledger,
     sourceDocumentId,
-    input,
+    input: validatedInput,
   });
 }

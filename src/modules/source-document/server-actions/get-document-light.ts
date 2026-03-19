@@ -7,18 +7,7 @@ import { requireLedgerAccess } from "@/modules/auth/access";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { AppError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
-import type {
-  SourceDocumentLedgerEntryDto,
-  SourceDocumentLightDto,
-} from "@/modules/source-document/contracts";
-
-/**
- * Light version of SourceDocument for prefetching.
- * Contains all data except imageUrls.
- */
-export interface SourceDocumentLight extends SourceDocumentLightDto {
-  ledgerEntries: SourceDocumentLedgerEntryDto[];
-}
+import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 
 /**
  * Fetch a source document with light payload (excluding imageUrls).
@@ -26,7 +15,7 @@ export interface SourceDocumentLight extends SourceDocumentLightDto {
  */
 export async function getSourceDocumentLightAction(
   id: string
-): Promise<SourceDocumentLight | null> {
+): Promise<SourceDocumentLightWithEntriesDto | null> {
   // First, get just the ledgerId to check access
   const docMeta = await db.query.sourceDocuments.findFirst({
     where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),

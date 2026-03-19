@@ -3,50 +3,36 @@
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
-import { z } from "zod";
 import { inArray, and } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
-import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import type {
+  BatchLedgerEntriesMutationResultDto,
+  DeleteLedgerEntryResultDto,
+  LedgerEntryDto,
+  LedgerEntryPageDto,
+} from "@/modules/ledger/contracts";
 import {
   batchUpdateLedgerEntries,
   createLedgerEntryWithConversion,
   updateLedgerEntryWithConversion,
 } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
 import { listLedgerEntryPage } from "@/modules/ledger/application/queries/list-ledger-entry-page";
-
-const createLedgerEntrySchema = z.object({
-  amount: z.number(),
-  currency: z.string().optional(),
-  itemName: z.string().min(1),
-  categoryId: z.string().optional(),
-  description: z.string().optional().nullable(),
-  sourceDocumentId: z.string(),
-});
-
-const updateLedgerEntrySchema = z.object({
-  categoryId: z.string().nullable().optional(),
-  amount: z.number().optional(),
-  currency: z.string().nullable().optional(),
-  itemName: z.string().optional(),
-  description: z.string().nullable().optional(),
-});
-
-// Schema for batch update validation
-const batchUpdateLedgerEntriesSchema = z
-  .object({
-    categoryId: z.string().uuid().nullable().optional(),
-    currency: z.string().length(3).nullable().optional(), // ISO 4217 currency code
-    amount: z.number().positive().optional(),
-    description: z.string().max(500).nullable().optional(),
-    itemName: z.string().min(1).max(200).optional(),
-  })
-  .strict(); // Reject unknown keys
-
-import type { LedgerEntry } from "@/persistence";
+import {
+  batchUpdateLedgerEntriesInputSchema,
+  createLedgerEntryInputSchema,
+  ledgerEntryIdSchema,
+  ledgerEntryIdsSchema,
+  listLedgerEntriesInputSchema,
+  updateLedgerEntryInputSchema,
+  type BatchUpdateLedgerEntriesInput,
+  type CreateLedgerEntryInput,
+  type ListLedgerEntriesInput,
+  type UpdateLedgerEntryInput,
+} from "@/modules/ledger/contract-schemas";
 
 export const createLedgerEntryAction = withLedgerAccess(
-  async (ledgerId: string, data: z.infer<typeof createLedgerEntrySchema>): Promise<LedgerEntry> => {
-    const validated = createLedgerEntrySchema.parse(data);
+  async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
+    const validated = createLedgerEntryInputSchema.parse(data);
     return createLedgerEntryWithConversion({
       ledgerId,
       amount: validated.amount,
@@ -63,12 +49,13 @@ export const updateLedgerEntryAction = withLedgerAccess(
   async (
     ledgerId: string,
     ledgerEntryId: string,
-    data: z.infer<typeof updateLedgerEntrySchema>
+    data: UpdateLedgerEntryInput
   ): Promise<LedgerEntryDto> => {
-    const validated = updateLedgerEntrySchema.parse(data);
+    const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
+    const validated = updateLedgerEntryInputSchema.parse(data);
     return updateLedgerEntryWithConversion({
       ledgerId,
-      ledgerEntryId,
+      ledgerEntryId: validatedLedgerEntryId,
       categoryId: validated.categoryId,
       amount: validated.amount,
       currency: validated.currency,
@@ -79,20 +66,40 @@ export const updateLedgerEntryAction = withLedgerAccess(
 );
 
 export const deleteLedgerEntryAction = withLedgerAccess(
-  async (ledgerId: string, ledgerEntryId: string): Promise<void> => {
+  async (ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto> => {
+    const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
     const q = forLedger(ledgerEntries, ledgerId);
-    await db.update(ledgerEntries).set(q.softDelete).where(q.whereId(ledgerEntryId));
+    const deletedEntries = await db
+      .update(ledgerEntries)
+      .set(q.softDelete)
+      .where(q.whereId(validatedLedgerEntryId))
+      .returning({ id: ledgerEntries.id });
+
+    return {
+      ledgerEntryId: validatedLedgerEntryId,
+      deleted: deletedEntries.length > 0,
+    };
   }
 );
 
 export const batchDeleteLedgerEntriesAction = withLedgerAccess(
-  async (ledgerId: string, ledgerEntryIds: string[]): Promise<void> => {
+  async (
+    ledgerId: string,
+    ledgerEntryIds: string[]
+  ): Promise<BatchLedgerEntriesMutationResultDto> => {
+    const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
     const q = forLedger(ledgerEntries, ledgerId);
 
-    await db
+    const deletedEntries = await db
       .update(ledgerEntries)
       .set(q.softDelete)
-      .where(and(q.whereActive, inArray(ledgerEntries.id, ledgerEntryIds)));
+      .where(and(q.whereActive, inArray(ledgerEntries.id, validatedLedgerEntryIds)))
+      .returning({ id: ledgerEntries.id });
+
+    return {
+      ledgerEntryIds: validatedLedgerEntryIds,
+      affectedCount: deletedEntries.length,
+    };
   }
 );
 
@@ -100,47 +107,50 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
   async (
     ledgerId: string,
     ledgerEntryIds: string[],
-    data: z.infer<typeof batchUpdateLedgerEntriesSchema>
-  ): Promise<void> => {
-    const validated = batchUpdateLedgerEntriesSchema.parse(data);
-    return batchUpdateLedgerEntries({
+    data: BatchUpdateLedgerEntriesInput
+  ): Promise<BatchLedgerEntriesMutationResultDto> => {
+    const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
+    const validated = batchUpdateLedgerEntriesInputSchema.parse(data);
+    const affectedCount = await batchUpdateLedgerEntries({
       ledgerId,
-      ledgerEntryIds,
+      ledgerEntryIds: validatedLedgerEntryIds,
       categoryId: validated.categoryId,
       currency: validated.currency,
       amount: validated.amount,
       description: validated.description,
       itemName: validated.itemName,
     });
+
+    return {
+      ledgerEntryIds: validatedLedgerEntryIds,
+      affectedCount,
+    };
   }
 );
 
 export async function listLedgerEntries(
   ledgerId: string,
-  params: {
-    limit?: number;
-    cursor?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  }
-) {
-  return listLedgerEntryPage({
+  params: ListLedgerEntriesInput
+): Promise<LedgerEntryPageDto> {
+  const validated = listLedgerEntriesInputSchema.parse(params);
+  const result = await listLedgerEntryPage({
     ledgerId,
-    limit: params.limit ?? 20,
-    cursor: params.cursor,
+    limit: validated.limit,
+    cursor: validated.cursor ?? null,
     filters: {
-      startDate: params.startDate,
-      endDate: params.endDate,
-      categoryId: params.categoryId,
-      currency: params.currency,
-      minAmount: params.minAmount,
-      maxAmount: params.maxAmount,
+      startDate: validated.startDate ?? null,
+      endDate: validated.endDate ?? null,
+      categoryId: validated.categoryId ?? null,
+      currency: validated.currency ?? null,
+      minAmount: validated.minAmount ?? null,
+      maxAmount: validated.maxAmount ?? null,
     },
   });
+
+  return {
+    ...result,
+    nextCursor: result.nextCursor ?? null,
+  };
 }
 
 export const getLedgerEntriesAction = withLedgerAccess(listLedgerEntries);

@@ -4,7 +4,17 @@ import { db } from "@/lib/db";
 import { entryCategories, ledgerEntries, taskRuns } from "@/persistence";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-export async function deleteEntryCategory(ledgerId: string, categoryId: string): Promise<void> {
+export async function deleteEntryCategory(ledgerId: string, categoryId: string): Promise<boolean> {
+  const q = forLedger(entryCategories, ledgerId);
+  const existingCategory = await db.query.entryCategories.findFirst({
+    where: q.whereId(categoryId),
+    columns: { id: true },
+  });
+
+  if (existingCategory == null) {
+    return false;
+  }
+
   const pendingTasks = await db
     .select({ id: taskRuns.id })
     .from(taskRuns)
@@ -22,8 +32,6 @@ export async function deleteEntryCategory(ledgerId: string, categoryId: string):
     await cancelFlowTask(task.id);
   }
 
-  const q = forLedger(entryCategories, ledgerId);
-
   db.transaction((tx) => {
     tx.update(ledgerEntries)
       .set({ categoryId: null })
@@ -38,4 +46,6 @@ export async function deleteEntryCategory(ledgerId: string, categoryId: string):
 
     tx.update(entryCategories).set(q.softDelete).where(q.whereId(categoryId)).run();
   });
+
+  return true;
 }

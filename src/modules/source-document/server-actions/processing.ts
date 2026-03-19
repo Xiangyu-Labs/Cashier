@@ -5,6 +5,11 @@ import { taskRuns, type TaskRun } from "@/persistence";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
+import type { ProcessingStatsDto, ProcessingTaskDto } from "@/modules/source-document/contracts";
+import {
+  processingTasksQuerySchema,
+  type ProcessingTasksQueryInput,
+} from "@/modules/source-document/contract-schemas";
 
 // Zod schema for tokenUsage validation (replaces type assertion)
 const TokenUsageSchema = z
@@ -26,14 +31,8 @@ const TokenUsageSchema = z
   );
 
 export const getProcessingTasksAction = withLedgerAccess(
-  async (
-    ledgerId: string,
-    params: {
-      activeOnly?: boolean;
-      limit?: number;
-    }
-  ) => {
-    const { activeOnly, limit = 10 } = params;
+  async (ledgerId: string, params: ProcessingTasksQueryInput): Promise<ProcessingTaskDto[]> => {
+    const { activeOnly, limit = 10 } = processingTasksQuerySchema.parse(params);
 
     // Fetch tasks for this ledger using scopeId column
     const conditions = [isNull(taskRuns.deletedAt), eq(taskRuns.scopeId, ledgerId)];
@@ -51,48 +50,52 @@ export const getProcessingTasksAction = withLedgerAccess(
     return filteredTasks.map((t: TaskRun) => ({
       ...t,
       createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
       startedAt: t.startedAt ? t.startedAt.toISOString() : null,
       completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+      deletedAt: t.deletedAt ? t.deletedAt.toISOString() : null,
     }));
   }
 );
 
-export const getProcessingStatsAction = withLedgerAccess(async (ledgerId: string) => {
-  // Fetch completed tasks for this ledger using scopeId column
-  const tasks = await db.query.taskRuns.findMany({
-    where: and(
-      isNull(taskRuns.deletedAt),
-      eq(taskRuns.status, "completed"),
-      eq(taskRuns.scopeId, ledgerId)
-    ),
-  });
+export const getProcessingStatsAction = withLedgerAccess(
+  async (ledgerId: string): Promise<ProcessingStatsDto> => {
+    // Fetch completed tasks for this ledger using scopeId column
+    const tasks = await db.query.taskRuns.findMany({
+      where: and(
+        isNull(taskRuns.deletedAt),
+        eq(taskRuns.status, "completed"),
+        eq(taskRuns.scopeId, ledgerId)
+      ),
+    });
 
-  let totalTokens = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  const taskCount = tasks.length;
+    let totalTokens = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const taskCount = tasks.length;
 
-  for (const task of tasks) {
-    if (task.tokenUsage) {
-      // Validate tokenUsage with Zod schema (replaces type assertion)
-      const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
-      if (parsed.success) {
-        const u = parsed.data;
-        const total = u.total ?? { input: 0, output: 0 };
-        totalInputTokens += total.input ?? 0;
-        totalOutputTokens += total.output ?? 0;
-        totalTokens += (total.input ?? 0) + (total.output ?? 0);
+    for (const task of tasks) {
+      if (task.tokenUsage) {
+        // Validate tokenUsage with Zod schema (replaces type assertion)
+        const parsed = TokenUsageSchema.safeParse(task.tokenUsage);
+        if (parsed.success) {
+          const u = parsed.data;
+          const total = u.total ?? { input: 0, output: 0 };
+          totalInputTokens += total.input ?? 0;
+          totalOutputTokens += total.output ?? 0;
+          totalTokens += (total.input ?? 0) + (total.output ?? 0);
+        }
       }
     }
+
+    const averageTokensPerTask = taskCount > 0 ? Math.round(totalTokens / taskCount) : 0;
+
+    return {
+      totalTokens,
+      totalInputTokens,
+      totalOutputTokens,
+      taskCount,
+      averageTokensPerTask,
+    };
   }
-
-  const averageTokensPerTask = taskCount > 0 ? Math.round(totalTokens / taskCount) : 0;
-
-  return {
-    totalTokens,
-    totalInputTokens,
-    totalOutputTokens,
-    taskCount,
-    averageTokensPerTask,
-  };
-});
+);

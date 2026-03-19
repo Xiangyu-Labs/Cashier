@@ -12,7 +12,7 @@ import {
   updateSourceDocumentAction,
   updateSourceDocumentImagesAction,
   deleteSourceDocumentAction,
-  type PaginatedSourceDocumentsResponse,
+  type SourceDocumentCollectionDto,
   type SourceDocumentWithEntries as ServerSourceDocumentWithEntries,
 } from "@/modules/source-document/actions";
 import {
@@ -39,7 +39,7 @@ function updatePaginatedSourceDocumentLists(
   ledgerId: string,
   updater: (doc: SourceDocumentWithEntries) => SourceDocumentWithEntries | null
 ) {
-  queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+  queryClient.setQueriesData<SourceDocumentCollectionDto>(
     { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
     (old) => {
       if (!old) return old;
@@ -452,7 +452,7 @@ export function useSourceDocumentDetailMutations({
       queryClient.setQueriesData({ queryKey: queryKeys.sourceDocument(id) }, () => undefined);
 
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+        queryClient.setQueriesData<SourceDocumentCollectionDto>(
           { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
           (old) => {
             if (!old) return old;

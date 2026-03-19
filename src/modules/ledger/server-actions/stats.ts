@@ -1,8 +1,8 @@
 "use server";
 
 import { withLedgerAccess } from "@/lib/auth-actions";
-import { type LedgerEntrySummary } from "@/types/api";
 import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/calculate-ledger-entry-stats";
+import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
 
 export async function calculateLedgerStats(
   ledgerId: string,
@@ -15,7 +15,7 @@ export async function calculateLedgerStats(
     minAmount?: number | null;
     maxAmount?: number | null;
   }
-): Promise<LedgerEntrySummary> {
+): Promise<LedgerSummaryDto> {
   return calculateLedgerEntryStats({
     ledgerId,
     mainCurrency,

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { getEntryCategoryName } from "@/modules/ledger/queries";
 import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
+import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import { SourceDocumentType } from "@/persistence/schema/source-document";
 
@@ -90,7 +91,7 @@ export async function createQuickEntry(
   ledgerId: string,
   ledger: Ledger,
   payload: CreateQuickEntryPayload
-): Promise<{ sourceDocumentId: string; ledgerEntryId: string; status: "completed" }> {
+): Promise<QuickEntryResponseDto> {
   const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
   const entryDate = payload.entryDate ?? formatDateTimeForApi(new Date());

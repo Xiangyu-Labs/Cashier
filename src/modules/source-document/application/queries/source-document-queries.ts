@@ -16,8 +16,11 @@ import {
 import { sourceDocuments } from "@/persistence";
 import type {
   PendingSourceDocumentsResponseDto,
+  SourceDocumentCollectionDto,
   SourceDocumentDto,
+  SourceDocumentFullDto,
   SourceDocumentLedgerEntryDto,
+  SourceDocumentPageDto,
 } from "../../contracts";
 import type { SourceDocumentStatusType } from "../../types";
 
@@ -36,22 +39,11 @@ export interface ListSourceDocumentsParams {
   includeLedgerEntries?: boolean;
 }
 
-export interface ListSourceDocumentsResult {
-  items: SourceDocumentDto[];
-  nextCursor: string | null;
-}
-
 export interface ListAllSourceDocumentsParams {
   startDate?: string | null;
   endDate?: string | null;
   page?: number;
   pageSize?: number;
-}
-
-export interface ListAllSourceDocumentsResult {
-  items: SourceDocumentDto[];
-  hasMore: boolean;
-  total: number;
 }
 
 function buildStatusCondition(status: string | null | undefined): SQL<unknown> | null {
@@ -138,7 +130,10 @@ async function listEntriesBySourceDocumentIds(
 
   const mapped = new Map<string, SourceDocumentLedgerEntryDto[]>();
   for (const [docId, entries] of entriesByDocId.entries()) {
-    mapped.set(docId, entries.map((entry) => mapSourceDocumentLedgerEntryDto(entry)));
+    mapped.set(
+      docId,
+      entries.map((entry) => mapSourceDocumentLedgerEntryDto(entry))
+    );
   }
 
   return mapped;
@@ -190,7 +185,7 @@ function serializeSourceDocumentFlat(
 export async function listSourceDocumentsQuery(
   ledgerId: string,
   params: ListSourceDocumentsParams
-): Promise<ListSourceDocumentsResult> {
+): Promise<SourceDocumentPageDto> {
   const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
   const q = forLedger(sourceDocuments, ledgerId);
 
@@ -234,7 +229,7 @@ export async function listSourceDocumentsQuery(
 export async function listAllSourceDocumentsQuery(
   ledgerId: string,
   params: ListAllSourceDocumentsParams = {}
-): Promise<ListAllSourceDocumentsResult> {
+): Promise<SourceDocumentCollectionDto> {
   const page = Math.max(1, params.page ?? 1);
   const pageSize =
     params.page != null
@@ -301,7 +296,10 @@ export async function getPendingSourceDocumentsQuery(
   };
 }
 
-export async function getSourceDocumentFullQuery(ledgerId: string, sourceDocumentId: string) {
+export async function getSourceDocumentFullQuery(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentFullDto | null> {
   const q = forLedger(sourceDocuments, ledgerId);
   const document = await db.query.sourceDocuments.findFirst({
     where: q.whereId(sourceDocumentId),
@@ -314,7 +312,7 @@ export async function getSourceDocumentFullQuery(ledgerId: string, sourceDocumen
   return {
     id: document.id,
     text: document.text,
-    imageUrls: document.imageUrls,
+    imageUrls: document.imageUrls ?? [],
     status: document.status,
     createdAt: document.createdAt.toISOString(),
   };

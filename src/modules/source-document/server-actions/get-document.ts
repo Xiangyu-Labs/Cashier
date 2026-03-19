@@ -9,9 +9,6 @@ import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 
-// Return type for getSourceDocumentByIdAction - uses standardized API types
-export type SourceDocumentWithEntries = SourceDocumentDto;
-
 /**
  * Fetch a source document by its global ID.
  * Verifies access to the associated ledger.
@@ -21,9 +18,7 @@ export type SourceDocumentWithEntries = SourceDocumentDto;
  * until after we fetch the document metadata. It also returns null instead of throwing
  * to avoid leaking document existence information.
  */
-export async function getSourceDocumentByIdAction(
-  id: string
-): Promise<SourceDocumentWithEntries | null> {
+export async function getSourceDocumentByIdAction(id: string): Promise<SourceDocumentDto | null> {
   // First, get just the ledgerId to check access (minimal data exposure)
   const docMeta = await db.query.sourceDocuments.findFirst({
     where: and(eq(sourceDocuments.id, id), isNull(sourceDocuments.deletedAt)),

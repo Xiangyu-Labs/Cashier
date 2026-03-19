@@ -1,6 +1,5 @@
 import { and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgerEntries } from "@/persistence";
 import { mapLedgerEntryDto } from "../mappers";
 import {
   buildLedgerEntryCursorCondition,

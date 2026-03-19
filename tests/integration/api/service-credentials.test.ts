@@ -19,16 +19,15 @@ vi.mock("@/lib/processing", () => ({
   createTask: vi.fn(),
 }));
 
-import type * as FlowModule from "@/lib/flow";
 const { submitMock } = vi.hoisted(() => ({
   submitMock: vi.fn().mockResolvedValue("mock-task-id"),
 }));
 
 // Mock Flow Engine
 vi.mock("@/lib/flow", async (importOriginal) => {
-  const original = await importOriginal<typeof FlowModule>();
+  const original = await importOriginal();
   return {
-    ...original,
+    ...(original as Record<string, unknown>),
     submitFlowTask: submitMock,
   };
 });

@@ -1,21 +1,23 @@
 "use server";
 
 import { requireLedgerAccess } from "@/modules/auth/access";
-import type { SourceDocumentActionInput } from "./types";
-import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import { AppError, UnauthorizedError } from "@/lib/errors";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
+import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import {
+  createSourceDocumentInputSchema,
+  type CreateSourceDocumentInputContract,
+} from "@/modules/source-document/contract-schemas";
 
 /**
  * Create a new source document and trigger processing
  */
 export async function createSourceDocumentAction(
   ledgerId: string,
-  input: SourceDocumentActionInput
-) {
-  const { text, images, originalImages, entryDate } = input;
-  if ((text == null || text === "") && (images == null || images.length === 0)) {
-    throw new ValidationError("At least one input (text or images) is required");
-  }
+  input: CreateSourceDocumentInputContract
+): Promise<CreateSourceDocumentResponseDto> {
+  const validated = createSourceDocumentInputSchema.parse(input);
+  const { text, images, originalImages, entryDate, timezone } = validated;
 
   let ledger: Awaited<ReturnType<typeof requireLedgerAccess>>["ledger"];
   try {
@@ -34,5 +36,6 @@ export async function createSourceDocumentAction(
     images,
     originalImages,
     entryDate,
+    timezone,
   });
 }

@@ -10,6 +10,10 @@ import {
   softDeleteSourceDocumentLedgerEntries,
   type SourceDocumentTransaction,
 } from "@/modules/source-document/application/services/source-document-ledger-entries";
+import type {
+  BatchDeleteSourceDocumentsResultDto,
+  DeleteSourceDocumentResultDto,
+} from "@/modules/source-document/contracts";
 
 /**
  * Cancel running/pending tasks
@@ -74,7 +78,7 @@ function softDeleteSourceDocuments(
  * Delete a single source document (soft delete with cascade)
  */
 export const deleteSourceDocumentAction = withLedgerAccess(
-  async (ledgerId: string, sourceId: string): Promise<void> => {
+  async (ledgerId: string, sourceId: string): Promise<DeleteSourceDocumentResultDto> => {
     const q = forLedger(sourceDocuments, ledgerId);
 
     // Get source document to retrieve image URLs before deletion
@@ -85,12 +89,18 @@ export const deleteSourceDocumentAction = withLedgerAccess(
 
     // If record doesn't exist (including already soft-deleted), silently succeed (idempotent)
     if (!sourceDoc) {
-      return;
+      return {
+        sourceDocumentId: sourceId,
+        deleted: false,
+      };
     }
 
     // If record is already soft-deleted, also silently succeed
     if (sourceDoc.deletedAt != null) {
-      return;
+      return {
+        sourceDocumentId: sourceId,
+        deleted: false,
+      };
     }
 
     // Find and cancel related tasks
@@ -104,6 +114,11 @@ export const deleteSourceDocumentAction = withLedgerAccess(
       softDeleteTaskRuns(tx, taskIdsToDelete);
       softDeleteSourceDocuments(tx, ledgerId, [sourceId]);
     });
+
+    return {
+      sourceDocumentId: sourceId,
+      deleted: true,
+    };
   }
 );
 
@@ -111,19 +126,46 @@ export const deleteSourceDocumentAction = withLedgerAccess(
  * Batch delete multiple source documents (soft delete with cascade)
  */
 export const batchDeleteSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string, sourceDocumentIds: string[]): Promise<void> => {
-    if (sourceDocumentIds.length === 0) return;
+  async (
+    ledgerId: string,
+    sourceDocumentIds: string[]
+  ): Promise<BatchDeleteSourceDocumentsResultDto> => {
+    if (sourceDocumentIds.length === 0) {
+      return {
+        sourceDocumentIds,
+        deletedCount: 0,
+      };
+    }
+
+    const q = forLedger(sourceDocuments, ledgerId);
+    const activeDocuments = await db.query.sourceDocuments.findMany({
+      where: and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)),
+      columns: { id: true },
+    });
+    const activeDocumentIds = activeDocuments.map((document) => document.id);
+
+    if (activeDocumentIds.length === 0) {
+      return {
+        sourceDocumentIds,
+        deletedCount: 0,
+      };
+    }
 
     // Find and cancel related tasks
-    const relatedTaskRuns = await getRelatedTaskRuns(ledgerId, sourceDocumentIds);
+    const relatedTaskRuns = await getRelatedTaskRuns(ledgerId, activeDocumentIds);
     await cancelRunningTasks(relatedTaskRuns.map((t) => t.id));
     const taskIdsToDelete = relatedTaskRuns.map((task) => task.id);
 
     // Execute soft delete transaction
     db.transaction((tx) => {
-      softDeleteSourceDocumentLedgerEntries(tx, ledgerId, sourceDocumentIds);
+      softDeleteSourceDocumentLedgerEntries(tx, ledgerId, activeDocumentIds);
       softDeleteTaskRuns(tx, taskIdsToDelete);
-      softDeleteSourceDocuments(tx, ledgerId, sourceDocumentIds);
+      softDeleteSourceDocuments(tx, ledgerId, activeDocumentIds);
     });
+
+    return {
+      sourceDocumentIds,
+      deletedCount: activeDocumentIds.length,
+    };
   }
 );

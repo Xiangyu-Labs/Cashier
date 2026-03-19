@@ -8,7 +8,6 @@ import { mapLedgerEntryDto } from "../mappers";
 import { getLedgerMainCurrency } from "../queries/get-ledger-main-currency";
 import { recalculateEntriesConvertedAmount } from "../services/recalculate-entries-converted-amount";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
-import type { LedgerEntry } from "@/persistence";
 import type { LedgerEntryDto } from "../../contracts";
 
 function normalizeCurrency(value: string | null | undefined): string {
@@ -62,7 +61,7 @@ export async function createLedgerEntryWithConversion(input: {
   categoryId?: string;
   description?: string | null;
   sourceDocumentId: string;
-}): Promise<LedgerEntry> {
+}): Promise<LedgerEntryDto> {
   const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
   const entryCurrency = normalizeCurrency(input.currency);
 
@@ -96,7 +95,7 @@ export async function createLedgerEntryWithConversion(input: {
     })
     .returning();
 
-  return entry;
+  return mapLedgerEntryDto(entry);
 }
 
 export async function updateLedgerEntryWithConversion(input: {
@@ -160,24 +159,30 @@ export async function batchUpdateLedgerEntries(input: {
   amount?: number;
   description?: string | null;
   itemName?: string;
-}): Promise<void> {
+}): Promise<number> {
   const updateData: Partial<typeof ledgerEntries.$inferSelect> = { updatedAt: new Date() };
   if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
   if (input.currency !== undefined) updateData.currency = input.currency;
-  if (input.amount !== undefined) updateData.amount = String(input.amount);
+  if (input.amount !== undefined) updateData.amount = input.amount.toFixed(2);
   if (input.description !== undefined) updateData.description = input.description;
   if (input.itemName !== undefined) updateData.itemName = input.itemName;
 
   const q = forLedger(ledgerEntries, input.ledgerId);
-  await db
+  const updatedEntries = await db
     .update(ledgerEntries)
     .set(updateData)
-    .where(and(q.whereActive, inArray(ledgerEntries.id, input.ledgerEntryIds)));
+    .where(and(q.whereActive, inArray(ledgerEntries.id, input.ledgerEntryIds)))
+    .returning({ id: ledgerEntries.id });
 
-  if (input.currency !== undefined && input.ledgerEntryIds.length > 0) {
+  if (input.currency !== undefined && updatedEntries.length > 0) {
     const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
     recalculateEntriesConvertedAmount(input.ledgerId, mainCurrency).catch((err) => {
-      logger.error({ err, ledgerId: input.ledgerId }, "Failed to recalculate after batch currency update");
+      logger.error(
+        { err, ledgerId: input.ledgerId },
+        "Failed to recalculate after batch currency update"
+      );
     });
   }
+
+  return updatedEntries.length;
 }

@@ -20,13 +20,25 @@ export { batchRetrySourceDocumentsAction } from "./server-actions/batch-retry";
 export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
 export { retrySourceDocumentAction } from "./server-actions/retry";
-export {
-  getProcessingTasksAction,
-  getProcessingStatsAction,
-} from "./server-actions/processing";
+export { getProcessingTasksAction, getProcessingStatsAction } from "./server-actions/processing";
 export { canAccessSourceDocumentUpload } from "./server-actions/uploads";
 
 export type {
-  SourceDocumentWithEntries,
-  PaginatedSourceDocumentsResponse,
-} from "./server-actions/types";
+  BatchDeleteSourceDocumentsResultDto,
+  BatchRetrySourceDocumentItemDto,
+  BatchRetrySourceDocumentsResultDto,
+  BatchUpdateSourceDocumentsResultDto,
+  CreateSourceDocumentResponseDto,
+  DeleteSourceDocumentResultDto,
+  PendingSourceDocumentsResponseDto as PendingSourceDocumentsResponse,
+  ProcessingStatsDto,
+  ProcessingTaskDto,
+  QuickEntryResponseDto,
+  RetrySourceDocumentResponseDto,
+  SourceDocumentCollectionDto,
+  SourceDocumentDto as SourceDocumentWithEntries,
+  SourceDocumentFullDto,
+  SourceDocumentLightWithEntriesDto as SourceDocumentLightWithEntries,
+  SourceDocumentPageDto,
+  UpdateSourceDocumentResultDto,
+} from "./contracts";

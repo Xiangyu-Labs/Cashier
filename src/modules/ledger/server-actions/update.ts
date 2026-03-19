@@ -5,14 +5,15 @@ import { ledgers } from "@/persistence";
 import { withAuth } from "@/lib/auth-actions";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { updateLedgerSchema, type UpdateLedgerInput } from "./schemas";
 import { recalculateEntriesConvertedAmount } from "./helpers";
 import { updateTag } from "next/cache";
 import { NotFoundError, ForbiddenError } from "@/lib/errors";
-import type { Ledger } from "@/types/api";
+import { mapLedgerDto } from "@/modules/ledger/mappers";
+import type { LedgerDto } from "@/modules/ledger/contracts";
+import { updateLedgerInputSchema, type UpdateLedgerInput } from "@/modules/ledger/contract-schemas";
 
 export const updateLedgerAction = withAuth(
-  async (userId: string, id: string, data: UpdateLedgerInput): Promise<Ledger> => {
+  async (userId: string, id: string, data: UpdateLedgerInput): Promise<LedgerDto> => {
     // Verify ownership
     const existing = await db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, id), isNull(ledgers.deletedAt)),
@@ -26,7 +27,7 @@ export const updateLedgerAction = withAuth(
       throw new ForbiddenError("Access denied to this ledger");
     }
 
-    const validated = updateLedgerSchema.parse(data);
+    const validated = updateLedgerInputSchema.parse(data);
 
     const currentMetadata = existing.metadata || {};
     const currentSettings = currentMetadata.settings || {};
@@ -65,14 +66,6 @@ export const updateLedgerAction = withAuth(
       });
     }
 
-    // Serialize dates to strings to match the API type
-    return {
-      id: updatedLedger.id,
-      userId: updatedLedger.userId,
-      metadata: updatedLedger.metadata,
-      createdAt: updatedLedger.createdAt.toISOString(),
-      updatedAt: updatedLedger.updatedAt.toISOString(),
-      deletedAt: updatedLedger.deletedAt ? updatedLedger.deletedAt.toISOString() : null,
-    };
+    return mapLedgerDto(updatedLedger);
   }
 );

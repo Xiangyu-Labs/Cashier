@@ -10,18 +10,34 @@ import {
   listAllSourceDocumentsQuery,
   listSourceDocumentsQuery,
   sourceDocumentPaginationConfig,
-  type ListSourceDocumentsParams,
 } from "@/modules/source-document/application/queries/source-document-queries";
 import type {
-  PendingSourceDocumentsResponse,
-  PaginatedSourceDocumentsResponse,
-} from "./types";
+  PendingSourceDocumentsResponseDto,
+  SourceDocumentCollectionDto,
+  SourceDocumentFullDto,
+  SourceDocumentPageDto,
+} from "@/modules/source-document/contracts";
+import {
+  listSourceDocumentsInputSchema,
+  type ListSourceDocumentsInput,
+} from "@/modules/source-document/contract-schemas";
 
 /**
  * Get paginated source documents with cursor-based pagination
  */
-export async function listSourceDocuments(ledgerId: string, params: ListSourceDocumentsParams) {
-  return listSourceDocumentsQuery(ledgerId, params);
+export async function listSourceDocuments(
+  ledgerId: string,
+  params: ListSourceDocumentsInput
+): Promise<SourceDocumentPageDto> {
+  const validated = listSourceDocumentsInputSchema.parse(params);
+  return listSourceDocumentsQuery(ledgerId, {
+    status: validated.status ?? null,
+    startDate: validated.startDate ?? null,
+    endDate: validated.endDate ?? null,
+    cursor: validated.cursor ?? null,
+    limit: validated.limit,
+    includeLedgerEntries: validated.includeEntries,
+  });
 }
 
 export const getSourceDocumentsAction = withLedgerAccess(listSourceDocuments);
@@ -43,7 +59,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
       page?: number;
       pageSize?: number;
     } = {}
-  ): Promise<PaginatedSourceDocumentsResponse> => {
+  ): Promise<SourceDocumentCollectionDto> => {
     try {
       const result = await listAllSourceDocumentsQuery(ledgerId, params);
 
@@ -75,7 +91,7 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
  * Used for the pending source documents modal that should always show ALL pending items.
  */
 export const getPendingSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<PendingSourceDocumentsResponse> => {
+  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
     try {
       return await getPendingSourceDocumentsQuery(ledgerId);
     } catch (error) {
@@ -90,6 +106,6 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
  * Used for edit-retry when the list view has stripped imageUrls.
  */
 export const getSourceDocumentFullAction = withLedgerAccess(
-  async (ledgerId: string, sourceDocumentId: string) =>
+  async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto | null> =>
     getSourceDocumentFullQuery(ledgerId, sourceDocumentId)
 );

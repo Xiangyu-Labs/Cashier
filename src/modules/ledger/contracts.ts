@@ -117,3 +117,33 @@ export interface LedgerSummaryDto {
     count: number;
   }[];
 }
+
+export interface LedgerEntryPageDto {
+  items: LedgerEntryDto[];
+  nextCursor: string | null;
+}
+
+export interface LedgerSettingsViewDto {
+  uncategorizedCount: number;
+  credentials: ServiceCredentialDto[];
+}
+
+export interface DeleteLedgerEntryResultDto {
+  ledgerEntryId: string;
+  deleted: boolean;
+}
+
+export interface BatchLedgerEntriesMutationResultDto {
+  ledgerEntryIds: string[];
+  affectedCount: number;
+}
+
+export interface DeleteEntryCategoryResultDto {
+  categoryId: string;
+  deleted: boolean;
+}
+
+export interface ReorderEntryCategoriesResultDto {
+  categoryIds: string[];
+  reorderedCount: number;
+}

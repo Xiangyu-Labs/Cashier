@@ -16,13 +16,13 @@ import {
   batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-  type PaginatedSourceDocumentsResponse,
+  type SourceDocumentCollectionDto,
 } from "@/modules/source-document/actions";
 
 function removeSourceDocumentsFromPaginatedLists(
-  old: PaginatedSourceDocumentsResponse | undefined,
+  old: SourceDocumentCollectionDto | undefined,
   ids: string[]
-): PaginatedSourceDocumentsResponse | undefined {
+): SourceDocumentCollectionDto | undefined {
   if (old === undefined || old.items === undefined) return old;
 
   return {
@@ -50,11 +50,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       invalidateCalendar(ledgerId),
     ],
     onOptimisticUpdate: (queryClient, id) => {
-      const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
       });
 
-      queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+      queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => removeSourceDocumentsFromPaginatedLists(old, [id])
       );
@@ -81,11 +81,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       clearSelection();
     },
     onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
-      const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
       });
 
-      queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+      queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
           if (old === undefined || old.items === undefined) return old;
@@ -118,11 +118,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       clearSelection();
     },
     onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
       });
 
-      queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+      queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => removeSourceDocumentsFromPaginatedLists(old, ids)
       );
@@ -144,11 +144,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       clearSelection();
     },
     onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = queryClient.getQueriesData<PaginatedSourceDocumentsResponse>({
+      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
         predicate: matchPaginatedSourceDocuments(ledgerId),
       });
 
-      queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+      queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { predicate: matchPaginatedSourceDocuments(ledgerId) },
         (old) => {
           if (old === undefined || old.items === undefined) return old;

@@ -74,7 +74,7 @@ describe("useDetailsTabData", () => {
     vi.clearAllMocks();
     vi.mocked(getLedgerEntriesAction).mockResolvedValue({
       items: [createLedgerEntry("entry-1")],
-      nextCursor: undefined,
+      nextCursor: null,
     });
     vi.mocked(getLedgerStatsAction).mockResolvedValue({
       convertedTotal: { total: 12, currency: "CNY" },

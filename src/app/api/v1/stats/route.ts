@@ -1,23 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { calculateLedgerStats } from "@/modules/ledger/actions";
-import { z } from "zod";
-import { optionalDateStringSchema } from "@/lib/validation";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
-
-const querySchema = z.object({
-  startDate: optionalDateStringSchema,
-  endDate: optionalDateStringSchema,
-  categoryId: z.string().uuid().optional(),
-  currency: z.string().length(3).optional(),
-});
+import { ledgerStatsQuerySchema } from "@/modules/ledger/contract-schemas";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {
     logContext: "api/v1/stats",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const params = parseApiInput(querySchema, {
+      const params = parseApiInput(ledgerStatsQuerySchema, {
         startDate: searchParams.get("startDate") ?? undefined,
         endDate: searchParams.get("endDate") ?? undefined,
         categoryId: searchParams.get("categoryId") ?? undefined,

@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
-import {
-  entryCategories as categories,
-  sourceDocuments,
-  ledgers,
-} from "@/persistence";
+import { entryCategories as categories, sourceDocuments, ledgers } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 
@@ -72,9 +68,10 @@ describe("SourceDocument Delete Race Condition", () => {
     expect(softDeletedDoc?.deletedAt).not.toBeNull();
 
     // 3. User clicks "confirm delete" - should silently succeed (idempotent)
-    await expect(
-      deleteSourceDocumentAction(testLedgerId, sourceDoc.id)
-    ).resolves.toBeUndefined();
+    await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.toEqual({
+      sourceDocumentId: sourceDoc.id,
+      deleted: false,
+    });
 
     // Verify record is still soft-deleted
     const stillDeleted = await db.query.sourceDocuments.findFirst({
@@ -87,9 +84,10 @@ describe("SourceDocument Delete Race Condition", () => {
     const nonExistentId = "00000000-0000-0000-0000-000000000000";
 
     // Should silently succeed (idempotent)
-    await expect(
-      deleteSourceDocumentAction(testLedgerId, nonExistentId)
-    ).resolves.toBeUndefined();
+    await expect(deleteSourceDocumentAction(testLedgerId, nonExistentId)).resolves.toEqual({
+      sourceDocumentId: nonExistentId,
+      deleted: false,
+    });
   });
 
   it("should demonstrate the idempotent delete flow with timeline", async () => {
@@ -136,10 +134,7 @@ describe("SourceDocument Delete Race Condition", () => {
 
     // T5: Simulate frontend refresh - query active records (excluding soft-deleted)
     const activeDocs = await db.query.sourceDocuments.findMany({
-      where: and(
-        eq(sourceDocuments.ledgerId, testLedgerId),
-        isNull(sourceDocuments.deletedAt)
-      ),
+      where: and(eq(sourceDocuments.ledgerId, testLedgerId), isNull(sourceDocuments.deletedAt)),
     });
     const foundDoc = activeDocs.find((d) => d.id === sourceDoc.id);
     console.log("T5: 刷新后查询结果", {

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ValidationError } from "@/lib/errors";
 import { sourceDocuments, type Ledger } from "@/persistence";
+import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
@@ -29,11 +31,21 @@ function resolveEntryDate(entryDate?: string, timezone?: string): string {
 
 export async function createAndQueueSourceDocument(
   input: CreateAndQueueSourceDocumentInput
-): Promise<{ sourceDocumentId: string; status: "queued" }> {
+): Promise<CreateSourceDocumentResponseDto> {
   const { ledgerId, ledger, text, images, originalImages, entryDate, timezone } = input;
 
-  if ((text == null || text === "") && (images == null || images.length === 0)) {
-    throw new ValidationError("At least one input (text or images) is required");
+  const parseResult = createSourceDocumentInputSchema.safeParse({
+    text,
+    images,
+    originalImages,
+    entryDate,
+    timezone,
+  });
+
+  if (!parseResult.success) {
+    throw new ValidationError(
+      parseResult.error.issues[0]?.message ?? "Invalid source document input"
+    );
   }
 
   const q = forLedger(sourceDocuments, ledgerId);

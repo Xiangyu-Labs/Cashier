@@ -10,10 +10,8 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
-import {
-  updateLedgerEntryAction,
-  deleteLedgerEntryAction,
-} from "@/modules/ledger/actions";
+import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 
 interface UseEntryMutationsParams {
@@ -74,9 +72,10 @@ export function useEntryMutations({
                       ...e,
                       ...data,
                       amount: data.amount !== undefined ? String(data.amount) : e.amount,
-                      category: data.categoryId != null && data.categoryId !== ""
-                        ? categories.find((c) => c.id === data.categoryId) ?? e.category
-                        : e.category,
+                      category:
+                        data.categoryId != null && data.categoryId !== ""
+                          ? (categories.find((c) => c.id === data.categoryId) ?? e.category)
+                          : e.category,
                     } satisfies LedgerEntry)
                   : e
               ),
@@ -91,9 +90,10 @@ export function useEntryMutations({
           ...selectedLedgerEntry,
           ...data,
           amount: data.amount !== undefined ? String(data.amount) : selectedLedgerEntry.amount,
-          category: data.categoryId != null && data.categoryId !== ""
-            ? categories.find((c) => c.id === data.categoryId) ?? selectedLedgerEntry.category
-            : selectedLedgerEntry.category,
+          category:
+            data.categoryId != null && data.categoryId !== ""
+              ? (categories.find((c) => c.id === data.categoryId) ?? selectedLedgerEntry.category)
+              : selectedLedgerEntry.category,
         } satisfies LedgerEntry);
       }
 
@@ -101,7 +101,7 @@ export function useEntryMutations({
     },
   });
 
-  const deleteEntry = useLedgerMutation<void, string>(ledgerId, {
+  const deleteEntry = useLedgerMutation<DeleteLedgerEntryResultDto, string>(ledgerId, {
     mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
     successMessage: tLedger("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),

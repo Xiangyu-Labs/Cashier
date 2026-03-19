@@ -40,7 +40,7 @@ describe("getLedgerEntriesAction", () => {
     const data = await getLedgerEntriesAction(testLedgerId, {});
 
     expect(data.items).toEqual([]);
-    expect(data.nextCursor).toBeUndefined();
+    expect(data.nextCursor).toBeNull();
   });
 
   it("should return ledger entries with category relation", async () => {

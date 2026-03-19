@@ -23,7 +23,7 @@ import {
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
   SourceDocumentWithEntries,
-  PaginatedSourceDocumentsResponse,
+  SourceDocumentCollectionDto,
 } from "@/modules/source-document/actions";
 import type { LedgerEntry } from "@/types/api";
 
@@ -129,30 +129,31 @@ export function QuickEntryForm({
             itemName: variables.itemName ?? selectedCategory?.name ?? "",
             convertedAmount: variables.amount.toFixed(2),
             exchangeRate: "1",
-            category: selectedCategory !== undefined
-              ? {
-                  id: selectedCategory.id,
-                  name: selectedCategory.name,
-                  createdAt: selectedCategory.createdAt,
-                  updatedAt: selectedCategory.updatedAt,
-                  deletedAt: selectedCategory.deletedAt,
-                  ledgerId: selectedCategory.ledgerId,
-                  description: selectedCategory.description,
-                  icon: selectedCategory.icon,
-                  sortOrder: selectedCategory.sortOrder,
-                  isEditable: selectedCategory.isEditable,
-                }
-              : null,
+            category:
+              selectedCategory !== undefined
+                ? {
+                    id: selectedCategory.id,
+                    name: selectedCategory.name,
+                    createdAt: selectedCategory.createdAt,
+                    updatedAt: selectedCategory.updatedAt,
+                    deletedAt: selectedCategory.deletedAt,
+                    ledgerId: selectedCategory.ledgerId,
+                    description: selectedCategory.description,
+                    icon: selectedCategory.icon,
+                    sortOrder: selectedCategory.sortOrder,
+                    isEditable: selectedCategory.isEditable,
+                  }
+                : null,
           },
         ],
       };
 
       // 1. Snapshot and update source documents list (paginated response)
-      const docSnapshots = createListSnapshots<PaginatedSourceDocumentsResponse>(
+      const docSnapshots = createListSnapshots<SourceDocumentCollectionDto>(
         queryClient,
         queryKeys.sourceDocuments(ledgerId, "all")
       );
-      queryClient.setQueriesData<PaginatedSourceDocumentsResponse>(
+      queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
         (old) => {
           if (!old) return old;
@@ -207,7 +208,9 @@ export function QuickEntryForm({
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
-          selectedCategory != null ? `${t("itemNamePlaceholder")}${selectedCategory.name}` : t("itemName")
+          selectedCategory != null
+            ? `${t("itemNamePlaceholder")}${selectedCategory.name}`
+            : t("itemName")
         }
         className="text-sm"
       />

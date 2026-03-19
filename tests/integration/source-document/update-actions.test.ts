@@ -84,7 +84,10 @@ describe("Source Document Update Actions", () => {
         updateSourceDocumentAction(ledgerData.id, "non-existent-id", {
           title: "Updated Title",
         })
-      ).resolves.not.toThrow();
+      ).resolves.toEqual({
+        sourceDocumentId: "non-existent-id",
+        updated: false,
+      });
     });
   });
 

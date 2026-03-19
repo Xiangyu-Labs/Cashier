@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
-import {
-  entryCategories as categories,
-  sourceDocuments,
-  ledgers,
-} from "@/persistence";
+import { entryCategories as categories, sourceDocuments, ledgers } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 
@@ -49,16 +45,12 @@ describe("SourceDocument Delete Idempotency", () => {
       .returning();
 
     // 2. 第一次删除 - 应该成功
-    await expect(
-      deleteSourceDocumentAction(testLedgerId, sourceDoc.id)
-    ).resolves.not.toThrow();
+    await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.not.toThrow();
 
     // 3. 【问题】第二次删除同一条记录（模拟竞态条件或重复点击）
     // 当前行为：抛出 NotFoundError ❌
     // 期望行为：应该成功（幂等）✅
-    await expect(
-      deleteSourceDocumentAction(testLedgerId, sourceDoc.id)
-    ).resolves.not.toThrow();  // 修复后这行应该通过
+    await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.not.toThrow(); // 修复后这行应该通过
 
     // 4. 验证记录被软删除
     const deletedDoc = await db.query.sourceDocuments.findFirst({
@@ -91,9 +83,10 @@ describe("SourceDocument Delete Idempotency", () => {
     // 3. 用户尝试删除这条"已不存在"的记录
     // 当前行为：抛出 NotFoundError，用户看到"删除失败" ❌
     // 期望行为：静默成功，因为目标状态（已删除）已经达成 ✅
-    await expect(
-      deleteSourceDocumentAction(testLedgerId, sourceDoc.id)
-    ).resolves.toBeUndefined();  // 修复后应该返回 undefined（成功）
+    await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.toEqual({
+      sourceDocumentId: sourceDoc.id,
+      deleted: false,
+    });
 
     // 4. 验证记录仍然被软删除（状态未改变）
     const doc = await db.query.sourceDocuments.findFirst({
@@ -131,7 +124,7 @@ describe("SourceDocument Delete Idempotency", () => {
 
     // 期望：两个都成功（fulfilled）
     expect(result1.status).toBe("fulfilled");
-    expect(result2.status).toBe("fulfilled");  // 修复后这行应该通过
+    expect(result2.status).toBe("fulfilled"); // 修复后这行应该通过
 
     // 验证记录被软删除
     const doc = await db.query.sourceDocuments.findFirst({
@@ -173,7 +166,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const activeDocs = await db.query.sourceDocuments.findMany({
       where: and(
         eq(sourceDocuments.ledgerId, testLedgerId),
-        isNull(sourceDocuments.deletedAt)  // 用户只能看到未软删除的记录
+        isNull(sourceDocuments.deletedAt) // 用户只能看到未软删除的记录
       ),
     });
 

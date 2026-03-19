@@ -10,6 +10,7 @@ import {
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntry, EntryCategory } from "@/types/api";
 
 type SourceDocumentCacheEntry = Pick<
@@ -30,9 +31,11 @@ interface SourceDocumentCacheItem {
   ledgerEntries?: SourceDocumentCacheEntry[];
 }
 
-type SourceDocumentsQueryData = {
-  items?: SourceDocumentCacheItem[];
-} | undefined;
+type SourceDocumentsQueryData =
+  | {
+      items?: SourceDocumentCacheItem[];
+    }
+  | undefined;
 
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
   const tCommon = useTranslations("Common");
@@ -78,7 +81,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
                     categoryId: data.categoryId ?? e.categoryId,
                     category:
                       data.categoryId != null && data.categoryId !== ""
-                        ? categories.find((c) => c.id === data.categoryId) ?? e.category
+                        ? (categories.find((c) => c.id === data.categoryId) ?? e.category)
                         : e.category,
                   };
                   return updated;
@@ -93,7 +96,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     },
   });
 
-  const deleteEntry = useLedgerMutation<void, string>(ledgerId, {
+  const deleteEntry = useLedgerMutation<DeleteLedgerEntryResultDto, string>(ledgerId, {
     mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
@@ -116,7 +119,8 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
           return {
             ...old,
             items: old.items.map((doc) => {
-              const filteredEntries = doc.ledgerEntries?.filter((e) => e.id !== ledgerEntryId) ?? [];
+              const filteredEntries =
+                doc.ledgerEntries?.filter((e) => e.id !== ledgerEntryId) ?? [];
               return { ...doc, ledgerEntries: filteredEntries };
             }),
           };
