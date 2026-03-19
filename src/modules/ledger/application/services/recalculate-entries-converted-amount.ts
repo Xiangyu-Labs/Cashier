@@ -12,7 +12,7 @@ export interface ConversionItem {
   amount: number;
   from: string;
   to: string;
-  date: string | undefined;
+  date?: string;
 }
 
 export interface ConversionResult {
@@ -35,7 +35,7 @@ export function buildConversionItems(
     amount: Number(entry.amount),
     from: entry.currency ?? "CNY",
     to: mainCurrency,
-    date: entry.sourceDocument?.entryDate ?? undefined,
+    ...(entry.sourceDocument?.entryDate != null ? { date: entry.sourceDocument.entryDate } : {}),
   }));
 }
 
