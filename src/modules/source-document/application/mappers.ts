@@ -1,10 +1,10 @@
 import type { SourceDocument, LedgerEntry } from "@/persistence";
+import { mapLedgerEntryDto } from "@/modules/ledger/mappers";
 import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
   SourceDocumentListItemDto,
 } from "../contracts";
-import { mapLedgerEntryDto } from "@/modules/ledger";
 
 function toIso(date: Date | null | undefined): string | null {
   if (date == null) return null;
