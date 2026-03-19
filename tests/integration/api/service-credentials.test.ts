@@ -13,6 +13,14 @@ import {
 } from "@/modules/ledger/actions";
 import { getDateInTimezone } from "@/lib/date-utils";
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 // Mock Processing
 vi.mock("@/lib/processing", () => ({
   createProcessingTask: vi.fn(),
@@ -71,15 +79,16 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     // List Credentials
     const listRes = await getServiceCredentialsAction(testLedgerId);
+    const listedCredential = requireFirst(listRes, "service credential");
 
     expect(listRes).toHaveLength(1);
-    expect(listRes[0].id).toBe(createRes.id);
+    expect(listedCredential.id).toBe(createRes.id);
   });
 
   it("should ingest ledger entry with valid service credential", async () => {
     // Setup: create a credential first
     const db = getTestDb();
-    const [c] = await db
+    const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
@@ -87,6 +96,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         key: "sk_test_123",
       })
       .returning();
+    const c = requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
@@ -125,7 +135,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should reject invalid JSON body", async () => {
     const db = getTestDb();
-    const [credential] = await db
+    const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
@@ -133,6 +143,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         key: "sk_invalid_json",
       })
       .returning();
+    const credential = requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
@@ -152,7 +163,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should derive entryDate from timezone when entryDate is omitted", async () => {
     const db = getTestDb();
-    const [credential] = await db
+    const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
@@ -160,6 +171,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         key: "sk_timezone",
       })
       .returning();
+    const credential = requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
@@ -182,7 +194,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should delete service credential via Action", async () => {
     const db = getTestDb();
-    const [c] = await db
+    const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
@@ -190,6 +202,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         key: "sk_delete_123",
       })
       .returning();
+    const c = requireFirst(createdCredentials, "service credential");
 
     // deleteServiceCredentialAction returns void in new format
     await deleteServiceCredentialAction(testLedgerId, c.id);
@@ -215,10 +228,11 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     // Get settings via getLedgerSettingsAction
     const settings = await getLedgerSettingsAction(testLedgerId);
+    const settingsCredential = requireFirst(settings.credentials, "settings credential");
 
     expect(settings.credentials).toHaveLength(1);
-    expect(settings.credentials[0].name).toBe("Old Existing Credential");
+    expect(settingsCredential.name).toBe("Old Existing Credential");
     // This is the critical test - the key must be returned
-    expect(settings.credentials[0].key).toBe("sk_live_existing_key_for_testing");
+    expect(settingsCredential.key).toBe("sk_live_existing_key_for_testing");
   });
 });

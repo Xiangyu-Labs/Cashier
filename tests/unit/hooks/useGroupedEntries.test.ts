@@ -27,6 +27,14 @@ function createGroup(overrides: Partial<SourceDocumentGroup>): SourceDocumentGro
   };
 }
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 describe("useGroupedEntries", () => {
   it("groups source documents and sums converted totals", () => {
     const today = formatDateTimeForApi(new Date())!;
@@ -113,10 +121,16 @@ describe("useGroupedEntries", () => {
       })
     );
 
-    expect(result.current.groupedCompletedByDate).toHaveLength(2);
-    expect(result.current.groupedCompletedByDate[0].title).toBe("today");
-    expect(result.current.groupedCompletedByDate[0].total).toBe(30);
-    expect(result.current.groupedCompletedByDate[1].total).toBe(9.5);
+    const groupedByDate = result.current.groupedCompletedByDate;
+    expect(groupedByDate).toHaveLength(2);
+    const firstGroup = requireFirst(groupedByDate, "grouped date bucket");
+    const secondGroup = groupedByDate[1];
+    if (!secondGroup) {
+      throw new Error("Expected second grouped date bucket");
+    }
+    expect(firstGroup.title).toBe("today");
+    expect(firstGroup.total).toBe(30);
+    expect(secondGroup.total).toBe(9.5);
     expect(result.current.allSourceDocumentIds).toEqual(["doc-today", "doc-old"]);
   });
 
@@ -151,7 +165,9 @@ describe("useGroupedEntries", () => {
       })
     );
 
-    expect(result.current.groupedCompletedByDate[0].items[0].sourceDocument.id).toBe("doc-fallback");
-    expect(result.current.groupedCompletedByDate[0].timestamp).toBe(new Date(2024, 3, 6).getTime());
+    const firstGroup = requireFirst(result.current.groupedCompletedByDate, "grouped date bucket");
+    const firstItem = requireFirst(firstGroup.items, "grouped item");
+    expect(firstItem.sourceDocument.id).toBe("doc-fallback");
+    expect(firstGroup.timestamp).toBe(new Date(2024, 3, 6).getTime());
   });
 });

@@ -19,6 +19,14 @@ import { cancelTaskAction, batchCancelTasksAction } from "@/modules/task-queue/a
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 describe("cancelTaskAction", () => {
   let ledgerId: string;
 
@@ -136,7 +144,7 @@ describe("cancelTaskAction", () => {
   it("soft-deletes processing source doc when entityType=source_document", async () => {
     const db = getTestDb();
 
-    const [doc] = await db
+    const createdDocs = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -147,6 +155,7 @@ describe("cancelTaskAction", () => {
         imageUrls: [],
       })
       .returning();
+    const doc = requireFirst(createdDocs, "source document");
 
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -170,7 +179,7 @@ describe("cancelTaskAction", () => {
   it("soft-deletes queued source doc when entityType=source_document", async () => {
     const db = getTestDb();
 
-    const [doc] = await db
+    const createdDocs = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -181,6 +190,7 @@ describe("cancelTaskAction", () => {
         imageUrls: [],
       })
       .returning();
+    const doc = requireFirst(createdDocs, "source document");
 
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -204,7 +214,7 @@ describe("cancelTaskAction", () => {
   it("does not soft-delete completed source doc on cancel", async () => {
     const db = getTestDb();
 
-    const [doc] = await db
+    const createdDocs = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -215,6 +225,7 @@ describe("cancelTaskAction", () => {
         imageUrls: [],
       })
       .returning();
+    const doc = requireFirst(createdDocs, "source document");
 
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -353,7 +364,7 @@ describe("batchCancelTasksAction", () => {
   it("soft-deletes processing source docs for batch cancel", async () => {
     const db = getTestDb();
 
-    const [doc1] = await db
+    const createdDoc1Rows = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -364,8 +375,9 @@ describe("batchCancelTasksAction", () => {
         imageUrls: [],
       })
       .returning();
+    const doc1 = requireFirst(createdDoc1Rows, "source document");
 
-    const [doc2] = await db
+    const createdDoc2Rows = await db
       .insert(sourceDocuments)
       .values({
         id: uuidv4(),
@@ -376,6 +388,7 @@ describe("batchCancelTasksAction", () => {
         imageUrls: [],
       })
       .returning();
+    const doc2 = requireFirst(createdDoc2Rows, "source document");
 
     const taskId1 = uuidv4();
     const taskId2 = uuidv4();

@@ -110,8 +110,25 @@ describe("useDetailsTabData", () => {
     await waitFor(() => expect(getLedgerEntriesAction).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(getLedgerStatsAction).toHaveBeenCalledTimes(2));
 
-    expect(vi.mocked(getLedgerEntriesAction).mock.calls[1][1]).toMatchObject({ currency: "USD" });
-    expect(vi.mocked(getLedgerStatsAction).mock.calls[1][4]).toMatchObject({ currency: "USD" });
+    const secondEntriesCall = vi.mocked(getLedgerEntriesAction).mock.calls[1];
+    if (!secondEntriesCall) {
+      throw new Error("Expected second getLedgerEntriesAction call");
+    }
+    const secondEntriesFilters = secondEntriesCall[1];
+    if (!secondEntriesFilters) {
+      throw new Error("Expected getLedgerEntriesAction filters argument");
+    }
+    expect(secondEntriesFilters).toMatchObject({ currency: "USD" });
+
+    const secondStatsCall = vi.mocked(getLedgerStatsAction).mock.calls[1];
+    if (!secondStatsCall) {
+      throw new Error("Expected second getLedgerStatsAction call");
+    }
+    const secondStatsAdvancedFilters = secondStatsCall[4];
+    if (!secondStatsAdvancedFilters) {
+      throw new Error("Expected getLedgerStatsAction advancedFilters argument");
+    }
+    expect(secondStatsAdvancedFilters).toMatchObject({ currency: "USD" });
   });
 
   it("reuses fresh cached data on remount without forcing a refetch", async () => {

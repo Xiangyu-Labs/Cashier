@@ -20,14 +20,24 @@ import {
 import { vi, afterEach } from "vitest";
 import * as authModule from "@/auth";
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 // Helper to create a mock NextRequest
 function createMockRequest(
   url: string,
   options: { headers?: Record<string, string> } = {}
 ): NextRequest {
-  const request = new Request(url, {
-    headers: options.headers,
-  }) as unknown as NextRequest;
+  const requestInit: RequestInit = {};
+  if (options.headers) {
+    requestInit.headers = options.headers;
+  }
+  const request = new Request(url, requestInit) as unknown as NextRequest;
 
   // Add the headers.get method that NextRequest expects
   Object.defineProperty(request, "headers", {
@@ -62,7 +72,7 @@ describe("API v1 Query Endpoints", () => {
     ledgerId = result.ledgerId;
 
     // 创建 API 凭证 - 直接插入数据库避免 withLedgerAccess 权限检查
-    const [credential] = await db
+    const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId,
@@ -70,10 +80,11 @@ describe("API v1 Query Endpoints", () => {
         key: `sk_test_${crypto.randomUUID().replace(/-/g, "")}`,
       })
       .returning();
+    const credential = requireFirst(createdCredentials, "service credential");
     apiKey = credential.key;
 
     // 创建测试分类
-    const [category] = await db
+    const createdCategories = await db
       .insert(entryCategories)
       .values({
         ledgerId,
@@ -83,11 +94,12 @@ describe("API v1 Query Endpoints", () => {
         sortOrder: 1,
       })
       .returning();
+    const category = requireFirst(createdCategories, "entry category");
     categoryId = category.id;
 
     // 创建测试单据
     const today = new Date().toISOString().split("T")[0];
-    const [doc] = await db
+    const createdDocs = await db
       .insert(sourceDocuments)
       .values({
         ledgerId,
@@ -97,6 +109,7 @@ describe("API v1 Query Endpoints", () => {
         entryDate: today,
       })
       .returning();
+    const doc = requireFirst(createdDocs, "source document");
 
     // 创建测试条目
     await db.insert(ledgerEntries).values({
@@ -110,7 +123,7 @@ describe("API v1 Query Endpoints", () => {
       exchangeRate: "1.00",
     });
 
-    const [anomalyDoc] = await db
+    const createdAnomalyDocs = await db
       .insert(sourceDocuments)
       .values({
         ledgerId,
@@ -122,6 +135,7 @@ describe("API v1 Query Endpoints", () => {
         imageUrls: [],
       })
       .returning();
+    const anomalyDoc = requireFirst(createdAnomalyDocs, "anomaly source document");
 
     await db.insert(taskRuns).values([
       {

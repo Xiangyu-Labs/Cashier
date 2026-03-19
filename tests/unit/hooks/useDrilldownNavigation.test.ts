@@ -10,6 +10,18 @@ vi.mock("@/i18n/routing", () => ({
   }),
 }));
 
+function getFirstReplaceCallUrl(): string {
+  const firstCall = mockReplace.mock.calls[0];
+  if (!firstCall) {
+    throw new Error("Expected router.replace to be called");
+  }
+  const callUrl = firstCall[0];
+  if (typeof callUrl !== "string") {
+    throw new Error("Expected router.replace first argument to be a string URL");
+  }
+  return callUrl;
+}
+
 describe("useDrilldownNavigation", () => {
   const mockPathname = "/ledger/test-id";
   let mockSearchParams: URLSearchParams;
@@ -54,7 +66,7 @@ describe("useDrilldownNavigation", () => {
       result.current.handleCategoryDrilldown("__uncategorized__", "2024-01-01", "2024-01-31");
     });
 
-    const callUrl = mockReplace.mock.calls[0][0];
+    const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).not.toContain("categoryId");
   });
 
@@ -91,7 +103,7 @@ describe("useDrilldownNavigation", () => {
       result.current.handleCategoryDrilldown("cat_123", "2024-01-01", "2024-01-31");
     });
 
-    const callUrl = mockReplace.mock.calls[0][0];
+    const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).toContain("existingParam=value");
     expect(callUrl).toContain("tab=details");
     expect(callUrl).toContain("categoryId=cat_123");
@@ -112,7 +124,7 @@ describe("useDrilldownNavigation", () => {
       });
     });
 
-    const callUrl = mockReplace.mock.calls[0][0];
+    const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).toContain("tab=details");
     expect(callUrl).toContain("period=custom");
     expect(callUrl).toContain("startDate=2024-03-15");
@@ -133,7 +145,7 @@ describe("useDrilldownNavigation", () => {
       result.current.handleDateDrilldown("2024-03-15");
     });
 
-    const callUrl = mockReplace.mock.calls[0][0];
+    const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).toContain("tab=details");
     expect(callUrl).toContain("startDate=2024-03-15");
     expect(callUrl).not.toContain("categoryId");
@@ -153,7 +165,7 @@ describe("useDrilldownNavigation", () => {
       result.current.handleDateDrilldown("2024-03-15", { categoryId: "cat_123" });
     });
 
-    const callUrl = mockReplace.mock.calls[0][0];
+    const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).toContain("categoryId=cat_123");
     expect(callUrl).not.toContain("currency=EUR");
   });

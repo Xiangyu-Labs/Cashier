@@ -4,6 +4,14 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 describe("Enhanced Stats Actions", () => {
   let testLedgerId: string;
   let testCategoryId: string;
@@ -15,7 +23,7 @@ describe("Enhanced Stats Actions", () => {
     testLedgerId = ledgerId;
 
     // Create test categories
-    const [category1] = await db
+    const createdCategory1 = await db
       .insert(entryCategories)
       .values({
         name: "餐饮",
@@ -24,9 +32,10 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
       })
       .returning();
+    const category1 = requireFirst(createdCategory1, "category");
     testCategoryId = category1.id;
 
-    const [category2] = await db
+    const createdCategory2 = await db
       .insert(entryCategories)
       .values({
         name: "交通",
@@ -35,6 +44,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
       })
       .returning();
+    const category2 = requireFirst(createdCategory2, "category");
     otherCategoryId = category2.id;
   });
 
@@ -61,7 +71,7 @@ describe("Enhanced Stats Actions", () => {
       const db = getTestDb();
 
       // Create source document with entryDate in Jan but created in March
-      const [docA] = await db
+      const createdDocA = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -72,9 +82,10 @@ describe("Enhanced Stats Actions", () => {
           createdAt: new Date("2024-03-01"),
         })
         .returning();
+      const docA = requireFirst(createdDocA, "source document");
 
       // Create source document with entryDate in March but created in January
-      const [docB] = await db
+      const createdDocB = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -85,6 +96,7 @@ describe("Enhanced Stats Actions", () => {
           createdAt: new Date("2024-01-01"),
         })
         .returning();
+      const docB = requireFirst(createdDocB, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -114,8 +126,9 @@ describe("Enhanced Stats Actions", () => {
       // Should only include data from docA (entryDate in January)
       expect(result.summary.total).toBe(100);
       expect(result.chart).toHaveLength(1);
-      expect(result.chart[0].date).toBe("2024-01-15");
-      expect(result.chart[0].total).toBe(100);
+      const januaryPoint = requireFirst(result.chart, "chart point");
+      expect(januaryPoint.date).toBe("2024-01-15");
+      expect(januaryPoint.total).toBe(100);
     });
 
     it("should calculate correct summary totals", async () => {
@@ -124,7 +137,7 @@ describe("Enhanced Stats Actions", () => {
       // Create entries across different dates
       const dates = ["2024-03-01", "2024-03-05", "2024-03-10"];
       for (const date of dates) {
-        const [doc] = await db
+        const createdDoc = await db
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
@@ -134,6 +147,7 @@ describe("Enhanced Stats Actions", () => {
             entryDate: date,
           })
           .returning();
+        const doc = requireFirst(createdDoc, "source document");
 
         await db.insert(ledgerEntries).values({
           ledgerId: testLedgerId,
@@ -159,7 +173,7 @@ describe("Enhanced Stats Actions", () => {
     it("should calculate category breakdown correctly", async () => {
       const db = getTestDb();
 
-      const [doc] = await db
+      const createdDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -169,6 +183,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-03-01",
         })
         .returning();
+      const doc = requireFirst(createdDoc, "source document");
 
       // Add entries with different categories
       await db.insert(ledgerEntries).values({
@@ -214,7 +229,7 @@ describe("Enhanced Stats Actions", () => {
       const db = getTestDb();
 
       // Create entries for current period (March)
-      const [currentDoc] = await db
+      const createdCurrentDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -224,6 +239,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-03-15",
         })
         .returning();
+      const currentDoc = requireFirst(createdCurrentDoc, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -235,7 +251,7 @@ describe("Enhanced Stats Actions", () => {
       });
 
       // Create entries for previous period (February)
-      const [prevDoc] = await db
+      const createdPrevDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -245,6 +261,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-02-15",
         })
         .returning();
+      const prevDoc = requireFirst(createdPrevDoc, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -270,7 +287,7 @@ describe("Enhanced Stats Actions", () => {
       const db = getTestDb();
 
       // Create multiple entries on the same day
-      const [doc] = await db
+      const createdDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -280,6 +297,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-03-01",
         })
         .returning();
+      const doc = requireFirst(createdDoc, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -303,7 +321,7 @@ describe("Enhanced Stats Actions", () => {
     it("should exclude deleted entries", async () => {
       const db = getTestDb();
 
-      const [doc] = await db
+      const createdDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -313,6 +331,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-03-01",
         })
         .returning();
+      const doc = requireFirst(createdDoc, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -353,7 +372,7 @@ describe("Enhanced Stats Actions", () => {
       ];
 
       for (const entry of entries) {
-        const [doc] = await db
+        const createdDoc = await db
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
@@ -363,6 +382,7 @@ describe("Enhanced Stats Actions", () => {
             entryDate: entry.date,
           })
           .returning();
+        const doc = requireFirst(createdDoc, "source document");
 
         await db.insert(ledgerEntries).values({
           ledgerId: testLedgerId,
@@ -389,7 +409,7 @@ describe("Enhanced Stats Actions", () => {
     it("should handle uncategorized entries", async () => {
       const db = getTestDb();
 
-      const [doc] = await db
+      const createdDoc = await db
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
@@ -399,6 +419,7 @@ describe("Enhanced Stats Actions", () => {
           entryDate: "2024-03-01",
         })
         .returning();
+      const doc = requireFirst(createdDoc, "source document");
 
       await db.insert(ledgerEntries).values({
         ledgerId: testLedgerId,
@@ -416,8 +437,9 @@ describe("Enhanced Stats Actions", () => {
       });
 
       expect(result.categories).toHaveLength(1);
-      expect(result.categories[0].name).toBe("Uncategorized");
-      expect(result.categories[0].totalConverted).toBe(100);
+      const uncategorizedCategory = requireFirst(result.categories, "category");
+      expect(uncategorizedCategory.name).toBe("Uncategorized");
+      expect(uncategorizedCategory.totalConverted).toBe(100);
     });
   });
 });

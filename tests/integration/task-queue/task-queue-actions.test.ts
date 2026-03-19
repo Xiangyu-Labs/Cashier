@@ -8,6 +8,14 @@ import { getTaskQueueAction } from "@/modules/task-queue/actions";
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 describe("getTaskQueueAction", () => {
   let ledgerId: string;
 
@@ -226,7 +234,8 @@ describe("getTaskQueueAction", () => {
 
     const result = await getTaskQueueAction(ledgerId);
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].title).toBe("Our Task");
+    const firstItem = requireFirst(result.items, "task item");
+    expect(firstItem.title).toBe("Our Task");
   });
 
   it("throws 'Unauthorized' when ledger belongs to another user", async () => {
@@ -284,7 +293,8 @@ describe("getTaskQueueAction", () => {
     expect(result.stats.anomalyCount).toBe(1);
     const anomalyItems = result.items.filter((i) => i.kind === "anomaly");
     expect(anomalyItems).toHaveLength(1);
-    expect(anomalyItems[0].sourceDocumentId).toBe(sourceDocId);
+    const anomalyItem = requireFirst(anomalyItems, "anomaly task item");
+    expect(anomalyItem.sourceDocumentId).toBe(sourceDocId);
 
     // The completed task should NOT appear (because source doc is anomaly)
     const completedItems = result.items.filter((i) => i.status === "completed");
@@ -324,9 +334,10 @@ describe("getTaskQueueAction", () => {
     // The completed task should appear
     const completedItems = result.items.filter((i) => i.status === "completed");
     expect(completedItems).toHaveLength(1);
-    expect(completedItems[0].sourceDocumentId).toBe(sourceDocId);
-    expect(completedItems[0].entityType).toBe("source_document");
-    expect(completedItems[0].entityId).toBe(sourceDocId);
+    const completedItem = requireFirst(completedItems, "completed task item");
+    expect(completedItem.sourceDocumentId).toBe(sourceDocId);
+    expect(completedItem.entityType).toBe("source_document");
+    expect(completedItem.entityId).toBe(sourceDocId);
 
     // No anomaly items
     expect(result.stats.anomalyCount).toBe(0);

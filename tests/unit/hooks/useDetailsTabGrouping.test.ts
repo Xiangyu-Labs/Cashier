@@ -30,6 +30,14 @@ function createEntry(overrides: Partial<LedgerEntry>): LedgerEntry {
   };
 }
 
+function requireFirst<T>(rows: readonly T[], label: string): T {
+  const first = rows[0];
+  if (!first) {
+    throw new Error(`Expected at least one ${label}`);
+  }
+  return first;
+}
+
 describe("useDetailsTabGrouping", () => {
   it("groups entries using today/yesterday labels and totals", () => {
     const today = formatDateTimeForApi(new Date())!;
@@ -83,10 +91,15 @@ describe("useDetailsTabGrouping", () => {
     const { result } = renderHook(() => useDetailsTabGrouping(entries));
 
     expect(result.current.groupedItems).toHaveLength(2);
-    expect(result.current.groupedItems[0].title).toBe("today");
-    expect(result.current.groupedItems[0].total).toBe(10.5);
-    expect(result.current.groupedItems[1].title).toBe("yesterday");
-    expect(result.current.groupedItems[1].total).toBe(5.25);
+    const firstGroup = requireFirst(result.current.groupedItems, "grouped entry");
+    const secondGroup = result.current.groupedItems[1];
+    if (!secondGroup) {
+      throw new Error("Expected second grouped entry");
+    }
+    expect(firstGroup.title).toBe("today");
+    expect(firstGroup.total).toBe(10.5);
+    expect(secondGroup.title).toBe("yesterday");
+    expect(secondGroup.total).toBe(5.25);
   });
 
   it("falls back to createdAt when source document entryDate is missing", () => {
@@ -117,7 +130,9 @@ describe("useDetailsTabGrouping", () => {
 
     const { result } = renderHook(() => useDetailsTabGrouping(entries));
 
-    expect(result.current.getDateStr(entries[0])).toBe("2024-02-03");
-    expect(result.current.groupedItems[0].total).toBe(12);
+    const firstEntry = requireFirst(entries, "ledger entry");
+    const firstGroup = requireFirst(result.current.groupedItems, "grouped entry");
+    expect(result.current.getDateStr(firstEntry)).toBe("2024-02-03");
+    expect(firstGroup.total).toBe(12);
   });
 });
