@@ -30,6 +30,31 @@ describe("batchRetrySourceDocumentsAction", () => {
     text?: string;
   };
 
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
+  function parseSubmitInput(value: unknown): SubmitInput {
+    if (!isRecord(value)) {
+      throw new Error("submitFlowTask payload must be an object");
+    }
+    const sourceDocumentId = value.sourceDocumentId;
+    const ledgerId = value.ledgerId;
+    const text = value.text;
+    if (typeof sourceDocumentId !== "string") {
+      throw new Error("submitFlowTask payload.sourceDocumentId must be a string");
+    }
+    if (typeof ledgerId !== "string") {
+      throw new Error("submitFlowTask payload.ledgerId must be a string");
+    }
+    if (text !== undefined && typeof text !== "string") {
+      throw new Error("submitFlowTask payload.text must be a string when provided");
+    }
+    return text === undefined
+      ? { sourceDocumentId, ledgerId }
+      : { sourceDocumentId, ledgerId, text };
+  }
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -231,7 +256,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     const submitCalls = vi.mocked(submitFlowTask).mock.calls;
     const newDocIds = activeDocs.map((d) => d.id);
     for (const call of submitCalls) {
-      const input = call[1] as SubmitInput;
+      const input = parseSubmitInput(call[1]);
       expect(newDocIds).toContain(input.sourceDocumentId);
     }
   });
@@ -334,7 +359,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     // Mock submitFlowTask to fail for one document
     vi.mocked(submitFlowTask).mockImplementation(
       async (_type: string, data: unknown): Promise<string> => {
-        const input = data as SubmitInput;
+        const input = parseSubmitInput(data);
         if (input.sourceDocumentId !== doc1.id) {
           throw new Error("Simulated failure");
         }
@@ -416,8 +441,15 @@ describe("batchRetrySourceDocumentsAction", () => {
 
     expect(submitFlowTask).toHaveBeenCalledTimes(1);
     const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
-    const submitInput = submitCall?.[1] as Record<string, unknown>;
-    expect(submitInput).toBeDefined();
+    expect(submitCall).toBeDefined();
+    if (submitCall == null) {
+      throw new Error("Expected submitFlowTask to be called");
+    }
+    const submitInput = submitCall[1];
+    expect(isRecord(submitInput)).toBe(true);
+    if (!isRecord(submitInput)) {
+      throw new Error("Expected submitFlowTask payload to be an object");
+    }
     expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
   });
 });

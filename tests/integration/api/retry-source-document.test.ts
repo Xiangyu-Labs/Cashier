@@ -26,7 +26,14 @@ vi.mock("@/lib/ai/openai-client", () => ({
 
 describe("SourceDocument Retry Action", () => {
   let testLedgerId: string;
-  let _testCategoryId: string;
+
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
 
   beforeEach(async () => {
     // Reset mock to use multi-stage mock by default
@@ -54,7 +61,7 @@ describe("SourceDocument Retry Action", () => {
     testLedgerId = ledgerId;
 
     // Setup "餐饮" category
-    const [category] = await db
+    await db
       .insert(categories)
       .values({
         name: "餐饮",
@@ -63,7 +70,6 @@ describe("SourceDocument Retry Action", () => {
         ledgerId: testLedgerId,
       })
       .returning();
-    _testCategoryId = category.id;
   });
 
   it("should retry a document and re-process it", async () => {
@@ -197,8 +203,9 @@ describe("SourceDocument Retry Action", () => {
     });
     const activeBeforeRetry = entriesBeforeRetry.filter((e) => !e.deletedAt);
     expect(activeBeforeRetry.length).toBe(1);
-    expect(activeBeforeRetry[0].itemName).toBe("午餐");
-    expect(activeBeforeRetry[0].amount).toBe("25.00");
+    const beforeRetryEntry = firstItem(activeBeforeRetry, "Expected one active entry before retry");
+    expect(beforeRetryEntry.itemName).toBe("午餐");
+    expect(beforeRetryEntry.amount).toBe("25.00");
 
     // Switch to second response for retry: "晚餐 50元"
     vi.mocked(getOpenAIClient).mockReturnValue(
@@ -236,8 +243,9 @@ describe("SourceDocument Retry Action", () => {
     });
     // Entries are not soft-deleted, just linked to deleted source doc
     expect(entriesAfterRetry.length).toBe(1);
-    expect(entriesAfterRetry[0].itemName).toBe("午餐");
-    expect(entriesAfterRetry[0].deletedAt).toBeNull(); // Entry itself is not deleted
+    const oldEntryAfterRetry = firstItem(entriesAfterRetry, "Expected one old entry after retry");
+    expect(oldEntryAfterRetry.itemName).toBe("午餐");
+    expect(oldEntryAfterRetry.deletedAt).toBeNull(); // Entry itself is not deleted
 
     // New document should have new active entries
     const newEntries = await db.query.ledgerEntries.findMany({
@@ -245,7 +253,8 @@ describe("SourceDocument Retry Action", () => {
     });
     const activeNewEntries = newEntries.filter((e) => !e.deletedAt);
     expect(activeNewEntries.length).toBe(1);
-    expect(activeNewEntries[0].itemName).toBe("晚餐");
-    expect(activeNewEntries[0].amount).toBe("50.00");
+    const activeNewEntry = firstItem(activeNewEntries, "Expected one new active entry after retry");
+    expect(activeNewEntry.itemName).toBe("晚餐");
+    expect(activeNewEntry.amount).toBe("50.00");
   });
 });

@@ -32,6 +32,18 @@ describe("SourceDocument Actions", () => {
   let testLedgerId: string;
   let testCategoryId: string;
 
+  function firstItem<T>(items: T[], errorMessage: string): T {
+    const first = items[0];
+    if (first == null) {
+      throw new Error(errorMessage);
+    }
+    return first;
+  }
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
   beforeEach(async () => {
     // Reset mock to use multi-stage mock by default
     vi.mocked(getOpenAIClient).mockReturnValue(
@@ -130,8 +142,9 @@ describe("SourceDocument Actions", () => {
     });
 
     expect(savedEntries).toHaveLength(1);
-    expect(savedEntries[0].itemName).toBe("午餐");
-    expect(savedEntries[0].amount).toBe("25.50");
+    const savedEntry = firstItem(savedEntries, "Expected one saved ledger entry");
+    expect(savedEntry.itemName).toBe("午餐");
+    expect(savedEntry.amount).toBe("25.50");
   });
 
   it("should match category by index", async () => {
@@ -148,9 +161,10 @@ describe("SourceDocument Actions", () => {
     });
 
     expect(savedEntries).toHaveLength(1);
-    expect(savedEntries[0].categoryId).toBe(testCategoryId);
-    expect(savedEntries[0].category).toBeDefined();
-    expect(savedEntries[0].category?.name).toBe("餐饮");
+    const savedEntry = firstItem(savedEntries, "Expected one categorized ledger entry");
+    expect(savedEntry.categoryId).toBe(testCategoryId);
+    expect(savedEntry.category).toBeDefined();
+    expect(savedEntry.category?.name).toBe("餐饮");
   });
 
   it("should save input message with AI response", async () => {
@@ -221,9 +235,29 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocuments.id, result.sourceDocumentId),
     });
 
-    expect(Array.isArray(savedDoc?.metadata?.originalImageUrls)).toBe(true);
-    expect(savedDoc?.metadata?.originalImageUrls).toHaveLength(1);
-    expect(savedDoc?.metadata?.originalImageUrls?.[0]).toMatch(/^\/api\/uploads\//);
+    expect(savedDoc).toBeDefined();
+    if (savedDoc == null) {
+      throw new Error("Expected source document to be saved");
+    }
+    expect(isRecord(savedDoc.metadata)).toBe(true);
+    if (!isRecord(savedDoc.metadata)) {
+      throw new Error("Expected source document metadata to be an object");
+    }
+    const originalImageUrls = savedDoc.metadata.originalImageUrls;
+    expect(Array.isArray(originalImageUrls)).toBe(true);
+    if (!Array.isArray(originalImageUrls)) {
+      throw new Error("Expected metadata.originalImageUrls to be an array");
+    }
+    expect(originalImageUrls).toHaveLength(1);
+    const firstOriginalImageUrl = firstItem(
+      originalImageUrls,
+      "Expected one original image url in metadata"
+    );
+    expect(typeof firstOriginalImageUrl).toBe("string");
+    if (typeof firstOriginalImageUrl !== "string") {
+      throw new Error("Expected original image url to be a string");
+    }
+    expect(firstOriginalImageUrl).toMatch(/^\/api\/uploads\//);
   });
 
   it("should delete source document and associated ledger entries", async () => {
@@ -369,14 +403,22 @@ describe("SourceDocument Actions", () => {
       includeEntries: true,
     });
 
-    const foundDoc = result.items.find((d) => d.id === docId) as unknown as {
-      id: string;
-      ledgerEntries: { category?: { id: string } }[];
-    };
+    const foundDoc = result.items.find((d) => d.id === docId);
     expect(foundDoc).toBeDefined();
-    expect(foundDoc?.ledgerEntries).toHaveLength(1);
-    expect(foundDoc?.ledgerEntries?.[0].category).toBeDefined();
-    expect(foundDoc?.ledgerEntries?.[0].category?.id).toBe(testCategoryId);
+    if (foundDoc == null) {
+      throw new Error("Expected source document to be returned");
+    }
+    expect(Array.isArray(foundDoc.ledgerEntries)).toBe(true);
+    if (!Array.isArray(foundDoc.ledgerEntries)) {
+      throw new Error("Expected source document ledgerEntries to be included");
+    }
+    expect(foundDoc.ledgerEntries).toHaveLength(1);
+    const firstLedgerEntry = firstItem(
+      foundDoc.ledgerEntries,
+      "Expected one ledger entry relation on source document"
+    );
+    expect(firstLedgerEntry.category).toBeDefined();
+    expect(firstLedgerEntry.category?.id).toBe(testCategoryId);
   });
 
   it("should filter by entryDate not createdAt", async () => {
