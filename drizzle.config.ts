@@ -31,7 +31,7 @@ export default defineConfig({
     "./src/persistence/schema/task-queue.ts",
     "./src/persistence/relations.ts",
   ],
-  out: "./src/lib/db/migrations",
+  out: "./src/persistence/migrations",
   dialect: "sqlite",
   dbCredentials: {
     url: process.env.DATABASE_URL ?? "sqlite.db",

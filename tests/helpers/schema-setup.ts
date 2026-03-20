@@ -28,7 +28,7 @@ export async function createTestSchema(
 
   // Run migrations
   // Adjust path if needed. Tests run from project root?
-  await migrate(db, { migrationsFolder: "src/lib/db/migrations" });
+  await migrate(db, { migrationsFolder: "src/persistence/migrations" });
 }
 
 // Helper to create a test user and return the user ID
