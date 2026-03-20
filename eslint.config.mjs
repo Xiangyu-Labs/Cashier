@@ -325,11 +325,22 @@ function createApplicationLayerBoundaryRule(currentModule) {
 
 function createLedgerContractsBoundaryOptions() {
   const baseOptions = createCrossModuleBoundaryOptions("ledger");
+  const disallowedSourceDocumentEntrypoints = MODULE_PUBLIC_ENTRYPOINTS["source-document"]
+    .filter((entrypoint) => entrypoint !== "contracts")
+    .map((entrypoint) => ({
+      name: `@/modules/source-document/${entrypoint}`,
+      message:
+        'Ledger contracts may import source-document only via "@/modules/source-document/contracts".',
+    }));
+
   return {
     ...baseOptions,
-    paths: baseOptions.paths.filter(
-      (restriction) => restriction.name !== "@/modules/source-document/contracts"
-    ),
+    paths: [
+      ...baseOptions.paths.filter(
+        (restriction) => restriction.name !== "@/modules/source-document/contracts"
+      ),
+      ...disallowedSourceDocumentEntrypoints,
+    ],
     patterns: [
       ...baseOptions.patterns.filter(
         (restriction) =>

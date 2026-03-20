@@ -375,6 +375,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects source-document query imports from ledger contracts file", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getSourceDocuments } from "@/modules/source-document/queries";
+        export const leak = getSourceDocuments;
+      `,
+      "src/modules/ledger/contracts.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects cross-module server-action deep imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `
