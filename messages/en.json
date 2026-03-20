@@ -216,6 +216,7 @@
     "uploadError": "Failed to submit",
     "retrySuccess": "Retry submitted",
     "retryError": "Failed to retry",
+    "imageTooLarge": "Image too large: {fileName}. Please use a smaller image.",
     "editImage": "Edit image"
   },
   "SourceDocumentEditRetryDialog": {

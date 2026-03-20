@@ -216,6 +216,7 @@
     "uploadError": "提交失败",
     "retrySuccess": "重试已提交",
     "retryError": "重试失败",
+    "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。",
     "editImage": "编辑图片"
   },
   "SourceDocumentEditRetryDialog": {
