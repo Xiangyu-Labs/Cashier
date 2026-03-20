@@ -1,77 +1,16 @@
-import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
-
-export type SourceDocumentEntryCategoryDto = {
-  id: string;
-  ledgerId: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  sortOrder: number;
-  isEditable: boolean;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-};
-
-export type SourceDocumentLedgerEntryDto = {
-  id: string;
-  ledgerId: string;
-  categoryId: string | null;
-  sourceDocumentId: string | null;
-  amount: string;
-  currency: string | null;
-  itemName: string;
-  description: string | null;
-  convertedAmount: string | null;
-  exchangeRate: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  category?: SourceDocumentEntryCategoryDto | null;
-};
-
-export type SourceDocumentDto = {
-  id: string;
-  ledgerId: string;
-  title: string | null;
-  text: string | null;
-  imageUrls: string[];
-  status: SourceDocumentStatusType;
-  type: SourceDocumentTypeValue;
-  anomalyReason: string | null;
-  entryDate: string | null;
-  metadata: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  ledgerEntries?: SourceDocumentLedgerEntryDto[];
-  hasImages?: boolean;
-};
-
-// Flat list payload used by source-document collection queries and list caches.
-export type SourceDocumentListItemDto = Omit<
+export type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
+export type {
+  SourceDocumentCollectionDto,
   SourceDocumentDto,
-  "text" | "imageUrls" | "metadata" | "ledgerEntries" | "hasImages"
-> & {
-  text: null;
-  imageUrls: [];
-  metadata: Record<string, never>;
-  ledgerEntries?: SourceDocumentLedgerEntryDto[];
-  hasImages: boolean;
-};
-
-// Light detail payload used for detail prefetch without carrying image arrays.
-export type SourceDocumentLightDto = Omit<
-  SourceDocumentDto,
-  "ledgerEntries" | "imageUrls" | "hasImages"
-> & {
-  hasImages: boolean;
-};
-
-export interface SourceDocumentGroupDto {
-  sourceDocument: SourceDocumentListItemDto;
-  ledgerEntries: SourceDocumentLedgerEntryDto[];
-}
+  SourceDocumentEntryCategoryDto,
+  SourceDocumentFullDto,
+  SourceDocumentGroupDto,
+  SourceDocumentLedgerEntryDto,
+  SourceDocumentLightDto,
+  SourceDocumentLightWithEntriesDto,
+  SourceDocumentListItemDto,
+  SourceDocumentPageDto,
+} from "./document-contracts";
 
 export interface CreateSourceDocumentInput {
   text?: string;
@@ -112,29 +51,6 @@ export interface PendingSourceDocumentsResponseDto {
     failedCount: number;
     total: number;
   };
-}
-
-export interface SourceDocumentPageDto {
-  items: SourceDocumentListItemDto[];
-  nextCursor: string | null;
-}
-
-export interface SourceDocumentCollectionDto {
-  items: SourceDocumentListItemDto[];
-  hasMore: boolean;
-  total: number;
-}
-
-export interface SourceDocumentFullDto {
-  id: string;
-  text: string | null;
-  imageUrls: string[];
-  status: SourceDocumentStatusType;
-  createdAt: string;
-}
-
-export interface SourceDocumentLightWithEntriesDto extends SourceDocumentLightDto {
-  ledgerEntries: SourceDocumentLedgerEntryDto[];
 }
 
 export interface UpdateSourceDocumentResultDto {

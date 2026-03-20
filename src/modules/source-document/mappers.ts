@@ -54,9 +54,19 @@ export function serializeSourceDocument(
 }
 
 export function serializeSourceDocumentLight(doc: SourceDocument): SourceDocumentLightDto {
-  const { imageUrls: _imageUrls, ...lightDoc } = mapSourceDocumentDto(doc);
   return {
-    ...lightDoc,
-    hasImages: lightDoc.hasImages ?? false,
+    id: doc.id,
+    ledgerId: doc.ledgerId,
+    title: doc.title,
+    text: doc.text,
+    status: doc.status,
+    type: doc.type,
+    anomalyReason: doc.anomalyReason,
+    entryDate: doc.entryDate,
+    metadata: (doc.metadata ?? {}) as Record<string, unknown>,
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
+    deletedAt: doc.deletedAt?.toISOString() ?? null,
+    hasImages: (doc.imageUrls?.length ?? 0) > 0,
   };
 }

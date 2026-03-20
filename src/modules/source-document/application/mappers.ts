@@ -117,18 +117,21 @@ export function mapSourceDocumentListItemDto(
   doc: SourceDocument,
   ledgerEntries?: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentListItemDto {
-  const dto = mapSourceDocumentDto(doc, {
-    text: null,
-    imageUrls: [],
-    metadata: {},
-  });
-
   return {
-    ...dto,
+    id: doc.id,
+    ledgerId: doc.ledgerId,
+    title: doc.title,
     text: null,
     imageUrls: [],
+    status: doc.status,
+    type: doc.type,
+    anomalyReason: doc.anomalyReason,
+    entryDate: doc.entryDate,
     metadata: {},
-    hasImages: dto.hasImages ?? false,
+    createdAt: toIso(doc.createdAt)!,
+    updatedAt: toIso(doc.updatedAt)!,
+    deletedAt: toIso(doc.deletedAt),
+    hasImages: (doc.imageUrls?.length ?? 0) > 0,
     ...(ledgerEntries !== undefined ? { ledgerEntries } : {}),
   };
 }
