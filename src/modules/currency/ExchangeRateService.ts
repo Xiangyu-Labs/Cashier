@@ -1,21 +1,14 @@
 import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { format } from "date-fns";
+import { fetchWithRetry, formatExchangeRateDate } from "./exchange-rate-helpers";
+import type {
+  ExchangeRates,
+  ExchangeRatesStoredEvent,
+  ExchangeRatesStoredHandler,
+} from "./exchange-rate-types";
 
-export interface ExchangeRates {
-  base: string;
-  date: string;
-  rates: Record<string, number>;
-}
-
-export interface ExchangeRatesStoredEvent {
-  date: string;
-  base: string;
-  rates: Record<string, number>;
-}
-
-type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
+export type { ExchangeRates, ExchangeRatesStoredEvent } from "./exchange-rate-types";
 
 export class ExchangeRateService {
   private static readonly API_BASE_URL = "https://api.frankfurter.app";
@@ -31,7 +24,7 @@ export class ExchangeRateService {
    * 3. Return rates.
    */
   static async getRates(date?: Date | string): Promise<ExchangeRates> {
-    const targetDateStr = this.formatDate(date ?? new Date());
+    const targetDateStr = formatExchangeRateDate(date ?? new Date());
 
     // 1. Try Cache
     const cached = await db.query.currencyRates.findFirst({
@@ -78,7 +71,7 @@ export class ExchangeRateService {
    */
   private static async fetchAndStore(targetDateStr: string): Promise<ExchangeRates> {
     try {
-      const response = await this.fetchWithRetry(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
+      const response = await fetchWithRetry(`${this.API_BASE_URL}/${targetDateStr}?base=EUR`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -115,18 +108,6 @@ export class ExchangeRateService {
     }
   }
 
-  private static async fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await fetch(url, { signal: AbortSignal.timeout(5000) });
-      } catch (err) {
-        if (i === retries - 1) throw err;
-        await new Promise((res) => setTimeout(res, delay * Math.pow(2, i)));
-      }
-    }
-    throw new Error("Unreachable");
-  }
-
   /**
    * Convert amount from one currency to another using specific date's rates.
    */
@@ -159,14 +140,6 @@ export class ExchangeRateService {
     return result;
   }
 
-  private static formatDate(date: Date | string): string {
-    if (typeof date === "string") {
-      const [datePart] = date.split("T");
-      return datePart ?? date;
-    }
-    return format(date, "yyyy-MM-dd");
-  }
-
   private static async notifyRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
     if (this.ratesStoredHandlers.size === 0) {
       return;
@@ -190,7 +163,9 @@ export class ExchangeRateService {
     if (items.length === 0) return [];
 
     // 1. Collect all unique dates
-    const uniqueDates = [...new Set(items.map((i) => this.formatDate(i.date ?? new Date())))];
+    const uniqueDates = [
+      ...new Set(items.map((item) => formatExchangeRateDate(item.date ?? new Date()))),
+    ];
 
     // 2. Pre-load all rates in parallel (populates cache)
     await Promise.all(uniqueDates.map((date) => this.getRates(date)));
