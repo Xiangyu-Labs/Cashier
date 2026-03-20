@@ -121,9 +121,9 @@ export function useTaskQueueMutations(ledgerId: string) {
           return {
             ...old,
             items: old.items.map((item) =>
-              ids.includes(item.id) &&
               item.sourceDocumentId !== undefined &&
-              item.sourceDocumentId !== ""
+              item.sourceDocumentId !== "" &&
+              ids.includes(item.sourceDocumentId)
                 ? { ...item, status: "pending" as const }
                 : item
             ),
