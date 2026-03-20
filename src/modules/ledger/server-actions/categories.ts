@@ -14,8 +14,8 @@ import { mapEntryCategoryDto } from "@/modules/ledger/mappers";
 import { createEntryCategory } from "@/modules/ledger/application/use-cases/create-entry-category";
 import { deleteEntryCategory } from "@/modules/ledger/application/use-cases/delete-entry-category";
 import { reorderEntryCategories } from "@/modules/ledger/application/use-cases/reorder-entry-categories";
-import { listEntryCategoriesWithCount } from "@/modules/ledger/application/use-cases/list-entry-categories-with-count";
 import { getUncategorizedEntryCount } from "@/modules/ledger/application/use-cases/get-uncategorized-entry-count";
+import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import {
   createEntryCategoryInputSchema,
   entryCategoryIdSchema,
@@ -80,10 +80,6 @@ export const reorderEntryCategoriesAction = withLedgerAccess(
     };
   }
 );
-
-export async function listEntryCategories(ledgerId: string) {
-  return listEntryCategoriesWithCount(ledgerId);
-}
 
 export const getEntryCategoriesAction = withLedgerAccess(listEntryCategories);
 

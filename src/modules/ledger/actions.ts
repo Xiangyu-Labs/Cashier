@@ -6,7 +6,6 @@ export { createLedgerAction } from "./server-actions/create";
 export { updateLedgerAction } from "./server-actions/update";
 export { deleteLedgerAction } from "./server-actions/delete";
 export {
-  listEntryCategories,
   getEntryCategoriesAction,
   createEntryCategoryAction,
   updateEntryCategoryAction,
@@ -15,7 +14,6 @@ export {
   getUncategorizedCountAction,
 } from "./server-actions/categories";
 export {
-  listLedgerEntries,
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
@@ -36,4 +34,9 @@ export {
   deleteServiceCredentialAction,
   validateServiceCredential,
 } from "./server-actions/credentials";
-export { getLedgerStatsAction, calculateLedgerStats } from "./server-actions/stats";
+export { getLedgerStatsAction } from "./server-actions/stats";
+export {
+  calculateLedgerStats,
+  listEntryCategories,
+  listLedgerEntries,
+} from "./queries";

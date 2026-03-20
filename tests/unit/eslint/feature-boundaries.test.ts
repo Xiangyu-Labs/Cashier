@@ -111,7 +111,7 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("allows ledger actions imports from dedicated public entrypoints in workspace application files", async () => {
+  it("rejects ledger actions imports from dedicated public entrypoints in workspace application files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { getLedgerAction } from "@/modules/ledger/actions";
@@ -120,7 +120,7 @@ describe("boundary lint", { timeout: 30000 }, () => {
       "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
     );
 
-    expect(messages).toHaveLength(0);
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects workspace application deep imports from app files", async () => {
@@ -171,11 +171,23 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("allows source-document action imports from dedicated public entrypoints in modules", async () => {
+  it("rejects source-document action imports from dedicated public entrypoints in workspace application files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { getPendingSourceDocumentsAction } from "@/modules/source-document/actions";
         export const value = getPendingSourceDocumentsAction;
+      `,
+      "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows source-document query imports from dedicated public entrypoints in workspace application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getPendingSourceDocuments } from "@/modules/source-document/queries";
+        export const value = getPendingSourceDocuments;
       `,
       "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
     );
@@ -406,6 +418,30 @@ describe("boundary lint", { timeout: 30000 }, () => {
         export const value = getEnhancedStats;
       `,
       "src/app/[locale]/(protected)/ledger/[id]/page.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects stats action imports from dedicated public entrypoints in workspace application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getEnhancedStats } from "@/modules/stats/actions";
+        export const value = getEnhancedStats;
+      `,
+      "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows stats query imports from dedicated public entrypoints in workspace application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getEnhancedStats } from "@/modules/stats/queries";
+        export const value = getEnhancedStats;
+      `,
+      "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
     );
 
     expect(messages).toHaveLength(0);

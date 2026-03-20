@@ -1,43 +1,59 @@
-import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
 import {
-  getLedgerAction,
-  getLedgersAction,
-  getEntryCategoriesAction,
-  getLedgerStatsAction,
-  getLedgerEntriesAction,
-} from "@/modules/ledger/actions";
-import { getEnhancedStats } from "@/modules/stats/actions";
-import {
-  getPendingSourceDocumentsAction,
-  getAllSourceDocumentsAction,
-} from "@/modules/source-document/actions";
+  calculateLedgerStats,
+  getLedgers,
+  listEntryCategories,
+  listLedgerEntries,
+} from "@/modules/ledger/queries";
+import { getEnhancedStats } from "@/modules/stats/queries";
+import { getAllSourceDocuments, getPendingSourceDocuments } from "@/modules/source-document/queries";
+import { requireLedgerAccess } from "@/modules/auth/access";
 import {
   getDetailsInitialQueryState,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
+import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
-import type { LedgerPageBootstrapDto } from "@/modules/workspace/contracts";
+import { NotFoundError, UnauthorizedError } from "@/lib/errors";
+
+interface LedgerPageBootstrapResult {
+  dehydratedState: DehydratedState;
+  initialStatsDate: Date;
+}
 
 export async function getLedgerPageBootstrap(input: {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
-}): Promise<LedgerPageBootstrapDto | null> {
-  const queryClient = new QueryClient();
-  const ledger = await queryClient.fetchQuery({
-    queryKey: queryKeys.ledger(input.ledgerId),
-    queryFn: () => getLedgerAction(input.ledgerId),
-    staleTime: LEDGER.STALE_TIME_MS,
-  });
+}): Promise<LedgerPageBootstrapResult | null> {
+  let userId: string;
+  let ledgerDto: LedgerDto;
 
-  if (ledger == null) {
-    return null;
+  try {
+    const { userId: authorizedUserId, ledger } = await requireLedgerAccess(input.ledgerId);
+    userId = authorizedUserId;
+    ledgerDto = {
+      id: ledger.id,
+      userId: ledger.userId,
+      metadata: ledger.metadata,
+      createdAt: ledger.createdAt.toISOString(),
+      updatedAt: ledger.updatedAt.toISOString(),
+      deletedAt: ledger.deletedAt?.toISOString() ?? null,
+    };
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+      return null;
+    }
+    throw error;
   }
 
-  const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
+
+  const mainCurrency = ledgerDto.metadata?.settings?.mainCurrency ?? "CNY";
   const initialStatsDate = new Date();
   const detailsState = getDetailsInitialQueryState(input.periodParams);
   const statsState = getStatsInitialQueryState(initialStatsDate);
@@ -45,19 +61,19 @@ export async function getLedgerPageBootstrap(input: {
   await Promise.all([
     queryClient.prefetchQuery({
       queryKey: queryKeys.entryCategories(input.ledgerId),
-      queryFn: () => getEntryCategoriesAction(input.ledgerId),
+      queryFn: () => listEntryCategories(input.ledgerId),
       staleTime: LEDGER.STALE_TIME_MS,
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.ledgers(),
-      queryFn: () => getLedgersAction(),
+      queryFn: () => getLedgers(userId),
       staleTime: LEDGER.STALE_TIME_MS,
     }),
     ...(input.initialTab === "stream"
       ? [
           queryClient.prefetchQuery({
             queryKey: queryKeys.sourceDocuments(input.ledgerId, "pending"),
-            queryFn: () => getPendingSourceDocumentsAction(input.ledgerId),
+            queryFn: () => getPendingSourceDocuments(input.ledgerId),
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
           queryClient.prefetchQuery({
@@ -68,7 +84,7 @@ export async function getLedgerPageBootstrap(input: {
               detailsState.endDateStr
             ),
             queryFn: () =>
-              getAllSourceDocumentsAction(input.ledgerId, {
+              getAllSourceDocuments(input.ledgerId, {
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
@@ -85,7 +101,7 @@ export async function getLedgerPageBootstrap(input: {
               null
             ),
             queryFn: () =>
-              getLedgerStatsAction(
+              calculateLedgerStats(
                 input.ledgerId,
                 detailsState.startDateStr ?? undefined,
                 detailsState.endDateStr ?? undefined,
@@ -106,7 +122,7 @@ export async function getLedgerPageBootstrap(input: {
               detailsState.filterKey
             ),
             queryFn: () =>
-              getLedgerStatsAction(
+              calculateLedgerStats(
                 input.ledgerId,
                 detailsState.startDateStr ?? undefined,
                 detailsState.endDateStr ?? undefined,
@@ -124,7 +140,7 @@ export async function getLedgerPageBootstrap(input: {
               detailsState.filterKey
             ),
             queryFn: ({ pageParam }) =>
-              getLedgerEntriesAction(input.ledgerId, {
+              listLedgerEntries(input.ledgerId, {
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
@@ -133,7 +149,7 @@ export async function getLedgerPageBootstrap(input: {
                 limit: 50,
               }),
             initialPageParam: undefined as string | undefined,
-            getNextPageParam: (lastPage: Awaited<ReturnType<typeof getLedgerEntriesAction>>) =>
+            getNextPageParam: (lastPage: Awaited<ReturnType<typeof listLedgerEntries>>) =>
               lastPage.nextCursor,
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),

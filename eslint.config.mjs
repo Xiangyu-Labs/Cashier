@@ -33,11 +33,12 @@ const MODULE_PUBLIC_ENTRYPOINTS = {
     "contract-schemas",
     "contracts",
     "hooks",
+    "queries",
     "types",
     "ui",
     "use-cases",
   ],
-  stats: ["actions", "contracts", "ui"],
+  stats: ["actions", "contracts", "queries", "ui"],
   "task-queue": ["actions", "ui"],
   workspace: [
     "contracts",
@@ -205,6 +206,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
 
 function createApplicationLayerBoundaryRule(currentModule) {
   const baseOptions = createCrossModuleBoundaryOptions(currentModule);
+  const disallowedModules = moduleNames.filter((moduleName) => moduleName !== currentModule);
   return [
     "error",
     {
@@ -231,6 +233,15 @@ function createApplicationLayerBoundaryRule(currentModule) {
           ],
           message:
             "Application layer must not depend on actions or server-actions. Move shared logic into application/services or use-cases instead.",
+        },
+        {
+          group: disallowedModules.flatMap((moduleName) => [
+            `@/modules/${moduleName}/actions`,
+            `@/modules/${moduleName}/actions/**`,
+            `@/modules/${moduleName}/server-actions/**`,
+          ]),
+          message:
+            "Application layer must not depend on cross-module actions or server-actions. Use the target module's query/use-case/contracts public APIs instead.",
         },
       ],
     },
