@@ -55,6 +55,32 @@ describe("getLedgerEntryAction", () => {
     expect(result!.ledgerId).toBe(ledgerData.id);
   });
 
+  it("should strip large source document fields from the entry detail payload", async () => {
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const sourceDocData = createSourceDocumentData(ledgerData.id, {
+      imageUrls: ["https://example.com/original.png"],
+      metadata: {
+        note: "keep-me",
+        visionDescription: "large vision summary",
+        originalImageUrls: ["https://example.com/original.png"],
+      },
+    });
+    await db.insert(sourceDocuments).values(sourceDocData);
+
+    const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
+    await db.insert(ledgerEntries).values(entryData);
+
+    const result = await getLedgerEntryAction(entryData.id);
+
+    expect(result?.sourceDocument).toBeDefined();
+    expect(result?.sourceDocument?.hasImages).toBe(true);
+    expect(result?.sourceDocument?.imageUrls).toEqual([]);
+    expect(result?.sourceDocument?.metadata).toEqual({ note: "keep-me" });
+  });
+
   it("should return null when entry does not exist", async () => {
     const result = await getLedgerEntryAction(uuidv4());
     expect(result).toBeNull();

@@ -9,4 +9,11 @@ describe("ledger action export boundaries", () => {
 
     expect(source).not.toMatch(/from ['"]\.\/queries['"]/);
   });
+
+  it("does not re-export service credential validation from the client-importable actions entrypoint", () => {
+    const actionsModulePath = path.join(process.cwd(), "src/modules/ledger/actions.ts");
+    const source = readFileSync(actionsModulePath, "utf8");
+
+    expect(source).not.toMatch(/validateServiceCredential/);
+  });
 });

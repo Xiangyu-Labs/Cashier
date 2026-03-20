@@ -111,6 +111,54 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("rejects ledger server-actions importing db directly", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { db } from "@/lib/db";
+        export const leak = db;
+      `,
+      "src/modules/ledger/server-actions/settings.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects ledger server-actions importing persistence directly", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { ledgers } from "@/persistence";
+        export const leak = ledgers;
+      `,
+      "src/modules/ledger/server-actions/export.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects ledger server-actions importing next cache directly", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { updateTag } from "next/cache";
+        export const leak = updateTag;
+      `,
+      "src/modules/ledger/server-actions/update.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects ledger server-actions importing crypto directly", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import crypto from "crypto";
+        export const leak = crypto;
+      `,
+      "src/modules/ledger/server-actions/credentials.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects ledger actions imports from dedicated public entrypoints in workspace application files", async () => {
     const messages = await lintRestrictedImports(
       `

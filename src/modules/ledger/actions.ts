@@ -1,7 +1,4 @@
-export {
-  getLedgerAction,
-  getLedgersAction,
-} from "./server-actions/get";
+export { getLedgerAction, getLedgersAction } from "./server-actions/get";
 export { createLedgerAction } from "./server-actions/create";
 export { updateLedgerAction } from "./server-actions/update";
 export { deleteLedgerAction } from "./server-actions/delete";
@@ -32,6 +29,5 @@ export {
   getServiceCredentialsAction,
   createServiceCredentialAction,
   deleteServiceCredentialAction,
-  validateServiceCredential,
 } from "./server-actions/credentials";
 export { getLedgerStatsAction } from "./server-actions/stats";

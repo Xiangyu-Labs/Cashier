@@ -25,7 +25,16 @@ const moduleNames = [
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
 
 const MODULE_PUBLIC_ENTRYPOINTS = {
-  auth: ["access", "actions", "constants", "contracts", "errors", "queries", "services", "use-cases"],
+  auth: [
+    "access",
+    "actions",
+    "constants",
+    "contracts",
+    "errors",
+    "queries",
+    "services",
+    "use-cases",
+  ],
   currency: ["actions", "client", "events", "ui", "use-cases"],
   ledger: ["actions", "contract-schemas", "contracts", "hooks", "queries", "ui", "use-cases"],
   "source-document": [
@@ -247,6 +256,43 @@ function createApplicationLayerBoundaryRule(currentModule) {
           ]),
           message:
             "Application layer must not depend on cross-module actions or server-actions. Use the target module's query/use-case/contracts public APIs instead.",
+        },
+      ],
+    },
+  ];
+}
+
+function createLedgerServerActionBoundaryRule() {
+  return [
+    "error",
+    {
+      paths: [
+        {
+          name: "@/lib/db",
+          message:
+            "Ledger server-actions must not depend on db directly. Move persistence access into ledger application queries or use-cases.",
+        },
+        {
+          name: "@/lib/db/scoped-query",
+          message:
+            "Ledger server-actions must not build scoped queries directly. Move persistence access into ledger application queries or use-cases.",
+        },
+        {
+          name: "next/cache",
+          message:
+            "Ledger server-actions must not invalidate cache directly. Move cache invalidation into ledger application use-cases.",
+        },
+        {
+          name: "crypto",
+          message:
+            "Ledger server-actions must not generate credentials directly. Move credential generation into ledger application use-cases.",
+        },
+      ],
+      patterns: [
+        {
+          group: ["@/persistence", "@/persistence/**"],
+          message:
+            "Ledger server-actions must not depend on persistence directly. Move data access into ledger application queries or use-cases.",
         },
       ],
     },
@@ -494,6 +540,12 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": createApplicationLayerBoundaryRule(moduleName),
     },
   })),
+  {
+    files: ["src/modules/ledger/server-actions/**/*.ts"],
+    rules: {
+      "no-restricted-imports": createLedgerServerActionBoundaryRule(),
+    },
+  },
   ...moduleNames.map((moduleName) => ({
     files: [`src/modules/${moduleName}/contracts.ts`, `src/modules/${moduleName}/types.ts`],
     rules: {

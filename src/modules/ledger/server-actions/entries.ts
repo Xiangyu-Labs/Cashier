@@ -1,9 +1,5 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
-import { ledgerEntries } from "@/persistence";
-import { inArray, and } from "drizzle-orm";
 import { withLedgerAccess } from "@/lib/auth-actions";
 import type {
   BatchLedgerEntriesMutationResultDto,
@@ -11,11 +7,13 @@ import type {
   LedgerEntryDto,
 } from "@/modules/ledger/contracts";
 import {
+  batchDeleteLedgerEntries,
   batchUpdateLedgerEntries,
   createLedgerEntryWithConversion,
+  deleteLedgerEntry,
   updateLedgerEntryWithConversion,
-} from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
+} from "@/modules/ledger/use-cases";
+import { listLedgerEntries } from "@/modules/ledger/queries";
 import {
   batchUpdateLedgerEntriesInputSchema,
   createLedgerEntryInputSchema,
@@ -67,17 +65,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
 export const deleteLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto> => {
     const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
-    const q = forLedger(ledgerEntries, ledgerId);
-    const deletedEntries = await db
-      .update(ledgerEntries)
-      .set(q.softDelete)
-      .where(q.whereId(validatedLedgerEntryId))
-      .returning({ id: ledgerEntries.id });
-
-    return {
-      ledgerEntryId: validatedLedgerEntryId,
-      deleted: deletedEntries.length > 0,
-    };
+    return deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
   }
 );
 
@@ -87,18 +75,7 @@ export const batchDeleteLedgerEntriesAction = withLedgerAccess(
     ledgerEntryIds: string[]
   ): Promise<BatchLedgerEntriesMutationResultDto> => {
     const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
-    const q = forLedger(ledgerEntries, ledgerId);
-
-    const deletedEntries = await db
-      .update(ledgerEntries)
-      .set(q.softDelete)
-      .where(and(q.whereActive, inArray(ledgerEntries.id, validatedLedgerEntryIds)))
-      .returning({ id: ledgerEntries.id });
-
-    return {
-      ledgerEntryIds: validatedLedgerEntryIds,
-      affectedCount: deletedEntries.length,
-    };
+    return batchDeleteLedgerEntries(ledgerId, validatedLedgerEntryIds);
   }
 );
 

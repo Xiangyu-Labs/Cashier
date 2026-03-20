@@ -5,54 +5,49 @@ const {
   updateLedgerEntryWithConversionMock,
   batchUpdateLedgerEntriesMock,
   calculateLedgerEntryStatsMock,
-  createDefaultLedgerMock,
-  mapLedgerDtoMock,
-  findLedgerMock,
+  createLedgerMock,
 } = vi.hoisted(() => ({
   createLedgerEntryWithConversionMock: vi.fn(),
   updateLedgerEntryWithConversionMock: vi.fn(),
   batchUpdateLedgerEntriesMock: vi.fn(),
   calculateLedgerEntryStatsMock: vi.fn(),
-  createDefaultLedgerMock: vi.fn(),
-  mapLedgerDtoMock: vi.fn(),
-  findLedgerMock: vi.fn(),
+  createLedgerMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-actions", () => ({
   withLedgerAccess: <TArgs extends unknown[], TResult>(
     handler: (ledgerId: string, ...args: TArgs) => TResult
   ) => handler,
-  withAuth: <TArgs extends unknown[], TResult>(
-    handler: (userId: string, ...args: TArgs) => TResult
-  ) => (...args: TArgs) => handler("user-1", ...args),
+  withAuth:
+    <TArgs extends unknown[], TResult>(handler: (userId: string, ...args: TArgs) => TResult) =>
+    (...args: TArgs) =>
+      handler("user-1", ...args),
 }));
 
-vi.mock("@/lib/db", () => ({
-  db: {
-    query: {
-      ledgers: {
-        findFirst: findLedgerMock,
-      },
-    },
-  },
-}));
-
-vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
-  createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
-  updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
+vi.mock("@/modules/ledger/use-cases", () => ({
+  batchDeleteLedgerEntries: vi.fn(),
   batchUpdateLedgerEntries: batchUpdateLedgerEntriesMock,
+  createDefaultLedger: vi.fn(),
+  createEntryCategory: vi.fn(),
+  createLedger: createLedgerMock,
+  createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
+  createServiceCredential: vi.fn(),
+  deleteEntryCategory: vi.fn(),
+  deleteLedger: vi.fn(),
+  deleteLedgerEntry: vi.fn(),
+  deleteServiceCredential: vi.fn(),
+  exportLedgerEntries: vi.fn(),
+  recalculateEntriesConvertedAmount: vi.fn(),
+  reorderEntryCategories: vi.fn(),
+  submitAutoCategorize: vi.fn(),
+  submitBatchCategorize: vi.fn(),
+  updateEntryCategory: vi.fn(),
+  updateLedger: vi.fn(),
+  updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
 }));
 
 vi.mock("@/modules/ledger/application/queries/calculate-ledger-entry-stats", () => ({
   calculateLedgerEntryStats: calculateLedgerEntryStatsMock,
-}));
-
-vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
-  createDefaultLedger: createDefaultLedgerMock,
-}));
-
-vi.mock("@/modules/ledger/mappers", () => ({
-  mapLedgerDto: mapLedgerDtoMock,
 }));
 
 import {
@@ -75,16 +70,14 @@ describe("ledger server action omission semantics", () => {
       trend: [],
       byCategory: [],
     });
-    findLedgerMock.mockResolvedValue(null);
-    createDefaultLedgerMock.mockResolvedValue({
+    createLedgerMock.mockResolvedValue({
       id: "ledger-1",
       userId: "user-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       deletedAt: null,
       metadata: null,
     });
-    mapLedgerDtoMock.mockImplementation((value: unknown) => value);
   });
 
   it("omits absent optional create-entry fields", async () => {
@@ -127,11 +120,9 @@ describe("ledger server action omission semantics", () => {
   });
 
   it("omits absent optional batch-update fields", async () => {
-    await batchUpdateLedgerEntriesAction(
-      "ledger-1",
-      ["123e4567-e89b-42d3-a456-426614174002"],
-      { amount: 9.99 }
-    );
+    await batchUpdateLedgerEntriesAction("ledger-1", ["123e4567-e89b-42d3-a456-426614174002"], {
+      amount: 9.99,
+    });
 
     const payload = batchUpdateLedgerEntriesMock.mock.calls[0]?.[0] as Record<string, unknown>;
 
@@ -163,10 +154,10 @@ describe("ledger server action omission semantics", () => {
   it("omits locale when creating a ledger without aiLanguage", async () => {
     await createLedgerAction({});
 
-    const firstCall = createDefaultLedgerMock.mock.calls[0];
+    const firstCall = createLedgerMock.mock.calls[0];
     expect(firstCall).toBeDefined();
     if (firstCall == null) {
-      throw new Error("Expected createDefaultLedger to be called");
+      throw new Error("Expected createLedger to be called");
     }
     const payload = firstCall[0] as Record<string, unknown>;
 
