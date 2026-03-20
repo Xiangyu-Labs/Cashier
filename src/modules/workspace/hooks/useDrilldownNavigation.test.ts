@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useDrilldownNavigation } from "@/modules/workspace/hooks";
+import { useDrilldownNavigation } from "./useDrilldownNavigation";
 
 // Mock next/router
 const mockReplace = vi.fn();

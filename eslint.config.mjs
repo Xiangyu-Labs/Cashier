@@ -58,16 +58,7 @@ const MODULE_PUBLIC_ENTRYPOINTS = {
   ],
   stats: ["actions", "contracts", "queries", "ui"],
   "task-queue": ["actions", "ui"],
-  workspace: [
-    "contracts",
-    "hooks",
-    "ledger-url-navigation",
-    "ledger-url-params",
-    "queries",
-    "tabs",
-    "ui",
-    "use-cases",
-  ],
+  workspace: ["queries", "tabs", "ui", "use-cases"],
 };
 
 const SHARED_FACADE_IMPORT_RESTRICTIONS = [
@@ -80,6 +71,26 @@ const SHARED_FACADE_IMPORT_RESTRICTIONS = [
     name: "@/modules/currency/services",
     message:
       'Import currency capabilities from "@/modules/currency/use-cases" instead of reaching into service internals.',
+  },
+  {
+    name: "@/modules/workspace/contracts",
+    message:
+      'Import workspace capabilities from "@/modules/workspace/queries", "@/modules/workspace/tabs", "@/modules/workspace/ui", or "@/modules/workspace/use-cases" instead of the removed workspace contracts entrypoint.',
+  },
+  {
+    name: "@/modules/workspace/hooks",
+    message:
+      'Import workspace hooks via relative paths inside the workspace module instead of the removed workspace hooks public entrypoint.',
+  },
+  {
+    name: "@/modules/workspace/ledger-url-navigation",
+    message:
+      'Import workspace URL navigation helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-navigation public entrypoint.',
+  },
+  {
+    name: "@/modules/workspace/ledger-url-params",
+    message:
+      'Import workspace URL param helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-params public entrypoint.',
   },
 ];
 
@@ -450,6 +461,26 @@ const eslintConfig = defineConfig([
             ...createModuleRootImportRestrictions(moduleNames),
             ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
+            {
+              name: "@/modules/workspace/contracts",
+              message:
+                'Import workspace capabilities from "@/modules/workspace/queries", "@/modules/workspace/tabs", "@/modules/workspace/ui", or "@/modules/workspace/use-cases" instead of the removed workspace contracts entrypoint.',
+            },
+            {
+              name: "@/modules/workspace/hooks",
+              message:
+                'Import workspace hooks via relative paths inside the workspace module instead of the removed workspace hooks public entrypoint.',
+            },
+            {
+              name: "@/modules/workspace/ledger-url-navigation",
+              message:
+                'Import workspace URL navigation helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-navigation public entrypoint.',
+            },
+            {
+              name: "@/modules/workspace/ledger-url-params",
+              message:
+                'Import workspace URL param helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-params public entrypoint.',
+            },
           ],
           patterns: [
             {

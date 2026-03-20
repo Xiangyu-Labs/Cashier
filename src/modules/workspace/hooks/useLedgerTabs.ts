@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { updateLedgerSearchParams } from "@/modules/workspace/ledger-url-params";
-import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
+import { updateLedgerSearchParams } from "../ledger-url-params";
+import { replaceLedgerUrl } from "../ledger-url-navigation";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 
 interface UseLedgerTabsOptions {

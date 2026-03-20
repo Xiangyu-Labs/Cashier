@@ -723,16 +723,40 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("allows workspace hook imports from test files", async () => {
+  it("rejects workspace hook imports from test files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { useLedgerTabs } from "@/modules/workspace/hooks";
         export const value = useLedgerTabs;
       `,
-      "tests/unit/hooks/useLedgerTabs.test.ts"
+      "src/modules/ledger/ui/SettingsTab.tsx"
     );
 
-    expect(messages).toHaveLength(0);
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects workspace ledger-url-params imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { updateLedgerSearchParams } from "@/modules/workspace/ledger-url-params";
+        export const value = updateLedgerSearchParams;
+      `,
+      "src/modules/ledger/ui/SettingsTab.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects workspace contracts imports from cross-module app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import type { ResolveHomeResult } from "@/modules/workspace/contracts";
+        export type Value = ResolveHomeResult;
+      `,
+      "src/app/[locale]/(protected)/page.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects workspace initial query state imports from cross-module hook files", async () => {

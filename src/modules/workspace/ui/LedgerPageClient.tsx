@@ -23,12 +23,12 @@ import {
   getLedgersAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
-import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "@/modules/workspace/hooks";
-import { updateLedgerSearchParams } from "@/modules/workspace/ledger-url-params";
-import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
-import type { LedgerTab } from "@/modules/workspace/tabs";
 import { useTaskQueue } from "@/modules/task-queue/ui";
 import { Header } from "./Header";
+import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
+import { updateLedgerSearchParams } from "../ledger-url-params";
+import { replaceLedgerUrl } from "../ledger-url-navigation";
+import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 

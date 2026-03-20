@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { usePeriodFilter } from "@/modules/workspace/hooks";
+import { usePeriodFilter } from "./usePeriodFilter";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
 vi.mock("@/i18n/routing", () => ({

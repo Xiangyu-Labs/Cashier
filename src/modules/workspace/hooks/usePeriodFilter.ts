@@ -11,8 +11,8 @@ import type { EntryFilters } from "@/modules/ledger/ui";
 import {
   readLedgerFilterParams,
   updateLedgerSearchParams,
-} from "@/modules/workspace/ledger-url-params";
-import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
+} from "../ledger-url-params";
+import { replaceLedgerUrl } from "../ledger-url-navigation";
 
 export interface FilterParams {
   categoryId: string | null;

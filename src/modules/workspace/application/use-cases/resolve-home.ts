@@ -1,4 +1,4 @@
-import type { ResolveHomeResult } from "@/modules/workspace/contracts";
+import type { ResolveHomeResult } from "../../contracts";
 import { ensureUserLedger } from "./ensure-user-ledger";
 
 export async function resolveHome(input: {
