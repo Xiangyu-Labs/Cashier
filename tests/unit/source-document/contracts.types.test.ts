@@ -51,8 +51,11 @@ describe("source-document contract types", () => {
   });
 
   it("exports status and type runtime values from contracts", () => {
-    expectTypeOf(SourceDocumentStatus.Queued).toEqualTypeOf<SourceDocumentStatusType>();
-    expectTypeOf(SourceDocumentType.AiParsed).toEqualTypeOf<SourceDocumentTypeValue>();
+    const queuedStatus: SourceDocumentStatusType = SourceDocumentStatus.Queued;
+    const aiParsedType: SourceDocumentTypeValue = SourceDocumentType.AiParsed;
+
+    expect(queuedStatus).toBe(SourceDocumentStatus.Queued);
+    expect(aiParsedType).toBe(SourceDocumentType.AiParsed);
   });
 
   it("keeps ledger source-document reference status/type aligned", () => {

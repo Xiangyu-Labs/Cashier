@@ -1,3 +1,5 @@
+import type { SourceDocumentGroupDto } from "./document-contracts";
+
 export {
   SourceDocumentStatus,
   SourceDocumentType,

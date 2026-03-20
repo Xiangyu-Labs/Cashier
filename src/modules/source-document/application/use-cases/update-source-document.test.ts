@@ -11,8 +11,11 @@ const {
   const processImagesMock = vi.fn();
   const updateReturningMock = vi.fn();
   const updateWhereMock = vi.fn(() => ({ returning: updateReturningMock }));
-  const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-  const updateMock = vi.fn(() => ({ set: updateSetMock }));
+  const updateSetMock = vi.fn((payload: Record<string, unknown>) => ({
+    where: updateWhereMock,
+    payload,
+  }));
+  const updateMock = vi.fn((_table: unknown) => ({ set: updateSetMock }));
 
   return {
     sourceDocumentsFindFirstMock,
@@ -88,7 +91,11 @@ describe("updateSourceDocumentImages", () => {
     });
     expect(processImagesMock).toHaveBeenCalledTimes(1);
 
-    const updatePayload = updateSetMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const firstUpdateSetCall = updateSetMock.mock.calls[0];
+    if (firstUpdateSetCall == null) {
+      throw new Error("Expected update set call");
+    }
+    const [updatePayload] = firstUpdateSetCall;
     expect(updatePayload.imageUrls).toEqual([
       "https://cdn.example.com/new-image.jpg",
       "https://cdn.example.com/keep.jpg",

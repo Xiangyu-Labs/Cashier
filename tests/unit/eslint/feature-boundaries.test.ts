@@ -333,7 +333,7 @@ describe("boundary lint", { timeout: 30000 }, () => {
         import { replaceLedgerEntriesForSourceDocument } from "@/modules/ledger/use-cases";
         export const leak = replaceLedgerEntriesForSourceDocument;
       `,
-      "src/modules/source-document/application/tasks/parse-result-handler.ts"
+      "src/modules/source-document/application/parse-source-document/parse-result-handler.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);

@@ -73,7 +73,9 @@ describe("useSourceDocumentDetailMutations", () => {
     );
     expect(deleteCandidates).toHaveLength(1);
     const [deleteDocumentMutation] = deleteCandidates;
-    expect(deleteDocumentMutation).toBeDefined();
+    if (deleteDocumentMutation == null) {
+      throw new Error("Expected delete document mutation");
+    }
     expect(typeof deleteDocumentMutation.onOptimisticUpdate).toBe("function");
 
     const queryClient = new QueryClient();

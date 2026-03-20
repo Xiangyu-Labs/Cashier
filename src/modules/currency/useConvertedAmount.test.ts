@@ -4,10 +4,10 @@ import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useConvertedAmount } from "./useConvertedAmount";
 
-const mockConvertCurrencyForClient = vi.fn(async () => ({ converted: 42 }));
+const mockConvertCurrencyForClient = vi.hoisted(() => vi.fn(async () => ({ converted: 42 })));
 
 vi.mock("./client-convert", () => ({
-  convertCurrencyForClient: (...args: unknown[]) => mockConvertCurrencyForClient(...args),
+  convertCurrencyForClient: mockConvertCurrencyForClient,
 }));
 
 function createWrapper() {

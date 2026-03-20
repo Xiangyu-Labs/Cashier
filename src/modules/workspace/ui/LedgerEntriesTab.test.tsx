@@ -5,14 +5,45 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
 import type { EntryCategory, Ledger } from "@/types/api";
 
+type MockSourceDocumentGroupItem = {
+  sourceDocument: {
+    id: string;
+    status?: string;
+    anomalyReason?: string | null;
+  };
+  ledgerEntries: unknown[];
+};
+
+type MockUseSourceDocumentsResult = {
+  groups: {
+    completed: MockSourceDocumentGroupItem[];
+    anomaly: MockSourceDocumentGroupItem[];
+  };
+  isLoading: boolean;
+};
+
+const mockGetLedgerStatsAction = vi.hoisted(() =>
+  vi.fn(async (_ledgerId: string, _startDate?: string | null, _endDate?: string | null) => ({
+    convertedTotal: { total: 321.45, currency: "CNY" },
+    totals: [],
+    trend: [],
+    byCategory: [],
+  }))
+);
+
+const mockUseSourceDocuments = vi.hoisted(() =>
+  vi.fn(
+    (
+      _ledgerId: string,
+      _options?: { dateRange?: { start?: Date; end?: Date } }
+    ): MockUseSourceDocumentsResult => ({
+      groups: { completed: [], anomaly: [] },
+      isLoading: false,
+    })
+  )
+);
+
 const mockInvalidateQueries = vi.fn(async () => undefined);
-const mockGetLedgerStatsAction = vi.fn(async () => ({
-  convertedTotal: { total: 321.45, currency: "CNY" },
-  totals: [],
-  trend: [],
-  byCategory: [],
-}));
-const mockUseSourceDocuments = vi.fn();
 const mockDeleteSourceDocumentMutate = vi.fn();
 const mockBatchDeleteMutate = vi.fn();
 const mockBatchRetryMutate = vi.fn();
@@ -35,11 +66,11 @@ vi.mock("@tanstack/react-query", async () => {
 });
 
 vi.mock("@/modules/ledger/actions", () => ({
-  getLedgerStatsAction: (...args: unknown[]) => mockGetLedgerStatsAction(...args),
+  getLedgerStatsAction: mockGetLedgerStatsAction,
 }));
 
 vi.mock("@/modules/source-document/hooks", () => ({
-  useSourceDocuments: (...args: unknown[]) => mockUseSourceDocuments(...args),
+  useSourceDocuments: mockUseSourceDocuments,
   useBatchSourceDocumentActions: () => ({
     deleteSourceDocument: { mutate: mockDeleteSourceDocumentMutate, isPending: false },
     batchUpdateDates: { mutate: mockBatchUpdateDatesMutate, isPending: false },
@@ -217,16 +248,15 @@ describe("LedgerEntriesTab orchestration", () => {
 
     const statsCall = mockGetLedgerStatsAction.mock.calls[0];
     if (statsCall == null) throw new Error("Expected first getLedgerStatsAction call");
-    expect(statsCall[1]).toBe("2026-03-01");
-    expect(statsCall[2]).toBe("2026-03-31");
+    const [, startDate, endDate] = statsCall;
+    expect(startDate).toBe("2026-03-01");
+    expect(endDate).toBe("2026-03-31");
 
     const sourceDocumentsCall = mockUseSourceDocuments.mock.calls[0];
     if (sourceDocumentsCall == null) throw new Error("Expected first useSourceDocuments call");
-    const options = sourceDocumentsCall[1] as {
-      dateRange?: { start?: Date; end?: Date };
-    };
-    const start = options.dateRange?.start;
-    const end = options.dateRange?.end;
+    const [, options] = sourceDocumentsCall;
+    const start = options?.dateRange?.start;
+    const end = options?.dateRange?.end;
     if (start == null || end == null) throw new Error("Expected date range start/end");
     expect(formatDateTimeForApi(start)).toBe("2026-03-01");
     expect(formatDateTimeForApi(end)).toBe("2026-03-31");
