@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/errors";
+import type * as PersistenceModule from "@/persistence";
+import type * as DrizzleOrmModule from "drizzle-orm";
 
 const {
   sourceDocumentsFindFirstMock,
@@ -24,7 +26,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/persistence", async () => {
-  const actual = await vi.importActual<typeof import("@/persistence")>("@/persistence");
+  const actual = await vi.importActual<typeof PersistenceModule>("@/persistence");
   return {
     ...actual,
     sourceDocuments: {
@@ -36,7 +38,7 @@ vi.mock("@/persistence", async () => {
 });
 
 vi.mock("drizzle-orm", async () => {
-  const actual = await vi.importActual<typeof import("drizzle-orm")>("drizzle-orm");
+  const actual = await vi.importActual<typeof DrizzleOrmModule>("drizzle-orm");
   return {
     ...actual,
     and: vi.fn((...parts: unknown[]) => ({ and: parts })),

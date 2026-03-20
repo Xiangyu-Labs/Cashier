@@ -4,7 +4,6 @@ const {
   sourceDocumentsFindFirstMock,
   processImagesMock,
   updateReturningMock,
-  updateWhereMock,
   updateSetMock,
   updateMock,
 } = vi.hoisted(() => {
@@ -19,7 +18,6 @@ const {
     sourceDocumentsFindFirstMock,
     processImagesMock,
     updateReturningMock,
-    updateWhereMock,
     updateSetMock,
     updateMock,
   };
