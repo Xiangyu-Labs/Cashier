@@ -54,13 +54,25 @@ function getSignInErrorMessage(
   return t("unexpectedError");
 }
 
+function sanitizeCallbackUrl(rawCallbackUrl: string | null): string {
+  if (rawCallbackUrl == null || rawCallbackUrl === "") {
+    return "/";
+  }
+
+  if (!rawCallbackUrl.startsWith("/") || rawCallbackUrl.startsWith("//")) {
+    return "/";
+  }
+
+  return rawCallbackUrl;
+}
+
 export function useLoginFlow(
   t: (key: string, values?: Record<string, string | number>) => string
 ): UseLoginFlowReturn {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
 
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");

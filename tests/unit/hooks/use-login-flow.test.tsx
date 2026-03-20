@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useLoginFlow } from "@/app/[locale]/login/hooks/use-login-flow";
+import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 
 const mockPush = vi.fn();

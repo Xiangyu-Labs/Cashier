@@ -63,7 +63,6 @@ export function EmailStep({ email, isLoading, error, onEmailChange, onSubmit }: 
 function SSOSection() {
   const t = useTranslations("Auth");
 
-  // Check if OIDC/SSO is enabled (build-time env var)
   const isSSOEnabled = process.env.NEXT_PUBLIC_OIDC_ENABLED === "true";
 
   if (!isSSOEnabled) {
@@ -72,7 +71,6 @@ function SSOSection() {
 
   return (
     <div className="pt-2">
-      {/* Simple divider with text */}
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
         <span className="text-xs uppercase text-muted-foreground">{t("orContinueWith")}</span>

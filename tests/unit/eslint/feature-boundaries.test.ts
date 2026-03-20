@@ -501,7 +501,7 @@ describe("boundary lint", { timeout: 30000 }, () => {
         import { OTP_LENGTH } from "@/modules/auth/constants";
         export const value = OTP_LENGTH;
       `,
-      "src/app/[locale]/login/hooks/use-login-flow.ts"
+      "src/app/[locale]/login/page.tsx"
     );
 
     expect(messages).toHaveLength(0);
@@ -525,7 +525,7 @@ describe("boundary lint", { timeout: 30000 }, () => {
         import { authenticateWithOTP } from "@/modules/auth/services/otp-sign-in";
         export const leak = authenticateWithOTP;
       `,
-      "src/app/[locale]/login/hooks/use-login-flow.ts"
+      "src/app/[locale]/login/page.tsx"
     );
 
     expect(messages.length).toBeGreaterThan(0);
