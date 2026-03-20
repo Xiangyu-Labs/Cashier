@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listEntryCategories } from "@/modules/ledger/actions";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import type { CategoriesResponseDto } from "@/modules/ledger/contracts";
+import { listEntryCategories } from "@/modules/ledger/queries";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {

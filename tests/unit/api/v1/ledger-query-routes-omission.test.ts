@@ -21,7 +21,7 @@ vi.mock("@/app/api/v1/_shared/validation", () => ({
   parseApiInput: parseApiInputMock,
 }));
 
-vi.mock("@/modules/ledger/actions", () => ({
+vi.mock("@/modules/ledger/queries", () => ({
   listLedgerEntries: listLedgerEntriesMock,
   calculateLedgerStats: calculateLedgerStatsMock,
 }));
