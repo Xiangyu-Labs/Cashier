@@ -4,7 +4,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 import { buildEntriesForInsert, validateEntries, getEntryFallbackDate } from "./entry-builder";
-import { getLedgerMainCurrency } from "@/modules/ledger/queries";
+import { getLedgerMainCurrency } from "@/modules/ledger/source-document-queries";
 import { replaceSourceDocumentLedgerEntries } from "@/modules/source-document/application/services/source-document-ledger-entries";
 
 export interface HandleParseResultParams {

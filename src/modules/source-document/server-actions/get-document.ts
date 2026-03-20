@@ -5,8 +5,8 @@ import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/modules/auth/access";
 import { AppError } from "@/lib/errors";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 
 /**

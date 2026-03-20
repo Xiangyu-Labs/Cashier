@@ -9,8 +9,8 @@ import {
   findOTPRecord,
   verifyOTPWithPolicy,
   isAccountLocked,
-} from "@/modules/auth/services";
-import { generateOTP, verifyOTP } from "@/modules/auth/services";
+} from "../services/otp-verification";
+import { generateOTP, verifyOTP } from "../services/otp";
 import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 

@@ -6,7 +6,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { requireLedgerAccess } from "@/modules/auth/access";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { AppError } from "@/lib/errors";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 
 /**

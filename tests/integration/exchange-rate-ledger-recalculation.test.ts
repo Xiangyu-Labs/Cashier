@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../setup";
 import { ledgers, users } from "@/persistence";
-import { batchConvertCurrencyAction } from "@/modules/currency/actions";
 import {
   initializeExchangeRateLedgerRecalculationOrchestration,
   onExchangeRatesStored,
 } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
+import { batchConvertCurrencyAction } from "../../src/modules/currency/actions";
 
 const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
   recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),

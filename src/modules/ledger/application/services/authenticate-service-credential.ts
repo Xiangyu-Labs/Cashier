@@ -5,7 +5,7 @@ import { serviceCredentials } from "@/persistence/schema/ledger";
 
 type ServiceCredentialRecord = typeof serviceCredentials.$inferSelect;
 
-export async function validateServiceCredential(
+export async function authenticateServiceCredential(
   key: string
 ): Promise<ServiceCredentialRecord | null> {
   const credential = await db.query.serviceCredentials.findFirst({
@@ -22,7 +22,7 @@ export async function validateServiceCredential(
       .set({ lastUsedAt: new Date() })
       .where(eq(serviceCredentials.id, credential.id));
   } catch (error) {
-    logError("modules/ledger:validate-service-credential:update-last-used", error);
+    logError("modules/ledger:authenticate-service-credential:update-last-used", error);
   }
 
   return credential;

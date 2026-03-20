@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb } from "../../setup";
 import { users } from "@/persistence";
-import { hashOTP } from "@/modules/auth/services";
 import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { authenticateWithOTP, RegistrationDisabledError } from "@/modules/auth/use-cases";
 import { memoryStore } from "@/lib/memory-store";
+import { hashOTP } from "../../../src/modules/auth/services/otp";
 
 vi.mock("resend", () => ({
   Resend: class MockResend {

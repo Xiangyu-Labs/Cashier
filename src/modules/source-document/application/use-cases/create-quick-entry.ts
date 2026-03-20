@@ -2,7 +2,7 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 import { db } from "@/lib/db";
 import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
-import { getEntryCategoryName } from "@/modules/ledger/queries";
+import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import { SourceDocumentType } from "@/modules/source-document/types";

@@ -32,11 +32,20 @@ const MODULE_PUBLIC_ENTRYPOINTS = {
     "contracts",
     "errors",
     "queries",
-    "services",
     "use-cases",
   ],
-  currency: ["actions", "client", "events", "ui", "use-cases"],
-  ledger: ["actions", "contract-schemas", "contracts", "hooks", "queries", "ui", "use-cases"],
+  currency: ["client", "events", "ui", "use-cases"],
+  ledger: [
+    "actions",
+    "contract-schemas",
+    "contracts",
+    "credential-access",
+    "hooks",
+    "queries",
+    "source-document-queries",
+    "ui",
+    "use-cases",
+  ],
   "source-document": [
     "actions",
     "contract-schemas",
@@ -74,6 +83,26 @@ const SHARED_FACADE_IMPORT_RESTRICTIONS = [
   },
 ];
 
+const LEDGER_QUERY_IMPORT_RESTRICTIONS = [
+  {
+    name: "@/modules/ledger/queries",
+    importNames: ["validateServiceCredential", "getLedgerForServiceCredential"],
+    message:
+      'Import credential-boundary ledger APIs from "@/modules/ledger/credential-access" instead of "@/modules/ledger/queries".',
+  },
+  {
+    name: "@/modules/ledger/queries",
+    importNames: [
+      "getEntryCategoryName",
+      "getLedgerMainCurrency",
+      "listEntryCategoryInfos",
+      "listLedgerEntryViewsBySourceDocumentIds",
+    ],
+    message:
+      'Import source-document-facing ledger reads from "@/modules/ledger/source-document-queries" instead of "@/modules/ledger/queries".',
+  },
+];
+
 const FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS = [
   {
     name: "@/lib/flow",
@@ -89,7 +118,7 @@ function createModuleSpecificPathRestrictions(currentModule) {
       {
         name: "@/modules/ledger/mappers",
         message:
-          'Source-document module must not depend on ledger mappers. Use "@/modules/ledger/queries" or embedded view types instead.',
+          'Source-document module must not depend on ledger mappers. Use "@/modules/ledger/source-document-queries" or embedded view types instead.',
       },
       {
         name: "@/modules/ledger/use-cases",
@@ -115,6 +144,26 @@ function createModuleSpecificPathRestrictions(currentModule) {
         name: "@/modules/source-document/types",
         message:
           "Ledger module must not depend on source-document internal types. Keep reference literals local to ledger.",
+      },
+    ];
+  }
+
+  if (currentModule === "auth") {
+    return [
+      {
+        name: "@/modules/auth/services",
+        message:
+          'Auth module files must import concrete internal service modules instead of the "@/modules/auth/services" barrel.',
+      },
+    ];
+  }
+
+  if (currentModule === "currency") {
+    return [
+      {
+        name: "@/modules/currency/actions",
+        message:
+          'Currency module files must use local relative imports for actions. Cross-module callers must use "@/modules/currency/use-cases".',
       },
     ];
   }
@@ -212,6 +261,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
     paths: [
       ...createModuleRootImportRestrictions(disallowedModules),
       ...SHARED_FACADE_IMPORT_RESTRICTIONS,
+      ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
       ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
       ...createModuleSpecificPathRestrictions(currentModule),
     ],
@@ -398,6 +448,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
           ],
           patterns: [
@@ -429,6 +480,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
             {
               name: "@/modules/auth/helpers",
@@ -510,6 +562,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
           ],
           patterns: [

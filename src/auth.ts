@@ -122,20 +122,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      await handleAuthUserCreated({ userId: user.id });
+      await handleAuthUserCreated(user.id != null ? { userId: user.id } : {});
     },
     async signIn({ user, isNewUser }) {
       await handleAuthUserSignedIn({
-        userId: user.id,
-        email: user.email,
-        isNewUser,
+        ...(user.id != null ? { userId: user.id } : {}),
+        ...(user.email != null ? { email: user.email } : {}),
+        ...(isNewUser != null ? { isNewUser } : {}),
       });
     },
   },
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user }) {
-      return isAuthSignInAllowed({ email: user.email });
+      return isAuthSignInAllowed(user.email != null ? { email: user.email } : {});
     },
     async jwt({ token, user }) {
       if (user != null && user.id != null && user.id !== "") {
