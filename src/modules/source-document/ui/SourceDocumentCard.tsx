@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProcessingStatus } from "@/components/ui/processing-status";
 import { parseDateString } from "@/lib/date-utils";
-import { type SourceDocumentStatusType } from "@/modules/source-document/types";
+import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import {
   DropdownMenu,
   DropdownMenuContent,

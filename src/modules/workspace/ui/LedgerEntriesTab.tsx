@@ -20,7 +20,7 @@ import {
   SourceDocumentCard,
   SourceDocumentEditRetryDialog,
 } from "@/modules/source-document/ui";
-import { type SourceDocumentStatusType } from "@/modules/source-document/types";
+import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
