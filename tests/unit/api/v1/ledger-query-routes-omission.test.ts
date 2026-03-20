@@ -85,6 +85,8 @@ describe("api/v1 ledger query omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(rawQueryInput, "categoryId")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(rawQueryInput, "currency")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(rawQueryInput, "cursor")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(rawQueryInput, "minAmount")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(rawQueryInput, "maxAmount")).toBe(false);
 
     expect(queryPayload.limit).toBe(10);
     expect(Object.prototype.hasOwnProperty.call(queryPayload, "startDate")).toBe(false);
@@ -92,6 +94,35 @@ describe("api/v1 ledger query omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(queryPayload, "categoryId")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(queryPayload, "currency")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(queryPayload, "cursor")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(queryPayload, "minAmount")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(queryPayload, "maxAmount")).toBe(false);
+  });
+
+  it("passes minAmount and maxAmount through entries query payload", async () => {
+    parseApiInputMock.mockReturnValueOnce({
+      limit: 20,
+      minAmount: 20,
+      maxAmount: 100,
+    });
+
+    const request = new Request(
+      "http://localhost:3000/api/v1/entries?limit=20&minAmount=20&maxAmount=100",
+      {
+        method: "GET",
+      }
+    ) as unknown as NextRequest;
+
+    await getEntries(request);
+
+    const rawQueryInput = parseApiInputMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    const queryPayload = listLedgerEntriesMock.mock.calls[0]?.[1] as Record<string, unknown>;
+
+    expect(rawQueryInput.limit).toBe("20");
+    expect(rawQueryInput.minAmount).toBe("20");
+    expect(rawQueryInput.maxAmount).toBe("100");
+    expect(queryPayload.limit).toBe(20);
+    expect(queryPayload.minAmount).toBe(20);
+    expect(queryPayload.maxAmount).toBe(100);
   });
 
   it("omits absent optional fields in stats query parse input", async () => {

@@ -38,6 +38,8 @@ describe("contract schema omission semantics", () => {
   it("omits undefined optional keys in ledger list/stats schemas", () => {
     const listParsed = listLedgerEntriesInputSchema.parse({
       currency: undefined,
+      minAmount: undefined,
+      maxAmount: undefined,
       limit: "5",
     });
     const statsParsed = ledgerStatsQuerySchema.parse({
@@ -46,6 +48,36 @@ describe("contract schema omission semantics", () => {
 
     expect(listParsed.limit).toBe(5);
     expect(Object.prototype.hasOwnProperty.call(listParsed, "currency")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(listParsed, "minAmount")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(listParsed, "maxAmount")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(statsParsed, "categoryId")).toBe(false);
+  });
+
+  it("coerces ledger minAmount and maxAmount query values into numbers", () => {
+    const parsed = listLedgerEntriesInputSchema.parse({
+      minAmount: "20",
+      maxAmount: "100",
+      limit: "5",
+    });
+
+    expect(parsed.limit).toBe(5);
+    expect(parsed.minAmount).toBe(20);
+    expect(parsed.maxAmount).toBe(100);
+  });
+
+  it("rejects blank ledger minAmount and maxAmount query values", () => {
+    expect(() =>
+      listLedgerEntriesInputSchema.parse({
+        minAmount: "",
+        limit: "5",
+      })
+    ).toThrow();
+
+    expect(() =>
+      listLedgerEntriesInputSchema.parse({
+        maxAmount: "",
+        limit: "5",
+      })
+    ).toThrow();
   });
 });

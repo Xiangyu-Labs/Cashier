@@ -11,6 +11,10 @@ const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
 const currencyCodeSchema = z.string().length(3, "Currency must be a 3-letter ISO 4217 code");
 const optionalCurrencyCodeSchema = currencyCodeSchema.optional();
 const nullableCurrencyCodeSchema = currencyCodeSchema.nullable().optional();
+const optionalQueryNumberSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim() : value),
+  z.union([z.number(), z.string().min(1)]).pipe(z.coerce.number()).optional()
+);
 
 export const createLedgerInputSchema = strictObjectSchema({
     aiLanguage: z.string().max(32).optional(),
@@ -76,8 +80,8 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
     endDate: optionalDateStringSchema,
     categoryId: uuidSchema.optional(),
     currency: optionalCurrencyCodeSchema,
-    minAmount: z.number().optional(),
-    maxAmount: z.number().optional(),
+    minAmount: optionalQueryNumberSchema,
+    maxAmount: optionalQueryNumberSchema,
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   });

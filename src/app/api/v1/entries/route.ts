@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
         endDate: searchParams.get("endDate"),
         categoryId: searchParams.get("categoryId"),
         currency: searchParams.get("currency"),
+        minAmount: searchParams.get("minAmount"),
+        maxAmount: searchParams.get("maxAmount"),
         cursor: searchParams.get("cursor"),
         limit: searchParams.get("limit"),
       });
