@@ -36,6 +36,7 @@ export type {
   QuickEntryResponseDto,
   RetrySourceDocumentResponseDto,
   SourceDocumentCollectionDto,
+  SourceDocumentListItemDto as SourceDocumentListItemWithEntries,
   SourceDocumentDto as SourceDocumentWithEntries,
   SourceDocumentFullDto,
   SourceDocumentLightWithEntriesDto as SourceDocumentLightWithEntries,

@@ -22,8 +22,8 @@ import {
 } from "@/lib/query-keys";
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
-  SourceDocumentWithEntries,
   SourceDocumentCollectionDto,
+  SourceDocumentListItemWithEntries,
 } from "@/modules/source-document/actions";
 import type { LedgerEntry } from "@/types/api";
 
@@ -100,7 +100,7 @@ export function QuickEntryForm({
       };
 
       // Build temporary source document
-      const tempDoc: SourceDocumentWithEntries = {
+      const tempDoc: SourceDocumentListItemWithEntries = {
         id: tempDocId,
         ledgerId,
         type: "manual",
@@ -113,6 +113,7 @@ export function QuickEntryForm({
         deletedAt: null,
         metadata: {},
         imageUrls: [],
+        hasImages: false,
         anomalyReason: null,
         ledgerEntries: [
           {

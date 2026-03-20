@@ -6,10 +6,7 @@ export {
   mapSourceDocumentListItemDto,
   mapSourceDocumentGroupDto,
 } from "./application/mappers";
-import {
-  mapSourceDocumentDto,
-  mapSourceDocumentLedgerEntryDto,
-} from "./application/mappers";
+import { mapSourceDocumentDto, mapSourceDocumentLedgerEntryDto } from "./application/mappers";
 import type {
   SourceDocumentDto,
   SourceDocumentLedgerEntryDto,
@@ -58,5 +55,8 @@ export function serializeSourceDocument(
 
 export function serializeSourceDocumentLight(doc: SourceDocument): SourceDocumentLightDto {
   const { imageUrls: _imageUrls, ...lightDoc } = mapSourceDocumentDto(doc);
-  return lightDoc;
+  return {
+    ...lightDoc,
+    hasImages: lightDoc.hasImages ?? false,
+  };
 }

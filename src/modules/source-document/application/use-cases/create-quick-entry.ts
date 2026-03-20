@@ -5,8 +5,8 @@ import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { getEntryCategoryName } from "@/modules/ledger/queries";
 import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
+import { SourceDocumentType } from "@/modules/source-document/types";
 import { sourceDocuments, type Ledger } from "@/persistence";
-import { SourceDocumentType } from "@/persistence/schema/source-document";
 
 initializeExchangeRateLedgerRecalculationOrchestration();
 

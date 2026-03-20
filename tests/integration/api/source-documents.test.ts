@@ -4,6 +4,7 @@ import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
+  getAllSourceDocumentsAction,
   getSourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
@@ -478,5 +479,50 @@ describe("SourceDocument Actions", () => {
     const ids = result.items.map((d) => d.id);
     expect(ids).toContain(docA.id);
     expect(ids).not.toContain(docB.id);
+  });
+
+  it("should return stripped list items from getAllSourceDocumentsAction", async () => {
+    const db = getTestDb();
+
+    const doc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          title: "Receipt",
+          text: "full raw text",
+          status: "completed",
+          imageUrls: ["/api/uploads/source-documents/testLedger/doc/image.jpg"],
+          metadata: {
+            visionDescription: "sensitive debug text",
+            merchant: "Test Merchant",
+          },
+        })
+        .returning(),
+      "Expected source document to be created for collection test"
+    );
+
+    await db.insert(ledgerEntries).values({
+      ledgerId: testLedgerId,
+      sourceDocumentId: doc.id,
+      amount: "88.00",
+      currency: "CNY",
+      itemName: "Collection item",
+      categoryId: testCategoryId,
+    });
+
+    const result = await getAllSourceDocumentsAction(testLedgerId);
+    const item = result.items.find((sourceDocument) => sourceDocument.id === doc.id);
+
+    expect(item).toBeDefined();
+    if (item == null) {
+      throw new Error("Expected source document collection item to be returned");
+    }
+
+    expect(item.text).toBeNull();
+    expect(item.imageUrls).toEqual([]);
+    expect(item.metadata).toEqual({});
+    expect(item.hasImages).toBe(true);
+    expect(item.ledgerEntries).toHaveLength(1);
   });
 });

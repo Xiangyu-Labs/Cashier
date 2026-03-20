@@ -1,24 +1,13 @@
 import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
+import {
+  type SourceDocMetadata,
+  type SourceDocumentStatusType,
+  type SourceDocumentTypeValue,
+  SourceDocumentStatus,
+  SourceDocumentType,
+} from "@/modules/source-document/types";
 import { ledgers } from "./ledger";
-
-export const SourceDocumentStatus = {
-  Queued: "queued",
-  Processing: "processing",
-  Completed: "completed",
-  Anomaly: "anomaly",
-  Failed: "failed",
-} as const;
-
-export type SourceDocumentStatusType =
-  (typeof SourceDocumentStatus)[keyof typeof SourceDocumentStatus];
-
-export const SourceDocumentType = {
-  AiParsed: "ai_parsed",
-  Manual: "manual",
-} as const;
-
-export type SourceDocumentTypeValue = (typeof SourceDocumentType)[keyof typeof SourceDocumentType];
 
 export const sourceDocuments = sqliteTable(
   "source_documents",
@@ -34,9 +23,12 @@ export const sourceDocuments = sqliteTable(
     imageUrls: text("image_urls", { mode: "json" }).$type<string[]>().default([]),
     status: text("status")
       .notNull()
-      .default("queued")
-      .$type<"queued" | "processing" | "completed" | "anomaly" | "failed">(),
-    type: text("type").notNull().default("ai_parsed").$type<SourceDocumentTypeValue>(),
+      .default(SourceDocumentStatus.Queued)
+      .$type<SourceDocumentStatusType>(),
+    type: text("type")
+      .notNull()
+      .default(SourceDocumentType.AiParsed)
+      .$type<SourceDocumentTypeValue>(),
     anomalyReason: text("anomaly_reason"),
     entryDate: text("entry_date"),
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
@@ -56,10 +48,5 @@ export const sourceDocuments = sqliteTable(
     index("idx_source_docs_ledger_status_type").on(table.ledgerId, table.status, table.type),
   ]
 );
-
-export interface SourceDocMetadata {
-  visionDescription?: string;
-  originalImageUrls?: Array<string | null>;
-}
 
 export type SourceDocument = InferSelectModel<typeof sourceDocuments>;

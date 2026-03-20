@@ -87,6 +87,11 @@ function createModuleSpecificPathRestrictions(currentModule) {
         message:
           "Source-document module must not depend on ledger write use-cases. Keep only narrow ledger queries as the cross-module boundary.",
       },
+      {
+        name: "@/persistence/schema/source-document",
+        message:
+          'Source-document module must use "@/modules/source-document/types" as the single source of truth for source-document enums and metadata types.',
+      },
     ];
   }
 

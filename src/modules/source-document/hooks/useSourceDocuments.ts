@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getAllSourceDocumentsAction,
-  type SourceDocumentWithEntries,
+  type SourceDocumentListItemWithEntries,
 } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -13,7 +13,7 @@ import {
 } from "@/modules/source-document/grouping";
 import { parseAmount } from "@/lib/formatters";
 
-export type { SourceDocumentWithEntries };
+export type { SourceDocumentListItemWithEntries as SourceDocumentWithEntries };
 
 interface SourceDocumentsStats {
   queuedCount: number;
@@ -31,7 +31,7 @@ export interface UseSourceDocumentsOptions {
   maxAmount?: number;
 }
 
-function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
+function calculateTotalAmount(doc: SourceDocumentListItemWithEntries): number {
   if (doc.ledgerEntries == null || doc.ledgerEntries.length === 0) return 0;
   return doc.ledgerEntries.reduce((sum, entry) => {
     const convertedAmount = entry.convertedAmount;
@@ -42,10 +42,13 @@ function calculateTotalAmount(doc: SourceDocumentWithEntries): number {
 }
 
 function filterAndGroup(
-  docs: SourceDocumentWithEntries[],
+  docs: SourceDocumentListItemWithEntries[],
   minAmount?: number,
   maxAmount?: number
-): { groups: GroupedSourceDocuments<SourceDocumentWithEntries>; stats: SourceDocumentsStats } {
+): {
+  groups: GroupedSourceDocuments<SourceDocumentListItemWithEntries>;
+  stats: SourceDocumentsStats;
+} {
   let filtered = docs;
   if (minAmount != null || maxAmount != null) {
     filtered = docs.filter((doc) => {

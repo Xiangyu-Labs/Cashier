@@ -327,6 +327,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects source-document persistence enum imports inside the source-document module", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { SourceDocumentType } from "@/persistence/schema/source-document";
+        export const leak = SourceDocumentType.Manual;
+      `,
+      "src/modules/source-document/application/use-cases/create-quick-entry.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects auth helper imports from auth root in shared library files", async () => {
     const messages = await lintRestrictedImports(
       `

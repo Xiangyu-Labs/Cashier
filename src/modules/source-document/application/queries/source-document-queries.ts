@@ -10,6 +10,7 @@ import {
   groupPendingSourceDocuments,
 } from "@/modules/source-document/grouping";
 import {
+  mapSourceDocumentListItemDto,
   mapSourceDocumentLedgerEntryDto,
   serializeSourceDocument,
 } from "@/modules/source-document/mappers";
@@ -20,6 +21,7 @@ import type {
   SourceDocumentDto,
   SourceDocumentFullDto,
   SourceDocumentLedgerEntryDto,
+  SourceDocumentListItemDto,
   SourceDocumentPageDto,
 } from "../../contracts";
 import type { SourceDocumentStatusType } from "../../types";
@@ -107,7 +109,10 @@ function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> |
     return (
       or(
         lt(sourceDocuments.entryDate, cursorDate),
-        and(eq(sourceDocuments.entryDate, cursorDate), lt(sourceDocuments.createdAt, cursorCreated)),
+        and(
+          eq(sourceDocuments.entryDate, cursorDate),
+          lt(sourceDocuments.createdAt, cursorCreated)
+        ),
         and(
           eq(sourceDocuments.entryDate, cursorDate),
           eq(sourceDocuments.createdAt, cursorCreated),
@@ -199,24 +204,8 @@ function serializeSourceDocumentByStatus(
 function serializeSourceDocumentFlat(
   document: SourceDocumentRow,
   entriesByDocId: Map<string, SourceDocumentLedgerEntryDto[]>
-): SourceDocumentDto {
-  return {
-    id: document.id,
-    ledgerId: document.ledgerId,
-    title: document.title,
-    text: null,
-    imageUrls: [],
-    status: document.status,
-    type: document.type,
-    anomalyReason: document.anomalyReason,
-    entryDate: document.entryDate,
-    metadata: {},
-    createdAt: document.createdAt.toISOString(),
-    updatedAt: document.updatedAt.toISOString(),
-    deletedAt: document.deletedAt ? document.deletedAt.toISOString() : null,
-    ledgerEntries: entriesByDocId.get(document.id) ?? [],
-    hasImages: (document.imageUrls?.length ?? 0) > 0,
-  };
+): SourceDocumentListItemDto {
+  return mapSourceDocumentListItemDto(document, entriesByDocId.get(document.id) ?? []);
 }
 
 export async function listSourceDocumentsQuery(

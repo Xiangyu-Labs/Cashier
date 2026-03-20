@@ -48,17 +48,24 @@ export type SourceDocumentDto = {
   hasImages?: boolean;
 };
 
+// Flat list payload used by source-document collection queries and list caches.
 export type SourceDocumentListItemDto = Omit<
   SourceDocumentDto,
-  "text" | "imageUrls" | "ledgerEntries"
+  "text" | "imageUrls" | "metadata" | "ledgerEntries" | "hasImages"
 > & {
-  text: string | null;
-  imageUrls: string[];
+  text: null;
+  imageUrls: [];
+  metadata: Record<string, never>;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
+  hasImages: boolean;
 };
 
-export type SourceDocumentLightDto = Omit<SourceDocumentDto, "ledgerEntries" | "imageUrls"> & {
-  imageUrls?: string[];
+// Light detail payload used for detail prefetch without carrying image arrays.
+export type SourceDocumentLightDto = Omit<
+  SourceDocumentDto,
+  "ledgerEntries" | "imageUrls" | "hasImages"
+> & {
+  hasImages: boolean;
 };
 
 export interface SourceDocumentGroupDto {
@@ -113,7 +120,7 @@ export interface SourceDocumentPageDto {
 }
 
 export interface SourceDocumentCollectionDto {
-  items: SourceDocumentDto[];
+  items: SourceDocumentListItemDto[];
   hasMore: boolean;
   total: number;
 }

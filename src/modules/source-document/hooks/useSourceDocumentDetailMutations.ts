@@ -13,6 +13,8 @@ import {
   updateSourceDocumentImagesAction,
   deleteSourceDocumentAction,
   type SourceDocumentCollectionDto,
+  type SourceDocumentLightWithEntries,
+  type SourceDocumentListItemWithEntries,
   type SourceDocumentWithEntries as ServerSourceDocumentWithEntries,
 } from "@/modules/source-document/actions";
 import {
@@ -30,16 +32,16 @@ import {
 } from "@/lib/mutations/use-ledger-mutation";
 import type { LedgerEntry } from "@/types/api";
 import type { EntryEditData } from "@/modules/source-document/ui/entry-edit-data";
-import type { SourceDocumentWithEntries } from "@/modules/source-document/actions";
 
 type SourceDocumentQueryData = ServerSourceDocumentWithEntries;
+type SourceDocumentLightQueryData = SourceDocumentLightWithEntries;
 
 type BatchEntryUpdateData = Partial<Omit<LedgerEntry, "amount">> & { amount?: number };
 
 function updatePaginatedSourceDocumentLists(
   queryClient: ReturnType<typeof useQueryClient>,
   ledgerId: string,
-  updater: (doc: SourceDocumentWithEntries) => SourceDocumentWithEntries | null
+  updater: (doc: SourceDocumentListItemWithEntries) => SourceDocumentListItemWithEntries | null
 ) {
   queryClient.setQueriesData<SourceDocumentCollectionDto>(
     { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
@@ -48,7 +50,7 @@ function updatePaginatedSourceDocumentLists(
 
       const nextItems = old.items
         .map((doc) => updater(doc))
-        .filter((doc): doc is SourceDocumentWithEntries => doc !== null);
+        .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null);
 
       return {
         ...old,
@@ -73,13 +75,15 @@ function createSourceDocSnapshots(
   return snapshots;
 }
 
-function applyBatchEntryUpdate<T extends {
-  categoryId: string | null;
-  currency: string | null;
-  itemName: string;
-  description: string | null;
-  amount: string;
-}>(entry: T, data: BatchEntryUpdateData): T {
+function applyBatchEntryUpdate<
+  T extends {
+    categoryId: string | null;
+    currency: string | null;
+    itemName: string;
+    description: string | null;
+    amount: string;
+  },
+>(entry: T, data: BatchEntryUpdateData): T {
   const patch: Partial<T> = {};
 
   if (data.categoryId !== undefined) patch.categoryId = data.categoryId as T["categoryId"];
@@ -106,7 +110,11 @@ export function useSourceDocumentDetailMutations({
   const hasLedgerId = ledgerId != null && ledgerId !== "";
   const sourceDocumentPredicates = hasLedgerId ? [invalidateSourceDocuments(ledgerId)] : null;
   const sourceDocumentSummaryPredicates = hasLedgerId
-    ? [invalidateSourceDocuments(ledgerId), invalidateLedgerStats(ledgerId), invalidateCalendar(ledgerId)]
+    ? [
+        invalidateSourceDocuments(ledgerId),
+        invalidateLedgerStats(ledgerId),
+        invalidateCalendar(ledgerId),
+      ]
     : null;
   const sourceDocumentAndEntriesPredicates = hasLedgerId
     ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
@@ -145,7 +153,7 @@ export function useSourceDocumentDetailMutations({
 
         queryClient.setQueriesData(
           { queryKey: queryKeys.sourceDocumentLight(id) },
-          (old: SourceDocumentQueryData | undefined) => {
+          (old: SourceDocumentLightQueryData | undefined) => {
             if (!old) return old;
             return { ...old, ...data };
           }
@@ -199,15 +207,21 @@ export function useSourceDocumentDetailMutations({
 
       queryClient.setQueriesData(
         { queryKey: queryKeys.sourceDocumentLight(id) },
-        (old: SourceDocumentQueryData | undefined) => {
+        (old: SourceDocumentLightQueryData | undefined) => {
           if (!old) return old;
-          return { ...old, imageUrls: nextImageUrls };
+          return { ...old, hasImages: nextImageUrls.length > 0 };
         }
       );
 
       if (ledgerId != null && ledgerId !== "") {
         updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) =>
-          doc.id === id ? { ...doc, imageUrls: nextImageUrls } : doc
+          doc.id === id
+            ? {
+                ...doc,
+                imageUrls: [],
+                hasImages: nextImageUrls.length > 0,
+              }
+            : doc
         );
       }
 
@@ -474,10 +488,8 @@ export function useSourceDocumentDetailMutations({
       updateSourceDocImagesMutation.mutateAsync({ images }),
     updateEntry: async (entryId: string, data: Partial<EntryEditData>) =>
       updateEntryMutation.mutateAsync({ entryId, data }),
-    batchUpdate: async (
-      ids: string[],
-      data: BatchEntryUpdateData
-    ) => batchUpdateMutation.mutateAsync({ ids, data }),
+    batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
+      batchUpdateMutation.mutateAsync({ ids, data }),
     deleteEntry: async (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
     batchDelete: async (ids: string[]) => batchDeleteMutation.mutateAsync(ids),
     deleteDocument: async () => deleteDocumentMutation.mutateAsync(),

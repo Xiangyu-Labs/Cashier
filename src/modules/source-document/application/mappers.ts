@@ -25,7 +25,7 @@ export function mapSourceDocumentDto(
     ledgerId: doc.ledgerId,
     title: doc.title,
     text: options.text ?? doc.text,
-    imageUrls: options.imageUrls ?? (doc.imageUrls ?? []),
+    imageUrls: options.imageUrls ?? doc.imageUrls ?? [],
     status: doc.status,
     type: doc.type,
     anomalyReason: doc.anomalyReason,
@@ -117,12 +117,18 @@ export function mapSourceDocumentListItemDto(
   doc: SourceDocument,
   ledgerEntries: SourceDocumentLedgerEntryDto[] = []
 ): SourceDocumentListItemDto {
+  const dto = mapSourceDocumentDto(doc, {
+    text: null,
+    imageUrls: [],
+    metadata: {},
+  });
+
   return {
-    ...mapSourceDocumentDto(doc, {
-      text: null,
-      imageUrls: [],
-      metadata: {},
-    }),
+    ...dto,
+    text: null,
+    imageUrls: [],
+    metadata: {},
+    hasImages: dto.hasImages ?? false,
     ledgerEntries,
   };
 }
