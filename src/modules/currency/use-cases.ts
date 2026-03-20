@@ -1,17 +1,12 @@
-import { CurrencyService } from "./service";
-import { ExchangeRateService } from "./ExchangeRateService";
-
-export interface ConvertEntryAmountInput {
-  amount: number;
-  fromCurrency: string;
-  toCurrency: string;
-  date?: string;
-}
-
-export interface ConvertEntryAmountResult {
-  convertedAmount: string;
-  exchangeRate: string;
-}
+import {
+  convertAmountsBatch as convertAmountsBatchUseCase,
+  type CurrencyBatchConversionResult,
+} from "./application/use-cases/convert-amounts-batch";
+export {
+  convertEntryAmount,
+  type ConvertEntryAmountInput,
+  type ConvertEntryAmountResult,
+} from "./application/use-cases/convert-entry-amount";
 
 export interface BatchCurrencyConversionItem {
   amount: number;
@@ -20,15 +15,19 @@ export interface BatchCurrencyConversionItem {
   date?: string;
 }
 
-export async function convertEntryAmount(
-  input: ConvertEntryAmountInput
-): Promise<ConvertEntryAmountResult | null> {
-  return CurrencyService.convertEntryAmount(input);
-}
+export type ConvertAmountsBatchResult = CurrencyBatchConversionResult[];
 
 export async function convertAmountsBatch(
   items: BatchCurrencyConversionItem[],
   mainCurrency: string
-) {
-  return ExchangeRateService.convertBatch(items, mainCurrency);
+): Promise<ConvertAmountsBatchResult> {
+  return convertAmountsBatchUseCase(
+    items.map((item) => ({
+      amount: item.amount,
+      fromCurrency: item.from,
+      toCurrency: item.to,
+      date: item.date,
+    })),
+    mainCurrency
+  );
 }
