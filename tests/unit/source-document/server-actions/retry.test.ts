@@ -13,7 +13,7 @@ vi.mock("@/modules/source-document/application/use-cases/retry-source-document",
   retrySourceDocument: retrySourceDocumentMock,
 }));
 
-import { retrySourceDocumentAction } from "@/modules/source-document/server-actions/retry";
+import { retrySourceDocumentAction } from "@/modules/source-document/actions";
 
 describe("retrySourceDocumentAction omission semantics", () => {
   beforeEach(() => {

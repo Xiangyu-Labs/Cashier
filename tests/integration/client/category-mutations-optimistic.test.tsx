@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
+import { useCategoryMutations } from "@/modules/ledger/hooks";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";

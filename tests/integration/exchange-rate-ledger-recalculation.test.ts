@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../setup";
 import { ledgers, users } from "@/persistence";
-import { ExchangeRateService } from "@/modules/currency/ExchangeRateService";
+import { batchConvertCurrencyAction } from "@/modules/currency/actions";
 import {
   initializeExchangeRateLedgerRecalculationOrchestration,
   onExchangeRatesStored,
@@ -92,7 +92,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
 
     initializeExchangeRateLedgerRecalculationOrchestration();
 
-    await ExchangeRateService.getRates("2024-02-10");
+    await batchConvertCurrencyAction([{ amount: 1, currency: "USD", date: "2024-02-10" }], "CNY");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(1);
@@ -100,7 +100,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
 
     recalculateEntriesConvertedAmountMock.mockClear();
 
-    await ExchangeRateService.getRates("2024-02-10");
+    await batchConvertCurrencyAction([{ amount: 1, currency: "USD", date: "2024-02-10" }], "CNY");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);

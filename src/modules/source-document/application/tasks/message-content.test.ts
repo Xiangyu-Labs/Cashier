@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMessageContent } from "@/modules/source-document/application/tasks/message-content";
+import { buildMessageContent } from "./message-content";
 
 describe("buildMessageContent", () => {
   it("returns labeled text when only text provided", () => {

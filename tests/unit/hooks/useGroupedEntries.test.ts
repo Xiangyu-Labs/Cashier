@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useGroupedEntries } from "@/modules/ledger/hooks/useGroupedEntries";
+import { useGroupedEntries } from "@/modules/ledger/hooks";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 
@@ -29,7 +29,7 @@ function createGroup(overrides: Partial<SourceDocumentGroup>): SourceDocumentGro
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
-  if (!first) {
+  if (first === undefined) {
     throw new Error(`Expected at least one ${label}`);
   }
   return first;

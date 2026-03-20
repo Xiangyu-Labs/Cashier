@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getTestDb } from "../../../setup";
+import { getTestDb } from "tests/setup";
 import {
   createOTPToken,
   deleteOTPToken,
   cleanupExpiredOTPTokens,
-} from "@/modules/auth/repositories/otp-repository";
+} from "./otp-repository";
 import {
   findOTPRecord,
   verifyOTPWithPolicy,

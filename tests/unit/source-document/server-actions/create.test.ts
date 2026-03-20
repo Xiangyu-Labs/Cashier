@@ -13,7 +13,7 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
   createAndQueueSourceDocument: createAndQueueSourceDocumentMock,
 }));
 
-import { createSourceDocumentAction } from "@/modules/source-document/server-actions/create";
+import { createSourceDocumentAction } from "@/modules/source-document/actions";
 
 describe("createSourceDocumentAction omission semantics", () => {
   beforeEach(() => {

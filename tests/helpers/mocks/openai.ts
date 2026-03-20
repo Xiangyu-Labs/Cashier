@@ -54,8 +54,8 @@ const DEFAULT_OPTIONS: Required<Omit<MultiStageMockOptions, "incompleteReason" |
 };
 
 function getCurrentDateIso(): string {
-  const isoDate = new Date().toISOString().split("T")[0];
-  if (!isoDate) {
+  const isoDate = new Date().toISOString().split("T")[0] ?? "";
+  if (isoDate === "") {
     throw new Error("Failed to derive current ISO date");
   }
   return isoDate;

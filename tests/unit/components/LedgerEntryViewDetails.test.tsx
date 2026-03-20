@@ -4,8 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   LedgerEntryViewDetails,
   type EntryPendingChanges,
-} from "@/modules/ledger/ui/LedgerEntryViewDetails";
+} from "@/modules/ledger/ui";
 import { type LedgerEntry, type EntryCategory } from "@/types/api";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/i18n/routing", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/ledger/test-id",
+}));
 
 // Mock next-intl
 vi.mock("next-intl", () => ({

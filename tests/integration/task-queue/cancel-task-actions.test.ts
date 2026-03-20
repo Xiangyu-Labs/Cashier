@@ -21,7 +21,7 @@ const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
-  if (!first) {
+  if (first === undefined) {
     throw new Error(`Expected at least one ${label}`);
   }
   return first;

@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
+import { LedgerEntryDetailModal } from "@/modules/ledger/ui";
 import { type LedgerEntry, type EntryCategory } from "@/types/api";
 import { useEffect } from "react";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/i18n/routing", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/ledger/test-id",
+}));
 
 // Mock sub-components/hooks
 vi.mock("@/components/ui/dialog", () => ({

@@ -3,12 +3,12 @@ import {
   generateCategoryMetadataHandler,
   type GenerateCategoryMetadataInput,
   type GenerateCategoryMetadataOutput,
-} from "@/modules/ledger/application/tasks/generate-category-metadata";
-import { getTestDb } from "../../../setup";
+} from "./generate-category-metadata";
+import { getTestDb } from "tests/setup";
 import { entryCategories } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { type FlowContext } from "@/lib/flow";
-import { createTestUserWithLedger } from "../../../helpers/schema-setup";
+import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 describe("generateCategoryMetadataHandler", () => {
   beforeEach(() => {

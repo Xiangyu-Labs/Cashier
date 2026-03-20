@@ -57,11 +57,11 @@ vi.mock("@/modules/ledger/mappers", () => ({
 
 import {
   batchUpdateLedgerEntriesAction,
+  calculateLedgerStats,
   createLedgerEntryAction,
+  createLedgerAction,
   updateLedgerEntryAction,
-} from "@/modules/ledger/server-actions/entries";
-import { calculateLedgerStats } from "@/modules/ledger/server-actions/stats";
-import { createLedgerAction } from "@/modules/ledger/server-actions/create";
+} from "@/modules/ledger/actions";
 
 describe("ledger server action omission semantics", () => {
   beforeEach(() => {

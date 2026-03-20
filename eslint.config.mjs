@@ -24,6 +24,33 @@ const moduleNames = [
 
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
 
+const MODULE_PUBLIC_ENTRYPOINTS = {
+  auth: ["access", "actions", "constants", "contracts", "errors", "services"],
+  currency: ["actions", "client", "events", "ui", "use-cases"],
+  ledger: ["actions", "contract-schemas", "contracts", "hooks", "queries", "ui", "use-cases"],
+  "source-document": [
+    "actions",
+    "contract-schemas",
+    "contracts",
+    "hooks",
+    "types",
+    "ui",
+    "use-cases",
+  ],
+  stats: ["actions", "contracts", "ui"],
+  "task-queue": ["actions", "ui"],
+  workspace: [
+    "contracts",
+    "hooks",
+    "ledger-url-navigation",
+    "ledger-url-params",
+    "queries",
+    "tabs",
+    "ui",
+    "use-cases",
+  ],
+};
+
 const SHARED_FACADE_IMPORT_RESTRICTIONS = [
   {
     name: "@/modules/auth/helpers",
@@ -125,8 +152,29 @@ function createModuleRootImportRestrictions(targetModules) {
   }));
 }
 
+function describeModulePublicEntrypoints(moduleName) {
+  return MODULE_PUBLIC_ENTRYPOINTS[moduleName]
+    .map((entrypoint) => `@/modules/${moduleName}/${entrypoint}`)
+    .join(", ");
+}
+
+function createExplicitModuleBoundaryPatterns(targetModules) {
+  return targetModules.map((moduleName) => ({
+    group: [
+      `@/modules/${moduleName}/*`,
+      ...MODULE_PUBLIC_ENTRYPOINTS[moduleName].map(
+        (entrypoint) => `!@/modules/${moduleName}/${entrypoint}`
+      ),
+    ],
+    message: `Import ${moduleName} only through declared public entrypoints: ${describeModulePublicEntrypoints(moduleName)}.`,
+  }));
+}
+
 function createDeepModuleImportPatterns(targetModules) {
-  return targetModules.map((moduleName) => `@/modules/${moduleName}/*/**`);
+  return targetModules.map((moduleName) => ({
+    group: [`@/modules/${moduleName}/*/**`],
+    message: `Deep imports into ${moduleName} are private. Use one of: ${describeModulePublicEntrypoints(moduleName)}.`,
+  }));
 }
 
 function createCrossModuleBoundaryRule(currentModule) {
@@ -143,10 +191,8 @@ function createCrossModuleBoundaryOptions(currentModule) {
         message: "Legacy feature imports are forbidden. Import from modules or lib instead.",
       },
       ...createModuleSpecificImportPatterns(currentModule),
-      {
-        group: createDeepModuleImportPatterns(disallowedModules),
-        message: "Cross-module imports must go through the target module's public entrypoint.",
-      },
+      ...createExplicitModuleBoundaryPatterns(disallowedModules),
+      ...createDeepModuleImportPatterns(disallowedModules),
     ],
     paths: [
       ...createModuleRootImportRestrictions(disallowedModules),
@@ -302,10 +348,8 @@ const eslintConfig = defineConfig([
               message:
                 "App and shared UI code must import features via public root/server/client/components entrypoints.",
             },
-            {
-              group: createDeepModuleImportPatterns(moduleNames),
-              message: "App and shared UI code must import modules via public entrypoints.",
-            },
+            ...createExplicitModuleBoundaryPatterns(moduleNames),
+            ...createDeepModuleImportPatterns(moduleNames),
             {
               group: ["@/persistence", "@/persistence/**"],
               message: "App and shared UI code must not depend directly on persistence.",
@@ -349,10 +393,8 @@ const eslintConfig = defineConfig([
               group: createDeepFeatureImportPatterns(featureNames),
               message: "Shared library/types code must not deep-import feature internals.",
             },
-            {
-              group: createDeepModuleImportPatterns(moduleNames),
-              message: "Shared library/types code must not deep-import module internals.",
-            },
+            ...createExplicitModuleBoundaryPatterns(moduleNames),
+            ...createDeepModuleImportPatterns(moduleNames),
           ],
         },
       ],
@@ -404,12 +446,17 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          paths: FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
+          paths: [
+            ...createModuleRootImportRestrictions(moduleNames),
+            ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
+          ],
           patterns: [
             {
               group: LEGACY_FEATURE_IMPORT_PATTERNS,
               message: "Tests must import modules or lib paths, not removed feature paths.",
             },
+            ...createExplicitModuleBoundaryPatterns(moduleNames),
+            ...createDeepModuleImportPatterns(moduleNames),
           ],
         },
       ],

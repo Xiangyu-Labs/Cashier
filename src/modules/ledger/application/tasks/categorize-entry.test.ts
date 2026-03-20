@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   categorizeEntryHandler,
   type CategorizeEntryInput,
-} from "@/modules/ledger/application/tasks/categorize-entry";
-import { getTestDb } from "../../../setup";
+} from "./categorize-entry";
+import { getTestDb } from "tests/setup";
 import { ledgerEntries, entryCategories } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { eq } from "drizzle-orm";
@@ -13,7 +13,7 @@ import {
   type AIGenerateOptions,
   type AIResponse,
 } from "@/lib/flow";
-import { createTestUserWithLedger } from "../../../helpers/schema-setup";
+import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { v4 as uuidv4 } from "uuid";
 
 function createMockAI(categoryIndex: number, confidence = 0.9): AIContext {

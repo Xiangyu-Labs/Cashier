@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCaseExpression } from "@/modules/ledger/server-actions/helpers";
+import { buildCaseExpression } from "./helpers";
+import type { fetchEntriesForConversion } from "./helpers";
 
 describe("buildCaseExpression", () => {
   it("throws a clear error when a conversion result is missing for an entry", () => {
@@ -9,7 +10,7 @@ describe("buildCaseExpression", () => {
           {
             id: "entry-1",
           },
-        ] as Awaited<ReturnType<typeof import("@/modules/ledger/server-actions/helpers").fetchEntriesForConversion>>,
+        ] as Awaited<ReturnType<typeof fetchEntriesForConversion>>,
         [],
         "convertedAmount"
       )

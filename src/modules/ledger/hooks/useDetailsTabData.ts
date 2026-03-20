@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger, LedgerEntry } from "@/types/api";
 import { QUERY } from "@/lib/constants";
-import { getDetailsInitialQueryState } from "@/modules/workspace/initial-query-state";
+import { getDetailsInitialQueryState } from "./query-state";
 
 export interface UseDetailsTabDataReturn {
   entries: LedgerEntry[];

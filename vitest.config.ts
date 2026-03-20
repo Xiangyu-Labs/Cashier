@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "happy-dom",
-    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["node_modules", ".next"],
     setupFiles: ["./tests/setup.ts"],
     env: {
@@ -14,7 +14,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["node_modules", ".next", "tests"],
+      exclude: ["node_modules", ".next", "tests", "src/**/*.test.ts", "src/**/*.test.tsx"],
     },
     // Enable parallel test execution with per-file database isolation
     pool: "threads",

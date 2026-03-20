@@ -32,10 +32,11 @@ src/modules/ledger/
 
 ### Rules for Modules
 
-1. **Cross-module imports go through public entrypoints only**: `@/modules/x`, `@/modules/x/actions`, `@/modules/x/ui`, `@/modules/x/hooks`, or another explicitly public single-segment subpath.
-2. **Do not deep-import another module's internals**: `application/*`, `server-actions/*`, `ui/SpecificFile`, `hooks/SpecificHook`, and other nested paths are private.
+1. **Cross-module imports go through declared public entrypoints only**: use only the module subpaths that the repository lint configuration explicitly marks as public for that module. A single-segment path is not public just because it exists under `src/modules/<name>/`.
+2. **Do not deep-import another module's internals**: `application/*`, `server-actions/*`, `ui/SpecificFile`, `hooks/SpecificHook`, and other nested paths are private even when the top-level `ui` or `hooks` barrel is public.
 3. **Application must not depend on actions/server-actions**: shared business logic belongs in `application/*`, and server-actions call into it.
 4. **Workspace is an orchestration shell, not a dumping ground**: URL state, tab coordination, and page bootstrap live there, but ledger/source-document/stats business logic stays in the owning module.
+5. **Tests follow the same public-boundary rules**: implementation tests that need internals should live beside the owning module code and use local relative imports, not cross-module alias imports.
 
 ## 2. Shared Kernel (`src/lib/*`)
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
+import { useDetailsTabGrouping } from "@/modules/ledger/hooks";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { LedgerEntry } from "@/types/api";
 
@@ -32,7 +32,7 @@ function createEntry(overrides: Partial<LedgerEntry>): LedgerEntry {
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
-  if (!first) {
+  if (first === undefined) {
     throw new Error(`Expected at least one ${label}`);
   }
   return first;

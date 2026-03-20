@@ -3,10 +3,10 @@ import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   TASK_TYPE_PARSE_SOURCE_DOCUMENT,
-} from "@/modules/source-document/application/tasks/parse-source-document";
-import { getTestDb } from "../../../setup";
+} from "./parse-source-document";
+import { getTestDb } from "tests/setup";
 import { sourceDocuments } from "@/persistence";
-import { createTestUserWithLedger } from "../../../helpers/schema-setup";
+import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { eq } from "drizzle-orm";
 import { type FlowContext } from "@/lib/flow";
 

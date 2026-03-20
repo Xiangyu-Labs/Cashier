@@ -4,7 +4,7 @@ import {
   buildDetailsFilterKey,
   getDetailsInitialQueryState,
   getStatsInitialQueryState,
-} from "@/modules/workspace/initial-query-state";
+} from "./initial-query-state";
 
 describe("initial ledger query state helpers", () => {
   it("builds a stable details filter key", () => {

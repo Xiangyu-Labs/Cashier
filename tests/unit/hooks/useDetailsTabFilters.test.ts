@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useDetailsTabFilters } from "@/modules/workspace/ui/useDetailsTabFilters";
+import { useDetailsTabFilters } from "@/modules/workspace/ui";
+
+vi.mock("@/i18n/routing", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+}));
 
 describe("useDetailsTabFilters", () => {
   it("omits undefined advanced fields when relaying filter changes", () => {

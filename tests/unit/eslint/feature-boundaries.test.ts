@@ -14,7 +14,7 @@ async function lintRestrictedImports(code: string, filePath: string) {
   return result.messages.filter((message) => message.ruleId === "no-restricted-imports");
 }
 
-describe("boundary lint", () => {
+describe("boundary lint", { timeout: 30000 }, () => {
   it("rejects legacy feature imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -178,6 +178,18 @@ describe("boundary lint", () => {
         export const value = getPendingSourceDocumentsAction;
       `,
       "src/modules/workspace/application/queries/get-ledger-page-bootstrap.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("allows source-document ui imports from the public ui entrypoint in cross-module ui files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { SourceDocumentCard } from "@/modules/source-document/ui";
+        export const value = SourceDocumentCard;
+      `,
+      "src/modules/workspace/ui/LedgerEntriesTab.tsx"
     );
 
     expect(messages).toHaveLength(0);
@@ -351,6 +363,18 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("allows currency action imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { batchConvertCurrencyAction } from "@/modules/currency/actions";
+        export const value = batchConvertCurrencyAction;
+      `,
+      "tests/unit/features/currency/actions.test.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects auth service deep imports from app files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -430,6 +454,30 @@ describe("boundary lint", () => {
         export const leak = requireLedgerAccess;
       `,
       "src/lib/auth-actions.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects auth helper imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { requireLedgerAccess } from "@/modules/auth/helpers";
+        export const leak = requireLedgerAccess;
+      `,
+      "tests/integration/auth/auth-helpers.test.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects currency services imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { ExchangeRateService } from "@/modules/currency/services";
+        export const leak = ExchangeRateService;
+      `,
+      "tests/integration/ledger/entry-actions.test.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);
@@ -519,6 +567,30 @@ describe("boundary lint", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("allows workspace hook imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { useLedgerTabs } from "@/modules/workspace/hooks";
+        export const value = useLedgerTabs;
+      `,
+      "tests/unit/hooks/useLedgerTabs.test.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects workspace initial query state imports from cross-module hook files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getDetailsInitialQueryState } from "@/modules/workspace/initial-query-state";
+        export const leak = getDetailsInitialQueryState;
+      `,
+      "src/modules/ledger/hooks/useDetailsTabData.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects workspace shell imports from removed feature tabs", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -531,16 +603,28 @@ describe("boundary lint", () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("allows workspace shell imports from workspace module tab entrypoints", async () => {
+  it("allows workspace shell imports from the workspace ui barrel", async () => {
     const messages = await lintRestrictedImports(
       `
-        import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
-        export const value = LedgerEntriesTab;
+        import { LedgerPageClient } from "@/modules/workspace/ui";
+        export const value = LedgerPageClient;
       `,
       "src/modules/workspace/ui/LedgerPageClient.tsx"
     );
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("rejects deep stats ui imports from test files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { LargeGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/LargeGrid";
+        export const leak = LargeGridHeatmap;
+      `,
+      "tests/unit/components/providers.test.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects flowEngine compatibility imports from module files", async () => {

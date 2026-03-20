@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { SourceDocumentImageModal } from "@/modules/source-document/ui/SourceDocumentImageModal";
+import { SourceDocumentImageModal } from "@/modules/source-document/ui";
 
 vi.mock("@/components/ui/image-editor", () => ({
   ImageEditor: ({

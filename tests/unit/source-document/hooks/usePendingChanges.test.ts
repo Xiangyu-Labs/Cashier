@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { usePendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
+import { usePendingChanges } from "@/modules/source-document/hooks";
 import { type SourceDocument, type LedgerEntry } from "@/types/api";
 
 describe("usePendingChanges", () => {

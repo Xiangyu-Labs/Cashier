@@ -15,7 +15,7 @@ import { getDateInTimezone } from "@/lib/date-utils";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
-  if (!first) {
+  if (first === undefined) {
     throw new Error(`Expected at least one ${label}`);
   }
   return first;

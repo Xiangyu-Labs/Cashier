@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
+import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
@@ -41,6 +41,15 @@ vi.mock("next-intl", () => ({
     dateTime: (date: Date) => date.toLocaleDateString(),
     number: (num: number) => num.toString(),
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/i18n/routing", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/ledger/test-id",
 }));
 
 // Mock CategoryIcon

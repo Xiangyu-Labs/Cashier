@@ -6,7 +6,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       // Only run unit tests
-      include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
+      include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
       // Unit tests don't need database, can use higher parallelism
       maxWorkers: "100%",
       // Shorter timeout for unit tests

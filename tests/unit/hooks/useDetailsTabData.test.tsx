@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
+import { useDetailsTabData } from "@/modules/ledger/hooks";
 import type { Ledger } from "@/types/api";
 import type { SerializedLedgerEntry } from "@/lib/serialization";
 
@@ -115,7 +115,7 @@ describe("useDetailsTabData", () => {
       throw new Error("Expected second getLedgerEntriesAction call");
     }
     const secondEntriesFilters = secondEntriesCall[1];
-    if (!secondEntriesFilters) {
+    if (secondEntriesFilters == null) {
       throw new Error("Expected getLedgerEntriesAction filters argument");
     }
     expect(secondEntriesFilters).toMatchObject({ currency: "USD" });

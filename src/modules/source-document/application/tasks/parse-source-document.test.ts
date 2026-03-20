@@ -3,8 +3,8 @@ import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   type ParseSourceDocumentOutput,
-} from "@/modules/source-document/application/tasks/parse-source-document";
-import { getTestDb } from "../../../setup";
+} from "./parse-source-document";
+import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import {
@@ -13,7 +13,7 @@ import {
   type AIGenerateOptions,
   type AIResponse,
 } from "@/lib/flow";
-import { createTestUserWithLedger } from "../../../helpers/schema-setup";
+import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 /**
  * Smart mock that returns appropriate responses based on prompt content.

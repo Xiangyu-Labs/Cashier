@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 
 const {
   handleApiV1RouteMock,
