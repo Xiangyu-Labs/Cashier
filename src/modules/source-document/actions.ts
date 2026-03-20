@@ -37,6 +37,7 @@ export type {
   RetrySourceDocumentResponseDto,
   SourceDocumentCollectionDto,
   SourceDocumentListItemDto as SourceDocumentListItemWithEntries,
+  SourceDocumentListItemDto as SourceDocumentPageItem,
   SourceDocumentDto as SourceDocumentWithEntries,
   SourceDocumentFullDto,
   SourceDocumentLightWithEntriesDto as SourceDocumentLightWithEntries,

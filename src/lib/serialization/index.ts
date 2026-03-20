@@ -6,6 +6,7 @@ export type {
   SerializedLedger,
   SerializedServiceCredential,
   SerializedSourceDocument,
+  SerializedSourceDocumentListItem,
   SerializedSourceDocumentLight,
   SerializedTask,
   SourceDocumentGroup,

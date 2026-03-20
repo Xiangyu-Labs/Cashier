@@ -12,13 +12,11 @@ import {
 import {
   mapSourceDocumentListItemDto,
   mapSourceDocumentLedgerEntryDto,
-  serializeSourceDocument,
 } from "@/modules/source-document/mappers";
 import { sourceDocuments } from "@/persistence";
 import type {
   PendingSourceDocumentsResponseDto,
   SourceDocumentCollectionDto,
-  SourceDocumentDto,
   SourceDocumentFullDto,
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -180,32 +178,11 @@ async function listEntriesBySourceDocumentIds(
   return mapped;
 }
 
-function serializeSourceDocumentByStatus(
+function serializeSourceDocumentListItem(
   document: SourceDocumentRow,
-  includeEntries: boolean,
-  entriesByDocId: Map<string, SourceDocumentLedgerEntryDto[]>
-): SourceDocumentDto {
-  const isActiveDocument =
-    document.status === "queued" ||
-    document.status === "processing" ||
-    document.status === "anomaly" ||
-    document.status === "failed";
-
-  const serializeOptions = {
-    stripMetadataFields: ["visionDescription", "originalImageUrls"],
-    includeHasImages: !isActiveDocument,
-    ...(isActiveDocument ? {} : { imageUrlsOverride: [] }),
-    ...(includeEntries ? { ledgerEntries: entriesByDocId.get(document.id) ?? [] } : {}),
-  };
-
-  return serializeSourceDocument(document, serializeOptions);
-}
-
-function serializeSourceDocumentFlat(
-  document: SourceDocumentRow,
-  entriesByDocId: Map<string, SourceDocumentLedgerEntryDto[]>
+  ledgerEntries?: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentListItemDto {
-  return mapSourceDocumentListItemDto(document, entriesByDocId.get(document.id) ?? []);
+  return mapSourceDocumentListItemDto(document, ledgerEntries);
 }
 
 export async function listSourceDocumentsQuery(
@@ -247,7 +224,10 @@ export async function listSourceDocumentsQuery(
 
   return {
     items: resultItems.map((item) =>
-      serializeSourceDocumentByStatus(item, includeLedgerEntries === true, entriesByDocId)
+      serializeSourceDocumentListItem(
+        item,
+        includeLedgerEntries === true ? (entriesByDocId.get(item.id) ?? []) : undefined
+      )
     ),
     nextCursor,
   };
@@ -293,7 +273,9 @@ export async function listAllSourceDocumentsQuery(
   );
 
   return {
-    items: resultItems.map((item) => serializeSourceDocumentFlat(item, entriesByDocId)),
+    items: resultItems.map((item) =>
+      serializeSourceDocumentListItem(item, entriesByDocId.get(item.id) ?? [])
+    ),
     hasMore,
     total,
   };

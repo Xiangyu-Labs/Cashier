@@ -198,6 +198,11 @@ Response:
 
 - JSON payload returned by `getSourceDocumentsAction`
 - Includes `items` and pagination metadata
+- `items[*]` uses the list-item DTO, not the full detail DTO
+- `items[*].text` is always `null`
+- `items[*].imageUrls` is always `[]`
+- `items[*].metadata` is always `{}`
+- `items[*].hasImages` indicates whether stripped images exist on the full document
 
 Implementation:
 

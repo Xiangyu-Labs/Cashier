@@ -115,7 +115,7 @@ export function mapSourceDocumentLedgerEntryDto(
 
 export function mapSourceDocumentListItemDto(
   doc: SourceDocument,
-  ledgerEntries: SourceDocumentLedgerEntryDto[] = []
+  ledgerEntries?: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentListItemDto {
   const dto = mapSourceDocumentDto(doc, {
     text: null,
@@ -129,12 +129,12 @@ export function mapSourceDocumentListItemDto(
     imageUrls: [],
     metadata: {},
     hasImages: dto.hasImages ?? false,
-    ledgerEntries,
+    ...(ledgerEntries !== undefined ? { ledgerEntries } : {}),
   };
 }
 
 export function mapSourceDocumentGroupDto(
-  sourceDocument: SourceDocumentDto,
+  sourceDocument: SourceDocumentListItemDto,
   ledgerEntries: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentGroupDto {
   return {

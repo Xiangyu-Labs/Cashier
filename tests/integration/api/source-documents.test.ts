@@ -5,6 +5,7 @@ import {
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
   getAllSourceDocumentsAction,
+  getPendingSourceDocumentsAction,
   getSourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
@@ -434,6 +435,53 @@ describe("SourceDocument Actions", () => {
     expect(firstLedgerEntry.category?.id).toBe(testCategoryId);
   });
 
+  it("should return stripped list items from getSourceDocumentsAction", async () => {
+    const db = getTestDb();
+
+    const doc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          title: "Receipt",
+          text: "full raw text",
+          status: "completed",
+          imageUrls: ["/api/uploads/source-documents/testLedger/doc/image.jpg"],
+          metadata: {
+            visionDescription: "sensitive debug text",
+            merchant: "Test Merchant",
+          },
+        })
+        .returning(),
+      "Expected source document to be created for page list test"
+    );
+
+    await db.insert(ledgerEntries).values({
+      ledgerId: testLedgerId,
+      sourceDocumentId: doc.id,
+      amount: "88.00",
+      currency: "CNY",
+      itemName: "Page item",
+      categoryId: testCategoryId,
+    });
+
+    const result = await getSourceDocumentsAction(testLedgerId, {
+      includeEntries: true,
+    });
+    const item = result.items.find((sourceDocument) => sourceDocument.id === doc.id);
+
+    expect(item).toBeDefined();
+    if (item == null) {
+      throw new Error("Expected source document page item to be returned");
+    }
+
+    expect(item.text).toBeNull();
+    expect(item.imageUrls).toEqual([]);
+    expect(item.metadata).toEqual({});
+    expect(item.hasImages).toBe(true);
+    expect(item.ledgerEntries).toHaveLength(1);
+  });
+
   it("should filter by entryDate not createdAt", async () => {
     const db = getTestDb();
 
@@ -524,5 +572,51 @@ describe("SourceDocument Actions", () => {
     expect(item.metadata).toEqual({});
     expect(item.hasImages).toBe(true);
     expect(item.ledgerEntries).toHaveLength(1);
+  });
+
+  it("should return stripped list items inside pending source document groups", async () => {
+    const db = getTestDb();
+
+    const doc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          title: "Anomaly doc",
+          text: "raw anomaly text",
+          status: "anomaly",
+          imageUrls: ["/api/uploads/source-documents/testLedger/doc/anomaly.jpg"],
+          metadata: {
+            visionDescription: "internal anomaly debug text",
+            merchant: "Test Merchant",
+          },
+        })
+        .returning(),
+      "Expected source document to be created for pending group test"
+    );
+
+    await db.insert(ledgerEntries).values({
+      ledgerId: testLedgerId,
+      sourceDocumentId: doc.id,
+      amount: "12.34",
+      currency: "CNY",
+      itemName: "Pending item",
+      categoryId: testCategoryId,
+    });
+
+    const result = await getPendingSourceDocumentsAction(testLedgerId);
+    const group = result.groups.anomaly.find((entry) => entry.sourceDocument.id === doc.id);
+
+    expect(group).toBeDefined();
+    if (group == null) {
+      throw new Error("Expected anomaly group entry to be returned");
+    }
+
+    expect(group.sourceDocument.text).toBeNull();
+    expect(group.sourceDocument.imageUrls).toEqual([]);
+    expect(group.sourceDocument.metadata).toEqual({});
+    expect(group.sourceDocument.hasImages).toBe(true);
+    expect(group.ledgerEntries).toHaveLength(1);
+    expect(result.stats.anomalyCount).toBeGreaterThan(0);
   });
 });

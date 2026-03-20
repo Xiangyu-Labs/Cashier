@@ -3,13 +3,15 @@ import type {
   SourceDocumentCollectionDto,
   SourceDocumentLightDto,
   SourceDocumentListItemDto,
+  SourceDocumentPageDto,
+  PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
 
 describe("source-document contract types", () => {
   it("uses list item DTOs for collection items", () => {
-    const item: SourceDocumentListItemDto = {} as SourceDocumentCollectionDto["items"][number];
-
-    expectTypeOf(item).toEqualTypeOf<SourceDocumentListItemDto>();
+    expectTypeOf<SourceDocumentCollectionDto["items"][number]>().toEqualTypeOf<
+      SourceDocumentListItemDto
+    >();
   });
 
   it("keeps light DTOs free of imageUrls", () => {
@@ -23,5 +25,15 @@ describe("source-document contract types", () => {
     const text: SourceDocumentListItemDto["text"] = null;
 
     expectTypeOf(text).toEqualTypeOf<null>();
+  });
+
+  it("uses list item DTOs for paginated page items", () => {
+    expectTypeOf<SourceDocumentPageDto["items"][number]>().toEqualTypeOf<SourceDocumentListItemDto>();
+  });
+
+  it("uses list item DTOs inside pending groups", () => {
+    expectTypeOf<
+      PendingSourceDocumentsResponseDto["groups"]["queued"][number]["sourceDocument"]
+    >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 });

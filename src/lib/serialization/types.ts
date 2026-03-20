@@ -7,6 +7,7 @@ import type {
 import type {
   SourceDocumentDto,
   SourceDocumentGroupDto,
+  SourceDocumentListItemDto,
   SourceDocumentLightDto,
 } from "@/modules/source-document/contracts";
 
@@ -23,6 +24,7 @@ export type SerializedEntryCategory = EntryCategoryDto;
 export type SerializedLedger = LedgerDto;
 export type SerializedServiceCredential = ServiceCredentialDto;
 export type SerializedSourceDocument = SourceDocumentDto;
+export type SerializedSourceDocumentListItem = SourceDocumentListItemDto;
 export type SerializedSourceDocumentLight = SourceDocumentLightDto;
 export type SourceDocumentGroup = SourceDocumentGroupDto;
 

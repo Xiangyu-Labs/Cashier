@@ -69,7 +69,7 @@ export type SourceDocumentLightDto = Omit<
 };
 
 export interface SourceDocumentGroupDto {
-  sourceDocument: SourceDocumentDto;
+  sourceDocument: SourceDocumentListItemDto;
   ledgerEntries: SourceDocumentLedgerEntryDto[];
 }
 
@@ -115,7 +115,7 @@ export interface PendingSourceDocumentsResponseDto {
 }
 
 export interface SourceDocumentPageDto {
-  items: SourceDocumentDto[];
+  items: SourceDocumentListItemDto[];
   nextCursor: string | null;
 }
 

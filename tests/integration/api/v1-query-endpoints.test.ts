@@ -276,6 +276,8 @@ describe("API v1 Query Endpoints", () => {
 
       const data = await response.json();
       expect(data.items).toBeDefined();
+      expect(Array.isArray(data.items)).toBe(true);
+      expect(data.items[0]?.text).toBeNull();
     });
 
     it("should filter by status", async () => {
