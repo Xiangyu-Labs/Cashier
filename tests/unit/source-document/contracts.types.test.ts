@@ -1,11 +1,20 @@
 import { describe, it, expectTypeOf } from "vitest";
 import type {
   SourceDocumentCollectionDto,
+  SourceDocMetadata,
+  SourceDocumentMetadata,
+  SourceDocumentStatusType,
+  SourceDocumentTypeValue,
   SourceDocumentLightDto,
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
   PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
+import {
+  SourceDocumentStatus,
+  SourceDocumentType,
+} from "@/modules/source-document/contracts";
+import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 
 describe("source-document contract types", () => {
   it("uses list item DTOs for collection items", () => {
@@ -35,5 +44,19 @@ describe("source-document contract types", () => {
     expectTypeOf<
       PendingSourceDocumentsResponseDto["groups"]["queued"][number]["sourceDocument"]
     >().toEqualTypeOf<SourceDocumentListItemDto>();
+  });
+
+  it("exports metadata aliases from contracts", () => {
+    expectTypeOf<SourceDocMetadata>().toEqualTypeOf<SourceDocumentMetadata>();
+  });
+
+  it("exports status and type runtime values from contracts", () => {
+    expectTypeOf(SourceDocumentStatus.Queued).toEqualTypeOf<SourceDocumentStatusType>();
+    expectTypeOf(SourceDocumentType.AiParsed).toEqualTypeOf<SourceDocumentTypeValue>();
+  });
+
+  it("keeps ledger source-document reference status/type aligned", () => {
+    expectTypeOf<SourceDocumentReferenceDto["status"]>().toEqualTypeOf<SourceDocumentStatusType>();
+    expectTypeOf<SourceDocumentReferenceDto["type"]>().toEqualTypeOf<SourceDocumentTypeValue>();
   });
 });

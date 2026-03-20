@@ -1,3 +1,8 @@
+import type {
+  SourceDocumentStatusType as SourceDocumentReferenceStatus,
+  SourceDocumentTypeValue as SourceDocumentReferenceType,
+} from "@/modules/source-document/contracts";
+
 export interface LedgerSettings {
   aiLanguage?: string;
   currencies?: string[];
@@ -47,15 +52,6 @@ export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number 
 export interface CategoriesResponseDto {
   categories: EntryCategoryWithCountDto[];
 }
-
-export type SourceDocumentReferenceStatus =
-  | "queued"
-  | "processing"
-  | "completed"
-  | "anomaly"
-  | "failed";
-
-export type SourceDocumentReferenceType = "ai_parsed" | "manual";
 
 export type SourceDocumentReferenceDto = {
   id: string;

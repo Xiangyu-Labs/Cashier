@@ -1,4 +1,13 @@
-export type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
+export {
+  SourceDocumentStatus,
+  SourceDocumentType,
+} from "./types";
+export type {
+  SourceDocMetadata,
+  SourceDocumentMetadata,
+  SourceDocumentStatusType,
+  SourceDocumentTypeValue,
+} from "./types";
 export type {
   SourceDocumentCollectionDto,
   SourceDocumentDto,

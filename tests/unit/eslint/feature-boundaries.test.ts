@@ -351,6 +351,30 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("allows source-document contracts imports in ledger contracts for canonical reference types", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
+        export type Value = SourceDocumentStatusType;
+      `,
+      "src/modules/ledger/contracts.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects source-document contracts imports from non-contract ledger module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
+        export type Value = SourceDocumentStatusType;
+      `,
+      "src/modules/ledger/hooks/useLedgerEntriesMutations.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects cross-module server-action deep imports from module files", async () => {
     const messages = await lintRestrictedImports(
       `

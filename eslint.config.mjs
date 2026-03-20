@@ -323,6 +323,29 @@ function createApplicationLayerBoundaryRule(currentModule) {
   ];
 }
 
+function createLedgerContractsBoundaryOptions() {
+  const baseOptions = createCrossModuleBoundaryOptions("ledger");
+  return {
+    ...baseOptions,
+    paths: baseOptions.paths.filter(
+      (restriction) => restriction.name !== "@/modules/source-document/contracts"
+    ),
+    patterns: [
+      ...baseOptions.patterns.filter(
+        (restriction) =>
+          !restriction.message.includes(
+            "Ledger module must not depend on source-document module public APIs."
+          )
+      ),
+      {
+        group: ["@/persistence", "@/persistence/**"],
+        message:
+          "Module public contracts/types must not depend on persistence. Define public types in the owning module instead.",
+      },
+    ],
+  };
+}
+
 function createLedgerServerActionBoundaryRule() {
   return [
     "error",
@@ -649,6 +672,12 @@ const eslintConfig = defineConfig([
       ],
     },
   })),
+  {
+    files: ["src/modules/ledger/contracts.ts"],
+    rules: {
+      "no-restricted-imports": ["error", createLedgerContractsBoundaryOptions()],
+    },
+  },
   {
     files: [
       "src/modules/workspace/ui/LedgerPageClient.tsx",
