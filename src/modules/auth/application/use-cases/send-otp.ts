@@ -7,10 +7,10 @@ import {
   checkResendCooldown,
   checkSendRateLimit,
   checkSendRateLimitByIP,
-  generateOTP,
   getCanResendAt,
   setResendCooldown,
-} from "@/modules/auth/services";
+} from "@/modules/auth/services/otp-rate-limit";
+import { generateOTP } from "@/modules/auth/services/otp";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

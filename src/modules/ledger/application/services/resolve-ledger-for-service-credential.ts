@@ -3,7 +3,9 @@ import { db } from "@/lib/db";
 import { logError } from "@/lib/error-handlers";
 import { ledgers, serviceCredentials, type Ledger } from "@/persistence";
 
-export async function getLedgerForServiceCredential(credentialId: string): Promise<Ledger | null> {
+export async function resolveLedgerForServiceCredential(
+  credentialId: string
+): Promise<Ledger | null> {
   const credential = await db.query.serviceCredentials.findFirst({
     where: and(eq(serviceCredentials.id, credentialId), isNull(serviceCredentials.deletedAt)),
     columns: { id: true, ledgerId: true },
@@ -19,7 +21,7 @@ export async function getLedgerForServiceCredential(credentialId: string): Promi
       .set({ lastUsedAt: new Date() })
       .where(eq(serviceCredentials.id, credential.id));
   } catch (error) {
-    logError("modules/ledger:get-ledger-for-service-credential:update-credential", error);
+    logError("modules/ledger:resolve-ledger-for-service-credential:update-last-used", error);
   }
 
   const ledger = await db.query.ledgers.findFirst({

@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getLedgerForServiceCredentialMock, createAndQueueSourceDocumentMock } = vi.hoisted(() => ({
-  getLedgerForServiceCredentialMock: vi.fn(),
-  createAndQueueSourceDocumentMock: vi.fn(),
-}));
+const { resolveLedgerForServiceCredentialMock, createAndQueueSourceDocumentMock } = vi.hoisted(
+  () => ({
+    resolveLedgerForServiceCredentialMock: vi.fn(),
+    createAndQueueSourceDocumentMock: vi.fn(),
+  })
+);
 
-vi.mock("@/modules/ledger/queries", () => ({
-  getLedgerForServiceCredential: getLedgerForServiceCredentialMock,
+vi.mock("@/modules/ledger/credential-access", () => ({
+  resolveLedgerForServiceCredential: resolveLedgerForServiceCredentialMock,
 }));
 
 vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source-document", () => ({
@@ -18,7 +20,7 @@ import { createSourceDocumentFromCredential } from "./create-from-credential";
 describe("createSourceDocumentFromCredential omission semantics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getLedgerForServiceCredentialMock.mockResolvedValue({ id: "ledger-1" });
+    resolveLedgerForServiceCredentialMock.mockResolvedValue({ id: "ledger-1" });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
       status: "queued",

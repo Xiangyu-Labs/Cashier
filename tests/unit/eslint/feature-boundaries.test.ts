@@ -279,13 +279,49 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("allows ledger query imports from dedicated public entrypoints in cross-module application files", async () => {
+  it("rejects source-document ledger query imports from the generic ledger query entrypoint", async () => {
     const messages = await lintRestrictedImports(
       `
         import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
         export const value = listLedgerEntryViewsBySourceDocumentIds;
       `,
       "src/modules/source-document/server-actions/queries.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows source-document ledger query imports from the dedicated entrypoint", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
+        export const value = listLedgerEntryViewsBySourceDocumentIds;
+      `,
+      "src/modules/source-document/server-actions/queries.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects credential-boundary ledger imports from the generic ledger query entrypoint", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { validateServiceCredential } from "@/modules/ledger/queries";
+        export const value = validateServiceCredential;
+      `,
+      "src/app/api/v1/_shared/route-helper.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows credential-boundary ledger imports from the dedicated entrypoint", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { authenticateServiceCredential } from "@/modules/ledger/credential-access";
+        export const value = authenticateServiceCredential;
+      `,
+      "src/app/api/v1/_shared/route-helper.ts"
     );
 
     expect(messages).toHaveLength(0);
@@ -435,16 +471,16 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("allows currency action imports from test files", async () => {
+  it("rejects currency action imports from cross-module application files", async () => {
     const messages = await lintRestrictedImports(
       `
         import { batchConvertCurrencyAction } from "@/modules/currency/actions";
         export const value = batchConvertCurrencyAction;
       `,
-      "tests/unit/features/currency/actions.test.ts"
+      "src/modules/ledger/application/use-cases/mutate-ledger-entries.ts"
     );
 
-    expect(messages).toHaveLength(0);
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects auth service deep imports from app files", async () => {
@@ -469,6 +505,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     );
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("rejects auth service barrel imports from auth application files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { generateOTP } from "@/modules/auth/services";
+        export const value = generateOTP;
+      `,
+      "src/modules/auth/application/use-cases/send-otp.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
   });
 
   it("rejects stats action imports from module root in app files", async () => {

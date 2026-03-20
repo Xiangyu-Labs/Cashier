@@ -45,7 +45,7 @@ vi.mock("@/modules/auth/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
 

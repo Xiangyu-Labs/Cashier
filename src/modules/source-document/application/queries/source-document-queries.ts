@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeEnd, parseDateRangeStart } from "@/lib/date-utils";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import {
   calculatePendingTotal,
   calculateSourceDocumentStats,

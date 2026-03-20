@@ -18,7 +18,7 @@ vi.mock("@/lib/db", () => ({
   db: {},
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/source-document-queries", () => ({
   listEntryCategoryInfos: listEntryCategoryInfosMock,
 }));
 

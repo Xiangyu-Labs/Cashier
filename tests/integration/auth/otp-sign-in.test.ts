@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { hashOTP } from "@/modules/auth/services";
 import {
   authenticateWithOTP,
   OTPExpiredSignInError,
@@ -12,6 +11,7 @@ import {
   OTPRateLimitedSignInError,
 } from "@/modules/auth/use-cases";
 import { memoryStore } from "@/lib/memory-store";
+import { hashOTP } from "../../../src/modules/auth/services/otp";
 
 vi.mock("resend", () => ({
   Resend: class MockResend {

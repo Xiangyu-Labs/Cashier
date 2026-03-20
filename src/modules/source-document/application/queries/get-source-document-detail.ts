@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/queries";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { sourceDocuments } from "@/persistence";

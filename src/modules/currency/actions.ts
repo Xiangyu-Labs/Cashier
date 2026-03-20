@@ -13,7 +13,12 @@ export async function convertCurrencyAction(
   to: string,
   date?: string
 ): Promise<ConvertCurrencyResult> {
-  return convertCurrency({ amount, from, to, date });
+  return convertCurrency({
+    amount,
+    from,
+    to,
+    ...(date != null ? { date } : {}),
+  });
 }
 
 export interface BatchConversionItem {
@@ -39,7 +44,7 @@ export async function batchConvertCurrencyAction(
       amount: item.amount,
       fromCurrency: item.currency,
       toCurrency: targetCurrency,
-      date: item.date,
+      ...(item.date != null ? { date: item.date } : {}),
     })),
     targetCurrency,
     {

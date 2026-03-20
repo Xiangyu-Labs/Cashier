@@ -26,7 +26,7 @@ export async function convertAmountsBatch(
       amount: item.amount,
       fromCurrency: item.from,
       toCurrency: item.to,
-      date: item.date,
+      ...(item.date != null ? { date: item.date } : {}),
     })),
     mainCurrency
   );

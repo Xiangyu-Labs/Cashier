@@ -5,7 +5,7 @@ import { submitFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { processImage, isSupportedImageFormat } from "@/lib/storage/image-processing";
 import { getLocalStorage } from "@/lib/storage/local";
-import { listEntryCategoryInfos } from "@/modules/ledger/queries";
+import { listEntryCategoryInfos } from "@/modules/ledger/source-document-queries";
 import type { Ledger } from "@/persistence";
 import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 
