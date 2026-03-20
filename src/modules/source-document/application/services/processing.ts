@@ -165,12 +165,14 @@ export async function prepareSourceDocumentTask({
     {
       ledgerId,
       sourceDocumentId,
-      text,
       imageUrls,
       aiLanguage: settings.aiLanguage,
-      preferredCurrencies: settings.preferredCurrencies,
       categories,
       settings: settings.settings,
+      ...(text !== undefined ? { text } : {}),
+      ...(settings.preferredCurrencies !== undefined
+        ? { preferredCurrencies: settings.preferredCurrencies }
+        : {}),
     },
     {
       title: "Parse source document",

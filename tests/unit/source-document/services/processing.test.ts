@@ -84,6 +84,27 @@ describe("prepareSourceDocumentTask", () => {
     );
   });
 
+  it("omits optional task payload fields when they are absent", async () => {
+    const { prepareSourceDocumentTask } =
+      await import("@/modules/source-document/application/services/processing");
+
+    await prepareSourceDocumentTask({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "doc-1",
+      imageUrls: ["/api/uploads/test.jpg"],
+      categories: [],
+      settings: {
+        aiLanguage: "en",
+        settings: {},
+      },
+    });
+
+    const submitInput = submitMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(submitInput).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "preferredCurrencies")).toBe(false);
+  });
+
   it("omits optional settings fields when ledger metadata does not provide them", async () => {
     const { getSourceDocumentTaskContext } =
       await import("@/modules/source-document/application/services/processing");

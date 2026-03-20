@@ -1,11 +1,5 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { sourceDocuments } from "@/persistence";
-import { withLedgerAccess } from "@/lib/auth-actions";
-import { forLedger } from "@/lib/db/scoped-query";
-import { and, inArray } from "drizzle-orm";
-import { type SourceDocMetadata } from "@/modules/source-document/types";
 import type {
   BatchUpdateSourceDocumentsResultDto,
   UpdateSourceDocumentResultDto,
@@ -17,51 +11,34 @@ import {
   type BatchUpdateSourceDocumentsInput,
   type UpdateSourceDocumentInput,
 } from "@/modules/source-document/contract-schemas";
-import { processImages } from "./helpers";
-
-function getOriginalImageUrls(
-  metadata: SourceDocMetadata | null | undefined
-): Array<string | null> {
-  if (!Array.isArray(metadata?.originalImageUrls)) {
-    return [];
-  }
-
-  return metadata.originalImageUrls;
-}
+import {
+  batchUpdateSourceDocuments,
+  updateSourceDocument,
+  updateSourceDocumentImages,
+} from "../application/use-cases/update-source-document";
+import { withSourceDocumentLedgerAccess } from "./access";
 
 /**
  * Update source document metadata (e.g. title, entryDate)
  */
-export const updateSourceDocumentAction = withLedgerAccess(
+export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    ledgerId: string,
+    { ledgerId },
     sourceId: string,
     data: UpdateSourceDocumentInput
   ): Promise<UpdateSourceDocumentResultDto> => {
     const validated = updateSourceDocumentInputSchema.parse(data);
-    const q = forLedger(sourceDocuments, ledgerId);
-    const updatePatch = {
-      updatedAt: new Date(),
-      ...(validated.title !== undefined ? { title: validated.title } : {}),
-      ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
-    };
-
-    const updatedDocuments = await db
-      .update(sourceDocuments)
-      .set(updatePatch)
-      .where(q.whereId(sourceId))
-      .returning({ id: sourceDocuments.id });
-
-    return {
+    return updateSourceDocument({
+      ledgerId,
       sourceDocumentId: sourceId,
-      updated: updatedDocuments.length > 0,
-    };
+      data: validated,
+    });
   }
 );
 
-export const updateSourceDocumentImagesAction = withLedgerAccess(
+export const updateSourceDocumentImagesAction = withSourceDocumentLedgerAccess(
   async (
-    ledgerId: string,
+    { ledgerId },
     sourceId: string,
     images: { data: string; mimeType: string }[],
     originalImages?: { data: string; mimeType: string }[]
@@ -77,106 +54,29 @@ export const updateSourceDocumentImagesAction = withLedgerAccess(
       };
     }
 
-    const q = forLedger(sourceDocuments, ledgerId);
-    const existingDoc = await db.query.sourceDocuments.findFirst({
-      where: q.whereId(sourceId),
-    });
-
-    if (!existingDoc) {
-      return {
-        sourceDocumentId: sourceId,
-        updated: false,
-      };
-    }
-
-    const nextImageUrls = await processImages(validatedImages, ledgerId, sourceId);
-    const existingOriginalUrls = getOriginalImageUrls(existingDoc.metadata);
-    const nextOriginalUrls =
-      existingOriginalUrls.length > 0
-        ? [...existingOriginalUrls]
-        : validatedOriginalImages != null && validatedOriginalImages.length > 0
-          ? (await processImages(validatedOriginalImages, ledgerId, sourceId)).map(
-              (url) => url ?? null
-            )
-          : [];
-
-    const previousImageUrls = existingDoc.imageUrls ?? [];
-
-    for (let index = 0; index < nextImageUrls.length; index += 1) {
-      const previousImageUrl = previousImageUrls[index];
-      const nextImageUrl = nextImageUrls[index];
-
-      if (
-        previousImageUrl == null ||
-        previousImageUrl === "" ||
-        nextImageUrl == null ||
-        nextImageUrl === "" ||
-        previousImageUrl === nextImageUrl
-      ) {
-        continue;
-      }
-
-      if (nextOriginalUrls[index] == null || nextOriginalUrls[index] === "") {
-        nextOriginalUrls[index] = previousImageUrl;
-      }
-    }
-
-    const { originalImageUrls: _originalImageUrls, ...restMetadata } = existingDoc.metadata ?? {};
-    const metadata = nextOriginalUrls.some((url) => url != null && url !== "")
-      ? { ...restMetadata, originalImageUrls: nextOriginalUrls }
-      : restMetadata;
-
-    const updatedDocuments = await db
-      .update(sourceDocuments)
-      .set({
-        imageUrls: nextImageUrls,
-        metadata,
-        updatedAt: new Date(),
-      })
-      .where(q.whereId(sourceId))
-      .returning({ id: sourceDocuments.id });
-
-    return {
+    return updateSourceDocumentImages({
+      ledgerId,
       sourceDocumentId: sourceId,
-      updated: updatedDocuments.length > 0,
-    };
+      images: validatedImages,
+      ...(validatedOriginalImages != null ? { originalImages: validatedOriginalImages } : {}),
+    });
   }
 );
 
 /**
  * Batch update multiple source documents
  */
-export const batchUpdateSourceDocumentsAction = withLedgerAccess(
+export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
   async (
-    ledgerId: string,
+    { ledgerId },
     sourceDocumentIds: string[],
     data: BatchUpdateSourceDocumentsInput
   ): Promise<BatchUpdateSourceDocumentsResultDto> => {
-    if (sourceDocumentIds.length === 0) {
-      return {
-        sourceDocumentIds,
-        updatedCount: 0,
-      };
-    }
-
     const validated = batchUpdateSourceDocumentsInputSchema.parse(data);
-    const q = forLedger(sourceDocuments, ledgerId);
-    const updatePatch = {
-      updatedAt: new Date(),
-      ...(validated.status !== undefined ? { status: validated.status } : {}),
-      ...(validated.title !== undefined ? { title: validated.title } : {}),
-      ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
-    };
-
-    const updatedDocuments = await db
-      .update(sourceDocuments)
-      .set(updatePatch)
-      .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)))
-      .returning({ id: sourceDocuments.id });
-
-    return {
+    return batchUpdateSourceDocuments({
+      ledgerId,
       sourceDocumentIds,
-      updatedCount: updatedDocuments.length,
-    };
+      data: validated,
+    });
   }
 );

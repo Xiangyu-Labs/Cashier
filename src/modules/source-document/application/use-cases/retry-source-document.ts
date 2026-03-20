@@ -1,16 +1,16 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
-import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
+import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   getSourceDocumentTaskContext,
+  prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -120,28 +120,14 @@ export async function retrySourceDocument({
       )
     );
 
-  const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
-  const taskInput = {
+  const taskContext = await getSourceDocumentTaskContext(ledgerId, ledger);
+  await prepareSourceDocumentTask({
     ledgerId,
     sourceDocumentId: newDocumentId,
     imageUrls: finalImageUrls,
-    aiLanguage: settings.aiLanguage,
-    categories,
-    settings: {
-      ...(settings.settings.aiCustomPrompt !== undefined
-        ? { aiCustomPrompt: settings.settings.aiCustomPrompt }
-        : {}),
-    },
+    categories: taskContext.categories,
+    settings: taskContext.settings,
     ...(text !== null && text !== undefined ? { text } : {}),
-    ...(settings.preferredCurrencies !== undefined
-      ? { preferredCurrencies: settings.preferredCurrencies }
-      : {}),
-  };
-  await submitFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, taskInput, {
-    title: "Parse source document",
-    scopeId: ledgerId,
-    entityType: "source_document",
-    entityId: newDocumentId,
   });
 
   logger.debug(

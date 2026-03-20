@@ -3,15 +3,14 @@ import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedProperties } from "@/lib/validation";
-import { submitFlowTask } from "@/lib/flow";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import {
   getSourceDocumentTaskContext,
+  prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
-import { TASK_TYPE_PARSE_SOURCE_DOCUMENT } from "../tasks/parse-source-document";
 
 export interface CreateAndQueueSourceDocumentInput {
   ledgerId: string;
@@ -69,29 +68,14 @@ export async function createAndQueueSourceDocument(
 
   const imageUrls = await processImages(images, ledgerId, savedDoc.id);
   const originalImageUrls = await processImages(originalImages, ledgerId, savedDoc.id);
-  const { categories, settings } = await getSourceDocumentTaskContext(ledgerId, ledger);
-
-  const taskInput = {
+  const taskContext = await getSourceDocumentTaskContext(ledgerId, ledger);
+  await prepareSourceDocumentTask({
     ledgerId,
     sourceDocumentId: savedDoc.id,
     imageUrls,
-    aiLanguage: settings.aiLanguage,
-    categories,
-    settings: {
-      ...(settings.settings.aiCustomPrompt !== undefined
-        ? { aiCustomPrompt: settings.settings.aiCustomPrompt }
-        : {}),
-    },
+    categories: taskContext.categories,
+    settings: taskContext.settings,
     ...(text !== undefined ? { text } : {}),
-    ...(settings.preferredCurrencies !== undefined
-      ? { preferredCurrencies: settings.preferredCurrencies }
-      : {}),
-  };
-  await submitFlowTask(TASK_TYPE_PARSE_SOURCE_DOCUMENT, taskInput, {
-    title: "Parse source document",
-    scopeId: ledgerId,
-    entityType: "source_document",
-    entityId: savedDoc.id,
   });
 
   if (imageUrls.length > 0 || originalImageUrls.length > 0) {
