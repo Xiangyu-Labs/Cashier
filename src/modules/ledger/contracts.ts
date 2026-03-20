@@ -44,6 +44,10 @@ export type EntryCategoryDto = {
 
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
 
+export interface CategoriesResponseDto {
+  categories: EntryCategoryWithCountDto[];
+}
+
 export type SourceDocumentReferenceStatus =
   | "queued"
   | "processing"

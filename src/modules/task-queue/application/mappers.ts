@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { TaskRun, SourceDocument } from "@/persistence";
-import type { QueueItem, QueueItemStatus } from "@/modules/task-queue/types";
+import type { QueueItem, QueueItemStatus } from "@/modules/task-queue/contracts";
 
 const QueueItemStatusSchema = z.enum(["pending", "running", "completed", "failed", "anomaly"]);
 

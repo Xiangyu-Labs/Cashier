@@ -1,4 +1,4 @@
-import type { QueueItemStatus } from "@/modules/task-queue/types";
+import type { QueueItemStatus } from "@/modules/task-queue/contracts";
 
 export const TASK_TYPE_I18N: Record<string, string> = {
   parse_source_document: "taskType_parse_source_document",

@@ -6,7 +6,7 @@ import {
   getSourceDocumentId,
   taskRunToQueueItem,
 } from "@/modules/task-queue/application/mappers";
-import type { QueueItem, TaskQueueResult, TaskQueueStats } from "@/modules/task-queue/types";
+import type { QueueItem, TaskQueueResult, TaskQueueStats } from "@/modules/task-queue/contracts";
 
 export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResult> {
   const activeTasks = await db.query.taskRuns.findMany({

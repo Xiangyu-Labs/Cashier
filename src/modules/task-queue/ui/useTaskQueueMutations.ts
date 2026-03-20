@@ -13,12 +13,12 @@ import type {
   BatchRetrySourceDocumentsResultDto,
   DeleteSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
+import type { TaskQueueResult } from "@/modules/task-queue/contracts";
 import {
   dismissTaskAction,
   batchDismissTasksAction,
   cancelTaskAction,
   batchCancelTasksAction,
-  type TaskQueueResult,
 } from "@/modules/task-queue/actions";
 
 function removeItemsById(

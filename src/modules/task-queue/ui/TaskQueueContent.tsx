@@ -3,7 +3,7 @@
 import { Inbox } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import type { QueueItem } from "@/modules/task-queue/types";
+import type { QueueItem } from "@/modules/task-queue/contracts";
 import { TaskGroupSection } from "./TaskGroupSection";
 import { QueueItemCard } from "./QueueItemCard";
 

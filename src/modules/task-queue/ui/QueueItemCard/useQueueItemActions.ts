@@ -6,8 +6,8 @@ import {
   canDismiss as canDismissItem,
   canRetry as canRetryItem,
   hasSourceDocument,
-  type QueueItem,
 } from "@/modules/task-queue/types";
+import type { QueueItem } from "@/modules/task-queue/contracts";
 import { TASK_TYPE_I18N } from "./constants";
 
 interface UseQueueItemActionsOptions {

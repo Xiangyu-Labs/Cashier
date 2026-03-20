@@ -10,7 +10,7 @@ import {
   batchDismissTasksUseCase,
   dismissTaskUseCase,
 } from "./application/use-cases/dismiss-task";
-import type { TaskQueueResult } from "./types";
+import type { TaskQueueResult } from "./contracts";
 
 export const cancelTaskAction = withLedgerAccess((ledgerId: string, taskId: string) =>
   cancelTaskUseCase(ledgerId, taskId)
@@ -38,4 +38,12 @@ export const getTaskQueueAction = withLedgerAccess((ledgerId: string) =>
   getTaskQueueQuery(ledgerId)
 );
 
-export type { TaskQueueResult, TaskQueueStats } from "./types";
+export type {
+  QueueItem,
+  QueueItemKind,
+  QueueItemStatus,
+  TaskQueueItemsResponseDto,
+  TaskQueueResult,
+  TaskQueueStats,
+  TaskQueueStatsResponseDto,
+} from "./contracts";
