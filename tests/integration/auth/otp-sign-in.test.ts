@@ -10,7 +10,7 @@ import {
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
-} from "@/modules/auth/services";
+} from "@/modules/auth/use-cases";
 import { memoryStore } from "@/lib/memory-store";
 
 vi.mock("resend", () => ({

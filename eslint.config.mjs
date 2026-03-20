@@ -25,7 +25,7 @@ const moduleNames = [
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
 
 const MODULE_PUBLIC_ENTRYPOINTS = {
-  auth: ["access", "actions", "constants", "contracts", "errors", "services"],
+  auth: ["access", "actions", "constants", "contracts", "errors", "queries", "services", "use-cases"],
   currency: ["actions", "client", "events", "ui", "use-cases"],
   ledger: ["actions", "contract-schemas", "contracts", "hooks", "queries", "ui", "use-cases"],
   "source-document": [

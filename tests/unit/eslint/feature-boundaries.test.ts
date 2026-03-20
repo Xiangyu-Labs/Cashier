@@ -411,6 +411,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("allows auth use-case imports from dedicated public entrypoints in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { authenticateWithOTP } from "@/modules/auth/use-cases";
+        export const value = authenticateWithOTP;
+      `,
+      "src/auth.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects stats action imports from module root in app files", async () => {
     const messages = await lintRestrictedImports(
       `

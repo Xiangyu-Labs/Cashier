@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UnauthorizedError } from "@/lib/errors";
 
-const { nextAuthMock, ensureUserLedgerMock, sendLoginNotificationMock } = vi.hoisted(() => ({
+const {
+  nextAuthMock,
+  authenticateWithOTPMock,
+  getSessionUserMock,
+  handleAuthUserCreatedMock,
+  handleAuthUserSignedInMock,
+  isAuthSignInAllowedMock,
+} = vi.hoisted(() => ({
   nextAuthMock: vi.fn(),
-  ensureUserLedgerMock: vi.fn(),
-  sendLoginNotificationMock: vi.fn(),
+  authenticateWithOTPMock: vi.fn(),
+  getSessionUserMock: vi.fn(),
+  handleAuthUserCreatedMock: vi.fn(),
+  handleAuthUserSignedInMock: vi.fn(),
+  isAuthSignInAllowedMock: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("next-auth", () => ({
@@ -27,14 +38,15 @@ vi.mock("@/persistence/schema/auth", () => ({
   accounts: {},
 }));
 
-vi.mock("@/modules/auth/services", () => ({
-  authenticateWithOTP: vi.fn(),
-  isRegistrationAllowed: vi.fn().mockResolvedValue(true),
-  sendLoginNotification: sendLoginNotificationMock,
+vi.mock("@/modules/auth/use-cases", () => ({
+  authenticateWithOTP: authenticateWithOTPMock,
+  handleAuthUserCreated: handleAuthUserCreatedMock,
+  handleAuthUserSignedIn: handleAuthUserSignedInMock,
+  isAuthSignInAllowed: isAuthSignInAllowedMock,
 }));
 
-vi.mock("@/modules/workspace/use-cases", () => ({
-  ensureUserLedger: ensureUserLedgerMock,
+vi.mock("@/modules/auth/queries", () => ({
+  getSessionUser: getSessionUserMock,
 }));
 
 nextAuthMock.mockImplementation((config) => {
@@ -47,10 +59,23 @@ nextAuthMock.mockImplementation((config) => {
   };
 });
 
-describe("auth events single-ledger initialization", () => {
+describe("auth.ts adapter wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    authenticateWithOTPMock.mockResolvedValue({
+      id: "user-authenticate",
+      email: "user@example.com",
+      name: "User",
+      image: null,
+    });
+    isAuthSignInAllowedMock.mockResolvedValue(true);
+    getSessionUserMock.mockResolvedValue({
+      id: "db-user",
+      email: "db@example.com",
+      name: "DB User",
+      image: "db-image",
+    });
   });
 
   async function loadAuthOptions() {
@@ -60,7 +85,26 @@ describe("auth events single-ledger initialization", () => {
     return { authModule, authOptions };
   }
 
-  it("calls ensureUserLedger on createUser when user id exists", async () => {
+  it("delegates authorize to authenticateWithOTP", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const otpProvider = authOptions?.providers?.find?.((provider: { id?: string }) => provider.id === "otp");
+
+    const request = { headers: new Headers({ "x-forwarded-for": "127.0.0.1" }) };
+    const result = await otpProvider?.authorize?.(
+      { email: "user@example.com", otp: "123456", locale: "zh" },
+      request
+    );
+
+    expect(authenticateWithOTPMock).toHaveBeenCalledWith({
+      email: "user@example.com",
+      otp: "123456",
+      locale: "zh",
+      requestHeaders: request.headers,
+    });
+    expect(result).toMatchObject({ email: "user@example.com" });
+  });
+
+  it("delegates createUser events to the auth user-created use case", async () => {
     const { authModule, authOptions } = await loadAuthOptions();
     const createUserEvent = authOptions?.events?.createUser as
       | ((params: { user: { id?: string | null } }) => Promise<void>)
@@ -71,22 +115,10 @@ describe("auth events single-ledger initialization", () => {
 
     await createUserEvent?.({ user: { id: "user-create" } });
 
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith({ userId: "user-create" });
-    expect(sendLoginNotificationMock).not.toHaveBeenCalled();
+    expect(handleAuthUserCreatedMock).toHaveBeenCalledWith({ userId: "user-create" });
   });
 
-  it("does not call ensureUserLedger on createUser when id is missing", async () => {
-    const { authOptions } = await loadAuthOptions();
-    const createUserEvent = authOptions?.events?.createUser as
-      | ((params: { user: { id?: string | null } }) => Promise<void>)
-      | undefined;
-
-    await createUserEvent?.({ user: { id: "" } });
-
-    expect(ensureUserLedgerMock).not.toHaveBeenCalled();
-  });
-
-  it("calls ensureUserLedger and notification for existing-user signIn", async () => {
+  it("delegates signIn events to the auth user-signed-in use case", async () => {
     const { authOptions } = await loadAuthOptions();
     const signInEvent = authOptions?.events?.signIn as
       | ((params: { user: { id?: string | null; email?: string | null }; isNewUser?: boolean }) => Promise<void>)
@@ -97,37 +129,69 @@ describe("auth events single-ledger initialization", () => {
       isNewUser: false,
     });
 
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith({ userId: "user-signin" });
-    expect(sendLoginNotificationMock).toHaveBeenCalledWith("user@example.com");
-  });
-
-  it("skips ensureUserLedger for new-user signIn", async () => {
-    const { authOptions } = await loadAuthOptions();
-    const signInEvent = authOptions?.events?.signIn as
-      | ((params: { user: { id?: string | null; email?: string | null }; isNewUser?: boolean }) => Promise<void>)
-      | undefined;
-
-    await signInEvent?.({
-      user: { id: "user-signin", email: "user@example.com" },
-      isNewUser: true,
-    });
-
-    expect(ensureUserLedgerMock).not.toHaveBeenCalled();
-    expect(sendLoginNotificationMock).not.toHaveBeenCalled();
-  });
-
-  it("skips signIn side effects when email is missing", async () => {
-    const { authOptions } = await loadAuthOptions();
-    const signInEvent = authOptions?.events?.signIn as
-      | ((params: { user: { id?: string | null; email?: string | null }; isNewUser?: boolean }) => Promise<void>)
-      | undefined;
-
-    await signInEvent?.({
-      user: { id: "user-signin", email: "" },
+    expect(handleAuthUserSignedInMock).toHaveBeenCalledWith({
+      userId: "user-signin",
+      email: "user@example.com",
       isNewUser: false,
     });
+  });
 
-    expect(ensureUserLedgerMock).not.toHaveBeenCalled();
-    expect(sendLoginNotificationMock).not.toHaveBeenCalled();
+  it("delegates signIn callbacks to the auth sign-in guard use case", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const signInCallback = authOptions?.callbacks?.signIn as
+      | ((params: { user: { email?: string | null } }) => Promise<boolean>)
+      | undefined;
+
+    isAuthSignInAllowedMock.mockResolvedValueOnce(false);
+    const result = await signInCallback?.({ user: { email: "blocked@example.com" } });
+
+    expect(isAuthSignInAllowedMock).toHaveBeenCalledWith({ email: "blocked@example.com" });
+    expect(result).toBe(false);
+  });
+
+  it("hydrates session data through the auth session query", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const sessionCallback = authOptions?.callbacks?.session as
+      | ((params: {
+          session: { user?: { id?: string; email?: string | null; name?: string | null; image?: string | null } };
+          token: { sub?: string | null };
+        }) => Promise<{
+          user?: { id?: string; email?: string | null; name?: string | null; image?: string | null };
+        }>)
+      | undefined;
+
+    const result = await sessionCallback?.({
+      session: { user: { id: "session-user", email: "old@example.com", name: "Old", image: null } },
+      token: { sub: "db-user" },
+    });
+
+    expect(getSessionUserMock).toHaveBeenCalledWith("db-user");
+    expect(result).toEqual({
+      user: {
+        id: "db-user",
+        email: "db@example.com",
+        name: "DB User",
+        image: "db-image",
+      },
+    });
+  });
+
+  it("rethrows missing-user session errors from the auth session query", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const sessionCallback = authOptions?.callbacks?.session as
+      | ((params: {
+          session: { user?: { id?: string; email?: string | null; name?: string | null; image?: string | null } };
+          token: { sub?: string | null };
+        }) => Promise<unknown>)
+      | undefined;
+
+    getSessionUserMock.mockRejectedValueOnce(new UnauthorizedError("User not found in database"));
+
+    await expect(
+      sessionCallback?.({
+        session: { user: { id: "session-user", email: "old@example.com", name: "Old", image: null } },
+        token: { sub: "missing-user" },
+      })
+    ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

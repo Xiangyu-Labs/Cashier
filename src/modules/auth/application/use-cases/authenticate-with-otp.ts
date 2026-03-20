@@ -5,14 +5,14 @@ import { db } from "@/lib/db";
 import { users } from "@/persistence/schema/auth";
 import { deleteOTPToken } from "@/modules/auth/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { isValidOTPFormat } from "./otp";
-import { checkVerifyRateLimit } from "./otp-rate-limit";
-import { findOTPRecord, verifyOTPWithPolicy } from "./otp-verification";
-import { assertRegistrationAllowed } from "./registration";
+import { isValidOTPFormat } from "@/modules/auth/services";
+import { checkVerifyRateLimit } from "@/modules/auth/services";
+import { findOTPRecord, verifyOTPWithPolicy } from "@/modules/auth/services";
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
 import { ensureUserLedger } from "@/modules/workspace/use-cases";
+import { assertRegistrationAllowed } from "./registration-policy";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,7 +65,7 @@ function validateCredentials(email: string, otp: string): string {
   return normalizedEmail;
 }
 
-async function findOrCreateUser(normalizedEmail: string, _locale: string): Promise<{
+async function findOrCreateUser(normalizedEmail: string): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof db.query.users.findFirst>>>;
   isExistingUser: boolean;
 }> {
@@ -83,9 +83,11 @@ async function findOrCreateUser(normalizedEmail: string, _locale: string): Promi
         emailVerified: new Date(),
       })
       .returning();
+
     if (newUser == null) {
       throw new Error("Failed to create user");
     }
+
     user = newUser;
   }
 
@@ -144,7 +146,7 @@ export async function authenticateWithOTP(params: {
 
   await assertRegistrationAllowed(normalizedEmail);
 
-  const { user, isExistingUser } = await findOrCreateUser(normalizedEmail, locale);
+  const { user, isExistingUser } = await findOrCreateUser(normalizedEmail);
 
   if (!isExistingUser) {
     await ensureUserLedger({

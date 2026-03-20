@@ -4,17 +4,16 @@ import type { OAuthConfig } from "next-auth/providers/index";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import { users, accounts } from "@/persistence/schema/auth";
-import { eq, and, isNull } from "drizzle-orm";
 
 import { authConfig } from "./auth.config";
-import { authenticateWithOTP } from "@/modules/auth/services";
 import {
-  isRegistrationAllowed,
-  sendLoginNotification,
-} from "@/modules/auth/services";
+  authenticateWithOTP,
+  handleAuthUserCreated,
+  handleAuthUserSignedIn,
+  isAuthSignInAllowed,
+} from "@/modules/auth/use-cases";
+import { getSessionUser } from "@/modules/auth/queries";
 import { TIME_SECONDS } from "@/lib/constants";
-import { UnauthorizedError } from "@/lib/errors";
-import { ensureUserLedger } from "@/modules/workspace/use-cases";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -123,31 +122,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      if (user.id != null && user.id !== "") {
-        await ensureUserLedger({
-          userId: user.id,
-        });
-      }
+      await handleAuthUserCreated({ userId: user.id });
     },
     async signIn({ user, isNewUser }) {
-      if (isNewUser !== true && user.email != null && user.email !== "") {
-        await ensureUserLedger({
-          userId: user.id!,
-        });
-
-        await sendLoginNotification(user.email);
-      }
+      await handleAuthUserSignedIn({
+        userId: user.id,
+        email: user.email,
+        isNewUser,
+      });
     },
   },
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user }) {
-      if (user.email != null && user.email !== "") {
-        if (await isRegistrationAllowed(user.email) !== true) {
-          return false;
-        }
-      }
-      return true;
+      return isAuthSignInAllowed({ email: user.email });
     },
     async jwt({ token, user }) {
       if (user != null && user.id != null && user.id !== "") {
@@ -158,17 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token.sub != null && token.sub !== "" && session.user != null) {
-        const userId = token.sub;
-
-        // Fetch User Data from DB to ensure it's up to date and user still exists
-        const dbUser = await db.query.users.findFirst({
-          where: and(eq(users.id, userId), isNull(users.deletedAt)),
-          columns: { id: true, email: true, name: true, image: true },
-        });
-
-        if (dbUser == null) {
-          throw new UnauthorizedError("User not found in database");
-        }
+        const dbUser = await getSessionUser(token.sub);
 
         return {
           ...session,

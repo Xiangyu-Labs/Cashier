@@ -1,16 +1,4 @@
 export {
-  authenticateWithOTP,
-  OTPInvalidSignInError,
-  OTPExpiredSignInError,
-  OTPLockedSignInError,
-  OTPRateLimitedSignInError,
-} from "./services/otp-sign-in";
-export {
-  isRegistrationAllowed,
-  assertRegistrationAllowed,
-  RegistrationDisabledError,
-} from "./services/registration";
-export {
   generateOTP,
   verifyOTP,
   hashOTP,
@@ -35,4 +23,3 @@ export {
   isAccountLocked,
   type VerificationResult,
 } from "./services/otp-verification";
-export { sendLoginNotification } from "./services/notifications";
