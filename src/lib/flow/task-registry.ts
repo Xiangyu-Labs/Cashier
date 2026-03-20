@@ -41,12 +41,10 @@ export async function registerAllTasks(engine: FlowEngine): Promise<void> {
 
     const [
       { parseSourceDocumentTaskDefinition },
-      { generateCategoryMetadataTaskDefinition },
-      { categorizeEntryTaskDefinition },
+      { generateCategoryMetadataTaskDefinition, categorizeEntryTaskDefinition },
     ] = await Promise.all([
-      import("@/modules/source-document/application/tasks/parse-source-document"),
-      import("@/modules/ledger/application/tasks/generate-category-metadata"),
-      import("@/modules/ledger/application/tasks/categorize-entry"),
+      import("@/modules/source-document/application/tasks"),
+      import("@/modules/ledger/application/tasks"),
     ]);
 
     registerTaskIfNeeded(
