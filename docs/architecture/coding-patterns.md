@@ -29,7 +29,8 @@ src/modules/{domain}/
 ### 关键约束
 
 - **`use-cases.ts` / `queries.ts` / `tasks.ts` 是纯 barrel**：只能 `export { ... } from "./application/..."`，绝对不允许在这些文件中定义类型、实现逻辑、或封装函数签名。
-- **`contracts.ts` 只放类型**：公共 DTO 和 Zod schema 放在 `contracts.ts` 或 `contract-schemas.ts`，不允许在 `actions.ts` 或 `use-cases.ts` 中内联定义应对外暴露的类型。
+- **`actions.ts` 是纯 re-export barrel**：模块根目录的 `actions.ts` 只能 re-export `server-actions/` 中的函数，绝对不允许在其中直接实现函数体或定义类型。逻辑必须放在 `server-actions/` 子目录。
+- **`contracts.ts` 只放本地类型定义**：公共 DTO 和 Zod schema 放在 `contracts.ts` 或 `contract-schemas.ts`。不允许在 `contracts.ts` 中 `import` 或 `re-export` `application/` 层的内部类型——所有类型必须在 `contracts.ts` 内本地定义，或通过 `use-cases.ts` barrel 暴露。
 - **跨模块只通过公共入口导入**：只允许 import `@/modules/{domain}/actions`、`@/modules/{domain}/contracts`、`@/modules/{domain}/use-cases` 等顶层文件；不允许 deep import `@/modules/{domain}/application/...`、`@/modules/{domain}/server-actions/...`。
 - **application/ 不依赖 actions/server-actions**：业务逻辑方向是单向的：`server-actions → application`，反过来不允许。
 
@@ -68,28 +69,23 @@ export const createLedgerEntryAction = withLedgerAccess(
 
 ## 3. 错误处理
 
-### Server Action / Use Case
+使用 `src/lib/errors.ts` 中的标准化错误类。
 
 ```typescript
-import { ValidationError, NotFoundError, ForbiddenError } from "@/lib/errors";
-
-// 直接 throw，不包装
-if (!isValid(data)) {
-  throw new ValidationError("Invalid input", { field: "amount" });
-}
-if (!entity) {
-  throw new NotFoundError("LedgerEntry");
-}
-```
-
-### API Route Handler
-
-```typescript
+import { ValidationError, UnauthorizedError, NotFoundError } from "@/lib/errors";
 import { toErrorResponse, getErrorStatusCode, logError } from "@/lib/error-handlers";
 
+// Server Actions — 直接 throw
+export async function myAction(data: unknown) {
+  if (!isValid(data)) {
+    throw new ValidationError("Invalid input", { field: "email" });
+  }
+}
+
+// API Routes — 用标准化响应
 export async function POST(request: Request) {
   try {
-    // ...
+    // ... logic
   } catch (error) {
     logError("api/my-endpoint", error);
     return NextResponse.json(toErrorResponse(error), { status: getErrorStatusCode(error) });
@@ -97,160 +93,166 @@ export async function POST(request: Request) {
 }
 ```
 
-### 错误类层级
+### 错误类
 
-| 类 | HTTP | code |
+| 类 | HTTP 状态码 | 用途 |
 |---|---|---|
-| `AppError` | 500 | 自定义 |
-| `ValidationError` | 400 | `VALIDATION_ERROR` |
-| `UnauthorizedError` | 401 | `UNAUTHORIZED` |
-| `ForbiddenError` | 403 | `FORBIDDEN` |
-| `NotFoundError` | 404 | `NOT_FOUND` |
-| `ConflictError` | 409 | `CONFLICT` |
-| `RateLimitError` | 429 | `RATE_LIMIT` |
+| `ValidationError` | 400 | 输入校验失败 |
+| `UnauthorizedError` | 401 | 未登录 |
+| `ForbiddenError` | 403 | 无权限 |
+| `NotFoundError` | 404 | 资源不存在 |
+| `RateLimitError` | 429 | 请求频率超限 |
+| `AppError` | 500 | 通用业务错误基类 |
 
 ---
 
 ## 4. Query Keys
 
-所有 TanStack Query key 必须通过 `src/lib/query-keys.ts` 中的 `queryKeys` 工厂定义，不允许硬编码字符串数组。
+使用 `src/lib/query-keys.ts` 中的集中式 `queryKeys` 工厂，不允许硬编码字符串数组。
 
 ```typescript
-import { queryKeys, invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 
-// 读取
-useQuery({ queryKey: queryKeys.ledgerEntries(ledgerId, filter) })
+// 正确
+const { data } = useQuery({
+  queryKey: queryKeys.ledger(ledgerId).entries(),
+});
 
-// invalidation（用 predicate，不用前缀匹配）
-queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) })
+// 错误 ❌
+const { data } = useQuery({
+  queryKey: ["ledger", ledgerId, "entries"],
+});
 ```
 
-### 规则
+### 缓存失效
 
-- **新增数据类型时，先在 `queryKeys` 工厂中注册 key**，再在组件中使用。
-- **invalidation 用 predicate 函数**（`invalidateLedgerEntries(ledgerId)` 等），不用 `queryKey` 前缀匹配。
-- **`invalidateQueries` 放在 `onSettled`**，不放在 `onSuccess`，确保出错时也能刷新缓存。
+```typescript
+// 使用 invalidateLedgerCache predicate 批量失效
+queryClient.invalidateQueries({
+  predicate: invalidateLedgerCache(ledgerId),
+});
+```
 
 ---
 
 ## 5. Mutations 与乐观更新
 
-所有数据变更 hook 必须使用 `useLedgerMutation` factory。
+所有 mutations 使用 `useLedgerMutation` 工厂（`src/lib/mutations/`），不直接使用 `useMutation`。
 
 ```typescript
-import { useLedgerMutation, optimisticallyUpdateInList } from "@/lib/mutations/use-ledger-mutation";
-import { queryKeys, invalidateLedgerEntries } from "@/lib/query-keys";
-import { updateLedgerEntryAction } from "@/modules/ledger/actions";
+const mutation = useLedgerMutation({
+  mutationFn: ({ ledgerId, data }) => createLedgerEntryAction(ledgerId, data),
+  onOptimisticUpdate: ({ ledgerId, data }, queryClient) => {
+    // 返回 rollback 函数
+    const previous = queryClient.getQueryData(queryKeys.ledger(ledgerId).entries());
+    queryClient.setQueryData(queryKeys.ledger(ledgerId).entries(), (old) => [
+      ...(old ?? []),
+      optimisticEntry(data),
+    ]);
+    return () => queryClient.setQueryData(queryKeys.ledger(ledgerId).entries(), previous);
+  },
+});
+```
 
-export function useUpdateEntry(ledgerId: string) {
-  return useLedgerMutation({
-    ledgerId,
-    mutationFn: (variables) => updateLedgerEntryAction(ledgerId, variables.id, variables.data),
-    successMessage: t("updated"),
-    invalidatePredicates: [invalidateLedgerEntries(ledgerId)],
-    onOptimisticUpdate: (queryClient, variables) =>
-      optimisticallyUpdateInList(
-        queryClient,
-        queryKeys.ledgerEntries(ledgerId),
-        variables.id,
-        variables.data
-      ),
+### 规则
+
+- **`invalidateQueries` 放在 `onSettled`**，不放在 `onSuccess`，确保出错时缓存也能刷新。
+- **禁止用 `useState` 做乐观更新**，统一通过 `onOptimisticUpdate` + TanStack Query cache 管理。
+- **`cancelQueries` 在 `onOptimisticUpdate` 前调用**，防止竞态。
+
+---
+
+## 6. 后台任务
+
+后台任务使用 in-process `flowEngine`（`src/lib/flow/`），不使用外部队列。
+
+```typescript
+// src/modules/my-feature/application/tasks/my-task.ts
+import { flowEngine } from "@/lib/flow";
+
+export default function register(engine: typeof flowEngine) {
+  engine.register("my-task", {
+    async execute(input, context) {
+      // 任务逻辑
+      return result;
+    },
   });
 }
 ```
 
 ### 规则
 
-- **禁止手动 `useState` 做乐观状态**，统一用 `onOptimisticUpdate` + 自动 rollback。
-- **`cancelQueries` 在 `onMutate` 中自动执行**（factory 处理），无需手动调用。
-- **rollback 用 snapshots**：`optimisticallyUpdateInList` / `optimisticallyAddToList` 返回 `{ snapshots }`，factory 在 `onError` 中自动还原。
-- **`invalidateQueries` 在 `onSettled` 中执行**（factory 处理），无需手动调用。
-
----
-
-## 6. 后台任务（Task Handlers）
-
-### 任务定义
-
-```typescript
-// src/modules/{domain}/application/tasks/my-task.ts
-import type { FlowTaskHandler } from "@/lib/flow/types";
-
-const handler: FlowTaskHandler<MyTaskInput, MyTaskOutput> = {
-  async execute(input, context) {
-    // 业务逻辑
-    return result;
-  },
-};
-
-export const myTaskDefinition = {
-  type: "my_task" as const,
-  handler,
-};
-```
-
-### 注册
-
-任务只能在 `src/lib/flow/task-registry.ts` 中注册，通过 `registerTaskIfNeeded(engine, type, handler)` 注册，不允许在其他地方调用 `engine.register()`。
-
-### 提交
-
-```typescript
-import { flowEngine } from "@/lib/flow";
-flowEngine.submit("my_task", input, { deduplicationKey: `my_task:${entityId}` });
-```
-
-- **`deduplicationKey` 必须是 engine 的一等字段**，不允许藏在 `input` payload 中。
+- **只在 `src/lib/flow/task-registry.ts` 注册任务**，不在其他地方调用 `engine.register()`。
+- **用 `deduplicationKey`** 防止同一任务重复提交。
+- **提交任务用 `flowEngine.submit()`**，在 server-action 或 use-case 中调用。
 
 ---
 
 ## 7. 数据访问与租户隔离
 
-- **所有数据查询必须通过 `forLedger(ledgerId)` 范围化**，不允许无 tenant scope 的全表查询。
-- **Schema 来源唯一**：`src/persistence/schema/*.ts` 是 Drizzle schema 的唯一来源，`src/app` 和共享 UI 不得直接 import `@/persistence`。
-- **软删除**：所有主要表有 `deletedAt` 列，查询时必须过滤 `IS NULL`。
-- **日期存储为字符串**：业务日期存为 `yyyy-MM-dd` 字符串，不存时间戳。系统时间戳（`createdAt` 等）用整数。前端负责时区转换。
+所有数据查询必须通过 `forLedger(ledgerId)` 作用域，不允许全局查询后在内存中过滤。
+
+```typescript
+import { forLedger } from "@/lib/db";
+
+export async function listLedgerEntries(ledgerId: string) {
+  const db = forLedger(ledgerId);
+  return db.query.ledgerEntries.findMany({
+    where: (t, { isNull }) => isNull(t.deletedAt),
+  });
+}
+```
+
+### 规则
+
+- **软删除**：所有主表有 `deletedAt` 列，删除时设置时间戳而非物理删除，查询时过滤 `isNull(t.deletedAt)`。
+- **日期存 `yyyy-MM-dd` 字符串**：不存时间戳，前端负责时区处理，后端做字符串比较。
+- **SQL 层过滤，不在内存中过滤**：分页、状态筛选、日期范围都在 SQL 层完成。
 
 ---
 
 ## 8. 状态管理
 
-| 状态类型 | 工具 | 说明 |
-|---|---|---|
-| 服务端数据 | TanStack Query | 缓存、invalidation、乐观更新 |
-| 全局轻量客户端状态 | Zustand | 仅用于 modal stack 等极少数场景 |
-| 本地组件状态 | `useState` / `useReducer` | 纯 UI 交互状态，不跨组件共享 |
+- **TanStack Query**：管理所有服务端状态（列表、详情、统计）。
+- **Zustand**：只管轻量客户端状态（modal stack、UI 开关），不用来缓存服务端数据。
+- **Smart Polling**：用 `useSmartPolling`（`src/hooks/use-smart-polling.ts`）监控异步任务，不手动 `setInterval`。
 
 ---
 
-## 9. 组件与 Hook 规范
+## 9. 组件与 Hook 规则
 
-- **组件文件 ≤ 300-400 行**：超出时提取 custom hook 或拆分子组件。
-- **Hook 文件 ≤ 200 行**：超出时组合更小的 hook。
-- **module-specific hook 放在 `src/modules/{domain}/hooks/`**；跨模块共享 hook 放在 `src/hooks/`。
+- **组件文件 300-400 行上限**：超出时提取自定义 hook。
+- **Hook 200 行上限**：超出时拆分为更小的 hook 组合。
+- **模块私有 hook 放在 `src/modules/{domain}/hooks/`**，跨模块共用 hook 放在 `src/hooks/`。
 - **加载状态用 Skeleton，不用 Spinner**。
 - **图标用 Lucide React**。
-- **Inline editing 优于 modal editing**（简单字段直接内联编辑）。
-
-### App 层保持 thin
-
-`src/app` 的 `page.tsx` 只负责：路由、鉴权检查、数据注水（prefetch）、将 props 传入模块 UI。业务逻辑、数据访问、状态管理均在模块层处理，不在 page 中实现。
+- **内联编辑优先于弹窗编辑**（简单字段场景）。
 
 ---
 
 ## 10. i18n
 
-- 翻译文件在 `messages/en.json` 和 `messages/zh.json`。
-- 所有用户可见文字必须通过 `useTranslations()` 获取，不允许硬编码中英文字符串。
-- 新增功能时，中英文翻译必须同步添加，不允许只加一种语言。
-- 路由使用 `[locale]` 前缀，`localePrefix='always'`。
+使用 `next-intl`，所有用户可见文字必须国际化。
+
+```typescript
+// Server Component
+import { getTranslations } from "next-intl/server";
+const t = await getTranslations("LedgerPage");
+
+// Client Component
+import { useTranslations } from "next-intl";
+const t = useTranslations("LedgerPage");
+```
+
+- 消息文件在 `messages/en.json` 和 `messages/zh.json`。
+- Key 命名：`模块.组件.描述`，如 `LedgerPage.emptyState.title`。
+- 不允许在组件中硬编码中文或英文字符串。
 
 ---
 
-## 11. 测试规范
+## 11. 测试
 
-- **测试使用内存 SQLite**（`:memory:`），不需要外部数据库。
-- **优先集成测试**：业务逻辑优先写集成测试，单元测试覆盖纯函数工具。
+- **测试使用内存 SQLite**：`:memory:`，不需要外部数据库。
 - **`fileParallelism: false`**：vitest 配置，保证数据库一致性。
 - **测试文件放在 `tests/unit/` 或 `tests/integration/`**，不放在 `src/` 内（已有的 `*.test.ts` 在模块根级是历史遗留，新测试不应延续此模式）。
 - **测试数据用 factories**：`tests/helpers/factories.ts` 中的 `createTestUser`、`createTestLedger` 等，不在测试中硬编码 ID 或数据结构。
@@ -264,7 +266,9 @@ flowEngine.submit("my_task", input, { deduplicationKey: `my_task:${entityId}` })
 | 禁止 | 原因 | 替代方案 |
 |---|---|---|
 | Server Action 返回 `{ success, error }` | 非项目约定 | 直接 throw |
-| 在 `use-cases.ts` 中定义类型或实现逻辑 | barrel 职责混乱 | 移入 `application/use-cases/` |
+| 在 `use-cases.ts` / `queries.ts` 中定义类型或实现逻辑 | barrel 职责混乱 | 移入 `application/use-cases/` 或 `application/queries/` |
+| 在 `actions.ts` 中直接实现函数体 | barrel 职责混乱 | 移入 `server-actions/` 子目录 |
+| 在 `contracts.ts` 中 import/re-export `application/` 内部类型 | 跨层耦合 | 在 `contracts.ts` 本地定义，或通过 `use-cases.ts` barrel 暴露 |
 | 跨模块 deep import（`@/modules/ledger/application/...`） | 破坏封装 | 通过模块公共入口 |
 | 手动 `useState` 做乐观更新 | 与 factory 冲突 | `useLedgerMutation` + `onOptimisticUpdate` |
 | `invalidateQueries` 放在 `onSuccess` | 出错时缓存不刷新 | 放在 `onSettled` |
