@@ -32,3 +32,22 @@ export async function requireLedgerAccess(
     ledger,
   };
 }
+
+/**
+ * Wraps a server action to automatically handle ledger access verification.
+ * The wrapped action must have ledgerId as its first argument.
+ *
+ * Usage:
+ *   const myAction = withLedgerAccess(async (ledgerId: string, data: MyInputType) => {
+ *     // ledger access is guaranteed, ledgerId is validated
+ *     return doSomething(ledgerId, data);
+ *   });
+ */
+export function withLedgerAccess<TArgs extends unknown[], TReturn>(
+  action: (ledgerId: string, ...args: TArgs) => Promise<TReturn>
+): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
+  return async (ledgerId: string, ...args: TArgs) => {
+    await requireLedgerAccess(ledgerId);
+    return action(ledgerId, ...args);
+  };
+}

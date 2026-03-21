@@ -1,9 +1,5 @@
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { ledgers } from "@/persistence";
-import { isValidUuid } from "@/lib/validation";
-import { and, eq, isNull } from "drizzle-orm";
+import { UnauthorizedError } from "@/lib/errors";
 
 /**
  * Wraps a server action to automatically handle authentication.
@@ -41,46 +37,4 @@ export async function requireAuth(): Promise<string> {
   }
 
   return session.user.id;
-}
-
-async function verifyLedgerOwnership(ledgerId: string): Promise<void> {
-  const session = await auth();
-
-  if (session?.user?.id == null) {
-    throw new UnauthorizedError();
-  }
-
-  const userId = session.user.id;
-
-  if (!isValidUuid(ledgerId)) {
-    throw new NotFoundError("Ledger");
-  }
-
-  const ledger = await db.query.ledgers.findFirst({
-    where: and(eq(ledgers.id, ledgerId), eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
-    columns: { id: true },
-  });
-
-  if (ledger == null) {
-    throw new NotFoundError("Ledger");
-  }
-}
-
-/**
- * Wraps a server action to automatically handle ledger access verification.
- * The wrapped action must have ledgerId as its first argument.
- *
- * Usage:
- *   const myAction = withLedgerAccess(async (ledgerId: string, data: MyInputType) => {
- *     // ledger access is guaranteed, ledgerId is validated
- *     return doSomething(ledgerId, data);
- *   });
- */
-export function withLedgerAccess<TArgs extends unknown[], TReturn>(
-  action: (ledgerId: string, ...args: TArgs) => Promise<TReturn>
-): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
-  return async (ledgerId: string, ...args: TArgs) => {
-    await verifyLedgerOwnership(ledgerId);
-    return action(ledgerId, ...args);
-  };
 }

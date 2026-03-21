@@ -663,6 +663,17 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("allows task-queue actions to import ledger-owned access wrapper", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { withLedgerAccess } from "@/modules/ledger/access";
+        export const value = withLedgerAccess;
+      `,
+      "src/modules/task-queue/actions.ts"
+    );
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects module imports from shared ui primitives", async () => {
     const messages = await lintRestrictedImports(
       `

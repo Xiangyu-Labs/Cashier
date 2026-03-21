@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { withAuth, requireAuth, withLedgerAccess } from "@/lib/auth-actions";
+import { withAuth, requireAuth } from "@/lib/auth-actions";
+import { withLedgerAccess } from "@/modules/ledger/access";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { getTestDb } from "../../setup";
 import { ledgers } from "@/persistence";
@@ -106,6 +107,11 @@ describe("withLedgerAccess", () => {
 
     await expect(action(ledgerId)).rejects.toThrow(NotFoundError);
   });
+});
+
+it("does not export withLedgerAccess from lib auth actions anymore", async () => {
+  const module = await import("@/lib/auth-actions");
+  expect("withLedgerAccess" in module).toBe(false);
 });
 
 describe("requireAuth", () => {
