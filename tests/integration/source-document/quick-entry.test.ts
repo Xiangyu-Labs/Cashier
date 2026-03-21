@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories, sourceDocuments, ledgerEntries, users } from "@/persistence";
+import {
+  currencyRates,
+  ledgers,
+  entryCategories,
+  sourceDocuments,
+  ledgerEntries,
+  users,
+} from "@/persistence";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -18,6 +25,14 @@ function mockSession(userId = TEST_USER_ID) {
   vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue({
     user: { id: userId, email: "test@example.com" },
     expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+  });
+}
+
+async function insertTestRates(date: string, rates: Record<string, number>) {
+  await getTestDb().insert(currencyRates).values({
+    date,
+    base: "EUR",
+    rates,
   });
 }
 
@@ -111,18 +126,36 @@ describe("createQuickEntryAction", () => {
     expect(entry?.currency).toBe("CNY");
   });
 
-  it("should use provided currency", { timeout: 20_000 }, async () => {
-    const result = await createQuickEntryAction(ledgerId, {
-      categoryId,
-      amount: 100,
-      currency: "USD",
-    });
+  it("should use provided currency", async () => {
+    const testDate = "2026-03-20";
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("unexpected live rate fetch"));
 
-    const db = getTestDb();
-    const entry = await db.query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.id, result.ledgerEntryId),
-    });
-    expect(entry?.currency).toBe("USD");
+    try {
+      await insertTestRates(testDate, {
+        CNY: 7.5,
+        USD: 1.1,
+      });
+
+      const result = await createQuickEntryAction(ledgerId, {
+        categoryId,
+        amount: 100,
+        currency: "USD",
+        entryDate: testDate,
+      });
+
+      const db = getTestDb();
+      const entry = await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.id, result.ledgerEntryId),
+      });
+      expect(entry?.currency).toBe("USD");
+      expect(entry?.convertedAmount).toBe("681.82");
+      expect(entry?.exchangeRate).toBe("6.818182");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("should use current date when entryDate not provided", async () => {
