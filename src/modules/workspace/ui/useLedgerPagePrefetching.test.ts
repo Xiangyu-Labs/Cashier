@@ -30,7 +30,7 @@ describe("useLedgerPagePrefetching", () => {
           return 2000 as unknown as ReturnType<typeof setTimeout>;
         }
         return 500 as unknown as ReturnType<typeof setTimeout>;
-      }) as typeof setTimeout
+      }) as unknown as typeof setTimeout
     );
     clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout").mockImplementation(
       (() => undefined) as typeof clearTimeout
@@ -122,4 +122,3 @@ describe("useLedgerPagePrefetching", () => {
     expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 });
-

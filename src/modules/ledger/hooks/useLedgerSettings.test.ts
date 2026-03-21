@@ -134,7 +134,15 @@ describe("useLedgerSettings", () => {
       })
     );
 
-    expect(result.current.ledger.id).toBe(ledgerId);
+    const ledger = result.current.ledger;
+
+    expect(ledger).not.toBeNull();
+
+    if (!ledger) {
+      throw new Error("Expected ledger to be present");
+    }
+
+    expect(ledger.id).toBe(ledgerId);
     expect(result.current.categories).toEqual(initialCategories);
     expect(result.current.uncategorizedCount).toBe(2);
     expect(result.current.credentials).toHaveLength(1);
