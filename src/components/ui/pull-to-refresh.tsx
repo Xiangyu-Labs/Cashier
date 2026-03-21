@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
@@ -27,11 +27,17 @@ export function PullToRefresh({
   const lastRefreshTime = useRef(0);
   const isPullingRef = useRef(false);
   const pullDistanceRef = useRef(0);
+  // Keep the latest refresh callback available without re-registering touch listeners.
+  const onRefreshRef = useRef(onRefresh);
 
   // Detect touch device on mount
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window);
   }, []);
+
+  useLayoutEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
 
   useEffect(() => {
     // If disabled or non-touch device, don't add listeners
@@ -98,7 +104,7 @@ export function PullToRefresh({
         setIsRefreshing(true);
 
         try {
-          await onRefresh();
+          await onRefreshRef.current();
         } catch (error) {
           console.error("Pull to refresh error:", error);
         } finally {
@@ -123,7 +129,7 @@ export function PullToRefresh({
       container.removeEventListener("touchmove", handleTouchMove);
       container.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [threshold, isRefreshing, onRefresh, disabled, isTouchDevice]);
+  }, [threshold, isRefreshing, disabled, isTouchDevice]);
 
   // 如果禁用或非触摸设备，直接渲染子元素
   if (disabled || !isTouchDevice) {

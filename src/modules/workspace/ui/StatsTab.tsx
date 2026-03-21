@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
@@ -93,13 +93,13 @@ export function StatsTab({
   const averageDaily = stats?.summary.dailyAverage ?? 0;
   const trend = stats?.summary.trend;
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(activeLedgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateCalendar(activeLedgerId) }),
     ]);
-  };
+  }, [queryClient, ledgerId]);
 
   const handleCategoryClick = (categoryId: string) => {
     if (onCategoryDrilldown !== undefined) {
