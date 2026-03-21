@@ -1,7 +1,10 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+
+let gestureActive = false;
+let dropNextTouchEnd = false;
 
 const fireTouchEvent = (target: HTMLElement, type: string, clientY: number) => {
   const touchInit: TouchInit = {
@@ -24,12 +27,50 @@ const fireTouchEvent = (target: HTMLElement, type: string, clientY: number) => {
     changedTouches: [touch],
   });
 
+  if (type === 'touchstart') {
+    gestureActive = true;
+    dropNextTouchEnd = false;
+  }
+
+  if (type === 'touchend') {
+    gestureActive = false;
+  }
+
   target.dispatchEvent(event);
 };
 
+let originalOntouchstart: typeof window.ontouchstart;
+let originalAddEventListener: typeof EventTarget.prototype.addEventListener;
+let originalDispatchEvent: typeof EventTarget.prototype.dispatchEvent;
+
 describe('PullToRefresh regression', () => {
   beforeEach(() => {
+    originalOntouchstart = window.ontouchstart;
     window.ontouchstart = vi.fn();
+
+    originalAddEventListener = EventTarget.prototype.addEventListener;
+    originalDispatchEvent = EventTarget.prototype.dispatchEvent;
+
+    EventTarget.prototype.addEventListener = function (type, listener, options) {
+      if (type === 'touchend' && gestureActive) {
+        dropNextTouchEnd = true;
+      }
+      return originalAddEventListener.call(this, type, listener, options);
+    };
+
+    EventTarget.prototype.dispatchEvent = function (event) {
+      if (event.type === 'touchend' && dropNextTouchEnd) {
+        dropNextTouchEnd = false;
+        return true;
+      }
+      return originalDispatchEvent.call(this, event);
+    };
+  });
+
+  afterEach(() => {
+    window.ontouchstart = originalOntouchstart;
+    EventTarget.prototype.addEventListener = originalAddEventListener;
+    EventTarget.prototype.dispatchEvent = originalDispatchEvent;
   });
 
   it('calls onRefresh even when onRefresh reference changes during touchmove', async () => {
@@ -55,8 +96,8 @@ describe('PullToRefresh regression', () => {
     const swapButton = getByRole('button', { name: /swap handler/i });
 
     await act(async () => {
-      fireTouchEvent(ptr, 'touchstart', 0);
-      fireTouchEvent(ptr, 'touchmove', 10);
+      fireTouchEvent(ptr, 'touchstart', 50);
+      fireTouchEvent(ptr, 'touchmove', 100);
     });
 
     await act(async () => {
@@ -64,11 +105,13 @@ describe('PullToRefresh regression', () => {
     });
 
     await act(async () => {
-      fireTouchEvent(ptr, 'touchmove', 100);
-      fireTouchEvent(ptr, 'touchend', 100);
+      fireTouchEvent(ptr, 'touchmove', 250);
+      fireTouchEvent(ptr, 'touchend', 250);
     });
 
     const totalCalls = refreshV1.mock.calls.length + refreshV2.mock.calls.length;
+    expect(refreshV1).not.toHaveBeenCalled();
+    expect(refreshV2).toHaveBeenCalled();
     expect(totalCalls).toBeGreaterThan(0);
   });
 });
