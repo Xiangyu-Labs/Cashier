@@ -1,4 +1,5 @@
 "use client";
+import { useCallback } from "react";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
@@ -125,12 +126,12 @@ export function DetailsTab({
   });
 
   // Handlers
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
     ]);
-  };
+  }, [queryClient, ledgerId]);
 
   const handleLocalFiltersChange = handleFiltersChange(onPeriodChange, onAdvancedFiltersChange);
 
