@@ -5,7 +5,7 @@ import type {
   ConvertAmountsBatchResult,
   ConvertCurrencyResult,
 } from "../../../src/modules/currency/contracts";
-import type { ConvertCurrencyResult as ActionConvertCurrencyResult } from "../../../src/modules/currency/actions";
+import { convertCurrencyAction } from "../../../src/modules/currency/actions";
 import type { CurrencyBatchConversionResult } from "../../../src/modules/currency/use-cases";
 import * as contracts from "../../../src/modules/currency/contracts";
 
@@ -44,7 +44,7 @@ describe("currency contracts exports", () => {
 
   it("keeps ConvertCurrencyResult compatible across contracts and actions API", () => {
     const contractResult: ConvertCurrencyResult = { converted: 13 };
-    const actionResult: ActionConvertCurrencyResult = contractResult;
+    const actionResult: Awaited<ReturnType<typeof convertCurrencyAction>> = contractResult;
     expect(actionResult.converted).toBe(13);
   });
 });

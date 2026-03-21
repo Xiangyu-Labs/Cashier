@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { convertCurrencyAction, type ConvertCurrencyResult } from "./actions";
+import { convertCurrencyAction } from "./actions";
+import type { ConvertCurrencyResult } from "./contracts";
 
 export function useConvertedAmount(
   amount: number,
