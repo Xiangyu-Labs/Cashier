@@ -4,12 +4,13 @@ import { convertCurrency } from "./application/use-cases/convert-currency";
 import type {
   BatchConversionItem,
   BatchConvertCurrencyResult,
+  ConvertCurrencyResult,
 } from "./contracts";
-export type { BatchConversionItem, BatchConvertCurrencyResult };
-
-export interface ConvertCurrencyResult {
-  converted: number;
-}
+export type {
+  BatchConversionItem,
+  BatchConvertCurrencyResult,
+  ConvertCurrencyResult,
+};
 
 export async function convertCurrencyAction(
   amount: number,

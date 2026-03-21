@@ -3,6 +3,8 @@ import type {
   BatchConvertCurrencyResult,
   ConvertCurrencyResult,
 } from "./contracts";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import * as contracts from "./contracts";
 
 describe("currency contracts exports", () => {
@@ -24,5 +26,16 @@ describe("currency contracts exports", () => {
   it("exports BatchConvertCurrencyResult", () => {
     const result: BatchConvertCurrencyResult = { results: [1, 2, 3] };
     expect(result.results).toHaveLength(3);
+  });
+
+  it("keeps ConvertCurrencyResult sourced from shared contracts in actions", () => {
+    const actionsSource = readFileSync(
+      resolve(process.cwd(), "src/modules/currency/actions.ts"),
+      "utf8"
+    );
+
+    expect(actionsSource).toContain("ConvertCurrencyResult");
+    expect(actionsSource).toContain("from \"./contracts\"");
+    expect(actionsSource).not.toContain("export interface ConvertCurrencyResult");
   });
 });

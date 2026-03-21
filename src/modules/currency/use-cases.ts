@@ -2,7 +2,10 @@ import {
   convertAmountsBatch as convertAmountsBatchUseCase,
   type CurrencyBatchConversionResult,
 } from "./application/use-cases/convert-amounts-batch";
-import type { BatchConvertCurrencyResult } from "./contracts";
+import type {
+  BatchConversionItem,
+  BatchConvertCurrencyResult,
+} from "./contracts";
 export {
   convertCurrency,
   type ConvertCurrencyInput,
@@ -39,7 +42,7 @@ export async function convertAmountsBatch(
 }
 
 export async function batchConvertCurrency(
-  items: Array<{ amount: number; currency: string; date?: string }>,
+  items: BatchConversionItem[],
   targetCurrency: string
 ): Promise<BatchConvertCurrencyResult> {
   if (items.length === 0 || targetCurrency === "") {
