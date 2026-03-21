@@ -75,7 +75,7 @@ export function updateEntriesWithConversions(
 ): void {
   if (!taskVersionManager.isValid(taskKey, version)) {
     logger.info({ ledgerId, version }, "Recalculation superseded before batch update");
-    throw new AppError("SUPERSEDED", "SUPERSEDED");
+    throw new AppError("Recalculation superseded by a newer version", "SUPERSEDED");
   }
 
   const entryIds = entries.map((entry) => entry.id);

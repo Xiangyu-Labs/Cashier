@@ -19,7 +19,7 @@ export async function listIndexedCategoriesForCategorization(
   });
 
   if (categories.length === 0) {
-    throw new AppError("No categories available", "NO_CATEGORIES");
+    throw new AppError("No categories available", "NO_CATEGORIES", 404);
   }
 
   return categories.map((category, index) => ({
