@@ -52,7 +52,6 @@ describe("createSourceDocumentFromCredential", () => {
       credentialId: "cred-1",
       payload: {
         text: "receipt",
-        entryDate: undefined,
       },
     });
 

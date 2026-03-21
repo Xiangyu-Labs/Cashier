@@ -56,7 +56,6 @@ describe("useEntryMutations", () => {
       createdAt: "2026-03-01T00:00:00.000Z",
       updatedAt: "2026-03-01T00:00:00.000Z",
       deletedAt: null,
-      entryCount: 0,
     },
   ];
 
@@ -80,7 +79,7 @@ describe("useEntryMutations", () => {
       createdAt: "2026-03-01T00:00:00.000Z",
       updatedAt: "2026-03-01T00:00:00.000Z",
       deletedAt: null,
-      category: undefined,
+      category: null,
     };
     const setSelectedLedgerEntry = vi.fn();
     const queryClient = new QueryClient();

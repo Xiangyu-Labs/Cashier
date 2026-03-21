@@ -60,8 +60,6 @@ describe("useQueueItemActions", () => {
     const item = createItem({
       status: "running",
       taskType: "parse_source_document",
-      entityType: undefined,
-      entityId: undefined,
       subtitle: "running subtitle",
       progress: "50%",
     });
@@ -84,26 +82,24 @@ describe("useQueueItemActions", () => {
   });
 
   it("handles async retry and dismiss loading states", async () => {
-    let resolveRetry: (() => void) | null = null;
-    let resolveDismiss: (() => void) | null = null;
+    let resolveRetry: () => void = () => {};
+    let resolveDismiss: () => void = () => {};
 
     const onRetry = vi.fn(
       () =>
         new Promise<void>((resolve) => {
-          resolveRetry = resolve;
+          resolveRetry = () => resolve();
         })
     );
     const onDismiss = vi.fn(
       () =>
         new Promise<void>((resolve) => {
-          resolveDismiss = resolve;
+          resolveDismiss = () => resolve();
         })
     );
     const item = createItem({
       status: "failed",
       taskType: "parse_source_document",
-      entityType: undefined,
-      entityId: undefined,
     });
 
     const { result } = renderHook(() =>
@@ -116,7 +112,7 @@ describe("useQueueItemActions", () => {
 
     const retryPromise = result.current.handleRetry();
     await waitFor(() => expect(result.current.isRetrying).toBe(true));
-    resolveRetry?.();
+    resolveRetry();
     await act(async () => {
       await retryPromise;
     });
@@ -124,7 +120,7 @@ describe("useQueueItemActions", () => {
 
     const dismissPromise = result.current.handleDismiss();
     await waitFor(() => expect(result.current.isDismissing).toBe(true));
-    resolveDismiss?.();
+    resolveDismiss();
     await act(async () => {
       await dismissPromise;
     });

@@ -94,7 +94,6 @@ describe("useTaskQueueModal", () => {
         createItem({
           id: "failed-no-doc",
           status: "failed",
-          sourceDocumentId: undefined,
           taskId: "task-failed-no-doc",
         }),
         createItem({
@@ -170,7 +169,6 @@ describe("useTaskQueueModal", () => {
     const failedWithoutDoc = createItem({
       id: "failed-no-doc",
       status: "failed",
-      sourceDocumentId: undefined,
       taskId: "task-failed-no-doc",
     });
     const pending = createItem({
