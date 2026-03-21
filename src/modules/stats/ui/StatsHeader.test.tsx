@@ -15,6 +15,17 @@ const getDateRangeMock = vi.fn((_date: Date, _type: DateRangeType) => ({
   endDate: new Date("2024-03-22T00:00:00.000Z"),
 }));
 
+const selectNavButton = (direction: "left" | "right") => {
+  const iconClass = `lucide-chevron-${direction}`;
+  const button = screen
+    .getAllByRole("button")
+    .find((btn) => btn.querySelector("svg")?.classList.contains(iconClass));
+  if (!button) {
+    throw new Error(`StatsHeader ${direction} button not rendered`);
+  }
+  return button;
+};
+
 vi.mock("@/lib/date-utils", async () => {
   const actual = await vi.importActual("@/lib/date-utils");
   return {
@@ -78,15 +89,8 @@ describe("StatsHeader", () => {
       />
     );
 
-    const buttons = screen.getAllByRole("button");
-    const prevButton = buttons[3];
-    if (!prevButton) {
-      throw new Error("StatsHeader previous button not rendered");
-    }
-    const nextButton = buttons[4];
-    if (!nextButton) {
-      throw new Error("StatsHeader next button not rendered");
-    }
+    const prevButton = selectNavButton("left");
+    const nextButton = selectNavButton("right");
 
     fireEvent.click(prevButton);
     fireEvent.click(nextButton);
@@ -114,11 +118,7 @@ describe("StatsHeader", () => {
       />
     );
 
-    const buttons = screen.getAllByRole("button");
-    const nextButton = buttons[4];
-    if (!nextButton) {
-      throw new Error("StatsHeader next button not rendered");
-    }
+    const nextButton = selectNavButton("right");
     expect(nextButton.hasAttribute("disabled")).toBe(true);
   });
 
