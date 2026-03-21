@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export type ModalItem =
   | { type: "source-document"; id: string }
-  | { type: "ledger-entry"; id: string };
+  | { type: "ledger-entry"; id: string; ledgerId: string };
 
 interface ModalStackState {
   stack: ModalItem[];

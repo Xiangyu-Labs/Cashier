@@ -14,11 +14,11 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
 
   return (
     <>
-      {/* 
-               We render the stack. 
+      {/*
+               We render the stack.
                Note: To support true stacking visual (one over another), we just render them all.
-               Radix UI Dialog handles z-index stacking automatically for nested dialogs usually, 
-               but since these are siblings in the DOM, we rely on order. 
+               Radix UI Dialog handles z-index stacking automatically for nested dialogs usually,
+               but since these are siblings in the DOM, we rely on order.
                The last one in the array is on top.
             */}
       {stack.map((item, index) => {
@@ -54,6 +54,7 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
             <LedgerEntryDetailWrapper
               key={`ledger-entry-${item.id}`}
               id={item.id}
+              ledgerId={item.ledgerId}
               open={true}
               onClose={onClose}
               categories={categories}

@@ -112,7 +112,7 @@ export function LedgerEntriesTab({
     pushModal({ type: "source-document", id: group.sourceDocument.id });
   }, [pushModal]);
   const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
-    pushModal({ type: "ledger-entry", id: entry.id });
+    pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
   }, [pushModal]);
   const handleUpdateLedgerEntry = useCallback((id: string, data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }) => {
     updateEntry.mutate({ ledgerEntryId: id, data });

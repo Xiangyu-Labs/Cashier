@@ -14,6 +14,7 @@ import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 
 interface LedgerEntryDetailWrapperProps {
   id: string;
+  ledgerId: string;
   open: boolean;
   onClose: () => void;
   categories: EntryCategory[];
@@ -21,6 +22,7 @@ interface LedgerEntryDetailWrapperProps {
 
 export function LedgerEntryDetailWrapper({
   id,
+  ledgerId,
   open,
   onClose,
   categories,
@@ -34,12 +36,11 @@ export function LedgerEntryDetailWrapper({
     error,
   } = useQuery({
     queryKey: queryKeys.ledgerEntry(id),
-    queryFn: () => getLedgerEntryAction(id),
+    queryFn: () => getLedgerEntryAction(ledgerId, id),
     enabled: open && id !== "",
     retry: false,
   });
 
-  const ledgerId = ledgerEntry?.ledgerId;
   const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
   const updateMutation = useLedgerMutation<
@@ -47,21 +48,16 @@ export function LedgerEntryDetailWrapper({
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
     mutationFn: async (data) => {
-      if (ledgerId == null || ledgerId === "") return;
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: tCommon("saveFailed"),
-    ...(ledgerId != null && ledgerId !== ""
-      ? {
-          cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-          invalidatePredicates: [
-            invalidateLedgerEntries(ledgerId),
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ],
-        }
-      : {}),
+    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, data) => {
       const snapshotKey = queryKeys.ledgerEntry(id);
       const snapshots = createListSnapshots(queryClient, snapshotKey);
@@ -77,22 +73,17 @@ export function LedgerEntryDetailWrapper({
 
   const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {
-      if (ledgerId == null || ledgerId === "") return;
       await deleteLedgerEntryAction(ledgerId, id);
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    ...(ledgerId != null && ledgerId !== ""
-      ? {
-          cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-          invalidatePredicates: [
-            invalidateLedgerEntries(ledgerId),
-            invalidateSourceDocuments(ledgerId),
-            invalidateLedgerStats(ledgerId),
-            invalidateCalendar(ledgerId),
-          ],
-        }
-      : {}),
+    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
+    invalidatePredicates: [
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: () => {
       onClose();
     },

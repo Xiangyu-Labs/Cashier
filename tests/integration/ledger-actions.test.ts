@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getLedgerEntryAction } from "@/modules/ledger/actions";
+import { NotFoundError } from "@/lib/errors";
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, users, sourceDocuments } from "@/persistence";
 import {
@@ -46,8 +47,8 @@ describe("getLedgerEntryAction", () => {
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
 
-    // 4. Action - now returns data directly
-    const result = await getLedgerEntryAction(entryData.id);
+    // 4. Action - pass ledgerId as first argument
+    const result = await getLedgerEntryAction(ledgerData.id, entryData.id);
 
     // 5. Assertion
     expect(result).not.toBeNull();
@@ -73,7 +74,7 @@ describe("getLedgerEntryAction", () => {
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
 
-    const result = await getLedgerEntryAction(entryData.id);
+    const result = await getLedgerEntryAction(ledgerData.id, entryData.id);
 
     expect(result?.sourceDocument).toBeDefined();
     expect(result?.sourceDocument?.hasImages).toBe(true);
@@ -82,7 +83,11 @@ describe("getLedgerEntryAction", () => {
   });
 
   it("should return null when entry does not exist", async () => {
-    const result = await getLedgerEntryAction(uuidv4());
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const result = await getLedgerEntryAction(ledgerData.id, uuidv4());
     expect(result).toBeNull();
   });
 
@@ -117,7 +122,7 @@ describe("getLedgerEntryAction", () => {
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
 
-    // 4. Action (Current authenticated user is testUserId) - now throws
-    await expect(getLedgerEntryAction(entryData.id)).rejects.toThrow("Unauthorized");
+    // 4. Action (Current authenticated user is testUserId) - now throws because ledgerId belongs to otherUserId
+    await expect(getLedgerEntryAction(ledgerData.id, entryData.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
