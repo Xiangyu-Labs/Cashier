@@ -7,6 +7,7 @@ import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
+import { queryKeys } from "@/lib/query-keys";
 
 interface SourceDocumentEditRetryDialogProps {
   ledgerId: string;
@@ -40,7 +41,7 @@ export function SourceDocumentEditRetryDialog({
 
   // Use TanStack Query to fetch full data - simpler than manual useEffect
   const { data: fullData, isLoading } = useQuery({
-    queryKey: ["sourceDocument", "full", ledgerId, sourceDocument.id],
+    queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocument.id),
     queryFn: async () => {
       const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
       if (result == null) return null;

@@ -24,6 +24,8 @@ export const queryKeys = {
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
+  sourceDocumentFull: (ledgerId: string, id: string) =>
+    ["sourceDocument", "full", ledgerId, id] as const,
 
   // === Categories ===
   entryCategories: (ledgerId: string) => ["entryCategories", ledgerId] as const,
