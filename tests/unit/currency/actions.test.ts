@@ -3,15 +3,15 @@ import {
   batchConvertCurrencyAction,
   convertCurrencyAction,
   type BatchConversionItem,
-} from "./actions";
-import { convertCurrency } from "./application/use-cases/convert-currency";
-import { convertAmountsBatch } from "./application/use-cases/convert-amounts-batch";
+} from "@/modules/currency/actions";
+import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
+import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
 
-vi.mock("./application/use-cases/convert-currency", () => ({
+vi.mock("@/modules/currency/application/use-cases/convert-currency", () => ({
   convertCurrency: vi.fn(),
 }));
 
-vi.mock("./application/use-cases/convert-amounts-batch", () => ({
+vi.mock("@/modules/currency/application/use-cases/convert-amounts-batch", () => ({
   convertAmountsBatch: vi.fn(),
 }));
 

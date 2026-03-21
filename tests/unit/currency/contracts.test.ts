@@ -4,10 +4,10 @@ import type {
   BatchCurrencyConversionItem,
   ConvertAmountsBatchResult,
   ConvertCurrencyResult,
-} from "./contracts";
-import type { ConvertCurrencyResult as ActionConvertCurrencyResult } from "./actions";
-import type { CurrencyBatchConversionResult } from "./use-cases";
-import * as contracts from "./contracts";
+} from "@/modules/currency/contracts";
+import type { ConvertCurrencyResult as ActionConvertCurrencyResult } from "@/modules/currency/actions";
+import type { CurrencyBatchConversionResult } from "@/modules/currency/use-cases";
+import * as contracts from "@/modules/currency/contracts";
 
 describe("currency contracts exports", () => {
   it("imports contracts module at runtime", () => {
