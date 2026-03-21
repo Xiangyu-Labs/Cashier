@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-
 export type HeadersLike = Pick<Headers, "get">;
 
 /**
@@ -36,11 +34,6 @@ export function getClientIPFromHeaders(headersList: HeadersLike): string {
   }
 
   return "unknown";
-}
-
-export async function getClientIP(): Promise<string> {
-  const headersList = await headers();
-  return getClientIPFromHeaders(headersList);
 }
 
 /**
