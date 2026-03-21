@@ -72,3 +72,8 @@ public/swe-worker-*.js
 
 # execute script
 chant.sh
+
+# local planning artifacts
+/docs/plans/
+/docs/superpowers/
+/docs/chant/
