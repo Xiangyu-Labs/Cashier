@@ -6,6 +6,7 @@ import type {
   BatchConversionItem,
   BatchConvertCurrencyResult,
 } from "./contracts";
+export type { BatchConvertCurrencyResult } from "./contracts";
 export {
   convertCurrency,
   type ConvertCurrencyInput,
