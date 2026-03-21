@@ -1,2 +1,2 @@
-export { CurrencyService } from "./service";
-export { ExchangeRateService } from "./ExchangeRateService";
+export { CurrencyService } from "./application/services/currency";
+export { ExchangeRateService } from "./application/services/exchange-rate";
