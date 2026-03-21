@@ -4,9 +4,9 @@ import { useState, useMemo, memo } from "react";
 import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ProcessingStatus } from "@/components/ui/processing-status";
 import { parseDateString } from "@/lib/date-utils";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import { ProcessingStatus } from "./processing-status";
 import {
   DropdownMenu,
   DropdownMenuContent,

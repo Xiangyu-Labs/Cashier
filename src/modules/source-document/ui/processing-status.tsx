@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
-import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
 

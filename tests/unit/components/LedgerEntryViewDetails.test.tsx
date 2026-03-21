@@ -74,7 +74,7 @@ vi.mock("@/components/ui/editable-field", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/editable-category-select", () => ({
+vi.mock("@/components/editable-category-select", () => ({
   EditableCategorySelect: ({
     value,
     onChange,
