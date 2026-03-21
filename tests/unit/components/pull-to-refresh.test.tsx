@@ -16,6 +16,7 @@ const createTouchHarness = (root: HTMLDivElement) => {
   const originalAddEventListener = root.addEventListener;
   const originalDispatchEvent = root.dispatchEvent;
 
+  // Simulate iOS Safari missing the current `touchend` when the listener is attached mid-gesture.
   const hookAdd: typeof root.addEventListener = function (this: HTMLDivElement, type, listener, options) {
     if (type === 'touchend' && gestureActive) {
       dropNextTouchEnd = true;
@@ -107,11 +108,13 @@ describe('PullToRefresh regression', () => {
     };
 
     const { container, getByRole } = render(<Parent />);
-    const ptr = container.querySelector('.ptr-root');
-    expect(ptr).not.toBeNull();
-    const ptrDiv = ptr as HTMLDivElement;
+    const ptrRoot = container.querySelector<HTMLDivElement>('.ptr-root');
+    expect(ptrRoot).toBeInstanceOf(HTMLDivElement);
+    if (!(ptrRoot instanceof HTMLDivElement)) {
+      throw new Error('Expected .ptr-root to render as an HTMLDivElement');
+    }
     const swapButton = getByRole('button', { name: /swap handler/i });
-    const harness = createTouchHarness(ptrDiv);
+    const harness = createTouchHarness(ptrRoot);
 
     try {
       await act(async () => {
