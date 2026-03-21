@@ -6,16 +6,22 @@ const {
   listEntryCategoryInfosMock,
   loggerDebugMock,
   processImageMock,
+  submitMock,
 } = vi.hoisted(() => ({
   getLocalStorageMock: vi.fn(),
   isSupportedImageFormatMock: vi.fn(),
   listEntryCategoryInfosMock: vi.fn(),
   loggerDebugMock: vi.fn(),
   processImageMock: vi.fn(),
+  submitMock: vi.fn(),
 }));
 
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   listEntryCategoryInfos: listEntryCategoryInfosMock,
+}));
+
+vi.mock("@/lib/flow", () => ({
+  submitFlowTask: submitMock,
 }));
 
 vi.mock("@/lib/storage/image-processing", () => ({
@@ -34,7 +40,11 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { ValidationError } from "@/lib/errors";
-import { getSourceDocumentTaskContext, processImages } from "./processing";
+import {
+  getSourceDocumentTaskContext,
+  prepareSourceDocumentTask,
+  processImages,
+} from "./processing";
 
 describe("source-document processing helpers", () => {
   beforeEach(() => {
@@ -48,6 +58,7 @@ describe("source-document processing helpers", () => {
       buffer: new Uint8Array(Buffer.from("processed")),
       mimeType: "image/webp",
     });
+    submitMock.mockResolvedValue("task-id");
   });
 
   it("builds task context with defaults and optional ledger settings", async () => {
@@ -131,5 +142,76 @@ describe("source-document processing helpers", () => {
         "doc-1"
       )
     ).rejects.toThrow(ValidationError);
+  });
+
+  it("submits parse_source_document with the assembled flow capability", async () => {
+    await prepareSourceDocumentTask({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "doc-1",
+      text: "Lunch 25",
+      imageUrls: ["/api/uploads/test.jpg"],
+      categories: [{ id: "cat-1", name: "Food", description: "Meals" }],
+      settings: {
+        aiLanguage: "en",
+        preferredCurrencies: ["USD"],
+        settings: {
+          aiCustomPrompt: "Be strict",
+        },
+      },
+    });
+
+    expect(submitMock).toHaveBeenCalledWith(
+      "parse_source_document",
+      {
+        ledgerId: "ledger-1",
+        sourceDocumentId: "doc-1",
+        text: "Lunch 25",
+        imageUrls: ["/api/uploads/test.jpg"],
+        aiLanguage: "en",
+        preferredCurrencies: ["USD"],
+        categories: [{ id: "cat-1", name: "Food", description: "Meals" }],
+        settings: {
+          aiCustomPrompt: "Be strict",
+        },
+      },
+      {
+        title: "Parse source document",
+        scopeId: "ledger-1",
+        entityType: "source_document",
+        entityId: "doc-1",
+      }
+    );
+  });
+
+  it("omits optional task payload fields when they are absent", async () => {
+    await prepareSourceDocumentTask({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "doc-1",
+      imageUrls: ["/api/uploads/test.jpg"],
+      categories: [],
+      settings: {
+        aiLanguage: "en",
+        settings: {},
+      },
+    });
+
+    const submitInput = submitMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(submitInput).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(submitInput, "preferredCurrencies")).toBe(false);
+  });
+
+  it("omits optional settings fields when ledger metadata does not provide them", async () => {
+    const context = await getSourceDocumentTaskContext("ledger-1", {
+      id: "ledger-1",
+      userId: "user-1",
+      metadata: { settings: {} },
+      createdAt: new Date("2026-03-19T12:00:00.000Z"),
+      updatedAt: new Date("2026-03-19T12:00:00.000Z"),
+      deletedAt: null,
+    });
+
+    expect("preferredCurrencies" in context.settings).toBe(false);
+    expect("aiCustomPrompt" in context.settings.settings).toBe(false);
   });
 });
