@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, entryCategories, sourceDocuments, ledgerEntries, users } from "@/persistence";
+import {
+  ledgers,
+  entryCategories,
+  sourceDocuments,
+  ledgerEntries,
+  users,
+  currencyRates,
+} from "@/persistence";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -13,6 +20,7 @@ import { auth } from "@/auth";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
+const TEST_RATE_DATE = "2026-02-04";
 
 function mockSession(userId = TEST_USER_ID) {
   vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue({
@@ -34,6 +42,7 @@ describe("createQuickEntryAction", () => {
     await db.delete(sourceDocuments);
     await db.delete(entryCategories);
     await db.delete(ledgers);
+    await db.delete(currencyRates);
 
     // Create test ledger
     ledgerId = uuidv4();
@@ -50,6 +59,15 @@ describe("createQuickEntryAction", () => {
       ledgerId,
       name: "Test Category",
       sortOrder: 0,
+    });
+
+    await db.insert(currencyRates).values({
+      date: TEST_RATE_DATE,
+      base: "EUR",
+      rates: {
+        CNY: 7.5,
+        USD: 1.1,
+      },
     });
   });
 
@@ -112,17 +130,28 @@ describe("createQuickEntryAction", () => {
   });
 
   it("should use provided currency", { timeout: 20_000 }, async () => {
-    const result = await createQuickEntryAction(ledgerId, {
-      categoryId,
-      amount: 100,
-      currency: "USD",
-    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new Error("network disabled in test")
+    );
 
-    const db = getTestDb();
-    const entry = await db.query.ledgerEntries.findFirst({
-      where: eq(ledgerEntries.id, result.ledgerEntryId),
-    });
-    expect(entry?.currency).toBe("USD");
+    try {
+      const result = await createQuickEntryAction(ledgerId, {
+        categoryId,
+        amount: 100,
+        currency: "USD",
+        entryDate: TEST_RATE_DATE,
+      });
+
+      const db = getTestDb();
+      const entry = await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.id, result.ledgerEntryId),
+      });
+      expect(entry?.currency).toBe("USD");
+      expect(entry?.convertedAmount).toBe("681.82");
+      expect(entry?.exchangeRate).toBe("6.818182");
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("should use current date when entryDate not provided", async () => {

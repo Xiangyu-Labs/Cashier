@@ -1,10 +1,16 @@
 "use server";
 import { convertAmountsBatch } from "./application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "./application/use-cases/convert-currency";
-
-export interface ConvertCurrencyResult {
-  converted: number;
-}
+import type {
+  BatchConversionItem,
+  BatchConvertCurrencyResult,
+  ConvertCurrencyResult,
+} from "./contracts";
+export type {
+  BatchConversionItem,
+  BatchConvertCurrencyResult,
+  ConvertCurrencyResult,
+};
 
 export async function convertCurrencyAction(
   amount: number,
@@ -18,16 +24,6 @@ export async function convertCurrencyAction(
     to,
     ...(date != null ? { date } : {}),
   });
-}
-
-export interface BatchConversionItem {
-  amount: number;
-  currency: string;
-  date?: string;
-}
-
-export interface BatchConvertCurrencyResult {
-  results: number[];
 }
 
 export async function batchConvertCurrencyAction(
