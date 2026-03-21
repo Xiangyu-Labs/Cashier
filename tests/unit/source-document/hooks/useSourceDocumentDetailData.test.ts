@@ -47,6 +47,7 @@ describe("useSourceDocumentDetailData", () => {
 
     const { result } = renderHook(() =>
       useSourceDocumentDetailData({
+        ledgerId: "ledger-1",
         id: "doc-1",
         open: true,
       })
@@ -78,6 +79,7 @@ describe("useSourceDocumentDetailData", () => {
 
     const { result } = renderHook(() =>
       useSourceDocumentDetailData({
+        ledgerId: "",
         id: "",
         open: false,
         initialLedgerEntries: [{ id: "entry-1" }] as never,

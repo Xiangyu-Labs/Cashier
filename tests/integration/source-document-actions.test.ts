@@ -10,6 +10,7 @@ import {
   createLedgerEntryData,
 } from "../helpers/factories";
 import { v4 as uuidv4 } from "uuid";
+import { UnauthorizedError } from "@/lib/errors";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -60,16 +61,15 @@ describe("getSourceDocumentByIdAction", () => {
     expect(result).toBeNull();
   });
 
-  it("should return null when user does not have access to the ledger", async () => {
+  it("should return null when user does not have access", async () => {
     const db = getTestDb();
-    // 1. Create Ledger for ANOTHER user
-    const otherUserId = "22222222-2222-2222-2222-222222222222";
+    const otherUserId = "11111111-1111-1111-1111-111111111111";
     await db
       .insert(users)
       .values({
         id: otherUserId,
-        email: "other2@example.com",
-        name: "Other User 2",
+        email: "other@example.com",
+        name: "Other User",
         emailVerified: new Date(),
       })
       .onConflictDoNothing();
@@ -77,7 +77,6 @@ describe("getSourceDocumentByIdAction", () => {
     const ledgerData = createLedgerData({ userId: otherUserId });
     await db.insert(ledgers).values(ledgerData);
 
-    // 2. Create Source Document
     const docData = createSourceDocumentData(ledgerData.id);
     await db.insert(sourceDocuments).values(docData);
 
@@ -113,7 +112,7 @@ describe("getSourceDocumentLightAction", () => {
     });
     await db.insert(sourceDocuments).values(docData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
+    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     expect(result!.id).toBe(docData.id);
@@ -133,7 +132,7 @@ describe("getSourceDocumentLightAction", () => {
     });
     await db.insert(sourceDocuments).values(docData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
+    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     expect(result!.hasImages).toBe(true);
@@ -148,7 +147,7 @@ describe("getSourceDocumentLightAction", () => {
     const docData = createSourceDocumentData(ledgerData.id, { imageUrls: [] });
     await db.insert(sourceDocuments).values(docData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
+    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     expect(result!.hasImages).toBe(false);
@@ -167,7 +166,7 @@ describe("getSourceDocumentLightAction", () => {
     });
     await db.insert(sourceDocuments).values(docData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
+    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     expect(result!.metadata).not.toHaveProperty("visionDescription");
@@ -192,7 +191,7 @@ describe("getSourceDocumentLightAction", () => {
     });
     await db.insert(ledgerEntries).values(entryData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
+    const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     if (result == null) {
@@ -209,11 +208,15 @@ describe("getSourceDocumentLightAction", () => {
   });
 
   it("should return null when document does not exist", async () => {
-    const result = await getSourceDocumentLightAction(uuidv4());
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const result = await getSourceDocumentLightAction(ledgerData.id, uuidv4());
     expect(result).toBeNull();
   });
 
-  it("should return null when user does not have access", async () => {
+  it("should throw UnauthorizedError when user does not have access to ledger", async () => {
     const db = getTestDb();
     const otherUserId = "33333333-3333-3333-3333-333333333333";
     await db
@@ -232,7 +235,8 @@ describe("getSourceDocumentLightAction", () => {
     const docData = createSourceDocumentData(ledgerData.id);
     await db.insert(sourceDocuments).values(docData);
 
-    const result = await getSourceDocumentLightAction(docData.id);
-    expect(result).toBeNull();
+    await expect(
+      getSourceDocumentLightAction(ledgerData.id, docData.id)
+    ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });
