@@ -72,7 +72,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { RateLimitError, ValidationError } from "@/lib/errors";
-import { sendOTP } from "./send-otp";
+import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
 
 describe("sendOTP use case", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { getSessionUser } from "./get-session-user";
+import { getSessionUser } from "@/modules/auth/application/queries/get-session-user";
 import { getTestDb } from "tests/setup";
 import { users } from "@/persistence/schema/auth";
 import { UnauthorizedError } from "@/lib/errors";

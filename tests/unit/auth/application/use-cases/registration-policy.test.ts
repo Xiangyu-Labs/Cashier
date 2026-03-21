@@ -6,7 +6,7 @@ import {
   assertRegistrationAllowed,
   isRegistrationAllowed,
   RegistrationDisabledError,
-} from "./registration-policy";
+} from "@/modules/auth/application/use-cases/registration-policy";
 
 describe("registration policy use-case", () => {
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;

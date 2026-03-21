@@ -44,7 +44,7 @@ vi.mock("@/modules/workspace/use-cases", () => ({
   ensureUserLedger: ensureUserLedgerMock,
 }));
 
-vi.mock("./registration-policy", () => ({
+vi.mock("@/modules/auth/application/use-cases/registration-policy", () => ({
   assertRegistrationAllowed: assertRegistrationAllowedMock,
 }));
 
@@ -81,7 +81,7 @@ import {
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
-} from "./authenticate-with-otp";
+} from "@/modules/auth/application/use-cases/authenticate-with-otp";
 
 describe("authenticateWithOTP additional coverage", () => {
   beforeEach(() => {

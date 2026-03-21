@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "tests/setup";
 import { otpTokens } from "@/persistence/schema/auth";
-import { hashOTP } from "./otp";
+import { hashOTP } from "@/modules/auth/services/otp";
 import { db } from "@/lib/db";
-import { findOTPRecord, isAccountLocked } from "./otp-verification";
+import { findOTPRecord, isAccountLocked } from "@/modules/auth/services/otp-verification";
 
 describe("otp-verification service", () => {
   it("findOTPRecord is case-insensitive for email input", async () => {
