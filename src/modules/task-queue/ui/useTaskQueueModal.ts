@@ -224,7 +224,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const handleViewDetails = useCallback(
     (item: QueueItem) => {
       if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
-        push({ type: "source-document", id: item.sourceDocumentId });
+        push({ type: "source-document", id: item.sourceDocumentId, ledgerId });
       }
     },
     [push]

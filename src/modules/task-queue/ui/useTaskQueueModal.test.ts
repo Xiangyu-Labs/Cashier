@@ -211,7 +211,7 @@ describe("useTaskQueueModal", () => {
       result.current.handleViewDetails(item);
     });
 
-    expect(pushMock).toHaveBeenCalledWith({ type: "source-document", id: "doc-42" });
+    expect(pushMock).toHaveBeenCalledWith({ type: "source-document", id: "doc-42", ledgerId: "ledger-1" });
 
     await act(async () => {
       await result.current.handleRetrySuccess();

@@ -42,6 +42,7 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
             <SourceDocumentDetailWrapper
               key={`source-doc-${item.id}`}
               id={item.id}
+              ledgerId={item.ledgerId}
               open={true} // It's in the stack, so it's open
               onClose={onClose}
               categories={categories}

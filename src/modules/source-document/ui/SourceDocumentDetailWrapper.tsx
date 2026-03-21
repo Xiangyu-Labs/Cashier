@@ -9,6 +9,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface SourceDocumentDetailWrapperProps {
   id: string;
+  ledgerId: string;
   open: boolean;
   onClose: () => void;
   categories: EntryCategory[];
@@ -17,6 +18,7 @@ interface SourceDocumentDetailWrapperProps {
 
 export function SourceDocumentDetailWrapper({
   id,
+  ledgerId,
   open,
   onClose,
   categories,
@@ -27,13 +29,13 @@ export function SourceDocumentDetailWrapper({
     sourceDocument,
     safeSourceDocument,
     currentLedgerEntries,
-    ledgerId,
     safeLedgerId,
     isLoading,
     isLoadingImages,
     error,
   } = useSourceDocumentDetailData({
     id,
+    ledgerId,
     open,
     ...(initialLedgerEntries !== undefined ? { initialLedgerEntries } : {}),
   });

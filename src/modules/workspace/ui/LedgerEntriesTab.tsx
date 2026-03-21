@@ -109,7 +109,7 @@ export function LedgerEntriesTab({
     else setSelectionMode(true);
   }, [isSelectionMode, clearSelection, setSelectionMode]);
   const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
-    pushModal({ type: "source-document", id: group.sourceDocument.id });
+    pushModal({ type: "source-document", id: group.sourceDocument.id, ledgerId: group.sourceDocument.ledgerId });
   }, [pushModal]);
   const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
     pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });

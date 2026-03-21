@@ -308,6 +308,7 @@ export function DetailsTab({
                     push({
                       type: "source-document",
                       id: selectedSourceDocumentId,
+                      ledgerId,
                     }),
                 }
               : {})}

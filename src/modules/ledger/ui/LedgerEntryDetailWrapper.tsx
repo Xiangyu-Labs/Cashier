@@ -129,6 +129,7 @@ export function LedgerEntryDetailWrapper({
               push({
                 type: "source-document",
                 id: sourceDocumentId,
+                ledgerId,
               }),
           }
         : {})}
