@@ -3,10 +3,10 @@ import { withLedgerAccess } from "../access";
 import {
   submitAutoCategorize,
   submitBatchCategorize,
-  type CategorizeResult,
 } from "@/modules/ledger/application/use-cases/submit-categorize-tasks";
+import type { CategorizeResult } from "@/modules/ledger/contracts";
 
-export type { CategorizeResult } from "@/modules/ledger/application/use-cases/submit-categorize-tasks";
+export type { CategorizeResult } from "@/modules/ledger/contracts";
 
 /**
  * Submit auto-categorization tasks for all uncategorized entries in a ledger.

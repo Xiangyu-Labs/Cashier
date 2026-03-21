@@ -154,3 +154,20 @@ export interface ReorderEntryCategoriesResultDto {
   categoryIds: string[];
   reorderedCount: number;
 }
+
+export interface ExportResult {
+  csvContent: string;
+  filename: string;
+  isEmpty: boolean;
+}
+
+export interface ExportLedgerEntriesOptions {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
+
+export interface CategorizeResult {
+  submittedCount: number;
+  skippedCount: number;
+}

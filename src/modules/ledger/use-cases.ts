@@ -12,17 +12,12 @@ export { deleteEntryCategory } from "./application/use-cases/delete-entry-catego
 export { deleteLedgerEntry } from "./application/use-cases/delete-ledger-entry";
 export { deleteLedger } from "./application/use-cases/delete-ledger";
 export { deleteServiceCredential } from "./application/use-cases/delete-service-credential";
-export {
-  exportLedgerEntries,
-  type ExportLedgerEntriesOptions,
-  type ExportResult,
-} from "./application/use-cases/export-ledger-entries";
+export { exportLedgerEntries } from "./application/use-cases/export-ledger-entries";
 export { recalculateEntriesConvertedAmount } from "./application/services/recalculate-entries-converted-amount";
 export { reorderEntryCategories } from "./application/use-cases/reorder-entry-categories";
 export {
   submitAutoCategorize,
   submitBatchCategorize,
-  type CategorizeResult,
 } from "./application/use-cases/submit-categorize-tasks";
 export { updateEntryCategory } from "./application/use-cases/update-entry-category";
 export { updateLedger } from "./application/use-cases/update-ledger";

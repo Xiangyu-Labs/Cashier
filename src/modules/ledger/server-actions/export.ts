@@ -1,10 +1,7 @@
 "use server";
 import { withLedgerAccess } from "../access";
-import {
-  exportLedgerEntries,
-  type ExportLedgerEntriesOptions,
-  type ExportResult,
-} from "@/modules/ledger/use-cases";
+import { exportLedgerEntries } from "@/modules/ledger/use-cases";
+import type { ExportLedgerEntriesOptions, ExportResult } from "@/modules/ledger/contracts";
 
 export const exportLedgerEntriesAction = withLedgerAccess(
   async (
