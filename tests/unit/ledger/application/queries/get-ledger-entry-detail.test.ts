@@ -1,31 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
-import { createCategoryData, createLedgerData, createLedgerEntryData, createSourceDocumentData } from "tests/helpers/factories";
+import {
+  createCategoryData,
+  createLedgerData,
+  createLedgerEntryData,
+  createSourceDocumentData,
+} from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-
-const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@/modules/ledger/access", () => ({
-  requireLedgerAccess: requireLedgerAccessMock,
-}));
-
 import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 
 describe("getLedgerEntryDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireLedgerAccessMock.mockResolvedValue({
-      userId: "00000000-0000-0000-0000-000000000000",
-      ledger: { id: "ledger-1" },
-    });
   });
 
   it("returns null when the entry does not exist", async () => {
-    await expect(getLedgerEntryDetail(crypto.randomUUID())).resolves.toBeNull();
+    await expect(
+      getLedgerEntryDetail(crypto.randomUUID(), crypto.randomUUID())
+    ).resolves.toBeNull();
   });
 
-  it("maps app errors from ledger access to UnauthorizedError", async () => {
+  it("returns null when entry exists but belongs to a different ledger", async () => {
     const db = getTestDb();
     const ledger = createLedgerData();
     const sourceDocument = createSourceDocumentData(ledger.id);
@@ -35,9 +30,10 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(sourceDocuments).values(sourceDocument);
     await db.insert(ledgerEntries).values(entry);
 
-    requireLedgerAccessMock.mockRejectedValueOnce(new ForbiddenError("denied"));
-
-    await expect(getLedgerEntryDetail(entry.id)).rejects.toThrow(UnauthorizedError);
+    // pass a different ledgerId — should return null, not throw
+    await expect(
+      getLedgerEntryDetail(entry.id, crypto.randomUUID())
+    ).resolves.toBeNull();
   });
 
   it("returns detail while stripping heavy source-document fields", async () => {
@@ -62,9 +58,8 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(sourceDocuments).values(sourceDocument);
     await db.insert(ledgerEntries).values(entry);
 
-    const result = await getLedgerEntryDetail(entry.id);
+    const result = await getLedgerEntryDetail(entry.id, ledger.id);
 
-    expect(requireLedgerAccessMock).toHaveBeenCalledWith(ledger.id);
     expect(result).not.toBeNull();
     expect(result?.id).toBe(entry.id);
     expect(result?.category?.id).toBe(category.id);
