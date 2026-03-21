@@ -123,6 +123,7 @@ src/modules/{domain}/
 - Use `metadata` JSONB column for extensible settings instead of adding individual columns
 - Prefer minimal infrastructure: in-process over external services, memory store over Redis, polling over SSE
 - Domain naming must be precise — invest in renaming if concepts don't match (see `docs/dev-preferences.md` for full evolution history)
+- **Coding patterns and conventions**: see `docs/architecture/coding-patterns.md` — all agents must read this before modifying existing code or adding new features
 
 ## Error Handling
 
