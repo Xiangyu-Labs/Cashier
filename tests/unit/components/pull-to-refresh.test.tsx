@@ -9,6 +9,14 @@ const ptrMessages = (messagesZh.PullToRefresh ?? {}) as {
   releaseToRefresh: string;
 };
 
+const TEST_THRESHOLD = 60;
+const TOUCH_START_Y = 50;
+const PULL_DISTANCE_BEFORE_THRESHOLD = TEST_THRESHOLD - 20;
+const PULL_DISTANCE_AFTER_THRESHOLD = TEST_THRESHOLD + 10;
+const TOUCH_MOVE_DAMPING = 0.5;
+const PULL_HINT_MOVE_Y = TOUCH_START_Y + PULL_DISTANCE_BEFORE_THRESHOLD / TOUCH_MOVE_DAMPING;
+const RELEASE_HINT_MOVE_Y = TOUCH_START_Y + PULL_DISTANCE_AFTER_THRESHOLD / TOUCH_MOVE_DAMPING;
+
 const createTouchHarness = (root: HTMLDivElement) => {
   let gestureActive = false;
   let dropNextTouchEnd = false;
@@ -89,7 +97,7 @@ describe('PullToRefresh regression', () => {
     window.ontouchstart = originalOntouchstart;
   });
 
-  it('calls onRefresh even when onRefresh reference changes during touchmove', async () => {
+  it('calls onRefresh even when onRefresh reference changes during an active touch gesture', async () => {
     const refreshV1 = vi.fn(() => Promise.resolve());
     const refreshV2 = vi.fn(() => Promise.resolve());
 
@@ -97,7 +105,7 @@ describe('PullToRefresh regression', () => {
       const [handler, setHandler] = useState(() => refreshV1);
       return (
         <>
-          <PullToRefresh onRefresh={handler} className="ptr-root">
+          <PullToRefresh onRefresh={handler} className="ptr-root" threshold={TEST_THRESHOLD}>
             <div data-testid="body">body</div>
           </PullToRefresh>
           <button type="button" onClick={() => setHandler(() => refreshV2)}>
@@ -118,8 +126,8 @@ describe('PullToRefresh regression', () => {
 
     try {
       await act(async () => {
-        harness.fireTouchEvent('touchstart', 50);
-        harness.fireTouchEvent('touchmove', 100);
+        harness.fireTouchEvent('touchstart', TOUCH_START_Y);
+        harness.fireTouchEvent('touchmove', PULL_HINT_MOVE_Y);
       });
 
       expect(container.textContent).toContain(ptrMessages.pullToRefresh);
@@ -129,13 +137,13 @@ describe('PullToRefresh regression', () => {
       });
 
       await act(async () => {
-        harness.fireTouchEvent('touchmove', 250);
+        harness.fireTouchEvent('touchmove', RELEASE_HINT_MOVE_Y);
       });
 
       expect(container.textContent).toContain(ptrMessages.releaseToRefresh);
 
       await act(async () => {
-        harness.fireTouchEvent('touchend', 250);
+        harness.fireTouchEvent('touchend', RELEASE_HINT_MOVE_Y);
       });
     } finally {
       harness.cleanup();
