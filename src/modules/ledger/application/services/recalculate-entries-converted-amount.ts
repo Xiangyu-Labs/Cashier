@@ -3,22 +3,14 @@ import { db } from "@/lib/db";
 import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
-import { convertAmountsBatch } from "@/modules/currency/use-cases";
+import {
+  convertAmountsBatch,
+  type CurrencyBatchConversionItem,
+  type CurrencyBatchConversionResult,
+} from "@/modules/currency/use-cases";
 import { ledgerEntries } from "@/persistence";
 
 initializeExchangeRateLedgerRecalculationOrchestration();
-
-export interface ConversionItem {
-  amount: number;
-  from: string;
-  to: string;
-  date?: string;
-}
-
-export interface ConversionResult {
-  convertedAmount: number;
-  exchangeRate: number;
-}
 
 export async function fetchEntriesForConversion(ledgerId: string) {
   return db.query.ledgerEntries.findMany({
@@ -30,20 +22,20 @@ export async function fetchEntriesForConversion(ledgerId: string) {
 export function buildConversionItems(
   entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
   mainCurrency: string
-): ConversionItem[] {
+): CurrencyBatchConversionItem[] {
   return entries.map((entry) => ({
     amount: Number(entry.amount),
-    from: entry.currency ?? "CNY",
-    to: mainCurrency,
+    fromCurrency: entry.currency ?? "CNY",
+    toCurrency: mainCurrency,
     ...(entry.sourceDocument?.entryDate != null ? { date: entry.sourceDocument.entryDate } : {}),
   }));
 }
 
 export async function convertEntriesBatch(
-  items: ConversionItem[],
+  items: CurrencyBatchConversionItem[],
   mainCurrency: string,
   ledgerId: string
-): Promise<ConversionResult[] | null> {
+): Promise<CurrencyBatchConversionResult[] | null> {
   try {
     return await convertAmountsBatch(items, mainCurrency);
   } catch (err) {
@@ -54,7 +46,7 @@ export async function convertEntriesBatch(
 
 export function buildCaseExpression(
   entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
-  results: ConversionResult[],
+  results: CurrencyBatchConversionResult[],
   field: "convertedAmount" | "exchangeRate"
 ): SQL {
   const cases = entries.map((entry, index) => {
@@ -75,7 +67,7 @@ export function buildCaseExpression(
 
 export function updateEntriesWithConversions(
   entries: Awaited<ReturnType<typeof fetchEntriesForConversion>>,
-  results: ConversionResult[],
+  results: CurrencyBatchConversionResult[],
   ledgerId: string,
   taskKey: string,
   version: number

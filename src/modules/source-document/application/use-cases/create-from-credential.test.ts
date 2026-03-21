@@ -14,6 +14,7 @@ vi.mock("./create-and-queue-source-document", () => ({
 }));
 
 import { ValidationError } from "@/lib/errors";
+import type { CreateSourceDocumentInput } from "@/modules/source-document/contracts";
 import { createSourceDocumentFromCredential } from "./create-from-credential";
 
 describe("createSourceDocumentFromCredential", () => {
@@ -47,13 +48,14 @@ describe("createSourceDocumentFromCredential", () => {
       updatedAt: new Date(),
       deletedAt: null,
     });
+    const payload = {
+      text: "receipt",
+      timezone: undefined,
+    } as CreateSourceDocumentInput & { timezone?: string | undefined };
 
     await createSourceDocumentFromCredential({
       credentialId: "cred-1",
-      payload: {
-        text: "receipt",
-        entryDate: undefined,
-      },
+      payload,
     });
 
     expect(createAndQueueSourceDocumentMock).toHaveBeenCalledWith({
@@ -61,5 +63,6 @@ describe("createSourceDocumentFromCredential", () => {
       ledger: expect.objectContaining({ id: "ledger-1" }),
       text: "receipt",
     });
+    expect(createAndQueueSourceDocumentMock.mock.calls[0]?.[0]).not.toHaveProperty("timezone");
   });
 });

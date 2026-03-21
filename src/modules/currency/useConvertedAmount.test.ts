@@ -4,10 +4,10 @@ import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useConvertedAmount } from "./useConvertedAmount";
 
-const mockConvertCurrencyForClient = vi.hoisted(() => vi.fn(async () => ({ converted: 42 })));
+const mockConvertCurrencyAction = vi.hoisted(() => vi.fn(async () => ({ converted: 42 })));
 
-vi.mock("./client-convert", () => ({
-  convertCurrencyForClient: mockConvertCurrencyForClient,
+vi.mock("./actions", () => ({
+  convertCurrencyAction: mockConvertCurrencyAction,
 }));
 
 function createWrapper() {
@@ -26,10 +26,10 @@ function createWrapper() {
 
 describe("useConvertedAmount", () => {
   beforeEach(() => {
-    mockConvertCurrencyForClient.mockClear();
+    mockConvertCurrencyAction.mockClear();
   });
 
-  it("uses the explicit client converter path for conversion requests", async () => {
+  it("delegates conversion requests through currency actions", async () => {
     const { result } = renderHook(
       () => useConvertedAmount(100, "CNY", "USD", "2026-02-04"),
       { wrapper: createWrapper() }
@@ -39,8 +39,8 @@ describe("useConvertedAmount", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(mockConvertCurrencyForClient).toHaveBeenCalledTimes(1);
-    expect(mockConvertCurrencyForClient).toHaveBeenCalledWith(100, "CNY", "USD", "2026-02-04");
+    expect(mockConvertCurrencyAction).toHaveBeenCalledTimes(1);
+    expect(mockConvertCurrencyAction).toHaveBeenCalledWith(100, "CNY", "USD", "2026-02-04");
     expect(result.current.converted).toBe(42);
     expect(result.current.error).toBeNull();
   });
@@ -53,6 +53,6 @@ describe("useConvertedAmount", () => {
     expect(result.current.converted).toBe(88);
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(mockConvertCurrencyForClient).not.toHaveBeenCalled();
+    expect(mockConvertCurrencyAction).not.toHaveBeenCalled();
   });
 });

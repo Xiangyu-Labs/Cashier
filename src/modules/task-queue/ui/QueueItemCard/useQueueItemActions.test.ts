@@ -60,8 +60,6 @@ describe("useQueueItemActions", () => {
     const item = createItem({
       status: "running",
       taskType: "parse_source_document",
-      entityType: undefined,
-      entityId: undefined,
       subtitle: "running subtitle",
       progress: "50%",
     });
@@ -102,8 +100,6 @@ describe("useQueueItemActions", () => {
     const item = createItem({
       status: "failed",
       taskType: "parse_source_document",
-      entityType: undefined,
-      entityId: undefined,
     });
 
     const { result } = renderHook(() =>
@@ -116,7 +112,10 @@ describe("useQueueItemActions", () => {
 
     const retryPromise = result.current.handleRetry();
     await waitFor(() => expect(result.current.isRetrying).toBe(true));
-    resolveRetry?.();
+    if (resolveRetry === null) {
+      throw new Error("Expected retry resolver to be assigned");
+    }
+    (resolveRetry as () => void)();
     await act(async () => {
       await retryPromise;
     });
@@ -124,7 +123,10 @@ describe("useQueueItemActions", () => {
 
     const dismissPromise = result.current.handleDismiss();
     await waitFor(() => expect(result.current.isDismissing).toBe(true));
-    resolveDismiss?.();
+    if (resolveDismiss === null) {
+      throw new Error("Expected dismiss resolver to be assigned");
+    }
+    (resolveDismiss as () => void)();
     await act(async () => {
       await dismissPromise;
     });

@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
-import { CurrencyService } from "../../service";
-import { ExchangeRateService } from "../../ExchangeRateService";
+import { CurrencyService } from "../services/currency";
+import { ExchangeRateService } from "../services/exchange-rate";
 
 export interface ConvertEntryAmountInput {
   amount: number;

@@ -8,7 +8,7 @@ const { mockPush, mockRefresh, mockSignIn, mockSendOTPAction, searchParamGet } =
   mockRefresh: vi.fn(),
   mockSignIn: vi.fn(),
   mockSendOTPAction: vi.fn(),
-  searchParamGet: vi.fn(() => null),
+  searchParamGet: vi.fn((_key: string) => null as string | null),
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -46,7 +46,7 @@ describe("useLoginFlow", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    searchParamGet.mockImplementation(() => null);
+    searchParamGet.mockImplementation((_key: string) => null);
     mockSendOTPAction.mockResolvedValue({ expiresAt: 123, canResendAt: 456 });
   });
 

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchWithRetry, formatExchangeRateDate } from "./exchange-rate-helpers";
+import {
+  fetchWithRetry,
+  formatExchangeRateDate,
+} from "../../../src/modules/currency/application/services/exchange-rate";
 
 describe("formatExchangeRateDate", () => {
   it("returns date-only value from ISO datetime strings", () => {

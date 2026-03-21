@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertCurrency } from "./convert-currency";
-import { ExchangeRateService } from "../../ExchangeRateService";
+import { ExchangeRateService } from "@/modules/currency/application/services/exchange-rate";
 
 describe("convertCurrency", () => {
   afterEach(() => {

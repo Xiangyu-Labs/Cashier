@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
-import { batchConvertCurrency, convertCurrency } from "@/modules/currency/use-cases";
+import { batchConvertCurrencyAction } from "../../src/modules/currency/actions";
+import { convertCurrency } from "../../src/modules/currency/use-cases";
 
 async function insertTestRates(date: string, rates: Record<string, number>) {
   await getTestDb().insert(currencyRates).values({
@@ -22,7 +23,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("batch conversion falls back to original amount when source currency is unknown", async () => {
-    const result = await batchConvertCurrency(
+    const result = await batchConvertCurrencyAction(
       [{ amount: 100, currency: "ZZZ", date: testDate }],
       "USD"
     );
@@ -31,7 +32,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("batch conversion falls back to original amount when target currency is unknown", async () => {
-    const result = await batchConvertCurrency(
+    const result = await batchConvertCurrencyAction(
       [{ amount: 100, currency: "USD", date: testDate }],
       "ZZZ"
     );
@@ -40,7 +41,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("keeps order while mixing converted and fallback items", async () => {
-    const result = await batchConvertCurrency(
+    const result = await batchConvertCurrencyAction(
       [
         { amount: 100, currency: "CNY", date: testDate },
         { amount: 50, currency: "ZZZ", date: testDate },

@@ -41,13 +41,26 @@ describe("ledger single-owner race and rollback", () => {
     const userId = await createTestUser(db, undefined, crypto.randomUUID());
     const defaultLedgerModule = await import("@/config/default-ledger");
     const getDefaultLedgerSpy = vi.spyOn(defaultLedgerModule, "getDefaultLedger").mockReturnValue({
-      settings: { mainCurrency: "CNY" },
+      settings: {
+        aiLanguage: "zh-CN",
+        currencies: ["CNY", "USD"],
+        mainCurrency: "CNY",
+        collapseEntriesDefault: false,
+        aiCustomPrompt: "",
+      },
       categories: [
         {
-          name: null as never,
-          description: null,
-          icon: null,
+          name: "Duplicate category",
+          description: "First duplicate category",
+          icon: "Utensils",
           sortOrder: 1,
+          isEditable: true,
+        },
+        {
+          name: "Duplicate category",
+          description: "Second duplicate category",
+          icon: "Package",
+          sortOrder: 2,
           isEditable: true,
         },
       ],

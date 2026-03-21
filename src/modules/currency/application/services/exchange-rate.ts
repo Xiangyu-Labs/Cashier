@@ -1,15 +1,56 @@
+import { format } from "date-fns";
 import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { fetchWithRetry, formatExchangeRateDate } from "./exchange-rate-helpers";
-import type {
-  ExchangeRates,
-  ExchangeRatesStoredEvent,
-  ExchangeRatesStoredHandler,
-} from "./exchange-rate-types";
 
-export type { ExchangeRates, ExchangeRatesStoredEvent } from "./exchange-rate-types";
+// types
+export interface ExchangeRates {
+  base: string;
+  date: string;
+  rates: Record<string, number>;
+}
 
+export interface ExchangeRatesStoredEvent {
+  date: string;
+  base: string;
+  rates: Record<string, number>;
+}
+
+export type ExchangeRatesStoredHandler = (
+  event: ExchangeRatesStoredEvent
+) => void | Promise<void>;
+
+// helpers
+export function formatExchangeRateDate(date: Date | string): string {
+  if (typeof date === "string") {
+    const [datePart] = date.split("T");
+    return datePart ?? date;
+  }
+
+  return format(date, "yyyy-MM-dd");
+}
+
+export async function fetchWithRetry(
+  url: string,
+  retries = 3,
+  delay = 1000
+): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(5000) });
+    } catch (err) {
+      if (i === retries - 1) {
+        throw err;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
+    }
+  }
+
+  throw new Error("Unreachable");
+}
+
+// service
 export class ExchangeRateService {
   private static readonly API_BASE_URL = "https://api.frankfurter.app";
 

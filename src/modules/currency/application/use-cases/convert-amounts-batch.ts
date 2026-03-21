@@ -1,4 +1,4 @@
-import { ExchangeRateService, type ExchangeRates } from "../../ExchangeRateService";
+import { ExchangeRateService, type ExchangeRates } from "../services/exchange-rate";
 
 export interface CurrencyBatchConversionItem {
   amount: number;

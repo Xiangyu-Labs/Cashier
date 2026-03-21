@@ -1,6 +1,6 @@
-import { ExchangeRateService, type ExchangeRatesStoredEvent } from "./ExchangeRateService";
+import { ExchangeRateService, type ExchangeRatesStoredEvent } from "./application/services/exchange-rate";
 
-export type { ExchangeRatesStoredEvent } from "./ExchangeRateService";
+export type { ExchangeRatesStoredEvent } from "./application/services/exchange-rate";
 
 export function registerExchangeRatesStoredHandler(
   handler: (event: ExchangeRatesStoredEvent) => void | Promise<void>

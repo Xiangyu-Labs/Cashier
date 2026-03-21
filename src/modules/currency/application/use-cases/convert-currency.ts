@@ -1,5 +1,5 @@
 import { parseDateString } from "@/lib/date-utils";
-import { ExchangeRateService } from "../../ExchangeRateService";
+import { ExchangeRateService } from "../services/exchange-rate";
 
 export interface ConvertCurrencyInput {
   amount: number;

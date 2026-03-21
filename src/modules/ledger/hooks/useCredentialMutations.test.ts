@@ -131,11 +131,12 @@ describe("useCredentialMutations", () => {
     const createContext = (createCredential.onOptimisticUpdate as (qc: typeof queryClientMock, name: string) => {
       prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
     })(queryClientMock, "temp");
+    const createRollbackContext = createContext.prevData ? { prevData: createContext.prevData } : {};
 
     (createCredential.onRollback as (
       qc: typeof queryClientMock,
       context: { prevData?: { uncategorizedCount: number; credentials: ServiceCredential[] } }
-    ) => void)(queryClientMock, createContext);
+    ) => void)(queryClientMock, createRollbackContext);
 
     expect((queryClientMock.getQueryData(queryKey) as { credentials: ServiceCredential[] }).credentials).toHaveLength(1);
 
@@ -145,13 +146,14 @@ describe("useCredentialMutations", () => {
     ) => {
       prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
     })(queryClientMock, "cred-1");
+    const deleteRollbackContext = deleteContext.prevData ? { prevData: deleteContext.prevData } : {};
 
     expect((queryClientMock.getQueryData(queryKey) as { credentials: ServiceCredential[] }).credentials).toHaveLength(0);
 
     (deleteCredential.onRollback as (
       qc: typeof queryClientMock,
       context: { prevData?: { uncategorizedCount: number; credentials: ServiceCredential[] } }
-    ) => void)(queryClientMock, deleteContext);
+    ) => void)(queryClientMock, deleteRollbackContext);
 
     expect((queryClientMock.getQueryData(queryKey) as { credentials: ServiceCredential[] }).credentials).toHaveLength(1);
   });

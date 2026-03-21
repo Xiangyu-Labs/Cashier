@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { convertCurrencyForClient, type ConvertCurrencyResult } from "./client-convert";
+import { convertCurrencyAction, type ConvertCurrencyResult } from "./actions";
 
 export function useConvertedAmount(
   amount: number,
@@ -29,7 +29,7 @@ export function useConvertedAmount(
       if (normalizedFrom == null || normalizedTo == null) {
         return { converted: amount };
       }
-      return convertCurrencyForClient(amount, normalizedFrom, normalizedTo, normalizedDate);
+      return convertCurrencyAction(amount, normalizedFrom, normalizedTo, normalizedDate);
     },
     enabled: canConvert,
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
