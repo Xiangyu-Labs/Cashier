@@ -3,74 +3,83 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 
-let gestureActive = false;
-let dropNextTouchEnd = false;
+const createTouchHarness = (root: HTMLElement) => {
+  let gestureActive = false;
+  let dropNextTouchEnd = false;
 
-const fireTouchEvent = (target: HTMLElement, type: string, clientY: number) => {
-  const touchInit: TouchInit = {
-    identifier: 0,
-    target,
-    clientX: 0,
-    clientY,
-    pageX: 0,
-    pageY: clientY,
-    screenX: 0,
-    screenY: clientY,
+  const originalAddEventListener = HTMLDivElement.prototype.addEventListener;
+  const originalDispatchEvent = HTMLDivElement.prototype.dispatchEvent;
+
+  const hookAdd: typeof HTMLDivElement.prototype.addEventListener = function (this: HTMLDivElement, type, listener, options) {
+    if (this === root && type === 'touchend' && gestureActive) {
+      dropNextTouchEnd = true;
+    }
+    return originalAddEventListener.call(this, type, listener, options);
   };
 
-  const touch = typeof Touch === 'function' ? new Touch(touchInit) : (touchInit as Touch);
-  const event = new window.TouchEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    touches: [touch],
-    targetTouches: [touch],
-    changedTouches: [touch],
-  });
+  const hookDispatch: typeof HTMLDivElement.prototype.dispatchEvent = function (this: HTMLDivElement, event) {
+    if (this === root && event.type === 'touchend' && dropNextTouchEnd) {
+      dropNextTouchEnd = false;
+      return true;
+    }
+    return originalDispatchEvent.call(this, event);
+  };
 
-  if (type === 'touchstart') {
-    gestureActive = true;
-    dropNextTouchEnd = false;
-  }
+  HTMLDivElement.prototype.addEventListener = hookAdd;
+  HTMLDivElement.prototype.dispatchEvent = hookDispatch;
 
-  if (type === 'touchend') {
-    gestureActive = false;
-  }
+  const fireTouchEvent = (type: 'touchstart' | 'touchmove' | 'touchend', clientY: number) => {
+    const touchInit: TouchInit = {
+      identifier: 0,
+      target: root,
+      clientX: 0,
+      clientY,
+      pageX: 0,
+      pageY: clientY,
+      screenX: 0,
+      screenY: clientY,
+    };
 
-  target.dispatchEvent(event);
+    const touch = typeof Touch === 'function' ? new Touch(touchInit) : (touchInit as Touch);
+    const event = new window.TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: type === 'touchend' ? [] : [touch],
+      targetTouches: type === 'touchend' ? [] : [touch],
+      changedTouches: [touch],
+    });
+
+    if (type === 'touchstart') {
+      gestureActive = true;
+      dropNextTouchEnd = false;
+    }
+
+    if (type === 'touchend') {
+      gestureActive = false;
+    }
+
+    root.dispatchEvent(event);
+  };
+
+  const cleanup = () => {
+    HTMLDivElement.prototype.addEventListener = originalAddEventListener;
+    HTMLDivElement.prototype.dispatchEvent = originalDispatchEvent;
+  };
+
+  return { fireTouchEvent, cleanup };
 };
 
 let originalOntouchstart: typeof window.ontouchstart;
-let originalAddEventListener: typeof HTMLDivElement.prototype.addEventListener;
-let originalDispatchEvent: typeof HTMLDivElement.prototype.dispatchEvent;
 
 describe('PullToRefresh regression', () => {
   beforeEach(() => {
     originalOntouchstart = window.ontouchstart;
+    // Presence of window.ontouchstart lets PullToRefresh treat the environment as touch-capable.
     window.ontouchstart = vi.fn();
-
-    originalAddEventListener = HTMLDivElement.prototype.addEventListener;
-    originalDispatchEvent = HTMLDivElement.prototype.dispatchEvent;
-
-    HTMLDivElement.prototype.addEventListener = function (type, listener, options) {
-      if (type === 'touchend' && gestureActive) {
-        dropNextTouchEnd = true;
-      }
-      return originalAddEventListener.call(this, type, listener, options);
-    };
-
-    HTMLDivElement.prototype.dispatchEvent = function (event) {
-      if (event.type === 'touchend' && dropNextTouchEnd) {
-        dropNextTouchEnd = false;
-        return true;
-      }
-      return originalDispatchEvent.call(this, event);
-    };
   });
 
   afterEach(() => {
     window.ontouchstart = originalOntouchstart;
-    HTMLDivElement.prototype.addEventListener = originalAddEventListener;
-    HTMLDivElement.prototype.dispatchEvent = originalDispatchEvent;
   });
 
   it('calls onRefresh even when onRefresh reference changes during touchmove', async () => {
@@ -94,20 +103,30 @@ describe('PullToRefresh regression', () => {
     const { container, getByRole } = render(<Parent />);
     const ptr = container.querySelector('.ptr-root') as HTMLElement;
     const swapButton = getByRole('button', { name: /swap handler/i });
+    const harness = createTouchHarness(ptr);
 
-    await act(async () => {
-      fireTouchEvent(ptr, 'touchstart', 50);
-      fireTouchEvent(ptr, 'touchmove', 100);
-    });
+    try {
+      await act(async () => {
+        harness.fireTouchEvent('touchstart', 50);
+        harness.fireTouchEvent('touchmove', 100);
+      });
 
-    await act(async () => {
-      fireEvent.click(swapButton);
-    });
+      await act(async () => {
+        fireEvent.click(swapButton);
+      });
 
-    await act(async () => {
-      fireTouchEvent(ptr, 'touchmove', 250);
-      fireTouchEvent(ptr, 'touchend', 250);
-    });
+      await act(async () => {
+        harness.fireTouchEvent('touchmove', 250);
+      });
+
+      expect(container.textContent).toContain('释放刷新');
+
+      await act(async () => {
+        harness.fireTouchEvent('touchend', 250);
+      });
+    } finally {
+      harness.cleanup();
+    }
 
     const totalCalls = refreshV1.mock.calls.length + refreshV2.mock.calls.length;
     expect(refreshV1).not.toHaveBeenCalled();
