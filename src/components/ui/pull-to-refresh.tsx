@@ -27,16 +27,14 @@ export function PullToRefresh({
   const lastRefreshTime = useRef(0);
   const isPullingRef = useRef(false);
   const pullDistanceRef = useRef(0);
+  // Keep the latest refresh callback available without re-registering touch listeners.
   const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
 
   // Detect touch device on mount
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window);
   }, []);
-
-  useEffect(() => {
-    onRefreshRef.current = onRefresh;
-  }, [onRefresh]);
 
   useEffect(() => {
     // If disabled or non-touch device, don't add listeners
