@@ -2,6 +2,7 @@ import {
   convertAmountsBatch as convertAmountsBatchUseCase,
   type CurrencyBatchConversionResult,
 } from "./application/use-cases/convert-amounts-batch";
+import type { BatchConvertCurrencyResult } from "./contracts";
 export {
   convertCurrency,
   type ConvertCurrencyInput,
@@ -21,9 +22,6 @@ export interface BatchCurrencyConversionItem {
 }
 
 export type ConvertAmountsBatchResult = CurrencyBatchConversionResult[];
-export interface BatchConvertCurrencyResult {
-  results: number[];
-}
 
 export async function convertAmountsBatch(
   items: BatchCurrencyConversionItem[],
