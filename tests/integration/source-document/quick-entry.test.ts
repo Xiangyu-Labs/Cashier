@@ -129,7 +129,7 @@ describe("createQuickEntryAction", () => {
     expect(entry?.currency).toBe("CNY");
   });
 
-  it("should use provided currency", { timeout: 20_000 }, async () => {
+  it("should use provided currency", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
       new Error("network disabled in test")
     );
@@ -149,6 +149,7 @@ describe("createQuickEntryAction", () => {
       expect(entry?.currency).toBe("USD");
       expect(entry?.convertedAmount).toBe("681.82");
       expect(entry?.exchangeRate).toBe("6.818182");
+      expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       fetchSpy.mockRestore();
     }
