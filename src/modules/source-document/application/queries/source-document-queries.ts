@@ -13,6 +13,10 @@ import {
   mapSourceDocumentListItemDto,
   mapSourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/mappers";
+import {
+  listSourceDocumentsInputSchema,
+  type ListSourceDocumentsInput,
+} from "@/modules/source-document/contract-schemas";
 import { sourceDocuments } from "@/persistence";
 import type {
   PendingSourceDocumentsResponseDto,
@@ -233,6 +237,21 @@ export async function listSourceDocumentsQuery(
   };
 }
 
+export async function listSourceDocuments(
+  ledgerId: string,
+  params: ListSourceDocumentsInput
+): Promise<SourceDocumentPageDto> {
+  const validated = listSourceDocumentsInputSchema.parse(params);
+  return listSourceDocumentsQuery(ledgerId, {
+    status: validated.status ?? null,
+    startDate: validated.startDate ?? null,
+    endDate: validated.endDate ?? null,
+    cursor: validated.cursor ?? null,
+    limit: validated.limit,
+    includeLedgerEntries: validated.includeEntries,
+  });
+}
+
 export async function listAllSourceDocumentsQuery(
   ledgerId: string,
   params: ListAllSourceDocumentsParams = {}
@@ -281,6 +300,13 @@ export async function listAllSourceDocumentsQuery(
   };
 }
 
+export async function getAllSourceDocuments(
+  ledgerId: string,
+  params: ListAllSourceDocumentsParams = {}
+): Promise<SourceDocumentCollectionDto> {
+  return listAllSourceDocumentsQuery(ledgerId, params);
+}
+
 export async function getPendingSourceDocumentsQuery(
   ledgerId: string
 ): Promise<PendingSourceDocumentsResponseDto> {
@@ -305,6 +331,12 @@ export async function getPendingSourceDocumentsQuery(
   };
 }
 
+export async function getPendingSourceDocuments(
+  ledgerId: string
+): Promise<PendingSourceDocumentsResponseDto> {
+  return getPendingSourceDocumentsQuery(ledgerId);
+}
+
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string
@@ -325,6 +357,13 @@ export async function getSourceDocumentFullQuery(
     status: document.status,
     createdAt: document.createdAt.toISOString(),
   };
+}
+
+export async function getSourceDocumentFull(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentFullDto | null> {
+  return getSourceDocumentFullQuery(ledgerId, sourceDocumentId);
 }
 
 export const sourceDocumentPaginationConfig = {
