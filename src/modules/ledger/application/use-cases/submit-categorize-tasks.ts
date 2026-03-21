@@ -10,7 +10,7 @@ import {
   type CategorizeResult,
 } from "@/modules/ledger/application/services/categorize-task-submission";
 
-export type { CategorizeResult } from "@/modules/ledger/application/services/categorize-task-submission";
+export type { CategorizeResult } from "@/modules/ledger/contracts";
 
 export async function submitAutoCategorize(ledgerId: string): Promise<CategorizeResult> {
   const uncategorizedEntries = await listUncategorizedEntriesForCategorization(ledgerId);
