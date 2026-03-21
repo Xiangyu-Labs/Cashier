@@ -7,7 +7,7 @@ import type {
   TaskQueueResult,
   TaskQueueStats,
   TaskQueueStatsResponseDto,
-} from "@/modules/task-queue/actions";
+} from "@/modules/task-queue/contracts";
 
 const {
   handleApiV1RouteMock,
