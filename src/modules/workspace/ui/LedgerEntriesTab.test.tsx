@@ -183,6 +183,20 @@ vi.mock("@/modules/source-document/ui", () => ({
   SourceDocumentEditRetryDialog: () => null,
 }));
 
+vi.mock("@/modules/source-document/ui/batch-action-toolbar", () => ({
+  SourceDocumentBatchActionToolbar: ({
+    selectedCount,
+    totalCount,
+  }: {
+    selectedCount: number;
+    totalCount: number;
+  }) => (
+    <div data-testid="batch-toolbar">
+      selected:{selectedCount}-total:{totalCount}
+    </div>
+  ),
+}));
+
 vi.mock("@/components/ui/confirm-dialog", () => ({
   ConfirmDialog: ({
     open,
@@ -196,20 +210,6 @@ vi.mock("@/components/ui/confirm-dialog", () => ({
         confirm
       </button>
     ) : null,
-}));
-
-vi.mock("@/components/batch-action-toolbar", () => ({
-  BatchActionToolbar: ({
-    selectedCount,
-    totalCount,
-  }: {
-    selectedCount: number;
-    totalCount: number;
-  }) => (
-    <div data-testid="batch-toolbar">
-      selected:{selectedCount}-total:{totalCount}
-    </div>
-  ),
 }));
 
 const categories: EntryCategory[] = [];

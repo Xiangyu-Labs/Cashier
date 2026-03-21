@@ -1,16 +1,8 @@
-/**
- * Source Document Batch Actions
- *
- * Action buttons for batch operations on source documents:
- * - Update Dates
- * - Retry
- */
-
-import { Calendar, RefreshCw, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Calendar, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface SourceDocumentActionsProps {
   isProcessing: boolean;
@@ -46,7 +38,6 @@ export function SourceDocumentActions({
 
   return (
     <>
-      {/* Date Picker - flex-1 */}
       {showUpdateDates && (
         <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
           <PopoverTrigger asChild>
@@ -92,7 +83,6 @@ export function SourceDocumentActions({
         </Popover>
       )}
 
-      {/* Retry - flex-1 */}
       {showRetry && (
         <Button
           variant="outline"

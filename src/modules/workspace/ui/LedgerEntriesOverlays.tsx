@@ -1,7 +1,5 @@
-import {
-  BatchActionToolbar,
-} from "@/components/batch-action-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SourceDocumentBatchActionToolbar } from "@/modules/source-document/ui/batch-action-toolbar";
 import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
@@ -59,7 +57,7 @@ export function LedgerEntriesOverlays({
         variant="destructive"
       />
 
-      <BatchActionToolbar
+      <SourceDocumentBatchActionToolbar
         selectedCount={selectedCount}
         totalCount={totalCount}
         isAllSelected={isAllSelected}
@@ -71,7 +69,6 @@ export function LedgerEntriesOverlays({
         isUpdatingDates={isUpdatingDates}
         isRetrying={isRetrying}
         isDeleting={isDeleting}
-        mode="sourceDocuments"
       />
 
       {retrySourceDocument && (

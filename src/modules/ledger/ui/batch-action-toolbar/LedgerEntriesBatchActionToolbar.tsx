@@ -1,47 +1,36 @@
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Loader2 } from "lucide-react";
+
+import { useCallback, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { EntryCategory } from "@/modules/ledger/contracts";
-import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { useBatchActions } from "./use-batch-actions";
-import { LedgerEntriesActions } from "./ledger-entries-actions";
-import { SourceDocumentActions } from "./source-document-actions";
+import type { EntryCategory } from "@/modules/ledger/contracts";
+import { LedgerEntriesActions } from "./LedgerEntriesActions";
 
-export interface BatchActionToolbarProps {
+export interface LedgerEntriesBatchActionToolbarProps {
   selectedCount: number;
   totalCount: number;
   isAllSelected: boolean;
   hasMoreData?: boolean;
   onSelectAll: () => void;
   onClearSelection: () => void;
-  // Ledger Entry actions
-  onAiCategorize?: () => void;
-  onChangeCategory?: (categoryId: string | null) => void;
-  onChangeCurrency?: (currency: string) => void;
-  onDelete?: () => void;
-  // Source Document actions
-  onUpdateDates?: (date: string) => void;
-  onRetry?: () => void;
-  // Data
+  onAiCategorize?: () => Promise<void> | void;
+  onChangeCategory?: (categoryId: string | null) => Promise<void> | void;
+  onChangeCurrency?: (currency: string) => Promise<void> | void;
+  onDelete?: () => Promise<void> | void;
   categories?: EntryCategory[];
   preferredCurrencies?: string[];
-  // Optional loading states from mutations
   isAiCategorizing?: boolean;
   isChangingCategory?: boolean;
   isChangingCurrency?: boolean;
   isDeleting?: boolean;
-  isUpdatingDates?: boolean;
-  isRetrying?: boolean;
-  // Layout variant
   variant?: "fixed" | "inline";
-  // Mode
-  mode?: "ledgerEntries" | "sourceDocuments";
 }
 
-export function BatchActionToolbar({
+export function LedgerEntriesBatchActionToolbar({
   selectedCount,
   totalCount,
   isAllSelected,
@@ -52,68 +41,105 @@ export function BatchActionToolbar({
   onChangeCategory,
   onChangeCurrency,
   onDelete,
-  onUpdateDates,
-  onRetry,
   categories = [],
   preferredCurrencies = [],
   isAiCategorizing: isAiCategorizingProp,
   isChangingCategory: isChangingCategoryProp,
   isChangingCurrency: isChangingCurrencyProp,
   isDeleting: isDeletingProp,
-  isUpdatingDates: isUpdatingDatesProp,
-  isRetrying: isRetryingProp,
   variant = "fixed",
-  mode = "ledgerEntries",
-}: BatchActionToolbarProps) {
+}: LedgerEntriesBatchActionToolbarProps) {
   const t = useTranslations("BatchActions");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [internalAiCategorizing, setInternalAiCategorizing] = useState(false);
+  const [internalChangingCategory, setInternalChangingCategory] = useState(false);
+  const [internalChangingCurrency, setInternalChangingCurrency] = useState(false);
+  const [internalDeleting, setInternalDeleting] = useState(false);
 
-  const {
-    isAiCategorizing,
-    isChangingCategory,
-    isChangingCurrency,
-    isDeleting,
-    isUpdatingDates,
-    isRetrying,
-    isProcessing,
-    deleteConfirmOpen,
-    setDeleteConfirmOpen,
-    datePickerOpen,
-    setDatePickerOpen,
-    selectedDate,
-    setSelectedDate,
-    handleAiCategorize,
-    handleChangeCategory,
-    handleChangeCurrency,
-    handleDelete,
-    handleUpdateDates,
-    handleRetry,
-  } = useBatchActions({
-    ...(onAiCategorize != null ? { onAiCategorize } : {}),
-    ...(onChangeCategory != null ? { onChangeCategory } : {}),
-    ...(onChangeCurrency != null ? { onChangeCurrency } : {}),
-    ...(onDelete != null ? { onDelete } : {}),
-    ...(onUpdateDates != null ? { onUpdateDates } : {}),
-    ...(onRetry != null ? { onRetry } : {}),
-    ...(isAiCategorizingProp !== undefined ? { isAiCategorizingProp } : {}),
-    ...(isChangingCategoryProp !== undefined ? { isChangingCategoryProp } : {}),
-    ...(isChangingCurrencyProp !== undefined ? { isChangingCurrencyProp } : {}),
-    ...(isDeletingProp !== undefined ? { isDeletingProp } : {}),
-    ...(isUpdatingDatesProp !== undefined ? { isUpdatingDatesProp } : {}),
-    ...(isRetryingProp !== undefined ? { isRetryingProp } : {}),
-  });
+  const isAiCategorizing = isAiCategorizingProp ?? internalAiCategorizing;
+  const isChangingCategory = isChangingCategoryProp ?? internalChangingCategory;
+  const isChangingCurrency = isChangingCurrencyProp ?? internalChangingCurrency;
+  const isDeleting = isDeletingProp ?? internalDeleting;
+  const isProcessing = isAiCategorizing || isChangingCategory || isChangingCurrency || isDeleting;
 
-  // Determine if AI categorize should be shown
-  const showAiCategorize = onAiCategorize !== undefined && mode === "ledgerEntries";
-  // Determine if delete should be shown
-  const showDelete = onDelete !== undefined;
+  const handleAiCategorize = useCallback(async () => {
+    if (!onAiCategorize) return;
 
-  // Container classes based on variant
+    if (isAiCategorizingProp === undefined) {
+      setInternalAiCategorizing(true);
+      try {
+        await onAiCategorize();
+      } finally {
+        setInternalAiCategorizing(false);
+      }
+      return;
+    }
+
+    await onAiCategorize();
+  }, [isAiCategorizingProp, onAiCategorize]);
+
+  const handleChangeCategory = useCallback(
+    async (categoryId: string | null) => {
+      if (!onChangeCategory) return;
+
+      if (isChangingCategoryProp === undefined) {
+        setInternalChangingCategory(true);
+        try {
+          await onChangeCategory(categoryId);
+        } finally {
+          setInternalChangingCategory(false);
+        }
+        return;
+      }
+
+      await onChangeCategory(categoryId);
+    },
+    [isChangingCategoryProp, onChangeCategory]
+  );
+
+  const handleChangeCurrency = useCallback(
+    async (currency: string) => {
+      if (!onChangeCurrency) return;
+
+      if (isChangingCurrencyProp === undefined) {
+        setInternalChangingCurrency(true);
+        try {
+          await onChangeCurrency(currency);
+        } finally {
+          setInternalChangingCurrency(false);
+        }
+        return;
+      }
+
+      await onChangeCurrency(currency);
+    },
+    [isChangingCurrencyProp, onChangeCurrency]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete) return;
+
+    if (isDeletingProp === undefined) {
+      setInternalDeleting(true);
+      try {
+        await onDelete();
+      } finally {
+        setInternalDeleting(false);
+        setDeleteConfirmOpen(false);
+      }
+      return;
+    }
+
+    await onDelete();
+    setDeleteConfirmOpen(false);
+  }, [isDeletingProp, onDelete]);
+
   const containerClasses =
     variant === "fixed"
       ? "fixed bottom-0 left-0 right-0 z-action-bar px-2 sm:px-4 pb-2 sm:pb-4 pointer-events-none"
       : "shrink-0 pointer-events-auto";
-
   const innerWrapperClasses = variant === "fixed" ? "max-w-lg mx-auto pointer-events-auto" : "";
+  const showDelete = onDelete !== undefined;
 
   return (
     <>
@@ -126,9 +152,7 @@ export function BatchActionToolbar({
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={containerClasses}
           >
-            <div
-              className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}
-            >
+            <div className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}>
               <div
                 className={cn(
                   "border border-border shadow-lg p-2 sm:p-3 bg-surface2",
@@ -136,7 +160,6 @@ export function BatchActionToolbar({
                   variant === "inline" && "border-x-0 border-b-0"
                 )}
               >
-                {/* Top row: selection info */}
                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <div className="flex flex-col">
                     <span className="text-xs sm:text-sm font-medium">
@@ -159,39 +182,20 @@ export function BatchActionToolbar({
                   </Button>
                 </div>
 
-                {/* Bottom row: action buttons */}
                 <div className="flex items-center gap-1 sm:gap-2">
-                  {mode === "ledgerEntries" ? (
-                    <LedgerEntriesActions
-                      categories={categories}
-                      preferredCurrencies={preferredCurrencies}
-                      isProcessing={isProcessing}
-                      isAiCategorizing={isAiCategorizing}
-                      isChangingCategory={isChangingCategory}
-                      isChangingCurrency={isChangingCurrency}
-                      onAiCategorize={handleAiCategorize}
-                      onChangeCategory={handleChangeCategory}
-                      onChangeCurrency={handleChangeCurrency}
-                      showAiCategorize={showAiCategorize}
-                    />
-                  ) : (
-                    <SourceDocumentActions
-                      isProcessing={isProcessing}
-                      isUpdatingDates={isUpdatingDates}
-                      isRetrying={isRetrying}
-                      onUpdateDates={handleUpdateDates}
-                      onRetry={handleRetry}
-                      onCancel={() => setDatePickerOpen(false)}
-                      datePickerOpen={datePickerOpen}
-                      setDatePickerOpen={setDatePickerOpen}
-                      selectedDate={selectedDate}
-                      setSelectedDate={setSelectedDate}
-                      showUpdateDates={!!onUpdateDates}
-                      showRetry={!!onRetry}
-                    />
-                  )}
+                  <LedgerEntriesActions
+                    categories={categories}
+                    preferredCurrencies={preferredCurrencies}
+                    isProcessing={isProcessing}
+                    isAiCategorizing={isAiCategorizing}
+                    isChangingCategory={isChangingCategory}
+                    isChangingCurrency={isChangingCurrency}
+                    onAiCategorize={handleAiCategorize}
+                    onChangeCategory={handleChangeCategory}
+                    onChangeCurrency={handleChangeCurrency}
+                    showAiCategorize={onAiCategorize !== undefined}
+                  />
 
-                  {/* Delete - fixed width (only shown when supported) */}
                   {showDelete && (
                     <Button
                       variant="outline"
@@ -232,5 +236,3 @@ export function BatchActionToolbar({
     </>
   );
 }
-
-export { useBatchActions } from "./use-batch-actions";
