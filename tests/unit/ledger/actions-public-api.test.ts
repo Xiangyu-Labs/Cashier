@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withLedgerAccess } from "@/modules/ledger/access";
+import { withLedgerAccess } from "@/modules/ledger/actions";
 
 describe("ledger access public api", () => {
   it("exposes access helpers from the dedicated access entrypoint", () => {

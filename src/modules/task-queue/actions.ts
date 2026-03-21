@@ -1,5 +1,5 @@
 "use server";
-import { requireLedgerAccess, withLedgerAccess } from "@/modules/ledger/access";
+import { requireLedgerAccess, withLedgerAccess } from "@/modules/ledger/actions";
 import { getTaskQueueQuery } from "./application/queries/get-task-queue";
 import {
   batchCancelTasksUseCase,
