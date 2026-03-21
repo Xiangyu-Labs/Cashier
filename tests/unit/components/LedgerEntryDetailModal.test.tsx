@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { LedgerEntryDetailModal } from "@/modules/ledger/ui";
-import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import type {
+  EntryCategoryDto as EntryCategory,
+  LedgerEntryDto as LedgerEntry,
+} from "@/modules/ledger/contracts";
 import { useEffect } from "react";
 
 vi.mock("next/navigation", () => ({

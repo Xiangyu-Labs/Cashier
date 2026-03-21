@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { queryKeys } from "@/lib/query-keys";
-import type { EntryCategory, LedgerEntry } from "@/types/api";
+import type {
+  EntryCategoryDto as EntryCategory,
+  LedgerEntryDto as LedgerEntry,
+} from "@/modules/ledger/contracts";
 
 const { createListSnapshotsMock, mutationOptions, useLedgerMutationMock } = vi.hoisted(() => ({
   createListSnapshotsMock: vi.fn((queryClient: QueryClient, queryKey: readonly unknown[]) =>

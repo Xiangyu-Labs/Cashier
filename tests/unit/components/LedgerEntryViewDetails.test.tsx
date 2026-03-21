@@ -5,7 +5,10 @@ import {
   LedgerEntryViewDetails,
   type EntryPendingChanges,
 } from "@/modules/ledger/ui";
-import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import type {
+  EntryCategoryDto as EntryCategory,
+  LedgerEntryDto as LedgerEntry,
+} from "@/modules/ledger/contracts";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),

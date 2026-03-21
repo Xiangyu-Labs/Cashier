@@ -3,7 +3,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
-import type { EntryCategory, Ledger } from "@/types/api";
+import type {
+  EntryCategoryDto as EntryCategory,
+  LedgerDto as Ledger,
+} from "@/modules/ledger/contracts";
 
 type MockSourceDocumentGroupItem = {
   sourceDocument: {
