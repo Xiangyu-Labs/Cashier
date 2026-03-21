@@ -48,10 +48,10 @@ describe("createSourceDocumentFromCredential", () => {
       updatedAt: new Date(),
       deletedAt: null,
     });
-    const payload = {
+    const payload: CreateSourceDocumentInput = {
       text: "receipt",
-      timezone: undefined,
-    } as CreateSourceDocumentInput & { timezone?: string | undefined };
+    };
+    (payload as { timezone?: string | undefined }).timezone = undefined;
 
     await createSourceDocumentFromCredential({
       credentialId: "cred-1",
