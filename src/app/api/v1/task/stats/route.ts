@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
-import {
-  getTaskQueueForAuthorizedLedger,
-  type TaskQueueStatsResponseDto,
-} from "@/modules/task-queue/actions";
+import { getTaskQueueForAuthorizedLedger } from "@/modules/task-queue/actions";
+import type { TaskQueueStatsResponseDto } from "@/modules/task-queue/contracts";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {

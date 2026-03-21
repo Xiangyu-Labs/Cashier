@@ -14,7 +14,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
 import { invalidateCalendar, invalidateLedgerEntries, invalidateLedgerStats, invalidateSourceDocuments, queryKeys, } from "@/lib/query-keys";
 import type { InfiniteData } from "@tanstack/react-query";
-import type { SourceDocumentCollectionDto, SourceDocumentListItemWithEntries, } from "@/modules/source-document/actions";
+import type { SourceDocumentCollectionDto, SourceDocumentListItemDto as SourceDocumentListItemWithEntries, } from "@/modules/source-document/contracts";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 
 interface QuickEntryFormProps {

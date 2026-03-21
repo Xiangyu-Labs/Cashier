@@ -22,25 +22,3 @@ export { createSourceDocumentAction } from "./server-actions/create";
 export { retrySourceDocumentAction } from "./server-actions/retry";
 export { getProcessingTasksAction, getProcessingStatsAction } from "./server-actions/processing";
 export { canAccessSourceDocumentUpload } from "./server-actions/uploads";
-
-export type {
-  BatchDeleteSourceDocumentsResultDto,
-  BatchRetrySourceDocumentItemDto,
-  BatchRetrySourceDocumentsResultDto,
-  BatchUpdateSourceDocumentsResultDto,
-  CreateSourceDocumentResponseDto,
-  DeleteSourceDocumentResultDto,
-  PendingSourceDocumentsResponseDto as PendingSourceDocumentsResponse,
-  ProcessingStatsDto,
-  ProcessingTaskDto,
-  QuickEntryResponseDto,
-  RetrySourceDocumentResponseDto,
-  SourceDocumentCollectionDto,
-  SourceDocumentListItemDto as SourceDocumentListItemWithEntries,
-  SourceDocumentListItemDto as SourceDocumentPageItem,
-  SourceDocumentDto as SourceDocumentWithEntries,
-  SourceDocumentFullDto,
-  SourceDocumentLightWithEntriesDto as SourceDocumentLightWithEntries,
-  SourceDocumentPageDto,
-  UpdateSourceDocumentResultDto,
-} from "./contracts";

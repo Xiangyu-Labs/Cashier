@@ -15,8 +15,8 @@ import {
   batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-  type SourceDocumentCollectionDto,
 } from "@/modules/source-document/actions";
+import type { SourceDocumentCollectionDto } from "@/modules/source-document/contracts";
 
 function removeSourceDocumentsFromPaginatedLists(
   old: SourceDocumentCollectionDto | undefined,

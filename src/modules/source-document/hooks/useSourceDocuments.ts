@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  getAllSourceDocumentsAction,
-  type SourceDocumentListItemWithEntries,
-} from "@/modules/source-document/actions";
+import { getAllSourceDocumentsAction } from "@/modules/source-document/actions";
+import type { SourceDocumentListItemDto as SourceDocumentListItemWithEntries } from "@/modules/source-document/contracts";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
