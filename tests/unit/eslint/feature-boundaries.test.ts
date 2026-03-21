@@ -663,10 +663,10 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("allows task-queue actions to import ledger-owned access wrapper", async () => {
+  it("allows task-queue actions to import ledger-owned access wrapper via public actions api", async () => {
     const messages = await lintRestrictedImports(
       `
-        import { withLedgerAccess } from "@/modules/ledger/access";
+        import { withLedgerAccess } from "@/modules/ledger/actions";
         export const value = withLedgerAccess;
       `,
       "src/modules/task-queue/actions.ts"

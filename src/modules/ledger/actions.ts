@@ -31,3 +31,4 @@ export {
   deleteServiceCredentialAction,
 } from "./server-actions/credentials";
 export { getLedgerStatsAction } from "./server-actions/stats";
+export { requireLedgerAccess, withLedgerAccess } from "./access";
