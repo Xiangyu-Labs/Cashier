@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
-import { convertAmountsBatch, convertCurrency } from "@/modules/currency/use-cases";
+import { batchConvertCurrencyAction } from "@/modules/currency/actions";
+import { convertCurrency } from "@/modules/currency/use-cases";
 
 async function insertTestRates(date: string, rates: Record<string, number>) {
   await getTestDb().insert(currencyRates).values({
@@ -22,40 +23,37 @@ describe("currency fallbacks integration", () => {
   });
 
   it("batch conversion falls back to original amount when source currency is unknown", async () => {
-    const result = await convertAmountsBatch(
-      [{ amount: 100, fromCurrency: "ZZZ", toCurrency: "USD", date: testDate }],
-      "USD",
-      { fallbackToOriginalAmountOnMissingRate: true }
+    const result = await batchConvertCurrencyAction(
+      [{ amount: 100, currency: "ZZZ", date: testDate }],
+      "USD"
     );
 
-    expect(result).toEqual([{ convertedAmount: 100, exchangeRate: 1 }]);
+    expect(result).toEqual({ results: [100] });
   });
 
   it("batch conversion falls back to original amount when target currency is unknown", async () => {
-    const result = await convertAmountsBatch(
-      [{ amount: 100, fromCurrency: "USD", toCurrency: "ZZZ", date: testDate }],
-      "ZZZ",
-      { fallbackToOriginalAmountOnMissingRate: true }
+    const result = await batchConvertCurrencyAction(
+      [{ amount: 100, currency: "USD", date: testDate }],
+      "ZZZ"
     );
 
-    expect(result).toEqual([{ convertedAmount: 100, exchangeRate: 1 }]);
+    expect(result).toEqual({ results: [100] });
   });
 
   it("keeps order while mixing converted and fallback items", async () => {
-    const result = await convertAmountsBatch(
+    const result = await batchConvertCurrencyAction(
       [
-        { amount: 100, fromCurrency: "CNY", toCurrency: "USD", date: testDate },
-        { amount: 50, fromCurrency: "ZZZ", toCurrency: "USD", date: testDate },
-        { amount: 25, fromCurrency: "USD", toCurrency: "USD", date: testDate },
+        { amount: 100, currency: "CNY", date: testDate },
+        { amount: 50, currency: "ZZZ", date: testDate },
+        { amount: 25, currency: "USD", date: testDate },
       ],
-      "USD",
-      { fallbackToOriginalAmountOnMissingRate: true }
+      "USD"
     );
 
-    expect(result).toHaveLength(3);
-    expect(result[0]?.convertedAmount).toBeCloseTo(14.67, 1);
-    expect(result[1]?.convertedAmount).toBe(50);
-    expect(result[2]?.convertedAmount).toBe(25);
+    expect(result.results).toHaveLength(3);
+    expect(result.results[0]).toBeCloseTo(14.67, 1);
+    expect(result.results[1]).toBe(50);
+    expect(result.results[2]).toBe(25);
   });
 
   it("single conversion still fails for unknown currency", async () => {

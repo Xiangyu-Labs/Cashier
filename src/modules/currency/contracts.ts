@@ -12,6 +12,7 @@ export interface BatchConvertCurrencyResult {
   results: number[];
 }
 
+// Public adapter shape used by actions; application layer uses fromCurrency/toCurrency.
 export interface BatchCurrencyConversionItem {
   amount: number;
   from: string;
