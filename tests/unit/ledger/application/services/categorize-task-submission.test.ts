@@ -8,7 +8,7 @@ vi.mock("@/lib/flow", () => ({
   submitFlowTask: submitFlowTaskMock,
 }));
 
-import { submitCategorizeTasksForEntries } from "./categorize-task-submission";
+import { submitCategorizeTasksForEntries } from "@/modules/ledger/application/services/categorize-task-submission";
 
 describe("submitCategorizeTasksForEntries omission semantics", () => {
   beforeEach(() => {

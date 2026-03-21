@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const listLedgerEntryPageMock = vi.hoisted(() => vi.fn());
 
-vi.mock("./list-ledger-entry-page", () => ({
+vi.mock("@/modules/ledger/application/queries/list-ledger-entry-page", () => ({
   listLedgerEntryPage: listLedgerEntryPageMock,
 }));
 
-import { listLedgerEntries } from "./list-ledger-entries";
+import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 
 describe("listLedgerEntries", () => {
   it("validates params, builds filters, and normalizes nextCursor to null", async () => {

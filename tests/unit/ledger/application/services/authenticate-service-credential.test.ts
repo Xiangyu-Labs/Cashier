@@ -9,7 +9,7 @@ vi.mock("@/lib/error-handlers", () => ({
   logError: logErrorMock,
 }));
 
-import { authenticateServiceCredential } from "./authenticate-service-credential";
+import { authenticateServiceCredential } from "@/modules/ledger/application/services/authenticate-service-credential";
 
 describe("authenticateServiceCredential", () => {
   let ledgerId = "";

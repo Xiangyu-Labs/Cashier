@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const listEntryCategoriesWithCountMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../use-cases/list-entry-categories-with-count", () => ({
+vi.mock("@/modules/ledger/application/use-cases/list-entry-categories-with-count", () => ({
   listEntryCategoriesWithCount: listEntryCategoriesWithCountMock,
 }));
 
-import { listEntryCategories } from "./list-entry-categories";
+import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 
 describe("listEntryCategories", () => {
   it("delegates to listEntryCategoriesWithCount", async () => {

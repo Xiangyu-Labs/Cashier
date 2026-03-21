@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const calculateLedgerEntryStatsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("./calculate-ledger-entry-stats", () => ({
+vi.mock("@/modules/ledger/application/queries/calculate-ledger-entry-stats", () => ({
   calculateLedgerEntryStats: calculateLedgerEntryStatsMock,
 }));
 
-import { calculateLedgerStats } from "./calculate-ledger-stats";
+import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 
 describe("calculateLedgerStats", () => {
   it("passes through only provided filters and main currency", async () => {

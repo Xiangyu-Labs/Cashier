@@ -45,7 +45,7 @@ vi.mock("@/modules/ledger/actions", () => ({
   deleteServiceCredentialAction: deleteServiceCredentialActionMock,
 }));
 
-import { useCredentialMutations } from "./useCredentialMutations";
+import { useCredentialMutations } from "@/modules/ledger/hooks/useCredentialMutations";
 
 function getOption(index: number) {
   const option = mutationOptions[index];

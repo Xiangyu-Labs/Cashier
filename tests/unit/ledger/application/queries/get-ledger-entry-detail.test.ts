@@ -10,7 +10,7 @@ vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 
-import { getLedgerEntryDetail } from "./get-ledger-entry-detail";
+import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 
 describe("getLedgerEntryDetail", () => {
   beforeEach(() => {
