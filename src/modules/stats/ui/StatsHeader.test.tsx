@@ -1,15 +1,16 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { DateRangeType } from "@/lib/date-utils";
 import { StatsHeader } from "./StatsHeader";
 
-const addPeriodMock = vi.fn((date: Date, _type: string, amount: number) => {
+const addPeriodMock = vi.fn((date: Date, _type: DateRangeType, amount: number) => {
   const next = new Date(date);
   next.setDate(next.getDate() + amount);
   return next;
 });
 
-const getDateRangeMock = vi.fn(() => ({
+const getDateRangeMock = vi.fn((_date: Date, _type: DateRangeType) => ({
   startDate: new Date("2024-03-16T00:00:00.000Z"),
   endDate: new Date("2024-03-22T00:00:00.000Z"),
 }));
@@ -18,8 +19,8 @@ vi.mock("@/lib/date-utils", async () => {
   const actual = await vi.importActual("@/lib/date-utils");
   return {
     ...actual,
-    addPeriod: (date: Date, type: string, amount: number) => addPeriodMock(date, type, amount),
-    getDateRange: (date: Date, type: string) => getDateRangeMock(date, type),
+    addPeriod: (date: Date, type: DateRangeType, amount: number) => addPeriodMock(date, type, amount),
+    getDateRange: (date: Date, type: DateRangeType) => getDateRangeMock(date, type),
   };
 });
 
@@ -78,8 +79,17 @@ describe("StatsHeader", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    fireEvent.click(buttons[3] ?? buttons[0]); // left chevron
-    fireEvent.click(buttons[4] ?? buttons[1]); // right chevron
+    const prevButton = buttons[3];
+    if (!prevButton) {
+      throw new Error("StatsHeader previous button not rendered");
+    }
+    const nextButton = buttons[4];
+    if (!nextButton) {
+      throw new Error("StatsHeader next button not rendered");
+    }
+
+    fireEvent.click(prevButton);
+    fireEvent.click(nextButton);
 
     expect(addPeriodMock).toHaveBeenCalledWith(currentDate, "week", -1);
     expect(addPeriodMock).toHaveBeenCalledWith(currentDate, "week", 1);
@@ -105,8 +115,11 @@ describe("StatsHeader", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    const nextButton = buttons[4] ?? buttons[1];
-    expect(nextButton?.hasAttribute("disabled")).toBe(true);
+    const nextButton = buttons[4];
+    if (!nextButton) {
+      throw new Error("StatsHeader next button not rendered");
+    }
+    expect(nextButton.hasAttribute("disabled")).toBe(true);
   });
 
   it("renders trend text with sign and previous period label", () => {
