@@ -5,6 +5,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { buildCategoryMetadataPrompt } from "./category-metadata-prompts";
 import { COMMON_LUCIDE_ICONS } from "@/config/icons";
 import { logger } from "@/lib/logger";
+import { ValidationError } from "@/lib/errors";
 import { z } from "zod";
 
 export const TASK_TYPE_GENERATE_CATEGORY_METADATA = "generate_category_metadata";
@@ -41,9 +42,9 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     input: GenerateCategoryMetadataInput,
     context: FlowContext
   ): Promise<GenerateCategoryMetadataOutput> {
-    if (input.ledgerId == null || input.ledgerId === "") throw new Error("Missing ledgerId in task input");
-    if (input.categoryId == null || input.categoryId === "") throw new Error("Missing categoryId");
-    if (input.categoryName == null || input.categoryName === "") throw new Error("Missing categoryName");
+    if (input.ledgerId == null || input.ledgerId === "") throw new ValidationError("Missing ledgerId in task input");
+    if (input.categoryId == null || input.categoryId === "") throw new ValidationError("Missing categoryId");
+    if (input.categoryName == null || input.categoryName === "") throw new ValidationError("Missing categoryName");
 
     const prompt = buildCategoryMetadataPrompt(
       input.categoryName,

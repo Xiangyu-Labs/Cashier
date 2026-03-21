@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
 import { logger } from "@/lib/logger";
+import { AppError, ValidationError } from "@/lib/errors";
 import { z } from "zod";
 
 export const TASK_TYPE_CATEGORIZE_ENTRY = "categorize_entry";
@@ -95,11 +96,11 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
     ): Promise<CategorizeEntryOutput> {
       const { signal, ai } = context;
 
-      if (input.ledgerId === "") throw new Error("Missing ledgerId");
-      if (input.entryId === "") throw new Error("Missing entryId");
+      if (input.ledgerId === "") throw new ValidationError("Missing ledgerId");
+      if (input.entryId === "") throw new ValidationError("Missing entryId");
 
       if (signal.aborted) {
-        throw new Error("Task cancelled");
+        throw new AppError("Task cancelled", "TASK_CANCELLED");
       }
 
       const prompt = buildCategorizationPrompt(input);

@@ -1,6 +1,6 @@
 import OTPEmail from "@/emails/otp-email";
 import { logger } from "@/lib/logger";
-import { RateLimitError, ValidationError } from "@/lib/errors";
+import { RateLimitError, ValidationError, AppError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/utils/email";
 import { createOTPToken } from "@/modules/auth/repositories/otp-repository";
 import {
@@ -116,7 +116,7 @@ export async function sendOTP(params: { email: string; ip: string; host: string 
         logger.info({ email: normalizedEmail }, "OTP email sent successfully");
       } catch (error) {
         logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
-        throw new Error("Failed to send verification code. Please try again.");
+        throw new AppError("Failed to send verification code. Please try again.", "EMAIL_SEND_FAILED");
       }
     }
 

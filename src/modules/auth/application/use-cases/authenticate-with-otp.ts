@@ -14,6 +14,7 @@ import {
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
+import { AppError } from "@/lib/errors";
 import { ensureUserLedger } from "@/modules/workspace/use-cases";
 import { assertRegistrationAllowed } from "./registration-policy";
 
@@ -88,7 +89,7 @@ async function findOrCreateUser(normalizedEmail: string): Promise<{
       .returning();
 
     if (newUser == null) {
-      throw new Error("Failed to create user");
+      throw new AppError("Failed to create user", "USER_CREATION_FAILED");
     }
 
     user = newUser;

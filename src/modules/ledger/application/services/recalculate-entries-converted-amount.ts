@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
+import { AppError } from "@/lib/errors";
 import {
   convertAmountsBatch,
   type CurrencyBatchConversionItem,
@@ -52,7 +53,7 @@ export function buildCaseExpression(
   const cases = entries.map((entry, index) => {
     const result = results[index];
     if (result == null) {
-      throw new Error(`Missing conversion result for ledger entry ${entry.id} at index ${index}`);
+      throw new AppError(`Missing conversion result for ledger entry ${entry.id} at index ${index}`, "MISSING_CONVERSION_RESULT");
     }
 
     const value =
@@ -74,7 +75,7 @@ export function updateEntriesWithConversions(
 ): void {
   if (!taskVersionManager.isValid(taskKey, version)) {
     logger.info({ ledgerId, version }, "Recalculation superseded before batch update");
-    throw new Error("SUPERSEDED");
+    throw new AppError("SUPERSEDED", "SUPERSEDED");
   }
 
   const entryIds = entries.map((entry) => entry.id);
@@ -130,7 +131,7 @@ export async function recalculateEntriesConvertedAmount(ledgerId: string, mainCu
     taskVersionManager.release(taskKey, version);
     logger.info({ ledgerId, totalEntries: entries.length }, "Finished recalculating entries");
   } catch (err) {
-    if (err instanceof Error && err.message === "SUPERSEDED") {
+    if (err instanceof AppError && err.code === "SUPERSEDED") {
       logger.info({ ledgerId, version }, "Recalculation superseded, transaction rolled back");
       taskVersionManager.release(taskKey, version);
       return;

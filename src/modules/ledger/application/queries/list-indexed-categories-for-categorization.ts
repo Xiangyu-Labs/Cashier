@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { entryCategories } from "@/persistence";
+import { AppError } from "@/lib/errors";
 import { and, eq, isNull } from "drizzle-orm";
 
 export interface IndexedCategory {
@@ -18,7 +19,7 @@ export async function listIndexedCategoriesForCategorization(
   });
 
   if (categories.length === 0) {
-    throw new Error("No categories available");
+    throw new AppError("No categories available", "NO_CATEGORIES");
   }
 
   return categories.map((category, index) => ({

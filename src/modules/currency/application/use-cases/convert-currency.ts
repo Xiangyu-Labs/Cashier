@@ -1,4 +1,5 @@
 import { parseDateString } from "@/lib/date-utils";
+import { ValidationError } from "@/lib/errors";
 import { ExchangeRateService } from "../services/exchange-rate";
 
 export interface ConvertCurrencyInput {
@@ -20,7 +21,7 @@ export async function convertCurrency(
   input: ConvertCurrencyInput
 ): Promise<ConvertCurrencyResult> {
   if (input.amount === 0 || input.from === "" || input.to === "") {
-    throw new Error("Missing required parameters");
+    throw new ValidationError("Missing required parameters");
   }
 
   const converted = await ExchangeRateService.convert(
