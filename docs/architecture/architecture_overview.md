@@ -42,7 +42,7 @@ src/modules/ledger/
 
 `src/lib/` is reserved for infrastructure and cross-cutting helpers that are not owned by a single module.
 
-- `lib/db`: database connection and scoped query helpers
+- `lib/db`: runtime database access and scoped query helpers
 - `lib/flow`: background task orchestration
 - `lib/errors`: shared error taxonomy
 - `lib/storage`: file/image storage abstractions

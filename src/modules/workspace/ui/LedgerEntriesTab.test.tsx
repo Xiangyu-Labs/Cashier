@@ -3,7 +3,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { LedgerEntriesTab } from "./LedgerEntriesTab";
-import type { EntryCategory, Ledger } from "@/types/api";
+import type {
+  EntryCategoryDto as EntryCategory,
+  LedgerDto as Ledger,
+} from "@/modules/ledger/contracts";
 
 type MockSourceDocumentGroupItem = {
   sourceDocument: {
@@ -167,6 +170,7 @@ vi.mock("@/modules/ledger/ui", () => ({
 }));
 
 vi.mock("@/modules/source-document/ui", () => ({
+  __esModule: true,
   SourceDocumentCard: ({
     sourceDocument,
     onDelete,
@@ -178,6 +182,17 @@ vi.mock("@/modules/source-document/ui", () => ({
       <button data-testid={`delete-${sourceDocument.id}`} onClick={() => onDelete?.()}>
         delete
       </button>
+    </div>
+  ),
+  SourceDocumentBatchActionToolbar: ({
+    selectedCount,
+    totalCount,
+  }: {
+    selectedCount: number;
+    totalCount: number;
+  }) => (
+    <div data-testid="batch-toolbar">
+      selected:{selectedCount}-total:{totalCount}
     </div>
   ),
   SourceDocumentEditRetryDialog: () => null,
@@ -196,20 +211,6 @@ vi.mock("@/components/ui/confirm-dialog", () => ({
         confirm
       </button>
     ) : null,
-}));
-
-vi.mock("@/components/batch-action-toolbar", () => ({
-  BatchActionToolbar: ({
-    selectedCount,
-    totalCount,
-  }: {
-    selectedCount: number;
-    totalCount: number;
-  }) => (
-    <div data-testid="batch-toolbar">
-      selected:{selectedCount}-total:{totalCount}
-    </div>
-  ),
 }));
 
 const categories: EntryCategory[] = [];

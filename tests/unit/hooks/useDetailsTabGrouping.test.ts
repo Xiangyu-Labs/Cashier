@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useDetailsTabGrouping } from "@/modules/ledger/hooks";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import type { LedgerEntry } from "@/types/api";
+import type { LedgerEntryDto as LedgerEntry } from "@/modules/ledger/contracts";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,

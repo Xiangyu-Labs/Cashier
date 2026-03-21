@@ -15,7 +15,7 @@ import { usePendingChanges } from "@/modules/source-document/hooks";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
-import { BatchActionToolbar } from "@/components/batch-action-toolbar";
+import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui";
 import type { EntryEditData } from "@/modules/source-document/types";
 
 interface SourceDocumentDetailModalProps {
@@ -265,7 +265,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           )}
         </div>
 
-        <BatchActionToolbar
+        <LedgerEntriesBatchActionToolbar
           selectedCount={selectedIds.length}
           totalCount={ledgerEntries.length}
           isAllSelected={isAllSelected}

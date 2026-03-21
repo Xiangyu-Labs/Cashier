@@ -7,6 +7,9 @@ const { requireLedgerAccessMock, createAndQueueSourceDocumentMock } = vi.hoisted
 
 vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
+  withLedgerAccess: <TArgs extends unknown[], TResult>(
+    handler: (ledgerId: string, ...args: TArgs) => TResult
+  ) => handler,
 }));
 
 vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source-document", () => ({

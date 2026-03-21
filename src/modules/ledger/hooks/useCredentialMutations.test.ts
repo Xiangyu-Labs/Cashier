@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { queryKeys } from "@/lib/query-keys";
-import type { ServiceCredential } from "@/types/api";
+import type { ServiceCredentialDto as ServiceCredential } from "@/modules/ledger/contracts";
 
 const {
   createServiceCredentialActionMock,

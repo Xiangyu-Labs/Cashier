@@ -1,10 +1,11 @@
 "use client";
+
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Check, ChevronDown } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface EditableCategoryOption {
   id: string;
@@ -13,7 +14,7 @@ interface EditableCategoryOption {
 }
 
 interface EditableCategorySelectProps {
-  value: string | null; // categoryId
+  value: string | null;
   categories: EditableCategoryOption[];
   onChange: (categoryId: string) => void;
   placeholder: string;
@@ -30,8 +31,7 @@ export function EditableCategorySelect({
   disabled = false,
 }: EditableCategorySelectProps) {
   const [open, setOpen] = useState(false);
-
-  const selectedCategory = categories.find((c) => c.id === value);
+  const selectedCategory = categories.find((category) => category.id === value);
 
   const handleSelect = (categoryId: string) => {
     onChange(categoryId);
@@ -81,18 +81,18 @@ export function EditableCategorySelect({
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-1" align="start" sideOffset={4}>
         <div className="max-h-[250px] overflow-y-auto subtle-scrollbar">
-          {categories.map((cat) => (
+          {categories.map((category) => (
             <button
-              key={cat.id}
-              onClick={() => handleSelect(cat.id)}
+              key={category.id}
+              onClick={() => handleSelect(category.id)}
               className={cn(
                 "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                value === cat.id ? "bg-accent text-accent-foreground" : "text-text"
+                value === category.id ? "bg-accent text-accent-foreground" : "text-text"
               )}
             >
-              <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
-              <span className="flex-1 truncate">{cat.name}</span>
-              {value === cat.id && <Check className="h-4 w-4" />}
+              <CategoryIcon iconName={category.icon} className="h-4 w-4" />
+              <span className="flex-1 truncate">{category.name}</span>
+              {value === category.id && <Check className="h-4 w-4" />}
             </button>
           ))}
         </div>

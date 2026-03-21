@@ -10,10 +10,14 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { useSelection } from "@/hooks/use-selection";
 import { useBatchEntryActions, useDetailsTabData, useDetailsTabGrouping, useEntryMutations, } from "@/modules/ledger/hooks";
-import { EntryFilterPanel, LedgerEntryCard, LedgerEntryDetailModal } from "@/modules/ledger/ui";
+import {
+  EntryFilterPanel,
+  LedgerEntriesBatchActionToolbar,
+  LedgerEntryCard,
+  LedgerEntryDetailModal,
+} from "@/modules/ledger/ui";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
@@ -253,7 +257,7 @@ export function DetailsTab({
 
         {/* Batch Action Toolbar */}
         {isSelectionMode && selectedIds.length > 0 && (
-          <BatchActionToolbar
+          <LedgerEntriesBatchActionToolbar
             selectedCount={selectedIds.length}
             totalCount={entries.length}
             isAllSelected={isAllSelected}

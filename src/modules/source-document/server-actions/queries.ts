@@ -1,5 +1,5 @@
 "use server";
-import { withLedgerAccess } from "@/lib/auth-actions";
+import { withLedgerAccess } from "@/modules/ledger/access";
 import { safeError } from "@/lib/safe-error";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";

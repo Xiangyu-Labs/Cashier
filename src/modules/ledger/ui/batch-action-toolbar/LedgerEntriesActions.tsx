@@ -1,20 +1,17 @@
-/**
- * Ledger Entries Batch Actions
- *
- * Action buttons for batch operations on ledger entries:
- * - AI Categorize
- * - Change Category
- * - Change Currency
- */
-
-import { Sparkles, Tag, ChevronDown, Loader2, DollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
-import { CategoryIcon } from "@/components/CategoryIcon";
-import type { EntryCategory } from "@/modules/ledger/contracts";
+import { ChevronDown, DollarSign, Loader2, Sparkles, Tag } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { cn } from "@/lib/utils";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface LedgerEntriesActionsProps {
   categories: EntryCategory[];
@@ -43,17 +40,15 @@ export function LedgerEntriesActions({
 }: LedgerEntriesActionsProps) {
   const t = useTranslations("BatchActions");
 
-  // Build currency list: preferred first, then others
   const currencyList = [
-    ...preferredCurrencies.filter((c) =>
-      SUPPORTED_CURRENCIES.includes(c as (typeof SUPPORTED_CURRENCIES)[number])
+    ...preferredCurrencies.filter((currency) =>
+      SUPPORTED_CURRENCIES.includes(currency as (typeof SUPPORTED_CURRENCIES)[number])
     ),
-    ...SUPPORTED_CURRENCIES.filter((c) => !preferredCurrencies.includes(c)),
+    ...SUPPORTED_CURRENCIES.filter((currency) => !preferredCurrencies.includes(currency)),
   ];
 
   return (
     <>
-      {/* AI Auto Categorize - flex-1 (only shown when supported) */}
       {showAiCategorize && (
         <Button
           variant="outline"
@@ -72,7 +67,6 @@ export function LedgerEntriesActions({
         </Button>
       )}
 
-      {/* Category Dropdown - flex-1 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -109,7 +103,6 @@ export function LedgerEntriesActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Currency Dropdown - flex-1 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

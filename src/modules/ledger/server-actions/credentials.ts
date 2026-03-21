@@ -1,6 +1,6 @@
 "use server";
 import { z } from "zod";
-import { withLedgerAccess } from "@/lib/auth-actions";
+import { withLedgerAccess } from "../access";
 import type { ServiceCredentialDto } from "@/modules/ledger/contracts";
 import { createServiceCredential, deleteServiceCredential } from "@/modules/ledger/use-cases";
 import { listServiceCredentials } from "@/modules/ledger/queries";

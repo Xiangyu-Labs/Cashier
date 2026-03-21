@@ -15,13 +15,16 @@ const {
 }));
 
 vi.mock("@/lib/auth-actions", () => ({
-  withLedgerAccess: <TArgs extends unknown[], TResult>(
-    handler: (ledgerId: string, ...args: TArgs) => TResult
-  ) => handler,
   withAuth:
     <TArgs extends unknown[], TResult>(handler: (userId: string, ...args: TArgs) => TResult) =>
     (...args: TArgs) =>
       handler("user-1", ...args),
+}));
+
+vi.mock("@/modules/ledger/access", () => ({
+  withLedgerAccess: <TArgs extends unknown[], TResult>(
+    handler: (ledgerId: string, ...args: TArgs) => TResult
+  ) => handler,
 }));
 
 vi.mock("@/modules/ledger/use-cases", () => ({

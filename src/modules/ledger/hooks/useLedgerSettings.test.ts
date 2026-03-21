@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { queryKeys } from "@/lib/query-keys";
-import type { EntryCategoryWithCount, Ledger } from "@/types/api";
+import type {
+  EntryCategoryWithCountDto as EntryCategoryWithCount,
+  LedgerDto as Ledger,
+} from "@/modules/ledger/contracts";
 
 const {
   fireAndForgetMock,

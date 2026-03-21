@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useDetailsTabData } from "@/modules/ledger/hooks";
-import type { Ledger } from "@/types/api";
+import type { LedgerDto as Ledger } from "@/modules/ledger/contracts";
 import type { SerializedLedgerEntry } from "@/lib/serialization";
 
 vi.mock("@/modules/ledger/actions", () => ({
