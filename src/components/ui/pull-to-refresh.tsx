@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
@@ -29,12 +29,15 @@ export function PullToRefresh({
   const pullDistanceRef = useRef(0);
   // Keep the latest refresh callback available without re-registering touch listeners.
   const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
 
   // Detect touch device on mount
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window);
   }, []);
+
+  useLayoutEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
 
   useEffect(() => {
     // If disabled or non-touch device, don't add listeners
