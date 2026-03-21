@@ -51,7 +51,7 @@ describe("createSourceDocumentFromCredential", () => {
     const payload = {
       text: "receipt",
       timezone: undefined,
-    } as CreateSourceDocumentInput & { timezone?: string | undefined };
+    } as unknown as CreateSourceDocumentInput & { timezone?: string | undefined };
 
     await createSourceDocumentFromCredential({
       credentialId: "cred-1",
