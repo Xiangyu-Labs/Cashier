@@ -40,25 +40,25 @@ const fireTouchEvent = (target: HTMLElement, type: string, clientY: number) => {
 };
 
 let originalOntouchstart: typeof window.ontouchstart;
-let originalAddEventListener: typeof EventTarget.prototype.addEventListener;
-let originalDispatchEvent: typeof EventTarget.prototype.dispatchEvent;
+let originalAddEventListener: typeof HTMLDivElement.prototype.addEventListener;
+let originalDispatchEvent: typeof HTMLDivElement.prototype.dispatchEvent;
 
 describe('PullToRefresh regression', () => {
   beforeEach(() => {
     originalOntouchstart = window.ontouchstart;
     window.ontouchstart = vi.fn();
 
-    originalAddEventListener = EventTarget.prototype.addEventListener;
-    originalDispatchEvent = EventTarget.prototype.dispatchEvent;
+    originalAddEventListener = HTMLDivElement.prototype.addEventListener;
+    originalDispatchEvent = HTMLDivElement.prototype.dispatchEvent;
 
-    EventTarget.prototype.addEventListener = function (type, listener, options) {
+    HTMLDivElement.prototype.addEventListener = function (type, listener, options) {
       if (type === 'touchend' && gestureActive) {
         dropNextTouchEnd = true;
       }
       return originalAddEventListener.call(this, type, listener, options);
     };
 
-    EventTarget.prototype.dispatchEvent = function (event) {
+    HTMLDivElement.prototype.dispatchEvent = function (event) {
       if (event.type === 'touchend' && dropNextTouchEnd) {
         dropNextTouchEnd = false;
         return true;
@@ -69,8 +69,8 @@ describe('PullToRefresh regression', () => {
 
   afterEach(() => {
     window.ontouchstart = originalOntouchstart;
-    EventTarget.prototype.addEventListener = originalAddEventListener;
-    EventTarget.prototype.dispatchEvent = originalDispatchEvent;
+    HTMLDivElement.prototype.addEventListener = originalAddEventListener;
+    HTMLDivElement.prototype.dispatchEvent = originalDispatchEvent;
   });
 
   it('calls onRefresh even when onRefresh reference changes during touchmove', async () => {
