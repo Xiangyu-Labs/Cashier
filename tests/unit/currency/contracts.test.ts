@@ -5,8 +5,10 @@ import type {
   ConvertAmountsBatchResult,
   ConvertCurrencyResult,
 } from "../../../src/modules/currency/contracts";
-import { convertCurrencyAction } from "../../../src/modules/currency/actions";
-import type { CurrencyBatchConversionResult } from "../../../src/modules/currency/use-cases";
+import type {
+  ConvertCurrencyResult as UseCaseConvertCurrencyResult,
+  CurrencyBatchConversionResult,
+} from "../../../src/modules/currency/use-cases";
 import * as contracts from "../../../src/modules/currency/contracts";
 
 describe("currency contracts exports", () => {
@@ -42,9 +44,9 @@ describe("currency contracts exports", () => {
     expect(useCasesResult[0]?.convertedAmount).toBe(7);
   });
 
-  it("keeps ConvertCurrencyResult compatible across contracts and actions API", () => {
+  it("keeps ConvertCurrencyResult compatible with the public use-cases type", () => {
     const contractResult: ConvertCurrencyResult = { converted: 13 };
-    const actionResult: Awaited<ReturnType<typeof convertCurrencyAction>> = contractResult;
-    expect(actionResult.converted).toBe(13);
+    const useCaseResult: UseCaseConvertCurrencyResult = contractResult;
+    expect(useCaseResult.converted).toBe(13);
   });
 });
