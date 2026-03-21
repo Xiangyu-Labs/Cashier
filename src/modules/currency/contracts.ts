@@ -1,6 +1,8 @@
-import type { CurrencyBatchConversionResult } from "./application/use-cases/convert-amounts-batch";
-
-export type { ConvertCurrencyResult } from "./application/use-cases/convert-currency";
+// Keep this file as the module boundary contract: it must not import/re-export
+// application-layer types to avoid cross-layer coupling.
+export interface ConvertCurrencyResult {
+  converted: number;
+}
 
 export interface BatchConversionItem {
   amount: number;
@@ -11,13 +13,3 @@ export interface BatchConversionItem {
 export interface BatchConvertCurrencyResult {
   results: number[];
 }
-
-// Public adapter shape used by actions; application layer uses fromCurrency/toCurrency.
-export interface BatchCurrencyConversionItem {
-  amount: number;
-  from: string;
-  to: string;
-  date?: string;
-}
-
-export type ConvertAmountsBatchResult = CurrencyBatchConversionResult[];
