@@ -6,7 +6,7 @@ import {
   setResendCooldown,
   getCanResendAt,
   checkVerifyRateLimit,
-} from "@/modules/auth/services/otp-rate-limit";
+} from "../../../src/modules/auth/services/otp-rate-limit";
 import { memoryStore } from "@/lib/memory-store";
 
 describe("OTP Rate Limiting", () => {

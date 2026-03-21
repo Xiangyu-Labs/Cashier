@@ -170,6 +170,7 @@ vi.mock("@/modules/ledger/ui", () => ({
 }));
 
 vi.mock("@/modules/source-document/ui", () => ({
+  __esModule: true,
   SourceDocumentCard: ({
     sourceDocument,
     onDelete,
@@ -183,10 +184,6 @@ vi.mock("@/modules/source-document/ui", () => ({
       </button>
     </div>
   ),
-  SourceDocumentEditRetryDialog: () => null,
-}));
-
-vi.mock("@/modules/source-document/ui/batch-action-toolbar", () => ({
   SourceDocumentBatchActionToolbar: ({
     selectedCount,
     totalCount,
@@ -198,6 +195,7 @@ vi.mock("@/modules/source-document/ui/batch-action-toolbar", () => ({
       selected:{selectedCount}-total:{totalCount}
     </div>
   ),
+  SourceDocumentEditRetryDialog: () => null,
 }));
 
 vi.mock("@/components/ui/confirm-dialog", () => ({

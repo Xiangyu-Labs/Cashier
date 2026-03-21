@@ -45,7 +45,8 @@ npm run docker:down      # Stop containers
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
 - `src/modules/` - Domain modules: `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `workspace`. Each module owns its contracts, application logic, public entrypoints, and module-specific UI/hooks
-- `src/lib/` - Core infrastructure: `db/` (Drizzle), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
+- `src/persistence/` - Drizzle schema, relations, and migrations source of truth
+- `src/lib/` - Core infrastructure: `db/` (runtime DB access and scoped query helpers), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
 - `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
 - `src/lib/errors.ts` - Standardized error classes (AppError, ValidationError, etc.)

@@ -1,5 +1,5 @@
 "use server";
-import { withLedgerAccess } from "@/modules/ledger/actions";
+import { withLedgerAccess } from "@/modules/ledger/access";
 import type { ProcessingStatsDto, ProcessingTaskDto } from "@/modules/source-document/contracts";
 import {
   processingTasksQuerySchema,

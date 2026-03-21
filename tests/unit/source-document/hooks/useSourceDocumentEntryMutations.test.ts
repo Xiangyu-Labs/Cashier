@@ -47,9 +47,6 @@ vi.mock("@/modules/ledger/actions", () => ({
   batchUpdateLedgerEntriesAction: batchUpdateLedgerEntriesActionMock,
   deleteLedgerEntryAction: deleteLedgerEntryActionMock,
   updateLedgerEntryAction: updateLedgerEntryActionMock,
-  withLedgerAccess: <TArgs extends unknown[], TResult>(
-    handler: (ledgerId: string, ...args: TArgs) => TResult
-  ) => handler,
 }));
 
 vi.mock("@/lib/safe-async", () => ({

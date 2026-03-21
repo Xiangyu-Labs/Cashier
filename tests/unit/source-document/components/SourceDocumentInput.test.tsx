@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { SourceDocumentInput } from "@/modules/source-document/ui";
+import { SourceDocumentInput } from "../../../../src/modules/source-document/ui/SourceDocumentInput";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock dependencies

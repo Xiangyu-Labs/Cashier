@@ -15,7 +15,7 @@ import { usePendingChanges } from "@/modules/source-document/hooks";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
-import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
+import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui";
 import type { EntryEditData } from "@/modules/source-document/types";
 
 interface SourceDocumentDetailModalProps {

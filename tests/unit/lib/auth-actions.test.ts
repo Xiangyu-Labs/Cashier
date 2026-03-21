@@ -110,8 +110,8 @@ describe("withLedgerAccess", () => {
 });
 
 it("does not export withLedgerAccess from lib auth actions anymore", async () => {
-  const module = await import("@/lib/auth-actions");
-  expect("withLedgerAccess" in module).toBe(false);
+  const authActionsModule = await import("@/lib/auth-actions");
+  expect("withLedgerAccess" in authActionsModule).toBe(false);
 });
 
 describe("requireAuth", () => {
