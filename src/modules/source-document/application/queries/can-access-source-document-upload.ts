@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { getLocalStorage } from "@/lib/storage/local";
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import type { SourceDocMetadata } from "@/modules/source-document/types";
 import { sourceDocuments } from "@/persistence";
 import { and, eq, isNull } from "drizzle-orm";

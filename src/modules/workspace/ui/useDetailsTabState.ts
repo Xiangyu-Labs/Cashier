@@ -1,7 +1,6 @@
 "use client";
-
 import { useState, useCallback } from "react";
-import type { LedgerEntry } from "@/types/api";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 
 export interface UseDetailsTabStateReturn {
   // Delete confirmation

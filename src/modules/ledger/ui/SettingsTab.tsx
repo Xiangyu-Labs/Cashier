@@ -1,5 +1,5 @@
 "use client";
-
+import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,13 +11,8 @@ import { CollapsibleSection } from "./CollapsibleSection";
 import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
-import {
-  useCategoryMutations,
-  useCredentialMutations,
-  useLedgerSettings,
-} from "@/modules/ledger/hooks";
-
-import { type Ledger, type EntryCategoryWithCount } from "@/types/api";
+import { useCategoryMutations, useCredentialMutations, useLedgerSettings, } from "@/modules/ledger/hooks";
+import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";

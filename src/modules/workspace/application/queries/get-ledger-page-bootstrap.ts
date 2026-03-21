@@ -9,7 +9,7 @@ import {
 } from "@/modules/ledger/queries";
 import { getEnhancedStats } from "@/modules/stats/queries";
 import { getAllSourceDocuments, getPendingSourceDocuments } from "@/modules/source-document/queries";
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   getDetailsInitialQueryState,
   getStatsInitialQueryState,

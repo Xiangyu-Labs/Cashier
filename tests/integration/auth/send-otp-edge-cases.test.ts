@@ -25,8 +25,8 @@ vi.mock("resend", () => ({
 import { sendOTPAction } from "@/modules/auth/actions";
 
 describe("sendOTPAction edge cases", () => {
-  const originalResendKey = process.env.AUTH_RESEND_KEY;
-  const originalEmailFrom = process.env.AUTH_EMAIL_FROM;
+  const _originalResendKey = process.env.AUTH_RESEND_KEY;
+  const _originalEmailFrom = process.env.AUTH_EMAIL_FROM;
   const testEmail = "edge-auth@example.com";
 
   beforeEach(async () => {

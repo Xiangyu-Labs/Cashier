@@ -9,6 +9,7 @@ export type {
   SourceDocumentMetadata,
   SourceDocumentStatusType,
   SourceDocumentTypeValue,
+  EntryEditData,
 } from "./types";
 export type {
   SourceDocumentCollectionDto,
@@ -22,6 +23,7 @@ export type {
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
 } from "./document-contracts";
+export type { SourceDocumentDto as SourceDocument, SourceDocumentLightDto as SourceDocumentLight } from "./document-contracts";
 
 export interface CreateSourceDocumentInput {
   text?: string;

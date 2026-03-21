@@ -1,5 +1,4 @@
 "use client";
-
 import { formatAmountStandard } from "@/lib/formatters";
 import { useAmountDisplay } from "@/modules/currency/client";
 

@@ -1,16 +1,20 @@
 "use client";
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Check, ChevronDown } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { type EntryCategory } from "@/types/api";
+
+interface EditableCategoryOption {
+  id: string;
+  name: string;
+  icon: string | null;
+}
 
 interface EditableCategorySelectProps {
   value: string | null; // categoryId
-  categories: EntryCategory[];
+  categories: EditableCategoryOption[];
   onChange: (categoryId: string) => void;
   placeholder: string;
   className?: string;

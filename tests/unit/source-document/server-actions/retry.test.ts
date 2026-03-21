@@ -5,7 +5,7 @@ const { requireLedgerAccessMock, retrySourceDocumentMock } = vi.hoisted(() => ({
   retrySourceDocumentMock: vi.fn(),
 }));
 
-vi.mock("@/modules/auth/access", () => ({
+vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 

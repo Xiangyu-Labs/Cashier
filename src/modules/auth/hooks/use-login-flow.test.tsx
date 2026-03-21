@@ -1,12 +1,15 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
+import { useLoginFlow } from "./use-login-flow";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 
-const mockPush = vi.fn();
-const mockRefresh = vi.fn();
-const mockSignIn = vi.fn();
-const mockSendOTPAction = vi.fn();
+const { mockPush, mockRefresh, mockSignIn, mockSendOTPAction, searchParamGet } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockRefresh: vi.fn(),
+  mockSignIn: vi.fn(),
+  mockSendOTPAction: vi.fn(),
+  searchParamGet: vi.fn(() => null),
+}));
 
 vi.mock("next-auth/react", () => ({
   signIn: (...args: unknown[]) => mockSignIn(...args),
@@ -14,7 +17,7 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => ({
-    get: vi.fn(() => null),
+    get: searchParamGet,
   }),
 }));
 
@@ -43,6 +46,7 @@ describe("useLoginFlow", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamGet.mockImplementation(() => null);
     mockSendOTPAction.mockResolvedValue({ expiresAt: 123, canResendAt: 456 });
   });
 
@@ -128,6 +132,44 @@ describe("useLoginFlow", () => {
   });
 
   it("submits sign-in directly and redirects on success", async () => {
+    mockSignIn.mockResolvedValue({
+      error: undefined,
+      code: undefined,
+      ok: true,
+      status: 200,
+      url: "/",
+    });
+
+    const { result } = renderHook(() => useLoginFlow(t));
+
+    act(() => {
+      result.current.setEmail("existing@example.com");
+      result.current.setOtp("123456");
+    });
+
+    await act(async () => {
+      await result.current.handleVerifyOTP();
+    });
+
+    expect(mockSignIn).toHaveBeenCalledWith("otp", {
+      email: "existing@example.com",
+      otp: "123456",
+      locale: "zh",
+      redirect: false,
+      callbackUrl: "/",
+    });
+    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it("sanitizes unsafe callbackUrl values before sign-in and redirect", async () => {
+    searchParamGet.mockImplementation((key: string) => {
+      if (key === "callbackUrl") {
+        return "https://evil.example/phish";
+      }
+      return null;
+    });
+
     mockSignIn.mockResolvedValue({
       error: undefined,
       code: undefined,

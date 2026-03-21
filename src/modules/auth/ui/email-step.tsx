@@ -1,5 +1,4 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +6,7 @@ import { Mail, Loader2 } from "lucide-react";
 import { SSOButton } from "./sso-button";
 
 interface EmailStepProps {
+  callbackUrl: string;
   email: string;
   isLoading: boolean;
   error: string | null;
@@ -14,7 +14,14 @@ interface EmailStepProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export function EmailStep({ email, isLoading, error, onEmailChange, onSubmit }: EmailStepProps) {
+export function EmailStep({
+  callbackUrl,
+  email,
+  isLoading,
+  error,
+  onEmailChange,
+  onSubmit,
+}: EmailStepProps) {
   const t = useTranslations("Auth");
 
   return (
@@ -55,12 +62,12 @@ export function EmailStep({ email, isLoading, error, onEmailChange, onSubmit }: 
         </Button>
       </form>
 
-      <SSOSection />
+      <SSOSection callbackUrl={callbackUrl} />
     </div>
   );
 }
 
-function SSOSection() {
+function SSOSection({ callbackUrl }: { callbackUrl: string }) {
   const t = useTranslations("Auth");
 
   const isSSOEnabled = process.env.NEXT_PUBLIC_OIDC_ENABLED === "true";
@@ -77,7 +84,7 @@ function SSOSection() {
         <div className="h-px flex-1 bg-border" />
       </div>
       <div className="mt-4">
-        <SSOButton />
+        <SSOButton callbackUrl={callbackUrl} />
       </div>
     </div>
   );

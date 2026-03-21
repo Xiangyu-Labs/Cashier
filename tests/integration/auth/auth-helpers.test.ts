@@ -10,10 +10,8 @@ vi.mock("@/auth", () => ({
 }));
 
 import { auth } from "@/auth";
-import {
-  getCurrentUser,
-  requireLedgerAccess,
-} from "@/modules/auth/access";
+import { getCurrentUser } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";

@@ -1,15 +1,13 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft } from "lucide-react";
-import { OTPInput } from "@/components/auth/otp-input";
-import { ResendCountdown } from "@/components/auth/resend-countdown";
-import { ExpiryTimer } from "@/components/auth/expiry-timer";
+import { OTPInput } from "./otp-input";
+import { ResendCountdown } from "./resend-countdown";
+import { ExpiryTimer } from "./expiry-timer";
 import { OTP_LENGTH } from "@/modules/auth/constants";
 
 interface OtpStepProps {
-  email: string;
   otp: string;
   isLoading: boolean;
   error: string | null;
@@ -23,7 +21,6 @@ interface OtpStepProps {
 }
 
 export function OtpStep({
-  email: _email,
   otp,
   isLoading,
   error,

@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { LedgerPageClient } from "@/modules/workspace/ui";
 import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
@@ -58,9 +58,10 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
   const initialTab = parseLedgerTab(resolvedSearchParams);
   const session = await auth();
+  const locale = await getLocale();
 
   if (session?.user?.id == null) {
-    redirect({ href: "/login", locale: "en" });
+    redirect({ href: "/login", locale });
   }
 
   return (

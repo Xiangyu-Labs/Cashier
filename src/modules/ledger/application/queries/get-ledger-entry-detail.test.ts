@@ -6,7 +6,7 @@ import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/pers
 
 const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/auth/access", () => ({
+vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 

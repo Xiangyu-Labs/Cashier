@@ -1,5 +1,4 @@
 "use client";
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Timer } from "lucide-react";
 import { useTranslations } from "next-intl";

@@ -1,12 +1,11 @@
 "use client";
-
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
 } from "@/lib/query-keys";
-import type { EntryEditData } from "@/modules/source-document/ui/entry-edit-data";
+import type { EntryEditData } from "@/modules/source-document/types";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
 import type { BatchEntryUpdateData } from "./source-document-detail-cache";

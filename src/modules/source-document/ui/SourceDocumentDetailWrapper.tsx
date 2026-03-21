@@ -1,14 +1,11 @@
 "use client";
-
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import {
-  useSourceDocumentDetailData,
-  useSourceDocumentDetailMutations,
-} from "@/modules/source-document/hooks";
-import type { EntryCategory, LedgerEntry } from "@/types/api";
+import { useSourceDocumentDetailData, useSourceDocumentDetailMutations, } from "@/modules/source-document/hooks";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface SourceDocumentDetailWrapperProps {
   id: string;

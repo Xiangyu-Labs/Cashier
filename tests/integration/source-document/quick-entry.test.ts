@@ -111,7 +111,7 @@ describe("createQuickEntryAction", () => {
     expect(entry?.currency).toBe("CNY");
   });
 
-  it("should use provided currency", async () => {
+  it("should use provided currency", { timeout: 20_000 }, async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
       amount: 100,

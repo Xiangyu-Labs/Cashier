@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { type LedgerEntry } from "@/types/api";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";

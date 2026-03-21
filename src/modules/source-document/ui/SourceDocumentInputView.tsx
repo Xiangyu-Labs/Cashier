@@ -1,5 +1,4 @@
 "use client";
-
 import Image from "next/image";
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
 import { Camera, RefreshCw, Send } from "lucide-react";

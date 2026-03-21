@@ -1,9 +1,8 @@
 "use client";
-
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, AlertCircle, Clock, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { Ledger } from "@/types/api";
+import type { Ledger } from "@/modules/ledger/contracts";
 
 interface HeaderProps {
   ledger: Ledger;

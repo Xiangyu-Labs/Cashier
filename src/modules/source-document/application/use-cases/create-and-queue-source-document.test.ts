@@ -11,7 +11,7 @@ const {
   processImagesMock,
   updateMock,
   updateSetMock,
-  updateWhereMock,
+  updateWhereMock: _updateWhereMock,
 } = vi.hoisted(() => {
   const insertReturningMock = vi.fn();
   const insertValuesMock = vi.fn(() => ({ returning: insertReturningMock }));

@@ -1,10 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  createListSnapshots,
-  type MutationSnapshot,
-} from "@/lib/mutations/use-ledger-mutation";
-import type { LedgerEntry } from "@/types/api";
+import { createListSnapshots, type MutationSnapshot } from "@/lib/mutations/use-ledger-mutation";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
   SourceDocumentCollectionDto,
   SourceDocumentDto,

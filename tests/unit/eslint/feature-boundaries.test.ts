@@ -507,6 +507,42 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("allows auth ui imports from the public ui entrypoint in app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { AuthLoginPage } from "@/modules/auth/ui";
+        export const value = AuthLoginPage;
+      `,
+      "src/app/[locale]/login/page.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects deep auth ui imports from app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { AuthLoginPage } from "@/modules/auth/ui/login-page";
+        export const leak = AuthLoginPage;
+      `,
+      "src/app/[locale]/login/page.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects auth hook deep imports from app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
+        export const leak = useLoginFlow;
+      `,
+      "src/app/[locale]/login/page.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects currency action imports from cross-module application files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -646,6 +682,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
         export const leak = requireLedgerAccess;
       `,
       "src/lib/auth-actions.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("rejects ledger access imports from auth access facade", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { requireLedgerAccess } from "@/modules/auth/access";
+        export const leak = requireLedgerAccess;
+      `,
+      "src/modules/source-document/application/queries/get-source-document-detail.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);

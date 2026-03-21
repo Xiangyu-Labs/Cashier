@@ -1,8 +1,7 @@
 "use client";
-
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
-import { type Settings } from "@/types/api";
+import type { Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 
 interface CurrencySectionProps {

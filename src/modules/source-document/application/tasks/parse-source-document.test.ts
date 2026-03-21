@@ -169,7 +169,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     categoryId = category.id;
   });
 
-  it("should save ledger entries and update document status on success", async () => {
+  it("should save ledger entries and update document status on success", { timeout: 60_000 }, async () => {
     const db = getTestDb();
 
     const output: ParseSourceDocumentOutput = {

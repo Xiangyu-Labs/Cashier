@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import { sourceDocuments } from "@/persistence";
 import { and, eq, isNull } from "drizzle-orm";
 

@@ -1,7 +1,7 @@
 "use client";
-
+import type { Ledger } from "@/modules/ledger/contracts";
 import { useRouter } from "@/i18n/routing";
-import { type EntryCategoryWithCount, type Ledger } from "@/types/api";
+import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";

@@ -1,8 +1,7 @@
 "use client";
-
 import { useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { LedgerEntry } from "@/types/api";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { parseAmount } from "@/lib/formatters";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useDateGrouping } from "@/hooks/use-date-grouping";

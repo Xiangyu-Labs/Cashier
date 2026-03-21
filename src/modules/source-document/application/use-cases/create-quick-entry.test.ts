@@ -5,7 +5,7 @@ const {
   formatDateTimeForApiMock,
   getEntryCategoryNameMock,
   insertSourceDocumentLedgerEntryMock,
-  insertValuesRunMock,
+  insertValuesRunMock: _insertValuesRunMock,
   insertValuesMock,
   transactionMock,
 } = vi.hoisted(() => {

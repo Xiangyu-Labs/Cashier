@@ -1,6 +1,8 @@
+import type { LedgerEntry } from "@/modules/ledger/contracts";
+import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, useCallback } from "react";
-import { type EntryEditData } from "@/modules/source-document/ui/entry-edit-data";
-import { type SourceDocument, type SourceDocumentLight, type LedgerEntry } from "@/types/api";
+import { type EntryEditData } from "@/modules/source-document/types";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 
 export interface PendingChanges {
   sourceDoc: {

@@ -6,7 +6,7 @@ import {
   buildLedgerEntryFilterConditions,
   type LedgerEntryFilterParams,
 } from "./build-ledger-entry-filters";
-import { type LedgerEntrySummary } from "@/types/api";
+import type { LedgerEntrySummary } from "@/modules/ledger/contracts";
 
 interface CalculateLedgerEntryStatsInput {
   ledgerId: string;

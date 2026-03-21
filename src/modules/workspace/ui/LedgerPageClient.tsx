@@ -1,5 +1,4 @@
 "use client";
-
 import { Suspense, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";

@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { deleteAccount } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";

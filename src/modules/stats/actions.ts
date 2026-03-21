@@ -1,6 +1,5 @@
 "use server";
-
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import { getEnhancedStatsQuery } from "./application/queries/get-enhanced-stats";
 import type { EnhancedStatsDto } from "./contracts";
 

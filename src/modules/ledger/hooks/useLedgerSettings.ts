@@ -1,17 +1,12 @@
 "use client";
-
+import type { EntryCategoryWithCount, ServiceCredential } from "@/modules/ledger/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import {
-  updateLedgerAction,
-  getLedgerAction,
-  getLedgerSettingsAction,
-  getEntryCategoriesAction,
-} from "@/modules/ledger/actions";
+import { updateLedgerAction, getLedgerAction, getLedgerSettingsAction, getEntryCategoriesAction, } from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
-import type { Ledger, EntryCategoryWithCount, ServiceCredential } from "@/types/api";
+import type { Ledger } from "@/modules/ledger/contracts";
 
 interface UseLedgerSettingsParams {
   ledgerId: string;

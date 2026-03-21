@@ -31,11 +31,14 @@ const MODULE_PUBLIC_ENTRYPOINTS = {
     "constants",
     "contracts",
     "errors",
+    "hooks",
     "queries",
+    "ui",
     "use-cases",
   ],
   currency: ["client", "events", "ui", "use-cases"],
   ledger: [
+    "access",
     "actions",
     "contract-schemas",
     "contracts",
@@ -91,6 +94,15 @@ const SHARED_FACADE_IMPORT_RESTRICTIONS = [
     name: "@/modules/workspace/ledger-url-params",
     message:
       'Import workspace URL param helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-params public entrypoint.',
+  },
+];
+
+const AUTH_ACCESS_IMPORT_RESTRICTIONS = [
+  {
+    name: "@/modules/auth/access",
+    importNames: ["requireLedgerAccess"],
+    message:
+      'Import ledger authorization from "@/modules/ledger/access" instead of "@/modules/auth/access".',
   },
 ];
 
@@ -272,6 +284,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
     paths: [
       ...createModuleRootImportRestrictions(disallowedModules),
       ...SHARED_FACADE_IMPORT_RESTRICTIONS,
+      ...AUTH_ACCESS_IMPORT_RESTRICTIONS,
       ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
       ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
       ...createModuleSpecificPathRestrictions(currentModule),
@@ -493,6 +506,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...AUTH_ACCESS_IMPORT_RESTRICTIONS,
             ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
             {
@@ -545,6 +559,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...AUTH_ACCESS_IMPORT_RESTRICTIONS,
             ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
             {
@@ -627,6 +642,7 @@ const eslintConfig = defineConfig([
         {
           paths: [
             ...createModuleRootImportRestrictions(moduleNames),
+            ...AUTH_ACCESS_IMPORT_RESTRICTIONS,
             ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
             ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
           ],

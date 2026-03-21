@@ -1,7 +1,9 @@
-import { BatchActionToolbar } from "@/components/batch-action-toolbar";
+import {
+  BatchActionToolbar,
+} from "@/components/batch-action-toolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
-import type { SourceDocument } from "@/types/api";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
 
 interface LedgerEntriesOverlaysProps {

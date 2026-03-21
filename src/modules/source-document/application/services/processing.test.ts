@@ -34,10 +34,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { ValidationError } from "@/lib/errors";
-import {
-  getSourceDocumentTaskContext,
-  processImages,
-} from "@/modules/source-document/application/services/processing";
+import { getSourceDocumentTaskContext, processImages } from "./processing";
 
 describe("source-document processing helpers", () => {
   beforeEach(() => {

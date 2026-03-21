@@ -23,6 +23,7 @@ export type LedgerDto = {
   updatedAt: string;
   deletedAt: string | null;
 };
+export type Ledger = LedgerDto;
 
 export type ServiceCredentialDto = {
   id: string;
@@ -33,6 +34,7 @@ export type ServiceCredentialDto = {
   lastUsedAt: string | null;
   deletedAt: string | null;
 };
+export type ServiceCredential = ServiceCredentialDto;
 
 export type EntryCategoryDto = {
   id: string;
@@ -46,8 +48,10 @@ export type EntryCategoryDto = {
   updatedAt: string;
   deletedAt: string | null;
 };
+export type EntryCategory = EntryCategoryDto;
 
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
+export type EntryCategoryWithCount = EntryCategoryWithCountDto;
 
 export interface CategoriesResponseDto {
   categories: EntryCategoryWithCountDto[];
@@ -87,12 +91,14 @@ export type LedgerEntryDto = {
   category?: EntryCategoryDto | null;
   sourceDocument?: SourceDocumentReferenceDto | null;
 };
+export type LedgerEntry = LedgerEntryDto;
 
 export type LedgerEntryEmbeddedViewDto = Omit<LedgerEntryDto, "sourceDocument">;
 
 export type LedgerSettingsDto = {
   id?: string;
 } & LedgerSettings;
+export type Settings = LedgerSettingsDto;
 
 export interface LedgerSummaryDto {
   convertedTotal: {
@@ -117,6 +123,7 @@ export interface LedgerSummaryDto {
     count: number;
   }[];
 }
+export type LedgerEntrySummary = LedgerSummaryDto;
 
 export interface LedgerEntryPageDto {
   items: LedgerEntryDto[];

@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
-import {
-  batchConvertCurrencyAction,
-  convertCurrencyAction,
-} from "@/modules/currency/actions";
+import { batchConvertCurrency, convertCurrency } from "@/modules/currency/use-cases";
 
 async function insertTestRates(date: string, rates: Record<string, number>) {
   await getTestDb().insert(currencyRates).values({
@@ -25,7 +22,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("batch conversion falls back to original amount when source currency is unknown", async () => {
-    const result = await batchConvertCurrencyAction(
+    const result = await batchConvertCurrency(
       [{ amount: 100, currency: "ZZZ", date: testDate }],
       "USD"
     );
@@ -34,7 +31,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("batch conversion falls back to original amount when target currency is unknown", async () => {
-    const result = await batchConvertCurrencyAction(
+    const result = await batchConvertCurrency(
       [{ amount: 100, currency: "USD", date: testDate }],
       "ZZZ"
     );
@@ -43,7 +40,7 @@ describe("currency fallbacks integration", () => {
   });
 
   it("keeps order while mixing converted and fallback items", async () => {
-    const result = await batchConvertCurrencyAction(
+    const result = await batchConvertCurrency(
       [
         { amount: 100, currency: "CNY", date: testDate },
         { amount: 50, currency: "ZZZ", date: testDate },
@@ -59,8 +56,8 @@ describe("currency fallbacks integration", () => {
   });
 
   it("single conversion still fails for unknown currency", async () => {
-    await expect(convertCurrencyAction(100, "ZZZ", "USD", testDate)).rejects.toThrow(
-      "Currency not found: ZZZ"
-    );
+    await expect(
+      convertCurrency({ amount: 100, from: "ZZZ", to: "USD", date: testDate })
+    ).rejects.toThrow("Currency not found: ZZZ");
   });
 });

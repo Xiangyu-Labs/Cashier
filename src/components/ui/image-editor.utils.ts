@@ -1,5 +1,4 @@
 "use client";
-
 import { centerCrop, type Crop, type PixelCrop } from "react-image-crop";
 
 const DEFAULT_CROP_PERCENT = 80;

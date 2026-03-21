@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -11,21 +10,12 @@ import { createQuickEntryAction } from "@/modules/source-document/actions";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { Send } from "lucide-react";
-import { type EntryCategory } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  queryKeys,
-} from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerEntries, invalidateLedgerStats, invalidateSourceDocuments, queryKeys, } from "@/lib/query-keys";
 import type { InfiniteData } from "@tanstack/react-query";
-import type {
-  SourceDocumentCollectionDto,
-  SourceDocumentListItemWithEntries,
-} from "@/modules/source-document/actions";
-import type { LedgerEntry } from "@/types/api";
+import type { SourceDocumentCollectionDto, SourceDocumentListItemWithEntries, } from "@/modules/source-document/actions";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 
 interface QuickEntryFormProps {
   ledgerId: string;

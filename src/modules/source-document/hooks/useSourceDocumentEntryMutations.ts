@@ -1,5 +1,4 @@
 "use client";
-
 import { type QueryClient } from "@tanstack/react-query";
 import {
   batchDeleteLedgerEntriesAction,
@@ -11,7 +10,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { fireAndForget } from "@/lib/safe-async";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
-import type { EntryEditData } from "@/modules/source-document/ui/entry-edit-data";
+import type { EntryEditData } from "@/modules/source-document/types";
 import {
   type BatchEntryUpdateData,
   createSourceDocSnapshots,

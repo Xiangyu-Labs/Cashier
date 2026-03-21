@@ -7,7 +7,6 @@
  */
 
 "use client";
-
 import { LargeGridHeatmap } from "./LargeGrid";
 import { SmallGridHeatmap } from "./SmallGrid";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";

@@ -1,11 +1,11 @@
 "use client";
-
-import { useState, useCallback, type ReactNode, memo, useMemo } from "react";
+import type { EntryCategory } from "@/modules/ledger/contracts";
+import { useState, useCallback, memo, useMemo, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
 

@@ -1,14 +1,14 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { Mail, KeyRound } from "lucide-react";
-import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
+import { useLoginFlow } from "../hooks/use-login-flow";
 import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
 
 export function AuthLoginPage() {
   const t = useTranslations("Auth");
   const {
+    callbackUrl,
     step,
     email,
     otp,
@@ -47,6 +47,7 @@ export function AuthLoginPage() {
         <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
           {step === "email" ? (
             <EmailStep
+              callbackUrl={callbackUrl}
               email={email}
               isLoading={isLoading}
               error={error}
@@ -55,7 +56,6 @@ export function AuthLoginPage() {
             />
           ) : (
             <OtpStep
-              email={email}
               otp={otp}
               isLoading={isLoading}
               error={error}

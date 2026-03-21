@@ -3,6 +3,11 @@ import {
   type CurrencyBatchConversionResult,
 } from "./application/use-cases/convert-amounts-batch";
 export {
+  convertCurrency,
+  type ConvertCurrencyInput,
+  type ConvertCurrencyResult,
+} from "./application/use-cases/convert-currency";
+export {
   convertEntryAmount,
   type ConvertEntryAmountInput,
   type ConvertEntryAmountResult,
@@ -16,6 +21,9 @@ export interface BatchCurrencyConversionItem {
 }
 
 export type ConvertAmountsBatchResult = CurrencyBatchConversionResult[];
+export interface BatchConvertCurrencyResult {
+  results: number[];
+}
 
 export async function convertAmountsBatch(
   items: BatchCurrencyConversionItem[],
@@ -30,4 +38,29 @@ export async function convertAmountsBatch(
     })),
     mainCurrency
   );
+}
+
+export async function batchConvertCurrency(
+  items: Array<{ amount: number; currency: string; date?: string }>,
+  targetCurrency: string
+): Promise<BatchConvertCurrencyResult> {
+  if (items.length === 0 || targetCurrency === "") {
+    throw new Error("Missing required parameters");
+  }
+
+  const results = await convertAmountsBatchUseCase(
+    items.map((item) => ({
+      amount: item.amount,
+      fromCurrency: item.currency,
+      toCurrency: targetCurrency,
+      ...(item.date != null ? { date: item.date } : {}),
+    })),
+    targetCurrency,
+    {
+      allowBlankSourceCurrency: true,
+      fallbackToOriginalAmountOnMissingRate: true,
+    }
+  );
+
+  return { results: results.map((item) => item.convertedAmount) };
 }

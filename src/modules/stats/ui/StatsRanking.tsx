@@ -1,5 +1,4 @@
 "use client";
-
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";

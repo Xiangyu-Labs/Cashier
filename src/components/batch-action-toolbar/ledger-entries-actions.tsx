@@ -9,15 +9,9 @@
 
 import { Sparkles, Tag, ChevronDown, Loader2, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { type EntryCategory } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";

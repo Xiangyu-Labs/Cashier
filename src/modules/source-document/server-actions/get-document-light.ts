@@ -1,5 +1,4 @@
 "use server";
-
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 import { getSourceDocumentLight } from "../application/queries/get-source-document-light";
 

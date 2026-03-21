@@ -1,11 +1,6 @@
 "use client";
-
-import {
-  type SourceDocument,
-  type SourceDocumentLight,
-  type LedgerEntry,
-  type EntryCategory,
-} from "@/types/api";
+import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
+import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -27,7 +22,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
 import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
-import type { EntryEditData } from "./entry-edit-data";
+import type { EntryEditData } from "@/modules/source-document/types";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 
 interface CurrencyBreakdownItemProps {

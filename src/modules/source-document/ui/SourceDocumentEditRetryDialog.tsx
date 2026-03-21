@@ -1,9 +1,9 @@
 "use client";
-
+import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "./SourceDocumentInput";
-import { type SourceDocument, type SourceDocumentLight } from "@/types/api";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";

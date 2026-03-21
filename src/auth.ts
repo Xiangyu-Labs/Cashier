@@ -1,10 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { OAuthConfig } from "next-auth/providers/index";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import { users, accounts } from "@/persistence/schema/auth";
-
 import { authConfig } from "./auth.config";
 import {
   authenticateWithOTP,
@@ -72,7 +71,7 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
   };
 })();
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions = {
   ...authConfig,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -116,10 +115,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: parseInt(process.env.SESSION_MAX_AGE_DAYS ?? "14", 10) * TIME_SECONDS.DAY,
     updateAge: TIME_SECONDS.DAY, // Refresh daily
   },
-  pages: {
-    signIn: "/login",
-    error: "/login/error",
-  },
+  pages: authConfig.pages,
   events: {
     async createUser({ user }) {
       await handleAuthUserCreated(user.id != null ? { userId: user.id } : {});
@@ -162,7 +158,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+} satisfies NextAuthConfig;
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
 
 // Type augmentation for session
 declare module "next-auth" {

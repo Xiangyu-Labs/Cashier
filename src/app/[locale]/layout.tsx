@@ -46,7 +46,6 @@ export const viewport = {
   userScalable: false, // Prevent zooming on mobile for app-like feel
   viewportFit: "cover", // Ensure content extends to edges including notches
 };
-
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 
@@ -69,7 +68,7 @@ export default async function LocaleLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
         style={{ backgroundColor: "var(--bg)" }}
       >
-        <NextIntlClientProvider messages={messages} locale={locale} timeZone="Asia/Shanghai">
+        <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>
             <main className="max-w-screen-2xl mx-auto min-h-screen pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
               {children}

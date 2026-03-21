@@ -1,10 +1,9 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
-import { type EntryCategory } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import {
   DndContext,

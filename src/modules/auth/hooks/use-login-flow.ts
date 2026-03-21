@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { signIn, type SignInResponse } from "next-auth/react";
 import { useRouter } from "@/i18n/routing";
@@ -12,6 +11,7 @@ import { OTP_LENGTH } from "@/modules/auth/constants";
 type LoginStep = "email" | "otp";
 
 interface UseLoginFlowReturn {
+  callbackUrl: string;
   step: LoginStep;
   email: string;
   otp: string;
@@ -172,6 +172,7 @@ export function useLoginFlow(
   };
 
   return {
+    callbackUrl,
     step,
     email,
     otp,

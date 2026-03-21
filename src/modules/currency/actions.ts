@@ -1,5 +1,4 @@
 "use server";
-
 import { convertAmountsBatch } from "./application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "./application/use-cases/convert-currency";
 

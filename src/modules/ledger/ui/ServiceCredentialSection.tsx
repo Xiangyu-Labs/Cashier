@@ -1,8 +1,7 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Trash2, Copy, Plus, Key, Check } from "lucide-react";
-import { type ServiceCredential } from "@/types/api";
+import type { ServiceCredential } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

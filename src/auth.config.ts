@@ -8,22 +8,6 @@ export const authConfig = {
     error: "/login/error",
   },
   callbacks: {
-    async signIn() {
-      return true;
-    },
-    async jwt({ token, user }) {
-      if (user != null && user.id != null && user.id !== "") {
-        token.id = user.id;
-        token.sub = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user != null && token.id != null) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
     authorized() {
       // We can move the proxy logic here if we want to simplify src/proxy.ts.
       // The current request handling stays in src/proxy.ts, so this remains permissive.

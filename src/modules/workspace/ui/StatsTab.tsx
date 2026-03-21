@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
@@ -7,15 +6,10 @@ import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/quer
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { type DateRangeType } from "@/lib/date-utils";
-import {
-  CalendarHeatmapSection,
-  StatsChart,
-  StatsHeader,
-  StatsRanking,
-} from "@/modules/stats/ui";
+import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking, } from "@/modules/stats/ui";
 import { useTranslations, useFormatter } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
-import type { Ledger } from "@/types/api";
+import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
 import {
   DEFAULT_STATS_RANGE_TYPE,

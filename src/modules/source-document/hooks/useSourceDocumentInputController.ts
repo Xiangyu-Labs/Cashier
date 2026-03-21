@@ -1,6 +1,6 @@
 "use client";
-
-import { useEffect, useRef, useState, useTransition, type ChangeEvent, type ClipboardEvent } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import type { ChangeEvent, ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -8,7 +8,7 @@ import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-utils";
 import { fireAndForget } from "@/lib/safe-async";
-import type { SourceDocument } from "@/types/api";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 import type { SourceDocumentInputProps } from "../ui/source-document-input.types";
 

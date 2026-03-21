@@ -1,11 +1,9 @@
 "use client";
-
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function SettingsPage() {

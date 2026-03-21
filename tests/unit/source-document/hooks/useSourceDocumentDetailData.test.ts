@@ -14,7 +14,7 @@ vi.mock("@/modules/source-document/actions", () => ({
   getSourceDocumentLightAction: vi.fn(),
 }));
 
-import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
+import { useSourceDocumentDetailData } from "@/modules/source-document/hooks";
 
 describe("useSourceDocumentDetailData", () => {
   beforeEach(() => {

@@ -1,5 +1,4 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { Button } from "@/components/ui/button";

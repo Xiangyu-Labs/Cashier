@@ -1,5 +1,4 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { Mail, CheckCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";

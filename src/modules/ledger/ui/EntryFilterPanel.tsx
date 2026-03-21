@@ -1,20 +1,18 @@
 "use client";
-
 import * as React from "react";
-import { Calendar as CalendarIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  X,
+  ChevronDown,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { type EntryCategory } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
 import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";

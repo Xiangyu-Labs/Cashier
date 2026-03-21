@@ -12,7 +12,7 @@ const {
   processImagesMock,
   updateMock,
   updateSetMock,
-  updateWhereMock,
+  updateWhereMock: _updateWhereMock,
 } = vi.hoisted(() => {
   const insertValuesMock = vi.fn();
   const insertMock = vi.fn(() => ({ values: insertValuesMock }));

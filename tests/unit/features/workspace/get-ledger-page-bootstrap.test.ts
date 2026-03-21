@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
 
 const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
@@ -11,7 +11,7 @@ const getPendingSourceDocumentsMock = vi.hoisted(() => vi.fn());
 const getAllSourceDocumentsMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/auth/access", () => ({
+vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 
@@ -149,4 +149,3 @@ describe("getLedgerPageBootstrap", () => {
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
   });
 });
-

@@ -9,7 +9,6 @@ type MutationOptions = {
 
 const {
   batchDeleteLedgerEntriesActionMock,
-  batchDeleteSnapshotsMock,
   batchUpdateLedgerEntriesActionMock,
   capturedMutations,
   createSourceDocSnapshotsMock,
@@ -22,7 +21,6 @@ const {
   useLedgerMutationMock,
 } = vi.hoisted(() => ({
   batchDeleteLedgerEntriesActionMock: vi.fn(),
-  batchDeleteSnapshotsMock: ["snap"],
   batchUpdateLedgerEntriesActionMock: vi.fn(),
   capturedMutations: [] as MutationOptions[],
   createSourceDocSnapshotsMock: vi.fn(() => ["snap"]),
@@ -67,7 +65,7 @@ vi.mock("@/modules/source-document/hooks/source-document-detail-cache", () => ({
   updateSingleEntryInCaches: updateSingleEntryInCachesMock,
 }));
 
-import { useSourceDocumentEntryMutations } from "@/modules/source-document/hooks/useSourceDocumentEntryMutations";
+import { useSourceDocumentEntryMutations } from "@/modules/source-document/hooks";
 
 describe("useSourceDocumentEntryMutations", () => {
   beforeEach(() => {

@@ -64,7 +64,7 @@ vi.mock("@/modules/source-document/hooks/source-document-detail-cache", () => ({
     ),
 }));
 
-import { useSourceDocumentRecordMutations } from "@/modules/source-document/hooks/useSourceDocumentRecordMutations";
+import { useSourceDocumentRecordMutations } from "@/modules/source-document/hooks";
 
 describe("useSourceDocumentRecordMutations", () => {
   beforeEach(() => {

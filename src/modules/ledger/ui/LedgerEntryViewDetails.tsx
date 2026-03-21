@@ -1,7 +1,7 @@
 "use client";
-
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import { Button } from "@/components/ui/button";
-import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";

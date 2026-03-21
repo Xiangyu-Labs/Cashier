@@ -27,45 +27,65 @@ vi.mock("@/i18n/routing", () => ({
 vi.mock("next/dynamic", () => ({
   default: (loader: () => Promise<unknown>) => {
     const text = String(loader);
+    const createComponent = (
+      testId: string,
+      content: string,
+      clickHandler?: (props: Record<string, unknown>) => void
+    ) => {
+      const Component = (props: Record<string, unknown>) => (
+        <div
+          data-testid={testId}
+          {...(clickHandler
+            ? {
+                onClick: () => clickHandler(props),
+              }
+            : {})}
+        >
+          {content}
+        </div>
+      );
+      Component.displayName = `Mock${testId}`;
+      return Component;
+    };
 
     if (text.includes("DetailsTab")) {
-      return ({ onAdvancedFiltersChange }: { onAdvancedFiltersChange?: (v: unknown) => void }) => (
-        <button
-          data-testid="details-tab-trigger-filters"
-          onClick={() => onAdvancedFiltersChange?.({ categoryId: "cat-1" })}
-        >
-          details-tab
-        </button>
-      );
+      return createComponent("details-tab-trigger-filters", "details-tab", (props) => {
+        const onAdvancedFiltersChange = props.onAdvancedFiltersChange as
+          | ((value: unknown) => void)
+          | undefined;
+        onAdvancedFiltersChange?.({ categoryId: "cat-1" });
+      });
     }
 
     if (text.includes("TaskQueueModal")) {
-      return ({ open }: { open: boolean }) => (
+      const Component = ({ open }: { open: boolean }) => (
         <div data-testid="task-queue-modal">{open ? "open" : "closed"}</div>
       );
+      Component.displayName = "MockTaskQueueModal";
+      return Component;
     }
 
     if (text.includes("SourceDocumentInput")) {
-      return () => <div data-testid="source-document-input">input</div>;
+      return createComponent("source-document-input", "input");
     }
 
     if (text.includes("QuickEntryForm")) {
-      return () => <div data-testid="quick-entry-form">quick</div>;
+      return createComponent("quick-entry-form", "quick");
     }
 
     if (text.includes("LedgerEntriesTab")) {
-      return () => <div data-testid="ledger-entries-tab">stream-tab</div>;
+      return createComponent("ledger-entries-tab", "stream-tab");
     }
 
     if (text.includes("StatsTab")) {
-      return () => <div data-testid="stats-tab">stats-tab</div>;
+      return createComponent("stats-tab", "stats-tab");
     }
 
     if (text.includes("/modules/ledger/ui")) {
-      return () => <div data-testid="settings-tab">settings-tab</div>;
+      return createComponent("settings-tab", "settings-tab");
     }
 
-    return () => <div data-testid="dynamic-generic">dynamic</div>;
+    return createComponent("dynamic-generic", "dynamic");
   },
 }));
 

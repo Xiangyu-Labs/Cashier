@@ -4,8 +4,7 @@ import { getTestDb } from "tests/setup";
 import { createTestUser } from "tests/helpers/schema-setup";
 import { ledgers } from "@/persistence";
 import { ConflictError } from "@/lib/errors";
-import { createLedger } from "@/modules/ledger/application/use-cases/create-ledger";
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { createDefaultLedger, createLedger } from "@/modules/ledger/use-cases";
 
 describe("ledger single-owner race and rollback", () => {
   beforeEach(() => {

@@ -1,7 +1,6 @@
 "use client";
-
 import { useCallback, useState } from "react";
-import type { SourceDocument } from "@/types/api";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 
 export interface LedgerEntriesDeleteConfirmState {
   open: boolean;

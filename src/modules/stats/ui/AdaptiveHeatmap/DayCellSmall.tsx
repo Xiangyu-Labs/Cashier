@@ -4,7 +4,6 @@
  */
 
 "use client";
-
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";

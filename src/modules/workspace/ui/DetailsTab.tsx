@@ -1,5 +1,5 @@
 "use client";
-
+import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,21 +12,12 @@ import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
 import { useSelection } from "@/hooks/use-selection";
-import {
-  useBatchEntryActions,
-  useDetailsTabData,
-  useDetailsTabGrouping,
-  useEntryMutations,
-} from "@/modules/ledger/hooks";
-import {
-  EntryFilterPanel,
-  type EntryFilters,
-  LedgerEntryCard,
-  LedgerEntryDetailModal,
-} from "@/modules/ledger/ui";
+import { useBatchEntryActions, useDetailsTabData, useDetailsTabGrouping, useEntryMutations, } from "@/modules/ledger/hooks";
+import { EntryFilterPanel, LedgerEntryCard, LedgerEntryDetailModal } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
-import type { EntryCategory, Ledger } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 
 interface DetailsTabProps {

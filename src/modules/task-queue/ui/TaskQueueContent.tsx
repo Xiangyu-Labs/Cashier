@@ -1,5 +1,4 @@
 "use client";
-
 import { Inbox } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";

@@ -1,13 +1,10 @@
 "use client";
-
 import * as React from "react";
-
 import { Calendar as CalendarIcon, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-
 import { useTranslations, useFormatter } from "next-intl";
 
 interface DateFilterProps {

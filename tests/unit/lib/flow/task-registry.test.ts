@@ -2,21 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FlowEngine } from "@/lib/flow";
 
 function mockTaskRegistryDependencies() {
-  vi.doMock("@/modules/source-document/application/tasks/parse-source-document", () => ({
+  vi.doMock("@/modules/source-document/tasks", () => ({
     parseSourceDocumentTaskDefinition: {
       type: "parse_source_document",
       handler: { execute: vi.fn() },
     },
   }));
 
-  vi.doMock("@/modules/ledger/application/tasks/generate-category-metadata", () => ({
+  vi.doMock("@/modules/ledger/tasks", () => ({
     generateCategoryMetadataTaskDefinition: {
       type: "generate_category_metadata",
       handler: { execute: vi.fn() },
     },
-  }));
-
-  vi.doMock("@/modules/ledger/application/tasks/categorize-entry", () => ({
     categorizeEntryTaskDefinition: {
       type: "categorize_entry",
       handler: { execute: vi.fn() },

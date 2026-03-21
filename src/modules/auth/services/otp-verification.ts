@@ -1,5 +1,4 @@
 "use server";
-
 import { db } from "@/lib/db";
 import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";

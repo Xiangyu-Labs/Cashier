@@ -1,5 +1,4 @@
 "use server";
-
 import { withLedgerAccess } from "@/lib/auth-actions";
 import type { LedgerSettingsViewDto } from "@/modules/ledger/contracts";
 import { getLedgerSettingsView } from "@/modules/ledger/queries";

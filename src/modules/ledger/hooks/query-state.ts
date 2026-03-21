@@ -1,5 +1,4 @@
 "use client";
-
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 
 export interface LedgerAdvancedFilters {

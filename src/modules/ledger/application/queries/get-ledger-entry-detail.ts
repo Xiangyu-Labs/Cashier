@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { mapLedgerEntryDto } from "@/modules/ledger/application/mappers";

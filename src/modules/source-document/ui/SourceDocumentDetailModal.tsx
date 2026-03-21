@@ -1,15 +1,11 @@
 "use client";
-
+import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
+import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useEffect, memo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  type SourceDocument,
-  type SourceDocumentLight,
-  type LedgerEntry,
-  type EntryCategory,
-} from "@/types/api";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 import { Trash2, FileText, X, Save, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -20,7 +16,7 @@ import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { BatchActionToolbar } from "@/components/batch-action-toolbar";
-import type { EntryEditData } from "./entry-edit-data";
+import type { EntryEditData } from "@/modules/source-document/types";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;

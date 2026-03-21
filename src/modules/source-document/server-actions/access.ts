@@ -1,5 +1,5 @@
 import { AppError, UnauthorizedError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/modules/auth/access";
+import { requireLedgerAccess } from "@/modules/ledger/access";
 
 type SourceDocumentLedgerAccess = Awaited<ReturnType<typeof requireLedgerAccess>>;
 

@@ -1,5 +1,4 @@
 "use server";
-
 import { headers } from "next/headers";
 import { signOut } from "@/auth";
 import { withAuth } from "@/lib/auth-actions";

@@ -1,5 +1,7 @@
+import type { LedgerEntry } from "@/modules/ledger/contracts";
+import type { SourceDocument } from "@/modules/source-document/contracts";
 import { AnimatePresence, motion } from "framer-motion";
-import type { EntryCategory, LedgerEntry, SourceDocument } from "@/types/api";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui";

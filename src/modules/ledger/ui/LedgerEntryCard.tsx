@@ -1,4 +1,4 @@
-import { type LedgerEntry, type EntryCategory } from "@/types/api";
+import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -19,7 +19,6 @@ const cardVariants = cva("transition-all", {
     status: "default",
   },
 });
-
 import { useTranslations } from "next-intl";
 
 interface LedgerEntryCardProps {

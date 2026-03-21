@@ -1,14 +1,10 @@
 "use client";
-
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import {
-  createServiceCredentialAction,
-  deleteServiceCredentialAction,
-} from "@/modules/ledger/actions";
-import type { ServiceCredential } from "@/types/api";
+import { createServiceCredentialAction, deleteServiceCredentialAction, } from "@/modules/ledger/actions";
+import type { ServiceCredential } from "@/modules/ledger/contracts";
 
 interface CreateCredentialContext {
   prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
