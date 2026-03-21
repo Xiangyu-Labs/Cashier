@@ -36,7 +36,8 @@ src/modules/ledger/
 2. **Do not deep-import another module's internals**: `application/*`, `server-actions/*`, `ui/SpecificFile`, `hooks/SpecificHook`, and other nested paths are private even when the top-level `ui` or `hooks` barrel is public.
 3. **Application must not depend on actions/server-actions**: shared business logic belongs in `application/*`, and server-actions call into it.
 4. **Workspace is an orchestration shell, not a dumping ground**: URL state, tab coordination, and page bootstrap live there, but ledger/source-document/stats business logic stays in the owning module.
-5. **Tests follow the same public-boundary rules**: implementation tests that need internals should live beside the owning module code and use local relative imports, not cross-module alias imports.
+$1
+6. **`use-cases.ts` is a pure re-export barrel**: the optional `use-cases.ts` at the module root exists solely to re-export symbols from `application/*` under a single import path. It must not define types, implement logic, or wrap function signatures. Any adapter, mapping, or business logic belongs inside `application/use-cases/` or `application/services/`. If a module needs no such aggregation it may omit `use-cases.ts` entirely.
 
 ## 2. Shared Kernel (`src/lib/*`)
 
