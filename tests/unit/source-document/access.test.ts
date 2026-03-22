@@ -20,11 +20,11 @@ describe("withSourceDocumentLedgerAccess", () => {
     requireLedgerAccessMock.mockRejectedValue(new NotFoundError("Ledger"));
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
-    const error = await wrapped("ledger-id").catch((caught) => caught as Error);
-
-    expect(error).toBeInstanceOf(NotFoundError);
-    expect(error).not.toBeInstanceOf(UnauthorizedError);
-    expect(error.message).toBe("Unauthorized or Ledger not found");
+    await expect(wrapped("ledger-id")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(wrapped("ledger-id")).rejects.not.toBeInstanceOf(UnauthorizedError);
+    await expect(wrapped("ledger-id")).rejects.toMatchObject({
+      message: "Unauthorized or Ledger not found",
+    });
   });
 
   it("preserves ForbiddenError from requireLedgerAccess", async () => {
@@ -32,11 +32,8 @@ describe("withSourceDocumentLedgerAccess", () => {
     requireLedgerAccessMock.mockRejectedValue(forbidden);
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
-    const error = await wrapped("ledger-id").catch((caught) => caught as Error);
-
-    expect(error).toBeInstanceOf(ForbiddenError);
-    expect(error).not.toBeInstanceOf(UnauthorizedError);
-    expect(error).toBe(forbidden);
+    await expect(wrapped("ledger-id")).rejects.toBe(forbidden);
+    await expect(wrapped("ledger-id")).rejects.not.toBeInstanceOf(UnauthorizedError);
   });
 
   it("preserves ValidationError from requireLedgerAccess", async () => {
@@ -44,10 +41,7 @@ describe("withSourceDocumentLedgerAccess", () => {
     requireLedgerAccessMock.mockRejectedValue(validation);
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
-    const error = await wrapped("ledger-id").catch((caught) => caught as Error);
-
-    expect(error).toBeInstanceOf(ValidationError);
-    expect(error).not.toBeInstanceOf(UnauthorizedError);
-    expect(error).toBe(validation);
+    await expect(wrapped("ledger-id")).rejects.toBe(validation);
+    await expect(wrapped("ledger-id")).rejects.not.toBeInstanceOf(UnauthorizedError);
   });
 });

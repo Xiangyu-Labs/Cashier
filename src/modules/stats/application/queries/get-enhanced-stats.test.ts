@@ -306,4 +306,5 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.heatmap.stats.p80Amount).toBe(40);
   });
+
 });

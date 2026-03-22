@@ -9,6 +9,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
+const optionalQueryNumberSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim() : value),
+  z.union([z.number(), z.string().min(1)]).pipe(z.coerce.number()).optional()
+);
 const sourceDocumentStatusSchema = z.enum([
   "queued",
   "processing",
@@ -80,6 +84,8 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
 export const listAllSourceDocumentsInputSchema = strictObjectSchema({
     startDate: optionalDateStringSchema,
     endDate: optionalDateStringSchema,
+    minAmount: optionalQueryNumberSchema,
+    maxAmount: optionalQueryNumberSchema,
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
   });

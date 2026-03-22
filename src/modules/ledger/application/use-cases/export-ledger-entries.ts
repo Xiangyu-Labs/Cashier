@@ -122,7 +122,7 @@ export async function exportLedgerEntries(
     };
   }
 
-  const headers = CSV_HEADERS[locale] ?? CSV_HEADERS.en;
+  const headers = (locale === "zh" ? CSV_HEADERS.zh : CSV_HEADERS.en) ?? CSV_HEADERS.en!;
   const lines = [headers.join(",")];
 
   for (const entry of entries) {

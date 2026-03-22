@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeEnd, parseDateRangeStart } from "@/lib/date-utils";
@@ -21,7 +21,7 @@ import {
   type ListAllSourceDocumentsInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-import { sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocuments } from "@/persistence";
 import { z } from "zod";
 import type {
   PendingSourceDocumentsResponseDto,
@@ -51,6 +51,8 @@ export interface ListSourceDocumentsParams {
 export interface ListAllSourceDocumentsParams {
   startDate?: string | null;
   endDate?: string | null;
+  minAmount?: number;
+  maxAmount?: number;
   page?: number;
   pageSize?: number;
 }
@@ -85,6 +87,34 @@ function buildDateConditions(
     if (parsedEnd != null) {
       conditions.push(lte(sourceDocuments.entryDate, format(parsedEnd, "yyyy-MM-dd")));
     }
+  }
+
+  return conditions;
+}
+
+function buildAmountConditions(
+  ledgerId: string,
+  minAmount: number | undefined,
+  maxAmount: number | undefined
+): SQL<unknown>[] {
+  if (minAmount === undefined && maxAmount === undefined) {
+    return [];
+  }
+
+  const totalAmountSql = sql<number>`COALESCE((
+    SELECT SUM(ABS(CAST(COALESCE(converted_amount, amount) AS REAL)))
+    FROM ledger_entries
+    WHERE ledger_id = ${ledgerId}
+      AND source_document_id = ${sourceDocuments.id}
+      AND deleted_at IS NULL
+  ), 0)`;
+
+  const conditions: SQL<unknown>[] = [];
+  if (minAmount !== undefined) {
+    conditions.push(sql`${totalAmountSql} >= ${minAmount}`);
+  }
+  if (maxAmount !== undefined) {
+    conditions.push(sql`${totalAmountSql} <= ${maxAmount}`);
   }
 
   return conditions;
@@ -283,7 +313,11 @@ export async function listAllSourceDocumentsQuery(
   const offset = (page - 1) * pageSize;
 
   const q = forLedger(sourceDocuments, ledgerId);
-  const conditions = [q.whereActive, ...buildDateConditions(params.startDate, params.endDate)];
+  const conditions = [
+    q.whereActive,
+    ...buildDateConditions(params.startDate, params.endDate),
+    ...buildAmountConditions(ledgerId, params.minAmount, params.maxAmount),
+  ];
 
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -338,6 +372,8 @@ export async function getAllSourceDocumentsFromValidatedInput(
   const queryParams: ListAllSourceDocumentsParams = {
     startDate: validated.startDate ?? null,
     endDate: validated.endDate ?? null,
+    ...(validated.minAmount !== undefined ? { minAmount: validated.minAmount } : {}),
+    ...(validated.maxAmount !== undefined ? { maxAmount: validated.maxAmount } : {}),
     ...(validated.page !== undefined ? { page: validated.page } : {}),
     ...(validated.pageSize !== undefined ? { pageSize: validated.pageSize } : {}),
   };

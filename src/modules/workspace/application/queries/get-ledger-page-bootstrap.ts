@@ -11,6 +11,7 @@ import { getEnhancedStats } from "@/modules/stats/queries";
 import { getAllSourceDocuments, getPendingSourceDocuments } from "@/modules/source-document/queries";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
+  type LedgerAdvancedFilters,
   getDetailsInitialQueryState,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
@@ -28,6 +29,7 @@ export async function getLedgerPageBootstrap(input: {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
+  advancedFilters?: LedgerAdvancedFilters;
 }): Promise<LedgerPageBootstrapResult | null> {
   let userId: string;
   let ledgerDto: LedgerDto;
@@ -55,7 +57,7 @@ export async function getLedgerPageBootstrap(input: {
 
   const mainCurrency = ledgerDto.metadata?.settings?.mainCurrency ?? "CNY";
   const initialStatsDate = new Date();
-  const detailsState = getDetailsInitialQueryState(input.periodParams);
+  const detailsState = getDetailsInitialQueryState(input.periodParams, input.advancedFilters);
   const statsState = getStatsInitialQueryState(initialStatsDate);
 
   await Promise.all([
@@ -77,18 +79,28 @@ export async function getLedgerPageBootstrap(input: {
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
           queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocuments(
-              input.ledgerId,
-              "all",
-              detailsState.startDateStr,
-              detailsState.endDateStr
-            ),
+            queryKey: queryKeys.sourceDocumentsAll(input.ledgerId, {
+              startDate: detailsState.startDateStr,
+              endDate: detailsState.endDateStr,
+              ...(input.advancedFilters?.minAmount != null
+                ? { minAmount: input.advancedFilters.minAmount }
+                : {}),
+              ...(input.advancedFilters?.maxAmount != null
+                ? { maxAmount: input.advancedFilters.maxAmount }
+                : {}),
+            }),
             queryFn: () =>
               getAllSourceDocuments(input.ledgerId, {
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
                 ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
+                ...(input.advancedFilters?.minAmount != null
+                  ? { minAmount: input.advancedFilters.minAmount }
+                  : {}),
+                ...(input.advancedFilters?.maxAmount != null
+                  ? { maxAmount: input.advancedFilters.maxAmount }
+                  : {}),
               }),
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
@@ -127,7 +139,7 @@ export async function getLedgerPageBootstrap(input: {
                 detailsState.startDateStr ?? undefined,
                 detailsState.endDateStr ?? undefined,
                 mainCurrency,
-                {}
+                input.advancedFilters
               ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
@@ -145,6 +157,18 @@ export async function getLedgerPageBootstrap(input: {
                   ? { startDate: detailsState.startDateStr }
                   : {}),
                 ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
+                ...(input.advancedFilters?.categoryId != null
+                  ? { categoryId: input.advancedFilters.categoryId }
+                  : {}),
+                ...(input.advancedFilters?.currency != null
+                  ? { currency: input.advancedFilters.currency }
+                  : {}),
+                ...(input.advancedFilters?.minAmount != null
+                  ? { minAmount: input.advancedFilters.minAmount }
+                  : {}),
+                ...(input.advancedFilters?.maxAmount != null
+                  ? { maxAmount: input.advancedFilters.maxAmount }
+                  : {}),
                 cursor: pageParam,
                 limit: 50,
               }),
@@ -158,12 +182,11 @@ export async function getLedgerPageBootstrap(input: {
     ...(input.initialTab === "stats"
       ? [
           queryClient.prefetchQuery({
-            queryKey: [
-              ...queryKeys.enhancedStats(input.ledgerId),
-              statsState.startDateStr,
-              statsState.rangeType,
+            queryKey: queryKeys.enhancedStats(input.ledgerId, {
+              startDate: statsState.startDateStr,
+              rangeType: statsState.rangeType,
               mainCurrency,
-            ],
+            }),
             queryFn: () =>
               getEnhancedStats({
                 ledgerId: input.ledgerId,

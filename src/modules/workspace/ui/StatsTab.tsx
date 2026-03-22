@@ -63,12 +63,13 @@ export function StatsTab({
     }
   }, [startDate, endDate, rangeType, format]);
 
-  const enhancedStatsKey = [
-    ...queryKeys.enhancedStats(ledgerId ?? ""),
-    startDateStr,
+  const enhancedStatsKey = queryKeys.enhancedStats(ledgerId ?? "", {
+    startDate: startDateStr,
     rangeType,
-    ledger?.metadata?.settings?.mainCurrency,
-  ];
+    ...(ledger?.metadata?.settings?.mainCurrency !== undefined
+      ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+      : {}),
+  });
   const { data: stats, isLoading } = useQuery({
     queryKey: enhancedStatsKey,
     queryFn: () =>

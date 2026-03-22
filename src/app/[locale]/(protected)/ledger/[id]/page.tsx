@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { LedgerPageClient } from "@/modules/workspace/ui";
+import { readLedgerFilterParams } from "@/modules/workspace/ledger-url-params";
 import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -8,6 +9,7 @@ import { redirect } from "@/i18n/routing";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
 import { LedgerPageSkeleton } from "@/components/skeletons";
+import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 
 interface LedgerPageProps {
   params: Promise<{ id: string }>;
@@ -18,18 +20,21 @@ interface LedgerPageContentProps {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
+  advancedFilters: LedgerAdvancedFilters;
 }
 
 async function LedgerPageContent({
   ledgerId,
   initialTab,
   periodParams,
+  advancedFilters,
 }: LedgerPageContentProps) {
   const t = await getTranslations("LedgerPage");
   const pageData = await getLedgerPageBootstrap({
     ledgerId,
     initialTab,
     periodParams,
+    advancedFilters,
   });
 
   if (pageData == null) {
@@ -56,6 +61,7 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
+  const advancedFilters = readLedgerFilterParams(new URLSearchParams(resolvedSearchParams as Record<string, string>));
   const initialTab = parseLedgerTab(resolvedSearchParams);
   const session = await auth();
   const locale = await getLocale();
@@ -66,7 +72,12 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
 
   return (
     <Suspense fallback={<LedgerPageSkeleton activeTab={initialTab} />}>
-      <LedgerPageContent ledgerId={ledgerId} initialTab={initialTab} periodParams={periodParams} />
+      <LedgerPageContent
+        ledgerId={ledgerId}
+        initialTab={initialTab}
+        periodParams={periodParams}
+        advancedFilters={advancedFilters}
+      />
     </Suspense>
   );
 }

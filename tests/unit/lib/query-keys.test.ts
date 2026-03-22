@@ -124,7 +124,13 @@ describe("queryKeys", () => {
     });
 
     it("应该生成正确的enhancedStats query key", () => {
-      expect(queryKeys.enhancedStats(ledgerId)).toEqual(["enhanced-stats", ledgerId]);
+      expect(queryKeys.enhancedStats(ledgerId)).toEqual([
+        "enhanced-stats",
+        ledgerId,
+        null,
+        null,
+        null,
+      ]);
     });
   });
 

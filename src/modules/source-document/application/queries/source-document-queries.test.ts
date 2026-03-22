@@ -3,7 +3,11 @@ import { NotFoundError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
-import { getSourceDocumentFullQuery, listSourceDocumentsQuery } from "./source-document-queries";
+import {
+  getAllSourceDocuments,
+  getSourceDocumentFullQuery,
+  listSourceDocumentsQuery,
+} from "./source-document-queries";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -138,5 +142,59 @@ describe("source-document-queries", () => {
     await expect(getSourceDocumentFullQuery(ledgerId, crypto.randomUUID())).rejects.toThrow(
       NotFoundError
     );
+  });
+
+  it("filters source documents by aggregated converted amount", async () => {
+    const db = getTestDb();
+    const docs = await db
+      .insert(sourceDocuments)
+      .values([
+        {
+          ledgerId,
+          text: "small amount doc",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-07-01",
+        },
+        {
+          ledgerId,
+          text: "large amount doc",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-07-02",
+        },
+      ])
+      .returning();
+
+    const firstDoc = requireDefined(docs[0], "first source document");
+    const secondDoc = requireDefined(docs[1], "second source document");
+
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId: firstDoc.id,
+        amount: "10",
+        convertedAmount: "10",
+        currency: "CNY",
+        itemName: "small item",
+        categoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: secondDoc.id,
+        amount: "20",
+        convertedAmount: "120",
+        currency: "USD",
+        itemName: "large item",
+        categoryId,
+      },
+    ]);
+
+    const result = await getAllSourceDocuments(ledgerId, {
+      minAmount: 100,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe(secondDoc.id);
   });
 });

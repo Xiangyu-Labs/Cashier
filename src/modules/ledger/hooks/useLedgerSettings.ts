@@ -1,9 +1,11 @@
 "use client";
+import { useCallback } from "react";
 import type { EntryCategoryWithCount, ServiceCredential } from "@/modules/ledger/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { updateLedgerAction, getLedgerAction, getLedgerSettingsAction, getEntryCategoriesAction, } from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
 import type { Ledger } from "@/modules/ledger/contracts";
@@ -28,6 +30,16 @@ export function useLedgerSettings({
   initialCategories,
 }: UseLedgerSettingsParams) {
   const t = useTranslations("Settings");
+  const categoryMetadataPolling = useSmartPolling<EntryCategoryWithCount[]>({
+    isPollingActive: useCallback(
+      (data) =>
+        data?.some(
+          (c) =>
+            c.icon == null || c.icon === "" || c.description == null || c.description === ""
+        ) ?? false,
+      []
+    ),
+  });
 
   const { data: ledger = initialLedger } = useQuery<Ledger | null>({
     queryKey: queryKeys.ledger(ledgerId),
@@ -39,15 +51,7 @@ export function useLedgerSettings({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
     initialData: initialCategories,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      const hasPendingMetadata =
-        data?.some(
-          (c) =>
-            c.icon == null || c.icon === "" || c.description == null || c.description === ""
-        ) ?? false;
-      return hasPendingMetadata ? 3000 : false;
-    },
+    refetchInterval: categoryMetadataPolling,
   });
 
   const { data: settingsData, isLoading: isSettingsLoading } = useQuery<{
