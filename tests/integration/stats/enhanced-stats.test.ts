@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getEnhancedStats } from "@/modules/stats/actions";
+import { ValidationError } from "@/lib/errors";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
@@ -49,6 +50,16 @@ describe("Enhanced Stats Actions", () => {
   });
 
   describe("getEnhancedStats", () => {
+    it("rejects invalid date ranges", async () => {
+      await expect(
+        getEnhancedStats({
+          ledgerId: testLedgerId,
+          queryRange: { from: "bad", to: "bad" },
+          compareRange: { from: "bad", to: "bad" },
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
     it("rejects access to a ledger owned by another user", async () => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(

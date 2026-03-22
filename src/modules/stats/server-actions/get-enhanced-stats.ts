@@ -1,6 +1,7 @@
 "use server";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import { getEnhancedStatsQuery } from "../application/queries/get-enhanced-stats";
+import { parseEnhancedStatsInput } from "../contract-schemas";
 import type { EnhancedStatsDto } from "../contracts";
 
 export async function getEnhancedStats({
@@ -12,6 +13,7 @@ export async function getEnhancedStats({
   queryRange: { from: string; to: string };
   compareRange: { from: string; to: string };
 }): Promise<EnhancedStatsDto> {
-  await requireLedgerAccess(ledgerId);
-  return getEnhancedStatsQuery({ ledgerId, queryRange, compareRange });
+  const input = parseEnhancedStatsInput({ ledgerId, queryRange, compareRange });
+  await requireLedgerAccess(input.ledgerId);
+  return getEnhancedStatsQuery(input);
 }
