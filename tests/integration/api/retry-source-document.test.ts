@@ -142,8 +142,17 @@ describe("SourceDocument Retry Action", () => {
     });
     await processAllPendingTasks();
 
+    const createdDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
+    });
+    const existingLocalImageUrl = createdDoc?.imageUrls?.[0];
+    if (existingLocalImageUrl == null) {
+      throw new Error("Expected created source document local image url");
+    }
+
     const retryRes = await retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
       text: "Retried receipt with image",
+      images: [{ data: existingLocalImageUrl, mimeType: "image/png" }],
     });
 
     const retriedDoc = await db.query.sourceDocuments.findFirst({

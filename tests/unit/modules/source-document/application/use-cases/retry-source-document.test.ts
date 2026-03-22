@@ -162,4 +162,60 @@ describe("retrySourceDocument", () => {
       })
     );
   });
+
+  it("rehomes local urls returned from processImages when retry input provides images and originalImages", async () => {
+    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
+    findFirstMock.mockResolvedValueOnce({
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      entryDate: "2026-03-20",
+      text: "old text",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/fallback.webp"],
+      metadata: {},
+    });
+    processImagesMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/current-from-input.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/original-from-input.webp"]);
+    rehomeLocalUploadUrlsMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current-from-input.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original-from-input.webp"]);
+
+    await retrySourceDocument({
+      ledgerId: "ledger-1",
+      ledger: {
+        id: "ledger-1",
+        userId: "user-1",
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+      sourceDocumentId: "doc-1",
+      input: {
+        text: "retry text",
+        images: [{ data: "current-input", mimeType: "image/webp" }],
+        originalImages: [{ data: "original-input", mimeType: "image/webp" }],
+      },
+    });
+
+    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(1, {
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/current-from-input.webp"],
+    });
+    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(2, {
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/original-from-input.webp"],
+    });
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageUrls: ["/api/uploads/ledger-1/new-doc/current-from-input.webp"],
+        metadata: {
+          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original-from-input.webp"],
+        },
+      })
+    );
+    randomUUIDMock.mockRestore();
+  });
 });

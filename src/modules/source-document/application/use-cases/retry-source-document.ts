@@ -53,14 +53,16 @@ export async function retrySourceDocument({
   const processedImageUrls = images
     ? await processImages(images, ledgerId, newDocumentId)
     : undefined;
-  const finalImageUrls =
+  const imageUrlsToPersist =
     processedImageUrls != null && processedImageUrls.length > 0
       ? processedImageUrls
-      : await rehomeLocalUploadUrls({
-          ledgerId,
-          sourceDocumentId: newDocumentId,
-          imageUrls: existingDocument.imageUrls ?? [],
-        });
+      : (existingDocument.imageUrls ?? []);
+  const finalImageUrls =
+    await rehomeLocalUploadUrls({
+      ledgerId,
+      sourceDocumentId: newDocumentId,
+      imageUrls: imageUrlsToPersist,
+    });
   let processedOriginalImageUrls: string[] | undefined;
   if (existingOriginalImageUrls.length > 0) {
     processedOriginalImageUrls = await rehomeLocalUploadUrls({
@@ -71,7 +73,16 @@ export async function retrySourceDocument({
       ),
     });
   } else if (originalImages != null && originalImages.length > 0) {
-    processedOriginalImageUrls = await processImages(originalImages, ledgerId, newDocumentId);
+    const processedProvidedOriginalImageUrls = await processImages(
+      originalImages,
+      ledgerId,
+      newDocumentId
+    );
+    processedOriginalImageUrls = await rehomeLocalUploadUrls({
+      ledgerId,
+      sourceDocumentId: newDocumentId,
+      imageUrls: processedProvidedOriginalImageUrls,
+    });
   }
 
   await db.insert(sourceDocuments).values({
