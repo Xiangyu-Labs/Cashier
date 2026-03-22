@@ -10,6 +10,7 @@ const {
   loggerDebugMock,
   prepareSourceDocumentTaskMock,
   processImagesMock,
+  rehomeLocalUploadUrlsMock,
   updateMock,
   updateSetMock,
   updateWhereMock: _updateWhereMock,
@@ -30,6 +31,7 @@ const {
     loggerDebugMock: vi.fn(),
     prepareSourceDocumentTaskMock: vi.fn(),
     processImagesMock: vi.fn(),
+    rehomeLocalUploadUrlsMock: vi.fn(),
     updateMock,
     updateSetMock,
     updateWhereMock,
@@ -71,6 +73,10 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   getSourceDocumentTaskContext: getSourceDocumentTaskContextMock,
   prepareSourceDocumentTask: prepareSourceDocumentTaskMock,
   processImages: processImagesMock,
+}));
+
+vi.mock("../services/rehome-local-upload-urls", () => ({
+  rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
 }));
 
 import { NotFoundError } from "@/lib/errors";
@@ -117,6 +123,9 @@ describe("retrySourceDocument", () => {
       },
     });
     findManyTasksMock.mockResolvedValueOnce([{ id: "task-1" }]);
+    rehomeLocalUploadUrlsMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original.webp"]);
 
     await retrySourceDocument({
       ledgerId: "ledger-1",
@@ -138,9 +147,9 @@ describe("retrySourceDocument", () => {
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         ledgerId: "ledger-1",
-        imageUrls: ["/api/uploads/old.jpg"],
+        imageUrls: ["/api/uploads/ledger-1/new-doc/current.webp"],
         metadata: {
-          originalImageUrls: ["/api/uploads/original.jpg"],
+          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original.webp"],
         },
       })
     );
@@ -152,5 +161,61 @@ describe("retrySourceDocument", () => {
         text: expect.anything(),
       })
     );
+  });
+
+  it("rehomes local urls returned from processImages when retry input provides images and originalImages", async () => {
+    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
+    findFirstMock.mockResolvedValueOnce({
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      entryDate: "2026-03-20",
+      text: "old text",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/fallback.webp"],
+      metadata: {},
+    });
+    processImagesMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/current-from-input.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/original-from-input.webp"]);
+    rehomeLocalUploadUrlsMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current-from-input.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original-from-input.webp"]);
+
+    await retrySourceDocument({
+      ledgerId: "ledger-1",
+      ledger: {
+        id: "ledger-1",
+        userId: "user-1",
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+      sourceDocumentId: "doc-1",
+      input: {
+        text: "retry text",
+        images: [{ data: "current-input", mimeType: "image/webp" }],
+        originalImages: [{ data: "original-input", mimeType: "image/webp" }],
+      },
+    });
+
+    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(1, {
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/current-from-input.webp"],
+    });
+    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(2, {
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: ["/api/uploads/ledger-1/doc-1/original-from-input.webp"],
+    });
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageUrls: ["/api/uploads/ledger-1/new-doc/current-from-input.webp"],
+        metadata: {
+          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original-from-input.webp"],
+        },
+      })
+    );
+    randomUUIDMock.mockRestore();
   });
 });

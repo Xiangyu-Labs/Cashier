@@ -13,6 +13,7 @@ const {
   cancelFlowTaskMock,
   getSourceDocumentTaskContextMock,
   prepareSourceDocumentTaskMock,
+  rehomeLocalUploadUrlsMock,
   loggerMock,
 } = vi.hoisted(() => {
   const sourceDocumentsFindManyMock = vi.fn();
@@ -27,6 +28,7 @@ const {
   const cancelFlowTaskMock = vi.fn();
   const getSourceDocumentTaskContextMock = vi.fn();
   const prepareSourceDocumentTaskMock = vi.fn();
+  const rehomeLocalUploadUrlsMock = vi.fn();
   const loggerMock = {
     debug: vi.fn(),
     warn: vi.fn(),
@@ -45,6 +47,7 @@ const {
     cancelFlowTaskMock,
     getSourceDocumentTaskContextMock,
     prepareSourceDocumentTaskMock,
+    rehomeLocalUploadUrlsMock,
     loggerMock,
   };
 });
@@ -101,6 +104,10 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   prepareSourceDocumentTask: prepareSourceDocumentTaskMock,
 }));
 
+vi.mock("../services/rehome-local-upload-urls", () => ({
+  rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
@@ -131,6 +138,7 @@ describe("batchRetrySourceDocuments", () => {
       },
     });
     prepareSourceDocumentTaskMock.mockResolvedValue(undefined);
+    rehomeLocalUploadUrlsMock.mockImplementation(async ({ imageUrls }) => imageUrls);
   });
 
   it("returns immediately for an empty document list", async () => {
@@ -196,5 +204,39 @@ describe("batchRetrySourceDocuments", () => {
     expect(result.results[1]?.previousSourceDocumentId).toBe("old-2");
     expect(result.results[0]?.taskSubmitted).toBe(true);
     expect(result.results[1]?.taskSubmitted).toBe(false);
+  });
+
+  it("rehomes local image urls into the new source document namespace", async () => {
+    const randomUUIDSpy = vi.spyOn(crypto, "randomUUID").mockReturnValue("new-1");
+    sourceDocumentsFindManyMock.mockResolvedValue([
+      {
+        id: "old-1",
+        text: "Specific text 1",
+        entryDate: "2026-03-20",
+        imageUrls: ["/api/uploads/ledger-1/old-1/local.webp"],
+        metadata: { originalImageUrls: ["/api/uploads/ledger-1/old-1/original.webp"] },
+      },
+    ]);
+    taskRunsFindManyMock.mockResolvedValue([]);
+    rehomeLocalUploadUrlsMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-1/local.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-1/original.webp"]);
+
+    try {
+      await batchRetrySourceDocuments({
+        ledgerId: "ledger-1",
+        ledger: { id: "ledger-1", metadata: {} } as never,
+        sourceDocumentIds: ["old-1"],
+      });
+    } finally {
+      randomUUIDSpy.mockRestore();
+    }
+
+    expect(insertValuesMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        imageUrls: ["/api/uploads/ledger-1/new-1/local.webp"],
+        metadata: { originalImageUrls: ["/api/uploads/ledger-1/new-1/original.webp"] },
+      }),
+    ]);
   });
 });

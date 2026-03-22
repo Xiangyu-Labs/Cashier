@@ -9,6 +9,7 @@ import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
 } from "../services/processing";
+import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
 
 export interface BatchRetrySourceDocumentsInput {
   ledgerId: string;
@@ -53,13 +54,34 @@ export async function batchRetrySourceDocuments({
     ),
   });
 
-  const newDocMappings = oldDocs.map((oldDoc) => ({
-    oldDocId: oldDoc.id,
-    newDocId: crypto.randomUUID(),
-    text: oldDoc.text,
-    entryDate: oldDoc.entryDate,
-    imageUrls: oldDoc.imageUrls ?? [],
-  }));
+  const newDocMappings = await Promise.all(
+    oldDocs.map(async (oldDoc) => {
+      const newDocId = crypto.randomUUID();
+      const imageUrls = await rehomeLocalUploadUrls({
+        ledgerId,
+        sourceDocumentId: newDocId,
+        imageUrls: oldDoc.imageUrls ?? [],
+      });
+      const originalImageUrls = Array.isArray(oldDoc.metadata?.originalImageUrls)
+        ? await rehomeLocalUploadUrls({
+            ledgerId,
+            sourceDocumentId: newDocId,
+            imageUrls: oldDoc.metadata.originalImageUrls.filter(
+              (url): url is string => typeof url === "string" && url !== ""
+            ),
+          })
+        : [];
+
+      return {
+        oldDocId: oldDoc.id,
+        newDocId,
+        text: oldDoc.text,
+        entryDate: oldDoc.entryDate,
+        imageUrls,
+        originalImageUrls,
+      };
+    })
+  );
 
   await db.insert(sourceDocuments).values(
     newDocMappings.map((mapping) => ({
@@ -71,7 +93,10 @@ export async function batchRetrySourceDocuments({
       status: "queued" as const,
       type: "ai_parsed" as const,
       title: null,
-      metadata: {},
+      metadata:
+        mapping.originalImageUrls.length > 0
+          ? { originalImageUrls: mapping.originalImageUrls }
+          : {},
     }))
   );
 

@@ -17,6 +17,7 @@ import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { createDrizzleStorage } from "@/lib/flow/adapters/drizzle-storage";
 import { initializeFlowRuntime, resetFlowRuntime } from "@/lib/flow/runtime";
 import { processAllPendingTasks } from "../../helpers/processing";
+import { ValidationError } from "@/lib/errors";
 
 // Mock OpenAI
 vi.mock("@/lib/ai/openai-client", () => ({
@@ -129,6 +130,62 @@ describe("SourceDocument Retry Action", () => {
     });
     // Entries remain but source doc is deleted, so they're effectively hidden
     expect(oldEntries.length).toBeGreaterThan(0);
+  });
+
+  it("should rehome local image urls into the new source document namespace on retry", async () => {
+    const db = getTestDb();
+    const imageData =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=";
+
+    const createRes = await createSourceDocumentAction(testLedgerId, {
+      text: "Receipt with image",
+      images: [{ data: imageData, mimeType: "image/png" }],
+    });
+    await processAllPendingTasks();
+
+    const createdDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
+    });
+    const existingLocalImageUrl = createdDoc?.imageUrls?.[0];
+    if (existingLocalImageUrl == null) {
+      throw new Error("Expected created source document local image url");
+    }
+
+    const retryRes = await retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
+      text: "Retried receipt with image",
+      images: [{ data: existingLocalImageUrl, mimeType: "image/png" }],
+    });
+
+    const retriedDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, retryRes.sourceDocumentId),
+    });
+
+    expect(retriedDoc?.imageUrls).toHaveLength(1);
+    expect(retriedDoc?.imageUrls?.[0]).toContain(`/${retryRes.sourceDocumentId}/`);
+    expect(retriedDoc?.imageUrls?.[0]).not.toContain(`/${createRes.sourceDocumentId}/`);
+  });
+
+  it("should reject retry input when images contain a foreign-ledger local upload URL", async () => {
+    const db = getTestDb();
+    const { ledgerId: foreignLedgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      "Foreign Ledger",
+      crypto.randomUUID()
+    );
+    const createRes = await createSourceDocumentAction(testLedgerId, { text: "Lunch 25" });
+    const foreignLedgerLocalUrl = `/api/uploads/${foreignLedgerId}/${createRes.sourceDocumentId}/image.webp`;
+
+    await expect(
+      retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
+        images: [{ data: foreignLedgerLocalUrl, mimeType: "image/png" }],
+      })
+    ).rejects.toThrow(ValidationError);
+
+    const sourceDocumentAfterFailedRetry = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
+    });
+    expect(sourceDocumentAfterFailedRetry?.deletedAt).toBeNull();
   });
 
   it("should retry an anomaly document", async () => {
