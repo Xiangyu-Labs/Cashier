@@ -2,7 +2,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
-import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerStats, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { type DateRangeType } from "@/lib/date-utils";
@@ -98,6 +98,7 @@ export function StatsTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(activeLedgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateCalendar(activeLedgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(activeLedgerId) }),
     ]);
   }, [queryClient, ledgerId]);
 

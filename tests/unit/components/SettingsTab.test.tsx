@@ -8,6 +8,7 @@ import type {
   ServiceCredentialDto as ServiceCredential,
 } from "@/modules/ledger/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 
 // Create tracked mocks
 const mockBack = vi.fn();
@@ -18,6 +19,7 @@ const mockUpdateLedgerAction = vi.fn((_id: string, _data: Partial<Ledger>) =>
   Promise.resolve({ success: true })
 );
 const mockSignOut = vi.fn();
+const pullToRefreshProps: Array<{ onRefresh: () => Promise<void> }> = [];
 
 // Mock Redis to prevent connection attempts
 vi.mock("ioredis", () => {
@@ -108,6 +110,19 @@ vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
   ),
 }));
 
+vi.mock("@/components/ui/pull-to-refresh", () => ({
+  PullToRefresh: ({
+    onRefresh,
+    children,
+  }: {
+    onRefresh: () => Promise<void>;
+    children: React.ReactNode;
+  }) => {
+    pullToRefreshProps.push({ onRefresh });
+    return <div data-testid="pull-to-refresh">{children}</div>;
+  },
+}));
+
 describe("SettingsTab", () => {
   const mockLedger: Ledger = {
     id: "l1",
@@ -133,6 +148,7 @@ describe("SettingsTab", () => {
   let queryClient: QueryClient;
   beforeEach(() => {
     vi.clearAllMocks();
+    pullToRefreshProps.length = 0;
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -224,5 +240,34 @@ describe("SettingsTab", () => {
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
     });
+  });
+
+  it("pull-to-refresh invalidates both settings and ledger queries", async () => {
+    const invalidateQueriesSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsTab ledger={mockLedger} initialCategories={mockCategories} ledgerId="l1" />
+      </QueryClientProvider>
+    );
+
+    const refreshHandler = pullToRefreshProps[0]?.onRefresh;
+    expect(refreshHandler).toBeTypeOf("function");
+    if (refreshHandler == null) {
+      throw new Error("Expected PullToRefresh to receive onRefresh");
+    }
+
+    await refreshHandler();
+
+    const predicates = invalidateQueriesSpy.mock.calls.map((call) => call[0]?.predicate).filter(Boolean);
+    expect(predicates.length).toBeGreaterThan(0);
+
+    const settingsMatched = predicates.some((predicate) =>
+      predicate({ queryKey: queryKeys.ledgerSettings("l1") })
+    );
+    const ledgerMatched = predicates.some((predicate) => predicate({ queryKey: queryKeys.ledger("l1") }));
+
+    expect(settingsMatched).toBe(true);
+    expect(ledgerMatched).toBe(true);
   });
 });

@@ -10,7 +10,7 @@ import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
+import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useCategoryMutations, useCredentialMutations, useLedgerSettings, } from "@/modules/ledger/hooks";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
@@ -50,7 +50,10 @@ export function SettingsTab({
   const queryClient = useQueryClient();
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) });
+    await Promise.all([
+      queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedger(ledgerId) }),
+    ]);
   };
 
   // Use extracted hooks - ledger is reactive and will update with optimistic updates

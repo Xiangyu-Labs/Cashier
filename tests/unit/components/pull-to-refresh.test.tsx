@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { useState } from 'react';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -7,6 +7,7 @@ import messagesZh from 'messages/zh.json';
 const ptrMessages = (messagesZh.PullToRefresh ?? {}) as {
   pullToRefresh: string;
   releaseToRefresh: string;
+  refreshing: string;
 };
 
 const TEST_THRESHOLD = 60;
@@ -153,5 +154,51 @@ describe('PullToRefresh regression', () => {
     expect(refreshV1).not.toHaveBeenCalled();
     expect(refreshV2).toHaveBeenCalled();
     expect(totalCalls).toBeGreaterThan(0);
+  });
+
+  it('keeps showing refreshing state until refresh promise resolves', async () => {
+    let resolveRefresh: (() => void) | undefined;
+    const onRefresh = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = resolve;
+        })
+    );
+
+    const { container, queryByText } = render(
+      <PullToRefresh onRefresh={onRefresh} className="ptr-root" threshold={TEST_THRESHOLD}>
+        <div data-testid="body">body</div>
+      </PullToRefresh>
+    );
+
+    const ptrRoot = container.querySelector<HTMLDivElement>('.ptr-root');
+    expect(ptrRoot).toBeInstanceOf(HTMLDivElement);
+    if (!(ptrRoot instanceof HTMLDivElement)) {
+      throw new Error('Expected .ptr-root to render as an HTMLDivElement');
+    }
+
+    const harness = createTouchHarness(ptrRoot);
+
+    try {
+      await act(async () => {
+        harness.fireTouchEvent('touchstart', TOUCH_START_Y);
+        harness.fireTouchEvent('touchmove', RELEASE_HINT_MOVE_Y);
+        harness.fireTouchEvent('touchend', RELEASE_HINT_MOVE_Y);
+      });
+
+      await waitFor(() => {
+        expect(onRefresh).toHaveBeenCalledTimes(1);
+      });
+
+      expect(queryByText(ptrMessages.refreshing)).not.toBeNull();
+
+      resolveRefresh?.();
+
+      await waitFor(() => {
+        expect(queryByText(ptrMessages.refreshing)).toBeNull();
+      });
+    } finally {
+      harness.cleanup();
+    }
   });
 });

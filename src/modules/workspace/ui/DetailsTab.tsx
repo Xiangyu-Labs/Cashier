@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
+import { invalidateLedgerEntries, invalidateLedgerStats, invalidateTaskQueue } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { useBatchEntryActions, useDetailsTabData, useDetailsTabGrouping, useEntryMutations, } from "@/modules/ledger/hooks";
@@ -130,6 +130,7 @@ export function DetailsTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
     ]);
   }, [queryClient, ledgerId]);
 
