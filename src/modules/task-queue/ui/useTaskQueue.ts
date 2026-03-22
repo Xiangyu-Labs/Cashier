@@ -29,7 +29,7 @@ export function useTaskQueue(ledgerId: string) {
       const current = query.state.data;
       const hasActiveTasks =
         (current?.stats?.pendingCount ?? 0) > 0 || (current?.stats?.runningCount ?? 0) > 0;
-      return hasActiveTasks ? 3000 : 60000;
+      return hasActiveTasks ? 3000 : 15000;
     },
     enabled: ledgerId.length === 0 ? false : true,
   });

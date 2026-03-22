@@ -6,7 +6,7 @@ import { LayoutGroup } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams } from "@/lib/period-utils";
-import { invalidateLedgerStats, invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
+import { invalidateLedgerStats, invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
@@ -89,6 +89,7 @@ export function LedgerEntriesTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
     ]);
   }, [queryClient, ledgerId]);
   const handleToggleSelectionMode = useCallback(() => {
