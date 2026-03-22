@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useState } from "react";
 import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
@@ -8,21 +7,14 @@ import { useTranslations } from "next-intl";
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useCategorySectionController } from "@/modules/ledger/hooks/useCategorySectionController";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
@@ -138,54 +130,21 @@ export function CategorySection({
   onAutoCategorize: _onAutoCategorize,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [draggedCategories, setDraggedCategories] = useState<EntryCategory[] | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleCreate = () => {
-    if (newCategoryName.trim() === "") return;
-    onCreateCategory(newCategoryName.trim());
-  };
-
-  useEffect(() => {
-    if (onCategoryCreated == null) return;
-
-    const timer = setTimeout(() => setNewCategoryName(""), 0);
-    return () => clearTimeout(timer);
-  }, [onCategoryCreated]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setDraggedCategories(null);
-
-    if (over == null || active.id === over.id) return;
-
-    const oldIndex = categories.findIndex((category) => category.id === active.id);
-    const newIndex = categories.findIndex((category) => category.id === over.id);
-    const reordered = arrayMove(categories, oldIndex, newIndex);
-    onReorderCategories(reordered.map((category) => category.id));
-  };
-
-  const handleDragOver = (event: {
-    active: { id: UniqueIdentifier };
-    over: { id: UniqueIdentifier } | null;
-  }) => {
-    const { active, over } = event;
-
-    if (over == null || active.id === over.id || draggedCategories == null) return;
-
-    const oldIndex = draggedCategories.findIndex((category) => category.id === active.id);
-    const newIndex = draggedCategories.findIndex((category) => category.id === over.id);
-    setDraggedCategories(arrayMove(draggedCategories, oldIndex, newIndex));
-  };
-
-  const displayCategories = draggedCategories ?? categories;
+  const {
+    sensors,
+    newCategoryName,
+    setNewCategoryName,
+    displayCategories,
+    handleCreate,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useCategorySectionController({
+    categories,
+    onCreateCategory,
+    onReorderCategories,
+    onCategoryCreated,
+  });
 
   return (
     <div className="space-y-4">
@@ -214,7 +173,7 @@ export function CategorySection({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={() => setDraggedCategories([...categories])}
+          onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
